@@ -25,7 +25,7 @@ MessageMagic CalculateMessageMagic(std::string_view crossPlatformName) {
 MessageMagic GetMessageMagic(std::string_view str) {
   // Make sure input is long enough to at least read the magic
   if (str.length() < sizeof(MessageMagic)) {
-    LOG("GetMessageMagic", severity_level::warning) << "Received a message which is shorter than " << sizeof(MessageMagic) << " bytes";
+    PEP_LOG("GetMessageMagic", Severity::Warning) << "Received a message which is shorter than " << sizeof(MessageMagic) << " bytes";
     throw SerializeException("Invalid message: too short");
   }
   static_assert(sizeof(MessageMagic) == sizeof(std::uint32_t));
@@ -55,7 +55,7 @@ MessageMagic BasicMessageMagician::RegisterMessageName(const std::string& crossP
 std::string_view BasicMessageMagician::SkipMessageMagic(std::string_view szMessage, MessageMagic requiredMagic) {
   auto dwObjectMagic = GetMessageMagic(szMessage);
   if (dwObjectMagic != requiredMagic) {
-    LOG("BasicMessageMagician::SkipMessageMagic", severity_level::error) << "Unknown object magic " << dwObjectMagic;
+    PEP_LOG("BasicMessageMagician::SkipMessageMagic", Severity::Error) << "Unknown object magic " << dwObjectMagic;
     throw SerializeException("Error parsing message");
   }
   return szMessage.substr(sizeof(MessageMagic));

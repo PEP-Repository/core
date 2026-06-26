@@ -6,7 +6,7 @@
 #include <pep/utils/ThreadUtil.hpp>
 
 namespace {
-const std::string LOG_TAG("WorkerPool");
+const std::string LogTag("WorkerPool");
 
 constexpr unsigned MaxThreads =
 #ifdef __EMSCRIPTEN__
@@ -21,29 +21,29 @@ constexpr unsigned MaxThreads =
 namespace pep {
 
 WorkerPool::WorkerPool()
-  : mIoContext(std::make_unique<boost::asio::io_context>()), mWorkGuard(std::make_unique<WorkGuard>(*mIoContext)) {
+  : ioContext_(std::make_unique<boost::asio::io_context>()), workGuard_(std::make_unique<WorkGuard>(*ioContext_)) {
   unsigned nThreads = std::min(std::thread::hardware_concurrency(), MaxThreads);
-  LOG(LOG_TAG, debug) << "Using " << nThreads << " worker threads";
-  mThreads.reserve(nThreads);
+  PEP_LOG(LogTag, Severity::Debug) << "Using " << nThreads << " worker threads";
+  threads_.reserve(nThreads);
   for (unsigned i = 0; i < nThreads; i++) {
-    mThreads.emplace_back(
+    threads_.emplace_back(
       [this, i]() {
         ThreadName::Set("WorkerPool" + std::to_string(i));
-        mIoContext->run();
+        ioContext_->run();
       });
   }
 }
 
 WorkerPool::~WorkerPool() {
-  mWorkGuard.reset();
-  mIoContext->stop();
-  for (auto& thread : mThreads)
+  workGuard_.reset();
+  ioContext_->stop();
+  for (auto& thread : threads_)
     thread.join();
-  mThreads.clear();
+  threads_.clear();
 }
 
 rxcpp::observe_on_one_worker WorkerPool::worker() {
-  return observe_on_asio(*mIoContext);
+  return ObserveOnAsio(*ioContext_);
 }
 
 std::shared_ptr<WorkerPool> WorkerPool::getShared() {

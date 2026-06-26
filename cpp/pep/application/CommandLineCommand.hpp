@@ -14,9 +14,9 @@ namespace commandline {
  */
 class Command {
 private:
-  std::optional<NamedValues> mParameterValues;
-  bool mParametersLexed = false;
-  bool mParametersFinalized = false;
+  std::optional<NamedValues> parameterValues_;
+  bool parametersLexed_ = false;
+  bool parametersFinalized_ = false;
 
   int issueCommandLineHelp(const std::optional<std::string>& error);
   int printAutocompleteInfo(std::queue<std::string>& arguments);
@@ -73,34 +73,34 @@ public:
 template <typename TParent>
 class ChildCommandOf : public Command {
 private:
-  std::string mName;
-  std::string mDescription;
-  TParent& mParent;
+  std::string name_;
+  std::string description_;
+  TParent& parent_;
 
 protected:
   ChildCommandOf(const std::string& name, const std::string& description, TParent& parent);
 
-  inline std::string getName() const override { return mName; }
-  inline std::string getDescription() const override { return mDescription; }
-  inline const Command* getParentCommand() const noexcept override { return &mParent; }
+  inline std::string getName() const override { return name_; }
+  inline std::string getDescription() const override { return description_; }
+  inline const Command* getParentCommand() const noexcept override { return &parent_; }
 
   inline TParent& getParent() noexcept {
-    assert(&mParent == this->getParentCommand());
-    return mParent;
+    assert(&parent_ == this->getParentCommand());
+    return parent_;
   }
 
   inline const TParent& getParent() const noexcept {
-    assert(&mParent == this->getParentCommand());
-    return mParent;
+    assert(&parent_ == this->getParentCommand());
+    return parent_;
   }
 };
 
 template <typename TParent>
 ChildCommandOf<TParent>::ChildCommandOf(const std::string& name, const std::string& description, TParent& parent)
-  : mName(name), mDescription(description), mParent(parent) {
+  : name_(name), description_(description), parent_(parent) {
   static_assert(std::is_base_of<Command, TParent>::value);
-  assert(!mName.empty());
-  assert(!mDescription.empty());
+  assert(!name_.empty());
+  assert(!description_.empty());
 }
 
 }

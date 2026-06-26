@@ -4,12 +4,12 @@
 namespace pep {
 
 EventSubscription::EventSubscription(EventSubscription&& other) noexcept
-  : mContract(std::move(other.mContract)) {
+  : contract_(std::move(other.contract_)) {
 }
 
 EventSubscription& EventSubscription::operator=(EventSubscription&& other) noexcept {
   this->cancel();
-  mContract = std::move(other.mContract);
+  contract_ = std::move(other.contract_);
   return *this;
 }
 
@@ -18,16 +18,16 @@ EventSubscription::~EventSubscription() noexcept {
 }
 
 bool EventSubscription::active() noexcept {
-  if (mContract == nullptr) {
+  if (contract_ == nullptr) {
     return false;
   }
-  return mContract->active();
+  return contract_->active();
 }
 
 void EventSubscription::cancel() noexcept {
-  if (mContract != nullptr) {
-    mContract->cancel();
-    mContract.reset();
+  if (contract_ != nullptr) {
+    contract_->cancel();
+    contract_.reset();
   }
 }
 

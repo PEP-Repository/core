@@ -26,28 +26,28 @@ namespace castor {
   std::string getId() const;
 
  private:
-  std::string mId;
+  std::string id_;
 
-#if BUILD_HAS_DEBUG_FLAVOR()
-  std::string mJson;
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
+  std::string json_;
 
  public:
   /*!
    * \return The pretty printed Json representation for this object. For debugging purposes.
    */
-  std::string toJsonString() const { return mJson; }
+  std::string toJsonString() const { return json_; }
 
 #endif
 
  protected:
-  static const std::string DEFAULT_ID_FIELD;
+  static const std::string DefaultIdField;
   /*!
    * \brief Construct a new CastorObject
    *
    * \param json The %Json response from the Castor API for this object
    * \param idField The name of the field in which the object's ID is stored. Defaults to "id"
    */
-  CastorObject(JsonPtr json, const std::string& idField = DEFAULT_ID_FIELD);
+  CastorObject(JsonPtr json, const std::string& idField = DefaultIdField);
 
   /*!
    * \brief Retrieve a list of objects that are children of a specified parent object.
@@ -79,20 +79,20 @@ namespace castor {
 template <typename TParent, typename TBase = CastorObject>
 class ParentedCastorObject : public TBase {
 private:
-  std::shared_ptr<TParent> mParent;
+  std::shared_ptr<TParent> parent_;
 
 protected:
   ParentedCastorObject(std::shared_ptr<TParent> parent, JsonPtr json)
-    : TBase(json), mParent(parent) {
-    assert(mParent != nullptr);
+    : TBase(json), parent_(parent) {
+    assert(parent_ != nullptr);
   }
 
   ParentedCastorObject(std::shared_ptr<TParent> parent, JsonPtr json, const std::string& idField)
-    : TBase(json, idField), mParent(parent) {
-    assert(mParent != nullptr);
+    : TBase(json, idField), parent_(parent) {
+    assert(parent_ != nullptr);
   }
 
-  std::shared_ptr<TParent> getParent() const { return mParent; }
+  std::shared_ptr<TParent> getParent() const { return parent_; }
 
 public:
   ~ParentedCastorObject() override {
@@ -101,14 +101,14 @@ public:
   }
 
   //! \return The CastorConnection for this object
-  std::shared_ptr<CastorConnection> getConnection() const override { return mParent->getConnection(); }
+  std::shared_ptr<CastorConnection> getConnection() const override { return parent_->getConnection(); }
 
 protected:
   static std::string GetParentRelativeEndpoint(std::shared_ptr<TParent> parent, const std::string& relative) {
     return parent->makeUrl() + "/" + relative;
   }
 
-  std::string makeParentRelativeUrl(const std::string& relative) const { return GetParentRelativeEndpoint(mParent, relative) + "/" + this->getId(); }
+  std::string makeParentRelativeUrl(const std::string& relative) const { return GetParentRelativeEndpoint(parent_, relative) + "/" + this->getId(); }
 };
 
 /*!
@@ -120,7 +120,7 @@ protected:
  * \tparam TChild The (most) derived type that inherits this class.
  * \tparam TParent The parent type.
  *
- * \remark Inheritors must define static const strings RELATIVE_API_ENDPOINT and EMBEDDED_API_NODE_NAME in their own (TChild) type.
+ * \remark Inheritors must define static const strings RelativeApiEndpoint and EmbeddedApiNodeName in their own (TChild) type.
  */
 template <typename TChild, typename TParent>
 class SimpleCastorChildObject : public ParentedCastorObject<TParent> {
@@ -131,7 +131,7 @@ class SimpleCastorChildObject : public ParentedCastorObject<TParent> {
 
 public:
   //! \return A url that can be used to retrieve this child object from the Castor API
-  std::string makeUrl() const override { return this->makeParentRelativeUrl(TChild::RELATIVE_API_ENDPOINT); }
+  std::string makeUrl() const override { return this->makeParentRelativeUrl(TChild::RelativeApiEndpoint); }
 
   /*!
  * \brief Get a list of objects that are children of a specified parent object
@@ -142,8 +142,8 @@ public:
   static rxcpp::observable<std::shared_ptr<TChild>> RetrieveForParent(std::shared_ptr<TParent> parent) {
     return CastorObject::RetrieveList<TChild, TParent>(
       parent,
-      ParentedCastorObject<TParent>::GetParentRelativeEndpoint(parent, TChild::RELATIVE_API_ENDPOINT),
-      TChild::EMBEDDED_API_NODE_NAME);
+      ParentedCastorObject<TParent>::GetParentRelativeEndpoint(parent, TChild::RelativeApiEndpoint),
+      TChild::EmbeddedApiNodeName);
   }
 };
 

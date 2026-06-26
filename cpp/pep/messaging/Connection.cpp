@@ -16,7 +16,7 @@ namespace pep::messaging {
 
 namespace {
 
-const std::string LOG_TAG = "Messaging connection";
+const std::string LogTag = "Messaging connection";
 
 class RequestRefusedException : public Error {
 public:
@@ -27,25 +27,25 @@ public:
 
 void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& result) {
   if (!this->prepareBodyTransfer(result)) {
-    LOG(LOG_TAG, severity_level::verbose)
-      << " \\__ error! " << error << ", that is, " << GetExceptionMessage(result.exception());
+    PEP_LOG(LogTag, Severity::Verbose)
+      << " \\__ error: " << GetExceptionMessage(result.exception());
     return;
   }
 
   try {
-    assert(*result == sizeof(mMessageInHeader));
-    auto header = MessageHeader::Decode(mMessageInHeader);
+    assert(*result == sizeof(messageInHeader_));
+    auto header = MessageHeader::Decode(messageInHeader_);
     auto length = header.length();
 
-    if (length > MAX_SIZE_OF_MESSAGE) {
-      LOG(LOG_TAG, severity_level::warning)
+    if (length > MaxSizeOfMessage) {
+      PEP_LOG(LogTag, Severity::Warning)
         << "Connection::handleHeaderReceived: "
         << "refusing " << length << "-byte message from " << describe()
-        << " because it's larger than the maximum of " << MAX_SIZE_OF_MESSAGE << " bytes";
+        << " because it's larger than the maximum of " << MaxSizeOfMessage << " bytes";
       return this->handleError(std::make_exception_ptr(boost::system::system_error(boost::asio::error::message_size)));
     }
 
-    LOG(LOG_TAG, severity_level::verbose)
+    PEP_LOG(LogTag, Severity::Verbose)
       << "Connection::handleHeaderReceived: "
       << "receiving " << length << "-byte message from " << describe();
 
@@ -54,50 +54,50 @@ void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& r
       return;
     }
 
-    mBinary->asyncRead(mMessageInBody.data(), length, [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {
+    binary_->asyncRead(messageInBody_.data(), length, [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {
       self->handleMessageReceived(result);
       });
   }
   catch (...) {
-    LOG(LOG_TAG, pep::warning) << "Failed to process message header: " << GetExceptionMessage(std::current_exception());
+    PEP_LOG(LogTag, Severity::Warning) << "Failed to process message header: " << GetExceptionMessage(std::current_exception());
     this->handleError(std::make_exception_ptr(boost::system::system_error(boost::system::errc::make_error_code(boost::system::errc::errc_t::bad_message))));
   }
 }
 
 void Connection::ensureSend() {
-  LOG(LOG_TAG, severity_level::verbose) << "Connection::ensureSend (sendActive=" << mSendActive << ",mRequestor.pending=" << mRequestor->pending() << ",receivedRequests.size=" << mIncomingRequestTails.size() << ",to=" << describe() << ")";
+  PEP_LOG(LogTag, Severity::Verbose) << "Connection::ensureSend (sendActive=" << sendActive_ << ",requestor_.pending=" << requestor_->pending() << ",receivedRequests.size=" << incomingRequestTails_.size() << ",to=" << describe() << ")";
   if (!this->isConnected()) {
     return;
   }
-  if (mSendActive)
+  if (sendActive_)
     return;
-  if (!mScheduler->available())
+  if (!scheduler_->available())
     return;
-  mSendActive = true;
+  sendActive_ = true;
 
   // we have to send in two stages, first a header of 8 bytes consiting of a message length and a message id
-  auto entry = mScheduler->pop();
+  auto entry = scheduler_->pop();
   MessageProperties properties = entry.properties;
-  mMessageOutBody = entry.content;
-  assert(mMessageOutBody);
+  messageOutBody_ = entry.content;
+  assert(messageOutBody_);
 
-  LOG(LOG_TAG, severity_level::verbose) << "Connection::ensureSend outgoing message streamId=" << properties.messageId().streamId() << " (to " << describe() << ")";
+  PEP_LOG(LogTag, Severity::Verbose) << "Connection::ensureSend outgoing message streamId=" << properties.messageId().streamId() << " (to " << describe() << ")";
 
-  if (mMessageOutBody->size() >= MAX_SIZE_OF_MESSAGE) {
+  if (messageOutBody_->size() >= MaxSizeOfMessage) {
     std::ostringstream msg;
     msg << "Message queued to be sent is too large.  ("
-      << "Size=" << mMessageOutBody->size() << ", Type="
-      << DescribeMessageMagic(*mMessageOutBody)
+      << "Size=" << messageOutBody_->size() << ", Type="
+      << DescribeMessageMagic(*messageOutBody_)
       << ")";
     throw std::runtime_error(msg.str());
   }
 
-  assert(mMessageOutBody->length() <= std::numeric_limits<MessageLength>::max());
-  MessageHeader header(static_cast<MessageLength>(mMessageOutBody->length()), properties);
-  mMessageOutHeader = header.encode();
+  assert(messageOutBody_->length() <= std::numeric_limits<MessageLength>::max());
+  MessageHeader header(static_cast<MessageLength>(messageOutBody_->length()), properties);
+  messageOutHeader_ = header.encode();
 
   // after the message header is written, call the second stage to send the body
-  mBinary->asyncWrite(&mMessageOutHeader, sizeof(mMessageOutHeader), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {
+  binary_->asyncWrite(&messageOutHeader_, sizeof(messageOutHeader_), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {
     self->handleHeaderSent(result);
     });
 }
@@ -105,32 +105,32 @@ void Connection::ensureSend() {
 void Connection::handleSchedulerError(const MessageId& id, std::exception_ptr error) {
   assert(error != nullptr);
 
-  severity_level severity{};
+  Severity severity{};
   std::string action, caption, description;
 
   switch (id.type().value()) {
-  case MessageType::REQUEST:
-    severity = severity_level::error;
+  case MessageType::Request:
+    severity = Severity::Error;
     action = "sending to";
     caption = "Unexpected exception";
     description = GetExceptionMessage(error);
     onUncaughtReadException.notify(error);
     break;
 
-  case MessageType::RESPONSE:
+  case MessageType::Response:
     action = "handling";
     try {
       std::rethrow_exception(error);
     } catch (const RequestRefusedException& e) {
-      severity = severity_level::warning;
+      severity = Severity::Warning;
       caption = "Refused";
       description = e.what();
     } catch (const Error& e) {
-      severity = severity_level::warning;
+      severity = Severity::Warning;
       caption = "Error";
       description = e.what();
     } catch (...) {
-      severity = severity_level::error;
+      severity = Severity::Error;
       caption = "Unexpected exception, treating as uncaught and stripping error details from reply";
       description = GetExceptionMessage(error);
       onUncaughtReadException.notify(error);
@@ -141,20 +141,20 @@ void Connection::handleSchedulerError(const MessageId& id, std::exception_ptr er
     throw std::runtime_error("Unsupported message type " + std::to_string(ToUnderlying(id.type().value())));
   }
 
-  LOG(LOG_TAG, severity) << caption << " (" << action << " " << this->describe() << "): " << description;
+  PEP_LOG(LogTag, severity) << caption << " (" << action << " " << this->describe() << "): " << description;
 }
 
 void Connection::start() {
   if (this->isConnected()) {
-    mBinary->asyncRead(&mMessageInHeader, sizeof(mMessageInHeader), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {
+    binary_->asyncRead(&messageInHeader_, sizeof(messageInHeader_), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {
       self->handleHeaderReceived(result);
       });
 
     // start keep-alive
-    if (!mKeepAliveTimerRunning) {
-      mKeepAliveTimerRunning = true;
-      mKeepAliveTimer.expires_after(std::chrono::seconds(30));
-      mKeepAliveTimer.async_wait(boost::bind(&Connection::handleKeepAliveTimerExpired, SharedFrom(*this), boost::asio::placeholders::error));
+    if (!keepAliveTimerRunning_) {
+      keepAliveTimerRunning_ = true;
+      keepAliveTimer_.expires_after(std::chrono::seconds(30));
+      keepAliveTimer_.async_wait(boost::bind(&Connection::handleKeepAliveTimerExpired, SharedFrom(*this), boost::asio::placeholders::error));
     }
 
     ensureSend();
@@ -162,19 +162,19 @@ void Connection::start() {
 }
 
 void Connection::handleHeaderSent(const networking::SizedTransfer::Result& result) {
-  LOG(LOG_TAG, severity_level::verbose) << "handleHeaderSent (" << describe() << ")";
+  PEP_LOG(LogTag, Severity::Verbose) << "handleHeaderSent (" << describe() << ")";
   if (!this->prepareBodyTransfer(result)) {
     return;
   }
 
-  LOG(LOG_TAG, severity_level::verbose) << "Sending body (" << describe() << ")";
+  PEP_LOG(LogTag, Severity::Verbose) << "Sending body (" << describe() << ")";
 
-  if (!mMessageOutBody || mMessageOutBody->empty()) {
+  if (!messageOutBody_ || messageOutBody_->empty()) {
     handleMessageSent(networking::SizedTransfer::Result::Success(0));
     return;
   }
 
-  mBinary->asyncWrite(mMessageOutBody->data(), mMessageOutBody->length(), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {
+  binary_->asyncWrite(messageOutBody_->data(), messageOutBody_->length(), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {
     self->handleMessageSent(result);
     });
 }
@@ -187,14 +187,14 @@ void Connection::handleMessageSent(const networking::SizedTransfer::Result& resu
   /* at this point, a message was successfully sent
    */
 
-  LOG(LOG_TAG, severity_level::verbose) << "Connection:handleMessageSent: "
+  PEP_LOG(LogTag, Severity::Verbose) << "Connection:handleMessageSent: "
     << "completed sending message to " << describe();
 
   /* free body */
-  mMessageOutBody.reset();
-  mSendActive = false;
+  messageOutBody_.reset();
+  sendActive_ = false;
 
-  mLastSend = std::chrono::steady_clock::now();
+  lastSend_ = std::chrono::steady_clock::now();
 
   ensureSend();
 }
@@ -209,47 +209,47 @@ void Connection::handleKeepAliveTimerExpired(const boost::system::error_code& er
     return;
   }
 
-  mKeepAliveTimer.expires_after(std::chrono::seconds(30));
-  mKeepAliveTimer.async_wait(boost::bind(&Connection::handleKeepAliveTimerExpired, SharedFrom(*this), boost::asio::placeholders::error));
+  keepAliveTimer_.expires_after(std::chrono::seconds(30));
+  keepAliveTimer_.async_wait(boost::bind(&Connection::handleKeepAliveTimerExpired, SharedFrom(*this), boost::asio::placeholders::error));
 
-  bool willSend = mLastSend <= std::chrono::steady_clock::now() - std::chrono::seconds(30);
+  bool willSend = lastSend_ <= std::chrono::steady_clock::now() - std::chrono::seconds(30);
 
   // if in the last 30 seconds something was sent, don't trigger the keep-alive
   if (!willSend)
     return;
   // if already active, do not interfere
-  if (mSendActive)
+  if (sendActive_)
     return;
 
   // mark active, so no interference can start
-  mSendActive = true;
+  sendActive_ = true;
 
   // set empty message
-  mMessageOutHeader = MessageHeader::MakeForControlMessage().encode();
-  assert(mMessageOutBody == nullptr);
+  messageOutHeader_ = MessageHeader::MakeForControlMessage().encode();
+  assert(messageOutBody_ == nullptr);
 
   // send async
-  mBinary->asyncWrite(&mMessageOutHeader, sizeof(mMessageOutHeader), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {
+  binary_->asyncWrite(&messageOutHeader_, sizeof(messageOutHeader_), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {
     self->handleMessageSent(result);
     });
 }
 
 Connection::Connection(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler)
-  : mMessageInBody(MAX_SIZE_OF_MESSAGE, '\0'), mKeepAliveTimer(ioContext), mScheduler(Scheduler::Create(ioContext)), mRequestor(Requestor::Create(ioContext, *mScheduler)),
-  mNode(node), mBinary(std::move(binary)), mIoContext(ioContext), mRequestHandler(requestHandler) {
-  assert(mBinary->status() == networking::Transport::ConnectivityStatus::Connected);
+  : messageInBody_(MaxSizeOfMessage, '\0'), keepAliveTimer_(ioContext), scheduler_(Scheduler::Create(ioContext)), requestor_(Requestor::Create(ioContext, *scheduler_)),
+  node_(node), binary_(std::move(binary)), ioContext_(ioContext), requestHandler_(requestHandler) {
+  assert(binary_->status() == networking::Transport::ConnectivityStatus::Connected);
   assert(node != nullptr);
 
-  mDescription = node->describe() + " connected to " + mBinary->remoteAddress();
+  description_ = node->describe() + " connected to " + binary_->remoteAddress();
 
   if (node->reconnectParameters().has_value()) {
-    mVersionCheckBackoff.emplace(mIoContext, *node->reconnectParameters());
+    versionCheckBackoff_.emplace(ioContext_, *node->reconnectParameters());
   }
 
   this->setStatus(Status::Initializing);
 
-  mSchedulerAvailableSubscription = mScheduler->onAvailable.subscribe([this]() {this->ensureSend(); });
-  mSchedulerExceptionSubscription = mScheduler->onError.subscribe([this](const MessageId& id, std::exception_ptr e) { this->handleSchedulerError(id, e); });
+  schedulerAvailableSubscription_ = scheduler_->onAvailable.subscribe([this]() {this->ensureSend(); });
+  schedulerExceptionSubscription_ = scheduler_->onError.subscribe([this](const MessageId& id, std::exception_ptr e) { this->handleSchedulerError(id, e); });
 }
 
 void Connection::handleMessageReceived(const networking::SizedTransfer::Result& result) {
@@ -259,7 +259,7 @@ void Connection::handleMessageReceived(const networking::SizedTransfer::Result& 
   }
 
   try {
-    auto header = MessageHeader::Decode(mMessageInHeader);
+    auto header = MessageHeader::Decode(messageInHeader_);
     assert(*result == header.length());
     const auto& messageId = header.properties().messageId();
 
@@ -268,20 +268,20 @@ void Connection::handleMessageReceived(const networking::SizedTransfer::Result& 
 
     // make distinction between message types
     switch (messageId.type().value()) {
-    case MessageType::CONTROL:
+    case MessageType::Control:
       // No processing needed: just wait for the next message
       return;
 
-    case MessageType::RESPONSE:
+    case MessageType::Response:
       this->processReceivedResponse(messageId.streamId(), header.properties().flags(), this->getReceivedMessageContent(header));
       return;
-    case MessageType::REQUEST:
+    case MessageType::Request:
       this->processReceivedRequest(messageId.streamId(), header.properties().flags(), this->getReceivedMessageContent(header));
       return;
     }
   }
   catch (...) {
-    LOG(LOG_TAG, pep::warning) << "Failed to process message: " << GetExceptionMessage(std::current_exception());
+    PEP_LOG(LogTag, Severity::Warning) << "Failed to process message: " << GetExceptionMessage(std::current_exception());
     // Processed by generic "bad message" handling outside the "catch" clause
   }
 
@@ -291,9 +291,9 @@ void Connection::handleMessageReceived(const networking::SizedTransfer::Result& 
 std::string Connection::getReceivedMessageContent(const MessageHeader& header) {
   const auto& messageId = header.properties().messageId();
 
-  auto result = mMessageInBody.substr(0U, header.length());
+  auto result = messageInBody_.substr(0U, header.length());
 
-  LOG(LOG_TAG, severity_level::verbose) << "Incoming " << messageId.type().describe() << " ("
+  PEP_LOG(LogTag, Severity::Verbose) << "Incoming " << messageId.type().describe() << " ("
     << (result.size() >= sizeof(MessageMagic) ? DescribeMessageMagic(result) : "no valid message magic")
     << ", stream id " << messageId.streamId() << ", " << this->describe() << ")";
 
@@ -301,29 +301,29 @@ std::string Connection::getReceivedMessageContent(const MessageHeader& header) {
 }
 
 void Connection::close() {
-  if (mVersionCheckBackoff) {
-    mVersionCheckBackoff->stop();
+  if (versionCheckBackoff_) {
+    versionCheckBackoff_->stop();
   }
-  mBinaryStatusSubscription.cancel();
-  mBinary.reset();
+  binaryStatusSubscription_.cancel();
+  binary_.reset();
   this->clearState(false);
   this->setStatus(Status::Finalizing);
 }
 
 void Connection::processReceivedResponse(const StreamId& streamId, const Flags& flags, std::string content) {
-  mRequestor->processResponse(this->describe(), streamId, flags, std::move(content));
+  requestor_->processResponse(this->describe(), streamId, flags, std::move(content));
 }
 
 void Connection::processReceivedRequest(const StreamId& streamId, const Flags& flags, std::string content) {
   std::shared_ptr<std::string> abValue
     = std::make_shared<std::string>(std::move(content));
 
-  auto it = mIncomingRequestTails.find(streamId);
-  if (it != mIncomingRequestTails.end()) {
+  auto it = incomingRequestTails_.find(streamId);
+  if (it != incomingRequestTails_.end()) {
     // This is a follow-up chunk for a request whose head we received earlier: have the existing IncomingRequestTail object handle it
     it->second.handleChunk(flags, abValue);
   }
-  else if (mScheduler->hasPendingResponseFor(streamId)) {
+  else if (scheduler_->hasPendingResponseFor(streamId)) {
     // See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2627
     std::string detail;
     if (abValue->size() >= sizeof(MessageMagic)) {
@@ -332,7 +332,7 @@ void Connection::processReceivedRequest(const StreamId& streamId, const Flags& f
     else {
       detail = std::to_string(abValue->size()) + "-byte";
     }
-    LOG(LOG_TAG, info) << "Dropping (followup?) " << detail << " message for request stream " << streamId.value() << ", which we're already replying to";
+    PEP_LOG(LogTag, Severity::Info) << "Dropping (followup?) " << detail << " message for request stream " << streamId.value() << ", which we're already replying to";
   }
   else {
     MessageSequence tail;
@@ -347,18 +347,18 @@ void Connection::processReceivedRequest(const StreamId& streamId, const Flags& f
     }
     else {
       // This is (the head of) a request that has follow-up messages
-      [[maybe_unused]] auto emplaced = mIncomingRequestTails.emplace(std::make_pair(streamId, IncomingRequestTail())).second; // Create an IncomingRequestTail object to (cache and) forward those follow-up chunks...
+      [[maybe_unused]] auto emplaced = incomingRequestTails_.emplace(std::make_pair(streamId, IncomingRequestTail())).second; // Create an IncomingRequestTail object to (cache and) forward those follow-up chunks...
       assert(emplaced);
       tail = CreateObservable<std::shared_ptr<std::string>>([streamId, self = SharedFrom(*this)](rxcpp::subscriber<std::shared_ptr<std::string>> s) { // ... as soon as a subscriber wants them
-        auto it = self->mIncomingRequestTails.find(streamId);
-        if (it != self->mIncomingRequestTails.end()) {
+        auto it = self->incomingRequestTails_.find(streamId);
+        if (it != self->incomingRequestTails_.end()) {
           it->second.forwardTo(s);
         }
         else {
           // This code assumes that the tail observable will not be subscribed to after the observable returned by
           // handleXXXRequest has completed or resulted in an error. If you use 'tail' as part of the RX pipeline that will be returned
           // by handleXXXRequest, there should not be a problem.
-          LOG(LOG_TAG, warning) << "Subscribed to the 'tail' observable when the incoming request has already been cleaned up";
+          PEP_LOG(LogTag, Severity::Warning) << "Subscribed to the 'tail' observable when the incoming request has already been cleaned up";
           assert(false);
         }
         });
@@ -371,25 +371,25 @@ void Connection::processReceivedRequest(const StreamId& streamId, const Flags& f
 
 void Connection::IncomingRequestTail::handleChunk(const Flags& flags, std::shared_ptr<std::string> chunk) {
   if (flags.payload()) {
-    if (mSubscriber) {
-      mSubscriber->on_next(std::move(chunk));
+    if (subscriber_) {
+      subscriber_->on_next(std::move(chunk));
     } else {
-      mQueuedItems.emplace_back(std::move(chunk));
+      queuedItems_.emplace_back(std::move(chunk));
     }
   }
   if (flags.error()) {
-    if (mSubscriber) {
+    if (subscriber_) {
       //TODO Why nullptr? Deserialize Error or pass some runtime_error instead?
-      LOG(LOG_TAG, warning) << "Received error chunk in request tail";
-      mSubscriber->on_error(nullptr);
+      PEP_LOG(LogTag, Severity::Warning) << "Received error chunk in request tail";
+      subscriber_->on_error(nullptr);
     } else {
-      mError = true;
+      error_ = true;
     }
   } else if (flags.close()) {
-    if (mSubscriber) {
-      mSubscriber->on_completed();
+    if (subscriber_) {
+      subscriber_->on_completed();
     } else {
-      mCompleted = true;
+      completed_ = true;
     }
   }
 }
@@ -411,19 +411,19 @@ void Connection::dispatchRequest(
     if (magic == MessageMagician<VersionRequest>::GetMagic()) {
       responses = this->handleVersionRequest(request, chunks);
     }
-    else if (mRequestHandler == nullptr) {
+    else if (requestHandler_ == nullptr) {
       this->handleError(std::make_exception_ptr(std::runtime_error("No request handler present")));
     }
-    else if (!mVersionValidated) {
-      if (std::any_of(mPrematureRequests.begin(), mPrematureRequests.end(), [&streamId](const PrematureRequest& candidate) {
+    else if (!versionValidated_) {
+      if (std::any_of(prematureRequests_.begin(), prematureRequests_.end(), [&streamId](const PrematureRequest& candidate) {
         return candidate.streamId == streamId;
         })) {
         throw std::runtime_error("Received multiple premature requests with stream ID " + std::to_string(streamId.value()));
       }
-      mPrematureRequests.emplace_back(PrematureRequest({ streamId, magic, request, chunks }));
+      prematureRequests_.emplace_back(PrematureRequest({ streamId, magic, request, chunks }));
     }
     else {
-      responses = mRequestHandler->handleRequest(magic, request, chunks);
+      responses = requestHandler_->handleRequest(magic, request, chunks);
     }
   } catch (...) {
     responses = rxcpp::observable<>::error<MessageSequence>(std::current_exception());
@@ -434,18 +434,18 @@ void Connection::dispatchRequest(
       this->scheduleResponses(streamId, *responses);
     }
     catch (...) {
-      LOG(LOG_TAG, error) << "Error scheduling response(s) for received " << DescribeMessageMagic(magic) << " request: " << GetExceptionMessage(std::current_exception())
-        << '\n' << "    Connection status is " << ToUnderlying(this->status()) << "; scheduler.available is " << std::boolalpha << mScheduler->available();
+      PEP_LOG(LogTag, Severity::Error) << "Error scheduling response(s) for received " << DescribeMessageMagic(magic) << " request: " << GetExceptionMessage(std::current_exception())
+        << '\n' << "    Connection status is " << ToUnderlying(this->status()) << "; scheduler.available is " << std::boolalpha << scheduler_->available();
       throw;
     }
   }
 }
 
 void Connection::scheduleResponses(const StreamId& streamId, MessageBatches responses) {
-  mScheduler->push(streamId, responses
-    .observe_on(observe_on_asio(mIoContext))
+  scheduler_->push(streamId, responses
+    .observe_on(ObserveOnAsio(ioContext_))
     .op(RxBeforeTermination([self = SharedFrom(*this), streamId](std::optional<std::exception_ptr>) {
-      self->mIncomingRequestTails.erase(streamId);
+      self->incomingRequestTails_.erase(streamId);
       })));
 }
 
@@ -457,7 +457,7 @@ rxcpp::observable<std::string> Connection::sendRequest(std::shared_ptr<std::stri
   assert(message);
   // This is a redundant check, such that the caller will receive an exception
   // with a better stack trace.
-  if (message->size() >= MAX_SIZE_OF_MESSAGE) {
+  if (message->size() >= MaxSizeOfMessage) {
     std::ostringstream msg;
     msg << "Message (" << DescribeMessageMagic(*message)
       << ") to " << describe() << " is too large ("
@@ -465,13 +465,13 @@ rxcpp::observable<std::string> Connection::sendRequest(std::shared_ptr<std::stri
     throw std::runtime_error(msg.str());
   }
 
-  LOG(LOG_TAG, severity_level::verbose)
+  PEP_LOG(LogTag, Severity::Verbose)
     << "Connection::sendRequest: sending "
     << DescribeMessageMagic(*message)
     << " of size " << message->length() << " to " << describe();
   assert(message->size() != 0U);
 
-  return mRequestor->send(message, tail, isVersionCheck || mVersionValidated, !isVersionCheck);
+  return requestor_->send(message, tail, isVersionCheck || versionValidated_, !isVersionCheck);
 }
 
 bool Connection::prepareBodyTransfer(const networking::SizedTransfer::Result& headerResult) {
@@ -506,76 +506,76 @@ void Connection::handleError(std::exception_ptr exception) {
   };
 
   if (shouldLog(exception)) {
-    LOG(LOG_TAG, severity_level::warning)
+    PEP_LOG(LogTag, Severity::Warning)
       << "Error encountered by " << this->describe()
       << ": " << GetExceptionMessage(exception);
   }
 
-  if (mBinary != nullptr) {
-    mBinary->close();
+  if (binary_ != nullptr) {
+    binary_->close();
   }
 }
 
 void Connection::clearState(bool reconnecting) {
   // Let request handlers know that they won't receive further tail segments
-  for (auto& incoming : mIncomingRequestTails) {
+  for (auto& incoming : incomingRequestTails_) {
     incoming.second.abort();
   }
 
   // Cancel sending of previously scheduled request and response messages
-  mScheduler->clear();
+  scheduler_->clear();
   // Stop sending keepalive messages
-  mKeepAliveTimer.cancel();
-  mKeepAliveTimerRunning = false;
+  keepAliveTimer_.cancel();
+  keepAliveTimerRunning_ = false;
   // Clear state for outgoing messages
-  mSendActive = false;
-  mMessageOutBody.reset();
+  sendActive_ = false;
+  messageOutBody_.reset();
   // Clear state for incoming messages
-  mVersionValidated = false;
+  versionValidated_ = false;
 
   // Discard cached incoming requests
-  mPrematureRequests.clear();
+  prematureRequests_.clear();
   // Discard pending requests that cannot be re-sent
-  mRequestor->purge(!reconnecting);
+  requestor_->purge(!reconnecting);
 }
 
 void Connection::handleBinaryConnectionEstablished() {
-  if (!mVersionCheckScheduled) {
+  if (!versionCheckScheduled_) {
     this->performVersionCheck();
   }
 }
 
 void Connection::postponeVersionCheck() {
-  assert(!mVersionCheckScheduled);
-  if (mVersionCheckBackoff) {
-    mVersionCheckBackoff->retry([weak = WeakFrom(*this)](boost::system::error_code ec) {
+  assert(!versionCheckScheduled_);
+  if (versionCheckBackoff_) {
+    versionCheckBackoff_->retry([weak = WeakFrom(*this)](boost::system::error_code ec) {
       if (auto self = weak.lock()) {
-        self->mVersionCheckScheduled = false;
+        self->versionCheckScheduled_ = false;
         if (ec != boost::asio::error::operation_aborted) {
           self->performVersionCheck();
         }
       }
       });
-    mVersionCheckScheduled = true;
+    versionCheckScheduled_ = true;
   }
 }
 
 void Connection::performVersionCheck() {
-  assert(!mVersionCheckScheduled);
-  assert(!mVersionValidated);
+  assert(!versionCheckScheduled_);
+  assert(!versionValidated_);
 
   // Keep instance alive until version check has been performed
   auto self = SharedFrom(*this);
 
   this->sendRequest(MakeSharedCopy(Serialization::ToString(VersionRequest())), std::nullopt, true)
     .map([](std::string_view response) {return Serialization::FromString<VersionResponse>(response); })
-    .observe_on(observe_on_asio(mIoContext))
+    .observe_on(ObserveOnAsio(ioContext_))
     .subscribe(
       [self](VersionResponse response) {
         self->handleVersionResponse(response);
       },
       [self](std::exception_ptr ep) {
-        LOG(LOG_TAG, warning) << "Version check failed: " << GetExceptionMessage(ep);
+        PEP_LOG(LogTag, Severity::Warning) << "Version check failed: " << GetExceptionMessage(ep);
         auto getReason = [](std::exception_ptr exception) {
           try {
             std::rethrow_exception(exception);
@@ -590,13 +590,13 @@ void Connection::performVersionCheck() {
         self->handleError(error);
       },
       [self]() {
-        if (!self->mVersionValidated) {
+        if (!self->versionValidated_) {
           auto error = std::make_exception_ptr(ConnectionFailureException::ForVersionCheckFailure("No version response received"));
           self->postponeVersionCheck();
           self->handleError(error);
         }
-        else if (self->mVersionCheckBackoff) {
-          self->mVersionCheckBackoff->success();
+        else if (self->versionCheckBackoff_) {
+          self->versionCheckBackoff_->success();
         }
       });
 
@@ -605,9 +605,9 @@ void Connection::performVersionCheck() {
 }
 
 void Connection::handleVersionResponse(const VersionResponse& response) {
-  assert(!mVersionValidated);
+  assert(!versionValidated_);
 
-  auto node = mNode.lock();
+  auto node = node_.lock();
   if (node == nullptr) {
     throw ConnectionFailureException(boost::system::errc::owner_dead, "Node was discarded before connection could perform version verification");
   }
@@ -615,31 +615,31 @@ void Connection::handleVersionResponse(const VersionResponse& response) {
     throw ConnectionFailureException(boost::system::errc::connection_aborted, "Connection was closed before it could perform version verification");
   }
 
-  assert(mBinary != nullptr);
+  assert(binary_ != nullptr);
   try {
-    node->vetConnectionWith(this->describe(), mBinary->remoteAddress(), response.binary, response.config); // Raises an exception if connection should be refused
+    node->vetConnectionWith(this->describe(), binary_->remoteAddress(), response.binary, response.config); // Raises an exception if connection should be refused
   }
   catch (...) {
     this->postponeVersionCheck();
     throw;
   }
 
-  mVersionValidated = true;
+  versionValidated_ = true;
   this->setStatus(Status::Initialized);
 
   // Schedule (re)sendable requests
-  mRequestor->resend();
+  requestor_->resend();
 
   // Handle requests that were received before version check completed (if any)
-  auto premature = std::move(mPrematureRequests);
-  assert(mPrematureRequests.empty()); // Move constructor should clear the moved-from vector: see https://stackoverflow.com/a/17735913
+  auto premature = std::move(prematureRequests_);
+  assert(prematureRequests_.empty()); // Move constructor should clear the moved-from vector: see https://stackoverflow.com/a/17735913
   for (auto& request : premature) {
-    assert(mRequestHandler != nullptr); // Otherwise premature requests wouldn't have been stored
+    assert(requestHandler_ != nullptr); // Otherwise premature requests wouldn't have been stored
     try {
-      this->scheduleResponses(request.streamId, mRequestHandler->handleRequest(request.magic, request.head, request.tail));
+      this->scheduleResponses(request.streamId, requestHandler_->handleRequest(request.magic, request.head, request.tail));
     }
     catch (...) {
-      LOG(LOG_TAG, error) << "Error scheduling response(s) for premature " << DescribeMessageMagic(request.magic) << " request: " << GetExceptionMessage(std::current_exception());
+      PEP_LOG(LogTag, Severity::Error) << "Error scheduling response(s) for premature " << DescribeMessageMagic(request.magic) << " request: " << GetExceptionMessage(std::current_exception());
       throw;
     }
   }
@@ -655,7 +655,7 @@ void Connection::handleBinaryConnectivityChange(const networking::Connection::Co
     this->setStatus(Status::Reinitializing);
     return;
   case networking::Transport::ConnectivityStatus::Connecting:
-    assert(!mVersionValidated);
+    assert(!versionValidated_);
     this->setStatus(Status::Initializing);
     return;
   case networking::Transport::ConnectivityStatus::Connected:
@@ -671,11 +671,11 @@ void Connection::handleBinaryConnectivityChange(const networking::Connection::Co
 }
 
 std::string Connection::describe() const {
-  return mDescription;
+  return description_;
 }
 
 bool Connection::isConnected() const noexcept {
-  return mBinary != nullptr && mBinary->isConnected();
+  return binary_ != nullptr && binary_->isConnected();
 }
 
 std::shared_ptr<Connection> Connection::Open(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler) {
@@ -684,7 +684,7 @@ std::shared_ptr<Connection> Connection::Open(std::shared_ptr<Node> node, std::sh
   assert(result->status() == Status::Initializing);
 
   // Subscribe the Connection to connectivity changes in the networking::Connection: the constructor couldn't do so because it can't get a shared_ptr to itself
-  result->mBinaryStatusSubscription = result->mBinary->onConnectivityChange.subscribe([weak = std::weak_ptr<Connection>(result)](const networking::Connection::ConnectivityChange& change) {
+  result->binaryStatusSubscription_ = result->binary_->onConnectivityChange.subscribe([weak = std::weak_ptr<Connection>(result)](const networking::Connection::ConnectivityChange& change) {
     auto self = weak.lock();
     if (self != nullptr) {
       self->handleBinaryConnectivityChange(change);
@@ -698,20 +698,20 @@ std::shared_ptr<Connection> Connection::Open(std::shared_ptr<Node> node, std::sh
 }
 
 void Connection::IncomingRequestTail::forwardTo(rxcpp::subscriber<std::shared_ptr<std::string>> subscriber) {
-  assert(mSubscriber == nullptr);
+  assert(subscriber_ == nullptr);
 
-  mSubscriber = MakeSharedCopy(subscriber);
+  subscriber_ = MakeSharedCopy(subscriber);
   // send items already queued
-  for (auto& e : mQueuedItems) {
-    mSubscriber->on_next(std::move(e));
+  for (auto& e : queuedItems_) {
+    subscriber_->on_next(std::move(e));
   }
-  mQueuedItems.clear();
-  if (mError) {
+  queuedItems_.clear();
+  if (error_) {
     //TODO Why nullptr? Pass deserialized error or some runtime_error instead?
-    LOG(LOG_TAG, warning) << "Forwarding error chunk from request tail";
-    mSubscriber->on_error(nullptr);
-  } else if (mCompleted) {
-    mSubscriber->on_completed();
+    PEP_LOG(LogTag, Severity::Warning) << "Forwarding error chunk from request tail";
+    subscriber_->on_error(nullptr);
+  } else if (completed_) {
+    subscriber_->on_completed();
   }
 }
 

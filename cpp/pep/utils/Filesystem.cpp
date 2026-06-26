@@ -6,20 +6,20 @@
 namespace pep::filesystem {
 
 Temporary::~Temporary() noexcept {
-  remove_all(mPath); // noop if mPath does not exist or if it's empty
+  remove_all(path_); // noop if path_ does not exist or if it's empty
 }
 
 Temporary& Temporary::operator=(Temporary&& rhs) noexcept {
-  if (rhs.mPath != mPath) {
-    remove_all(mPath);
+  if (rhs.path_ != path_) {
+    remove_all(path_);
   }
-  mPath = rhs.release();
+  path_ = rhs.release();
   return *this;
 }
 
 std::filesystem::path Temporary::release() {
   std::filesystem::path p{};
-  std::swap(p, mPath);
+  std::swap(p, path_);
   return p;
 }
 
@@ -60,13 +60,13 @@ std::string RandomizedName(std::string str) {
 
 std::pair<SetOfExistingPaths::const_iterator, bool> SetOfExistingPaths::insert(const std::filesystem::path& path) {
   // Store _canonical_ paths (a.o.) to ensure that differences in cAsInG don't affect the comparison (if the file system is case insensitive, e.g. on Windows)
-  auto raw = mImplementor.insert(canonical(path));
+  auto raw = implementor_.insert(canonical(path));
   return { raw.first, raw.second };
 }
 
 bool SetOfExistingPaths::contains(const std::filesystem::path& path) const {
   // Use "weakly_canonical" to prevent exceptions if path doesn't exist on file system
-  return mImplementor.contains(weakly_canonical(path));
+  return implementor_.contains(weakly_canonical(path));
 }
 
 } // namespace pep::filesystem

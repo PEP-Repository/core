@@ -43,9 +43,9 @@ rxcpp::observable<FakeVoid> RxAsioTimer(const RxAsioDuration& duration, boost::a
  */
 class RxAsioTimeout {
 private:
-  RxAsioDuration mDuration;
-  boost::asio::io_context& mIoContext;
-  rxcpp::observe_on_one_worker mObserveOn;
+  RxAsioDuration duration_;
+  boost::asio::io_context& ioContext_;
+  rxcpp::observe_on_one_worker observeOn_;
 
 public:
   /*! \brief Constructor.
@@ -54,7 +54,7 @@ public:
     * \param observe_on The coordination to use for (on_next, on_error, on_completed) notifications.
     */
   inline RxAsioTimeout(const RxAsioDuration& duration, boost::asio::io_context& io_context, rxcpp::observe_on_one_worker observe_on)
-    : mDuration(duration), mIoContext(io_context), mObserveOn(observe_on) {
+    : duration_(duration), ioContext_(io_context), observeOn_(observe_on) {
   }
 
   /*! \brief Applies the timeout to a (source) observable.
@@ -76,26 +76,26 @@ public:
       friend class SharedConstructor<Implementor>;
 
     private:
-      std::optional<rxcpp::subscriber<TItem>> mOuterSubscriber;
-      std::optional<rxcpp::subscriber<TItem>> mItemsSubscriber;
-      std::optional<rxcpp::subscriber<FakeVoid>> mTimeoutSubscriber;
+      std::optional<rxcpp::subscriber<TItem>> outerSubscriber_;
+      std::optional<rxcpp::subscriber<TItem>> itemsSubscriber_;
+      std::optional<rxcpp::subscriber<FakeVoid>> timeoutSubscriber_;
 
       /*! \brief Ensures that inner (source and timer) observables are unsubscribed from.
         * \return The outer subscriber if an on_error or on_completed notification has not yet been sent to it. Otherwise, std::nullopt.
         */
       std::optional<rxcpp::subscriber<TItem>> terminate() {
-        auto result = mOuterSubscriber;
+        auto result = outerSubscriber_;
 
         if (result.has_value()) {
-          assert(mItemsSubscriber.has_value());
-          mItemsSubscriber->unsubscribe(); // Allow the source ("items") observable to clean up its things
-          mItemsSubscriber = std::nullopt;
+          assert(itemsSubscriber_.has_value());
+          itemsSubscriber_->unsubscribe(); // Allow the source ("items") observable to clean up its things
+          itemsSubscriber_ = std::nullopt;
 
-          assert(mTimeoutSubscriber.has_value());
-          mTimeoutSubscriber->unsubscribe(); // Cancel the timer used to produce the timeout
-          mTimeoutSubscriber = std::nullopt;
+          assert(timeoutSubscriber_.has_value());
+          timeoutSubscriber_->unsubscribe(); // Cancel the timer used to produce the timeout
+          timeoutSubscriber_ = std::nullopt;
 
-          mOuterSubscriber = std::nullopt;
+          outerSubscriber_ = std::nullopt;
         }
 
         return result;
@@ -105,8 +105,8 @@ public:
         * \param item The item to pass to the (outer) subscriber's on_next handler.
         */
       void on_next(const TItem& item) {
-        if (mOuterSubscriber.has_value()) {
-          mOuterSubscriber->on_next(item);
+        if (outerSubscriber_.has_value()) {
+          outerSubscriber_->on_next(item);
         }
       }
 
@@ -133,7 +133,7 @@ public:
         * \param subscriber The (outer) subscriber that will receive (on_next, on_error, on_completed) notifications.
         */
       explicit Implementor(rxcpp::subscriber<TItem> subscriber)
-        : mOuterSubscriber(subscriber) {
+        : outerSubscriber_(subscriber) {
       }
 
     public:
@@ -144,38 +144,38 @@ public:
         * \param observe_on The coordination to use for (on_next, on_error, on_completed) notifications.
         */
       void process(rxcpp::observable<TItem, SourceOperator> items, RxAsioDuration timeout_after, boost::asio::io_context& io_context, rxcpp::observe_on_one_worker observe_on) {
-        assert(mOuterSubscriber.has_value());
-        assert(!mItemsSubscriber.has_value());
-        assert(!mTimeoutSubscriber.has_value());
+        assert(outerSubscriber_.has_value());
+        assert(!itemsSubscriber_.has_value());
+        assert(!timeoutSubscriber_.has_value());
 
         auto self = pep::SharedFrom(*this);
 
         // Create (and store) a subscriber that'll forward notifications from the source ("items") observable to the (outer) subscriber
-        mItemsSubscriber = rxcpp::make_subscriber<TItem>(
+        itemsSubscriber_ = rxcpp::make_subscriber<TItem>(
           [self](const TItem& item) {self->on_next(item); },
           [self](std::exception_ptr exception) {self->on_error(exception); },
           [self]() {self->on_completed(); }
         );
         // Attach our forwarding subscriber to the source ("items") observable
         items
-          .subscribe_on(pep::observe_on_asio(io_context)) // Schedule the source observable on our I/O context (preventing it from e.g. blocking this thread)...
+          .subscribe_on(pep::ObserveOnAsio(io_context)) // Schedule the source observable on our I/O context (preventing it from e.g. blocking this thread)...
           .observe_on(observe_on) // ...but ensure that notifications are serviced using the caller-supplied coordination
-          .subscribe(*mItemsSubscriber);
+          .subscribe(*itemsSubscriber_);
 
         // Create (and store) a subscriber that'll produce a timeout_error when a timer elapses
-        mTimeoutSubscriber = rxcpp::make_subscriber<FakeVoid>(
+        timeoutSubscriber_ = rxcpp::make_subscriber<FakeVoid>(
           [self](FakeVoid) {self->on_error(std::make_exception_ptr(rxcpp::timeout_error("Timeout occurred"))); },
           [self](std::exception_ptr exception) {self->on_error(exception); },
           []() { /* ignore: we already invoked self->on_error in the on_next */ }
         );
         // Attach our exception-raising subscriber to a timer observable
         pep::RxAsioTimer(timeout_after, io_context, observe_on)
-          .subscribe(*mTimeoutSubscriber);
+          .subscribe(*timeoutSubscriber_);
       }
     };
 
     // Wait for a(n outer) subscriber before subscribing to the source ("items") observable and starting the timeout
-    return CreateObservable<TItem>([items, duration = mDuration, &io_context = mIoContext, observe_on = mObserveOn](rxcpp::subscriber<TItem> subscriber) {
+    return CreateObservable<TItem>([items, duration = duration_, &io_context = ioContext_, observe_on = observeOn_](rxcpp::subscriber<TItem> subscriber) {
       Implementor::Create(subscriber)->process(items, duration, io_context, observe_on);
       });
   }

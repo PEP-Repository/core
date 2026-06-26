@@ -12,16 +12,16 @@ namespace castor {
   */
 class SurveyPackageInstancePuller : public std::enable_shared_from_this<SurveyPackageInstancePuller>, boost::noncopyable {
 private:
-  std::shared_ptr<ImportColumnNamer> mNamer;
-  std::string mPrefix;
-  std::string mSurveyPackageName;
+  std::shared_ptr<ImportColumnNamer> namer_;
+  std::string prefix_;
+  std::string surveyPackageName_;
 
 protected:
   explicit SurveyPackageInstancePuller(std::shared_ptr<ImportColumnNamer> namer, const std::string& prefix, const std::string& surveyPackageName);
 
-  inline std::shared_ptr<ImportColumnNamer> getImportColumnNamer() const noexcept { return mNamer; }
-  inline const std::string& getColumnNamePrefix() const noexcept { return mPrefix; }
-  inline const std::string& getSurveyPackageName() const noexcept { return mSurveyPackageName; }
+  inline std::shared_ptr<ImportColumnNamer> getImportColumnNamer() const noexcept { return namer_; }
+  inline const std::string& getColumnNamePrefix() const noexcept { return prefix_; }
+  inline const std::string& getSurveyPackageName() const noexcept { return surveyPackageName_; }
 
   /*!
   * \brief Produces the column name under which PEP should store data for the combination of this survey package instance and the specified step.
@@ -62,8 +62,8 @@ class IndexedSpiPuller : public SurveyPackageInstancePuller, public SharedConstr
   friend class SharedConstructor<IndexedSpiPuller>;
 
 private:
-  unsigned mIndex;
-  int mWeekNumber;
+  unsigned index_;
+  int weekNumber_;
 
   IndexedSpiPuller(std::shared_ptr<ImportColumnNamer> namer, const std::string& prefix, const std::string& surveyPackageName, unsigned index, int weekNumber);
 

@@ -14,13 +14,13 @@ using namespace std::string_literals;
 namespace pep {
 
 std::string CurveScalar::pack() const {
-  std::string ret(CurveScalar::PACKEDBYTES, '\0');
-  group_scalar_pack(reinterpret_cast<unsigned char*>(ret.data()), &inner);
+  std::string ret(CurveScalar::PackedBytes, '\0');
+  group_scalar_pack(reinterpret_cast<unsigned char*>(ret.data()), &inner_);
   return ret;
 }
 
 size_t CurveScalar::TextLength() {
-  return BoostHexLength(CurveScalar::PACKEDBYTES);
+  return BoostHexLength(CurveScalar::PackedBytes);
 }
 
 std::string CurveScalar::text() const {
@@ -39,23 +39,23 @@ CurveScalar CurveScalar::FromText(const std::string& text) {
 
 /*! \brief Create a zero CurveScalar
  */
-CurveScalar::CurveScalar() { //NOLINT(cppcoreguidelines-pro-type-member-init) inner is initialized
-  group_scalar_setzero(&inner);
+CurveScalar::CurveScalar() { //NOLINT(cppcoreguidelines-pro-type-member-init) inner_ is initialized
+  group_scalar_setzero(&inner_);
 }
 
 CurveScalar CurveScalar::One() {
   CurveScalar scalar;
-  group_scalar_setone(&scalar.inner);
+  group_scalar_setone(&scalar.inner_);
   return scalar;
 }
 
 /*! \brief Create a new CurveScalar from a packed scalar.
  */
-CurveScalar::CurveScalar(std::string_view packed) { //NOLINT(cppcoreguidelines-pro-type-member-init) inner is initialized
-  if (packed.size() != CurveScalar::PACKEDBYTES) {
+CurveScalar::CurveScalar(std::string_view packed) { //NOLINT(cppcoreguidelines-pro-type-member-init) inner_ is initialized
+  if (packed.size() != CurveScalar::PackedBytes) {
     throw std::invalid_argument("Trying to construct CurveScalar with incorrect number of packed bytes");
   }
-  auto error = group_scalar_unpack(&inner, reinterpret_cast<const unsigned char*>(packed.data()));
+  auto error = group_scalar_unpack(&inner_, reinterpret_cast<const unsigned char*>(packed.data()));
   if (error != 0) {  // Never happens
     throw std::invalid_argument("Invalid packed CurveScalar");
   }
@@ -70,7 +70,7 @@ CurveScalar::CurveScalar(std::string_view packed) { //NOLINT(cppcoreguidelines-p
  */
 CurveScalar CurveScalar::operator+(const CurveScalar& s) const {
   CurveScalar r;
-  group_scalar_add(&r.inner, &inner, &s.inner);
+  group_scalar_add(&r.inner_, &inner_, &s.inner_);
   return r;
 }
 
@@ -83,7 +83,7 @@ CurveScalar CurveScalar::operator+(const CurveScalar& s) const {
  */
 CurveScalar CurveScalar::operator-(const CurveScalar& s) const {
   CurveScalar r;
-  group_scalar_sub(&r.inner, &inner, &s.inner);
+  group_scalar_sub(&r.inner_, &inner_, &s.inner_);
   return r;
 }
 
@@ -96,7 +96,7 @@ CurveScalar CurveScalar::operator-(const CurveScalar& s) const {
  */
 CurveScalar CurveScalar::operator*(const CurveScalar& s) const {
   CurveScalar r;
-  group_scalar_mul(&r.inner, &inner, &s.inner);
+  group_scalar_mul(&r.inner_, &inner_, &s.inner_);
   return r;
 }
 
@@ -107,7 +107,7 @@ CurveScalar CurveScalar::operator*(const CurveScalar& s) const {
  */
 CurveScalar CurveScalar::square() const {
   CurveScalar r;
-  group_scalar_square(&r.inner, &inner);
+  group_scalar_square(&r.inner_, &inner_);
   return r;
 }
 
@@ -118,7 +118,7 @@ CurveScalar CurveScalar::square() const {
  */
 CurveScalar CurveScalar::invert() const {
   CurveScalar r;
-  group_scalar_invert(&r.inner, &inner);
+  group_scalar_invert(&r.inner_, &inner_);
   return r;
 }
 
@@ -131,12 +131,12 @@ CurveScalar CurveScalar::From64Bytes(std::string_view bytes) {
     throw std::invalid_argument("Trying to construct CurveScalar with incorrect number of bytes");
   }
   CurveScalar r;
-  scalar_from64bytes(&r.inner, reinterpret_cast<const unsigned char*>(bytes.data()));
+  scalar_from64bytes(&r.inner_, reinterpret_cast<const unsigned char*>(bytes.data()));
   return r;
 }
 
 bool CurveScalar::operator==(const CurveScalar& other) const {
-  return group_scalar_equals(&inner, &other.inner);
+  return group_scalar_equals(&inner_, &other.inner_);
 }
 
 CurveScalar CurveScalar::Random() {
@@ -146,7 +146,7 @@ CurveScalar CurveScalar::Random() {
 CurveScalar CurveScalar::ShortHash(std::string_view s) {
   CurveScalar ret;
   shortscalar_hashfromstr(
-    &ret.inner,
+    &ret.inner_,
     reinterpret_cast<const unsigned char*>(s.data()),
     s.size()
   );
@@ -156,7 +156,7 @@ CurveScalar CurveScalar::ShortHash(std::string_view s) {
 CurveScalar CurveScalar::Hash(std::string_view s) {
   CurveScalar ret;
   scalar_hashfromstr(
-    &ret.inner,
+    &ret.inner_,
     reinterpret_cast<const unsigned char*>(s.data()),
     s.size()
   );

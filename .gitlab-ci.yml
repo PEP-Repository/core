@@ -740,15 +740,20 @@ ubuntu-lts-debug-with-sast:
     paths:
       - $STAGING_DIRECTORY
 
-# Builds (and optionally lints) binaries for ubuntu-lts-release
-ubuntu-lts-release-$[[ inputs.autolinting ]]:
+.ubuntu-lts-release-base:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-release-settings
+
+# Builds (and optionally lints) binaries for ubuntu-lts-release
+ubuntu-lts-release-$[[ inputs.autolinting ]]:
+  extends:
+    - .ubuntu-lts-release-base
     - .set-enable-linter-and-terminate-rules
   variables:
     WITH_BENCHMARK: "True"
     WITH_CASTOR: "True"
+    MEM_ANALYSIS_TOOL: "valgrind"
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
       $EXECUTABLES_APPS
@@ -765,12 +770,22 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       $UNIT_TESTS_BASE
       $UNIT_TESTS_SERVER
       $UNIT_TESTS_CASTOR
-    MEM_ANALYSIS_TOOL: "valgrind"
+
+ubuntu-lts-release-manual-lint:
+  extends: .ubuntu-lts-release-base
+  rules:
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+      when: manual
+      allow_failure: true
+    - when: never
+  variables:
+    ENABLE_LINTER: yes
+    WITH_BENCHMARK: "True"
+    WITH_CASTOR: "True"
 
 ubuntu-lts-release-without-castor:
   extends:
-    - .ubuntu-build-base
-    - .ubuntu-lts-release-settings
+    - .ubuntu-lts-release-base
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
@@ -797,23 +812,38 @@ ubuntu-lts-release-without-castor:
     WITH_CASTOR: "True"
     WITH_TESTS: "True"
     WITH_BENCHMARK: "False"
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_SERVER
-      $UNIT_TESTS_CASTOR
     MEM_ANALYSIS_TOOL: "none"
+
+.ubuntu-rolling-debug-base:
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-rolling-settings
+  variables:
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    VERIFY_HEADERS_STANDALONE: "off"
 
 # Builds (and optionally lints) binaries for ubuntu-rolling-debug
 ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
   extends:
-    - .ubuntu-build-base
-    - .ubuntu-rolling-settings
+    - .ubuntu-rolling-debug-base
   rules:
     - !reference [ .skip-for-binaries-for-xyz, rules ]
     - !reference [ .set-enable-linter-and-terminate-rules, rules ]
   variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    VERIFY_HEADERS_STANDALONE: "off"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+      $UNIT_TESTS_CASTOR
+
+ubuntu-rolling-debug-manual-lint:
+  extends: .ubuntu-rolling-debug-base
+  rules:
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+      when: manual
+      allow_failure: true
+    - when: never
+  variables:
+    ENABLE_LINTER: yes
 
 ubuntu-rolling-release:
   extends:
@@ -824,6 +854,10 @@ ubuntu-rolling-release:
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
     VERIFY_HEADERS_STANDALONE: "on"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+      $UNIT_TESTS_CASTOR
 
 #################### Python Packages ####################
 
@@ -1304,8 +1338,9 @@ upload-flatpak:
             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/flatpak/${CI_COMMIT_SHA}/pep.flatpak"'
 
 retag-pep-docker-images:
-  extends: .upload-base
-  image: docker
+  extends:
+    - .upload-base
+    - .dind-small
   needs:
     - job: test-pep-services-image
       artifacts: false
@@ -1316,13 +1351,27 @@ retag-pep-docker-images:
   #language=sh
   script:
     - *docker_login
-    - docker buildx imagetools create "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
+    - docker image pull "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST"
+    - docker image tag  "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST" "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST" "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
 
 ##########################################
 # Configuration for the publish stage    #

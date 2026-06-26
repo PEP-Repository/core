@@ -18,15 +18,15 @@ using namespace pep::weblib;
 
 // Add Embind serialization for weblib structures
 
-#define BINDINGS_IMPL(cur_struct) \
+#define PEP_BINDINGS_IMPL(cur_struct) \
   EMSCRIPTEN_BINDINGS(cur_struct) { \
     value_object<cur_struct>(BOOST_PP_STRINGIZE(cur_struct))
 
-#define BINDINGS BINDINGS_IMPL(CUR_STRUCT)
+#define PEP_BINDINGS PEP_BINDINGS_IMPL(PEP_CUR_STRUCT)
 
-#define BINDINGS_END ; }
+#define PEP_BINDINGS_END ; }
 
-#define FIELD(name) .field(#name, &CUR_STRUCT::name)
+#define PEP_FIELD(name) .field(#name, &PEP_CUR_STRUCT::name)
 
 
 EMSCRIPTEN_BINDINGS(optionals) {
@@ -39,50 +39,50 @@ EMSCRIPTEN_BINDINGS(optionals) {
 
 //@formatter:off
 
-#undef CUR_STRUCT
-#define CUR_STRUCT ListQuery
-BINDINGS
-  FIELD(subjectGroups)
-  FIELD(subjects)
-  FIELD(columnGroups)
-  FIELD(columns)
-BINDINGS_END
+#undef PEP_CUR_STRUCT
+#define PEP_CUR_STRUCT ListQuery
+PEP_BINDINGS
+  PEP_FIELD(subjectGroups)
+  PEP_FIELD(subjects)
+  PEP_FIELD(columnGroups)
+  PEP_FIELD(columns)
+PEP_BINDINGS_END
 
-#undef CUR_STRUCT
-#define CUR_STRUCT ColumnGroup
-BINDINGS
-  FIELD(name)
-  FIELD(columns)
-BINDINGS_END
+#undef PEP_CUR_STRUCT
+#define PEP_CUR_STRUCT ColumnGroup
+PEP_BINDINGS
+  PEP_FIELD(name)
+  PEP_FIELD(columns)
+PEP_BINDINGS_END
 
-#undef CUR_STRUCT
-#define CUR_STRUCT EnrolledUser
-BINDINGS
-  FIELD(userGroup)
-  FIELD(user)
-BINDINGS_END
+#undef PEP_CUR_STRUCT
+#define PEP_CUR_STRUCT EnrolledUser
+PEP_BINDINGS
+  PEP_FIELD(userGroup)
+  PEP_FIELD(user)
+PEP_BINDINGS_END
 
-#undef CUR_STRUCT
-#define CUR_STRUCT SubjectGroup
-BINDINGS
-  FIELD(name)
-BINDINGS_END
+#undef PEP_CUR_STRUCT
+#define PEP_CUR_STRUCT SubjectGroup
+PEP_BINDINGS
+  PEP_FIELD(name)
+PEP_BINDINGS_END
 
-#undef CUR_STRUCT
-#define CUR_STRUCT ParticipantPersonalia
-BINDINGS
-  FIELD(firstName)
-  FIELD(middleName)
-  FIELD(lastName)
-  FIELD(dateOfBirth)
-BINDINGS_END
+#undef PEP_CUR_STRUCT
+#define PEP_CUR_STRUCT ParticipantPersonalia
+PEP_BINDINGS
+  PEP_FIELD(firstName)
+  PEP_FIELD(middleName)
+  PEP_FIELD(lastName)
+  PEP_FIELD(dateOfBirth)
+PEP_BINDINGS_END
 
 //@formatter:on
 
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {
   using namespace std::ranges;
   return RangeToCollection<decltype(partialMetadataView())>(
-    inner->mMetadata.extra()
+    inner->metadata.extra()
     | views::transform([](const auto& entry) {
       const auto& [key, value] = entry;
       std::optional<val> view;
@@ -96,20 +96,20 @@ std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataVi
 }
 
 std::string CellEntry::id() const {
-  return boost::algorithm::hex(inner->mId);
+  return boost::algorithm::hex(inner->id);
 }
 
 std::string CellEntry::subjectLocalPseudonym() const {
-  assert(inner->mAccessGroupPseudonym && "mAccessGroupPseudonym not set");
-  return inner->mAccessGroupPseudonym->text();
+  assert(inner->accessGroupPseudonym && "accessGroupPseudonym not set");
+  return inner->accessGroupPseudonym->text();
 }
 
 std::string CellEntry::subjectEncryptedOriginId() const {
-  return inner->mLocalPseudonyms->mPolymorphic.text();
+  return inner->localPseudonyms->polymorphic.text();
 }
 
-const std::string& CellEntry::column() const { return inner->mColumn; }
-double CellEntry::fileSize() const { return static_cast<double>(inner->mFileSize); }
+const std::string& CellEntry::column() const { return inner->column; }
+double CellEntry::fileSize() const { return static_cast<double>(inner->fileSize); }
 
 CellData::CellData(const CellEntry* entry, val contentReadableStream)
       : entry{entry}, contentReadableStream(std::move(contentReadableStream)) {}

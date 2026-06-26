@@ -158,7 +158,7 @@
 
 namespace pep::application::test {
 
-#define DEBUG_OUTPUT 1
+#define PEP_DEBUG_OUTPUT 1
 
 // Convenience constants
 const pep::commandline::CommandPath appCommandPath{"app"};
@@ -180,7 +180,7 @@ std::pair<int, std::string> ProcessWithCapturedStderr(AppCmd& cmd, std::initiali
   testing::internal::CaptureStderr();
   const int exitCode = Process(cmd, args);
   std::string err = testing::internal::GetCapturedStderr();
-  #if DEBUG_OUTPUT
+  #if PEP_DEBUG_OUTPUT
   std::cout << "=== Captured stderr ===\n" << err << "======================\n";
   #endif
   return {exitCode, std::move(err)};
@@ -346,7 +346,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> AppCmd::createChildComma
 }
 
 void AppCmd::recordCommandValues(const pep::commandline::CommandPath& commandPath, const pep::commandline::NamedValues& values) {
-  mCapturedParams[commandPath.toString()] = values;
+  capturedParams_[commandPath.toString()] = values;
 }
 
 // UserCmd implementation

@@ -18,7 +18,7 @@ const std::string& Pseudonymiser::GetDefaultPlaceholder() {
 }
 
 void Pseudonymiser::pseudonymise(std::istream& in, std::function<void(const char*, const std::streamsize)> writeToDestination) {
-  PseudonymiseInputFilter pseudonymiseFilter(mOldValue, mNewValue);
+  PseudonymiseInputFilter pseudonymiseFilter(oldValue_, newValue_);
   boost::iostreams::filtering_istream filteringStream;
   filteringStream.push(pseudonymiseFilter);
   filteringStream.push(in);

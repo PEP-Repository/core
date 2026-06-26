@@ -24,12 +24,13 @@
 #include <prometheus/gauge.h>
 #include <prometheus/registry.h>
 
-static const std::string LOG_TAG ("PageStore");
-
 namespace pep
 {
 
 namespace {
+
+  const std::string LogTag("PageStore");
+
   class S3PageStore
     : public PageStore,
       public std::enable_shared_from_this<S3PageStore>
@@ -52,21 +53,20 @@ namespace {
     S3PageStore(
       const s3::Client::Parameters& s3params,
         unsigned int conn_count,
-        const std::string& write_bucket,
-        const std::vector<std::string>& buckets,
+        const std::string& writeBucket_,
+        const std::vector<std::string>& buckets_,
         std::shared_ptr<prometheus::Registry> metrics_registry);
 
     ~S3PageStore() override;
 
   private:
-
-    std::vector<std::shared_ptr<s3::Client>> clients;
+    std::vector<std::shared_ptr<s3::Client>> clients_;
 
     // keeps track of the number of open requests per connection
-    std::shared_ptr<std::vector<unsigned int>> open_requests_counts;
+    std::shared_ptr<std::vector<unsigned int>> openRequestsCounts_;
 
-    std::string write_bucket;
-    std::vector<std::string> buckets;
+    std::string writeBucket_;
+    std::vector<std::string> buckets_;
 
     // gets the index of (one of) the quietest connections
     size_t getQuietestConn();
@@ -99,7 +99,7 @@ namespace {
             .Add({})) { }
     };
 
-    std::optional<Metrics> metrics;
+    std::optional<Metrics> metrics_;
   };
 
 
@@ -117,7 +117,7 @@ namespace {
     };
 
     unsigned int conn_count = config.get<unsigned int>("Connections", 5);
-    std::string write_bucket = config.get<std::string>("WriteToBucket");
+    std::string writeBucket = config.get<std::string>("WriteToBucket");
 
     std::vector<std::string> buckets;
 
@@ -128,16 +128,16 @@ namespace {
 
     if (buckets.begin() == buckets.end())
       throw std::runtime_error("S3PageStore configuration error: "
-          "no buckets to read from!");
+          "no buckets_ to read from!");
 
-    if (std::find(buckets.begin(), buckets.end(), write_bucket)
+    if (std::find(buckets.begin(), buckets.end(), writeBucket)
           == buckets.end()) {
       throw std::runtime_error("S3PageStore configuration error: "
           "writing to a bucket we're not reading from!");
     }
 
     return std::make_shared<S3PageStore>(
-        s3params, conn_count, write_bucket, buckets, metrics_registry);
+        s3params, conn_count, writeBucket, buckets, metrics_registry);
   }
 
 
@@ -145,42 +145,42 @@ namespace {
   S3PageStore::S3PageStore(
       const s3::Client::Parameters& s3params,
       unsigned int conn_count,
-      const std::string& write_bucket,
-      const std::vector<std::string>& buckets,
+      const std::string& writeBucket_,
+      const std::vector<std::string>& buckets_,
       std::shared_ptr<prometheus::Registry> metrics_registry)
 
     : PageStore(),
-      clients(),
-      open_requests_counts(std::make_shared<std::vector<unsigned int>>()),
-      write_bucket(write_bucket),
-      buckets(buckets),
-      metrics(metrics_registry ? std::make_optional<Metrics>(metrics_registry)
+      clients_(),
+      openRequestsCounts_(std::make_shared<std::vector<unsigned int>>()),
+      writeBucket_(writeBucket_),
+      buckets_(buckets_),
+      metrics_(metrics_registry ? std::make_optional<Metrics>(metrics_registry)
                                : std::nullopt)
   {
     for (auto i = 0U; i < conn_count; i++) {
       auto client = s3::Client::Create(s3params);
       client->start();
-      this->clients.push_back(client);
-      this->open_requests_counts->push_back(0);
+      this->clients_.push_back(client);
+      this->openRequestsCounts_->push_back(0);
     }
   }
 
   S3PageStore::~S3PageStore() {
-    for (auto client : clients) {
+    for (auto client : clients_) {
       client->shutdown();
     }
-#if BUILD_HAS_DEBUG_FLAVOR()
-    for (unsigned int count : *(this->open_requests_counts))
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
+    for (unsigned int count : *(this->openRequestsCounts_))
       assert(count == 0);
     // The "count" variable is only used in an assertion, making it
     // unused in non-debug builds.
     //
-    // Why not a LOG(LOG_TAG, error) here instead of an assert?
+    // Why not a PEP_LOG(LogTag, Severity::Error) here instead of an assert?
     //
     // Either there's a bug in the open requests counting code---which we don't
     // want to be buried in the logs---or some request is actually still active,
     // which will cause an inexplicable segfault when it'll try to decrement
-    // the deleted open_requests_counts[idx] upon completion.
+    // the deleted openRequestsCounts_[idx] upon completion.
 #endif
   }
 
@@ -188,12 +188,12 @@ namespace {
   size_t S3PageStore::getQuietestConn() {
     size_t candidate = 0;
 
-    unsigned int candidate_count = this->open_requests_counts->at(candidate);
+    unsigned int candidate_count = this->openRequestsCounts_->at(candidate);
 
     for (size_t contender=1;
-        contender < this->open_requests_counts->size(); contender++) {
+        contender < this->openRequestsCounts_->size(); contender++) {
 
-      unsigned int contender_count = this->open_requests_counts->at(contender);
+      unsigned int contender_count = this->openRequestsCounts_->at(contender);
 
       if (contender_count < candidate_count) {
         candidate = contender;
@@ -209,13 +209,13 @@ namespace {
     S3PageStore::get(const std::string& path) {
 
     // If the object is not in the first bucket, it might be in one of the
-    // next buckets, so the idea is to first call
+    // next buckets_, so the idea is to first call
     //
-    //   this->get(path, this->buckets[0]),
+    //   this->get(path, this->buckets_[0]),
     //
     // and if this yields no results, call
     //
-    //   this->get(path, this->buckets[1]),
+    //   this->get(path, this->buckets_[1]),
     //
     // and so on.  Since we can't decide here whether these observables
     // will be empty, we employ  obs1.switch_if_empty(obs2),  which returns
@@ -223,9 +223,9 @@ namespace {
     //
     // We can't use
     //
-    //   this->get(path, buckets[0]).switch_if_empty(
-    //     this->get(path, buckets[1]).switch_if_empty(
-    //       this->get(path, buckets[2]).switch_if_empty(
+    //   this->get(path, buckets_[0]).switch_if_empty(
+    //     this->get(path, buckets_[1]).switch_if_empty(
+    //       this->get(path, buckets_[2]).switch_if_empty(
     //         ...
     //
     // since calling this->get(...) prepares a request to S3, which
@@ -238,7 +238,7 @@ namespace {
     messaging::MessageSequence result
       = rxcpp::observable<>::empty<std::shared_ptr<std::string>>();
 
-    for (const std::string& bucket : this->buckets) {
+    for (const std::string& bucket : this->buckets_) {
 
       result = result.switch_if_empty(RxLazy<std::shared_ptr<std::string>>(
 
@@ -261,8 +261,8 @@ namespace {
     std::string path = _path; // don't leave the reference dangling
     auto self = this->shared_from_this();
 
-    if (this->metrics)
-      this->metrics->pending_requests.Increment();
+    if (metrics_)
+      metrics_->pending_requests.Increment();
 
     // We should decrement the pending_requests counter not only when the
     // observable we will in a moment create is subscribed to,
@@ -270,11 +270,11 @@ namespace {
     // on account of it being destroyed.
     // We achieve this using a 'defer guard';  when post_pending is
     // destroyed (or manually triggered) pending_requests is decremented.
-    // We use 'defer_shared' instead of 'defer_unique' because rxcpp
+    // We use 'DeferShared' instead of 'DeferUnique' because rxcpp
     // cannot deal with non-copyable callbacks.
-    auto post_pending = defer_shared([self]{
-      if (self->metrics)
-        self->metrics->pending_requests.Decrement();
+    auto post_pending = DeferShared([self]{
+      if (self->metrics_)
+        self->metrics_->pending_requests.Decrement();
     });
 
     // The "subscribe" on the returned observable may be called much later,
@@ -288,19 +288,19 @@ namespace {
       post_pending->trigger();
       // NB. We can't use post_pending.reset() since post_pending is const.
 
-      (self->open_requests_counts->at(conn_idx))++;
+      (self->openRequestsCounts_->at(conn_idx))++;
 
-      if (self->metrics) {
-        self->metrics->active_requests.Increment();
+      if (self->metrics_) {
+        self->metrics_->active_requests.Increment();
       }
 
-      auto post_active = defer_shared([self, conn_idx]{
-        (self->open_requests_counts->at(conn_idx))--;
-        if (self->metrics)
-          self->metrics->active_requests.Decrement();
+      auto post_active = DeferShared([self, conn_idx]{
+        (self->openRequestsCounts_->at(conn_idx))--;
+        if (self->metrics_)
+          self->metrics_->active_requests.Decrement();
       });
 
-      return self->clients.at(conn_idx)->getObject(path, bucket)
+      return self->clients_.at(conn_idx)->getObject(path, bucket)
         .op(RxButFirst(
 
           // RxButFirst makes sure the function below is called after
@@ -325,18 +325,18 @@ namespace {
       pages_size += page_part->size();
     }
 
-    if (this->metrics) {
-      this->metrics->pending_requests.Increment();
-      this->metrics->pending_pages_size.Increment(
+    if (metrics_) {
+      metrics_->pending_requests.Increment();
+      metrics_->pending_pages_size.Increment(
           static_cast<double>(pages_size));
     }
 
     auto self = this->shared_from_this();
 
-    auto post_pending = defer_shared([self,pages_size]{
-      if (self->metrics) {
-        self->metrics->pending_requests.Decrement();
-        self->metrics->pending_pages_size.Decrement(
+    auto post_pending = DeferShared([self,pages_size]{
+      if (self->metrics_) {
+        self->metrics_->pending_requests.Decrement();
+        self->metrics_->pending_pages_size.Decrement(
             static_cast<double>(pages_size));
       }
     });
@@ -351,19 +351,19 @@ namespace {
 
       post_pending->trigger();
 
-      (self->open_requests_counts->at(conn_idx))++;
-      if (self->metrics) {
-        self->metrics->active_requests.Increment();
+      (self->openRequestsCounts_->at(conn_idx))++;
+      if (self->metrics_) {
+        self->metrics_->active_requests.Increment();
       }
 
-      auto post_active = defer_shared([self,conn_idx](){
-        (self->open_requests_counts->at(conn_idx))--;
-        if (self->metrics)
-          self->metrics->active_requests.Decrement();
+      auto post_active = DeferShared([self,conn_idx](){
+        (self->openRequestsCounts_->at(conn_idx))--;
+        if (self->metrics_)
+          self->metrics_->active_requests.Decrement();
       });
 
-      return self->clients.at(conn_idx)->putObject(path,
-        self->write_bucket, page_parts)
+      return self->clients_.at(conn_idx)->putObject(path,
+        self->writeBucket_, page_parts)
         .op(RxButFirst(
 
           // RxButFirst makes sure the function below is called after
@@ -400,18 +400,17 @@ namespace {
         std::string bucket);
 
   private:
-
-    std::filesystem::path bucketdir;
+    std::filesystem::path bucketDir_;
   };
 
   LocalPageStore::LocalPageStore(
       std::filesystem::path datadir,
       std::string bucket)
-    : bucketdir(datadir/bucket)
+    : bucketDir_(datadir/bucket)
   {
-    if (!std::filesystem::is_directory(this->bucketdir)) {
+    if (!std::filesystem::is_directory(bucketDir_)) {
       throw std::runtime_error("Configuration error: "
-          + this->bucketdir.string() + " is not a directory.");
+          + bucketDir_.string() + " is not a directory.");
     }
   }
 
@@ -430,7 +429,7 @@ namespace {
   messaging::MessageSequence
     LocalPageStore::get(const std::string& path) {
 
-    std::filesystem::path fullpath = this->bucketdir / path;
+    std::filesystem::path fullpath = bucketDir_ / path;
 
     return CreateObservable<std::shared_ptr<std::string>> (
       [fullpath](rxcpp::subscriber<std::shared_ptr<std::string>> s){
@@ -441,7 +440,7 @@ namespace {
           try {
             *result = ReadFile(fullpath);
           } catch(...) {
-            LOG(LOG_TAG, error) << "could not read from \"" << fullpath.string() << '"';
+            PEP_LOG(LogTag, Severity::Error) << "could not read from \"" << fullpath.string() << '"';
             throw;
           }
           s.on_next(result);
@@ -455,7 +454,7 @@ namespace {
       const std::string& path,
       std::vector<std::shared_ptr<std::string>> page_parts) {
 
-    std::filesystem::path fullpath = this->bucketdir / path;
+    std::filesystem::path fullpath = bucketDir_ / path;
 
     // since this is fallback code, speed is not of the essence
     auto page = std::make_shared<std::string>();
@@ -468,7 +467,7 @@ namespace {
           std::filesystem::create_directories(fullpath.parent_path());
           WriteFile(fullpath, *page);
         } catch (...) {
-          LOG(LOG_TAG, error) << "could not write to \"" << fullpath.string() << '"';
+          PEP_LOG(LogTag, Severity::Error) << "could not write to \"" << fullpath.string() << '"';
           throw;
         }
         s.on_next(s3::ETag(*page));
@@ -505,14 +504,14 @@ namespace {
 
   private:
 
-    std::shared_ptr<S3PageStore> s3store;
-    std::shared_ptr<LocalPageStore> localstore;
+    std::shared_ptr<S3PageStore> s3store_;
+    std::shared_ptr<LocalPageStore> localstore_;
   };
 
   DualPageStore::DualPageStore(
       std::shared_ptr<S3PageStore> s3store,
       std::shared_ptr<LocalPageStore> localstore)
-    : s3store(s3store), localstore(localstore)
+    : s3store_(s3store), localstore_(localstore)
   {
   }
 
@@ -534,8 +533,8 @@ namespace {
       DualPageStore::get(const std::string& path) {
     // forward the request to the S3 and local store, and merge the results
     // into one vector ...
-    return this->s3store->get(path)
-      .merge(this->localstore->get(path))
+    return s3store_->get(path)
+      .merge(localstore_->get(path))
       .op(RxToVector())
       // ... and extract the contents of the vector, if any
       .flat_map(
@@ -566,8 +565,8 @@ namespace {
 
     // forward the request to the S3 and local store, and merge the results
     // into one vector ...
-    return this->s3store->put(path, page_parts)
-      .merge(this->localstore->put(path, page_parts))
+    return s3store_->put(path, page_parts)
+      .merge(localstore_->put(path, page_parts))
       .op(RxToVector())
       // ... and extract the contents of the vector, if any
       .flat_map([](std::shared_ptr<std::vector<std::string>> values)
@@ -585,10 +584,10 @@ namespace {
           throw std::runtime_error("DualPageStore: Put: both "
               "stores failed silently.");
         default:
-          LOG(LOG_TAG, error) << "DualPageStore::put: got unexpectedly many "
+          PEP_LOG(LogTag, Severity::Error) << "DualPageStore::put: got unexpectedly many "
               << "ETags from page stores: ";
           for (auto& etag : *values) {
-            LOG(LOG_TAG, error) << "\t - " << std::quoted(etag);
+            PEP_LOG(LogTag, Severity::Error) << "\t - " << std::quoted(etag);
           }
           throw std::runtime_error("DualPageStore: Put: assertion error: "
               "got more than one result from a store.");

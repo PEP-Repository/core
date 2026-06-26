@@ -21,7 +21,6 @@ if (WITH_SERVERS)
     SigningServer.cpp SigningServer.hpp
   )
   target_link_libraries(${PROJECT_NAME}Serverlib
-    ${PROJECT_NAME}Messaginglib
     ${PROJECT_NAME}Rsklib
     ${PROJECT_NAME}Metricslib
     ${PROJECT_NAME}ServerApilib

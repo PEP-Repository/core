@@ -28,13 +28,13 @@ public:
   using tag_type = TTag;
 
 private:
-  value_type mValue;
+  value_type value_;
 
 public:
-  explicit TaggedValue(value_type value) noexcept(noexcept(value_type(std::move(value)))) : mValue(std::move(value)) {}
+  explicit TaggedValue(value_type value) noexcept(noexcept(value_type(std::move(value)))) : value_(std::move(value)) {}
 
-  value_type& value() noexcept { return mValue; }
-  const value_type& value() const noexcept { return mValue; }
+  value_type& value() noexcept { return value_; }
+  const value_type& value() const noexcept { return value_; }
 
   auto operator<=>(const TaggedValue&) const = default;
 };
@@ -67,7 +67,7 @@ public:
 /// \endcode
 class TaggedValues {
 private:
-  std::unordered_map<std::type_index, std::any> mValues;
+  std::unordered_map<std::type_index, std::any> values_;
 
   template <typename TTagged> static std::type_index KeyFor() noexcept;
   template <typename TTagged, typename TValues> static auto ConstAgnosticGet(TValues& values);
@@ -77,29 +77,29 @@ public:
   /// @brief Retrieves the TaggedValue associated with the specified tag
   /// @tparam TTagged The TaggedValue specialization to retrieve
   /// @return A pointer to the stored TaggedValue, or NULL if the instance contains no value of that type
-  template <typename TTagged> auto get() noexcept { return ConstAgnosticGet<TTagged>(mValues); }
+  template <typename TTagged> auto get() noexcept { return ConstAgnosticGet<TTagged>(values_); }
 
   /// @brief Retrieves the TaggedValue associated with the specified tag
   /// @tparam TTagged The TaggedValue specialization to retrieve
   /// @return A pointer to the stored TaggedValue, or NULL if the instance contains no value of that type
-  template <typename TTagged> auto get() const noexcept { return ConstAgnosticGet<TTagged>(mValues); }
+  template <typename TTagged> auto get() const noexcept { return ConstAgnosticGet<TTagged>(values_); }
 
   /// @brief Retrieves the _payload) value associated with the specified tag
   /// @tparam TTagged The TaggedValue specialization whose value to retrieve
   /// @return A pointer to the stored TaggedValue::value_type, or NULL if the instance does not contain the specified TaggedValue
-  template <typename TTagged> auto get_value() noexcept { return ConstAgnosticGetValue<TTagged>(mValues); }
+  template <typename TTagged> auto get_value() noexcept { return ConstAgnosticGetValue<TTagged>(values_); }
 
   /// @brief Retrieves the _payload) value associated with the specified tag
   /// @tparam TTagged The TaggedValue specialization whose value to retrieve
   /// @return A pointer to the stored TaggedValue::value_type, or NULL if the instance does not contain the specified TaggedValue
-  template <typename TTagged> auto get_value() const noexcept { return ConstAgnosticGetValue<TTagged>(mValues); }
+  template <typename TTagged> auto get_value() const noexcept { return ConstAgnosticGetValue<TTagged>(values_); }
 
   /// @brief Stores a TaggedValue
   /// @tparam TTagged The TaggedValue specialization to store
   /// @param value The TaggedValue to store
   /// @return TRUE if the value was newly inserted; FALSE if it was overwritten.
   /// @remark Overwrites any existing value
-  template <typename TTagged> bool set(TTagged value) { return mValues.insert_or_assign(KeyFor<TTagged>(), std::move(value)).second; }
+  template <typename TTagged> bool set(TTagged value) { return values_.insert_or_assign(KeyFor<TTagged>(), std::move(value)).second; }
 
   /// @brief Stores a new TaggedValue
   /// @tparam TTagged The TaggedValue specialization to store
@@ -110,18 +110,18 @@ public:
   /// @brief Discards the value associated with the specified tag
   /// @tparam TTag The tag for which to discard the value
   /// @remark A no-op if no value has been stored for the specified tag
-  template <typename TTag> void unset() { mValues.erase(KeyFor<TTag>()); }
+  template <typename TTag> void unset() { values_.erase(KeyFor<TTag>()); }
 
   /// @brief Discards all values
-  void clear() { mValues.clear(); }
+  void clear() { values_.clear(); }
 
   /// @brief Determines if the instance is empty
   /// @return TRUE if the instance stores no values; FALSE if it stores any
-  bool empty() const noexcept { return mValues.empty(); }
+  bool empty() const noexcept { return values_.empty(); }
 
   /// @brief Determines the number of values stored in the instance
   /// @return The number of stored values
-  size_t size() const noexcept { return mValues.size(); }
+  size_t size() const noexcept { return values_.size(); }
 };
 
 template <typename TTagged> void TaggedValues::add(TTagged value) {
@@ -133,13 +133,13 @@ template <typename TTagged> void TaggedValues::add(TTagged value) {
 
 /// @brief Implements lookup for TaggedValues::get (both const and non-const versions)
 /// @tparam TTagged The TaggedValue specialization for which to retrieve the value
-/// @tparam TValues decltype(mValues) or the const-qualified equivalent
-/// @param values The mValues member
+/// @tparam TValues decltype(values_) or the const-qualified equivalent
+/// @param values The values_ member
 /// @return The address of the specified TaggedValue, or NULL if the instance does not contain the specified TaggedValue
 /// @remark Less code than implementing the TaggedValues::get overloads individually
 template <typename TTagged, typename TValues>
 auto TaggedValues::ConstAgnosticGet(TValues& values) {
-  static_assert(std::is_same_v<decltype(TaggedValues::mValues), std::remove_const_t<TValues>>, "Parameter must be (possibly const qualified) TaggedValues::mValues");
+  static_assert(std::is_same_v<decltype(TaggedValues::values_), std::remove_const_t<TValues>>, "Parameter must be (possibly const qualified) TaggedValues::values_");
 
   using Value = CopyConstness<TTagged, TValues>;
   Value* result = nullptr;
@@ -156,8 +156,8 @@ auto TaggedValues::ConstAgnosticGet(TValues& values) {
 
 /// @brief Convenience method to retrieve the (payload) value for a TaggedValue
 /// @tparam TTagged The TaggedValue specialization for which to retrieve the value
-/// @tparam TValues decltype(mValues) or the const-qualified equivalent
-/// @param values The mValues member
+/// @tparam TValues decltype(values_) or the const-qualified equivalent
+/// @param values The values_ member
 /// @return The address of the (payload, i.e. value_type) value of the specified TaggedValue, or NULL if the instance does not contain the specified TaggedValue
 template <typename TTagged, typename TValues>
 auto TaggedValues::ConstAgnosticGetValue(TValues& values) {

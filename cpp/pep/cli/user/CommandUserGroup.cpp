@@ -13,7 +13,7 @@ public:
   using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(pep::UserGroup) const;
 
 private:
-  AmProxyMethod mMethod;
+  AmProxyMethod method_;
 
 public:
   UserGroupSubCommand(const std::string& name,
@@ -21,7 +21,7 @@ public:
                       AmProxyMethod method,
                       CommandUserGroup& parent)
     : ChildCommandOf<CommandUserGroup>(name, description, parent),
-      mMethod(method) {}
+      method_(method) {}
 
 protected:
   pep::commandline::Parameters getSupportedParameters() const override {
@@ -39,10 +39,10 @@ protected:
   int execute() override {
     return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
       pep::UserGroup userGroup;
-      userGroup.mMaxAuthValidity = this->getParameterValues().getOptional<std::chrono::seconds>("max-auth-validity");
-      userGroup.mName = this->getParameterValues().get<std::string>("name");
+      userGroup.maxAuthValidity = this->getParameterValues().getOptional<std::chrono::seconds>("max-auth-validity");
+      userGroup.name = this->getParameterValues().get<std::string>("name");
       auto& am = *client->getAccessManagerProxy();
-      return (am.*mMethod)(userGroup);
+      return (am.*method_)(userGroup);
     });
   }
 };

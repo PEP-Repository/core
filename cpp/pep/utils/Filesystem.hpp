@@ -14,7 +14,7 @@ public:
   Temporary() = default;
 
   /// Binds the lifetime of the resource located at \p path to the constructed object.
-  explicit Temporary(std::filesystem::path path) : mPath(std::move(path)) {}
+  explicit Temporary(std::filesystem::path path) : path_(std::move(path)) {}
 
   /// Deletes the bounded resource from disk if it exists.
   /// @warning Results in termination of the application if the underlying system calls fail.
@@ -29,7 +29,7 @@ public:
 
   /// The path to the managed resource.
   const std::filesystem::path& path() const {
-    return mPath;
+    return path_;
   }
 
   /// Decouples the filesystem resource from this object and returns its path.
@@ -37,7 +37,7 @@ public:
 
   /// Returns true iff the current path is empty.
   bool empty() const noexcept {
-    return mPath.empty();
+    return path_.empty();
   }
 
   bool operator==(const Temporary&) const = default;
@@ -46,7 +46,7 @@ public:
   static Temporary MakeFile(const std::string& content, const std::filesystem::path& directory = std::filesystem::current_path());
 
 private:
-  std::filesystem::path mPath;
+  std::filesystem::path path_;
 };
 
 /// Returns a string where every occurrence of '%' in the \p pattern is replaced with a randomized character.
@@ -78,11 +78,11 @@ inline std::string RandomizedName(const char* pattern) {
 /// @brief Set of std::filesystem::path instances that exist on the file system (at the time they are added)
 class SetOfExistingPaths {
 private:
-  std::set<std::filesystem::path> mImplementor;
+  std::set<std::filesystem::path> implementor_;
 
 public:
   /// @brief A const iterator into the set
-  using const_iterator = decltype(mImplementor)::const_iterator;
+  using const_iterator = decltype(implementor_)::const_iterator;
 
   /// @brief Ensures that the set contains the specified path
   /// @param path The path to include
@@ -92,15 +92,15 @@ public:
 
   /// @brief Produces a const_iterator positioned on the set's first item
   /// @return A const_iterator positioned on the set's first item
-  const_iterator begin() const { return mImplementor.begin(); }
+  const_iterator begin() const { return implementor_.begin(); }
 
   /// @brief Produces a const_iterator positioned beyond the set's last item
   /// @return A const_iterator positioned beyond the set's last item
-  const_iterator end() const { return mImplementor.end(); }
+  const_iterator end() const { return implementor_.end(); }
 
   /// @brief Returns the number of items in the set
   /// @return The number of items in the set
-  size_t size() const { return mImplementor.size(); }
+  size_t size() const { return implementor_.size(); }
 
   /// @brief Determines if the set contains the specified path
   /// @param path The path to check

@@ -23,7 +23,7 @@ using namespace pep;
 using namespace std::literals;
 
 namespace {
-const std::string LOG_TAG = "SendHttpRequest.Emscripten";
+const std::string LogTag = "SendHttpRequest.Emscripten";
 }
 
 rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
@@ -32,7 +32,7 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
   const std::optional<std::filesystem::path> &caCertFilepath
 ) {
   if (caCertFilepath) {
-    LOG(LOG_TAG, warning) << "Custom CA certificate not supported for browser HTTP requests, "
+    PEP_LOG(LogTag, Severity::Warning) << "Custom CA certificate not supported for browser HTTP requests, "
                              "you may need to install it in the OS or bypass checks";
   }
 
@@ -133,7 +133,7 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
         }
       };
 
-      LOG(LOG_TAG, debug) << "Fetching URL: " << request.uri();
+      PEP_LOG(LogTag, Severity::Debug) << "Fetching URL: " << request.uri();
       // Note: all parameters get copied in emscripten_fetch
       auto fetch = emscripten_fetch(&attr, std::string(request.uri().buffer()).c_str());
       // Make sure that code isn't changed to prematurely discard these variables, which must remain valid until the above function call
@@ -143,7 +143,7 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
         throw std::runtime_error("Failed to initiate HTTP fetch");
       }
     })
-    .subscribe_on(observe_on_asio(*io_context));
+    .subscribe_on(ObserveOnAsio(*io_context));
 }
 
 #else // ! __EMSCRIPTEN__

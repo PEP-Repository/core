@@ -40,18 +40,18 @@ public:
     try {
       return parseImpl(input);
     } catch (...) {
-      std::throw_with_nested(std::runtime_error(std::format("Couldn't parse \"{}\" as {}", input, mFormatName)));
+      std::throw_with_nested(std::runtime_error(std::format("Couldn't parse \"{}\" as {}", input, formatName_)));
     }
   }
 
 protected:
   explicit TimestampParser(std::string name)
-    : mFormatName{std::move(name)} {}
+    : formatName_{std::move(name)} {}
 
   virtual Timestamp parseImpl(std::string_view) = 0; ///< actual parsing of the string
 
 private:
-  std::string mFormatName;
+  std::string formatName_;
 };
 
 class XmlDateTimeParser : public TimestampParser {
@@ -85,7 +85,7 @@ protected:
 class YyyyMmDdDateParser final : public TimestampParser {
 public:
   explicit YyyyMmDdDateParser(std::string timeZone)
-    : TimestampParser{"yyyymmdd"}, mTimeZone{std::move(timeZone)} {}
+    : TimestampParser{"yyyymmdd"}, timeZone_{std::move(timeZone)} {}
 
 protected:
   Timestamp parseImpl(std::string_view str) override {
@@ -104,7 +104,7 @@ protected:
       }
     }
 
-    if (mTimeZone == SYSTEM_LOCAL_TIME_ZONE) {
+    if (timeZone_ == SYSTEM_LOCAL_TIME_ZONE) {
       using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
       return TimestampFromBoostPtime(Adjustor::utc_to_local(bpt::ptime(parsedDate)));
     }
@@ -112,7 +112,7 @@ protected:
     const auto localTime = blt::local_date_time{
       parsedDate,
       bpt::time_duration{0, 0, 0},
-      boost::make_shared<blt::posix_time_zone>(mTimeZone),
+      boost::make_shared<blt::posix_time_zone>(timeZone_),
       blt::local_date_time::EXCEPTION_ON_ERROR};
 
     return TimestampFromBoostPtime(UtcTimeFromIncorrectPTime(localTime));
@@ -132,7 +132,7 @@ private:
     return time.utc_time() + offset + offset;
   }
 
-  std::string mTimeZone;
+  std::string timeZone_;
 };
 
 } // namespace
@@ -173,7 +173,7 @@ Timestamp TimestampFromXmlDataTime(std::string_view xml) {
 }
 
 Timestamp TimeZone::timestampFromYyyyMmDd(std::string_view yyyyMmDd) const {
-  return YyyyMmDdDateParser{mStr}.parse(yyyyMmDd);
+  return YyyyMmDdDateParser{str_}.parse(yyyyMmDd);
 }
 
 

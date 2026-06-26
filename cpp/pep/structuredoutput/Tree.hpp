@@ -22,12 +22,12 @@ public:
   static Tree FromJson(nlohmann::ordered_json json) noexcept { return Tree(std::move(json)); }
   static Tree FromPropertyTree(const boost::property_tree::ptree&);
 
-  const nlohmann::ordered_json& rawJson() const& noexcept { return mJson; }
-  nlohmann::ordered_json rawJson() && noexcept { return std::move(mJson); }
+  const nlohmann::ordered_json& rawJson() const& noexcept { return json_; }
+  nlohmann::ordered_json rawJson() && noexcept { return std::move(json_); }
 
 private:
-  explicit Tree(nlohmann::ordered_json json) noexcept : mJson(std::move(json)) {}
-  nlohmann::ordered_json mJson;
+  explicit Tree(nlohmann::ordered_json json) noexcept : json_(std::move(json)) {}
+  nlohmann::ordered_json json_;
 };
 
 /// Converts a Table to a Tree

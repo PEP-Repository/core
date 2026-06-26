@@ -6,7 +6,7 @@ namespace pep {
 namespace castor {
 
 ColumnBoundParticipantId::ColumnBoundParticipantId(const std::string& columnName, const std::string& participantId)
-  : mColumnName(columnName), mParticipantId(participantId) {
+  : columnName_(columnName), participantId_(participantId) {
 }
 
 bool operator==(const ColumnBoundParticipantId& lhs, const ColumnBoundParticipantId& rhs) {

@@ -19,13 +19,13 @@ private:
     auto operator<=>(const IncompatibleRemote& rhs) const = default; // Allow instances of this type to be stored in e.g. an std::set<>
   };
 
-  boost::asio::io_context& mIoContext;
-  std::optional<networking::Client::ReconnectParameters> mReconnectParameters;
-  std::shared_ptr<networking::Node> mBinary;
-  EventSubscription mBinaryConnectionAttempt;
-  RequestHandler* mRequestHandler = nullptr;
-  std::optional<rxcpp::subscriber<Connection::Attempt::Result>> mSubscriber;
-  std::optional<std::set<IncompatibleRemote>> mIncompatibleRemotes;
+  boost::asio::io_context& ioContext_;
+  std::optional<networking::Client::ReconnectParameters> reconnectParameters_;
+  std::shared_ptr<networking::Node> binary_;
+  EventSubscription binaryConnectionAttempt_;
+  RequestHandler* requestHandler_ = nullptr;
+  std::optional<rxcpp::subscriber<Connection::Attempt::Result>> subscriber_;
+  std::optional<std::set<IncompatibleRemote>> incompatibleRemotes_;
 
   struct ExistingConnection {
     std::weak_ptr<networking::Connection> binary;
@@ -33,7 +33,7 @@ private:
     EventSubscription establishing;
   };
 
-  std::vector<ExistingConnection> mExistingConnections;
+  std::vector<ExistingConnection> existingConnections_;
 
   Node(const networking::Protocol::ServerParameters& parameters, RequestHandler& requestHandler);
   Node(const networking::Protocol::ClientParameters& parameters, std::optional<networking::Client::ReconnectParameters> reconnectParameters = networking::Client::ReconnectParameters());
@@ -44,7 +44,7 @@ private:
 public:
   ~Node() noexcept;
 
-  const std::optional<networking::Client::ReconnectParameters>& reconnectParameters() const noexcept { return mReconnectParameters; }
+  const std::optional<networking::Client::ReconnectParameters>& reconnectParameters() const noexcept { return reconnectParameters_; }
 
   std::string describe() const;
 

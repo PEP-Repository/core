@@ -19,10 +19,10 @@ enum class ArgValueType {
 
 class ValueSpecificationBase {
 protected:
-  bool mPositional = false;
-  bool mRequired = false;
-  bool mMultiple = false;
-  bool mEatAll = false;
+  bool positional_ = false;
+  bool required_ = false;
+  bool multiple_ = false;
+  bool eatAll_ = false;
 
 public:
   ValueSpecificationBase() = default;
@@ -32,10 +32,10 @@ public:
   ValueSpecificationBase& operator=(ValueSpecificationBase&& other) = default;
   virtual ~ValueSpecificationBase() = default;
 
-  inline bool isPositional() const noexcept { return mPositional; }
-  inline bool isRequired() const noexcept { return mRequired; }
-  inline bool allowsMultiple() const noexcept { return mMultiple; }
-  inline bool eatsAll() const noexcept { return mEatAll; }
+  inline bool isPositional() const noexcept { return positional_; }
+  inline bool isRequired() const noexcept { return required_; }
+  inline bool allowsMultiple() const noexcept { return multiple_; }
+  inline bool eatsAll() const noexcept { return eatAll_; }
 
   virtual ArgValueType getType() const noexcept { return ArgValueType::String; }
   /*!
@@ -53,7 +53,7 @@ public:
 
 namespace detail {
 template <typename T, typename = void>
-struct format {
+struct Format {
   std::string operator()(const T& v) {
     std::ostringstream ss;
     ss << v;
@@ -62,14 +62,14 @@ struct format {
 };
 
 template <typename R, typename P>
-struct format<std::chrono::duration<R, P>> {
+struct Format<std::chrono::duration<R, P>> {
   std::string operator()(const std::chrono::duration<R, P>& v) {
     return chrono::ToString(v);
   }
 };
 
 template <>
-struct format<std::filesystem::path> {
+struct Format<std::filesystem::path> {
   inline std::string operator()(const std::filesystem::path& v) {
     return v.string(); // Format without quotes
   }
@@ -79,35 +79,37 @@ struct format<std::filesystem::path> {
 template <typename Derived, typename T>
 class ValueSpecificationTemplate : public ValueSpecificationBase {
   friend Derived;
-  explicit ValueSpecificationTemplate(ArgValueType type) : mType{type} {
+
+  explicit ValueSpecificationTemplate(ArgValueType type) : type_{type} {
     static_assert(std::is_base_of_v<ValueSpecificationTemplate, Derived>);
   }
 
-protected:
-  ArgValueType mType;
-  std::optional<T> mDefault;
-  std::optional<std::string> mDefaultDescription;
-  std::optional<std::vector<T>> mAllowed;
-  std::vector<T> mSuggested;
+private:
+  ArgValueType type_;
+  std::optional<T> default_;
+  std::optional<std::string> defaultDescription_;
+  std::optional<std::vector<T>> allowed_;
+  std::vector<T> suggested_;
 
+protected:
   [[nodiscard]] Derived enableFlag(bool ValueSpecificationTemplate::*field, const std::string& description) const;
   bool allows(const T& value) const;
   void addAllowedValue(const T& value);
 
 public:
-  ArgValueType getType() const noexcept override { return mType; }
+  ArgValueType getType() const noexcept override { return type_; }
 
   std::optional<std::pair<std::string, std::optional<std::string>>> getDefault() const noexcept override {
-    return mDefault.has_value() ? std::optional{std::pair{detail::format<T>()(*mDefault), mDefaultDescription}} : std::nullopt;
+    return default_.has_value() ? std::optional{std::pair{detail::Format<T>()(*default_), defaultDescription_}} : std::nullopt;
   }
   std::vector<std::string> getSuggested() const noexcept override;
 
   void validate() const;
 
   [[nodiscard]] Derived required() const;
-  [[nodiscard]] Derived positional() const { return this->enableFlag(&ValueSpecificationTemplate::mPositional, "positional"); }
-  [[nodiscard]] Derived multiple() const { return this->enableFlag(&ValueSpecificationTemplate::mMultiple, "multiple"); }
-  [[nodiscard]] Derived eatAll() const { return this->positional().enableFlag(&ValueSpecificationTemplate::mEatAll, "eat all"); }
+  [[nodiscard]] Derived positional() const { return this->enableFlag(&ValueSpecificationTemplate::positional_, "positional"); }
+  [[nodiscard]] Derived multiple() const { return this->enableFlag(&ValueSpecificationTemplate::multiple_, "multiple"); }
+  [[nodiscard]] Derived eatAll() const { return this->positional().enableFlag(&ValueSpecificationTemplate::eatAll_, "eat all"); }
 
   [[nodiscard]] Derived defaultsTo(const T& value, const std::optional<std::string>& description = std::nullopt) const;
 
@@ -135,18 +137,18 @@ Derived ValueSpecificationTemplate<Derived, T>::enableFlag(bool ValueSpecificati
 template <typename Derived, typename T>
 std::vector<std::string> ValueSpecificationTemplate<Derived, T>::getSuggested() const noexcept {
   std::vector<std::string> result;
-  if (mDefault) {
-    result.emplace_back(detail::format<T>()(*mDefault));
+  if (default_) {
+    result.emplace_back(detail::Format<T>()(*default_));
   }
-  for (const auto& v : mSuggested) {
-    std::string s = detail::format<T>()(v);
+  for (const auto& v : suggested_) {
+    std::string s = detail::Format<T>()(v);
     if (std::find(result.cbegin(), result.cend(), s) == result.end()) {
       result.emplace_back(s);
     }
   }
-  if (mAllowed) {
-    for (const auto& v : *mAllowed) {
-      std::string s = detail::format<T>()(v);
+  if (allowed_) {
+    for (const auto& v : *allowed_) {
+      std::string s = detail::Format<T>()(v);
       if (std::find(result.cbegin(), result.cend(), s) == result.end()) {
         result.emplace_back(s);
       }
@@ -157,12 +159,12 @@ std::vector<std::string> ValueSpecificationTemplate<Derived, T>::getSuggested() 
 
 template <typename Derived, typename T>
 void ValueSpecificationTemplate<Derived, T>::validate() const {
-  if (mDefault.has_value()) {
-    if (!this->allows(*mDefault)) {
+  if (default_.has_value()) {
+    if (!this->allows(*default_)) {
       throw std::runtime_error("Value specification does not allow its own default value");
     }
   }
-  for (const auto& suggest : mSuggested) {
+  for (const auto& suggest : suggested_) {
     if (!this->allows(suggest)) {
       throw std::runtime_error("Value specification does not allow one of its suggested values");
     }
@@ -171,8 +173,8 @@ void ValueSpecificationTemplate<Derived, T>::validate() const {
 
 template <typename Derived, typename T>
 Derived ValueSpecificationTemplate<Derived, T>::required() const {
-  assert(!mDefault.has_value());
-  return this->enableFlag(&ValueSpecificationTemplate::mRequired, "required");
+  assert(!default_.has_value());
+  return this->enableFlag(&ValueSpecificationTemplate::required_, "required");
 }
 
 template <typename Derived, typename T>
@@ -180,31 +182,31 @@ Derived ValueSpecificationTemplate<Derived, T>::defaultsTo(const T& value, const
   Derived result = static_cast<const Derived&>(*this);
 
   assert(!result.isRequired());
-  assert(!result.mDefault.has_value());
-  assert(!result.mDefaultDescription.has_value());
+  assert(!result.default_.has_value());
+  assert(!result.defaultDescription_.has_value());
 
-  result.mDefault = value;
-  result.mDefaultDescription = description;
+  result.default_ = value;
+  result.defaultDescription_ = description;
   return result;
 }
 
 template <typename Derived, typename T>
 bool ValueSpecificationTemplate<Derived, T>::allows(const T& value) const {
-  if (!mAllowed.has_value()) {
+  if (!allowed_.has_value()) {
     return true;
   }
-  auto end = mAllowed->cend();
-  return std::find(mAllowed->cbegin(), end, value) != end;
+  auto end = allowed_->cend();
+  return std::find(allowed_->cbegin(), end, value) != end;
 }
 
 template <typename Derived, typename T>
 void ValueSpecificationTemplate<Derived, T>::addAllowedValue(const T& value) {
-  if (!mAllowed.has_value()) {
-    mAllowed = { value };
+  if (!allowed_.has_value()) {
+    allowed_ = { value };
   }
   else {
     assert(!this->allows(value));
-    mAllowed->push_back(value);
+    allowed_->push_back(value);
   }
 }
 
@@ -229,7 +231,7 @@ Derived ValueSpecificationTemplate<Derived, T>::allow(const TContainer& values) 
 template <typename Derived, typename T>
 Derived ValueSpecificationTemplate<Derived, T>::suggest(const T& value) const {
   Derived result = static_cast<const Derived&>(*this);
-  result.mSuggested.emplace_back(value);
+  result.suggested_.emplace_back(value);
   return result;
 }
 
@@ -246,9 +248,9 @@ std::any ValueSpecificationTemplate<Derived, T>::parse(const std::string& specif
 template <typename Derived, typename T>
 void ValueSpecificationTemplate<Derived, T>::finalize(Values& destination) const {
   if (destination.empty()) {
-    if (mDefault.has_value()) {
-      assert(this->allows(*mDefault));
-      destination.add(*mDefault);
+    if (default_.has_value()) {
+      assert(this->allows(*default_));
+      destination.add(*default_);
     }
     else if (this->isRequired()) {
       throw std::runtime_error("No value specified");
@@ -258,24 +260,24 @@ void ValueSpecificationTemplate<Derived, T>::finalize(Values& destination) const
 
 template <typename Derived, typename T>
 void ValueSpecificationTemplate<Derived, T>::writeHelpText(std::ostream& destination) const {
-  if (mAllowed.has_value()) {
+  if (allowed_.has_value()) {
 
     // boost::algorithm::join won't work if T is not std::string
     std::string delimiter;
     std::ostringstream values;
-    for (const auto& entry : *mAllowed) {
-      values << delimiter << format<T>()(entry);
+    for (const auto& entry : *allowed_) {
+      values << delimiter << Format<T>()(entry);
       delimiter = ", ";
     }
     WriteHelpItemSupplement(destination, "Value must be one of: " + std::move(values).str());
   }
-  if (mDefault.has_value()) {
+  if (default_.has_value()) {
     std::ostringstream text;
-    if (mDefaultDescription.has_value()) {
-      text << *mDefaultDescription << " (" << format<T>()(*mDefault) << ')';
+    if (defaultDescription_.has_value()) {
+      text << *defaultDescription_ << " (" << Format<T>()(*default_) << ')';
     }
     else {
-      text << format<T>()(*mDefault);
+      text << Format<T>()(*default_);
     }
     WriteHelpItemSupplement(destination, "Value defaults to " + std::move(text).str());
   }
@@ -299,8 +301,8 @@ public:
 
   ValueSpecification directory() const {
     ValueSpecification result = *this;
-    assert(result.mType != ArgValueType::Directory && "Already marked as directory");
-    result.mType = ArgValueType::Directory;
+    assert(result.type_ != ArgValueType::Directory && "Already marked as directory");
+    result.type_ = ArgValueType::Directory;
     return result;
   }
 };

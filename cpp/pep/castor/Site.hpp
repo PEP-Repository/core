@@ -12,12 +12,12 @@ namespace castor {
  */
 class Site : public SimpleCastorChildObject<Site, Study>, public SharedConstructor<Site> {
  private:
-  std::string mAbbreviation;
-  std::string mName;
+  std::string abbreviation_;
+  std::string name_;
 
  public:
-  static const std::string RELATIVE_API_ENDPOINT;
-  static const std::string EMBEDDED_API_NODE_NAME;
+  static const std::string RelativeApiEndpoint;
+  static const std::string EmbeddedApiNodeName;
 
   //! \return The abbreviation for the site, which can be uses as an identifier for this site (like the study slug)
   std::string getAbbreviation() const;

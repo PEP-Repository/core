@@ -20,7 +20,18 @@
 #include <vector>
 
 namespace pep {
-  std::atomic<bool> ApplicationMetrics::warningLogged = false;
+
+namespace {
+
+// Logs at most once across all metric functions on platforms where they're unimplemented.
+[[maybe_unused]] void LogUnsupportedPlatformOnce() {
+  static std::atomic<bool> warningLogged = false;
+  if (!warningLogged.exchange(true)) {
+    PEP_LOG("ApplicationMetrics", Severity::Warning) << "Memory usage metrics are not implemented for this platform";
+  }
+}
+
+}
 
   //Returns RAM usage in bytes for the current process. Only on Windows or Linux.
   double pep::ApplicationMetrics::GetMemoryUsageBytes() {
@@ -44,10 +55,7 @@ namespace pep {
 
     return static_cast<double>(result * pagesize);
 #else
-    if (!warningLogged) {
-      LOG("ApplicationMetrics", warning) << "Memory usage metrics are not implemented for this platform";
-      warningLogged = true;
-    }
+    LogUnsupportedPlatformOnce();
     return nan("");
 #endif // _WIN32 or __linux__
   }
@@ -108,10 +116,7 @@ namespace pep {
     double totalRatio = static_cast<double>(memTotal - memAvailable + swapTotal - swapAvailable) / static_cast<double>(memTotal + swapTotal);
     return {physicalRatio, totalRatio};
 #else
-    if (!warningLogged) {
-      LOG("ApplicationMetrics", warning) << "Memory usage metrics are not implemented for this platform";
-      warningLogged = true;
-    }
+    LogUnsupportedPlatformOnce();
     return {nan(""), nan("")};
 #endif // _WIN32 or __linux__
   }
@@ -135,10 +140,7 @@ namespace pep {
     return static_cast<double>(usage.ru_maxrss) * 1024;
 # endif
 #else
-    if (!warningLogged) {
-      LOG("ApplicationMetrics", warning) << "Memory usage metrics are not implemented for this platform";
-      warningLogged = true;
-    }
+    LogUnsupportedPlatformOnce();
     return nan("");
 #endif
   }

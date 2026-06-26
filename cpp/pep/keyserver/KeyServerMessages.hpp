@@ -7,22 +7,13 @@
 
 namespace pep {
 
-class EnrollmentRequest {
-public:
-  inline EnrollmentRequest(
-    const X509CertificateSigningRequest csr,
-    std::string oauthToken
-  ) :
-    mOAuthToken(std::move(oauthToken)),
-    mCertificateSigningRequest(csr) {
-  }
-
-  std::string mOAuthToken;
-  X509CertificateSigningRequest mCertificateSigningRequest;
+struct EnrollmentRequest {
+  X509CertificateSigningRequest certificateSigningRequest;
+  std::string oAuthToken;
 };
 
 struct EnrollmentResponse {
-  X509CertificateChain mCertificateChain;
+  X509CertificateChain certificateChain;
 };
 
 struct TokenBlockingListRequest final {};

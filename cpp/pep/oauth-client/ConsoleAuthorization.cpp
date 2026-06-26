@@ -10,7 +10,7 @@ const std::string RedirectUri = "/code";
 }
 
 rxcpp::observable<AuthorizationResult> pep::ConsoleAuthorization(
-  std::shared_ptr<boost::asio::io_context> io_context,
+  std::shared_ptr<boost::asio::io_context> ioContext,
   OAuthClient::GetAuthorizeUriFn getAuthorizeUri
 ) {
   std::cerr << "Please open " << getAuthorizeUri(RedirectUri, {}) << " in your browser.\n"

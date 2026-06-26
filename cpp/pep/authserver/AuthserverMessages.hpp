@@ -5,16 +5,13 @@
 
 namespace pep {
 struct TokenRequest {
-  std::string mSubject;
-  std::string mGroup;
-  Timestamp mExpirationTime;
+  std::string subject;
+  std::string group;
+  Timestamp expirationTime;
 };
 
-class TokenResponse {
-public:
-  TokenResponse() = default;
-  TokenResponse(std::string token) : mToken(std::move(token)) { }
-  std::string mToken;
+struct TokenResponse {
+  std::string token;
 };
 
 using SignedTokenRequest = Signed<TokenRequest>;

@@ -8,19 +8,21 @@ namespace castor {
 class Visit;
 
 class Form : public SimpleCastorChildObject<Form, Study>, public SharedConstructor<Form> {
+  friend class SharedConstructor<Form>;
  private:
-  std::string mName;
-  int mOrder;
+  std::string name_;
+  int order_;
+  std::shared_ptr<Visit> visit_;
 
  public:
-  static const std::string RELATIVE_API_ENDPOINT;
-  static const std::string EMBEDDED_API_NODE_NAME;
+  static const std::string RelativeApiEndpoint;
+  static const std::string EmbeddedApiNodeName;
 
-  std::string getName() const { return mName; }
+  std::string getName() const { return name_; }
 
-  int getOrder() const { return mOrder; }
+  int getOrder() const { return order_; }
 
-  std::shared_ptr<Visit> getVisit() const { return visit; }
+  std::shared_ptr<Visit> getVisit() const { return visit_; }
 
  protected:
   /*!
@@ -30,11 +32,6 @@ class Form : public SimpleCastorChildObject<Form, Study>, public SharedConstruct
    * \param json The %Json response from the Castor API for this form
    */
    Form(std::shared_ptr<Study> study, JsonPtr json);
-
- private:
-  std::shared_ptr<Visit> visit;
-
-  friend class SharedConstructor<Form>;
 };
 
 }

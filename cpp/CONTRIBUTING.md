@@ -201,9 +201,26 @@ This section lists our own coding guidelines, which we apply on top of the more 
 
 - Use spaces for indentation instead of tabs.
 - Use two spaces per indentation level.
-- Variable names start with a `l`owerase `l`etter;
-- Names of static methods and free functions start with an `U`ppercase `L`etter;
-- Instance method names start with a `l`owerase `l`etter;
+- Prefer using compiled code over defining (and using) macros.
+- Macro names are written in `SCREAMING_SNAKE_CASE` to make them stand out like the sore thumb that they are.
+- The names of macros defined in the PEP code base start with a `PEP_` prefix to prevent naming collisions (e.g. with other libraries).
+- Things that are not macros have names that are *not* written in `SCREAMING_SNAKE_CASE` to prevent naming collisions with macros from e.g. other libraries.
+- Names of `class` and `struct` and `enum` types are written in `PascalCase`, starting with an `U`ppercase `L`etter.
+- Variable names are written in `camelCase`, starting with a `l`owerase `l`etter.
+- Names of static methods and free functions are written in `PascalCase`, starting with an `U`ppercase `L`etter.
+- Instance method names are written in `camelCase`, starting with a `l`owerase `l`etter.
+- Enumerator (value) names are written in `PascalCase`, starting with an `U`ppercase `L`etter.
+- Names of `constexpr` constants are written in `PascalCase`, starting with an `U`ppercase `L`etter (since they are so similar to enumerator values).
+- Names of `const` variables are written in `PascalCase`, starting with an `U`ppercase `L`etter (since they are so similar to `constexpr` constants).
+- Prefer proper encapsulation and state management over publically accessible state.
+- Properly encapsulating user-defined (non-alias) types are defined using the `class` keyword.
+    - Non-const fields of such types are all `private`.
+    - Private field names are written in `camelCase_`, starting with a `l`owerase `l`etter, and ending with an underscore `_` character. (The suffix prevents naming collisions with similarly named instance methods, such as getter methods.)
+- Property bags (i.e. user-defined aggregate types with public fields) are defined using the `struct` keyword.
+    - Such types do not contain instance methods, putting state management responsibilities firmly into the caller's hands.
+    - Field names are written in `camelCase`, starting with a `l`owerase `l`etter. Note that these names lack the trailing underscore `_` character that's used for non-public fields.
+
+
 - Use curly braces `{}` for loop code and condition branches:
 
 ```
@@ -252,20 +269,21 @@ else {
 
 ### Logging and severity levels
 
-PEP provides a [logging system](https://gitlab.pep.cs.ru.nl/pep/core/blob/main/core/include/Log.hpp) based on the [Boost.Log library](https://www.boost.org/doc/libs/1_67_0/libs/log/doc/html/index.html). Use the `LOG` macro to add entries.
+PEP provides a [logging system](https://gitlab.pep.cs.ru.nl/pep/core/blob/main/core/include/Log.hpp) based on the [Boost.Log library](https://www.boost.org/doc/libs/1_67_0/libs/log/doc/html/index.html). Use the `PEP_LOG` macro to add entries.
 <details>
   <summary>Example:</summary>
 
   ```c++
-  LOG(LOG_TAG, severity_level::error) << "Received an error! (stream id " << dwStreamId << ")";
+  PEP_LOG(LOG_TAG, Severity::Error) << "Received an error! (stream id " << dwStreamId << ")";
   ```
   
-  The 2nd parameter to the `LOG` macro specifies the severity level associated with the log entry. Supported levels are defined in enumeration `severity_level`:
+  The 2nd parameter to the `LOG` macro specifies the severity level associated with the log entry. Supported levels are defined in enumeration `Severity`:
 
-  - use `severity_level::debug` for log entries intended to help debugging.
-  - use `severity_level::info` for informational messages.
-  - use `severity_level::warning` for trouble that can be safely ignored or recovered from.
-  - use `severity_level::error` for failures that pose no immediate threat to security, data integrity, or the future functioning of the application.
-  - use `severity_level::critical` for end of world events. In most cases the software will need to be terminated after such failures.
+  - use `Severity::Verbose` for log entries providing rich detail.
+  - use `Severity::Debug` for log entries intended to help debugging.
+  - use `Severity::Info` for informational messages.
+  - use `Severity::Warning` for trouble that can be safely ignored or recovered from.
+  - use `Severity::Error` for failures that pose no immediate threat to security, data integrity, or the future functioning of the application.
+  - use `Severity::Critical` for end of world events. In most cases the software will need to be terminated after such failures.
 
 </details>

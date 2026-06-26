@@ -23,11 +23,11 @@ using namespace pep;
 
 namespace {
 
-static const std::string LOG_TAG ("ClientTest");
+const std::string LogTag("ClientTest");
 
 class ClientTestApplication : public Application {
-  std::optional<severity_level> consoleLogMinimumSeverityLevel() const override {
-    return severity_level::warning;
+  std::optional<Severity> consoleLogMinimumSeverityLevel() const override {
+    return Severity::Warning;
   }
 
   using TestFunction = std::function<rxcpp::observable<bool>(std::shared_ptr<Client>)>;
@@ -42,7 +42,7 @@ class ClientTestApplication : public Application {
       [](FakeVoid unused) {},
       [this](std::exception_ptr ep) {
         client->getIoContext()->stop();
-        LOG(LOG_TAG, error) << "Unexpected problem shutting down SSL streams: " + GetExceptionMessage(ep) << " | Forcefully shutting down.";
+        PEP_LOG(LogTag, Severity::Error) << "Unexpected problem shutting down SSL streams: " + GetExceptionMessage(ep) << " | Forcefully shutting down.";
       },
       [] {});
   }
@@ -57,7 +57,7 @@ class ClientTestApplication : public Application {
     function(client).subscribe(
       [success](bool entry) {if (!entry) *success = false; },
       [success, this](std::exception_ptr ep) {
-        LOG(LOG_TAG, error) << "Exception occured: " << GetExceptionMessage(ep);
+        PEP_LOG(LogTag, Severity::Error) << "Exception occured: " << GetExceptionMessage(ep);
         *success = false;
         shutdownClient();
       },
@@ -77,7 +77,7 @@ class ClientTestApplication : public Application {
       + MakeConfigFileParameters(".", std::nullopt, true);
   }
 
-  template <unsigned MODE>
+  template <unsigned mode>
   class ModeCommand : public commandline::ChildCommandOf<ClientTestApplication> {
   protected:
     virtual rxcpp::observable<bool> getTestResults(std::shared_ptr<Client> client) = 0;
@@ -87,12 +87,12 @@ class ClientTestApplication : public Application {
     }
 
     ModeCommand(ClientTestApplication& parent, const std::string& description)
-      : commandline::ChildCommandOf<ClientTestApplication>(std::to_string(MODE), description, parent) {
+      : commandline::ChildCommandOf<ClientTestApplication>(std::to_string(mode), description, parent) {
     }
   };
 
-  template <unsigned MODE>
-  class RecordBasedModeCommand : public ModeCommand<MODE> {
+  template <unsigned mode>
+  class RecordBasedModeCommand : public ModeCommand<mode> {
   protected:
     commandline::Parameters getSupportedParameters() const override {
       return commandline::ChildCommandOf<ClientTestApplication>::getSupportedParameters()
@@ -104,7 +104,7 @@ class ClientTestApplication : public Application {
     }
 
     RecordBasedModeCommand(ClientTestApplication& parent, const std::string& description)
-      : ModeCommand<MODE>(parent, description) {
+      : ModeCommand<mode>(parent, description) {
     }
   };
 
@@ -153,20 +153,20 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
 
   // make sure we hit the pagestore with our payload:
   auto strPayload = std::make_shared<std::string>();
-  for (size_t i=0; strPayload->size() < INLINE_PAGE_THRESHOLD; i++) {
+  for (size_t i=0; strPayload->size() < InlinePageThreshold; i++) {
     *strPayload += " and " + std::to_string(i);
   }
 
-  LOG(LOG_TAG, debug) << "CoreClient.StoreData";
+  PEP_LOG(LogTag, Severity::Debug) << "CoreClient.StoreData";
   // Test storage and retrieval of data
   return client->storeData2(pp, "ParticipantInfo", strPayload,
                             {MetadataXEntry::MakeFileExtension(".txt")})
       .concat_map([client, pp](const DataStorageResult2& result) {
-        auto id = result.mIds.at(0);
+        auto id = result.ids.at(0);
         std::cout << "Stored data with result.primaryKey: "
             << boost::algorithm::hex(id) << std::endl;
 
-        requestTicket2Opts tOpts;
+        RequestTicket2Opts tOpts;
         tOpts.modes = {"read"};
         tOpts.pps = {pp.rerandomize()};
         tOpts.columns = {"ParticipantInfo"};
@@ -206,15 +206,15 @@ rxcpp::observable<bool> ClientTestApplication::Mode2Command::getTestResults(std:
 
   PolymorphicPseudonym pp = client->generateParticipantPolymorphicPseudonym(this->getRecordIdentifier());
 
-  enumerateAndRetrieveData2Opts opts;
+  EnumerateAndRetrieveData2Opts opts;
   opts.pps = {pp};
   opts.columnGroups = {"ShortPseudonyms"};
   return client->enumerateAndRetrieveData2(opts)
   .tap(
     [](EnumerateAndRetrieveResult result) {
-      std::cout << "Primary key: " << result.mId << std::endl;
-      std::cout << "Column: " << result.mColumn << std::endl;
-      std::cout << "Data: " << result.mData << std::endl;
+      std::cout << "Primary key: " << result.id << std::endl;
+      std::cout << "Column: " << result.column << std::endl;
+      std::cout << "Data: " << result.data << std::endl;
     })
     .op(RxInstead(true));
 }
@@ -242,7 +242,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
   .tap(
     [](DataStorageResult2 result) {
       std::cout << "Stored data with result.primaryKey: "
-        << boost::algorithm::hex(result.mIds.at(0)) << std::endl;
+        << boost::algorithm::hex(result.ids.at(0)) << std::endl;
     })
     .op(RxInstead(true));
 }

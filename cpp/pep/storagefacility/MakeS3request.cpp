@@ -11,8 +11,6 @@ std::string Quote(const std::string& value) {
 }
 
 class MakeS3request : public pep::Application {
-private:
-
 public:
   std::string getName() const override { return "MakeS3request"; }
   std::string getDescription() const override { return "Produces an S3 HTTP PUT request"; }
@@ -39,7 +37,7 @@ public:
     }
     auto data = values.get<std::string>("data");
 
-    HttpRequest request(host.host(), networking::HttpMethod::PUT, boost::urls::url(relative), data);
+    HttpRequest request(host.host(), networking::HttpMethod::Put, boost::urls::url(relative), data);
     request.completeHeaders();
     Credentials credentials{
       .accessKey = values.get<std::string>("identity"),

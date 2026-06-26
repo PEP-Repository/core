@@ -123,10 +123,10 @@ int Command::execute() {
 }
 
 const NamedValues& Command::getParameterValues() const {
-  if (!mParameterValues.has_value()) {
+  if (!parameterValues_.has_value()) {
     throw std::runtime_error("Switch values cannot be obtained before a command line has been parsed");
   }
-  return *mParameterValues;
+  return *parameterValues_;
 }
 
 bool Command::hasRequiredArgument() {
@@ -137,18 +137,18 @@ bool Command::hasRequiredArgument() {
 }
 
 std::optional<int> Command::processLexedParameters(const LexedValues& lexed) {
-  assert(!mParametersLexed);
+  assert(!parametersLexed_);
   if (lexed.find("help") != lexed.cend()) {
     return this->issueCommandLineHelp(std::nullopt);
   }
-  mParametersLexed = true;
+  parametersLexed_ = true;
   return std::nullopt;
 }
 
 void Command::finalizeParameters() {
-  assert(!mParametersFinalized); // Prevent this method from being invoked multiple times
-  this->getSupportedParameters().finalize(*mParameterValues);
-  mParametersFinalized = true;
+  assert(!parametersFinalized_); // Prevent this method from being invoked multiple times
+  this->getSupportedParameters().finalize(*parameterValues_);
+  parametersFinalized_ = true;
 }
 
 std::optional<int> Command::applyParameterTransformations(const Parameters& parameters, std::queue<std::string>& remainingArgs, bool isLeafDispatch) {
@@ -162,12 +162,12 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
   // Step 2: Apply transformations for each parameter that has one
   for (const auto& param : parameters) {
     // Skip parameters without transformers or not present in command line
-    if (!param.hasTransformer() || !mParameterValues->has(param.getName())) {
+    if (!param.hasTransformer() || !parameterValues_->has(param.getName())) {
       continue;
     }
     
     // Apply the transformation (e.g., forwarding alias)
-    auto transformResult = param.transform(*this, *mParameterValues);
+    auto transformResult = param.transform(*this, *parameterValues_);
 
     // In leaf dispatch mode, parameters cannot forward to different commands
     assert((transformResult.childPath.empty() || !isLeafDispatch) && 
@@ -196,7 +196,7 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
     }
 
     // Remove the transformed parameter from current values
-    mParameterValues->erase(param.getName());
+    parameterValues_->erase(param.getName());
     anyTransformed = true;
   }
 
@@ -209,7 +209,7 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
   Command* ancestor = (dispatchAncestor != nullptr) ? dispatchAncestor : this;
 
   // Step 7: Merge current parameter values with transformed values
-  NamedValues leafValues = *mParameterValues;
+  NamedValues leafValues = *parameterValues_;
   for (const auto& [key, vals] : mergedToAdd) {
     leafValues.set(key, vals);
   }
@@ -220,9 +220,9 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
 
 int Command::dispatchTo(CommandPath childPath, NamedValues leafValues, std::queue<std::string> leafArgs) {
 
-  // Ensure mParameterValues is initialized for intermedaite command.
-  if (!mParameterValues.has_value()) {
-    mParameterValues.emplace();
+  // Ensure parameterValues_ is initialized for intermedaite command.
+  if (!parameterValues_.has_value()) {
+    parameterValues_.emplace();
   }
 
   // This isn't the leaf command yet, forward to child specified by childPath
@@ -264,14 +264,14 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
   try {
     auto parameters = this->getSupportedParameters();
 
-    if (!mParameterValues.has_value()) {
-      mParameterValues.emplace();
+    if (!parameterValues_.has_value()) {
+      parameterValues_.emplace();
     }
     // Step 1: Leaf dispatch mode: merge pre-built values from transformations
     if (isLeafDispatch) {
       assert(preMergedValues.has_value() && "Leaf dispatch requires pre-merged values");
       for (const auto& [key, vals] : *preMergedValues) {
-        mParameterValues->set(key, vals);
+        parameterValues_->set(key, vals);
       }
       // Validate parameters that came from transformations
       for (const auto& param : parameters) {
@@ -283,7 +283,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
                  "Programmer error: Parameter forwarding cannot target a no-longer-supported parameter. This makes no sense.");
         }
       }
-      mParametersFinalized = false; 
+      parametersFinalized_ = false; 
     }
     
     // Step 2: Lex and parse remaining arguments
@@ -300,7 +300,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
       if (auto result = this->processLexedParameters(lexed)) {
         return *result;
       }
-      assert(mParametersLexed);
+      assert(parametersLexed_);
 
       // Step 5: Validate that extra arguments can be passed to a child command. See #2041.
       if (!isLeafDispatch && children.empty() && !arguments.empty()) {
@@ -310,23 +310,23 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
       // Step 6: Parse lexed values and merge into parameter values
       auto parsed = parameters.parse(lexed);
       if (isLeafDispatch) {
-        // Leaf dispatch: merge parsed values into existing mParameterValues
+        // Leaf dispatch: merge parsed values into existing parameterValues_
         for (const auto& [key, vals] : parsed) {
-          mParameterValues->set(key, vals);
+          parameterValues_->set(key, vals);
         }
-        mParametersLexed = true;
+        parametersLexed_ = true;
       } else {
-        // Normal mode: replace mParameterValues and finalize
-        mParameterValues = std::move(parsed);
+        // Normal mode: replace parameterValues_ and finalize
+        parameterValues_ = std::move(parsed);
       }
     } else {
       // Leaf dispatch with no arguments: just mark as lexed
-      mParametersLexed = true;
+      parametersLexed_ = true;
     }
 
     // Step 7: Check for no-longer-supported parameters (fail fast before warnings)
     for (const auto& param : parameters) {
-      if (param.isNoLongerSupported() && mParameterValues->has(param.getName())) {
+      if (param.isNoLongerSupported() && parameterValues_->has(param.getName())) {
         std::cerr << "Error: The parameter '--" << param.getName() << "' is no longer supported. " << *param.getNoLongerSupportedMessage() << std::endl;
         return EXIT_FAILURE;
       }
@@ -339,7 +339,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
 
     // Step 9: Show deprecation warnings for parameters
     for (const auto& param : parameters) {
-      if (param.getDeprecationMessage().has_value() && mParameterValues->has(param.getName())) {
+      if (param.getDeprecationMessage().has_value() && parameterValues_->has(param.getName())) {
         std::cerr << "Warning: '--" << param.getName() << "' is deprecated. " << *param.getDeprecationMessage() << std::endl;
       }
     }
@@ -351,7 +351,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
 
     // Step 11: Finalize parameters (no more transformations allowed after this)
     this->finalizeParameters();
-    assert(mParametersFinalized);
+    assert(parametersFinalized_);
 
   }
   catch (const std::exception& error) {

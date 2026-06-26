@@ -3,7 +3,7 @@
 namespace pep {
 namespace commandline {
 
-std::optional<severity_level> Utility::syslogLogMinimumSeverityLevel() const {
+std::optional<Severity> Utility::syslogLogMinimumSeverityLevel() const {
   return std::nullopt;
 }
 

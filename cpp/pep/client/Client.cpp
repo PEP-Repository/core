@@ -20,7 +20,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("Client");
+const std::string LogTag("Client");
 
 }
 
@@ -35,7 +35,7 @@ rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string&
     for (const auto& cg : access.columnGroups) {
       const auto& cgAccess = cg.second;
       if (std::find(cgAccess.modes.cbegin(), cgAccess.modes.cend(), mode) != cgAccess.modes.cend()) { // ...if we have the requested access mode to that group...
-        for (auto index : cgAccess.columns.mIndices) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
+        for (auto index : cgAccess.columns.indices) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
           remaining->erase(access.columns[index]);
         }
       }
@@ -98,7 +98,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
                          const CellProperties& props = pair.second;
                          StoreData2Entry result(polymorphicPseudonym, column, props.value);
                          if (!props.fileExtension.empty()) {
-                           result.mXMetadata.emplace(MetadataXEntry::MakeFileExtension(props.fileExtension));
+                           result.xMetadata.emplace(MetadataXEntry::MakeFileExtension(props.fileExtension));
                          }
                          return result;
                        });
@@ -131,7 +131,7 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
                         {"ParticipantIdentifier"}) // columns
       .flat_map([this, identifier, pp](std::vector<std::shared_ptr<EnumerateResult>> result) -> rxcpp::observable<DataStorageResult2> {
         if (!result.empty()) {
-          LOG(LOG_TAG, info) << "Participant identifier already present in PEP";
+          PEP_LOG(LogTag, Severity::Info) << "Participant identifier already present in PEP";
           // We do not store the participant ID again, but continue with the storage of other stuff in case this failed
           // before
           return rxcpp::observable<>::from(DataStorageResult2());
@@ -147,16 +147,16 @@ rxcpp::observable<FakeVoid> Client::completeParticipantRegistration(
 }
 
 rxcpp::observable<FakeVoid> Client::generateShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier) {
-  LOG(LOG_TAG, debug) << "Sending RegistrationRequest...";
-  return getRegistrationServerProxy(true)->completeShortPseudonyms(pp, identifier, publicKeyShadowAdministration);
+  PEP_LOG(LogTag, Severity::Debug) << "Sending RegistrationRequest...";
+  return getRegistrationServerProxy(true)->completeShortPseudonyms(pp, identifier, publicKeyShadowAdministration_);
 }
 
 rxcpp::observable<EnrolledPartyKeys> Client::enrollUser(const std::string& oauthToken) {
 
-  LOG(LOG_TAG, debug) << "Generating key pair";
+  PEP_LOG(LogTag, Severity::Debug) << "Generating key pair";
   AsymmetricKeyPair keyPair = AsymmetricKeyPair::GenerateKeyPair();
-  LOG(LOG_TAG, debug) << "Key pair generated";
-  LOG(LOG_TAG, debug) << "Generating CSR";
+  PEP_LOG(LogTag, Severity::Debug) << "Key pair generated";
+  PEP_LOG(LogTag, Severity::Debug) << "Generating CSR";
 
   // Parse OAuth token
   auto token = OAuthToken::Parse(oauthToken);
@@ -164,30 +164,30 @@ rxcpp::observable<EnrolledPartyKeys> Client::enrollUser(const std::string& oauth
   // Generate CSR
   X509CertificateSigningRequest csr(keyPair, token.getSubject(), token.getGroup());
 
-  LOG(LOG_TAG, debug) << "Generated CSR for CN=" << csr.getCommonName().value_or("") << " and OU=" << csr.getOrganizationalUnit().value_or("");
+  PEP_LOG(LogTag, Severity::Debug) << "Generated CSR for CN=" << csr.getCommonName().value_or("") << " and OU=" << csr.getOrganizationalUnit().value_or("");
 
   auto privateKey = std::make_shared<AsymmetricKey>(keyPair.getPrivateKey());
 
   EnrollmentRequest request(csr, oauthToken);
-  LOG(LOG_TAG, debug) << "Sending EnrollmentRequest...";
+  PEP_LOG(LogTag, Severity::Debug) << "Sending EnrollmentRequest...";
   return getKeyServerProxy(true)->requestUserEnrollment(std::move(request))
     .flat_map([this, privateKey](EnrollmentResponse lpResponse) {
-    auto ctx = std::make_shared<EnrollmentContext>(std::make_shared<X509Identity>(*privateKey, lpResponse.mCertificateChain));
+    auto ctx = std::make_shared<EnrollmentContext>(std::make_shared<X509Identity>(*privateKey, lpResponse.certificateChain));
 
     return completeEnrollment(ctx);
       });
 }
 
 std::shared_ptr<const KeyServerProxy> Client::getKeyServerProxy(bool require) const {
-  return GetConstServerProxy(keyServerProxy, ServerTraits::KeyServer(), require);
+  return GetConstServerProxy(keyServerProxy_, ServerTraits::KeyServer(), require);
 }
 
 std::shared_ptr<const AuthServerProxy> Client::getAuthServerProxy(bool require) const {
-  return GetConstServerProxy(authServerProxy, ServerTraits::AuthServer(), require);
+  return GetConstServerProxy(authServerProxy_, ServerTraits::AuthServer(), require);
 }
 
 std::shared_ptr<const RegistrationServerProxy> Client::getRegistrationServerProxy(bool require) const {
-  return GetConstServerProxy(registrationServerProxy, ServerTraits::RegistrationServer(), require);
+  return GetConstServerProxy(registrationServerProxy_, ServerTraits::RegistrationServer(), require);
 }
 
 Client::ServerProxies Client::getServerProxies(bool requireAll) const {
@@ -200,21 +200,21 @@ Client::ServerProxies Client::getServerProxies(bool requireAll) const {
 
 rxcpp::observable<FakeVoid> Client::shutdown() {
   return CoreClient::shutdown()
-    .merge(keyServerProxy ? keyServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
-    .merge(registrationServerProxy ? registrationServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
-    .merge(authServerProxy ? authServerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(keyServerProxy_ ? keyServerProxy_->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(registrationServerProxy_ ? registrationServerProxy_->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(authServerProxy_ ? authServerProxy_->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
     .last();
 }
 
 Client::Client(const Builder& builder)
   : CoreClient(builder),
-    publicKeyShadowAdministration(builder.getPublicKeyShadowAdministration()),
-    keyServerEndPoint(builder.getKeyServerEndPoint()),
-    authserverEndPoint(builder.getAuthserverEndPoint()),
-    registrationServerEndPoint(builder.getRegistrationServerEndPoint()) {
-  keyServerProxy = this->tryConnectServerProxy<KeyServerProxy>(keyServerEndPoint);
-  authServerProxy = this->tryConnectServerProxy<AuthServerProxy>(authserverEndPoint);
-  registrationServerProxy = this->tryConnectServerProxy<RegistrationServerProxy>(registrationServerEndPoint);
+    publicKeyShadowAdministration_(builder.getPublicKeyShadowAdministration()),
+    keyServerEndPoint_(builder.getKeyServerEndPoint()),
+    authserverEndPoint_(builder.getAuthserverEndPoint()),
+    registrationServerEndPoint_(builder.getRegistrationServerEndPoint()) {
+  keyServerProxy_ = this->tryConnectServerProxy<KeyServerProxy>(keyServerEndPoint_);
+  authServerProxy_ = this->tryConnectServerProxy<AuthServerProxy>(authserverEndPoint_);
+  registrationServerProxy_ = this->tryConnectServerProxy<RegistrationServerProxy>(registrationServerEndPoint_);
 }
 
 

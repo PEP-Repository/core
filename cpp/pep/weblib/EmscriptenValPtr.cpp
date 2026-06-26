@@ -11,12 +11,12 @@
 using namespace pep;
 
 namespace {
-const std::string LOG_TAG("EmscriptenValPtr");
+const std::string LogTag("EmscriptenValPtr");
 
 void DeleteOnMainThread(emscripten::val* valPtr) noexcept {
   auto success = emscripten::ProxyingQueue{}.proxyAsync(emscripten_main_runtime_thread_id(), [valPtr] { delete valPtr; });
   if (!success) {
-    LOG(LOG_TAG, warning) << "Failed to proxy val deletion to main thread, object will leak";
+    PEP_LOG(LogTag, Severity::Warning) << "Failed to proxy val deletion to main thread, object will leak";
   }
 }
 }

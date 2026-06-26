@@ -9,6 +9,7 @@
 #include <format>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/url/url_view.hpp>
 
 #include <pep/utils/Win32Api.hpp>
@@ -20,7 +21,7 @@
 using namespace pep;
 
 namespace {
-const std::string LOG_TAG = "BrowserAuthorization";
+const std::string LogTag = "BrowserAuthorization";
 
 // See OAuthProvider::getRegisteredRedirectURIs
 constexpr std::uint16_t ListenPort{16515};
@@ -47,7 +48,7 @@ std::string GetStatusHtml(const std::optional<std::string> failure = std::nullop
 }
 
 void OpenBrowser(boost::urls::url_view url, boost::asio::io_context& io_context) {
-  LOG(LOG_TAG, pep::debug) << "Opening in browser: " << url;
+  PEP_LOG(LogTag, pep::Severity::Debug) << "Opening in browser: " << url;
   if (!url.is_path_absolute())
     throw std::runtime_error("Can not open relative URLs");
   bool success = false;
@@ -67,14 +68,14 @@ void OpenBrowser(boost::urls::url_view url, boost::asio::io_context& io_context)
     if (!cmdPath.empty()) {
       int exitCode = boost::process::process{io_context, cmdPath, {url.buffer()}}.wait();
       if (exitCode != 0) {
-        LOG(LOG_TAG, pep::warning) << "Failed to open browser. '" << command << "' returned exit code: " << exitCode;
+        PEP_LOG(LogTag, pep::Severity::Warning) << "Failed to open browser. '" << command << "' returned exit code: " << exitCode;
       } else {
         success = true;
       }
     }
 #endif
   } catch (std::exception &e) {
-    LOG(LOG_TAG, pep::warning) << "Failed to open browser: " << e.what();
+    PEP_LOG(LogTag, pep::Severity::Warning) << "Failed to open browser: " << e.what();
   }
 
   if (!success) {
@@ -85,13 +86,13 @@ void OpenBrowser(boost::urls::url_view url, boost::asio::io_context& io_context)
 }
 
 rxcpp::observable<AuthorizationResult> pep::BrowserAuthorization(
-  std::shared_ptr<boost::asio::io_context> io_context,
+  std::shared_ptr<boost::asio::io_context> ioContext,
   OAuthClient::GetAuthorizeUriFn getAuthorizeUri
 ) {
   auto authorizeUri = getAuthorizeUri(std::format("http://localhost:{}/", ListenPort), {});
-  return CreateObservable<AuthorizationResult>([io_context, authorizeUri](rxcpp::subscriber<AuthorizationResult> subscriber) {
-    std::shared_ptr<HTTPServer> httpServer = std::make_shared<HTTPServer>(ListenPort, io_context);
-    httpServer->registerHandler("/", true, [io_context, subscriber, httpServer](HTTPRequest localhostRequest, std::string remoteIp) {
+  return CreateObservable<AuthorizationResult>([ioContext, authorizeUri](rxcpp::subscriber<AuthorizationResult> subscriber) {
+    std::shared_ptr<HTTPServer> httpServer = std::make_shared<HTTPServer>(ListenPort, ioContext);
+    httpServer->registerHandler("/", true, [ioContext, subscriber, httpServer](HTTPRequest localhostRequest, std::string remoteIp) {
       std::optional<AuthorizationResult> result;
       std::optional<std::string> failure;
 
@@ -114,13 +115,13 @@ rxcpp::observable<AuthorizationResult> pep::BrowserAuthorization(
       (void)rxcpp::observable<>::just(*result).subscribe(subscriber);
 
       // Only stop after we returned an HTTP response
-      post(*io_context, [httpServer] {
+      post(*ioContext, [httpServer] {
         httpServer->asyncStop();
         });
 
       return HTTPResponse("200 OK", GetStatusHtml(failure));
     }, "GET");
 
-    OpenBrowser(boost::urls::url(authorizeUri), *io_context);
+    OpenBrowser(boost::urls::url(authorizeUri), *ioContext);
   });
 }

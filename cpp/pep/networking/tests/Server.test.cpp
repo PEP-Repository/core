@@ -108,7 +108,7 @@ TEST_F(Server, UnschedulesOnDestruction) {
 
   boost::asio::io_context context;
 
-  auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(context, pep::networking::Tcp::ServerParameters::RANDOM_PORT));
+  auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(context, pep::networking::Tcp::ServerParameters::RandomPort));
   // Don't subscribe to server->onConnectionAttempt: this test just wants to verify what happens when the server is destroyed
   server->start();
 

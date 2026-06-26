@@ -7,22 +7,22 @@
 namespace pep {
 
 // See Messages.proto for description of versions.
-enum SignatureScheme {
-  SIGNATURE_SCHEME_V3 = 2,
-  SIGNATURE_SCHEME_V4 = 3
+enum class SignatureScheme {
+  V3 = 2,
+  V4 = 3
 };
 
 
 class Signatory {
 private:
-  X509CertificateChain mCertificateChain;
-  X509RootCertificates mRootCAs;
+  X509CertificateChain certificateChain_;
+  X509RootCertificates rootCAs_;
 
 public:
   Signatory(X509CertificateChain certificateChain, X509RootCertificates rootCAs);
 
-  const X509CertificateChain& certificateChain() const noexcept { return mCertificateChain; }
-  const X509RootCertificates& rootCAs() const noexcept { return mRootCAs; }
+  const X509CertificateChain& certificateChain() const noexcept { return certificateChain_; }
+  const X509RootCertificates& rootCAs() const noexcept { return rootCAs_; }
 
   std::string commonName() const;
   std::string organizationalUnit() const;
@@ -33,11 +33,11 @@ class Signature {
   friend class Serializer<Signature>;
 
 private:
-  std::string mSignature;
-  X509CertificateChain mCertificateChain;
-  SignatureScheme mScheme = SIGNATURE_SCHEME_V4;
-  Timestamp mTimestamp;
-  bool mIsLogCopy = false;
+  std::string signature_;
+  X509CertificateChain certificateChain_;
+  SignatureScheme scheme_ = SignatureScheme::V4;
+  Timestamp timestamp_;
+  bool isLogCopy_ = false;
 
 public:
   Signature(
@@ -46,20 +46,20 @@ public:
       SignatureScheme scheme,
       Timestamp timestamp,
       bool isLogCopy)
-    : mSignature(std::move(signature)),
-      mCertificateChain(std::move(chain)),
-      mScheme(scheme),
-      mTimestamp(timestamp),
-      mIsLogCopy(isLogCopy) { }
+    : signature_(std::move(signature)),
+      certificateChain_(std::move(chain)),
+      scheme_(scheme),
+      timestamp_(timestamp),
+      isLogCopy_(isLogCopy) { }
 
   static Signature Make(
       std::string_view data,
       const X509Identity& identity,
       bool isLogCopy=false,
-      SignatureScheme scheme=SIGNATURE_SCHEME_V4);
+      SignatureScheme scheme=SignatureScheme::V4);
 
-  const X509CertificateChain& certificateChain() const noexcept { return mCertificateChain; }
-  Timestamp timestamp() const { return mTimestamp; }
+  const X509CertificateChain& certificateChain() const noexcept { return certificateChain_; }
+  Timestamp timestamp() const { return timestamp_; }
 
   Signatory validate(
       std::string_view data,
