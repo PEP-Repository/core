@@ -47,7 +47,7 @@ public:
 
 class ServiceEnroller : public Enroller {
 private:
-  ServerTraits mServer;
+  ServerTraits server_;
 
 protected:
   std::vector<commandline::Parameter> getAuthorizationParameters() const override {
@@ -63,7 +63,7 @@ protected:
 
 public:
   ServiceEnroller(ServerTraits server, EnrollmentApplication& parent)
-    : Enroller(*server.enrollsAsParty(true), server.description(), parent), mServer(std::move(server)) {
+    : Enroller(*server.enrollsAsParty(true), server.description(), parent), server_(std::move(server)) {
   }
 };
 

@@ -61,7 +61,6 @@ struct ColumnRecord {
 struct Column {
   std::string name;
 
-  Column(std::string name) : name(name) {}
   std::strong_ordering operator<=>(const Column& other) const = default;
 };
 
@@ -97,7 +96,6 @@ struct ColumnGroupRecord {
 struct ColumnGroup {
   std::string name;
 
-  ColumnGroup(std::string name) : name(name) {}
   std::strong_ordering operator<=>(const ColumnGroup& other) const = default;
 };
 
@@ -134,7 +132,6 @@ struct ColumnGroupColumn {
   std::string columnGroup;
   std::string column;
 
-  ColumnGroupColumn(std::string columnGroup,std::string column) : columnGroup(columnGroup), column(column) {}
   std::strong_ordering operator<=>(const ColumnGroupColumn& other) const = default;
 };
 
@@ -176,8 +173,6 @@ struct ColumnGroupAccessRule {
   std::string userGroup;
   std::string mode;
 
-  ColumnGroupAccessRule(std::string columnGroup, std::string userGroup, std::string mode) : columnGroup(columnGroup), userGroup(userGroup), mode(mode) {}
-
   std::strong_ordering operator<=>(const ColumnGroupAccessRule& other) const = default;
 };
 /* Contains vectors of strings used by AccessManager::Backend::Storage to filter results.
@@ -205,7 +200,6 @@ struct ParticipantGroupRecord {
 struct ParticipantGroup {
   std::string name;
 
-  ParticipantGroup(std::string name) : name(name) {}
   std::strong_ordering operator<=>(const ParticipantGroup& other) const = default;
 };
 
@@ -245,7 +239,6 @@ struct ParticipantGroupParticipant {
   std::string participantGroup;
   std::vector<char> localPseudonym;
 
-  ParticipantGroupParticipant(std::string participantGroup, std::vector<char> localPseudonym) : participantGroup(participantGroup), localPseudonym(localPseudonym) {}
   LocalPseudonym getLocalPseudonym() const;
 
   std::strong_ordering operator<=>(const ParticipantGroupParticipant& other) const = default;
@@ -289,8 +282,6 @@ struct ParticipantGroupAccessRule {
   std::string participantGroup;
   std::string userGroup;
   std::string mode;
-
-  ParticipantGroupAccessRule(std::string participantGroup, std::string userGroup, std::string mode) : participantGroup(participantGroup), userGroup(userGroup), mode(mode) {}
 
   std::strong_ordering operator<=>(const ParticipantGroupAccessRule& other) const = default;
 };

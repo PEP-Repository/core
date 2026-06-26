@@ -20,7 +20,7 @@ std::string OpenSSLBIOToString(BIO* bio);
  */
 class OpenSSLError : public std::runtime_error {
 public:
-    OpenSSLError(const std::string& message);
+  explicit OpenSSLError(const std::string& message);
 };
 
 } // namespace pep

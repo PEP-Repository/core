@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#ifndef __EMSCRIPTEN__
+
 #include <pep/async/IoContextThread.hpp>
 #include <pep/httpserver/HTTPServer.hpp>
 #include <pep/networking/HttpClient.hpp>
@@ -14,22 +16,22 @@ public:
   static constexpr uint16_t PORT = 1880; // Port 80 might be taken by a "real" HTTP server. TODO: try random ports until we find a vacant one
 
 private:
-  std::shared_ptr<boost::asio::io_context> mIoContext = std::make_shared<boost::asio::io_context>();
-  pep::HTTPServer mServer = pep::HTTPServer(PORT, mIoContext);
-  pep::IoContextThread mThread = pep::IoContextThread("HTTP server", mIoContext);
+  std::shared_ptr<boost::asio::io_context> ioContext_ = std::make_shared<boost::asio::io_context>();
+  pep::HTTPServer server_ = pep::HTTPServer(PORT, ioContext_);
+  pep::IoContextThread thread_ = pep::IoContextThread("HTTP server", ioContext_);
 
 public:
   AsyncHttpServer() = default;
 
   ~AsyncHttpServer() noexcept {
-    mServer.asyncStop();
+    server_.asyncStop();
     std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Give the HTTP server time to finalize
-    // mThread destructor will (stop the associated I/O context and) block until the thread has exited
+    // thread_ destructor will (stop the associated I/O context and) block until the thread has exited
   }
 
   template <typename... Args>
   auto registerHandler(Args&&... args) {
-    return mServer.registerHandler(std::forward<Args>(args)...);
+    return server_.registerHandler(std::forward<Args>(args)...);
   }
 };
 
@@ -76,3 +78,11 @@ TEST(HttpClient, BasicFunctioning) {
   // Code below has been disabled to prevent our unit test from requiring a network connection
   // RegisterAndRetrieve(boost::urls::url("https://pep.cs.ru.nl"));
 }
+
+#else // (!)__EMSCRIPTEN__
+
+TEST(HttpClient, BasicFunctioning) {
+  GTEST_SKIP() << "HttpServer not supported on Emscripten";
+}
+
+#endif // !__EMSCRIPTEN__

@@ -14,8 +14,8 @@ public:
   using GetTimestampProperties = std::function<std::shared_ptr<const boost::property_tree::ptree>(std::shared_ptr<SurveyPackageInstance>)>;
 
 private:
-  std::shared_ptr<SurveyPackageInstance> mSpi;
-  Timestamp mTimestamp;
+  std::shared_ptr<SurveyPackageInstance> spi_;
+  Timestamp timestamp_;
 
   TimestampedSpi(std::shared_ptr<SurveyPackageInstance> spi, const Timestamp& timestamp);
 
@@ -24,13 +24,13 @@ public:
   * \brief Produces the SurveyPackageInstance associated with this object.
   * \return A (shared_ptr to a) SurveyPackageInstance object.
   */
-  inline std::shared_ptr<SurveyPackageInstance> getSpi() const noexcept { return mSpi; }
+  inline std::shared_ptr<SurveyPackageInstance> getSpi() const noexcept { return spi_; }
 
   /*!
   * \brief Produces the Timestamp associated with this object.
   * \return A Timestamp object.
   */
-  inline const Timestamp& getTimestamp() const noexcept { return mTimestamp; }
+  inline const Timestamp& getTimestamp() const noexcept { return timestamp_; }
 
   /*!
   * \brief Associates a number of SurveyPackageInstance objects with Timestamps extracted from those SurveyPackageInstance objects.

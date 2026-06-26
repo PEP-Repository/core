@@ -57,7 +57,7 @@ private:
 
   public:
     MessageBatches handle(RequestHandler& instance, std::shared_ptr<std::string> message, MessageSequence tail) const override {
-      // This downcast is valid because it's only performed through one of the "mMethods" of the "instance".
+      // This downcast is valid because it's only performed through one of the "methods_" of the "instance".
       // Therefore RegisterMethod must have been invoked, which guarantees that the "instance" is a "DeclaringT".
       DeclaringT& downcast = static_cast<DeclaringT&>(instance);
 
@@ -72,16 +72,16 @@ private:
     using Pointer = MessageBatches(DeclaringT::*)(std::shared_ptr<RequestT>);
 
   private:
-    Pointer mPointer;
+    Pointer pointer_;
 
   protected:
     MessageBatches handleRequest(DeclaringT& instance, std::shared_ptr<RequestT> request, MessageSequence tail) const override {
       // TODO: ensure that "tail" is empty
-      return (instance.*mPointer)(request);
+      return (instance.*pointer_)(request);
     }
 
   public:
-    explicit UnaryMethod(Pointer pointer) : mPointer(pointer) { assert(mPointer != nullptr); }
+    explicit UnaryMethod(Pointer pointer) : pointer_(pointer) { assert(pointer_ != nullptr); }
   };
 
   template <typename DeclaringT, typename RequestT>
@@ -90,21 +90,21 @@ private:
     using Pointer = MessageBatches(DeclaringT::*)(std::shared_ptr<RequestT>, MessageSequence);
 
   private:
-    Pointer mPointer;
+    Pointer pointer_;
 
   protected:
     MessageBatches handleRequest(DeclaringT& instance, std::shared_ptr<RequestT> request, MessageSequence tail) const override {
-      return (instance.*mPointer)(request, tail);
+      return (instance.*pointer_)(request, tail);
     }
 
   public:
-    explicit BinaryMethod(Pointer pointer) : mPointer(pointer) { assert(mPointer != nullptr); }
+    explicit BinaryMethod(Pointer pointer) : pointer_(pointer) { assert(pointer_ != nullptr); }
   };
 
   template <typename MethodT>
   static void RegisterMethod(typename MethodT::DeclaringClass& instance, std::shared_ptr<MethodT> method) {
     RequestHandler& upcast = instance;
-    upcast.mMethods.insert_or_assign(MessageMagician<typename MethodT::Request>::GetMagic(), method);
+    upcast.methods_.insert_or_assign(MessageMagician<typename MethodT::Request>::GetMagic(), method);
   }
 
   template <typename DeclaringT, typename RequestT>
@@ -120,7 +120,7 @@ private:
     RegisterMethod(instance, std::make_shared<BinaryMethod<DeclaringT, RequestT>>(method));
   }
 
-  std::unordered_map<MessageMagic, std::shared_ptr<Method>> mMethods;
+  std::unordered_map<MessageMagic, std::shared_ptr<Method>> methods_;
 };
 
 }

@@ -11,20 +11,20 @@ SemanticVersion::SemanticVersion(
   unsigned int majorVersion,
   unsigned int minorVersion,
   unsigned int build,
-  unsigned int revision) : mMajorVersion(majorVersion), mMinorVersion(minorVersion), mBuild(build), mRevision(revision){}
+  unsigned int revision) : majorVersion_(majorVersion), minorVersion_(minorVersion), build_(build), revision_(revision){}
 
 std::string SemanticVersion::format() const {
   std::vector<std::string> semverParts{
-    std::to_string(mMajorVersion), 
-    std::to_string(mMinorVersion), 
-    std::to_string(mBuild),
-    std::to_string(mRevision)
+    std::to_string(majorVersion_), 
+    std::to_string(minorVersion_), 
+    std::to_string(build_),
+    std::to_string(revision_)
   };
   return boost::algorithm::join(semverParts, ".");
 }
 
 bool SemanticVersion::hasGitlabProperties() const noexcept {
-  return mBuild > 0U && mRevision > 0U;
+  return build_ > 0U && revision_ > 0U;
 }
 
 bool IsSemanticVersionEquivalent(const SemanticVersion& lhs, const SemanticVersion& rhs){

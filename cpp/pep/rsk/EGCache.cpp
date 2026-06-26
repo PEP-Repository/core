@@ -58,7 +58,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("EGCache");
+const std::string LogTag("EGCache");
 
 class EGCacheImp
   : public StaticSingleton<EGCacheImp>, public EGCache,
@@ -84,148 +84,147 @@ private:
     // it was constructed successfully.
     // TODO: static_assert this.
 
-    struct Entry {
-      Entry(EGCacheImp* egcache, const Key& key, uint64_t generation)
-        : value(egcache, key), lastUse(generation) {
-      }
-
+    class Entry {
     private:
-      Value value;
-      std::atomic_uint64_t lastUse;
+      Value value_;
+      std::atomic_uint64_t lastUse_;
 
     public:
+      Entry(EGCacheImp* egcache, const Key& key, uint64_t generation)
+        : value_(egcache, key), lastUse_(generation) {}
+
       inline uint64_t getLastUse() const {
-        return this->lastUse.load(std::memory_order_relaxed);
+        return lastUse_.load(std::memory_order_relaxed);
       }
 
       inline void updateLastUse(uint64_t generation) {
-        this->lastUse.store(generation, std::memory_order_relaxed);
+        lastUse_.store(generation, std::memory_order_relaxed);
       }
 
       inline Value& getValue() {
-        return this->value;
+        return value_;
       }
 
       inline explicit operator bool() const {
-        return value ? true : false;
+        return value_ ? true : false;
       }
     };
 
-    std::shared_mutex mux;
-    std::unordered_map<Key, Entry, KeyHash> data;
-    uint64_t generation = 0;
-    std::atomic_uint64_t useCount = 0; // for metrics
+    std::shared_mutex mux_;
+    std::unordered_map<Key, Entry, KeyHash> data_;
+    uint64_t generation_ = 0;
+    std::atomic_uint64_t useCount_ = 0; // for metrics
     steady_seconds
-        lastPrune = TimeNow<steady_seconds>(),
-        disabledAt = TimeNow<steady_seconds>();
-    bool enabled = true;
+        lastPrune_ = TimeNow<steady_seconds>(),
+        disabledAt_ = TimeNow<steady_seconds>();
+    bool enabled_ = true;
 
-    using iterator = typename decltype(data)::iterator;
+    using iterator = typename decltype(data_)::iterator;
 
     inline void incrementUseCount() {
-      this->useCount.fetch_add(1, std::memory_order_relaxed);
+      useCount_.fetch_add(1, std::memory_order_relaxed);
     }
 
     inline uint64_t getUseCount() {
-      return this->useCount.load(std::memory_order_relaxed);
+      return useCount_.load(std::memory_order_relaxed);
     }
 
-    inline void disable_under_unique_lock() {
-      assert(this->enabled);
-      this->enabled = false;
-      this->disabledAt = TimeNow<steady_seconds>();
+    inline void disableUnderUniqueLock() {
+      assert(enabled_);
+      enabled_ = false;
+      disabledAt_ = TimeNow<steady_seconds>();
     }
 
     // if the cache is disabled, but the prune has cooled down,
     // the cache is said to be enablable.
-    inline bool enabledOrEnablable_underSharedLock() {
-      if (this->enabled)
+    inline bool enabledOrEnablableUnderSharedLock() {
+      if (enabled_)
         return true;
-      return TimeNow<steady_seconds>() - this->disabledAt >= Options::ReEnableTime;
+      return TimeNow<steady_seconds>() - disabledAt_ >= Options::ReEnableTime;
     }
 
-    inline bool pruneCooledDown_underSharedLock() {
-      return TimeNow<steady_seconds>() - this->lastPrune >= Options::PruneCooldown;
+    inline bool pruneCooledDownUnderSharedLock() {
+      return TimeNow<steady_seconds>() - lastPrune_ >= Options::PruneCooldown;
     }
 
     // prune cache, which might disable it
-    void prune_under_unique_lock() {
-      assert(this->enabled);
-      if (!this->pruneCooledDown_underSharedLock()) {
-        LOG(LOG_TAG, warning)
+    void pruneUnderUniqueLock() {
+      assert(enabled_);
+      if (!this->pruneCooledDownUnderSharedLock()) {
+        PEP_LOG(LogTag, Severity::Warning)
           << Options::Name
           << " cache overflows a second time in a short while. "
           << "Disabling " << Options::Name
           << " cache to mitigate potential DoS.";
-          this->disable_under_unique_lock();
+          this->disableUnderUniqueLock();
           return;
       }
 
-      size_t toEvict = this->data.size() - Options::PrunedSize;
+      size_t toEvict = data_.size() - Options::PrunedSize;
       std::vector<std::pair<uint64_t, Key>> entries;
-      entries.reserve(this->data.size());
-      for (const auto& pair : this->data)
+      entries.reserve(data_.size());
+      for (const auto& pair : data_)
         entries.emplace_back(pair.second.getLastUse(), pair.first);
       std::sort(entries.begin(), entries.end(),
           [](auto& a, auto& b) { return a.first < b.first; });
       for (size_t i = 0; i < toEvict; i++) {
-        this->data.erase(entries[i].second);
+        data_.erase(entries[i].second);
       }
 
-      LOG(LOG_TAG, info) << "Pruned " << Options::Name << " cache down to "
-        << this->data.size();
-      this->lastPrune = TimeNow<steady_seconds>();
+      PEP_LOG(LogTag, Severity::Info) << "Pruned " << Options::Name << " cache down to "
+        << data_.size();
+      lastPrune_ = TimeNow<steady_seconds>();
     }
 
     // adds entry associated with the given key, and returns
     // an iterator to it.
-    std::optional<iterator> cache_under_unique_lock(
+    std::optional<iterator> cacheUnderUniqueLock(
         EGCacheImp* egcache, const Key& key) {
 
-      assert(this->data.find(key) == this->data.end());
-      assert(this->enabled);
+      assert(data_.find(key) == data_.end());
+      assert(enabled_);
 
-      if (this->data.size() >= Options::MaxSize) {
+      if (data_.size() >= Options::MaxSize) {
         // since entries are added one by one:
-        assert(this->data.size()==Options::MaxSize);
-        this->prune_under_unique_lock();
+        assert(data_.size()==Options::MaxSize);
+        this->pruneUnderUniqueLock();
 
-        if (!this->enabled)
+        if (!enabled_)
           return std::nullopt;
       }
 
 
-      auto [it, inserted] = this->data.emplace(
+      auto [it, inserted] = data_.emplace(
           std::piecewise_construct,
           std::make_tuple(key),
-          std::make_tuple(egcache, key, ++this->generation));
+          std::make_tuple(egcache, key, ++generation_));
 
       assert(inserted);
 
       if (!it->second) {
         // Creation of the entry failed.  The creation of an RSK entry might
         // fail, for example, when the table cache is disabled.
-        LOG(LOG_TAG, warning)
+        PEP_LOG(LogTag, Severity::Warning)
           << "Failed to add entry to " << Options::Name << " cache; "
             << "disabling. ";
-        this->data.erase(it);
-        this->disable_under_unique_lock();
+        data_.erase(it);
+        this->disableUnderUniqueLock();
         return std::nullopt;
       }
 
-      LOG(LOG_TAG, debug)
+      PEP_LOG(LogTag, Severity::Debug)
         << "Entry added to " << Options::Name << " cache.  size: "
-        << this->data.size()
-          << "; generation: " << this->generation;
+        << data_.size()
+          << "; generation: " << generation_;
 
       return it;
     }
 
     // get cache entry associated with key, if it exists
-    std::optional<iterator> get_under_shared_lock(const Key& key) {
-      auto it = this->data.find(key);
-      if (it != this->data.end()) {
-        it->second.updateLastUse(this->generation);
+    std::optional<iterator> getUnderSharedLock(const Key& key) {
+      auto it = data_.find(key);
+      if (it != data_.end()) {
+        it->second.updateLastUse(generation_);
         this->incrementUseCount();
         return it;
       }
@@ -237,40 +236,40 @@ private:
     // unless the cache is disabled.
     std::optional<iterator> get(EGCacheImp* egcache, const Key& key) {
       {
-        auto readLock = std::shared_lock(this->mux);
+        auto readLock = std::shared_lock(mux_);
 
-        auto it = this->get_under_shared_lock(key);
+        auto it = this->getUnderSharedLock(key);
 
         if (it)
           return it;
 
-        if (!this->enabledOrEnablable_underSharedLock())
+        if (!this->enabledOrEnablableUnderSharedLock())
           return std::nullopt;
 
         // key is not present, so we need to obtain a write lock to add it
       }
 
-      auto writeLock = std::unique_lock(this->mux);
+      auto writeLock = std::unique_lock(mux_);
 
       // the key might have been added in the meantime
-      auto it = this->get_under_shared_lock(key);
+      auto it = this->getUnderSharedLock(key);
 
       if (it)
         return it;
 
       // the cache might have been disabled in the meantime.
-      if (!this->enabledOrEnablable_underSharedLock())
+      if (!this->enabledOrEnablableUnderSharedLock())
         return std::nullopt;
 
       // enable cache, if necessary
-      if (!this->enabled) {
-        LOG(LOG_TAG, warning)
+      if (!enabled_) {
+        PEP_LOG(LogTag, Severity::Warning)
           << "Re-enabling " << Options::Name
           << " cache.";
-        this->enabled = true;
+        enabled_ = true;
       }
 
-      return this->cache_under_unique_lock(egcache, key);
+      return this->cacheUnderUniqueLock(egcache, key);
     }
 
     void fillMetrics(EGCache::Metrics::OfCache& metrics) {
@@ -278,9 +277,9 @@ private:
       // operations to materialize.
       // (A shared_lock would have suffices as well, if we do not care
       //  about accuracy.)
-      auto uniqueLock = std::unique_lock(this->mux);
+      auto uniqueLock = std::unique_lock(mux_);
 
-      metrics.generation = this->generation;
+      metrics.generation = generation_;
       metrics.useCount = this->getUseCount();
     }
   };
@@ -293,11 +292,11 @@ private:
   // ElgamalEncryption::rekey operations.
   struct RekeyKey {
     RekeyKey(const CurveScalar& k, const CurvePoint& y)
-      : mK(k), mY(y) { }
+      : k(k), y(y) { }
     bool operator== (const RekeyKey& p) const;
 
-    CurveScalar mK;
-    CurvePoint mY;
+    CurveScalar k;
+    CurvePoint y;
 
     struct hash { size_t operator()(const pep::EGCacheImp::RekeyKey& k) const; };
   };
@@ -310,13 +309,13 @@ private:
             const ElgamalTranslationKey& reshuffle) const;
     ElgamalEncryption rk(const CurvePoint& b, const CurvePoint& c) const;
 
-    CurveScalar mKInv;
-    CurvePoint mKY;
-    std::shared_ptr<CurvePoint::ScalarMultTable> mYTable;
+    CurveScalar kInv;
+    CurvePoint kY;
+    std::shared_ptr<CurvePoint::ScalarMultTable> yTable;
 
     // returns whether the value was successfully initialized
     inline explicit operator bool() const {
-      return this->mYTable ? true : false;
+      return yTable ? true : false;
     }
   };
 
@@ -328,13 +327,12 @@ private:
     static constexpr auto ReEnableTime = 1h;
   };
 
-  Cache<RekeyKey, RekeyValue, RSKOptions, RekeyKey::hash> rskCache;
-
+  Cache<RekeyKey, RekeyValue, RSKOptions, RekeyKey::hash> rskCache_;
 
   // Scalar multiplication (table) cache
   struct TableValue {
     TableValue(EGCacheImp* egcache, const CurvePoint& p);
-    std::shared_ptr<CurvePoint::ScalarMultTable> mTable;
+    std::shared_ptr<CurvePoint::ScalarMultTable> table_;
 
     // creation of a TableValue, unlike RSKValue, always succeeds
     inline explicit operator bool() const { return true; }
@@ -351,7 +349,7 @@ private:
   static_assert(TableOptions::PrunedSize > RSKOptions::MaxSize,
       "Every RSK cache entry may block a table cache entry");
 
-  Cache<CurvePoint, TableValue, TableOptions> tableCache;
+  Cache<CurvePoint, TableValue, TableOptions> tableCache_;
 
  public:
   ElgamalEncryption rsk(
@@ -387,12 +385,12 @@ EGCache& EGCache::get() {
 std::shared_ptr<CurvePoint::ScalarMultTable>
 EGCacheImp::scalarMultTable(const CurvePoint& b) {
 
-  auto optional_it = this->tableCache.get(this, b);
+  auto optional_it = tableCache_.get(this, b);
 
   if (!optional_it)
     return nullptr;
 
-  return (*optional_it)->second.getValue().mTable;
+  return (*optional_it)->second.getValue().table_;
 }
 
 ElgamalEncryption EGCacheImp::rsk(
@@ -402,13 +400,13 @@ ElgamalEncryption EGCacheImp::rsk(
 
   auto key = RekeyKey(rekey, eg.publicKey);
 
-  auto opt_it = this->rskCache.get(this, key);
+  auto opt_it = rskCache_.get(this, key);
 
   if (!opt_it) {
     // fall back to uncached rsk
-    return ElgamalEncryption(eg.b, eg.c, key.mY)
+    return ElgamalEncryption(eg.b, eg.c, key.y)
       .rerandomize()
-      .reshuffleRekey(reshuffle, key.mK);
+      .reshuffleRekey(reshuffle, key.k);
   }
 
   return (*opt_it)->second.getValue().rsk(eg.b, eg.c, reshuffle);
@@ -420,13 +418,13 @@ ElgamalEncryption EGCacheImp::rk(
 
   auto key = RekeyKey(rekey, eg.publicKey);
 
-  auto opt_it = this->rskCache.get(this, key);
+  auto opt_it = rskCache_.get(this, key);
 
   if (!opt_it) {
     // fall back to uncached rk
-    return ElgamalEncryption(eg.b, eg.c, key.mY)
+    return ElgamalEncryption(eg.b, eg.c, key.y)
       .rerandomize()
-      .rekey(key.mK);
+      .rekey(key.k);
   }
 
   return (*opt_it)->second.getValue().rk(eg.b, eg.c);
@@ -449,7 +447,7 @@ ElgamalEncryption EGCacheImp::rerandomize(
 }
 
 bool EGCacheImp::RekeyKey::operator== (const EGCacheImp::RekeyKey& k) const {
-  return k.mK == mK && k.mY == mY;
+  return k.k == this->k && k.y == this->y;
 }
 
 ElgamalEncryption EGCacheImp::RekeyValue::rk(
@@ -457,9 +455,9 @@ ElgamalEncryption EGCacheImp::RekeyValue::rk(
     const CurvePoint& c) const {
   const auto r = CurveScalar::Random();
   return {
-    mKInv * (b + (r * CurvePoint::Base)),
-    c + mYTable->mult(r),
-    mKY,
+    kInv * (b + (r * CurvePoint::Base)),
+    c + yTable->mult(r),
+    kY,
   };
 }
 
@@ -469,42 +467,42 @@ ElgamalEncryption EGCacheImp::RekeyValue::rsk(
     const ElgamalTranslationKey& reshuffle) const {
   const auto r = CurveScalar::Random();
   return {
-    reshuffle * mKInv * (b + (r * CurvePoint::Base)),
-    reshuffle * (c + mYTable->mult(r)),
-    mKY,
+    reshuffle * kInv * (b + (r * CurvePoint::Base)),
+    reshuffle * (c + yTable->mult(r)),
+    kY,
   };
 }
 
 EGCacheImp::RekeyValue::RekeyValue(
     EGCacheImp* egcache, const EGCacheImp::RekeyKey& key)  {
 
-  this->mYTable = egcache->scalarMultTable(key.mY);
+  yTable = egcache->scalarMultTable(key.y);
 
-  if (!this->mYTable) {
+  if (!yTable) {
     // table cache is disabled; abort
     return;
   }
 
-  this->mKY = this->mYTable->mult(key.mK);
-  this->mKInv = key.mK.invert();
+  kY = yTable->mult(key.k);
+  kInv = key.k.invert();
 }
 
 size_t EGCacheImp::RekeyKey::hash::operator()(const pep::EGCacheImp::RekeyKey& k) const {
   size_t ret = 0;
-  boost::hash_combine(ret, std::hash<CurvePoint>{}(k.mY));
-  boost::hash_combine(ret, std::hash<CurveScalar>{}(k.mK));
+  boost::hash_combine(ret, std::hash<CurvePoint>{}(k.y));
+  boost::hash_combine(ret, std::hash<CurveScalar>{}(k.k));
   return ret;
 }
 
 EGCacheImp::TableValue::TableValue(EGCacheImp* egcache, const CurvePoint& p) {
-  mTable = std::make_shared<CurvePoint::ScalarMultTable>(p);
+  table_ = std::make_shared<CurvePoint::ScalarMultTable>(p);
 }
 
 EGCache::Metrics EGCacheImp::getMetrics() {
   EGCache::Metrics result;
 
-  this->rskCache.fillMetrics(result.rsk);
-  this->tableCache.fillMetrics(result.table);
+  rskCache_.fillMetrics(result.rsk);
+  tableCache_.fillMetrics(result.table);
 
   return result;
 }

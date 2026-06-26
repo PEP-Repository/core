@@ -21,7 +21,7 @@
 #include <numeric>
 #include <utility>
 
-// The schema of the database is defined in the ts_create_db() function.
+// The schema of the database is defined in the TsCreateDb() function.
 // For each table, we have a struct <TableName>Record that represents a
 // row in that table.
 
@@ -54,7 +54,7 @@ using namespace sqlite_orm;
 
 namespace {
 
-const std::string LOG_TAG("TranscryptorStorage");
+const std::string LogTag("TranscryptorStorage");
 
 // Records past migrations performed to this database. (Since version 2.)
 // When the database is initialised from stratch, this is recorded as
@@ -426,7 +426,7 @@ struct SessionVerifiersRecord {
 };
 
 // This function defines the database scheme used.
-auto ts_create_db(const std::string& path) {
+auto TsCreateDb(const std::string& path) {
   // BEWARE!  Changing a column below causes the whole table to be dropped!
   // by the call to "sync_storage" below.  Adding and removing columns,
   // on the other hand, should be fine.  For more info, see:
@@ -566,7 +566,7 @@ auto ts_create_db(const std::string& path) {
 }
 
 // Can't be a typedef because we need to forward declare it for our pimpl idiom
-struct TranscryptorStorageBackend : database::Storage<ts_create_db> {
+struct TranscryptorStorageBackend : database::Storage<TsCreateDb> {
   using Storage::Storage;
 };
 
@@ -580,8 +580,8 @@ protected:
     auto result = partial;
 
     int64_t minSeqNo = -1; // The full chain includes all sequence numbers (0 or higher, i.e. greater than -1)
-    if (partial.checkpoint != EMPTY_TABLE_CHECKPOINT) { // If we have a (previously calculated) partial result...
-      assert(partial.checkpoint > EMPTY_TABLE_CHECKPOINT);
+    if (partial.checkpoint != EmptyTableCheckpoint) { // If we have a (previously calculated) partial result...
+      assert(partial.checkpoint > EmptyTableCheckpoint);
       minSeqNo = CheckpointToSeqNo(partial.checkpoint); // ... only process records (with sequence numbers) that aren't included in the partial result yet
     }
 
@@ -608,22 +608,22 @@ public:
 }
 
 TranscryptorStorage::TranscryptorStorage(
-    const std::filesystem::path& path) : mPath(path.string()) {
-  mStorage = std::make_shared<TranscryptorStorageBackend>(path.string());
+    const std::filesystem::path& path) : path_(path.string()) {
+  storage_ = std::make_shared<TranscryptorStorageBackend>(path.string());
 
   ensureInitialized();
   removeOutdatedRecords();
 
-  // Can't assign an { initializer-list } to mChecksumChains because it requires copy construction of the elements, which std::unique_ptr<> doesn't support
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<MigrationRecord>>("migration"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<TicketRequestRecord>>("ticket-request"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<TicketIssueRecord>>("ticket-issue"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<PseudonymSetRecord>>("pseudonym-set"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<PseudonymSetPseudonymRecord>>("pseudonym-set-pseudonym"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<ColumnSetRecord>>("column-set"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<ColumnSetColumnRecord>>("column-set-column"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<ModeSetRecord>>("mode-set"));
-  mChecksumChains.insert(std::make_unique<ChecksumChainFor<ModeSetModeRecord>>("mode-set-mode"));
+  // Can't assign an { initializer-list } to checksumChains_ because it requires copy construction of the elements, which std::unique_ptr<> doesn't support
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<MigrationRecord>>("migration"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<TicketRequestRecord>>("ticket-request"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<TicketIssueRecord>>("ticket-issue"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<PseudonymSetRecord>>("pseudonym-set"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<PseudonymSetPseudonymRecord>>("pseudonym-set-pseudonym"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<ColumnSetRecord>>("column-set"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<ColumnSetColumnRecord>>("column-set-column"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<ModeSetRecord>>("mode-set"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<ModeSetModeRecord>>("mode-set-mode"));
 }
 
 // Makes sure that the database is correctly initialized.  Adds columns
@@ -632,11 +632,11 @@ void TranscryptorStorage::ensureInitialized() {
   bool migrated = false;
 
   try {
-    auto guard = this->mStorage->raw.transaction_guard();
+    auto guard = this->storage_->raw.transaction_guard();
     this->ensureInitialized_unguarded(migrated);
     guard.commit();
   } catch (...) {
-    LOG(LOG_TAG, error) << "Failed to initialize transcryptor storage! ";
+    PEP_LOG(LogTag, Severity::Error) << "Failed to initialize transcryptor storage! ";
     throw;
   }
 
@@ -646,27 +646,27 @@ void TranscryptorStorage::ensureInitialized() {
   // (Recall that the VACUUM command cannot be executed while any other
   //  transaction is active, so we do it here.)
   if (migrated) {
-    LOG(LOG_TAG, info) << "Vacuuming database after migration.";
-    this->mStorage->raw.vacuum();
-    LOG(LOG_TAG, info) << "Vacuumed database.";
+    PEP_LOG(LogTag, Severity::Info) << "Vacuuming database after migration.";
+    this->storage_->raw.vacuum();
+    PEP_LOG(LogTag, Severity::Info) << "Vacuumed database.";
   }
 }
 
 void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
-  if (!mStorage->syncSchema()) {
-    LOG(LOG_TAG, info) << "All database schemas in sync;"
+  if (!storage_->syncSchema()) {
+    PEP_LOG(LogTag, Severity::Info) << "All database schemas in sync;"
       << " checking whether migration has been performed.";
 
     std::optional<uint64_t> version = this->getCurrentVersion();
 
     if (!version) {
-      LOG(LOG_TAG, error) << "Database schemas are in sync, "
+      PEP_LOG(LogTag, Severity::Error) << "Database schemas are in sync, "
         << "but no migration has been recorded!";
       throw Error("Detected potentially incomplete migration.");
     }
 
     if (*version < MigrationRecord::TargetVersion) {
-      LOG(LOG_TAG, error) << "Database schemas are in sync, "
+      PEP_LOG(LogTag, Severity::Error) << "Database schemas are in sync, "
         << "but not all migrations have been performed!";
       throw Error("Detected potentially incomplete migration.");
     }
@@ -674,7 +674,7 @@ void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
     // the following should be ensured by this->getCurrentVersion()
     assert(version==MigrationRecord::TargetVersion);
 
-    LOG(LOG_TAG, info) << "Database has already been migrated to "
+    PEP_LOG(LogTag, Severity::Info) << "Database has already been migrated to "
       << "the current version, "
       << MigrationRecord::TargetVersion << ".";
 
@@ -686,13 +686,13 @@ void TranscryptorStorage::ensureInitialized_unguarded(bool& migrated) {
   //   II. when a database of a different version was loaded.
 
   // To determine whether we're in case I we use the following heuristic:
-  if(this->mStorage->raw.count<TicketRequestRecord>(limit(1)) == 0 &&
-      this->mStorage->raw.count<MigrationRecord>(limit(1)) == 0) {
+  if(this->storage_->raw.count<TicketRequestRecord>(limit(1)) == 0 &&
+      this->storage_->raw.count<MigrationRecord>(limit(1)) == 0) {
 
-    LOG(LOG_TAG, warning) << "Detected empty database.";
+    PEP_LOG(LogTag, Severity::Warning) << "Detected empty database.";
     // Record current version:
-    this->mStorage->raw.insert(MigrationRecord(MigrationRecord::TargetVersion));
-    LOG(LOG_TAG, warning) << "Recorded migration to version "
+    this->storage_->raw.insert(MigrationRecord(MigrationRecord::TargetVersion));
+    PEP_LOG(LogTag, Severity::Warning) << "Recorded migration to version "
         << MigrationRecord::TargetVersion;
     return;
   }
@@ -707,37 +707,37 @@ void TranscryptorStorage::migrate() {
 
   if (!version || version == 1) {
     try {
-      migrate_from_v1_to_v2();
+      migrateFromV1toV2();
       version = 2;
     } catch (...) {
-      LOG(LOG_TAG, error) << "Migration of transcryptor database from version 1"
+      PEP_LOG(LogTag, Severity::Error) << "Migration of transcryptor database from version 1"
         " to version 2 failed.";
       throw;
     }
-    LOG(LOG_TAG, warning) << "Migrated successfully to version 2.";
+    PEP_LOG(LogTag, Severity::Warning) << "Migrated successfully to version 2.";
   }
 
   // [Add future migrations here]
 
   assert(version == MigrationRecord::TargetVersion && "Unexpected version returned from getCurrentVersion");
   if (version == prevVersion) {
-    LOG(LOG_TAG, warning) << "The database structure changed, but a migration is not necessary";
+    PEP_LOG(LogTag, Severity::Warning) << "The database structure changed, but a migration is not necessary";
   }
 }
 
 
-void TranscryptorStorage::migrate_from_v1_to_v2() {
+void TranscryptorStorage::migrateFromV1toV2() {
   int done = 0; // for progress logging
 
-  LOG(LOG_TAG, warning) << "Migrating ticket requests ...";
-  for (auto record : this->mStorage->raw.iterate<TicketRequestRecord>()) {
+  PEP_LOG(LogTag, Severity::Warning) << "Migrating ticket requests ...";
+  for (auto record : this->storage_->raw.iterate<TicketRequestRecord>()) {
     // store old checksum before we modify record
     uint64_t old_checksum = record.checksum_v1();
 
     auto request = Serialization::FromString<SignedTicketRequest2>(SpanToString(record.request));
 
     if (!request.logSignature()) {
-      LOG(LOG_TAG, warning) << "Ticket request record number "
+      PEP_LOG(LogTag, Severity::Warning) << "Ticket request record number "
         << record.seqno << " has no log signature!";
       // although troublesome, it does not affect migration, so we ...
       continue;
@@ -752,42 +752,42 @@ void TranscryptorStorage::migrate_from_v1_to_v2() {
     record.checksumCorrection = old_checksum ^ record.checksum();
     assert(record.checksum() == old_checksum);
 
-    this->mStorage->raw.update(record);
+    this->storage_->raw.update(record);
 
     done++;
     if (done % 1000 == 0) {
-      LOG(LOG_TAG, warning) << "  " << done;
+      PEP_LOG(LogTag, Severity::Warning) << "  " << done;
     }
   }
 
   // record successful migration
-  this->mStorage->raw.insert(MigrationRecord(2));
+  this->storage_->raw.insert(MigrationRecord(2));
 }
 
 void TranscryptorStorage::removeOutdatedRecords() {
   auto now = TimeNow();
   database::UnixMillis nowMillis = TicksSinceEpoch<milliseconds>(now);
   // Remove outdated session verifiers
-  mStorage->raw.remove_all<SessionVerifiersRecord>(where(c(&SessionVerifiersRecord::expirationTimestamp) <= nowMillis));
+  storage_->raw.remove_all<SessionVerifiersRecord>(where(c(&SessionVerifiersRecord::expirationTimestamp) <= nowMillis));
 }
 
 void TranscryptorStorage::computeChecksum(const std::string& chain,
       std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
       uint64_t& checkpoint) {
-  auto position = mChecksumChains.find(chain);
-  if (position == mChecksumChains.cend()) {
+  auto position = checksumChains_.find(chain);
+  if (position == checksumChains_.cend()) {
     throw Error("No such checksum chain");
   }
 
-  auto result = (*position)->get(mStorage, maxCheckpoint.value_or(std::numeric_limits<int64_t>::max()));
+  auto result = (*position)->get(storage_, maxCheckpoint.value_or(std::numeric_limits<int64_t>::max()));
   checksum = result.checksum;
   checkpoint = result.checkpoint;
 }
 
 std::vector<std::string> TranscryptorStorage::getChecksumChainNames() {
   std::vector<std::string> ret;
-  ret.reserve(mChecksumChains.size());
-  for (const auto& pair : mChecksumChains) {
+  ret.reserve(checksumChains_.size());
+  for (const auto& pair : checksumChains_) {
     ret.push_back(pair->name());
   }
   return  ret;
@@ -808,15 +808,15 @@ int64_t TranscryptorStorage::getOrCreateModeSet(
 
   // Check if the set exists
   if (auto optRec = RangeToOptional(
-    mStorage->raw.iterate<ModeSetRecord>(
+    storage_->raw.iterate<ModeSetRecord>(
       where(c(&ModeSetRecord::key) == key)))) {
     return optRec->seqno;
   }
 
   // Apparently not --- create it
-  auto set = mStorage->raw.insert(ModeSetRecord(key));
+  auto set = storage_->raw.insert(ModeSetRecord(key));
   for (auto& mode : modes)
-    mStorage->raw.insert(ModeSetModeRecord(mode, set));
+    storage_->raw.insert(ModeSetModeRecord(mode, set));
   return set;
 }
 
@@ -835,15 +835,15 @@ int64_t TranscryptorStorage::getOrCreateColumnSet(
 
   // Check if the set exists
   if (auto optRec = RangeToOptional(
-    mStorage->raw.iterate<ColumnSetRecord>(
+    storage_->raw.iterate<ColumnSetRecord>(
       where(c(&ColumnSetRecord::key) == key)))) {
     return optRec->seqno;
   }
 
   // Apparently not --- create it
-  auto set = mStorage->raw.insert(ColumnSetRecord(key));
+  auto set = storage_->raw.insert(ColumnSetRecord(key));
   for (auto& col : cols)
-    mStorage->raw.insert(ColumnSetColumnRecord(col, set));
+    storage_->raw.insert(ColumnSetColumnRecord(col, set));
   return set;
 }
 
@@ -863,15 +863,15 @@ int64_t TranscryptorStorage::getOrCreatePseudonymSet(const std::vector<LocalPseu
 
   // Check if the set exists
   if (auto optRec = RangeToOptional(
-    mStorage->raw.iterate<PseudonymSetRecord>(
+    storage_->raw.iterate<PseudonymSetRecord>(
       where(c(&PseudonymSetRecord::key) == key)))) {
     return optRec->seqno;
   }
 
   // Apparently not --- create it
-  auto set = mStorage->raw.insert(PseudonymSetRecord(key));
+  auto set = storage_->raw.insert(PseudonymSetRecord(key));
   for (auto& p : ps)
-    mStorage->raw.insert(PseudonymSetPseudonymRecord(p, set));
+    storage_->raw.insert(PseudonymSetPseudonymRecord(p, set));
   return set;
 }
 
@@ -907,7 +907,7 @@ std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
 
   for (; K < certs.size(); K++, fingerprint_it += 32) {
     // see if  cert_K, ..., cert_N  is our database
-    std::vector<int64_t> results = this->mStorage->raw.select(
+    std::vector<int64_t> results = this->storage_->raw.select(
         &CertificateChainRecord::seqno, where(
           c(&CertificateChainRecord::fingerprint)
                 == std::vector<char>(fingerprint_it, fingerprint.end())));
@@ -937,7 +937,7 @@ std::optional<int64_t> TranscryptorStorage::getOrCreateCertificateChain(
         parentId,
         std::vector<char>(fingerprint_it, fingerprint.end()));
 
-    parentId = this->mStorage->raw.insert(chainRecord);
+    parentId = this->storage_->raw.insert(chainRecord);
   }
 
   return parentId;
@@ -978,7 +978,7 @@ std::pair<std::string, std::optional<int64_t>> TranscryptorStorage::extractCerti
 // Creating a database from scratch is (from version 2 onwards) recorded
 // as a migration too, so the result, when non-null should be >= 2.
 std::optional<uint64_t> TranscryptorStorage::getCurrentVersion() {
-  auto latestVersion = RangeToOptional(this->mStorage->raw.select(
+  auto latestVersion = RangeToOptional(this->storage_->raw.select(
     &MigrationRecord::toVersion,
     order_by(&MigrationRecord::seqno).desc(),
     limit(1)));
@@ -987,7 +987,7 @@ std::optional<uint64_t> TranscryptorStorage::getCurrentVersion() {
     std::string message = "There cannot have been a migration to version  "
       + std::to_string(*latestVersion) + ", yet one has been recorded."
       " (The first valid migration is from version 1 to version 2.)";
-    LOG(LOG_TAG, error) << message;
+    PEP_LOG(LogTag, Severity::Error) << message;
     throw Error(message);
   }
 
@@ -997,7 +997,7 @@ std::optional<uint64_t> TranscryptorStorage::getCurrentVersion() {
       + std::to_string(*latestVersion) + ", while this transcryptor only "
       "supports versions " + std::to_string(MigrationRecord::TargetVersion)
       + " and older.";
-    LOG(LOG_TAG, error) << message;
+    PEP_LOG(LogTag, Severity::Error) << message;
     throw Error(message);
   }
 
@@ -1008,10 +1008,10 @@ std::optional<uint64_t> TranscryptorStorage::getCurrentVersion() {
 std::optional<ReshuffleRekeyVerifiers> TranscryptorStorage::getUserVerifiers(const X509Certificate& userCertificate) {
   auto domain = userCertificate.getOrganizationalUnit().value();
   auto hash = RangeToVector(CertificateHash(userCertificate));
-  if (auto sessionVerifiers = mStorage->raw.get_optional<SessionVerifiersRecord>(hash)) {
-    LOG(LOG_TAG, debug) << "Found existing verifiers for "
+  if (auto sessionVerifiers = storage_->raw.get_optional<SessionVerifiersRecord>(hash)) {
+    PEP_LOG(LogTag, Severity::Debug) << "Found existing verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
-    auto domainVerifiers = mStorage->raw.get<PseudonymizationDomainVerifiersRecord>(domain);
+    auto domainVerifiers = storage_->raw.get<PseudonymizationDomainVerifiersRecord>(domain);
     return ReshuffleRekeyVerifiers(
       domainVerifiers.getReshuffleCommitment(),
       sessionVerifiers->getRekeyCommitment(),
@@ -1023,35 +1023,35 @@ std::optional<ReshuffleRekeyVerifiers> TranscryptorStorage::getUserVerifiers(con
 
 void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& userCertificate, const ReshuffleRekeyVerifiers& verifiers) {
   auto domain = userCertificate.getOrganizationalUnit().value();
-  if (auto domainVerifiers = mStorage->raw.get_optional<PseudonymizationDomainVerifiersRecord>(domain)) {
-    LOG(LOG_TAG, debug) << "Found existing domain verifiers for " << Logging::Escape(domain);
-    if (domainVerifiers->getReshuffleCommitment() != verifiers.mReshuffleCommitment) {
+  if (auto domainVerifiers = storage_->raw.get_optional<PseudonymizationDomainVerifiersRecord>(domain)) {
+    PEP_LOG(LogTag, Severity::Debug) << "Found existing domain verifiers for " << Logging::Escape(domain);
+    if (domainVerifiers->getReshuffleCommitment() != verifiers.reshuffleCommitment) {
       throw std::runtime_error("Inconsistent reshuffle verifier for pseudonymization domain " + Logging::Escape(domain));
     }
   } else {
-    LOG(LOG_TAG, debug) << "Storing domain verifiers for " << Logging::Escape(domain);
-    mStorage->raw.replace(PseudonymizationDomainVerifiersRecord(domain, verifiers.mReshuffleCommitment));
+    PEP_LOG(LogTag, Severity::Debug) << "Storing domain verifiers for " << Logging::Escape(domain);
+    storage_->raw.replace(PseudonymizationDomainVerifiersRecord(domain, verifiers.reshuffleCommitment));
   }
 
   auto hash = RangeToVector(CertificateHash(userCertificate));
-  if (auto sessionVerifiers = mStorage->raw.get_optional<SessionVerifiersRecord>(hash)) {
-    LOG(LOG_TAG, debug) << "Found existing session verifiers for "
+  if (auto sessionVerifiers = storage_->raw.get_optional<SessionVerifiersRecord>(hash)) {
+    PEP_LOG(LogTag, Severity::Debug) << "Found existing session verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
-    if (sessionVerifiers->getRekeyCommitment() != verifiers.mRekeyCommitment
-      || sessionVerifiers->getReshuffleOverRekeyCommitment() != verifiers.mReshuffleOverRekeyCommitment
-      || sessionVerifiers->getRekeyedPublicKey() != verifiers.mRekeyedPublicKey) {
+    if (sessionVerifiers->getRekeyCommitment() != verifiers.rekeyCommitment
+      || sessionVerifiers->getReshuffleOverRekeyCommitment() != verifiers.reshuffleOverRekeyCommitment
+      || sessionVerifiers->getRekeyedPublicKey() != verifiers.rekeyedPublicKey) {
       throw std::runtime_error("Inconsistent verifiers for session for " + userCertificate.getCommonName().value());
     }
   } else {
-    LOG(LOG_TAG, debug) << "Storing session verifiers for "
+    PEP_LOG(LogTag, Severity::Debug) << "Storing session verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
-    mStorage->raw.replace(SessionVerifiersRecord(
+    storage_->raw.replace(SessionVerifiersRecord(
       std::move(hash),
       userCertificate.getNotAfter(),
       domain,
-      verifiers.mRekeyCommitment,
-      verifiers.mReshuffleOverRekeyCommitment,
-      verifiers.mRekeyedPublicKey));
+      verifiers.rekeyCommitment,
+      verifiers.reshuffleOverRekeyCommitment,
+      verifiers.rekeyedPublicKey));
   }
 }
 
@@ -1080,7 +1080,7 @@ std::string TranscryptorStorage::logTicketRequest(
     chainId
   );
   auto id = record.id;
-  mStorage->raw.insert(record);
+  storage_->raw.insert(record);
   return id;
 }
 
@@ -1092,7 +1092,7 @@ void TranscryptorStorage::logIssuedTicket(
     const std::string& accessGroup,
     Timestamp timestamp) {
   auto reqRecord = RangeToOptional(
-    mStorage->raw.iterate<TicketRequestRecord>(
+    storage_->raw.iterate<TicketRequestRecord>(
       where(c(&TicketRequestRecord::id) == id)));
   if (!reqRecord)
     throw Error("No TicketRequest logged with that id");
@@ -1120,7 +1120,7 @@ void TranscryptorStorage::logIssuedTicket(
     getOrCreateColumnSet(std::move(columns)),
     timestamp
   );
-  mStorage->raw.insert(record);
+  storage_->raw.insert(record);
 }
 
 }

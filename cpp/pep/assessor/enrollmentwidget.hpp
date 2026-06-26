@@ -29,7 +29,7 @@ class EnrollmentWidget : public QStackedWidget {
   void cancelled();
   void enrollConfirmed(std::string pepID);
   void enrollComplete(std::string pepID);
-  void enrollFailed(QString enrollmentError, pep::severity_level);
+  void enrollFailed(QString enrollmentError, pep::Severity);
   void participantRegistered(std::shared_ptr<pep::ParticipantPersonalia> personalia);
   void registrationProceeding();
 
@@ -39,13 +39,13 @@ class EnrollmentWidget : public QStackedWidget {
   void onRegistrationProceeding();
 
  private:
-  Ui::EnrollmentWidget* ui;
-  MainWindow* mainWindow;
-  std::shared_ptr<pep::Client> pepClient;
-  pep::StudyContext mStudyContext;
-  QString participantSID;
-  rxcpp::composite_subscription registerParticipantSubscription;
-  rxcpp::composite_subscription completeParticipantRegistrationSubscription;
-  bool doneCompletingRegistration;
-  bool continueButtonPressed;
+  Ui::EnrollmentWidget* ui_;
+  MainWindow* mainWindow_;
+  std::shared_ptr<pep::Client> pepClient_;
+  pep::StudyContext studyContext_;
+  QString participantSID_;
+  rxcpp::composite_subscription registerParticipantSubscription_;
+  rxcpp::composite_subscription completeParticipantRegistrationSubscription_;
+  bool doneCompletingRegistration_;
+  bool continueButtonPressed_;
 };

@@ -8,7 +8,7 @@ namespace castor {
 
 class SurveyDataPoint : public DataPoint<SurveyDataPoint, SurveyPackageInstance>, public SharedConstructor<SurveyDataPoint> {
  private:
-  std::string mSurveyInstanceId;
+  std::string surveyInstanceId_;
 
   /* !
    * \brief Implementor for the two public "BulkRetrieve" methods.
@@ -21,14 +21,14 @@ class SurveyDataPoint : public DataPoint<SurveyDataPoint, SurveyPackageInstance>
   static rxcpp::observable<std::shared_ptr<SurveyDataPoint>> BulkRetrieveFor(std::shared_ptr<CastorObject> object, rxcpp::observable<std::shared_ptr<SurveyPackageInstance>> spis);
 
  public:
-  static const std::string RELATIVE_API_ENDPOINT;
+  static const std::string RelativeApiEndpoint;
 
   std::string makeUrl() const override;
 
   std::shared_ptr<Participant> getParticipant() const override;
   std::shared_ptr<SurveyPackageInstance> getSurveyPackageInstance() const { return this->getParent(); }
 
-  DataPointType getType() const override { return SURVEY; }
+  DataPointType getType() const override { return DataPointType::Survey; }
 
   static rxcpp::observable<std::shared_ptr<SurveyDataPoint>> BulkRetrieve(std::shared_ptr<Study> study, rxcpp::observable<std::shared_ptr<SurveyPackageInstance>> spis);
   static rxcpp::observable<std::shared_ptr<SurveyDataPoint>> BulkRetrieve(std::shared_ptr<Participant> participant, rxcpp::observable<std::shared_ptr<SurveyPackageInstance>> spis);

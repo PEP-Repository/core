@@ -14,14 +14,14 @@ Signature Serializer<Signature>::fromProtocolBuffer(proto::Signature&& source) c
 }
 
 void Serializer<Signature>::moveIntoProtocolBuffer(proto::Signature& dest, Signature value) const {
-  *dest.mutable_signature() = std::move(value.mSignature);
+  *dest.mutable_signature() = std::move(value.signature_);
   Serialization::MoveIntoProtocolBuffer(
     *dest.mutable_certificate_chain(),
-    value.mCertificateChain
+    value.certificateChain_
   );
-  dest.set_scheme(Serialization::ToProtocolBuffer(value.mScheme));
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.mTimestamp);
-  dest.set_is_log_copy(value.mIsLogCopy);
+  dest.set_scheme(Serialization::ToProtocolBuffer(value.scheme_));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.timestamp_);
+  dest.set_is_log_copy(value.isLogCopy_);
 }
 
 }

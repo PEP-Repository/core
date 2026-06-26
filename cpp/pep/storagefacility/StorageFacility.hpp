@@ -18,13 +18,13 @@ private:
   class Metrics : public RegisteredMetrics {
   public:
     Metrics(std::shared_ptr<prometheus::Registry> registry);
-    prometheus::Counter& data_stored_bytes;
-    prometheus::Counter& data_retrieved_bytes;
+    prometheus::Counter& dataStoredBytes;
+    prometheus::Counter& dataRetrievedBytes;
 
-    prometheus::Summary& dataRead_request_duration;
-    prometheus::Summary& dataStore_request_duration;
-    prometheus::Summary& dataEnumeration_request_duration;
-    prometheus::Summary& dataHistory_request_duration;
+    prometheus::Summary& dataReadRequestDuration;
+    prometheus::Summary& dataStoreRequestDuration;
+    prometheus::Summary& dataEnumerationRequestDuration;
+    prometheus::Summary& dataHistoryRequestDuration;
 
     prometheus::Gauge& entriesIncludingHistory;
     prometheus::Gauge& entriesInMetaDir;
@@ -59,29 +59,29 @@ public:
     void setEncIdKey(const std::string& key);
 
     uint8_t getParallelisationWidth() const {
-      return this->parallelisation_width;
+      return parallelisationWidth_;
     }
     std::filesystem::path getStoragePath() const {
-      return this->storagePath;
+      return storagePath_;
     }
     std::shared_ptr<Configuration> getPageStoreConfig() const {
-      return this->pageStoreConfig;
+      return pageStoreConfig_;
     }
 
-    uint64_t getDataSizeResolution() const { return dataSizeResolution; }
+    uint64_t getDataSizeResolution() const { return dataSizeResolution_; }
 
   protected:
     void check() const override;
 
   private:
-    std::optional<ElgamalPrivateKey> pseudonymKey;
-    std::optional<std::string> encIdKey;
-    uint8_t parallelisation_width = 10; // passed to RxParalellConcat
-    uint64_t dataSizeResolution = 1024U * 1024U;
+    std::optional<ElgamalPrivateKey> pseudonymKey_;
+    std::optional<std::string> encIdKey_;
+    uint8_t parallelisationWidth_ = 10; // passed to RxParalellConcat
+    uint64_t dataSizeResolution_ = 1024U * 1024U;
 
     // passed to FileStore::Create
-    std::filesystem::path storagePath;
-    std::shared_ptr<Configuration> pageStoreConfig;
+    std::filesystem::path storagePath_;
+    std::shared_ptr<Configuration> pageStoreConfig_;
   };
 
 public:
@@ -125,14 +125,14 @@ private:
     const GetDataAlterationResponse& getResponse);
 
 private:
-  ElgamalPrivateKey mPseudonymKey;
-  std::string mEncIdKey;
-  std::shared_ptr<WorkerPool> mWorkerPool;
-  std::shared_ptr<FileStore> mFileStore;
-  std::shared_ptr<Metrics> mMetrics;
-  boost::asio::steady_timer mTimer;
-  const uint8_t mParallelisationWidth = 0; // passed to RxParallelConcat
-  const uint64_t mDataSizeResolution;
+  ElgamalPrivateKey pseudonymKey_;
+  std::string encIdKey_;
+  std::shared_ptr<WorkerPool> workerPool_;
+  std::shared_ptr<FileStore> fileStore_;
+  std::shared_ptr<Metrics> metrics_;
+  boost::asio::steady_timer timer_;
+  const uint8_t parallelisationWidth_ = 0; // passed to RxParallelConcat
+  const uint64_t dataSizeResolution_;
 };
 
 }

@@ -13,11 +13,11 @@ namespace pep {
 /// \code
 ///   myObs.op(RxRequireCount(2U, 46U))
 /// \endcode
-struct RxRequireCount {
+class RxRequireCount {
 private:
-  size_t mMin;
-  size_t mMax;
-  std::optional<std::string> mErrorText;
+  size_t min_;
+  size_t max_;
+  std::optional<std::string> errorText_;
 
   static void ValidateMax(size_t count, size_t max, const std::string& errorText);
   static rxcpp::observable<FakeVoid> ValidateMin(std::shared_ptr<size_t> count, size_t min, const std::string& errorText);
@@ -32,14 +32,14 @@ public:
   /// \tparam SourceOperator The source operator type included in the observable type.
   template <typename TItem, typename SourceOperator>
   rxcpp::observable<TItem> operator()(rxcpp::observable<TItem, SourceOperator> items) const {
-    auto errorText = mErrorText.value_or(GetPlainTypeName<TItem>());
+    auto errorText = errorText_.value_or(GetPlainTypeName<TItem>());
     auto count = std::make_shared<size_t>(0U);
     return items
       .tap(
-        [count, max = mMax, errorText](const TItem&) { ValidateMax(++*count, max, errorText); } // We can just throw an exception from on_next...
+        [count, max = max_, errorText](const TItem&) { ValidateMax(++*count, max, errorText); } // We can just throw an exception from on_next...
         // ... but throwing from on_complete produces weird behavior, so we...
       )
-      .concat(ValidateMin(count, mMin, errorText) // ... append an empty observable<FakeVoid> that performs the validation instead...
+      .concat(ValidateMin(count, min_, errorText) // ... append an empty observable<FakeVoid> that performs the validation instead...
         .op(RxToEmpty<TItem>())); // ... and convert that observable<FakeVoid> to an observable<TItem> that we can append
   }
 };
@@ -48,12 +48,14 @@ public:
 /// \code
 ///   myObs.op(RxRequireNonEmpty())
 /// \endcode
-struct RxRequireNonEmpty : public RxRequireCount {
+class RxRequireNonEmpty : public RxRequireCount {
+public:
   RxRequireNonEmpty() noexcept : RxRequireCount(1U, std::numeric_limits<size_t>::max()) {}
 };
 
 /// Makes sure you get one and only one item back from an RX call.
-struct RxGetOne : public RxRequireCount {
+class RxGetOne : public RxRequireCount {
+public:
   /// \param errorText Custom text to be displayed in the errors when no of multiple items are found.
   RxGetOne(std::optional<std::string> errorText = std::nullopt) noexcept : RxRequireCount(1U, 1U, std::move(errorText)) {}
 };

@@ -46,7 +46,7 @@ func (p *CertifiedSigningPrivateKey) SignMessage(
 // Returns a MessageSigningFunc that can be used to create signatures.
 func (p *CertifiedSigningPrivateKey) MessageSigner(isLogCopy bool) pep_protocol.MessageSigningFunc {
 	return func(data []byte) (*pep_proto.Signature, error) {
-		scheme := pep_proto.SignatureScheme_SIGNATURE_SCHEME_V4
+		scheme := pep_proto.SignatureScheme_SignatureV4
 		h := sha512.New()
 		ts := time.Now().UnixNano() / 1000000
 		packedScheme := make([]byte, 4)

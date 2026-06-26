@@ -17,26 +17,26 @@ public:
     Parameters(boost::asio::io_context& ioContext, boost::urls::url absoluteBase, std::optional<std::string> expectedCommonName = std::nullopt);
     Parameters(boost::asio::io_context& ioContext, bool tls, const EndPoint& endPoint, const std::optional<std::string>& relativeBase = std::nullopt);
 
-    boost::asio::io_context& ioContext() const noexcept { return mIoContext; }
-    const boost::urls::url& baseUri() const noexcept { return mBaseUri; }
+    boost::asio::io_context& ioContext() const noexcept { return ioContext_; }
+    const boost::urls::url& baseUri() const noexcept { return baseUri_; }
 
-    const std::optional<std::filesystem::path>& caCertFilepath() const noexcept { return mCaCertFilePath; }
-    const std::optional<std::filesystem::path>& caCertFilepath(std::optional<std::filesystem::path> assign) { return mCaCertFilePath = std::move(assign); }
+    const std::optional<std::filesystem::path>& caCertFilepath() const noexcept { return caCertFilePath_; }
+    const std::optional<std::filesystem::path>& caCertFilepath(std::optional<std::filesystem::path> assign) { return caCertFilePath_ = std::move(assign); }
 
-    const ExponentialBackoff::Parameters& reconnectParameters() const noexcept { return mReconnectParameters; }
-    const ExponentialBackoff::Parameters& reconnectParameters(ExponentialBackoff::Parameters& assign) noexcept { return mReconnectParameters = assign; }
+    const ExponentialBackoff::Parameters& reconnectParameters() const noexcept { return reconnectParameters_; }
+    const ExponentialBackoff::Parameters& reconnectParameters(ExponentialBackoff::Parameters& assign) noexcept { return reconnectParameters_ = assign; }
 
     std::shared_ptr<Client> createBinaryClient() const;
 
   private:
     void validateBaseUri() const;
 
-    boost::asio::io_context& mIoContext;
-    bool mTls;
-    boost::urls::url mBaseUri;
-    EndPoint mEndPoint;
-    std::optional<std::filesystem::path> mCaCertFilePath;
-    ExponentialBackoff::Parameters mReconnectParameters;
+    boost::asio::io_context& ioContext_;
+    bool tls_;
+    boost::urls::url baseUri_;
+    EndPoint endPoint_;
+    std::optional<std::filesystem::path> caCertFilePath_;
+    ExponentialBackoff::Parameters reconnectParameters_;
   };
 
 private:
@@ -87,7 +87,7 @@ public:
    * @param path The path (relative to the client's base URI) that the request will access. Specify std::nullopt to access the HttpClient's base URI.
    * @return The HTTP request.
    */
-  HTTPRequest makeRequest(HttpMethod method = HttpMethod::GET, const std::optional<std::string>& path = std::nullopt) const;
+  HTTPRequest makeRequest(HttpMethod method = HttpMethod::Get, const std::optional<std::string>& path = std::nullopt) const;
 
   /*!
    * \brief Converts a full URL to a path relative to the HttpClient's base URL
@@ -111,20 +111,20 @@ public:
   const Event<HttpClient, std::shared_ptr<const HTTPRequest>> onRequest;
 
 private:
-  Parameters mParameters;
-  std::shared_ptr<Client> mBinaryClient;
-  EventSubscription mBinaryClientConnectionAttempt;
-  std::shared_ptr<Connection> mConnection;
+  Parameters parameters_;
+  std::shared_ptr<Client> binaryClient_;
+  EventSubscription binaryClientConnectionAttempt_;
+  std::shared_ptr<Connection> connection_;
 
   struct PendingRequest {
     std::shared_ptr<HTTPRequest> request;
     rxcpp::subscriber<HTTPResponse> subscriber;
   };
 
-  std::queue<std::shared_ptr<PendingRequest>> mPendingRequests;
-  std::shared_ptr<PendingRequest> mSending;
-  HTTPResponse mResponse;
-  std::string mContentBuffer;
+  std::queue<std::shared_ptr<PendingRequest>> pendingRequests_;
+  std::shared_ptr<PendingRequest> sending_;
+  HTTPResponse response_;
+  std::string contentBuffer_;
 };
 
 }

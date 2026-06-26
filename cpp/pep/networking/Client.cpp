@@ -10,9 +10,9 @@ class Client::Connection : public networking::Connection, public std::enable_sha
   friend class Client;
 
 private:
-  std::weak_ptr<Client> mClient;
-  std::optional<ExponentialBackoff> mBackoff;
-  bool mReconnect = false;
+  std::weak_ptr<Client> client_;
+  std::optional<ExponentialBackoff> backoff_;
+  bool reconnect_ = false;
 
   const Event<Connection, const Attempt::Result&> onConnectionAttempt; // TODO: consolidate with onConnectivityChange
 
@@ -29,36 +29,36 @@ public:
 
 
 Client::Client(const Protocol::ClientParameters& parameters, std::optional<ReconnectParameters> reconnectParameters)
-  : Node(parameters.createComponent()), mIoContext(parameters.ioContext()), mReconnectParameters(reconnectParameters) {
+  : Node(parameters.createComponent()), ioContext_(parameters.ioContext()), reconnectParameters_(reconnectParameters) {
 }
 
 void Client::establishConnection() {
-  assert(mConnection == nullptr);
+  assert(connection_ == nullptr);
 
   auto weak = WeakFrom(*this);
-  mConnection = std::make_shared<Connection>(weak, mIoContext, mReconnectParameters);
-  mInitialConnectivity = mConnection->onConnectionAttempt.subscribe([weak = std::weak_ptr<Client>(weak)](const Connection::Attempt::Result& result) {
+  connection_ = std::make_shared<Connection>(weak, ioContext_, reconnectParameters_);
+  initialConnectivity_ = connection_->onConnectionAttempt.subscribe([weak = std::weak_ptr<Client>(weak)](const Connection::Attempt::Result& result) {
     auto self = weak.lock();
     if (self != nullptr) {
       if (result) {
-        self->mInitialConnectivity.cancel();
+        self->initialConnectivity_.cancel();
       }
       self->handleConnectionAttempt(result);
     }
     });
 
-  mConnection->establish();
+  connection_->establish();
 }
 
 void Client::Connection::establish() {
-  mReconnect = true;
+  reconnect_ = true;
   this->setConnectivityStatus(ConnectivityStatus::Connecting);
 
-  auto client = mClient.lock();
+  auto client = client_.lock();
   if (client == nullptr || !client->isRunning()) {
     return this->close();
   }
-  assert(client->mConnection.get() == this);
+  assert(client->connection_.get() == this);
 
   client->openSocket([weak = WeakFrom(*this)](const SocketConnectionAttempt::Result& socketResult) {
     auto self = weak.lock();
@@ -69,7 +69,7 @@ void Client::Connection::establish() {
       return;
     }
 
-    auto client = self->mClient.lock();
+    auto client = self->client_.lock();
     if (client == nullptr || !client->isRunning()) {
       self->onConnectionAttempt.notify(Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Client was shut down"))));
       self->close();
@@ -87,14 +87,14 @@ void Client::Connection::establish() {
         message << " Retrying in " << duration_cast<std::chrono::milliseconds>(*latency);
       }
 
-      LOG("Networking client", warning) << message.str();
+      PEP_LOG("Networking client", Severity::Warning) << message.str();
       self->onConnectionAttempt.notify(Attempt::Result::Failure(socketResult.exception()));
       return;
     }
 
     // Update own state
-    if (self->mBackoff.has_value()) {
-      self->mBackoff->success();
+    if (self->backoff_.has_value()) {
+      self->backoff_->success();
     }
     self->setSocket(*socketResult, [weak](const ConnectivityChange& socketConnectivityChange) {
       auto self = weak.lock();
@@ -110,9 +110,9 @@ void Client::Connection::establish() {
 }
 
 bool Client::Connection::shouldReconnect() const noexcept {
-  auto client = mClient.lock();
+  auto client = client_.lock();
   return client != nullptr && client->isRunning() // Don't reconnect if the client has been shut down...
-    && mReconnect && mBackoff.has_value(); // ... or if we've been instructed not to
+    && reconnect_ && backoff_.has_value(); // ... or if we've been instructed not to
 }
 
 std::optional<ExponentialBackoff::Timeout> Client::Connection::reconnect() {
@@ -129,7 +129,7 @@ std::optional<ExponentialBackoff::Timeout> Client::Connection::reconnect() {
     return std::nullopt;
   }
 
-  return mBackoff->retry([weak = WeakFrom(*this)](const boost::system::error_code& error) {
+  return backoff_->retry([weak = WeakFrom(*this)](const boost::system::error_code& error) {
     if (error != boost::asio::error::operation_aborted) {
       auto self = weak.lock();
       if (self != nullptr && self->shouldReconnect()) {
@@ -143,32 +143,32 @@ void Client::shutdown() {
   if (this->status() != Status::Uninitialized && this->status() < Status::Finalizing) {
     this->setStatus(Status::Finalizing);
   }
-  if (mConnection != nullptr) {
-    mConnection->mReconnect = false;
-    mConnection->close();
+  if (connection_ != nullptr) {
+    connection_->reconnect_ = false;
+    connection_->close();
   }
   Node::shutdown();
 }
 
 Client::Connection::Connection(std::weak_ptr<Client> client, boost::asio::io_context& ioContext, const std::optional<ReconnectParameters>& reconnectParameters)
-  : mClient(client) {
+  : client_(client) {
   if (reconnectParameters.has_value()) {
-    mBackoff = ExponentialBackoff(ioContext, *reconnectParameters);
+    backoff_ = ExponentialBackoff(ioContext, *reconnectParameters);
   }
 }
 
 Client::Connection::~Connection() noexcept {
-  mReconnect = false;
+  reconnect_ = false;
   Connection::close(); // Explicitly scoped to avoid dynamic dispatch
 }
 
 void Client::Connection::close() {
-  if (mReconnect) {
+  if (reconnect_) {
     this->reconnect();
   }
   else {
-    if (mBackoff.has_value()) {
-      mBackoff->stop();
+    if (backoff_.has_value()) {
+      backoff_->stop();
     }
     networking::Connection::close();
   }

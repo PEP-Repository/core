@@ -1,0 +1,80 @@
+#pragma once
+
+#include <pep/core-client/CoreClient_fwd.hpp>
+#include <pep/ticketing/TicketingMessages.hpp>
+#include <pep/weblib/Emscripten_fwd.hpp>
+#include <pep/weblib/EmscriptenValPtr.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <compare>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+// Structures used in weblib API
+
+namespace pep::weblib {
+
+struct ListQuery {
+  std::optional<std::vector<std::string>> subjectGroups;
+  std::optional<std::vector<std::string>> subjects;
+  std::optional<std::vector<std::string>> columnGroups;
+  std::optional<std::vector<std::string>> columns;
+
+  [[nodiscard]] auto operator<=>(const ListQuery&) const = default;
+};
+
+struct ColumnGroup {
+  std::string name;
+  std::vector<std::string> columns;
+
+  [[nodiscard]] auto operator<=>(const ColumnGroup&) const = default;
+};
+
+struct EnrolledUser {
+  std::string userGroup;
+  std::string user;
+
+  [[nodiscard]] auto operator<=>(const EnrolledUser&) const = default;
+};
+
+struct SubjectGroup {
+  std::string name;
+
+  [[nodiscard]] auto operator<=>(const SubjectGroup&) const = default;
+};
+
+struct CellEntry {
+  std::shared_ptr<EnumerateResult> inner;
+  std::shared_ptr<SignedTicket2> ticket;
+
+  [[nodiscard]] std::string id() const;
+  [[nodiscard]] std::string subjectLocalPseudonym() const;
+  [[nodiscard]] std::string subjectEncryptedOriginId() const;
+  [[nodiscard]] const std::string& column() const;
+  // double to prevent it being mapped to bigint, which is harder to work with
+  [[nodiscard]] double fileSize() const;
+  [[nodiscard]] std::unordered_map<std::string, std::optional<emscripten::val>> partialMetadataView() const;
+};
+
+struct CellData {
+  const CellEntry* entry;
+  EmscriptenValPtr contentReadableStream;
+
+  CellData(const CellEntry* entry, emscripten::val contentReadableStream);
+
+  [[nodiscard]] emscripten::val content() const;
+};
+
+struct ParticipantPersonalia {
+  std::string firstName;
+  std::string middleName;
+  std::string lastName;
+  std::string dateOfBirth;
+
+  [[nodiscard]] auto operator<=>(const ParticipantPersonalia&) const = default;
+};
+
+}

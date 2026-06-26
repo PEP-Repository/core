@@ -5,14 +5,14 @@
 #include <cassert>
 
 ExportableShortPseudonymItem::ExportableShortPseudonymItem(const pep::ShortPseudonymDefinition& definition)
-  : mColumnName(definition.getColumn().getFullName()), mDescription(definition.getDescription()), mVisitNumber(definition.getColumn().getVisitNumber()) {
+  : columnName_(definition.getColumn().getFullName()), description_(definition.getDescription()), visitNumber_(definition.getColumn().getVisitNumber()) {
 }
 
 ExportableDeviceHistoryItem::ExportableDeviceHistoryItem(const std::string& columnName, const std::optional<std::string>& description)
-  : mColumnName(columnName), mDescription(description) {
+  : columnName_(columnName), description_(description) {
 }
 ExportableVisitAssessorItem::ExportableVisitAssessorItem(const std::string& columnName, const unsigned int visitNumber) :
-  mColumnName(columnName), mVisitNumber(visitNumber) {
+  columnName_(columnName), visitNumber_(visitNumber) {
 }
 
 std::optional<std::function<void(ExportDataTable&, const std::optional<std::string>& value)>> ExportableDeviceHistoryItem::getDetailExpander() const {

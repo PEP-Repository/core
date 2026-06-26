@@ -20,12 +20,6 @@ struct ParticipantDeviceRecord {
   bool isSet() const { return time != Timestamp{/*zero*/}; }
   inline bool isActive() const { return type == "start"; }
 
-  ParticipantDeviceRecord(std::string type, std::string serial, std::string note, Timestamp time) :
-    type(std::move(type)),
-    serial(std::move(serial)),
-    note(std::move(note)),
-    time(time) {}
-
   inline bool operator<(const ParticipantDeviceRecord& rhs) const { return std::tie(time, type) < std::tie(rhs.time, rhs.type); }
 
   void serialize(boost::property_tree::ptree& destination) const;
@@ -42,8 +36,8 @@ public:
   using const_iterator = Records::const_iterator;
 
 private:
-  Records mRecords;
-  std::optional<std::string> mInvalidReason;
+  Records records_;
+  std::optional<std::string> invalidReason_;
 
 private:
   void onInvalid(const std::string& reason, bool throwException);
@@ -58,9 +52,9 @@ public:
 
   bool isValid(std::string* invalidReason) const;
 
-  inline size_t size() const { return mRecords.size(); }
-  inline const_iterator begin() const { return mRecords.cbegin(); }
-  inline const_iterator end() const { return mRecords.cend(); }
+  inline size_t size() const { return records_.size(); }
+  inline const_iterator begin() const { return records_.cbegin(); }
+  inline const_iterator end() const { return records_.cend(); }
 
   std::string toJson() const;
   static ParticipantDeviceHistory Parse(const std::string& json, bool throwIfInvalid = true);

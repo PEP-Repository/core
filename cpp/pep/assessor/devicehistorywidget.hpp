@@ -15,8 +15,8 @@ class DeviceHistoryWidget : public QWidget
   Q_OBJECT
 
 private:
-  Ui::DeviceHistoryWidget *ui;
-  pep::DeviceRegistrationDefinition mDefinition;
+  Ui::DeviceHistoryWidget *ui_;
+  pep::DeviceRegistrationDefinition definition_;
 
 public:
   explicit DeviceHistoryWidget(const pep::DeviceRegistrationDefinition& definition, QWidget *parent = nullptr);

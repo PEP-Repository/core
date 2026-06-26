@@ -9,14 +9,14 @@
 /// @remark Header-only so that the class can be used from all (unit test executable) binaries without additional link requirements.
 class TemporaryX509IdentityFiles : public pep::X509IdentityFiles {
 private:
-  pep::filesystem::Temporary mPrivateKeyFile;
-  pep::filesystem::Temporary mCertificateChainFile;
-  pep::filesystem::Temporary mRootCaFile;
+  pep::filesystem::Temporary privateKeyFile_;
+  pep::filesystem::Temporary certificateChainFile_;
+  pep::filesystem::Temporary rootCaFile_;
 
 private:
   TemporaryX509IdentityFiles(pep::filesystem::Temporary privateKeyFile, pep::filesystem::Temporary certificateChainFile, pep::filesystem::Temporary rootCaFile)
     : X509IdentityFiles(privateKeyFile.path(), certificateChainFile.path(), pep::X509RootCertificates::FromFile(rootCaFile.path()))
-    , mPrivateKeyFile(std::move(privateKeyFile)), mCertificateChainFile(std::move(certificateChainFile)), mRootCaFile(std::move(rootCaFile)) {
+    , privateKeyFile_(std::move(privateKeyFile)), certificateChainFile_(std::move(certificateChainFile)), rootCaFile_(std::move(rootCaFile)) {
   }
 
 public:

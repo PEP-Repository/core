@@ -26,46 +26,46 @@ class ParticipantWidget;
 class ParticipantWidget : public QWidget {
   Q_OBJECT
  private:
-  static const QString NO_PARTICIPANT_SID;
+  static const QString NoParticipantSid;
 
-  std::shared_ptr<pep::Client> pepClient;
-  Ui::ParticipantWidget* ui;
-  MainWindow* mainWindow;
+  std::shared_ptr<pep::Client> pepClient_;
+  Ui::ParticipantWidget* ui_;
+  MainWindow* mainWindow_;
 
-  ButtonBar* castor_buttons;
+  ButtonBar* castorButtons_;
 
-  ButtonBar* participant_buttons;
-  QPushButton* edit_participant_button;
-  QPushButton* release_participant_button;
+  ButtonBar* participantButtons_;
+  QPushButton* editParticipantButton_;
+  QPushButton* releaseParticipantButton_;
 
-  ButtonBar* print_buttons;
-  QPushButton* print_stickers_button;
-  QPushButton* print_oneSticker_button;
+  ButtonBar* printButtons_;
+  QPushButton* printStickersButton_;
+  QPushButton* printOneStickerButton_;
 
-  pep::GlobalConfiguration globalConfig;
-  pep::StudyContexts mAllContexts;
-  pep::StudyContext mStudyContext;
+  pep::GlobalConfiguration globalConfig_;
+  pep::StudyContexts allContexts_;
+  pep::StudyContext studyContext_;
 
-  pep::PolymorphicPseudonym currentUserPP;
-  ParticipantData participantData;
-  pep::StudyContexts participantStudyContexts;
+  pep::PolymorphicPseudonym currentUserPp_;
+  ParticipantData participantData_;
+  pep::StudyContexts participantStudyContexts_;
 
-  int currentVisitNumber = 1;
-  pep::UserRole currentPEPRole;
+  int currentVisitNumber_ = 1;
+  pep::UserRole currentPepRole_;
 
-  bool readOnly = false;
-  QString participantSID = NO_PARTICIPANT_SID;
-  QString baseUrl;
-  std::optional<std::filesystem::path> bartenderPath;
-  std::filesystem::path stickerFilePath;
-  std::vector<DeviceWidget *> mDeviceWidgets;
-  std::vector<DeviceHistoryWidget *> mDeviceHistoryWidgets;
-  std::vector<VisitWidget *> mVisitWidgets;
-  QString summaryPrintStyle = "body {margin:10; width:90%;} \\"
+  bool readOnly_ = false;
+  QString participantSID_ = NoParticipantSid;
+  QString baseUrl_;
+  std::optional<std::filesystem::path> bartenderPath_;
+  std::filesystem::path stickerFilePath_;
+  std::vector<DeviceWidget *> deviceWidgets_;
+  std::vector<DeviceHistoryWidget *> deviceHistoryWidgets_;
+  std::vector<VisitWidget *> visitWidgets_;
+  QString summaryPrintStyle_ = "body {margin:10; width:90%;} \\"
                               " h1 {font-size:xx-large; text-align:center;} \\"
                               " h3 {border: 2px solid #a1a1a1; border-radius: 25px; background: #8db6d3;} \\"
                               " div{font-weight:normal; font-size:medium; text-align:left;}";
-  QString infoEditStyle = "QWidget {\n"
+  QString infoEditStyle_ = "QWidget {\n"
                           " border: 0.05em solid #CA0B5E;\n"
                           " border-radius: 0.25em;\n"
                           " color: #CA0B5E;\n"
@@ -88,9 +88,9 @@ class ParticipantWidget : public QWidget {
                           "color: grey;\n"
                           " border-color: grey;\n"
                           "}\n";
-  QString mProjectName;
-  unsigned mSpareStickerCount;
-  const VisitCaptions* mVisitCaptions;
+  QString projectName_;
+  unsigned spareStickerCount_;
+  const VisitCaptions* visitCaptions_;
 
  public:
   explicit ParticipantWidget(MainWindow* parent,
@@ -113,9 +113,9 @@ class ParticipantWidget : public QWidget {
 
   void participantDataReceived(ParticipantData data, std::string studyContexts);
 
-  void statusMessage(QString, pep::severity_level);
+  void statusMessage(QString, pep::Severity);
 
-  void participantLookupError(QString, pep::severity_level);
+  void participantLookupError(QString, pep::Severity);
 
   void queryComplete();
 

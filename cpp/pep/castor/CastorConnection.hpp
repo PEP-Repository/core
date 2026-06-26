@@ -28,7 +28,7 @@ using JsonPtr = std::shared_ptr<const boost::property_tree::ptree>;
 class Study;
 
 //! The state the authentication is in
-enum AuthenticationState { UNAUTHENTICATED, AUTHENTICATION_ERROR, AUTHENTICATING, AUTHENTICATED };
+enum class AuthenticationState { Unauthenticated, Error, Authenticating, Authenticated };
 
 //! Describes the status of the authentication
 struct AuthenticationStatus {
@@ -37,7 +37,7 @@ struct AuthenticationStatus {
    */
   AuthenticationState state;
 
-  static const std::chrono::seconds EXPIRY_MARGIN;
+  static const std::chrono::seconds ExpiryMargin;
 
   //! The authentication token
   std::string token;
@@ -56,20 +56,20 @@ struct AuthenticationStatus {
    * \param expiresIn The number of seconds until expiration of the token
    */
   AuthenticationStatus(const std::string& token, std::chrono::seconds expiresIn)
-    : state(AUTHENTICATED), token(token), expires(TimeNow() + expiresIn) {}
+    : state(AuthenticationState::Authenticated), token(token), expires(TimeNow() + expiresIn) {}
 
   /*!
    * \brief Construct an AUTHENTICATION_ERROR AuthenticationStatus
    * \param exception_ptr The exception that occured causing the authentication error
    */
   AuthenticationStatus(const std::exception_ptr& exception_ptr)
-    : state(AUTHENTICATION_ERROR), exceptionPtr(exception_ptr) {}
+    : state(AuthenticationState::Error), exceptionPtr(exception_ptr) {}
 
   /*!
    * \brief Construct an AuthenticationStatus with the given state
    * \param state The state of the AuthenticationStatus
    */
-  AuthenticationStatus(const AuthenticationState& state = UNAUTHENTICATED) : state(state) {}
+  AuthenticationStatus(const AuthenticationState& state = AuthenticationState::Unauthenticated) : state(state) {}
 
   /*!
    * \return true if the state is AUTHENTICATED, and the token has not expired, taking EXPIRY_MARGIN_SECONDS into account. false otherwise
@@ -105,16 +105,16 @@ class CastorConnection : public std::enable_shared_from_this<CastorConnection>, 
   friend class SharedConstructor<CastorConnection>;
 private:
   struct Implementor;
-  std::unique_ptr<Implementor> mImplementor;
-  EventSubscription mOnRequestForwarding;
+  std::unique_ptr<Implementor> implementor_;
+  EventSubscription onRequestForwarding_;
 
 private:
   CastorConnection(const std::filesystem::path& apiKeyFile, std::shared_ptr<boost::asio::io_context> io_context);
   CastorConnection(const EndPoint& endPoint, const ApiKey& apiKey, std::shared_ptr<boost::asio::io_context> io_context, const std::optional<std::filesystem::path>& caCert = std::nullopt);
 
 public:
-  static const int RECORD_EXISTS = 422;
-  static const int NOT_FOUND = 404;
+  static const int RecordExists = 422;
+  static const int NotFound = 404;
 
   ~CastorConnection() noexcept;
 

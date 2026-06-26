@@ -5,7 +5,7 @@ namespace commandline {
 
 size_t NamedValues::count(const std::string& key) const noexcept {
   if (this->has(key)) {
-    return mEntries.at(key).count();
+    return entries_.at(key).count();
   }
   return 0U;
 }

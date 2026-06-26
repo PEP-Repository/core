@@ -10,9 +10,9 @@ namespace pep {
 */
 class NetworkedServer {
 private:
-  std::shared_ptr<boost::asio::io_context> mIoContext;
-  std::shared_ptr<Server> mServer;
-  std::shared_ptr<messaging::Node> mNetwork;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
+  std::shared_ptr<Server> server_;
+  std::shared_ptr<messaging::Node> network_;
 
   NetworkedServer(std::shared_ptr<boost::asio::io_context> ioContext, std::shared_ptr<Server> server, const X509RootCertificates& rootCas, const Configuration& config);
 
@@ -39,7 +39,7 @@ public:
   }
 
   /// \copydoc Server::describe
-  std::string describe() const { return mServer->describe(); }
+  std::string describe() const { return server_->describe(); }
 
   /*!
   * \brief Makes the server accept incoming network connections and handle associated requests.

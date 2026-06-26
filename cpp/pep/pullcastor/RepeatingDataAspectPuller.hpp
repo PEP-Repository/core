@@ -7,14 +7,14 @@ namespace pep {
 namespace castor {
 
 /*!
-  * \brief Pulls Castor repeating data ("REPEATING_DATA") for a single Castor study.
+  * \brief Pulls Castor repeating data ("RepeatingData") for a single Castor study.
   */
-class RepeatingDataAspectPuller : public TypedStudyAspectPuller<RepeatingDataAspectPuller, CastorStudyType::REPEATING_DATA>, private SharedConstructor<RepeatingDataAspectPuller> {
+class RepeatingDataAspectPuller : public TypedStudyAspectPuller<RepeatingDataAspectPuller, CastorStudyType::RepeatingData>, private SharedConstructor<RepeatingDataAspectPuller> {
   friend class StudyAspectPuller;
   friend class SharedConstructor<RepeatingDataAspectPuller>;
 
 private:
-  std::shared_ptr<RxCache<std::shared_ptr<std::vector<std::shared_ptr<RepeatingDataPuller>>>>> mRepeatingDataPullers;
+  std::shared_ptr<RxCache<std::shared_ptr<std::vector<std::shared_ptr<RepeatingDataPuller>>>>> repeatingDataPullers_;
 
   RepeatingDataAspectPuller(std::shared_ptr<StudyPuller> study, const StudyAspect& aspect);
 

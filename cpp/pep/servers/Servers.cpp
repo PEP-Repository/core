@@ -17,28 +17,28 @@ void Servers::runAsync(const std::filesystem::path& configPath) {
   startServer<RegistrationServer>(configPath, "registrationserver/RegistrationServer.json");
   startServer<Authserver>(configPath, "authserver/Authserver.json");
 
-  const std::lock_guard<std::mutex> lock(mIsRunningMutex);
-  mIsRunning = true;
+  const std::lock_guard<std::mutex> lock(isRunningMutex_);
+  isRunning_ = true;
 }
 
 void Servers::wait() {
-  std::unique_lock<std::mutex> lock{ mIsRunningMutex };
-  mIsRunningCv.wait(lock, [this] { return !mIsRunning; });
+  std::unique_lock<std::mutex> lock{ isRunningMutex_ };
+  isRunningCv_.wait(lock, [this] { return !isRunning_; });
 
-  for (auto& server : mInstances) {
+  for (auto& server : instances_) {
     server->stop();
   }
-  for (auto& thread : mThreads) {
+  for (auto& thread : threads_) {
     thread->join();
   }
 }
 
 void Servers::stop() {
   {
-    const std::lock_guard<std::mutex> lock(mIsRunningMutex);
-    mIsRunning = false;
+    const std::lock_guard<std::mutex> lock(isRunningMutex_);
+    isRunning_ = false;
   }
-  mIsRunningCv.notify_all();
+  isRunningCv_.notify_all();
 }
 
 }

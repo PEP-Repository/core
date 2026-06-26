@@ -16,7 +16,7 @@ MessageSequence MakeBatch(std::shared_ptr<std::istream> stream) {
   return CreateObservable<std::shared_ptr<std::string>>([stream](rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
     // Read data from stream into page
     assert(stream->good());
-    auto page = std::make_shared<std::string>(DEFAULT_PAGE_SIZE, '\0');
+    auto page = std::make_shared<std::string>(DefaultPageSize, '\0');
     stream->read(page->data(), static_cast<std::streamsize>(page->size()));
     size_t nRead = static_cast<size_t>(stream->gcount());
 
@@ -52,10 +52,12 @@ void ProvideBatch(std::shared_ptr<std::istream> stream, rxcpp::subscriber<Messag
 
 }
 
-#if BUILD_HAS_DEBUG_FLAVOR()
-extern const uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024 / 2; //To make sure it will fit within the reduced MAX_SIZE_OF_MESSAGE for debug builds
+extern const std::size_t DefaultPageSizeRelease = 1024 * 1024;
+
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
+extern const std::size_t DefaultPageSize = DefaultPageSizeRelease / 2; //To make sure it will fit within the reduced MaxSizeOfMessage for debug builds
 #else
-extern const uint64_t DEFAULT_PAGE_SIZE = 1024 * 1024;
+extern const std::size_t DefaultPageSize = DefaultPageSizeRelease;
 #endif
 
 MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream) {

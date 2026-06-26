@@ -13,19 +13,19 @@ class RxBeforeTerminationOperator {
 public:
   using Handler = std::function<void(std::optional<std::exception_ptr>)>;
 private:
-  Handler mHandle;
+  Handler handle_;
 
 public:
   explicit RxBeforeTerminationOperator(const Handler& handle)
-    : mHandle(handle) {
+    : handle_(handle) {
   }
 
   template <typename TItem, typename SourceOperator>
   rxcpp::observable<TItem> operator()(rxcpp::observable<TItem, SourceOperator> items) const {
     return items.tap(
       [](const TItem&) {/*ignore*/},
-      [handle = mHandle](std::exception_ptr ep) {handle(ep); },
-      [handle = mHandle]() {handle(std::nullopt); }
+      [handle = handle_](std::exception_ptr ep) {handle(ep); },
+      [handle = handle_]() {handle(std::nullopt); }
     );
   }
 };

@@ -14,7 +14,7 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG("Enrollment");
+const std::string LogTag("Enrollment");
 
 }
 
@@ -32,19 +32,19 @@ void ServiceEnroller::setProperties(Client::Builder& builder, const Configuratio
   AsymmetricKey privateKey(ReadFile(this->getParameterValues().get<std::filesystem::path>("private-key-file")));
   X509CertificateChain certificateChain(X509CertificatesFromPem(ReadFile(this->getParameterValues().get<std::filesystem::path>("certificate-file"))));
 
-  if (!mServer.signingIdentityMatches(certificateChain)) {
-    throw std::runtime_error("Cannot enroll " + mServer.description() + " with certificate chain for " + certificateChain.leaf().getOrganizationalUnit().value_or("unknown party"));
+  if (!server_.signingIdentityMatches(certificateChain)) {
+    throw std::runtime_error("Cannot enroll " + server_.description() + " with certificate chain for " + certificateChain.leaf().getOrganizationalUnit().value_or("unknown party"));
   }
 
   builder.setSigningIdentity(std::make_shared<X509Identity>(std::move(privateKey), std::move(certificateChain)));
 }
 
 EndPoint ServiceEnroller::getAccessManagerEndPoint(const Configuration& config) const {
-  if (mServer == ServerTraits::AccessManager()) {
+  if (server_ == ServerTraits::AccessManager()) {
     EndPoint result;
     result.hostname = "127.0.0.1";
     result.port = config.get<uint16_t>("ListenPort");
-    result.expectedCommonName = mServer.certificateSubject();
+    result.expectedCommonName = server_.certificateSubject();
     return result;
   }
 
@@ -83,7 +83,7 @@ int Enroller::execute() {
     std::shared_ptr<Client> client = builder.build();
 
     this->enroll(client).subscribe([this](EnrolledPartyKeys result) {
-      LOG(LOG_TAG, debug) << "Received EnrolledPartyKeys";
+      PEP_LOG(LogTag, Severity::Debug) << "Received EnrolledPartyKeys";
 
       // If output filename is provided, write output there, otherwise print it
       auto extendedProperties = this->producesExtendedProperties();
@@ -102,11 +102,11 @@ int Enroller::execute() {
         std::cout << std::endl;
       }
     }, [io_context](std::exception_ptr ep) {
-      LOG(LOG_TAG, error) << "Exception occurred during enrollment: " << GetExceptionMessage(ep) << std::endl;
+      PEP_LOG(LogTag, Severity::Error) << "Exception occurred during enrollment: " << GetExceptionMessage(ep) << std::endl;
       io_context->stop();
     }, [io_context, result] {
       // Registration done
-      LOG(LOG_TAG, info) << "Enrollment done" << std::endl;
+      PEP_LOG(LogTag, Severity::Info) << "Enrollment done" << std::endl;
       io_context->stop();
       *result = 0;
     });
@@ -114,7 +114,7 @@ int Enroller::execute() {
     io_context->run();
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, error) << e.what();
+    PEP_LOG(LogTag, Severity::Error) << e.what();
     std::cerr << e.what() << std::endl;
   }
 

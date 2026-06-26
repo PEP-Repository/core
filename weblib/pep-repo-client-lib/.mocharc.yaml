@@ -1,0 +1,12 @@
+# Tests configuration
+spec: ./src/**/*.spec.*
+# Increase timeout
+#XXX Disable until https://github.com/emscripten-core/emscripten/issues/26192 is fixed
+timeout: 0
+#timeout: 60000
+color: true
+node-option:
+  # Run TypeScript
+  - import=tsx
+  - trace-deprecation
+  - trace-warnings

@@ -10,16 +10,16 @@
 
 namespace pep::cli {
 
-extern const std::string LOG_TAG;
+extern const std::string LogTag;
 
 class CliApplication : public pep::commandline::Utility {
 private:
-  std::shared_ptr<pep::Client> mClient = nullptr;
-  std::unique_ptr<WorkGuard> mWorkGuard;
-  std::optional<std::string> mRequiredGroup, mRequiredSubject;
+  std::shared_ptr<pep::Client> client_ = nullptr;
+  std::unique_ptr<WorkGuard> workGuard_;
+  std::optional<std::string> requiredGroup_, requiredSubject_;
 
 protected:
-  std::optional<pep::severity_level> consoleLogMinimumSeverityLevel() const override;
+  std::optional<pep::Severity> consoleLogMinimumSeverityLevel() const override;
   std::string getDescription() const override;
   pep::commandline::Parameters getSupportedParameters() const override;
   inline std::optional<std::string> getRelativeDocumentationUrl() const override { return "using-pepcli"; }

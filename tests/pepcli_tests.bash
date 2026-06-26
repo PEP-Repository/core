@@ -4,9 +4,6 @@
 
 # This script is meant to only be run from within integration.sh.
 
-readonly DEST_DIR="$CONFIG_DIR/test_output"
-execute . mkdir -p "$DEST_DIR"
-
 readonly ACCESS_ADMINISTRATOR_TOKEN="ewogICAgInN1YiI6ICJBY2Nlc3MgQWRtaW5pc3RyYXRvciIsCiAgICAiZ3JvdXAiOiAiQWNjZXNzIEFkbWluaXN0cmF0b3IiLAogICAgImlhdCI6ICIxNTcyMzU0MjI4IiwKICAgICJleHAiOiAiMjA3MzY1NDEyMiIKfQo.DYnQyvtpvj2OozTnC6MUMJKW7G-ckzber0q0kRnjwHQ"
 
 # MacOS doesn't support the date command with nanosecond precision, so we need to use GNU coreutils gdate instead.
@@ -667,6 +664,70 @@ if should_run_test structured-output; then
   execute . rm -rf "$DEST_DIR/pulled-data"
 
   test_cleanup "$SO_CONFIG"
+fi
+
+####################
+
+if should_run_test pseudonym-conversion; then
+  PC_CONFIG='{
+    "userGroups": [{ "name": "pcUsers" }],
+    "columnGroups": [{
+      "name": "pcData",
+      "columns": [ "pcData.id" ],
+      "cgars": {
+        "pcUsers": [ "read" ],
+        "Data Administrator": [ "read", "write" ]
+      }
+    }],
+    "subjectGroups": [{
+      "name": "pcSubjects",
+      "subjects": [
+        { "pcData.id": "ID_0" },
+        { "pcData.id": "ID_1" }
+      ],
+      "pgars": { "pcUsers": [ "enumerate", "access" ] }
+    }]
+  }'
+
+  test_setup "$PC_CONFIG"
+
+  PSEUDONYM_LIST_JSON="$DATA_DIR/test_output/pc-local-pseudonyms.json"
+
+  pepcli --oauth-token-group pcUsers list\
+      -P pcSubjects -C pcData --show-dataless --local-pseudonyms\
+      > "$PSEUDONYM_LIST_JSON"
+
+  pcLookup() {
+    local -r fromId=$1
+    local -r toType=$2
+    jq -r ".[] | select(.data.\"pcData.id\"== \"$fromId\") | .$toType" "$PSEUDONYM_LIST_JSON"
+  }
+
+  assert_equivalent_pp() {
+    public_key() { echo "$1" | cut -d: -f3; }
+    stable_id() { pepcli pseudonym convert "$1" user; }
+
+    assert_equal "$(public_key "$1")" "$(public_key "$2")"
+    assert_equal "$(stable_id "$1")" "$(stable_id "$2")"
+  }
+
+  PP=$(pcLookup ID_1 pp)
+  LP=$(pcLookup ID_1 lp)
+  UP=$(pcLookup ID_1 blp)
+
+  assert_equal "$(pepcli pseudonym convert "$PP" local-pseudonym)" "$LP"
+  assert_equal "$(pepcli pseudonym convert "$LP" local-pseudonym)" "$LP"
+  assert_equal "$(pepcli pseudonym convert "$UP" local-pseudonym)" "$LP"
+
+  assert_equal "$(pepcli pseudonym convert "$PP" brief-local-pseudonym)" "$UP"
+  assert_equal "$(pepcli pseudonym convert "$LP" brief-local-pseudonym)" "$UP"
+  assert_equal "$(pepcli pseudonym convert "$UP" brief-local-pseudonym)" "$UP"
+
+  assert_equal "$(pepcli pseudonym convert "$PP" polymorphic-pseudonym)" "$PP"
+  assert_equivalent_pp "$(pepcli pseudonym convert "$LP" polymorphic-pseudonym)" "$PP"
+  assert_equivalent_pp "$(pepcli pseudonym convert "$UP" polymorphic-pseudonym)" "$PP"
+
+  test_cleanup "$PC_CONFIG"
 fi
 
 ####################

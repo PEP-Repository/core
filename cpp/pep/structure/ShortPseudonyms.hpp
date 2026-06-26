@@ -25,19 +25,19 @@ std::string GenerateShortPseudonym(std::string_view prefix, std::size_t len);
   */
 bool ShortPseudonymIsValid(const std::string& shortPseudonym);
 
-enum CastorStudyType {
-  STUDY = 0,
-  SURVEY = 1,
-  REPEATING_DATA = 2
+enum class CastorStudyType {
+  Crf = 0,
+  Survey = 1,
+  RepeatingData = 2
 };
 
 class CastorStorageDefinition {
 private:
-  CastorStudyType mStudyType;
-  std::string mDataColumn;
-  std::string mImportStudySlug;
-  bool mImmediatePartialData;
-  std::string mWeekOffsetDeviceColumn;
+  CastorStudyType studyType_;
+  std::string dataColumn_;
+  std::string importStudySlug_;
+  bool immediatePartialData_;
+  std::string weekOffsetDeviceColumn_;
 
 public:
   inline CastorStorageDefinition(
@@ -46,66 +46,66 @@ public:
     std::string importStudySlug,
     bool immediatePartialData,
     std::string weekOffsetDeviceColumn)
-    : mStudyType(studyType),
-      mDataColumn(std::move(dataColumn)),
-      mImportStudySlug(std::move(importStudySlug)),
-      mImmediatePartialData(immediatePartialData),
-      mWeekOffsetDeviceColumn(std::move(weekOffsetDeviceColumn)) { }
+    : studyType_(studyType),
+      dataColumn_(std::move(dataColumn)),
+      importStudySlug_(std::move(importStudySlug)),
+      immediatePartialData_(immediatePartialData),
+      weekOffsetDeviceColumn_(std::move(weekOffsetDeviceColumn)) { }
 
-  inline CastorStudyType getStudyType() const noexcept { return mStudyType; }
-  inline const std::string& getDataColumn() const noexcept { return mDataColumn; }
-  inline const std::string& getImportStudySlug() const noexcept { return mImportStudySlug; }
-  inline bool immediatePartialData() const noexcept { return mImmediatePartialData; }
-  inline const std::string& getWeekOffsetDeviceColumn() const noexcept { return mWeekOffsetDeviceColumn; }
+  inline CastorStudyType getStudyType() const noexcept { return studyType_; }
+  inline const std::string& getDataColumn() const noexcept { return dataColumn_; }
+  inline const std::string& getImportStudySlug() const noexcept { return importStudySlug_; }
+  inline bool immediatePartialData() const noexcept { return immediatePartialData_; }
+  inline const std::string& getWeekOffsetDeviceColumn() const noexcept { return weekOffsetDeviceColumn_; }
 };
 
 class CastorShortPseudonymDefinition {
 private:
-  std::string mStudySlug;
-  std::string mSiteAbbreviation;
-  std::vector<std::shared_ptr<CastorStorageDefinition>> mStorageDefinitions;
+  std::string studySlug_;
+  std::string siteAbbreviation_;
+  std::vector<std::shared_ptr<CastorStorageDefinition>> storageDefinitions_;
 
 public:
   inline CastorShortPseudonymDefinition(
       std::string studySlug,
       std::string siteAbbreviation,
       std::vector<std::shared_ptr<CastorStorageDefinition>> storageDefinitions)
-    : mStudySlug(std::move(studySlug)),
-      mSiteAbbreviation(std::move(siteAbbreviation)),
-      mStorageDefinitions(std::move(storageDefinitions)) { }
+    : studySlug_(std::move(studySlug)),
+      siteAbbreviation_(std::move(siteAbbreviation)),
+      storageDefinitions_(std::move(storageDefinitions)) { }
 
-  inline const std::string& getStudySlug() const { return mStudySlug; }
-  inline const std::string& getSiteAbbreviation() const { return mSiteAbbreviation; }
-  inline const std::vector<std::shared_ptr<CastorStorageDefinition>>& getStorageDefinitions() const { return mStorageDefinitions; }
+  inline const std::string& getStudySlug() const { return studySlug_; }
+  inline const std::string& getSiteAbbreviation() const { return siteAbbreviation_; }
+  inline const std::vector<std::shared_ptr<CastorStorageDefinition>>& getStorageDefinitions() const { return storageDefinitions_; }
 };
 
 class ShortPseudonymColumn {
 private:
-  std::string mStudyContext;
-  std::optional<uint32_t> mVisit;
-  std::string mCoreName;
+  std::string studyContext_;
+  std::optional<uint32_t> visit_;
+  std::string coreName_;
 
   ShortPseudonymColumn() noexcept = default;
 
 public:
   static ShortPseudonymColumn Parse(const std::string& studyContext, const std::string& column);
 
-  inline const std::string& getStudyContext() const noexcept { return mStudyContext; }
-  inline const std::string& getCoreName() const noexcept { return mCoreName; }
-  inline const std::optional<uint32_t>& getVisitNumber() const noexcept { return mVisit; }
+  inline const std::string& getStudyContext() const noexcept { return studyContext_; }
+  inline const std::string& getCoreName() const noexcept { return coreName_; }
+  inline const std::optional<uint32_t>& getVisitNumber() const noexcept { return visit_; }
   std::string getFullName() const;
 };
 
 class ShortPseudonymDefinition {
 private:
-  ShortPseudonymColumn mColumn;
-  std::string mPrefix;
-  uint32_t mLength;
-  std::optional<CastorShortPseudonymDefinition> mCastor;
-  uint32_t mStickers;
-  bool mSuppressAdditionalStickers;
-  std::string mDescription;
-  std::string mStudyContext;
+  ShortPseudonymColumn column_;
+  std::string prefix_;
+  uint32_t length_;
+  std::optional<CastorShortPseudonymDefinition> castor_;
+  uint32_t stickers_;
+  bool suppressAdditionalStickers_;
+  std::string description_;
+  std::string studyContext_;
 
 public:
   ShortPseudonymDefinition(
@@ -118,16 +118,16 @@ public:
     std::string description,
     std::string studyContext);
 
-  inline const ShortPseudonymColumn& getColumn() const { return mColumn; }
+  inline const ShortPseudonymColumn& getColumn() const { return column_; }
 
-  inline const std::string& getPrefix() const { return mPrefix; }
-  inline uint32_t getLength() const { return mLength; }
+  inline const std::string& getPrefix() const { return prefix_; }
+  inline uint32_t getLength() const { return length_; }
 
-  inline const std::optional<CastorShortPseudonymDefinition>& getCastor() const { return mCastor; }
-  inline uint32_t getStickers() const { return mStickers; }
-  inline bool getSuppressAdditionalStickers() const noexcept { return mSuppressAdditionalStickers; }
-  inline const std::string& getConfiguredDescription() const { return mDescription; }
-  inline const std::string& getStudyContext() const { return mStudyContext; }
+  inline const std::optional<CastorShortPseudonymDefinition>& getCastor() const { return castor_; }
+  inline uint32_t getStickers() const { return stickers_; }
+  inline bool getSuppressAdditionalStickers() const noexcept { return suppressAdditionalStickers_; }
+  inline const std::string& getConfiguredDescription() const { return description_; }
+  inline const std::string& getStudyContext() const { return studyContext_; }
 
   std::string getDescription() const;
 };

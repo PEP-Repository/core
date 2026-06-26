@@ -36,9 +36,6 @@ public:
     */
     void setPseudonymKey(const ElgamalPrivateKey& pseudonymKey);
 
-    const ElgamalPublicKey& getPublicKeyPseudonyms() const;
-    void setPublicKeyPseudonyms(const ElgamalPublicKey& pk);
-
     /*!
     * \return The endpoint of the transcryptor
     */
@@ -56,25 +53,21 @@ public:
     void check() const override;
 
   private:
-    std::shared_ptr<GlobalConfiguration> globalConf;
-    std::optional<ElgamalPrivateKey> pseudonymKey;
-    EndPoint transcryptorEndPoint;
-    EndPoint keyServerEndPoint;
-    std::shared_ptr<Backend> backend;
+    std::shared_ptr<GlobalConfiguration> globalConf_;
+    std::optional<ElgamalPrivateKey> pseudonymKey_;
+    EndPoint transcryptorEndPoint_;
+    EndPoint keyServerEndPoint_;
+    std::shared_ptr<Backend> backend_;
   };
-private:
 
+private:
   class Metrics : public RegisteredMetrics {
   public:
     Metrics(std::shared_ptr<prometheus::Registry> registry);
 
-    prometheus::Summary& enckey_request_duration;
-    prometheus::Summary& ticket_request2_duration;
-    prometheus::Summary& ticket_request_duration;
+    prometheus::Summary& enckeyRequestDuration;
+    prometheus::Summary& ticketRequest2Duration;
   };
-
-
-
 
 public:
   explicit AccessManager(std::shared_ptr<Parameters> parameters);
@@ -125,17 +118,17 @@ public:
    * \param maxSize: The size at which to cut up responses. For testing purposes, this can be set to a lower number. For most purposes it should be left at the default.
    * \return An observable emitting iterated AmaQueryResponses
    */
-  static std::vector<AmaQueryResponse> ExtractPartialColumnGroupQueryResponse(const std::vector<AmaQRColumnGroup>& columnGroups, const size_t maxSize = messaging::MAX_SIZE_OF_MESSAGE); // TODO: move out of AM's (public even!) interface
+  static std::vector<AmaQueryResponse> ExtractPartialColumnGroupQueryResponse(const std::vector<AmaQRColumnGroup>& columnGroups, const size_t maxSize = messaging::MaxSizeOfMessage); // TODO: move out of AM's (public even!) interface
 
 private:
-  ElgamalPrivateKey mPseudonymKey;
-  TranscryptorProxy mTranscryptorProxy;
-  KeyServerProxy mKeyServerProxy;
-  std::shared_ptr<Backend> backend;
-  std::shared_ptr<GlobalConfiguration> globalConf;
-  std::shared_ptr<Metrics> lpMetrics;
-  std::shared_ptr<WorkerPool> mWorkerPool;
-  uintmax_t mNextTicketRequestNumber = 1U;
+  ElgamalPrivateKey pseudonymKey_;
+  TranscryptorProxy transcryptorProxy_;
+  KeyServerProxy keyServerProxy_;
+  std::shared_ptr<Backend> backend_;
+  std::shared_ptr<GlobalConfiguration> globalConf_;
+  std::shared_ptr<Metrics> lpMetrics_;
+  std::shared_ptr<WorkerPool> workerPool_;
+  uintmax_t nextTicketRequestNumber_ = 1U;
 };
 
 }

@@ -7,7 +7,7 @@ Error Serializer<Error>::fromProtocolBuffer(proto::Error&& source) const {
 }
 
 void Serializer<Error>::moveIntoProtocolBuffer(proto::Error& dest, Error value) const {
-  *dest.mutable_description() = std::move(value.mDescription);
+  *dest.mutable_description() = std::move(value.description_);
   *dest.mutable_original_type_name() = value.getOriginalTypeName();
 }
 

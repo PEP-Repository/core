@@ -3,8 +3,8 @@
 namespace pep {
 
 RegisteredMetrics::RegisteredMetrics(std::shared_ptr<prometheus::Registry> registry)
-  : mRegistry(registry) {
-  if (mRegistry == nullptr) {
+  : registry_(registry) {
+  if (registry_ == nullptr) {
     throw std::runtime_error("Metrics registration requires a non-null Registry");
   }
 }

@@ -9,6 +9,15 @@ using namespace std::literals;
 
 namespace {
 
+class Server : public ::testing::Test {
+public:
+  static void SetUpTestSuite() {
+#ifdef __EMSCRIPTEN__
+    GTEST_SKIP() << "Server not supported on Emscripten";
+#endif
+  }
+};
+
 class FakeProtocol : public pep::networking::ProtocolImplementor<FakeProtocol> {
   using Base = pep::networking::ProtocolImplementor<FakeProtocol>;
 
@@ -76,7 +85,7 @@ size_t FakeProtocol::Socket::unclosed_ = 0U;
 }
 
 
-TEST(Server, DiscardsUnopenedSocket) {
+TEST_F(Server, DiscardsUnopenedSocket) {
   EXPECT_EQ(0U, FakeProtocol::Socket::Instances()) << "Can't reliably count sockets. Are other (concurrently executed) tests using FakeProtocol as well?";
   EXPECT_EQ(0U, FakeProtocol::Socket::Instances()) << "Can't reliably count unclosed sockets. Are other (concurrently executed) tests using FakeProtocol as well?";
 
@@ -93,13 +102,13 @@ TEST(Server, DiscardsUnopenedSocket) {
   EXPECT_EQ(0U, FakeProtocol::Socket::Instances()) << "Server didn't discard its socket(s) upon destruction";
 }
 
-TEST(Server, UnschedulesOnDestruction) {
+TEST_F(Server, UnschedulesOnDestruction) {
   auto SHORT_TIME = 100ms;
   auto LONG_TIME = 200ms;
 
   boost::asio::io_context context;
 
-  auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(context, pep::networking::Tcp::ServerParameters::RANDOM_PORT));
+  auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(context, pep::networking::Tcp::ServerParameters::RandomPort));
   // Don't subscribe to server->onConnectionAttempt: this test just wants to verify what happens when the server is destroyed
   server->start();
 

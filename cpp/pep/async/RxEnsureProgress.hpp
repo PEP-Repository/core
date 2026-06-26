@@ -45,7 +45,7 @@ rxcpp::observable<TItem> RxEnsureProgress(boost::asio::io_context& io_context, c
  */
 template <typename TItem, typename SourceOperator>
 rxcpp::observable<TItem> RxEnsureProgress(boost::asio::io_context& io_context, const std::string& description, rxcpp::observable<TItem, SourceOperator> items) {
-  return RxEnsureProgress(io_context, description, ActivityMonitor::DEFAULT_MAX_INACTIVE, items);
+  return RxEnsureProgress(io_context, description, ActivityMonitor::DefaultMaxInactive, items);
 }
 
 /*! \brief Monitors an observable, logging a warning if it shows no activity (for the default-allotted time).
@@ -93,21 +93,21 @@ RxEnsureProgress(boost::asio::io_context& io_context, const std::string& descrip
 template <typename CreateSource>
 rxcpp::observable<typename decltype(std::declval<CreateSource>()(std::declval<std::shared_ptr<ActivityMonitor>>()))::value_type>
 RxEnsureProgress(boost::asio::io_context& io_context, const std::string& description, const CreateSource& createSource) {
-  return RxEnsureProgress(io_context, description, ActivityMonitor::DEFAULT_MAX_INACTIVE, createSource);
+  return RxEnsureProgress(io_context, description, ActivityMonitor::DefaultMaxInactive, createSource);
 }
 
 /// \brief Records that there's activity in an RX pipeline.
 /// \code
 ///   myObs.op(RxRecordActivity(monitor, "barring the foo"))
 /// \endcode
-struct RxRecordActivity {
+class RxRecordActivity {
 private:
-  std::shared_ptr<ActivityMonitor> mMonitor;
-  std::string mDescription;
+  std::shared_ptr<ActivityMonitor> monitor_;
+  std::string description_;
 
 public:
   explicit RxRecordActivity(std::shared_ptr<ActivityMonitor> monitor, const std::string& description)
-    : mMonitor(monitor), mDescription(description) {
+    : monitor_(monitor), description_(description) {
   }
 
   /// \param items The observable whose activity is to be recorded.
@@ -117,9 +117,9 @@ public:
   template <typename TItem, typename SourceOperator>
   rxcpp::observable<TItem> operator()(rxcpp::observable<TItem, SourceOperator> items) const {
     return items.tap(
-      [monitor = mMonitor, description = mDescription](const TItem&) {monitor->activityOccurred("(busy) " + description); },
-      [monitor = mMonitor, description = mDescription](std::exception_ptr ep) {monitor->activityOccurred("(failed) " + description + " (" + GetExceptionMessage(ep) + ")"); },
-      [monitor = mMonitor, description = mDescription]() {monitor->activityOccurred("(done) " + description); }
+      [monitor = monitor_, description = description_](const TItem&) {monitor->activityOccurred("(busy) " + description); },
+      [monitor = monitor_, description = description_](std::exception_ptr ep) {monitor->activityOccurred("(failed) " + description + " (" + GetExceptionMessage(ep) + ")"); },
+      [monitor = monitor_, description = description_]() {monitor->activityOccurred("(done) " + description); }
     );
   }
 };

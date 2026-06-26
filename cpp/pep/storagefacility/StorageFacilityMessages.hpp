@@ -8,120 +8,103 @@
 
 namespace pep {
 
-class DataEnumerationRequest2 {
-public:
-  SignedTicket2 mTicket;
+struct DataEnumerationRequest2 {
+  SignedTicket2 ticket;
   // Falls back to all columns in ticket
-  std::optional<IndexList> mColumns{};
+  std::optional<IndexList> columns{};
   // Falls back to all pseudonyms in ticket
-  std::optional<IndexList> mPseudonyms{};
+  std::optional<IndexList> pseudonyms{};
 };
 
-class DataEnumerationEntry2 {
-public:
-  std::string mId;
-  Metadata mMetadata;
-  EncryptedKey mPolymorphicKey;
-  uint64_t mFileSize{};
-  uint32_t mColumnIndex{};
-  uint32_t mPseudonymIndex{};
-  uint32_t mIndex = 0;
+struct DataEnumerationEntry2 {
+  std::string id;
+  Metadata metadata;
+  EncryptedKey polymorphicKey;
+  uint64_t fileSize{};
+  uint32_t columnIndex{};
+  uint32_t pseudonymIndex{};
+  uint32_t index = 0;
 };
 
-class DataEnumerationResponse2 {
-public:
-  std::vector<DataEnumerationEntry2> mEntries;
-  bool mHasMore = false;
+struct DataEnumerationResponse2 {
+  std::vector<DataEnumerationEntry2> entries;
+  bool hasMore = false;
 };
 
-class MetadataReadRequest2 {
-public:
-  SignedTicket2 mTicket;
-  std::vector<std::string> mIds;
+struct MetadataReadRequest2 {
+  SignedTicket2 ticket;
+  std::vector<std::string> ids;
 };
 
-class DataReadRequest2 {
-public:
-  SignedTicket2 mTicket;
-  std::vector<std::string> mIds;
+struct DataReadRequest2 {
+  SignedTicket2 ticket;
+  std::vector<std::string> ids;
 };
 
-class DataRequestEntry2 {
-public:
-  uint32_t mColumnIndex{};
-  uint32_t mPseudonymIndex{};
+struct DataRequestEntry2 {
+  uint32_t columnIndex{};
+  uint32_t pseudonymIndex{};
 };
 
-class DataStoreEntry2 : public DataRequestEntry2 {
-public:
-  Metadata mMetadata;
-  EncryptedKey mPolymorphicKey;
+struct DataStoreEntry2 : public DataRequestEntry2 {
+  Metadata metadata;
+  EncryptedKey polymorphicKey;
 };
 
 // Base class for request classes that specify the entries they manipulate.
 // Derive (i.e. don't typedef) implementors so that message types can be identified by their MessageMagic.
 template <typename TEntry>
-class DataEntriesRequest2 {
-public:
+struct DataEntriesRequest2 {
   using Entry = TEntry;
 
-  SignedTicket2 mTicket;
-  std::vector<Entry> mEntries;
+  SignedTicket2 ticket;
+  std::vector<Entry> entries;
 };
 
-class MetadataUpdateRequest2 : public DataEntriesRequest2<DataStoreEntry2> {
+struct MetadataUpdateRequest2 : public DataEntriesRequest2<DataStoreEntry2> {};
+
+struct MetadataUpdateResponse2 {
+  std::vector<std::string> ids;
 };
 
-class MetadataUpdateResponse2 {
-public:
-  std::vector<std::string> mIds;
+struct DataStoreRequest2 : public DataEntriesRequest2<DataStoreEntry2> {};
+
+struct DataStoreResponse2 : public MetadataUpdateResponse2 {
+  uint64_t hash{};
 };
 
-class DataStoreRequest2 : public DataEntriesRequest2<DataStoreEntry2> {
+struct DataDeleteRequest2 : public DataEntriesRequest2<DataRequestEntry2> {};
+
+struct DataDeleteResponse2 {
+  Timestamp timestamp;
+  IndexList entries; // Indices correspond with DataDeleteRequest2's entries_
 };
 
-class DataStoreResponse2 : public MetadataUpdateResponse2 {
-public:
-  uint64_t mHash{};
+struct DataHistoryRequest2 {
+  SignedTicket2 ticket;
+  std::optional<IndexList> columns;
+  std::optional<IndexList> pseudonyms;
 };
 
-class DataDeleteRequest2 : public DataEntriesRequest2<DataRequestEntry2> {
+struct DataHistoryEntry2 {
+  uint32_t columnIndex{}; // In the DataHistoryRequest2::ticket_
+  uint32_t pseudonymIndex{}; // In the DataHistoryRequest2::ticket_
+  Timestamp timestamp;
+  std::string id; // Storage facility ID. If empty, this history entry represents a deletion
 };
 
-class DataDeleteResponse2 {
-public:
-  Timestamp mTimestamp;
-  IndexList mEntries; // Indices correspond with DataDeleteRequest2's mEntries
-};
-
-class DataHistoryRequest2 {
-public:
-  SignedTicket2 mTicket;
-  std::optional<IndexList> mColumns;
-  std::optional<IndexList> mPseudonyms;
-};
-
-class DataHistoryEntry2 {
-public:
-  uint32_t mColumnIndex{}; // In the DataHistoryRequest2::mTicket
-  uint32_t mPseudonymIndex{}; // In the DataHistoryRequest2::mTicket
-  Timestamp mTimestamp;
-  std::string mId; // Storage facility ID. If empty, this history entry represents a deletion
-};
-
-class DataHistoryResponse2 {
-public:
-  std::vector<DataHistoryEntry2> mEntries;
+struct DataHistoryResponse2 {
+  std::vector<DataHistoryEntry2> entries;
 };
 
 struct DataSizeRequest {
-  std::set<std::string> mColumns;
+  std::set<std::string> columns;
 };
 
 struct DataSizeResponse {
-  uint64_t mBlockSize;
-  uint64_t mTotalBlocks;
-  uint64_t mRollingBlocks;
+  uint64_t blockSize;
+  uint64_t totalBlocks;
+  uint64_t rollingBlocks;
 };
 
 using SignedDataEnumerationRequest2 = Signed<DataEnumerationRequest2>;

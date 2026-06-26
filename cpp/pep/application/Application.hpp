@@ -43,14 +43,11 @@ namespace pep {
 
 class Application : public commandline::Command {
  private:
-  static Application* instance_;
-  static bool usingConsoleLog_;
+  int argc_ = -1;
+  char** argv_ = nullptr;
 
-  int mArgc = -1;
-  char** mArgv = nullptr;
-
-  std::optional<std::filesystem::path> mConfigDirectory;
-  bool mShowVersionInfo = false;
+  std::optional<std::filesystem::path> configDirectory_;
+  bool showVersionInfo_ = false;
 
   static int RunWithoutError(std::function<int()> implementor) noexcept;
   static bool ReportTermination(std::exception_ptr exception) noexcept;
@@ -69,7 +66,7 @@ class Application : public commandline::Command {
 
   int run(int argc, char* argv[]); //NOLINT(modernize-avoid-c-arrays)
 
-  bool mInitializeLoggingOnceFlag = false;  ///< Tracks if initializeLoggingOnce was called
+  bool initializeLoggingOnceFlag_ = false;  ///< Tracks if initializeLoggingOnce was called
   void initializeLoggingOnce();
 
   std::filesystem::path rawConfigDirectory() const;
@@ -86,9 +83,9 @@ class Application : public commandline::Command {
   char** getArgv() const;
 
   virtual bool useUnwinder() const;
-  virtual std::optional<severity_level> syslogLogMinimumSeverityLevel() const;
-  virtual std::optional<severity_level> consoleLogMinimumSeverityLevel() const;
-  virtual std::optional<severity_level> fileLogMinimumSeverityLevel() const;
+  virtual std::optional<Severity> syslogLogMinimumSeverityLevel() const;
+  virtual std::optional<Severity> consoleLogMinimumSeverityLevel() const;
+  virtual std::optional<Severity> fileLogMinimumSeverityLevel() const;
   commandline::Parameters getSupportedParameters() const override;
   std::optional<int> processLexedParameters(const commandline::LexedValues& lexed) override;
   void finalizeParameters() override;

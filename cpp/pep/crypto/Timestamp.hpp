@@ -15,7 +15,7 @@ namespace pep {
 
 // Same as STL does for system_clock
 template<class Duration>
-using steady_time = std::chrono::time_point<std::chrono::system_clock, Duration>;
+using steady_time = std::chrono::time_point<std::chrono::steady_clock, Duration>;
 using steady_seconds = steady_time<std::chrono::seconds>;
 
 /// Wall clock timestamp with a precision of milliseconds ('sys_milliseconds').
@@ -56,8 +56,8 @@ public:
   [[nodiscard]] Timestamp timestampFromYyyyMmDd(std::string_view yyyyMmDd) const;
 
 private:
-  TimeZone(std::string str) : mStr(std::move(str)) {}
-  std::string mStr;
+  TimeZone(std::string str) : str_(std::move(str)) {}
+  std::string str_;
 };
 
 [[nodiscard]] std::chrono::year_month_day BoostDateToStd(const boost::gregorian::date& date);

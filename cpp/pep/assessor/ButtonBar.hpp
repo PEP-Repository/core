@@ -16,6 +16,6 @@ public:
 
 private:
   static void ClearLayout(QLayout *layout);
-  FlowLayout* flowlayout;
-  std::vector<QPushButton*> enabled_buttons;
+  FlowLayout* flowlayout_;
+  std::vector<QPushButton*> enabledButtons_;
 };

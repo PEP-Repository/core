@@ -9,11 +9,15 @@
 
 namespace pep {
 
-static const std::string LOG_TAG ("Authserver");
+namespace {
+
+const std::string LogTag ("Authserver");
+
+}
 
 Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : SigningServer::Parameters(io_context, config),
-  backendParams(config), oauthParams(io_context, config) {
+  backendParams_(config), oauthParams_(io_context, config) {
 
   EndPoint accessManagerEndPoint;
 
@@ -22,32 +26,32 @@ Authserver::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_c
     accessManagerEndPoint = serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode());
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
     throw;
   }
 
-  backendParams.setAccessManager(messaging::ServerConnection::TryCreate(this->getIoContext(), accessManagerEndPoint, getRootCACertificatesFilePath()));
-  backendParams.setAccessManagerEndPoint(std::move(accessManagerEndPoint));
-  backendParams.setSigningIdentity(getSigningIdentity());
-  backendParams.setRootCertificates(getRootCAs());
+  backendParams_.setAccessManager(messaging::ServerConnection::TryCreate(this->getIoContext(), accessManagerEndPoint, getRootCACertificatesFilePath()));
+  backendParams_.setAccessManagerEndPoint(std::move(accessManagerEndPoint));
+  backendParams_.setSigningIdentity(getSigningIdentity());
+  backendParams_.setRootCertificates(getRootCAs());
 }
 
 const AuthserverBackend::Parameters& Authserver::Parameters::getBackendParams() const {
-  return backendParams;
+  return backendParams_;
 }
 
 const OAuthProvider::Parameters& Authserver::Parameters::getOAuthParams() const {
-  return oauthParams;
+  return oauthParams_;
 }
 
 void Authserver::Parameters::check() const {
-  backendParams.check();
-  oauthParams.check();
+  backendParams_.check();
+  oauthParams_.check();
   SigningServer::Parameters::check();
 }
 
 std::vector<std::string> Authserver::getChecksumChainNames() const {
-  return mBackend->getChecksumChainNames();
+  return backend_->getChecksumChainNames();
 }
 
 void Authserver::computeChecksumChainChecksum(
@@ -64,7 +68,7 @@ messaging::MessageBatches Authserver::handleTokenRequest(std::shared_ptr<SignedT
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
 
-  return messaging::BatchSingleMessage(mBackend->executeTokenRequest(accessGroup, request));
+  return messaging::BatchSingleMessage(backend_->executeTokenRequest(accessGroup, request));
 }
 
 messaging::MessageBatches Authserver::handleChecksumChainRequest(std::shared_ptr<SignedChecksumChainRequest> signedRequest) {
@@ -74,15 +78,15 @@ messaging::MessageBatches Authserver::handleChecksumChainRequest(std::shared_ptr
 
   UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), accessGroup, "Requesting checksum chains");
 
-  return mBackend->handleChecksumChainRequest(request).map([](ChecksumChainResponse response) -> messaging::MessageSequence {
+  return backend_->handleChecksumChainRequest(request).map([](ChecksumChainResponse response) -> messaging::MessageSequence {
     return rxcpp::rxs::just(std::make_shared<std::string>(Serialization::ToString(response)));
   });
 }
 
 Authserver::Authserver(std::shared_ptr<Parameters> parameters)
   : SigningServer(parameters),
-  mBackend(std::make_shared<AuthserverBackend>(parameters->getBackendParams())),
-  mOAuth(OAuthProvider::Create(parameters->getOAuthParams(), mBackend)) {
+  backend_(std::make_shared<AuthserverBackend>(parameters->getBackendParams())),
+  oAuth_(OAuthProvider::Create(parameters->getOAuthParams(), backend_)) {
   RegisterRequestHandlers(*this,
                           &Authserver::handleTokenRequest,
                           &Authserver::handleChecksumChainRequest); //This overwrites the handler in MonitorableServer with our own handler

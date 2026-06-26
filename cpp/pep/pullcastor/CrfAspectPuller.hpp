@@ -10,7 +10,7 @@ namespace castor {
 /*!
   * \brief Pulls Castor CRF (Clinical Research Form or "STUDY") data for a single Castor study.
   */
-class CrfAspectPuller : public TypedStudyAspectPuller<CrfAspectPuller, CastorStudyType::STUDY>, private SharedConstructor<CrfAspectPuller> {
+class CrfAspectPuller : public TypedStudyAspectPuller<CrfAspectPuller, CastorStudyType::Crf>, private SharedConstructor<CrfAspectPuller> {
   friend class StudyAspectPuller;
   friend class SharedConstructor<CrfAspectPuller>;
 
@@ -22,9 +22,9 @@ private:
   using StudyDataPoints = std::vector<std::shared_ptr<StudyDataPoint>>;
   using StudyDataPointsByParticipant = std::unordered_map<std::shared_ptr<Participant>, std::shared_ptr<StudyDataPoints>>;
 
-  bool mImmediatePartialData;
-  std::shared_ptr<RxCache<std::shared_ptr<FormPullersByFormId>>> mFormPullers;
-  std::shared_ptr<RxCache<std::shared_ptr<StudyDataPointsByParticipant>>> mSdpsByParticipant;
+  bool immediatePartialData_;
+  std::shared_ptr<RxCache<std::shared_ptr<FormPullersByFormId>>> formPullers_;
+  std::shared_ptr<RxCache<std::shared_ptr<StudyDataPointsByParticipant>>> sdpsByParticipant_;
 
   CrfAspectPuller(std::shared_ptr<StudyPuller> study, const StudyAspect& aspect);
 

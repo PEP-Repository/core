@@ -63,7 +63,7 @@ namespace pep::networking {
 template <typename TInstance>
 class InstanceBound {
 private:
-  const TInstance& mInstance;
+  const TInstance& instance_;
 
   void verifyBoundTo(const TInstance& instance) const {
     if (&instance != &this->boundInstance()) {
@@ -77,7 +77,7 @@ protected:
    * @param instance The instance to which this object will be bound.
    */
   explicit InstanceBound(const TInstance& instance) noexcept
-    : mInstance(instance) {
+    : instance_(instance) {
   }
 
   /**
@@ -113,7 +113,7 @@ public:
    * @brief Gets the instance to which this object is bound.
    * @return (A reference to) the instance to which this object is bound.
    */
-  const TInstance& boundInstance() const noexcept { return mInstance; }
+  const TInstance& boundInstance() const noexcept { return instance_; }
 };
 
 }

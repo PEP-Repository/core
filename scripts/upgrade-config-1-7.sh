@@ -80,7 +80,7 @@ upgrade_config_file() {
   + (if .HTTPListenPort then { HttpListenPort: .HTTPListenPort } else {} end)
   + (if .HTTPSCertificateFile then { HttpsCertificateFile: .HTTPSCertificateFile } else {} end)
   + (if .HSM then { SystemPrivateKeysFile: .HSM.ConfigFile } else {} end)
-  + (if SystemKeysFile then { SystemPrivateKeysFile: .SystemKeysFile } else {} end)
+  + (if .SystemKeysFile then { SystemPrivateKeysFile: .SystemKeysFile } else {} end)
   + (pick(
       .OAuthTokenSecretFile,
       .BlocklistStoragePath,

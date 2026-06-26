@@ -11,7 +11,7 @@ namespace castor {
 /*!
   * \brief Pulls Castor survey ("SURVEY") data for a single Castor study.
   */
-class SurveyAspectPuller : public TypedStudyAspectPuller<SurveyAspectPuller, CastorStudyType::SURVEY>, private SharedConstructor<SurveyAspectPuller> {
+class SurveyAspectPuller : public TypedStudyAspectPuller<SurveyAspectPuller, CastorStudyType::Survey>, private SharedConstructor<SurveyAspectPuller> {
   friend class StudyAspectPuller;
   friend class SharedConstructor<SurveyAspectPuller>;
 
@@ -25,10 +25,10 @@ private:
   using Sdps = std::vector<std::shared_ptr<SurveyDataPoint>>;
   using SdpsBySpi = std::unordered_map<std::shared_ptr<SurveyPackageInstance>, std::shared_ptr<Sdps>>;
 
-  std::shared_ptr<RxCache<std::shared_ptr<SurveyPackageInstance>>> mSpis;
-  std::shared_ptr<RxCache<std::shared_ptr<SpisById>>> mSpisByParticipantId;
-  std::shared_ptr<RxCache<std::shared_ptr<SdpsBySpi>>> mSdpsBySpi;
-  std::shared_ptr<SpisPuller> mSpisPuller;
+  std::shared_ptr<RxCache<std::shared_ptr<SurveyPackageInstance>>> spis_;
+  std::shared_ptr<RxCache<std::shared_ptr<SpisById>>> spisByParticipantId_;
+  std::shared_ptr<RxCache<std::shared_ptr<SdpsBySpi>>> sdpsBySpi_;
+  std::shared_ptr<SpisPuller> spisPuller_;
 
   SurveyAspectPuller(std::shared_ptr<StudyPuller> sp, const StudyAspect& aspect);
 
