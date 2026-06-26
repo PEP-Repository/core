@@ -12,7 +12,7 @@ namespace pep {
 namespace castor {
 
 StoredData::StoredData(std::shared_ptr<ParticipantsByColumnBoundParticipantId> participants)
-  : mParticipants(participants) {
+  : participants_(participants) {
 }
 
 rxcpp::observable<std::shared_ptr<StoredData>> StoredData::Load(std::shared_ptr<CoreClient> client,
@@ -54,8 +54,8 @@ rxcpp::observable<std::shared_ptr<StoredData>> StoredData::Load(std::shared_ptr<
 }
 
 std::shared_ptr<PepParticipant> StoredData::tryGetParticipant(const ColumnBoundParticipantId& cbrId) const noexcept {
-  auto found = mParticipants->find(cbrId);
-  if (found == mParticipants->cend()) {
+  auto found = participants_->find(cbrId);
+  if (found == participants_->cend()) {
     return nullptr;
   }
   return found->second;
@@ -105,14 +105,14 @@ rxcpp::observable<StoreData2Entry> StoredData::getUpdateEntry(std::shared_ptr<St
 }
 
 rxcpp::observable<std::shared_ptr<const PepParticipant>> StoredData::getParticipants() const {
-  return RxIterate(*mParticipants)
+  return RxIterate(*participants_)
     .map([](const auto& pair) {return pair.second; })
     .op(RxDistinct())
     .op(RxSharedPtrCast<const PepParticipant>());
 }
 
 rxcpp::observable<std::string> StoredData::getCastorSps(std::shared_ptr<const PepParticipant> participant, const std::string& spColumnName) const {
-  return RxIterate(*mParticipants)
+  return RxIterate(*participants_)
     .filter([participant, spColumnName](const auto& pair) {return pair.first.getColumnName() == spColumnName && pair.second == participant; })
     .map([](const auto& pair) {return pair.first.getParticipantId(); });
 }

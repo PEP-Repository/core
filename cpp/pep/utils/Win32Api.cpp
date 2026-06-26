@@ -25,6 +25,9 @@ namespace {
 
 const std::string LogTag = "Win32Api";
 
+ParentConsoleBinding* parentConsoleBinding = nullptr;
+
+
 GUID KnownFolderToFolderId(KnownFolder folder) {
   switch (folder) {
   case KnownFolder::RoamingAppData:
@@ -151,7 +154,7 @@ std::string FormatWin32Error(DWORD code) {
 }
 
 ApiCallFailure::ApiCallFailure(DWORD code, const std::string& description)
-  : std::runtime_error(description), mCode(code) {
+  : std::runtime_error(description), code_(code) {
 }
 
 void ApiCallFailure::Raise(DWORD code) {
@@ -412,21 +415,19 @@ void ClearMemory(void* address, size_t bytes) {
   }
 }
 
-ParentConsoleBinding* ParentConsoleBinding::instance_ = nullptr;
-
 ParentConsoleBinding::ParentConsoleBinding() {
-  assert(instance_ == nullptr);
-  instance_ = this;
+  assert(parentConsoleBinding == nullptr);
+  parentConsoleBinding = this;
 }
 
 ParentConsoleBinding::~ParentConsoleBinding() noexcept {
-  assert(instance_ == this);
-  instance_ = nullptr;
+  assert(parentConsoleBinding == this);
+  parentConsoleBinding = nullptr;
   ReleaseConsole();
 }
 
 std::unique_ptr<ParentConsoleBinding> ParentConsoleBinding::TryCreate() {
-  if (instance_ != nullptr) {
+  if (parentConsoleBinding != nullptr) {
     return nullptr;
   }
   if (!AttachParentConsole(1024)) {
@@ -437,9 +438,9 @@ std::unique_ptr<ParentConsoleBinding> ParentConsoleBinding::TryCreate() {
 }
 
 SetConsoleCodePage::SetConsoleCodePage(UINT codePage) {
-  prevInputCodePage = ::GetConsoleCP();
-  prevOutputCodePage = ::GetConsoleOutputCP();
-  if (prevInputCodePage == 0 || prevOutputCodePage == 0) {
+  prevInputCodePage_ = ::GetConsoleCP();
+  prevOutputCodePage_ = ::GetConsoleOutputCP();
+  if (prevInputCodePage_ == 0 || prevOutputCodePage_ == 0) {
     return; // Probably no console allocated
   }
   if (!::SetConsoleCP(codePage)) {
@@ -447,7 +448,7 @@ SetConsoleCodePage::SetConsoleCodePage(UINT codePage) {
   } else if (!::SetConsoleOutputCP(codePage)) {
     const auto err = ::GetLastError();
     // Restore
-    if (!::SetConsoleCP(prevInputCodePage)) {
+    if (!::SetConsoleCP(prevInputCodePage_)) {
       PEP_LOG(LogTag, Severity::Warning) << "Failed to restore console input code page (" << FormatWin32Error(::GetLastError()) << ") handing error";
     }
     ApiCallFailure::Raise(err);
@@ -455,10 +456,10 @@ SetConsoleCodePage::SetConsoleCodePage(UINT codePage) {
 }
 
 SetConsoleCodePage::~SetConsoleCodePage() noexcept {
-  if (prevInputCodePage != 0 && !::SetConsoleCP(prevInputCodePage)) {
+  if (prevInputCodePage_ != 0 && !::SetConsoleCP(prevInputCodePage_)) {
     PEP_LOG(LogTag, Severity::Warning) << "Failed to restore console input code page (" << FormatWin32Error(::GetLastError()) << ")";
   }
-  if (prevOutputCodePage != 0 && !::SetConsoleOutputCP(prevOutputCodePage)) {
+  if (prevOutputCodePage_ != 0 && !::SetConsoleOutputCP(prevOutputCodePage_)) {
     PEP_LOG(LogTag, Severity::Warning) << "Failed to restore console output code page (" << FormatWin32Error(::GetLastError()) << ")";
   }
 }

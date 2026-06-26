@@ -20,9 +20,9 @@
 #include <pep/versioning/Version.hpp>
 
 EnrollmentWidget::EnrollmentWidget(std::shared_ptr<pep::Client> client, MainWindow* parent, const pep::StudyContext& studyContext)
-  : QStackedWidget(parent), ui(new Ui::EnrollmentWidget), mainWindow(parent), pepClient(client), mStudyContext(studyContext), doneCompletingRegistration(false), continueButtonPressed(false) {
-  ui->setupUi(this);
-  ui->retranslateUi(this);
+  : QStackedWidget(parent), ui_(new Ui::EnrollmentWidget), mainWindow_(parent), pepClient_(client), studyContext_(studyContext), doneCompletingRegistration_(false), continueButtonPressed_(false) {
+  ui_->setupUi(this);
+  ui_->retranslateUi(this);
 
   // Allow types to be passed as arguments in signal->slot
   qRegisterMetaType<std::shared_ptr<pep::ParticipantPersonalia>>("std::shared_ptr<pep::ParticipantPersonalia>");
@@ -31,24 +31,24 @@ EnrollmentWidget::EnrollmentWidget(std::shared_ptr<pep::Client> client, MainWind
   QObject::connect(this, &EnrollmentWidget::registrationProceeding, this, &EnrollmentWidget::onRegistrationProceeding);
 
 
-  QObject::connect(ui->editor, &ParticipantEditor::cancelled, this, &EnrollmentWidget::cancelled);
-  QObject::connect(ui->editor, &ParticipantEditor::confirmed, [this]() {
-    auto personalia = std::make_shared<pep::ParticipantPersonalia>(ui->editor->getPersonalia());
-    auto isTest = ui->editor->getIsTestParticipant();
+  QObject::connect(ui_->editor, &ParticipantEditor::cancelled, this, &EnrollmentWidget::cancelled);
+  QObject::connect(ui_->editor, &ParticipantEditor::confirmed, [this]() {
+    auto personalia = std::make_shared<pep::ParticipantPersonalia>(ui_->editor->getPersonalia());
+    auto isTest = ui_->editor->getIsTestParticipant();
 
     setCurrentIndex(1);
 
-    participantSID = QString("");
-    registerParticipantSubscription = pepClient->registerParticipant(*personalia, isTest, mStudyContext.getIdIfNonDefault(), false)
+    participantSID_ = QString("");
+    registerParticipantSubscription_ = pepClient_->registerParticipant(*personalia, isTest, studyContext_.getIdIfNonDefault(), false)
     .subscribe(
     [this](const std::string &id) {
-      participantSID = QString::fromStdString(id);
+      participantSID_ = QString::fromStdString(id);
     },
     [this](std::exception_ptr ep) {
       emit enrollFailed(QString::fromStdString(pep::GetExceptionMessage(ep)), pep::Severity::Error);
     },
     [this, personalia]() {
-      if (participantSID == QString("")) {
+      if (participantSID_ == QString("")) {
         emit enrollFailed(tr("Generated duplicate participant identifier. Please try again."), pep::Severity::Error);
         return;
       }
@@ -72,21 +72,21 @@ void EnrollmentWidget::showRegisteredParticipant(std::shared_ptr<pep::Participan
   Ui::ConfirmEnrollmentWidget confirmUi;
   confirmUi.setupUi(confirmWidget);
 
-  confirmUi.pepIdField->setText(participantSID);
+  confirmUi.pepIdField->setText(participantSID_);
   confirmUi.participantNameField->setText(QString::fromStdString(personalia->getFullName()));
   confirmUi.dateOfBirthField->setText(QString::fromStdString(personalia->getDateOfBirth()));
 
   QObject::connect(confirmUi.copyButton, &QPushButton::clicked, [this, confirmWidget]() {
-    QApplication::clipboard()->setText(participantSID);
+    QApplication::clipboard()->setText(participantSID_);
     confirmWidget->findChild<QPushButton*>("continueButton")->setEnabled(true);
   });
   QObject::connect(confirmUi.continueButton, &QPushButton::clicked, [this]() {
-    continueButtonPressed = true;
+    continueButtonPressed_ = true;
     emit registrationProceeding();
   });
 
 
-  completeParticipantRegistrationSubscription = pepClient->completeParticipantRegistration(participantSID.toStdString(), true)
+  completeParticipantRegistrationSubscription_ = pepClient_->completeParticipantRegistration(participantSID_.toStdString(), true)
   .subscribe(
   [](pep::FakeVoid) {},
   [this](std::exception_ptr ep) {
@@ -95,24 +95,24 @@ void EnrollmentWidget::showRegisteredParticipant(std::shared_ptr<pep::Participan
       message = tr("Completing registration failed.");
     }
     emit enrollFailed(message, pep::Severity::Error);
-    doneCompletingRegistration = true;
+    doneCompletingRegistration_ = true;
     emit registrationProceeding();
   },
   [this]() {
-    doneCompletingRegistration = true;
+    doneCompletingRegistration_ = true;
     emit registrationProceeding();
   });
 
-  mainWindow->showRegistrationWidget(confirmWidget);
+  mainWindow_->showRegistrationWidget(confirmWidget);
 }
 
 void EnrollmentWidget::onRegistrationProceeding() {
-  if (continueButtonPressed) {
-    emit enrollConfirmed(participantSID.toStdString());
+  if (continueButtonPressed_) {
+    emit enrollConfirmed(participantSID_.toStdString());
   }
-  if (doneCompletingRegistration && continueButtonPressed) {
-    mainWindow->closeWidget(this);
-    emit enrollComplete(participantSID.toStdString());
+  if (doneCompletingRegistration_ && continueButtonPressed_) {
+    mainWindow_->closeWidget(this);
+    emit enrollComplete(participantSID_.toStdString());
   }
 }
 
@@ -121,13 +121,13 @@ void EnrollmentWidget::onRegistrationProceeding() {
  * Clears out the UI object.
  */
 EnrollmentWidget::~EnrollmentWidget() {
-  completeParticipantRegistrationSubscription.unsubscribe();
-  registerParticipantSubscription.unsubscribe();
-  delete ui;
+  completeParticipantRegistrationSubscription_.unsubscribe();
+  registerParticipantSubscription_.unsubscribe();
+  delete ui_;
 }
 
 /*! \brief Set UI focus to the personalia editor
  */
 void EnrollmentWidget::doFocus() {
-  ui->editor->doFocus();
+  ui_->editor->doFocus();
 }

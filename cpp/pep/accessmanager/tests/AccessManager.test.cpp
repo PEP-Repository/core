@@ -18,7 +18,7 @@ TEST(AccessManagerTest, extractPartialColumnGroupQueryResponse_simple) {
   // Act
   auto responses = AccessManager::ExtractPartialColumnGroupQueryResponse(input);
   for (const auto& response : responses) {
-    for (const auto& entry : response.mColumnGroups) {
+    for (const auto& entry : response.columnGroups) {
       actualColumnGroups.push_back(entry);
     }
   }
@@ -37,7 +37,7 @@ TEST(AccessManagerTest, extractPartialColumnGroupQueryResponse_smallMessageSize)
   // Act
   auto responses = AccessManager::ExtractPartialColumnGroupQueryResponse(input, 15U);
   for (const auto& response : responses) {
-    for (const auto& entry : response.mColumnGroups) {
+    for (const auto& entry : response.columnGroups) {
       actualColumnGroups.push_back(entry);
     }
   }
@@ -59,7 +59,7 @@ TEST(AccessManagerTest, extractPartialColumnGroupQueryResponse_EmptyColumnGroup)
   // Act
   auto responses = AccessManager::ExtractPartialColumnGroupQueryResponse(input);
   for (const auto& response : responses) {
-    for (const auto& entry : response.mColumnGroups) {
+    for (const auto& entry : response.columnGroups) {
       actualColumnGroups.push_back(entry);
     }
   }

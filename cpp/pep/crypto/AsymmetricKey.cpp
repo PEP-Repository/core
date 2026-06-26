@@ -23,7 +23,7 @@ namespace pep {
 static const std::string LogTag ("AsymmetricKey");
 
 AsymmetricKey::~AsymmetricKey() {
-  EVP_PKEY_free(mKey);
+  EVP_PKEY_free(key_);
 }
 
 /**
@@ -36,9 +36,9 @@ AsymmetricKey::AsymmetricKey(AsymmetricKeyType keyType, EVP_PKEY* o) {
 
   if (keyType != AsymmetricKeyType::None) {
     if (o != nullptr) {
-      mKey = EVP_PKEY_dup(o);
-      if (mKey != nullptr) {
-        set = true;
+      key_ = EVP_PKEY_dup(o);
+      if (key_ != nullptr) {
+        set_ = true;
       } else {
         throw pep::OpenSSLError("Failed to duplicate given EVP_PKEY in AsymmetricKey constructor.");
       }
@@ -63,7 +63,7 @@ AsymmetricKey::AsymmetricKey(std::string_view buf) {
   PEP_DEFER(BIO_free(bio));
 
   // Attempt to read a private key, pass in pointer to newly created EVP_PKEY object, returns nullptr on failure
-  if (!PEM_read_bio_PrivateKey(bio, &mKey, nullptr, nullptr)) {
+  if (!PEM_read_bio_PrivateKey(bio, &key_, nullptr, nullptr)) {
     // If reading the private key fails, attempt to read as a public key
     // If both attempts fail, do nothing, which is what the previous mbed implementation did for some reason
     ERR_clear_error(); // clear error queue
@@ -71,43 +71,43 @@ AsymmetricKey::AsymmetricKey(std::string_view buf) {
     if (BIO_reset(bio) <= 0) {
       throw pep::OpenSSLError("Failed reset BIO with key from IO buffer (BIO) in AsymmetricKey constructor.");
     }
-    if (PEM_read_bio_PUBKEY(bio, &mKey, nullptr, nullptr)) {
-      set = true;
+    if (PEM_read_bio_PUBKEY(bio, &key_, nullptr, nullptr)) {
+      set_ = true;
       keyType = AsymmetricKeyType::Public;
     } else {
       throw pep::OpenSSLError("Failed to read key from IO buffer (BIO) in AsymmetricKey constructor.");
     }
   } else {
-    set = true;
+    set_ = true;
     keyType = AsymmetricKeyType::Private;
   }
 }
 
 AsymmetricKey::AsymmetricKey(const AsymmetricKey& other) {
-  std::lock_guard<std::mutex> lock(other.m);
-  if (other.mKey) {
-    mKey = EVP_PKEY_dup(other.mKey);
-    if (!mKey) {
+  std::lock_guard<std::mutex> lock(other.m_);
+  if (other.key_) {
+    key_ = EVP_PKEY_dup(other.key_);
+    if (!key_) {
       throw pep::OpenSSLError("Failed to duplicate given EVP_PKEY in AsymmetricKey copy constructor.");
     }
-    set = other.set;
+    set_ = other.set_;
     keyType = other.keyType;
   }
 }
 
 AsymmetricKey::AsymmetricKey(AsymmetricKey&& other) {
-  std::lock_guard<std::mutex> lock(other.m);
-  if (other.mKey) {
-    mKey = std::exchange(other.mKey, nullptr);
-    set = std::exchange(other.set, false);
+  std::lock_guard<std::mutex> lock(other.m_);
+  if (other.key_) {
+    key_ = std::exchange(other.key_, nullptr);
+    set_ = std::exchange(other.set_, false);
     keyType = std::exchange(other.keyType, AsymmetricKeyType::None);
   }
 }
 
 AsymmetricKey& AsymmetricKey::operator=(AsymmetricKey other) {
-  std::lock_guard<std::mutex> lock(m);
-  std::swap(mKey, other.mKey);
-  set = other.set;
+  std::lock_guard<std::mutex> lock(m_);
+  std::swap(key_, other.key_);
+  set_ = other.set_;
   keyType = other.keyType;
   return *this;
 }
@@ -118,13 +118,13 @@ bool AsymmetricKey::operator==(const AsymmetricKey& other) const {
   }
 
   // Lock both mutexes without deadlock
-  std::scoped_lock lock(m, other.m);
+  std::scoped_lock lock(m_, other.m_);
 
   if (keyType != other.keyType) {
     return false;
   }
 
-  int result = EVP_PKEY_eq(mKey, other.mKey);
+  int result = EVP_PKEY_eq(key_, other.key_);
   if (result == 1) {
     return true;
   } else if (result == 0) {
@@ -140,12 +140,12 @@ bool AsymmetricKey::operator==(const AsymmetricKey& other) const {
 }
 
 std::string AsymmetricKey::encrypt(const std::string& str) const {
-  std::lock_guard<std::mutex> lock(m);
-  if (!set) {
+  std::lock_guard<std::mutex> lock(m_);
+  if (!set_) {
     throw std::runtime_error("Failure trying to encrypt with key not set in AsymmetricKey::encrypt.");
   }
 
-  EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(mKey, nullptr);
+  EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_, nullptr);
   if (!ctx) {
     throw pep::OpenSSLError("Failed to create EVP_PKEY_CTX in AsymmetricKey::encrypt.");
   }
@@ -175,12 +175,12 @@ std::string AsymmetricKey::encrypt(const std::string& str) const {
 }
 
 std::string AsymmetricKey::decrypt(const std::string& str) const {
-  std::lock_guard<std::mutex> lock(m);
-  if (!set) {
+  std::lock_guard<std::mutex> lock(m_);
+  if (!set_) {
     throw std::runtime_error("AsymmetricKey not set");
   }
 
-  EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(mKey, nullptr);
+  EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_, nullptr);
   if (!ctx) {
     throw pep::OpenSSLError("Failed to create EVP_PKEY_CTX in AsymmetricKey::decrypt.");
   }
@@ -214,8 +214,8 @@ std::string AsymmetricKey::decrypt(const std::string& str) const {
  * @throws std::runtime_error if the key type is not set or if an OpenSSL error occurred.
  */
 std::string AsymmetricKey::toPem() const {
-  std::lock_guard<std::mutex> lock(m);
-  if (!set) {
+  std::lock_guard<std::mutex> lock(m_);
+  if (!set_) {
     return {};
   }
 
@@ -229,7 +229,7 @@ std::string AsymmetricKey::toPem() const {
     if (!bio) {
       throw pep::OpenSSLError("Failed to create secure memory IO buffer (BIO) in AsymmetricKey::toPem.");
     }
-    if (PEM_write_bio_PrivateKey(bio, mKey, nullptr, nullptr, 0, nullptr, nullptr) <= 0) {
+    if (PEM_write_bio_PrivateKey(bio, key_, nullptr, nullptr, 0, nullptr, nullptr) <= 0) {
       throw pep::OpenSSLError("Failed to write private key to IO buffer (BIO) in AsymmetricKey::toPem.");
     }
     break;
@@ -238,7 +238,7 @@ std::string AsymmetricKey::toPem() const {
     if (!bio) {
       throw pep::OpenSSLError("Failed to create IO buffer (BIO) in AsymmetricKey::toPem.");
     }
-    if (PEM_write_bio_PUBKEY(bio, mKey) <= 0) {
+    if (PEM_write_bio_PUBKEY(bio, key_) <= 0) {
       throw pep::OpenSSLError("Failed to write public key to IO buffer (BIO) in AsymmetricKey::toPem.");
     }
     break;
@@ -253,9 +253,9 @@ std::string AsymmetricKey::toPem() const {
 }
 
 std::string AsymmetricKey::toDer() const {
-  std::lock_guard<std::mutex> lock(m);
+  std::lock_guard<std::mutex> lock(m_);
 
-  if (!set) {
+  if (!set_) {
     return {};
   }
 
@@ -269,7 +269,7 @@ std::string AsymmetricKey::toDer() const {
       if (!bio) {
         throw pep::OpenSSLError("Failed to create secure memory IO buffer (BIO) in AsymmetricKey::toDer.");
       }
-      if (i2d_PKCS8PrivateKey_bio(bio, mKey, nullptr, nullptr, 0, nullptr, nullptr) <= 0) {
+      if (i2d_PKCS8PrivateKey_bio(bio, key_, nullptr, nullptr, 0, nullptr, nullptr) <= 0) {
         throw pep::OpenSSLError("Failed to write private key to IO buffer (BIO) in AsymmetricKey::toDer.");
       }
       break;
@@ -278,7 +278,7 @@ std::string AsymmetricKey::toDer() const {
       if (!bio) {
         throw pep::OpenSSLError("Failed to create IO buffer (BIO) in AsymmetricKey::toDer.");
       }
-      if (i2d_PUBKEY_bio(bio, mKey) <= 0) {
+      if (i2d_PUBKEY_bio(bio, key_) <= 0) {
         throw pep::OpenSSLError("Failed to write public key to IO buffer (BIO) in AsymmetricKey::toDer.");
       }
       break;
@@ -298,8 +298,8 @@ std::string AsymmetricKey::toDer() const {
  * @return True if the private key corresponds to the public key, false otherwise.
  */
 bool AsymmetricKey::isPrivateKeyFor(const AsymmetricKey& publicKey) const {
-  std::scoped_lock lock(m, publicKey.m);
-  if (!set || !publicKey.set){
+  std::scoped_lock lock(m_, publicKey.m_);
+  if (!set_ || !publicKey.set_){
     return false;
   }
 
@@ -322,8 +322,8 @@ bool AsymmetricKey::isPrivateKeyFor(const AsymmetricKey& publicKey) const {
   PEP_DEFER(BN_free(rsa_priv_n));
 
   // Extract n with EVP_PKEY_get_bn_param for private key
-  if (EVP_PKEY_is_a(mKey, "RSA")) {
-    if (EVP_PKEY_get_bn_param(mKey, OSSL_PKEY_PARAM_RSA_N, &rsa_priv_n) <= 0) {
+  if (EVP_PKEY_is_a(key_, "RSA")) {
+    if (EVP_PKEY_get_bn_param(key_, OSSL_PKEY_PARAM_RSA_N, &rsa_priv_n) <= 0) {
       throw pep::OpenSSLError("Failed to get RSA private key n in AsymmetricKey::isPrivateKeyFor.");
     }
   } else {
@@ -331,8 +331,8 @@ bool AsymmetricKey::isPrivateKeyFor(const AsymmetricKey& publicKey) const {
   }
 
   // Extract the modulus (n) from the public key
-  if (EVP_PKEY_is_a(publicKey.mKey, "RSA")) {
-    if (EVP_PKEY_get_bn_param(publicKey.mKey, OSSL_PKEY_PARAM_RSA_N, &rsa_pub_n) <= 0) {
+  if (EVP_PKEY_is_a(publicKey.key_, "RSA")) {
+    if (EVP_PKEY_get_bn_param(publicKey.key_, OSSL_PKEY_PARAM_RSA_N, &rsa_pub_n) <= 0) {
       throw pep::OpenSSLError("Failed to get RSA public key n in AsymmetricKey::isPrivateKeyFor.");
     }
   } else {
@@ -349,13 +349,13 @@ bool AsymmetricKey::isPrivateKeyFor(const AsymmetricKey& publicKey) const {
 }
 
 std::string AsymmetricKey::signDigestSha256(const std::string& abDigest) const {
-  std::lock_guard<std::mutex> lock(m);
-  if (!set) {
+  std::lock_guard<std::mutex> lock(m_);
+  if (!set_) {
     throw std::runtime_error("Failure in AsymmetricKey::signDigestSha256. AsymmetricKey not set.");
   }
 
   // Create a new signature context
-  EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new(mKey, nullptr);
+  EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new(key_, nullptr);
   if (!ctx) {
     throw pep::OpenSSLError("Failed to create signature context in AsymmetricKey::signDigestSha256.");
   }
@@ -393,13 +393,13 @@ std::string AsymmetricKey::signDigestSha256(const std::string& abDigest) const {
 }
 
 bool AsymmetricKey::verifyDigestSha256(const std::string& digest, const std::string& sig) const {
-  std::lock_guard<std::mutex> lock(m);
-  if (!set) {
+  std::lock_guard<std::mutex> lock(m_);
+  if (!set_) {
     throw std::runtime_error("Failure in AsymmetricKey::verifyDigestSha256. AsymmetricKey not set.");
   }
 
   // Create a new signature verification context
-  EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new(mKey, nullptr);
+  EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new(key_, nullptr);
   if (!ctx) {
     throw pep::OpenSSLError("Failed to create EVP_PKEY_CTX in AsymmetricKey::verifyDigestSha256.");
   }
@@ -435,42 +435,42 @@ bool AsymmetricKey::verifyDigestSha256(const std::string& digest, const std::str
 }
 
 AsymmetricKeyPair::AsymmetricKeyPair(const AsymmetricKeyPair& other) {
-  std::lock_guard<std::mutex> lock(other.m);
-  if (other.mKeyPair) {
-    mKeyPair = EVP_PKEY_dup(other.mKeyPair);
-    if (!mKeyPair) {
+  std::lock_guard<std::mutex> lock(other.m_);
+  if (other.keyPair_) {
+    keyPair_ = EVP_PKEY_dup(other.keyPair_);
+    if (!keyPair_) {
       throw pep::OpenSSLError("Failed to duplicate key pair in AsymmetricKeyPair copy constructor.");
     }
   }
 }
 
 AsymmetricKeyPair& AsymmetricKeyPair::operator=(AsymmetricKeyPair other) {
-  std::lock_guard<std::mutex> lock(m);
-  std::swap(mKeyPair, other.mKeyPair);
+  std::lock_guard<std::mutex> lock(m_);
+  std::swap(keyPair_, other.keyPair_);
   return *this;
 }
 
 AsymmetricKeyPair::~AsymmetricKeyPair() {
-  EVP_PKEY_free(mKeyPair);
+  EVP_PKEY_free(keyPair_);
 }
 
 AsymmetricKeyPair AsymmetricKeyPair::GenerateKeyPair() {
   AsymmetricKeyPair keyPair;
-  keyPair.mKeyPair = EVP_RSA_gen(2048);
-  if (!keyPair.mKeyPair) {
+  keyPair.keyPair_ = EVP_RSA_gen(2048);
+  if (!keyPair.keyPair_) {
     throw pep::OpenSSLError("Failed to generate key pair in AsymmetricKeyPair.");
   }
   return keyPair;
 }
 
 AsymmetricKey AsymmetricKeyPair::getPublicKey() const {
-  std::lock_guard<std::mutex> lock(m);
-  return AsymmetricKey(AsymmetricKeyType::Public, mKeyPair);
+  std::lock_guard<std::mutex> lock(m_);
+  return AsymmetricKey(AsymmetricKeyType::Public, keyPair_);
 }
 
 AsymmetricKey AsymmetricKeyPair::getPrivateKey() const {
-  std::lock_guard<std::mutex> lock(m);
-  return AsymmetricKey(AsymmetricKeyType::Private, mKeyPair);
+  std::lock_guard<std::mutex> lock(m_);
+  return AsymmetricKey(AsymmetricKeyType::Private, keyPair_);
 }
 
 } // namespace pep

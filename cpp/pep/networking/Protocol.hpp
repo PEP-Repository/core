@@ -68,10 +68,10 @@ class Protocol::Bound : private InstanceBound<Protocol> { // Note private inheri
   friend class InstanceBound<Protocol>; // Allow base class to static_cast<> to derived despite private inheritance
 
 private:
-  boost::asio::io_context& mIoContext;
+  boost::asio::io_context& ioContext_;
 
 protected:
-  explicit Bound(const Protocol& protocol, boost::asio::io_context& ioContext) noexcept : InstanceBound<Protocol>(protocol), mIoContext(ioContext) {}
+  explicit Bound(const Protocol& protocol, boost::asio::io_context& ioContext) noexcept : InstanceBound<Protocol>(protocol), ioContext_(ioContext) {}
 
   using InstanceBound<Protocol>::downcastIfBoundTo; // Provide access to privately inherited method
 
@@ -84,7 +84,7 @@ public:
   /* \brief Produces the I/O context associated with this object.
    * \return (A reference to) a Boost io_context.
    */
-  boost::asio::io_context& ioContext() const noexcept { return mIoContext; }
+  boost::asio::io_context& ioContext() const noexcept { return ioContext_; }
 };
 
 /*!
@@ -193,10 +193,10 @@ public:
 class Protocol::NodeComponent : public std::enable_shared_from_this<NodeComponent>, public Bound, boost::noncopyable {
 protected:
   explicit NodeComponent(const NodeParameters& parameters) noexcept
-    : Bound(parameters.protocol(), parameters.ioContext()), mConnectionAddress(parameters.address()) {
+    : Bound(parameters.protocol(), parameters.ioContext()), connectionAddress_(parameters.address()) {
   }
 
-  const std::string& connectionAddress() const { return mConnectionAddress; }
+  const std::string& connectionAddress() const { return connectionAddress_; }
 
 public:
   /*!
@@ -219,7 +219,7 @@ public:
   virtual std::shared_ptr<Protocol::Socket> openSocket(const ConnectionAttempt::Handler& notify) = 0;
 
 private:
-  std::string mConnectionAddress;
+  std::string connectionAddress_;
 };
 
 

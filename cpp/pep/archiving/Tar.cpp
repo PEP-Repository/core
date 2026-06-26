@@ -20,8 +20,6 @@ const size_t RETRIES = 3;
 struct TarCtx {
    std::istream& stream;
    std::array<char, 10240> buf{};
-
-   TarCtx(std::istream &stream) : stream(stream) {}
 };
 
 int open_callback(archive* archive, void* clientData) {
@@ -124,23 +122,23 @@ bool readBlockToStream(archive* archive, std::ostream& out) {
 } // end namespace
 
 
-Tar::Tar(std::shared_ptr<std::ostream> stream) : mStream(stream), mArchive(archive_write_new()) {
-  if(archive_write_set_format_pax_restricted(mArchive) != ARCHIVE_OK) {
+Tar::Tar(std::shared_ptr<std::ostream> stream) : stream_(stream), archive_(archive_write_new()) {
+  if(archive_write_set_format_pax_restricted(archive_) != ARCHIVE_OK) {
     std::ostringstream oss;
-    oss << "Error while setting tar format to pax_restricted: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+    oss << "Error while setting tar format to pax_restricted: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
     throw std::runtime_error(oss.str());
   }
 
-  if(archive_write_open(mArchive, mStream.get(), open_callback, write_callback, close_callback) != ARCHIVE_OK) {
+  if(archive_write_open(archive_, stream_.get(), open_callback, write_callback, close_callback) != ARCHIVE_OK) {
     std::ostringstream oss;
-    oss << "Error opening tar file for writing: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+    oss << "Error opening tar file for writing: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
     throw std::runtime_error(oss.str());
   }
 }
 
 Tar::~Tar() {
-  archive_write_close(mArchive);
-  archive_write_free(mArchive);
+  archive_write_close(archive_);
+  archive_write_free(archive_);
 }
 
 
@@ -152,22 +150,22 @@ void Tar::nextEntry(const std::filesystem::path& path, int64_t size) {
   archive_entry_set_size(entry, size);
   archive_entry_set_filetype(entry, AE_IFREG);
   archive_entry_set_perm(entry, 0644);
-  int result = archive_write_header(mArchive, entry);
+  int result = archive_write_header(archive_, entry);
   for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= RETRIES; ++retry) {
-    PEP_LOG(LogTag, Severity::Warning) << "Retry " << retry << " of " << RETRIES << " after warning while writing tar entry header: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
-    result = archive_write_header(mArchive, entry);
+    PEP_LOG(LogTag, Severity::Warning) << "Retry " << retry << " of " << RETRIES << " after warning while writing tar entry header: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
+    result = archive_write_header(archive_, entry);
   }
   if(result == ARCHIVE_WARN) {
-      PEP_LOG(LogTag, Severity::Warning) << "Warning while writing tar entry header: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+      PEP_LOG(LogTag, Severity::Warning) << "Warning while writing tar entry header: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
   }
   else if(result == ARCHIVE_RETRY) {
       std::ostringstream oss;
-      oss << "Error while writing tar entry header. Too many retries for error: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+      oss << "Error while writing tar entry header. Too many retries for error: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
       throw std::runtime_error(oss.str());
   }
   else if(result == ARCHIVE_FATAL) {
       std::ostringstream oss;
-      oss << "Error while writing tar entry header: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+      oss << "Error while writing tar entry header: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
       throw std::runtime_error(oss.str());
   }
   archive_entry_free(entry);
@@ -177,9 +175,9 @@ void Tar::nextEntry(const std::filesystem::path& path, int64_t size) {
 
 void Tar::writeData(std::string_view data) {
 
-  if(archive_write_data(mArchive, data.data(), data.length()) < 0) {
+  if(archive_write_data(archive_, data.data(), data.length()) < 0) {
     std::ostringstream oss;
-    oss << "Error writing data to tar: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+    oss << "Error writing data to tar: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
     throw std::runtime_error(oss.str());
   }
 }

@@ -23,13 +23,13 @@ std::string FormatWin32Error(DWORD code);
 
 class ApiCallFailure : public std::runtime_error {
 private:
-  DWORD mCode;
+  DWORD code_;
 
 private:
   ApiCallFailure(DWORD code, const std::string& description);
 
 public:
-  DWORD getCode() const noexcept { return mCode; }
+  DWORD getCode() const noexcept { return code_; }
 
   [[noreturn]] static void Raise(DWORD code);
   [[noreturn]] static void RaiseLastError();
@@ -59,7 +59,6 @@ void StartProcess(const std::filesystem::path& start, const std::optional<std::s
 // RAII wrapper to bind a (Windows subsystem) process's stdio to the parent console. See https://stackoverflow.com/a/55875595
 class ParentConsoleBinding {
 private:
-  static ParentConsoleBinding* instance_;
   ParentConsoleBinding();
 public:
   ~ParentConsoleBinding() noexcept;
@@ -67,7 +66,7 @@ public:
 };
 
 class SetConsoleCodePage {
-  UINT prevInputCodePage{}, prevOutputCodePage{};
+  UINT prevInputCodePage_{}, prevOutputCodePage_{};
 
   /// Set console code pages
   /// \throws std::runtime_error when code page could not be set
@@ -86,8 +85,8 @@ public:
   SetConsoleCodePage& operator=(const SetConsoleCodePage&) = delete;
 
   SetConsoleCodePage(SetConsoleCodePage&& other) noexcept
-    : prevInputCodePage{ std::exchange(other.prevInputCodePage, {}) },
-    prevOutputCodePage{ std::exchange(other.prevOutputCodePage, {}) } {}
+    : prevInputCodePage_{ std::exchange(other.prevInputCodePage_, {}) },
+    prevOutputCodePage_{ std::exchange(other.prevOutputCodePage_, {}) } {}
   SetConsoleCodePage& operator=(SetConsoleCodePage&&) = delete;
 
   /// Revert console code pages
@@ -99,18 +98,18 @@ void ClearMemory(void* address, size_t bytes);
 template <typename T>
 class SecureBuffer {
 private:
-  T* mAddress;
-  size_t mMaxItems;
+  T* address_;
+  size_t maxItems_;
 
   SecureBuffer& operator=(const SecureBuffer& other) = delete;
-  size_t getByteSize() const { return mMaxItems * sizeof(T); }
+  size_t getByteSize() const { return maxItems_ * sizeof(T); }
 
 public:
   explicit SecureBuffer(size_t maxItems)
-    : mAddress(nullptr), mMaxItems(maxItems) {
-    if (mMaxItems != 0U) {
-      mAddress = static_cast<T*>(malloc(getByteSize()));
-      if (mAddress == nullptr) {
+    : address_(nullptr), maxItems_(maxItems) {
+    if (maxItems_ != 0U) {
+      address_ = static_cast<T*>(malloc(getByteSize()));
+      if (address_ == nullptr) {
         throw std::bad_alloc();
       }
     }
@@ -118,26 +117,26 @@ public:
 
   SecureBuffer(const SecureBuffer& other)
     : SecureBuffer(other.maxItems()) {
-    memcpy(mAddress, other.mAddress, getByteSize());
+    memcpy(address_, other.address_, getByteSize());
   }
 
   SecureBuffer(SecureBuffer&& other)
-    : mAddress(other.mAddress), mMaxItems(other.mMaxItems) {
-    other.mAddress = nullptr;
-    other.mMaxItems = 0U;
+    : address_(other.address_), maxItems_(other.maxItems_) {
+    other.address_ = nullptr;
+    other.maxItems_ = 0U;
   }
 
   ~SecureBuffer() noexcept {
-    if (mAddress != nullptr) {
-      ClearMemory(mAddress, getByteSize());
-      free(mAddress);
-      // No need to update mAddress: this instance is being destroyed anyway
+    if (address_ != nullptr) {
+      ClearMemory(address_, getByteSize());
+      free(address_);
+      // No need to update address_: this instance is being destroyed anyway
     }
   }
 
-  T* getAddress() noexcept { return mAddress; }
-  const T* getAddress() const noexcept { return mAddress; }
-  size_t getMaxItems() const noexcept { return mMaxItems; }
+  T* getAddress() noexcept { return address_; }
+  const T* getAddress() const noexcept { return address_; }
+  size_t getMaxItems() const noexcept { return maxItems_; }
 };
 
 }

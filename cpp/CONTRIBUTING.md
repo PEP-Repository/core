@@ -205,14 +205,21 @@ This section lists our own coding guidelines, which we apply on top of the more 
 - Macro names are written in `SCREAMING_SNAKE_CASE` to make them stand out like the sore thumb that they are.
 - The names of macros defined in the PEP code base start with a `PEP_` prefix to prevent naming collisions (e.g. with other libraries).
 - Things that are not macros have names that are *not* written in `SCREAMING_SNAKE_CASE` to prevent naming collisions with macros from e.g. other libraries.
-- Class and struct names are written in `PascalCase`, starting with an `U`ppercase `L`etter.
+- Names of `class` and `struct` and `enum` types are written in `PascalCase`, starting with an `U`ppercase `L`etter.
 - Variable names are written in `camelCase`, starting with a `l`owerase `l`etter.
 - Names of static methods and free functions are written in `PascalCase`, starting with an `U`ppercase `L`etter.
-- Instance method names are written in `camelCase`, starting with a `l`owerase `l`etter;
-- Enumerator(name)s are written in `PascalCase`, starting with an `U`ppercase `L`etter.
-- Enumerator names are written in `PascalCase`, starting with an `U`ppercase `L`etter..
-- Names of `constexpr` constants are written in `PascalCase`, starting with an `U`ppercase `L`etter. (since they are so similar to enumerator values).
-- Names of `const` variables are written in `PascalCase`, starting with an `U`ppercase `L`etter. (since they are so similar to `constexpr` constants).
+- Instance method names are written in `camelCase`, starting with a `l`owerase `l`etter.
+- Enumerator (value) names are written in `PascalCase`, starting with an `U`ppercase `L`etter.
+- Names of `constexpr` constants are written in `PascalCase`, starting with an `U`ppercase `L`etter (since they are so similar to enumerator values).
+- Names of `const` variables are written in `PascalCase`, starting with an `U`ppercase `L`etter (since they are so similar to `constexpr` constants).
+- Prefer proper encapsulation and state management over publically accessible state.
+- Properly encapsulating user-defined (non-alias) types are defined using the `class` keyword.
+    - Non-const fields of such types are all `private`.
+    - Private field names are written in `camelCase_`, starting with a `l`owerase `l`etter, and ending with an underscore `_` character. (The suffix prevents naming collisions with similarly named instance methods, such as getter methods.)
+- Property bags (i.e. user-defined aggregate types with public fields) are defined using the `struct` keyword.
+    - Such types do not contain instance methods, putting state management responsibilities firmly into the caller's hands.
+    - Field names are written in `camelCase`, starting with a `l`owerase `l`etter. Note that these names lack the trailing underscore `_` character that's used for non-public fields.
+
 
 - Use curly braces `{}` for loop code and condition branches:
 

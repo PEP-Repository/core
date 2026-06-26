@@ -8,7 +8,7 @@ namespace castor {
 class StudyDataPoint : public DataPoint<StudyDataPoint, Participant>, public SharedConstructor<StudyDataPoint> {
 
  public:
-  static const std::string RELATIVE_API_ENDPOINT;
+  static const std::string RelativeApiEndpoint;
 
   std::string makeUrl() const override;
 

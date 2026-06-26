@@ -38,7 +38,7 @@ private:
 
   // using the pimpl idiom, so that we do not have to expose implementation dependencies in the header.
   struct Data;
-  std::unique_ptr<Data> mData;
+  std::unique_ptr<Data> data_;
 };
 
 } // namespace pep::tokenBlocking

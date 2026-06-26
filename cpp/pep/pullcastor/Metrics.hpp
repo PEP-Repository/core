@@ -19,13 +19,13 @@ public:
   Metrics(const std::string& jobname, const std::filesystem::path& metricsFile);
   ~Metrics() noexcept;
 
-  prometheus::Counter& uncaughtExceptions_count;
-  prometheus::Counter& storedEntries_count;
-  prometheus::Gauge& importDuration_seconds;
-  prometheus::Gauge& importTimestamp_seconds;
+  prometheus::Counter& uncaughtExceptionsCount;
+  prometheus::Counter& storedEntriesCount;
+  prometheus::Gauge& importDurationSeconds;
+  prometheus::Gauge& importTimestampSeconds;
 
 private:
-  std::optional<std::filesystem::path> mMetricsFile;
+  std::optional<std::filesystem::path> metricsFile_;
 };
 
 }

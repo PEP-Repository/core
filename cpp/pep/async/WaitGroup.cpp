@@ -17,23 +17,23 @@ const std::string LogTag = "WaitGroup";
 }
 
 WaitGroup::Action WaitGroup::add(const std::string& description) {
-  std::lock_guard<std::mutex> lock(mLock);
-  if (mWaited) {
+  std::lock_guard<std::mutex> lock(lock_);
+  if (waited_) {
     throw std::runtime_error("Cannot add actions to WaitGroup after callbacks have been registered");
   }
 
-  auto id = mNextActionId++;
-  mUnfinishedActions[id] = description;
+  auto id = nextActionId_++;
+  unfinishedActions_[id] = description;
   return WaitGroup::Action(shared_from_this(), id, description);
 }
 
 void WaitGroup::wait(std::function<void(void)> callback) {
   {
-    std::lock_guard<std::mutex> lock(mLock);
-    mWaited = true;
-    if (!mUnfinishedActions.empty()) {
-      PEP_LOG(LogTag, Severity::Verbose) << this << " waiter is waiting for unfinished actions: " << boost::algorithm::join(mUnfinishedActions | boost::adaptors::map_values, ", ");
-      mWaiters.push_back(callback);
+    std::lock_guard<std::mutex> lock(lock_);
+    waited_ = true;
+    if (!unfinishedActions_.empty()) {
+      PEP_LOG(LogTag, Severity::Verbose) << this << " waiter is waiting for unfinished actions: " << boost::algorithm::join(unfinishedActions_ | boost::adaptors::map_values, ", ");
+      waiters_.push_back(callback);
       return;
     }
   }
@@ -42,28 +42,28 @@ void WaitGroup::wait(std::function<void(void)> callback) {
 }
 
 void WaitGroup::Action::done() const {
-  mWg->finish(mId);
+  wg_->finish(id_);
 }
 
 void WaitGroup::finish(size_t id) {
   std::vector<std::function<void(void)>> cbs;
 
   {
-    std::lock_guard<std::mutex> lock(mLock);
+    std::lock_guard<std::mutex> lock(lock_);
 
-    auto position = mUnfinishedActions.find(id);
-    if (position == mUnfinishedActions.end())
+    auto position = unfinishedActions_.find(id);
+    if (position == unfinishedActions_.end())
       throw ActionAlreadyFinishedException("Action was already finished");
 
-    if (!mWaiters.empty()) {
+    if (!waiters_.empty()) {
       PEP_LOG(LogTag, Severity::Verbose) << this << " finished action: " << position->second;
     }
-    mUnfinishedActions.erase(position);
+    unfinishedActions_.erase(position);
 
-    if (!mUnfinishedActions.empty())
+    if (!unfinishedActions_.empty())
       return;
 
-    std::swap(cbs, mWaiters);
+    std::swap(cbs, waiters_);
   }
 
   if (!cbs.empty()) {

@@ -27,15 +27,15 @@ void ScalarMultProof::verify(
     const CurvePoint& secretTimesBase,
     const CurvePoint& pre,
     const CurvePoint& post) const {
-  pep::PublicCurveScalar challenge(ComputeChallenge(secretTimesBase, pre, post, mCB, mCM));
-  if ((mS * CurvePoint::Base != challenge * secretTimesBase + mCB)
-      || (mS * pre != challenge * post + mCM))
+  pep::PublicCurveScalar challenge(ComputeChallenge(secretTimesBase, pre, post, cB_, cM_));
+  if ((mS_ * CurvePoint::Base != challenge * secretTimesBase + cB_)
+      || (mS_ * pre != challenge * post + cM_))
     throw InvalidProof();
 }
 
 void ScalarMultProof::ensurePacked() const {
-  mCB.ensurePacked();
-  mCM.ensurePacked();
+  cB_.ensurePacked();
+  cM_.ensurePacked();
 }
 
 CurveScalar ScalarMultProof::ComputeChallenge(
@@ -45,7 +45,7 @@ CurveScalar ScalarMultProof::ComputeChallenge(
     const CurvePoint& cb,
     const CurvePoint& cm) {
   std::string packed;
-  packed.reserve(CurvePoint::PACKEDBYTES * 5);
+  packed.reserve(CurvePoint::PackedBytes * 5);
   packed += secretTimesBase.pack();
   packed += pre.pack();
   packed += post.pack();
@@ -65,7 +65,7 @@ InverseProof InverseProof::Create(
 void InverseProof::verify(
     const CurvePoint& secretInversePoint,
     const CurvePoint& secretAsPoint) const {
-  return mSecretInverseTimesPointProof.verify(secretInversePoint, secretAsPoint, CurvePoint::Base);
+  return secretInverseTimesPointProof_.verify(secretInversePoint, secretAsPoint, CurvePoint::Base);
 }
 
 RskProof RskProof::Create(
@@ -122,12 +122,12 @@ void RskProof::verify(
     const ElgamalEncryption& post,
     const ReshuffleRekeyVerifiers& verifiers) const {
   // Check the provided factors are related by the public key
-  mRerandomizeTimesPubKeyProof.verify(mRerandomizePoint, pre.publicKey, mRerandomizePubKey);
+  rerandomizeTimesPubKeyProof.verify(rerandomizePoint, pre.publicKey, rerandomizePubKey);
 
   // Note: we assume that the factors in ReshuffleRekeyVerifiers are correctly related
-  mReshuffleOverRekeyTimesBProof.verify(verifiers.mReshuffleOverRekeyCommitment, pre.b + mRerandomizePoint, post.b);
-  mReshuffleTimesCProof.verify(verifiers.mReshuffleCommitment, pre.c + mRerandomizePubKey, post.c);
-  if (post.publicKey != verifiers.mRekeyedPublicKey) {
+  reshuffleOverRekeyTimesBProof.verify(verifiers.reshuffleOverRekeyCommitment, pre.b + rerandomizePoint, post.b);
+  reshuffleTimesCProof.verify(verifiers.reshuffleCommitment, pre.c + rerandomizePubKey, post.c);
+  if (post.publicKey != verifiers.rekeyedPublicKey) {
     throw InvalidProof();
   }
 }
@@ -146,20 +146,20 @@ ReshuffleRekeyVerifiers ReshuffleRekeyVerifiers::Compute(
 }
 
 void ReshuffleRekeyVerifiers::ensureThreadSafe() const {
-  mReshuffleOverRekeyCommitment.ensureThreadSafe();
-  mReshuffleCommitment.ensureThreadSafe();
-  mRekeyedPublicKey.ensureThreadSafe();
+  reshuffleOverRekeyCommitment.ensureThreadSafe();
+  reshuffleCommitment.ensureThreadSafe();
+  rekeyedPublicKey.ensureThreadSafe();
 }
 
 void ReshuffleRekeyVerifiersProof::verify(
     const ReshuffleRekeyVerifiers& verifiers,
     const ElgamalPublicKey& globalKey) const {
   // Check rekeyCommitment & rekeyInversePoint are related
-  mRekeyInverseProof.verify(mRekeyInversePoint, verifiers.mRekeyCommitment);
+  rekeyInverseProof.verify(rekeyInversePoint, verifiers.rekeyCommitment);
   // Check log(reshuffleCommitment) * rekeyInversePoint = reshuffleOverRekeyCommitment
-  mReshuffleTimesRekeyInverseProof.verify(verifiers.mReshuffleCommitment, mRekeyInversePoint, verifiers.mReshuffleOverRekeyCommitment);
+  reshuffleTimesRekeyInverseProof.verify(verifiers.reshuffleCommitment, rekeyInversePoint, verifiers.reshuffleOverRekeyCommitment);
   // Check public key
-  mRekeyTimesPublicKeyProof.verify(verifiers.mRekeyCommitment, globalKey, verifiers.mRekeyedPublicKey);
+  rekeyTimesPublicKeyProof.verify(verifiers.rekeyCommitment, globalKey, verifiers.rekeyedPublicKey);
 }
 
 ReshuffleRekeyVerifiersWithProof
@@ -178,9 +178,9 @@ ReshuffleRekeyVerifiersProof::ComputeCertified(
   );
   ReshuffleRekeyVerifiersProof proof(
     rekeyInversePoint,
-    InverseProof::Create(rekeyInversePoint, verifiers.mRekeyCommitment, rekeyInverse),
-    ScalarMultProof::Create(reshuffleCommitment, rekeyInversePoint, verifiers.mReshuffleOverRekeyCommitment, reshuffle),
-    ScalarMultProof::Create(verifiers.mRekeyCommitment, globalKey, verifiers.mRekeyedPublicKey, rekey));
+    InverseProof::Create(rekeyInversePoint, verifiers.rekeyCommitment, rekeyInverse),
+    ScalarMultProof::Create(reshuffleCommitment, rekeyInversePoint, verifiers.reshuffleOverRekeyCommitment, reshuffle),
+    ScalarMultProof::Create(verifiers.rekeyCommitment, globalKey, verifiers.rekeyedPublicKey, rekey));
   return {verifiers, proof};
 }
 

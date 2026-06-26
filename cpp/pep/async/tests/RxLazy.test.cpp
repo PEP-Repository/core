@@ -34,7 +34,7 @@ TEST(RxLazy, onNextComplete)
     *testutils::exhaust<int>(io_context,
       pep::RxLazy<int>([&io_context](){
       return rxcpp::observable<>::range(1,5)
-        .subscribe_on(observe_on_asio(io_context));
+        .subscribe_on(ObserveOnAsio(io_context));
       }).max()
     )
   );
@@ -48,7 +48,7 @@ TEST(RxLazy, onError)
 
   pep::RxLazy<int>([&io_context](){
       return rxcpp::observable<>::error<int>(std::runtime_error("This error"))
-        .subscribe_on(observe_on_asio(io_context));
+        .subscribe_on(ObserveOnAsio(io_context));
   }).subscribe(
     [](int i){ ASSERT_TRUE(false); },
     [&error_message](std::exception_ptr ep) {
@@ -74,7 +74,7 @@ TEST(RxLazy, ErrorInCreator)
 
   pep::RxLazy<int>([]()->rxcpp::observable<int>{
     throw std::runtime_error("This error");
-  }).subscribe_on(observe_on_asio(io_context)).subscribe(
+  }).subscribe_on(ObserveOnAsio(io_context)).subscribe(
     [](int i){ ASSERT_TRUE(false); },
     [&error_message](std::exception_ptr ep) {
       try { std::rethrow_exception(ep); }
@@ -98,14 +98,14 @@ TEST(RxLazy, IsLazy)
   ASSERT_EQ(std::vector<int>{5},
     *testutils::exhaust<int>(io_context,
       rxcpp::observable<>::range(1,5)
-        .subscribe_on(observe_on_asio(io_context))
+        .subscribe_on(ObserveOnAsio(io_context))
         .switch_if_empty(
       pep::RxLazy<int>([&True,&io_context]()->rxcpp::observable<int>{
         // Execution shouldn't reach this point
         True = false;
         return rxcpp::observable<>::error<int>(
             std::runtime_error("This shouldn't be"))
-              .subscribe_on(observe_on_asio(io_context));
+              .subscribe_on(ObserveOnAsio(io_context));
       })).max()));
 
   ASSERT_TRUE(True);
@@ -119,14 +119,14 @@ TEST(RxLazy, LazyPipeline)
   ASSERT_EQ(std::vector<int>{5},
     *testutils::exhaust<int>(io_context,
       rxcpp::observable<>::range(1,5)
-        .subscribe_on(observe_on_asio(io_context))
+        .subscribe_on(ObserveOnAsio(io_context))
         .switch_if_empty(
       pep::RxLazy<int>([&True,&io_context]()->rxcpp::observable<int>{
         // Execution shouldn't reach this point
         True = false;
         return rxcpp::observable<>::error<int>(
             std::runtime_error("This shouldn't be"))
-              .subscribe_on(observe_on_asio(io_context));
+              .subscribe_on(ObserveOnAsio(io_context));
       }).map([](int in)->int{ return in+1; })).max()));
 
   ASSERT_TRUE(True);

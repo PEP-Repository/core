@@ -48,29 +48,29 @@ CastorConnection::CastorConnection(const std::filesystem::path& apiKeyFile, std:
 }
 
 CastorConnection::CastorConnection(const EndPoint& endPoint, const ApiKey& apiKey, std::shared_ptr<boost::asio::io_context> io_context, const std::optional<std::filesystem::path>& caCert)
-  : mImplementor(std::make_unique<Implementor>()) {
+  : implementor_(std::make_unique<Implementor>()) {
   assert(io_context != nullptr);
 
-  mImplementor->client = castor::CastorClient::Create(*io_context, endPoint, apiKey.id, apiKey.secret, caCert);
-  mOnRequestForwarding = mImplementor->client->onRequest.subscribe([this](std::shared_ptr<const HTTPRequest> request) { onRequest.notify(request); });
-  mImplementor->client->start();
+  implementor_->client = castor::CastorClient::Create(*io_context, endPoint, apiKey.id, apiKey.secret, caCert);
+  onRequestForwarding_ = implementor_->client->onRequest.subscribe([this](std::shared_ptr<const HTTPRequest> request) { onRequest.notify(request); });
+  implementor_->client->start();
 }
 
 CastorConnection::~CastorConnection() noexcept {
-  mOnRequestForwarding.cancel();
-  mImplementor.reset();
+  onRequestForwarding_.cancel();
+  implementor_.reset();
 }
 
 std::shared_ptr<HTTPRequest> CastorConnection::makeGet(const std::string& path) {
-  return mImplementor->client->makeGet(path);
+  return implementor_->client->makeGet(path);
 }
 
 std::shared_ptr<HTTPRequest> CastorConnection::makePost(const std::string& path, const std::string& body) {
-  return mImplementor->client->makePost(path, body);
+  return implementor_->client->makePost(path, body);
 }
 
 rxcpp::observable<JsonPtr> CastorConnection::sendCastorRequest(std::shared_ptr<HTTPRequest> request) {
-  return mImplementor->client->sendCastorRequest(request);
+  return implementor_->client->sendCastorRequest(request);
 }
 
 rxcpp::observable<JsonPtr> CastorConnection::getJsonEntries(const std::string& apiPath, const std::string& embeddedItemsNodeName) {
@@ -83,11 +83,11 @@ rxcpp::observable<JsonPtr> CastorConnection::getJsonEntries(const std::string& a
 }
 
 rxcpp::observable<AuthenticationStatus> CastorConnection::authenticationStatus() {
-  return mImplementor->client->authenticationStatus();
+  return implementor_->client->authenticationStatus();
 }
 
 void CastorConnection::reauthenticate() {
-  mImplementor->client->reauthenticate();
+  implementor_->client->reauthenticate();
 }
 
 rxcpp::observable<std::shared_ptr<Study>> CastorConnection::getStudies() {

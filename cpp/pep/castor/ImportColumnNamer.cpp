@@ -8,13 +8,13 @@ namespace pep {
 namespace castor {
 
 ImportColumnNamer::ImportColumnNamer(ColumnNameMappings mappings)
-  : mMappings(std::move(mappings)) {
+  : mappings_(std::move(mappings)) {
 }
 
 std::string ImportColumnNamer::joinColumnNameSections(const std::string& configuredPrefix, const std::vector<std::string>& sections) const {
   std::vector<std::string> parts = { configuredPrefix };
   parts.reserve(parts.size() + sections.size());
-  std::transform(sections.cbegin(), sections.cend(), std::back_inserter(parts), [&mappings = mMappings](const std::string& section) {
+  std::transform(sections.cbegin(), sections.cend(), std::back_inserter(parts), [&mappings = mappings_](const std::string& section) {
     return mappings.getColumnNameSectionFor(section);
     });
   return boost::algorithm::join(parts, ".");
@@ -36,7 +36,7 @@ rxcpp::observable<std::string> ImportColumnNamer::getImportableColumnNames(std::
   if (studySlug.empty()) {
     throw std::runtime_error("No study slug configured for short pseudonym " + spName);
   }
-  return rxcpp::rxs::iterate(storageDefinitions).flat_map([studySlug, spName, connection, nameMappings = mMappings, answerSetCount](std::shared_ptr<CastorStorageDefinition> storage) {
+  return rxcpp::rxs::iterate(storageDefinitions).flat_map([studySlug, spName, connection, nameMappings = mappings_, answerSetCount](std::shared_ptr<CastorStorageDefinition> storage) {
     const auto& dataColumn = storage->getDataColumn();
     if (dataColumn.empty()) {
       throw std::runtime_error("No data column configured for storage of Castor short pseudonym " + spName);

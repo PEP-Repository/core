@@ -17,16 +17,16 @@ class CrfAspectPuller::FormPuller : public std::enable_shared_from_this<FormPull
   friend SharedConstructor<FormPuller>;
 
 private:
-  std::string mFormId;
-  std::string mColumnName;
-  std::shared_ptr<std::vector<std::shared_ptr<RepeatingDataPuller>>> mRepeatingDataPullers;
+  std::string formId_;
+  std::string columnName_;
+  std::shared_ptr<std::vector<std::shared_ptr<RepeatingDataPuller>>> repeatingDataPullers_;
 
   FormPuller(const std::string& formId, const std::string& columnName, std::shared_ptr<std::vector<std::shared_ptr<RepeatingDataPuller>>> repeatingDataPullers);
 
 public:
   static rxcpp::observable<std::shared_ptr<FormPuller>> LoadAll(std::shared_ptr<StudyPuller> sp, const std::string& columnPrefix);
 
-  inline const std::string& getFormId() const noexcept { return mFormId; }
+  inline const std::string& getFormId() const noexcept { return formId_; }
 
   rxcpp::observable<std::shared_ptr<StorableColumnContent>> loadContentFromCastor(std::shared_ptr<StudyPuller> sp, std::shared_ptr<CastorParticipant> participant, std::shared_ptr<FieldValues> fvs);
 };
@@ -38,7 +38,7 @@ rxcpp::observable<std::shared_ptr<CrfAspectPuller::FormPuller>> CrfAspectPuller:
       .flat_map([sp, columnPrefix, namer](std::shared_ptr<Form> form) {
       auto formId = form->getId();
       return sp->getFields()
-        .filter([formId](std::shared_ptr<Field> field) { return field->getParentId() == formId && field->getType() == Field::TYPE_REPEATED_MEASURE; })
+        .filter([formId](std::shared_ptr<Field> field) { return field->getParentId() == formId && field->getType() == Field::TypeRepeatedMeasure; })
         .flat_map([sp](std::shared_ptr<Field> field) {return sp->getRepeatingDataPuller(field->getReportId()); })
         .op(RxToVector())
         .map([formId, columnName = namer->getColumnName(columnPrefix, form)](std::shared_ptr<std::vector<std::shared_ptr<RepeatingDataPuller>>> repeatingDataPullers) {
@@ -49,27 +49,27 @@ rxcpp::observable<std::shared_ptr<CrfAspectPuller::FormPuller>> CrfAspectPuller:
 }
 
 CrfAspectPuller::FormPuller::FormPuller(const std::string& formId, const std::string& columnName, std::shared_ptr<std::vector<std::shared_ptr<RepeatingDataPuller>>> repeatingDataPullers)
-  : mFormId(formId), mColumnName(columnName), mRepeatingDataPullers(repeatingDataPullers) {
+  : formId_(formId), columnName_(columnName), repeatingDataPullers_(repeatingDataPullers) {
 }
 
 rxcpp::observable<std::shared_ptr<StorableColumnContent>> CrfAspectPuller::FormPuller::loadContentFromCastor(std::shared_ptr<StudyPuller> sp, std::shared_ptr<CastorParticipant> participant, std::shared_ptr<FieldValues> fvs) {
-  return RepeatingDataPuller::Aggregate(sp, mRepeatingDataPullers, participant->getRepeatingDataInstances())
+  return RepeatingDataPuller::Aggregate(sp, repeatingDataPullers_, participant->getRepeatingDataInstances())
     .op(RxGetOne("reports tree"))
-    .flat_map([fvs, column = mColumnName](std::shared_ptr<boost::property_tree::ptree> reports) {
+    .flat_map([fvs, column = columnName_](std::shared_ptr<boost::property_tree::ptree> reports) {
     return StorableColumnContent::CreateJson(column, RxIterate(*fvs), reports);
     })
     .op(RxGetOne("CRF form cell data"));
 }
 
 CrfAspectPuller::CrfAspectPuller(std::shared_ptr<StudyPuller> sp, const StudyAspect& aspect)
-  : TypedStudyAspectPuller<CrfAspectPuller, CastorStudyType::Crf>(sp, aspect), mImmediatePartialData(aspect.getStorage()->immediatePartialData()) {
-  mFormPullers = CreateRxCache([sp, prefix = this->getColumnNamePrefix()]() {
+  : TypedStudyAspectPuller<CrfAspectPuller, CastorStudyType::Crf>(sp, aspect), immediatePartialData_(aspect.getStorage()->immediatePartialData()) {
+  formPullers_ = CreateRxCache([sp, prefix = this->getColumnNamePrefix()]() {
     return FormPuller::LoadAll(sp, prefix)
       .op(RxToUnorderedMap([](std::shared_ptr<FormPuller> form) {return form->getFormId(); }));
   });
   // Bulk-retrieve and cache SDP data if we're processing all participants
   if (!sp->getEnvironmentPuller()->getShortPseudonymsToProcess().has_value()) {
-    mSdpsByParticipant = CreateRxCache([sp]() {
+    sdpsByParticipant_ = CreateRxCache([sp]() {
       return StudyDataPoint::BulkRetrieve(sp->getStudy(), sp->getParticipants())
         .op(RxGroupToVectors([](std::shared_ptr<StudyDataPoint> sdp) {return sdp->getParticipant(); }));
       });
@@ -78,8 +78,8 @@ CrfAspectPuller::CrfAspectPuller(std::shared_ptr<StudyPuller> sp, const StudyAsp
 
 rxcpp::observable<std::shared_ptr<StudyDataPoint>> CrfAspectPuller::getStudyDataPoints(std::shared_ptr<Participant> participant) {
   // Return cached data if we have it
-  if (mSdpsByParticipant != nullptr) {
-    return mSdpsByParticipant->observe()
+  if (sdpsByParticipant_ != nullptr) {
+    return sdpsByParticipant_->observe()
       .concat_map([participant](std::shared_ptr<StudyDataPointsByParticipant> sdpsByParticipant) -> rxcpp::observable<std::shared_ptr<StudyDataPoint>> {
       auto position = sdpsByParticipant->find(participant);
       if (position == sdpsByParticipant->cend()) {
@@ -96,7 +96,7 @@ rxcpp::observable<std::shared_ptr<StudyDataPoint>> CrfAspectPuller::getStudyData
 rxcpp::observable<std::shared_ptr<StorableColumnContent>> CrfAspectPuller::loadFormContentFromCastor(std::shared_ptr<CastorParticipant> participant, const std::string& formId, std::shared_ptr<FieldValues> fvs) {
   assert(!fvs->empty());
 
-  return mFormPullers->observe()
+  return formPullers_->observe()
     .flat_map([sp = this->getStudyPuller(), participant, formId, fvs](std::shared_ptr<FormPullersByFormId> byId) {
     auto puller = byId->at(formId);
     return puller->loadContentFromCastor(sp, participant, fvs);
@@ -108,7 +108,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> CrfAspectPuller::getSt
   auto rawParticipant = participant->getParticipant();
   auto id = rawParticipant->getId();
 
-  if (!mImmediatePartialData) {
+  if (!immediatePartialData_) {
     if (rawParticipant->getProgress() < 100 && !rawParticipant->isLocked()) {
       PEP_PULLCASTOR_LOG(Severity::Debug) << "Skipping study " << slug << "'s CRF for participant " << id << ", which is not completed";
       return rxcpp::rxs::empty<std::shared_ptr<StorableColumnContent>>();

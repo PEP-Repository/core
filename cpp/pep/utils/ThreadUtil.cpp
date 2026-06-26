@@ -10,8 +10,16 @@
 #endif
 
 namespace pep {
+
+namespace {
+
+//NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+thread_local std::optional<std::string> threadName;
+
+}
+
 const std::optional<std::string> &ThreadName::Get() {
-  return mName;
+  return threadName;
 }
 
 void ThreadName::Set(const std::string &name) {
@@ -24,9 +32,7 @@ void ThreadName::Set(const std::string &name) {
 #elif defined(__linux__)
   (void)::pthread_setname_np(::pthread_self(), name.c_str());
 #endif
-  mName = name;
+  threadName = name;
 }
-
-thread_local std::optional<std::string> ThreadName::mName = std::nullopt;
 
 }

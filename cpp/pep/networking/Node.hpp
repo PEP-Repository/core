@@ -11,8 +11,8 @@ namespace pep::networking {
  */
 class Node : public LifeCycler, public std::enable_shared_from_this<Node> {
 private:
-  std::shared_ptr<Protocol::NodeComponent> mComponent;
-  std::unordered_map<std::shared_ptr<Protocol::Socket>, EventSubscription> mSockets;
+  std::shared_ptr<Protocol::NodeComponent> component_;
+  std::unordered_map<std::shared_ptr<Protocol::Socket>, EventSubscription> sockets_;
 
 protected:
   using SocketConnectionAttempt = Protocol::ConnectionAttempt;
@@ -31,7 +31,7 @@ public:
    * @brief Produces a human-readable description of this networking node.
    * @return A string describing this node.
    */
-  std::string describe() const { return mComponent->describe(); }
+  std::string describe() const { return component_->describe(); }
 
   /**
    * @brief Makes the node start its networking.

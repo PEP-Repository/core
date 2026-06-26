@@ -12,11 +12,11 @@ using namespace std::chrono;
 namespace pep {
 
 Signatory::Signatory(X509CertificateChain certificateChain, X509RootCertificates rootCAs)
-  : mCertificateChain(std::move(certificateChain)), mRootCAs(std::move(rootCAs)) {
-  if (!mCertificateChain.verify(mRootCAs))
+  : certificateChain_(std::move(certificateChain)), rootCAs_(std::move(rootCAs)) {
+  if (!certificateChain_.verify(rootCAs_))
     throw Error("Invalid signatory: certificate chain not trusted");
 
-  const auto& cert = mCertificateChain.leaf();
+  const auto& cert = certificateChain_.leaf();
   if (!IsSigningCertificate(cert)) {
     throw Error("Invalid signatory: certificate is not a (PEP) Signing certificate");
   }
@@ -30,11 +30,11 @@ Signatory::Signatory(X509CertificateChain certificateChain, X509RootCertificates
 }
 
 std::string Signatory::commonName() const {
-  return mCertificateChain.leaf().getCommonName().value();
+  return certificateChain_.leaf().getCommonName().value();
 }
 
 std::string Signatory::organizationalUnit() const {
-  return mCertificateChain.leaf().getOrganizationalUnit().value();
+  return certificateChain_.leaf().getOrganizationalUnit().value();
 }
 
 
@@ -69,7 +69,7 @@ Signatory Signature::validate(
     std::optional<std::string> expectedCommonName,
     seconds timestampLeeway,
     bool expectLogCopy) const {
-  Signatory result(mCertificateChain, rootCAs);
+  Signatory result(certificateChain_, rootCAs);
 
   if (expectedCommonName && *expectedCommonName != result.commonName()) {
     std::ostringstream msg;
@@ -79,7 +79,7 @@ Signatory Signature::validate(
     throw Error(msg.str());
   }
 
-  auto diff = Abs(mTimestamp - TimeNow());
+  auto diff = Abs(timestamp_ - TimeNow());
   if (diff > timestampLeeway) {
     std::ostringstream msg;
     msg << "Invalid signature: timestamp differs by "
@@ -88,29 +88,29 @@ Signatory Signature::validate(
     throw SignatureValidityPeriodError(msg.str());
   }
 
-  if (expectLogCopy && (mScheme < SignatureScheme::V4))
+  if (expectLogCopy && (scheme_ < SignatureScheme::V4))
     throw Error("Invalid signature: scheme does not support is_log_copy");
-  if (expectLogCopy != mIsLogCopy) {
+  if (expectLogCopy != isLogCopy_) {
     if (expectLogCopy)
       throw Error("Invalid signature: expected is_log_copy to be set");
     throw Error("Invalid signature: is_log_copy is set");
   }
 
   Sha512 hasher;
-  hasher.update(PackUint32BE(static_cast<uint32_t>(mScheme)));
-  if (mScheme == SignatureScheme::V3) {
-    hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(mTimestamp))));
+  hasher.update(PackUint32BE(static_cast<uint32_t>(scheme_)));
+  if (scheme_ == SignatureScheme::V3) {
+    hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(timestamp_))));
     hasher.update(data);
-  } else if (mScheme == SignatureScheme::V4) {
-    hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(mTimestamp))));
-    hasher.update(PackUint8(static_cast<uint8_t>(mIsLogCopy)));
+  } else if (scheme_ == SignatureScheme::V4) {
+    hasher.update(PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<milliseconds>(timestamp_))));
+    hasher.update(PackUint8(static_cast<uint8_t>(isLogCopy_)));
     hasher.update(data);
   } else {
     throw Error("Invalid signature: unknown SignatureScheme");
   }
 
-  if (!mCertificateChain.leaf().getPublicKey().verifyDigestSha256(
-        hasher.digest().substr(0, 32), mSignature))
+  if (!certificateChain_.leaf().getPublicKey().verifyDigestSha256(
+        hasher.digest().substr(0, 32), signature_))
     throw Error("Invalid signature: data does not match signature or chain");
 
   return result;

@@ -104,25 +104,25 @@ public:
   // Convenience methods for test assertions (inline implementations)
   template <typename T>
   std::optional<T> getCapturedValue(const pep::commandline::CommandPath& commandPath, const std::string& paramName) const {
-    const auto command = FindOptional(mCapturedParams, commandPath);
+    const auto command = FindOptional(capturedParams_, commandPath);
     return command ? command->getOptional<T>(paramName) : std::optional<T>{std::nullopt};
   }
 
   template <typename T>
   std::vector<T> getCapturedValues(const pep::commandline::CommandPath& commandPath, const std::string& paramName) const {
-    const auto command = FindOptional(mCapturedParams, commandPath);
+    const auto command = FindOptional(capturedParams_, commandPath);
     return command ? command->getOptionalMultiple<T>(paramName) : std::vector<T>{};
   }
 
   bool hasCapturedParam(const pep::commandline::CommandPath& commandPath, const std::string& paramName) const {
-    const auto command = FindOptional(mCapturedParams, commandPath);
+    const auto command = FindOptional(capturedParams_, commandPath);
     return command ? command->has(paramName) : false;
   }
 
 private:
-  std::map<std::string, pep::commandline::NamedValues> mCapturedParams;
+  std::map<std::string, pep::commandline::NamedValues> capturedParams_;
 
-  static std::optional<pep::commandline::NamedValues> FindOptional(const decltype(mCapturedParams)& params, const pep::commandline::CommandPath& path){
+  static std::optional<pep::commandline::NamedValues> FindOptional(const decltype(capturedParams_)& params, const pep::commandline::CommandPath& path){
     const auto commandIt = params.find(path.toString());
     return (commandIt != params.end()) ? commandIt->second : std::optional<pep::commandline::NamedValues>{std::nullopt};
   }

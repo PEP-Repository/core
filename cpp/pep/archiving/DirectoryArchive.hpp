@@ -19,8 +19,8 @@ public:
 private:
   DirectoryArchive(const std::filesystem::path& directoryPath);
 
-  std::ofstream mCurrentFile;
-  std::filesystem::path mDirectoryPath;
+  std::ofstream currentFile_;
+  std::filesystem::path directoryPath_;
 };
 
 }

@@ -14,30 +14,30 @@ class RepeatingData;
   */
 class RepeatingDataInstance : public SimpleCastorChildObject<RepeatingDataInstance, Participant>, public SharedConstructor<RepeatingDataInstance> {
  private:
-  std::string mParticipantId;
-  std::string mName;
-  bool mArchived;
+  std::string participantId_;
+  std::string name_;
+  bool archived_;
 
  public:
-  static const std::string RELATIVE_API_ENDPOINT;
-  static const std::string EMBEDDED_API_NODE_NAME;
+  static const std::string RelativeApiEndpoint;
+  static const std::string EmbeddedApiNodeName;
 
   //! \return The ID of the participant this RepeatingDataInstance belongs to, as returned by the API. This is needed, for example, to filter RepeatingDataInstances that actually belong to a certain participant
   //! \see Participant::getRepeatingDataInstances
-  std::string getParticipantId() const{ return mParticipantId; }
+  std::string getParticipantId() const{ return participantId_; }
 
   //! \return The participant this RepeatingDataInstance belongs to
   std::shared_ptr<Participant> getParticipant() const { return this->getParent(); }
 
-  std::string getName() const { return mName; }
+  std::string getName() const { return name_; }
 
   //! \return Filled in values for this instance
   rxcpp::observable<std::shared_ptr<RepeatingDataPoint>> getRepeatingDataPoints();
 
-  std::shared_ptr<RepeatingData> getRepeatingData() const { return repeatingData; }
+  std::shared_ptr<RepeatingData> getRepeatingData() const { return repeatingData_; }
 
   //! \return Whether the repeating data instance is archived or not
-  inline bool isArchived() const { return mArchived; }
+  inline bool isArchived() const { return archived_; }
 
   static rxcpp::observable<std::shared_ptr<RepeatingDataInstance>> BulkRetrieve(std::shared_ptr<Study> study, rxcpp::observable<std::shared_ptr<Participant>> participants);
 
@@ -61,7 +61,7 @@ class RepeatingDataInstance : public SimpleCastorChildObject<RepeatingDataInstan
   RepeatingDataInstance(std::shared_ptr<Participant> participant, JsonPtr json);
 
  private:
-  std::shared_ptr<RepeatingData> repeatingData;
+  std::shared_ptr<RepeatingData> repeatingData_;
 
   friend class SharedConstructor<RepeatingDataInstance>;
 };

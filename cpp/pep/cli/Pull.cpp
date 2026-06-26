@@ -43,7 +43,7 @@ struct Context {
   bool resume{ false };
   bool updateFormat{ false };
   bool allAccessible{ false };
-  bool applyFileExtensions{ DownloadDirectory::APPLY_FILE_EXTENSIONS_BY_DEFAULT };
+  bool applyFileExtensions{ DownloadDirectory::ApplyFileExtensionsByDefault };
   std::string outputDirectory;
   std::string tempDirectory;
   DownloadDirectory::PullOptions options;

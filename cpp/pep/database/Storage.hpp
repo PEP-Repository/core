@@ -14,8 +14,8 @@ struct SchemaError : std::logic_error {
   };
   SchemaError(std::string table, Reason reason);
 
-  std::string mTable;
-  Reason mReason;
+  std::string table;
+  Reason reason;
 };
 
 /// @brief Represents an SQL "HAVING" clause
@@ -23,8 +23,8 @@ struct SchemaError : std::logic_error {
 /// @remark Defined with a (fully) lowercase name so it matches other sqlite_orm constructs
 template<typename T>
 struct having {
-  explicit having(T&& expr) : mExpr(std::move(expr)) {}
-  T mExpr;
+  explicit having(T&& expr) : expr_(std::move(expr)) {}
+  T expr_;
 };
 
 /// @brief Non-template base class for Storage<> (defined below).
@@ -33,7 +33,7 @@ struct BasicStorage {
   const bool isPersistent;
 
   /// @brief Specify this as the "path" to construct a Storage<> that's non-persistent, i.e. backed by memory
-  static const char* const STORE_IN_MEMORY;
+  static const char* const StoreInMemory;
 
 private:
   template <auto MakeRaw> friend struct Storage;
@@ -70,7 +70,7 @@ struct Storage : public BasicStorage {
   Raw raw;
 
   /// @brief Constructor
-  /// @param path The path to the sqlite database file. Pass STORE_IN_MEMORY to initialize non-persistent storage.
+  /// @param path The path to the sqlite database file. Pass StoreInMemory to initialize non-persistent storage.
   explicit Storage(std::string path)
     : BasicStorage(path), raw(MakeRaw(std::move(path))) {}
 
@@ -195,7 +195,7 @@ template <auto MakeRaw> template <Record RecordType, typename havingT>
     std::apply(PEP_WRAP_FN(group_by), RecordType::RecordIdentifier)
     // SQLite will pick this column from the row with the max() value:
     // https://www.sqlite.org/lang_select.html#bareagg
-    .having(c(&RecordType::tombstone) == false && havingCondition.mExpr),
+    .having(c(&RecordType::tombstone) == false && havingCondition.expr_),
     limit(1)
   ));
   return result.begin() != result.end();
@@ -211,7 +211,7 @@ template <auto MakeRaw> template <Record RecordType, typename havingT, typename.
     columns(max(&RecordType::seqno), selectColumns...),
     where(whereCondition),
     std::apply(PEP_WRAP_FN(group_by), RecordType::RecordIdentifier)
-    .having(c(&RecordType::tombstone) == false && havingCondition.mExpr)
+    .having(c(&RecordType::tombstone) == false && havingCondition.expr_)
   )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
 }
 

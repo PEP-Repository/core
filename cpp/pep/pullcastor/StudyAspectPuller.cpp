@@ -16,7 +16,7 @@ std::unordered_map<CastorStudyType, StudyAspectPuller::CreateFunction>& StudyAsp
 }
 
 StudyAspectPuller::StudyAspectPuller(std::shared_ptr<StudyPuller> study, const StudyAspect& aspect)
-  : mStudy(study), mSpColumn(aspect.getShortPseudonymColumn()), mColumnNamePrefix(aspect.getStorage()->getDataColumn()) {
+  : study_(study), spColumn_(aspect.getShortPseudonymColumn()), columnNamePrefix_(aspect.getStorage()->getDataColumn()) {
 }
 
 rxcpp::observable<std::shared_ptr<StudyAspectPuller>> StudyAspectPuller::CreateChildrenFor(std::shared_ptr<StudyPuller> study) {

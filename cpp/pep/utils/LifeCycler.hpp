@@ -32,7 +32,7 @@ public:
   };
 
 private:
-  Status mStatus = Status::Uninitialized;
+  Status status_ = Status::Uninitialized;
 
 protected:
   LifeCycler() noexcept = default;
@@ -55,7 +55,7 @@ public:
 
   /// \brief Produces the instance's current life cycle status
   /// \return The instance's current life cycle status
-  Status status() const noexcept { return mStatus; }
+  Status status() const noexcept { return status_; }
 };
 
 }

@@ -10,14 +10,14 @@
 
 namespace pep {
 
-template <typename TDerived, bool REGISTER = true>
+template <typename TDerived, bool registerDerived = true>
 class DeserializableDerivedError;
 
 // Inherit only through DeserializableDerivedError<> class (declared above; defined below)
 class Error : public std::exception {
 private:
   // Self registration support for derived classes
-  template <class TDerived, class TRegistrar, bool REGISTER>
+  template <class TDerived, class TRegistrar, bool registerDerived>
   friend class SelfRegistering;
 
   using Factory = std::function<std::exception_ptr(const std::string&)>;
@@ -34,29 +34,29 @@ private:
 private:
   // Restrict this constructor for deserialization, for inheritance by DeserializableDerivedError<>, and for testing
   friend class Serializer<Error>;
-  template <typename TDerived, bool REGISTER> friend class DeserializableDerivedError;
+  template <typename TDerived, bool registerDerived> friend class DeserializableDerivedError;
 
   Error(std::string derivedTypeName, std::string description);
-  std::string mOriginalTypeName;
+  std::string originalTypeName_;
 
   bool isDeserializable() const;
 
 public:
   explicit inline Error(std::string description)
-    : mDescription(std::move(description)) { }
+    : description_(std::move(description)) { }
 
-  std::string mDescription;
+  std::string description_;
 
-  inline const char* what() const noexcept override { return mDescription.c_str(); }
-  inline const std::string& getOriginalTypeName() const noexcept { return mOriginalTypeName; }
+  inline const char* what() const noexcept override { return description_.c_str(); }
+  inline const std::string& getOriginalTypeName() const noexcept { return originalTypeName_; }
 
   static bool IsSerializable(std::exception_ptr exception) noexcept;
   static std::exception_ptr ReconstructIfDeserializable(std::string_view serialized);
   static void ThrowIfDeserializable(std::string_view serialized);
 };
 
-template <typename TDerived, bool REGISTER>
-class DeserializableDerivedError : public Error, public SelfRegistering<TDerived, Error, REGISTER> {
+template <typename TDerived, bool registerDerived>
+class DeserializableDerivedError : public Error, public SelfRegistering<TDerived, Error, registerDerived> {
   friend TDerived;
   inline DeserializableDerivedError(const std::string& description)
     : Error(GetNormalizedTypeName<TDerived>(), description) {

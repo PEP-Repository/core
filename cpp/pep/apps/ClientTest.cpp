@@ -77,7 +77,7 @@ class ClientTestApplication : public Application {
       + MakeConfigFileParameters(".", std::nullopt, true);
   }
 
-  template <unsigned MODE>
+  template <unsigned mode>
   class ModeCommand : public commandline::ChildCommandOf<ClientTestApplication> {
   protected:
     virtual rxcpp::observable<bool> getTestResults(std::shared_ptr<Client> client) = 0;
@@ -87,12 +87,12 @@ class ClientTestApplication : public Application {
     }
 
     ModeCommand(ClientTestApplication& parent, const std::string& description)
-      : commandline::ChildCommandOf<ClientTestApplication>(std::to_string(MODE), description, parent) {
+      : commandline::ChildCommandOf<ClientTestApplication>(std::to_string(mode), description, parent) {
     }
   };
 
-  template <unsigned MODE>
-  class RecordBasedModeCommand : public ModeCommand<MODE> {
+  template <unsigned mode>
+  class RecordBasedModeCommand : public ModeCommand<mode> {
   protected:
     commandline::Parameters getSupportedParameters() const override {
       return commandline::ChildCommandOf<ClientTestApplication>::getSupportedParameters()
@@ -104,7 +104,7 @@ class ClientTestApplication : public Application {
     }
 
     RecordBasedModeCommand(ClientTestApplication& parent, const std::string& description)
-      : ModeCommand<MODE>(parent, description) {
+      : ModeCommand<mode>(parent, description) {
     }
   };
 
@@ -153,7 +153,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
 
   // make sure we hit the pagestore with our payload:
   auto strPayload = std::make_shared<std::string>();
-  for (size_t i=0; strPayload->size() < INLINE_PAGE_THRESHOLD; i++) {
+  for (size_t i=0; strPayload->size() < InlinePageThreshold; i++) {
     *strPayload += " and " + std::to_string(i);
   }
 
@@ -162,7 +162,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
   return client->storeData2(pp, "ParticipantInfo", strPayload,
                             {MetadataXEntry::MakeFileExtension(".txt")})
       .concat_map([client, pp](const DataStorageResult2& result) {
-        auto id = result.mIds.at(0);
+        auto id = result.ids.at(0);
         std::cout << "Stored data with result.primaryKey: "
             << boost::algorithm::hex(id) << std::endl;
 
@@ -212,9 +212,9 @@ rxcpp::observable<bool> ClientTestApplication::Mode2Command::getTestResults(std:
   return client->enumerateAndRetrieveData2(opts)
   .tap(
     [](EnumerateAndRetrieveResult result) {
-      std::cout << "Primary key: " << result.mId << std::endl;
-      std::cout << "Column: " << result.mColumn << std::endl;
-      std::cout << "Data: " << result.mData << std::endl;
+      std::cout << "Primary key: " << result.id << std::endl;
+      std::cout << "Column: " << result.column << std::endl;
+      std::cout << "Data: " << result.data << std::endl;
     })
     .op(RxInstead(true));
 }
@@ -242,7 +242,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
   .tap(
     [](DataStorageResult2 result) {
       std::cout << "Stored data with result.primaryKey: "
-        << boost::algorithm::hex(result.mIds.at(0)) << std::endl;
+        << boost::algorithm::hex(result.ids.at(0)) << std::endl;
     })
     .op(RxInstead(true));
 }

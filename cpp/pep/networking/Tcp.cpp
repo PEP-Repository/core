@@ -6,25 +6,25 @@ namespace {
 
 class TcpSocket : public TcpBasedProtocolImplementor<Tcp>::Socket {
 private:
-  boost::asio::ip::tcp::socket mImplementor;
-  StreamSocket mStreamSocket;
+  boost::asio::ip::tcp::socket implementor_;
+  StreamSocket streamSocket_;
 
 protected:
-  BasicSocket& basicSocket() override { return mImplementor; }
-  const BasicSocket& basicSocket() const override { return mImplementor; }
-  StreamSocket& streamSocket() override { return mStreamSocket; }
+  BasicSocket& basicSocket() override { return implementor_; }
+  const BasicSocket& basicSocket() const override { return implementor_; }
+  StreamSocket& streamSocket() override { return streamSocket_; }
 
   void close() override {
     if (this->status() != ConnectivityStatus::Unconnected && this->status() < ConnectivityStatus::Disconnecting) {
       this->setConnectivityStatus(ConnectivityStatus::Disconnecting);
-      mImplementor.close();
+      implementor_.close();
     }
     this->setConnectivityStatus(ConnectivityStatus::Disconnected);
   }
 
 public:
   explicit TcpSocket(const Tcp& protocol, boost::asio::io_context& ioContext)
-    : Socket(protocol, ioContext), mImplementor(ioContext), mStreamSocket(mImplementor) {}
+    : Socket(protocol, ioContext), implementor_(ioContext), streamSocket_(implementor_) {}
 };
 
 }

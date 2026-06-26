@@ -10,8 +10,8 @@ class DownloadProcessor : public std::enable_shared_from_this<DownloadProcessor>
   friend class SharedConstructor<DownloadProcessor>;
 
 private:
-  std::shared_ptr<DownloadDirectory> mDestination;
-  std::shared_ptr<GlobalConfiguration> mGlobalConfig;
+  std::shared_ptr<DownloadDirectory> destination_;
+  std::shared_ptr<GlobalConfiguration> globalConfig_;
 
   std::shared_ptr<DownloadDirectory::RecordStorageStream> openStorageStream(RecordDescriptor descriptor, std::uint64_t fileSize, Progress& progress);
 
@@ -28,7 +28,7 @@ protected:
 
 public:
   explicit DownloadProcessor(std::shared_ptr<DownloadDirectory> destination, std::shared_ptr<GlobalConfiguration> globalConfig)
-    : mDestination(destination), mGlobalConfig(globalConfig) {}
+    : destination_(destination), globalConfig_(globalConfig) {}
   DownloadProcessor& operator =(const DownloadProcessor& other) = delete;
   virtual ~DownloadProcessor() noexcept = default;
 

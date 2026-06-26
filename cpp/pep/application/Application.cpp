@@ -26,6 +26,11 @@ namespace pep {
 
 namespace {
 
+//NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static const Application* applicationInstance = nullptr;
+//NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static bool usingConsoleLog = false;
+
 const std::string CONSOLE_REDIRECTION_WARNING = "Note that output cannot be piped or redirected (e.g. to file) in this mode.";
 
 void LogVersionInfo(const std::string& tag, std::string summary) {
@@ -51,29 +56,29 @@ std::ostream& GetStdioNotificationStream(bool error) noexcept {
 
 class StdioNotificationChannel : public Application::UserNotificationChannel {
 private:
-  std::ostream& mStream;
+  std::ostream& stream_;
 
 public:
-  explicit StdioNotificationChannel(bool error) noexcept : mStream(GetStdioNotificationStream(error)) {}
-  ~StdioNotificationChannel() noexcept override { mStream.flush(); }
-  inline std::ostream& stream() override { return mStream; }
+  explicit StdioNotificationChannel(bool error) noexcept : stream_(GetStdioNotificationStream(error)) {}
+  ~StdioNotificationChannel() noexcept override { stream_.flush(); }
+  inline std::ostream& stream() override { return stream_; }
 };
 
 #ifdef _WIN32
 class MessageBoxNotificationChannel : public Application::UserNotificationChannel {
 private:
-  bool mError;
-  std::ostringstream mContent;
+  bool error_;
+  std::ostringstream content_;
 
 public:
-  explicit MessageBoxNotificationChannel(bool error) noexcept : mError(error) {}
-  inline std::ostream& stream() override { return mContent; }
+  explicit MessageBoxNotificationChannel(bool error) noexcept : error_(error) {}
+  inline std::ostream& stream() override { return content_; }
 
   ~MessageBoxNotificationChannel() noexcept override {
-    auto message = std::move(mContent).str();
+    auto message = std::move(content_).str();
 
     // Write message to stdio so that it can be piped or redirected
-    auto& destination = GetStdioNotificationStream(mError);
+    auto& destination = GetStdioNotificationStream(error_);
     destination << message;
     destination.flush();
 
@@ -83,7 +88,7 @@ public:
       "\n" "If this notification's formatting looks corrupted, please view it using a fixed-width font, e.g. by"
       "\n" "- copying it (Ctrl+C) and pasting it to a text editor, or"
       "\n" "- invoking the application from a command line and passing the --bind-to-console switch.";
-    UINT icon = mError ? MB_ICONERROR : MB_ICONINFORMATION;
+    UINT icon = error_ ? MB_ICONERROR : MB_ICONINFORMATION;
     ::MessageBoxA(nullptr, display.c_str(), "Application", MB_OK | MB_APPLMODAL | icon);
   }
 };
@@ -163,14 +168,11 @@ std::optional<std::filesystem::path> GetEffectiveConfigDirectory(const std::opti
 
 }
 
-Application* Application::instance_ = nullptr;
-bool Application::usingConsoleLog_ = false;
-
 Application::Application() {
-  if (instance_ != nullptr) {
+  if (applicationInstance != nullptr) {
     throw std::runtime_error("Only a single Application instance may exist over the process's lifetime");
   }
-  instance_ = this;
+  applicationInstance = this;
 }
 
 Application::~Application() {
@@ -181,24 +183,24 @@ Application::~Application() {
 }
 
 std::string Application::getName() const {
-  if (mArgc > 0) {
+  if (argc_ > 0) {
     return std::filesystem::path(this->getArgv()[0]).filename().string();
   }
   return "[this program]";
 }
 
 int Application::getArgc() const {
-  if (mArgc < 0) {
+  if (argc_ < 0) {
     throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
   }
-  return mArgc;
+  return argc_;
 }
 
 char** Application::getArgv() const {
-  if (mArgv == nullptr) {
+  if (argv_ == nullptr) {
     throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
   }
-  return mArgv;
+  return argv_;
 }
 
 int Application::RunWithoutError(std::function<int()> implementor) noexcept {
@@ -223,7 +225,7 @@ int Application::RunWithoutError(std::function<int()> implementor) noexcept {
 }
 
 void Application::initializeLoggingOnce() {
-  if (std::exchange(mInitializeLoggingOnceFlag, true)) return;  // exits early if this is not the first call
+  if (std::exchange(initializeLoggingOnceFlag_, true)) return;  // exits early if this is not the first call
 
   const auto& values = this->getParameterValues();
 
@@ -234,7 +236,7 @@ void Application::initializeLoggingOnce() {
         ? values.getOptional<Severity>("logLevel")
         : consoleLogMinimumSeverityLevel()) {
       logging.push_back(std::make_shared<ConsoleLogging>(*console_level));
-      usingConsoleLog_ = true;
+      usingConsoleLog = true;
     }
 
     if (auto file_level = fileLogMinimumSeverityLevel()) {
@@ -248,8 +250,8 @@ void Application::initializeLoggingOnce() {
     Logging::Initialize(logging);
   }
 
-  mShowVersionInfo = !values.has("suppress-version-info");
-  if (mShowVersionInfo) {
+  showVersionInfo_ = !values.has("suppress-version-info");
+  if (showVersionInfo_) {
     LogVersionInfo("binary", BinaryVersion::current.getSummary());
   }
 }
@@ -262,8 +264,8 @@ int Application::run(int argc, char* argv[]) { //NOLINT(modernize-avoid-c-arrays
   std::queue<std::string> args;
   std::for_each(argv + 1, argv + argc, [&args](const char* arg) {args.push(arg); });
 
-  mArgc = argc;
-  mArgv = argv;
+  argc_ = argc;
+  argv_ = argv;
   return this->process(args);
 }
 
@@ -285,16 +287,16 @@ std::filesystem::path Application::getMainConfigPath() {
 }
 
 std::filesystem::path Application::getConfigDirectory() {
-  if (!mConfigDirectory.has_value()) {
-    mConfigDirectory = GetEffectiveConfigDirectory(this->rawConfigDirectory(), this->rawConfigFile());
+  if (!configDirectory_.has_value()) {
+    configDirectory_ = GetEffectiveConfigDirectory(this->rawConfigDirectory(), this->rawConfigFile());
 
     // Version info cannot be logged until the config directory is known
-    if (mShowVersionInfo) {
-      LogVersionInfo("configuration", ConfigVersion::TryLoad(*mConfigDirectory));
-      mShowVersionInfo = false;
+    if (showVersionInfo_) {
+      LogVersionInfo("configuration", ConfigVersion::TryLoad(*configDirectory_));
+      showVersionInfo_ = false;
     }
   }
-  return *mConfigDirectory;
+  return *configDirectory_;
 }
 
 Configuration Application::loadMainConfigFile() {
@@ -315,7 +317,7 @@ bool Application::ReportTermination(std::exception_ptr exception) noexcept {
       detail = "because an unrecoverable error has occurred"; // Looks a bit better than no information at all
     }
 
-    if (usingConsoleLog_) {
+    if (usingConsoleLog) {
       PEP_LOG("Application", Severity::Critical) << "Terminating application " << detail;
     }
     else {

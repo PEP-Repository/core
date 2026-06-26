@@ -37,7 +37,7 @@ struct AuthenticationStatus {
    */
   AuthenticationState state;
 
-  static const std::chrono::seconds EXPIRY_MARGIN;
+  static const std::chrono::seconds ExpiryMargin;
 
   //! The authentication token
   std::string token;
@@ -105,16 +105,16 @@ class CastorConnection : public std::enable_shared_from_this<CastorConnection>, 
   friend class SharedConstructor<CastorConnection>;
 private:
   struct Implementor;
-  std::unique_ptr<Implementor> mImplementor;
-  EventSubscription mOnRequestForwarding;
+  std::unique_ptr<Implementor> implementor_;
+  EventSubscription onRequestForwarding_;
 
 private:
   CastorConnection(const std::filesystem::path& apiKeyFile, std::shared_ptr<boost::asio::io_context> io_context);
   CastorConnection(const EndPoint& endPoint, const ApiKey& apiKey, std::shared_ptr<boost::asio::io_context> io_context, const std::optional<std::filesystem::path>& caCert = std::nullopt);
 
 public:
-  static const int RECORD_EXISTS = 422;
-  static const int NOT_FOUND = 404;
+  static const int RecordExists = 422;
+  static const int NotFound = 404;
 
   ~CastorConnection() noexcept;
 

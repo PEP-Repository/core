@@ -21,12 +21,12 @@ template <typename TParent>
 class DeprecatedChildCommandOf : public ChildCommandOf<TParent> {
 protected:
   DeprecatedChildCommandOf(const std::string& name, const std::string& description, TParent& parent, std::string deprecationMessage)
-    : ChildCommandOf<TParent>(name, description, parent), mDeprecationMessage(std::move(deprecationMessage)) {}
+    : ChildCommandOf<TParent>(name, description, parent), deprecationMessage_(std::move(deprecationMessage)) {}
 
-  std::optional<std::string> getDeprecationWarning() const override { return mDeprecationMessage; }
+  std::optional<std::string> getDeprecationWarning() const override { return deprecationMessage_; }
 
 private:
-  std::string mDeprecationMessage;
+  std::string deprecationMessage_;
 };
 
 template <typename TParent>
@@ -42,9 +42,9 @@ public:
   : ChildCommandOf<TParent>(aliasName,
       "Alias for: " + ancestor.getName() + (childPath.empty() ? "" : " " + childPath.toString()),
       parent),
-    mAncestor(ancestor),
-    mChildPath(std::move(childPath)),
-    mTransformer(std::move(transformer)) {}
+    ancestor_(ancestor),
+    childPath_(std::move(childPath)),
+    transformer_(std::move(transformer)) {}
 
   bool isForwardingCommand() const override { return true; }
 
@@ -60,18 +60,18 @@ public:
     }
 
     NamedValues leafValues;
-    if (mTransformer) {
-      leafValues = mTransformer(forwarded);
+    if (transformer_) {
+      leafValues = transformer_(forwarded);
     }
     // Dispatch from the ancestor using its already-parsed values.
     // leafValues contains pre-built parameter values, forwarded contains remaining args to be lexed by the leaf.
-    return mAncestor.dispatchTo(mChildPath, std::move(leafValues), std::move(forwarded));
+    return ancestor_.dispatchTo(childPath_, std::move(leafValues), std::move(forwarded));
   }
 
 private:
-  Command& mAncestor;
-  CommandPath mChildPath;
-  std::function<NamedValues(std::queue<std::string>&)> mTransformer;
+  Command& ancestor_;
+  CommandPath childPath_;
+  std::function<NamedValues(std::queue<std::string>&)> transformer_;
 };
 
 template <typename TParent>
@@ -82,19 +82,19 @@ public:
     const std::string& deprecationMessage,
     std::function<NamedValues(std::queue<std::string>&)> transformer = nullptr)
   : AliasCommand<TParent>(parent, aliasName, ancestor, std::move(childPath), std::move(transformer)),
-    mDeprecationMessage(deprecationMessage) {}
+    deprecationMessage_(deprecationMessage) {}
 
-  std::optional<std::string> getDeprecationWarning() const override { return mDeprecationMessage; }
+  std::optional<std::string> getDeprecationWarning() const override { return deprecationMessage_; }
 
 private:
-  std::string mDeprecationMessage;
+  std::string deprecationMessage_;
 };
 
 template <typename TParent>
 class NoLongerSupportedCommand : public ChildCommandOf<TParent> {
 public:
   NoLongerSupportedCommand(TParent& parent, const std::string& name, const std::string& message)
-  : ChildCommandOf<TParent>(name, "No longer supported. " + message, parent), mMessage(message) {}
+  : ChildCommandOf<TParent>(name, "No longer supported. " + message, parent), message_(message) {}
 
   bool isUndocumented() const override { return true; }
   bool isNoLongerSupported() const override { return true; }
@@ -106,15 +106,15 @@ public:
 
   int execute() override {
     std::cerr << "Error: The command '" << this->getName() << "' is no longer supported.";
-    if (!mMessage.empty()) {
-      std::cerr << ' ' << mMessage;
+    if (!message_.empty()) {
+      std::cerr << ' ' << message_;
     }
     std::cerr << std::endl;
     return EXIT_FAILURE;
   }
 
 private:
-  std::string mMessage;
+  std::string message_;
 };
 
 template <typename TParent>

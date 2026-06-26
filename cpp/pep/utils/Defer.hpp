@@ -13,21 +13,21 @@ namespace pep {
 template <typename F>
 struct Deferred {
   static_assert(!pep::DerivedFromSpecialization<F, Deferred>);
-  Deferred(F&& f) : f(std::move(f)) {}
+  Deferred(F&& f) : f_(std::move(f)) {}
   Deferred(const Deferred<F> &) = delete;
   Deferred(Deferred<F> &&) = delete;
   ~Deferred() {
     this->trigger();
   }
   void trigger() {
-    if (this->triggered)
+    if (triggered_)
       return;
-    this->triggered = true;
-    this->f();
+    triggered_ = true;
+    f_();
   }
 private:
-  F f;
-  bool triggered = false;
+  F f_;
+  bool triggered_ = false;
 };
 
 template <typename F>

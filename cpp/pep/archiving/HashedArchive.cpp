@@ -1,5 +1,5 @@
 #include <pep/archiving/HashedArchive.hpp>
-#include <pep/archiving/NOPArchive.hpp>
+#include <pep/archiving/NoOpArchive.hpp>
 
 #include <boost/iostreams/device/mapped_file.hpp>
 
@@ -7,21 +7,21 @@
 
 namespace pep {
 
-HashedArchive::HashedArchive(std::shared_ptr<Archive> archive) : mArchive(archive), mHasher(std::make_unique<XxHasher>(DOWNLOAD_HASH_SEED)) {}
+HashedArchive::HashedArchive(std::shared_ptr<Archive> archive) : archive_(archive), hasher_(std::make_unique<XxHasher>(DownloadHashSeed)) {}
 
 void HashedArchive::nextEntry(const std::filesystem::path& path, int64_t size) {
-  if(!mCurrentEntry.empty()) {
+  if(!currentEntry_.empty()) {
     throw std::runtime_error("Called nextEntry() when previous entry has not yet been closed");
   }
-  mCurrentEntry = path.string();
-  mArchive->nextEntry(path, size);
+  currentEntry_ = path.string();
+  archive_->nextEntry(path, size);
 }
 void HashedArchive::writeData(const char* c, const std::streamsize l) {
-  if(mCurrentEntry.empty()) {
+  if(currentEntry_.empty()) {
     throw std::runtime_error("HashedArchive: cannot write data when nextEntry has not been called yet.");
   }
-  mHasher->update(c, static_cast<size_t>(l));
-  mArchive->writeData(c, l);
+  hasher_->update(c, static_cast<size_t>(l));
+  archive_->writeData(c, l);
  }
 
 void HashedArchive::writeData(std::string_view data) {
@@ -29,25 +29,25 @@ void HashedArchive::writeData(std::string_view data) {
 }
 
 void HashedArchive::closeEntry() {
-  if (mCurrentEntry.empty()) {
+  if (currentEntry_.empty()) {
     throw std::runtime_error("Cannot close entry when no entry has yet been opened with nextEntry()");
   }
-  auto [it, inserted] = mHashes.emplace(mCurrentEntry, mHasher->digest());
+  auto [it, inserted] = hashes_.emplace(currentEntry_, hasher_->digest());
   if (!inserted) {
-    throw std::runtime_error("HashedArchive: Multiple entries with the same name: " + mCurrentEntry);
+    throw std::runtime_error("HashedArchive: Multiple entries with the same name: " + currentEntry_);
   }
-  mCurrentEntry = "";
-  mHasher = std::make_unique<XxHasher>(DOWNLOAD_HASH_SEED);
-  mArchive->closeEntry();
+  currentEntry_ = "";
+  hasher_ = std::make_unique<XxHasher>(DownloadHashSeed);
+  archive_->closeEntry();
 }
 
 bool HashedArchive::expectsSizeUpFront() {
-  return mArchive->expectsSizeUpFront();
+  return archive_->expectsSizeUpFront();
 }
 
 XxHasher::Hash HashedArchive::digest() const {
-  XxHasher hasher(DOWNLOAD_HASH_SEED);
-  for(auto& [key, value] : mHashes) {
+  XxHasher hasher(DownloadHashSeed);
+  for(auto& [key, value] : hashes_) {
     hasher.update(key.data(), key.length());
     hasher.update(&value, sizeof(XxHasher::Hash));
   }
@@ -80,7 +80,7 @@ void HashedArchive::processDirectory(const std::filesystem::path& path, const::s
 
 
 XxHasher::Hash HashedArchive::HashDirectory(const std::filesystem::path& path) {
-  HashedArchive hashedArchive(std::make_shared<NOPArchive>());
+  HashedArchive hashedArchive(std::make_shared<NoOpArchive>());
   hashedArchive.processDirectory(path, std::filesystem::path());
   return hashedArchive.digest();
 }

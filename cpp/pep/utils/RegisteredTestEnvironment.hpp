@@ -7,7 +7,7 @@
 namespace pep {
 
 class RegisteredTestEnvironment : public ::testing::Environment {
-  template <class TDerived, class TRegistrar, bool REGISTER>
+  template <class TDerived, class TRegistrar, bool registerDerived>
   friend class SelfRegistering;
 
 private:

@@ -19,12 +19,12 @@ private:
     rxcpp::subscriber<std::string> subscriber;
   };
 
-  std::shared_ptr<Node> mNode;
-  std::vector<PendingRequest> mPendingRequests;
-  std::shared_ptr<Connection> mConnection;
-  EventSubscription mConnectionStatusSubscription;
-  rxcpp::subjects::behavior<ConnectionStatus> mStatus{ {false, boost::system::errc::make_error_code(boost::system::errc::no_message)} };
-  rxcpp::subscriber<ConnectionStatus> mStatusSubscriber = mStatus.get_subscriber();
+  std::shared_ptr<Node> node_;
+  std::vector<PendingRequest> pendingRequests_;
+  std::shared_ptr<Connection> connection_;
+  EventSubscription connectionStatusSubscription_;
+  rxcpp::subjects::behavior<ConnectionStatus> status_{ {false, boost::system::errc::make_error_code(boost::system::errc::no_message)} };
+  rxcpp::subscriber<ConnectionStatus> statusSubscriber_ = status_.get_subscriber();
 
   explicit ServerConnection(std::shared_ptr<Node> node) noexcept;
 
