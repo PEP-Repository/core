@@ -1350,8 +1350,9 @@ upload-flatpak:
             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/flatpak/${CI_COMMIT_SHA}/pep.flatpak"'
 
 retag-pep-docker-images:
-  extends: .upload-base
-  image: docker
+  extends:
+    - .upload-base
+    - .dind-small
   needs:
     - job: test-pep-services-image
       artifacts: false
@@ -1362,13 +1363,27 @@ retag-pep-docker-images:
   #language=sh
   script:
     - *docker_login
-    - docker buildx imagetools create "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
+    - docker image pull "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST"
+    - docker image tag  "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST" "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST" "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
 
 ##########################################
 # Configuration for the publish stage    #

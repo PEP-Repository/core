@@ -69,13 +69,13 @@ BinaryVersion::BinaryVersion(
       build,
       revision
       ),
-    mTarget(std::move(target)),
-    mProtocolChecksum(std::move(protocolChecksum)) {
+    target_(std::move(target)),
+    protocolChecksum_(std::move(protocolChecksum)) {
 }
 
 std::string BinaryVersion::getSummary() const {
-  auto spec = ConcatSummaryParts(this->constructSummary(std::nullopt, false), " - ", mProtocolChecksum);
-  return ConcatSummaryParts(spec, " ", "(" + mTarget + ")");
+  auto spec = ConcatSummaryParts(this->constructSummary(std::nullopt, false), " - ", protocolChecksum_);
+  return ConcatSummaryParts(spec, " ", "(" + target_ + ")");
 }
 
 std::string BinaryVersion::prettyPrint() const {
@@ -105,7 +105,7 @@ ConfigVersion::ConfigVersion(
       build,
       revision
       ),
-    mProjectCaption(std::move(projectCaption)) {
+    projectCaption_(std::move(projectCaption)) {
 }
 
 std::optional<ConfigVersion> ConfigVersion::Current() {

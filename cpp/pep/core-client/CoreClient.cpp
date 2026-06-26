@@ -57,23 +57,24 @@ bool ModesInclude(const std::vector<std::string>& required, std::vector<std::str
 
 CoreClient::CoreClient(const Builder& builder) :
   MessageSigner(builder.getSigningIdentity()),
-  io_context(builder.getIoContext()), keysFilePath(builder.getKeysFilePath()),
-  caCertFilepath(builder.getCaCertFilepath()),
-  rootCAs(std::make_shared<X509RootCertificates>(X509CertificatesFromPem(ReadFile(builder.getCaCertFilepath())))),
-  privateKeyData(builder.getPrivateKeyData()),
-  privateKeyPseudonyms(builder.getPrivateKeyPseudonyms()),
-  systemPublicKeys(builder.getSystemPublicKeys()),
-  accessManagerEndPoint(builder.getAccessManagerEndPoint()),
-  storageFacilityEndPoint(builder.getStorageFacilityEndPoint()),
-  transcryptorEndPoint(builder.getTranscryptorEndPoint()) {
+  ioContext_(builder.getIoContext()),
+  keysFilePath_(builder.getKeysFilePath()),
+  caCertFilepath_(builder.getCaCertFilepath()),
+  rootCAs_(std::make_shared<X509RootCertificates>(X509CertificatesFromPem(ReadFile(builder.getCaCertFilepath())))),
+  privateKeyData_(builder.getPrivateKeyData()),
+  privateKeyPseudonyms_(builder.getPrivateKeyPseudonyms()),
+  systemPublicKeys_(builder.getSystemPublicKeys()),
+  accessManagerEndPoint_(builder.getAccessManagerEndPoint()),
+  storageFacilityEndPoint_(builder.getStorageFacilityEndPoint()),
+  transcryptorEndPoint_(builder.getTranscryptorEndPoint()) {
 
-  accessManagerProxy = tryConnectServerProxy<AccessManagerProxy>(accessManagerEndPoint);
-  storageFacilityProxy = tryConnectServerProxy<StorageFacilityProxy>(storageFacilityEndPoint);
-  transcryptorProxy = tryConnectServerProxy<TranscryptorProxy>(transcryptorEndPoint);
+  accessManagerProxy_ = tryConnectServerProxy<AccessManagerProxy>(accessManagerEndPoint_);
+  storageFacilityProxy_ = tryConnectServerProxy<StorageFacilityProxy>(storageFacilityEndPoint_);
+  transcryptorProxy_ = tryConnectServerProxy<TranscryptorProxy>(transcryptorEndPoint_);
 
-  if (keysFilePath.has_value()) {
-    enrollmentSubject.get_observable().subscribe(
-      [keysFilePath = *keysFilePath](const EnrolledPartyKeys& result){
+  if (keysFilePath_.has_value()) {
+    enrollmentSubject_.get_observable().subscribe(
+      [keysFilePath = *keysFilePath_](const EnrolledPartyKeys& result){
         PEP_LOG(LogTag, Severity::Debug) << "Writing new keys to \"" << keysFilePath.string() << '"';
         std::ofstream sf(keysFilePath.string());
         boost::property_tree::ptree keysConfig;
@@ -99,8 +100,8 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
       .reduce(
         std::make_shared<std::unordered_map<std::string, PolymorphicPseudonym>>(),
         [this](std::shared_ptr<std::unordered_map<std::string, PolymorphicPseudonym>> all, const LocalPseudonyms& entry) {
-          auto decrypted = entry.mAccessGroup->decrypt(privateKeyPseudonyms);
-          all->emplace(decrypted.text(), entry.mPolymorphic); // Don't assert that it's emplaced; we may be processing idsAndOrPps that refer to the same participant
+          auto decrypted = entry.accessGroup->decrypt(privateKeyPseudonyms_);
+          all->emplace(decrypted.text(), entry.polymorphic); // Don't assert that it's emplaced; we may be processing idsAndOrPps that refer to the same participant
           return all;
         }
       );
@@ -175,11 +176,11 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
 }
 
 PolymorphicPseudonym CoreClient::generateParticipantPolymorphicPseudonym(const std::string& participantSID) {
-  return PolymorphicPseudonym::FromIdentifier(systemPublicKeys.globalPseudonymEncryptionKey, participantSID);
+  return PolymorphicPseudonym::FromIdentifier(systemPublicKeys_.globalPseudonymEncryptionKey, participantSID);
 }
 
 LocalPseudonym CoreClient::decryptLocalPseudonym(const EncryptedLocalPseudonym& encrypted) const {
-  return encrypted.decrypt(privateKeyPseudonyms);
+  return encrypted.decrypt(privateKeyPseudonyms_);
 }
 
 std::shared_ptr<CoreClient> CoreClient::OpenClient(const Configuration& config,
@@ -253,7 +254,7 @@ void CoreClient::Builder::initialize(
 
 
 rxcpp::observable<FakeVoid> CoreClient::getRegistrationExpiryObservable() {
-  return registrationSubject.get_observable();
+  return registrationSubject_.get_observable();
 }
 
 bool CoreClient::AddServerProxy(ServerProxies& destination, const ServerTraits& traits, std::shared_ptr<const ServerProxy> proxy) {
@@ -267,15 +268,15 @@ bool CoreClient::AddServerProxy(ServerProxies& destination, const ServerTraits& 
 }
 
 std::shared_ptr<const StorageFacilityProxy> CoreClient::getStorageFacilityProxy(bool require) const {
-  return GetConstServerProxy(storageFacilityProxy, ServerTraits::StorageFacility(), require);
+  return GetConstServerProxy(storageFacilityProxy_, ServerTraits::StorageFacility(), require);
 }
 
 std::shared_ptr<const TranscryptorProxy> CoreClient::getTranscryptorProxy(bool require) const {
-  return GetConstServerProxy(transcryptorProxy, ServerTraits::Transcryptor(), require);
+  return GetConstServerProxy(transcryptorProxy_, ServerTraits::Transcryptor(), require);
 }
 
 std::shared_ptr<const AccessManagerProxy> CoreClient::getAccessManagerProxy(bool require) const {
-  return GetConstServerProxy(accessManagerProxy, ServerTraits::AccessManager(), require);
+  return GetConstServerProxy(accessManagerProxy_, ServerTraits::AccessManager(), require);
 }
 
 CoreClient::ServerProxies CoreClient::getServerProxies(bool requireAll) const {
@@ -298,30 +299,30 @@ std::shared_ptr<const ServerProxy> CoreClient::getServerProxy(const ServerTraits
 }
 
 const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const {
-  return io_context;
+  return ioContext_;
 }
 
 rxcpp::observable<FakeVoid> CoreClient::shutdown() {
   return rxcpp::rxs::empty<FakeVoid>()
-    .merge(accessManagerProxy ? accessManagerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
-    .merge(storageFacilityProxy ? storageFacilityProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
-    .merge(transcryptorProxy ? transcryptorProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(accessManagerProxy_ ? accessManagerProxy_->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(storageFacilityProxy_ ? storageFacilityProxy_->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(transcryptorProxy_ ? transcryptorProxy_->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
     .last();
 }
 
 rxcpp::observable<std::shared_ptr<GlobalConfiguration>> CoreClient::getGlobalConfiguration() {
-  if (mGlobalConf != nullptr) {
-    return rxcpp::observable<>::just(mGlobalConf);
+  if (globalConf_ != nullptr) {
+    return rxcpp::observable<>::just(globalConf_);
   }
 
   return getAccessManagerProxy(true)->requestGlobalConfiguration()
-    .map([this](const GlobalConfiguration& gc) {return mGlobalConf = MakeSharedCopy(gc); });
+    .map([this](const GlobalConfiguration& gc) {return globalConf_ = MakeSharedCopy(gc); });
 }
 
 std::shared_ptr<WorkerPool> CoreClient::getWorkerPool() {
-  if (mWorkerPool == nullptr)
-    mWorkerPool = WorkerPool::getShared();
-  return mWorkerPool;
+  if (workerPool_ == nullptr)
+    workerPool_ = WorkerPool::getShared();
+  return workerPool_;
 }
 
 rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>>> CoreClient::findPpsForShortPseudonyms(const std::vector<std::string>& sps, const std::optional<StudyContext>& studyContext) {
@@ -366,11 +367,11 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
     .reduce(
       std::make_shared<std::vector<std::optional<PolymorphicPseudonym>>>(allSps->size()),
       [allSps](std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>> result, const EnumerateAndRetrieveResult& ear) {
-        assert(ear.mDataSet);
-        auto position = allSps->find(ear.mData);
+        assert(ear.dataSet);
+        auto position = allSps->find(ear.data);
         if (position != allSps->cend()) {
           auto index = position->second;
-          (*result)[index] = ear.mLocalPseudonyms->mPolymorphic;
+          (*result)[index] = ear.localPseudonyms->polymorphic;
         }
         return result;
       });
@@ -402,12 +403,13 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
     }
     return requestTicket2(tOpts);
   }).flat_map([this](IndexedTicket2 ticket) {
-    return RxIterate(ticket.getTicket()->open(*rootCAs, getEnrolledGroup()).mAccessSubjects);
+    return RxIterate(ticket.getTicket()->open(*rootCAs_, getEnrolledGroup()).accessSubjects);
   });
 
 }
 
-rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const RequestTicket2Opts& opts) {
+rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(
+    const RequestTicket2Opts &opts) {
   PEP_LOG(LogTag, Severity::Debug) << "requestTicket";
 
   if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())
@@ -422,12 +424,12 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const RequestTicket
   }
   assert(ContainsUniqueValues(opts.pps));
   return getAccessManagerProxy(true)->requestIndexedTicket(ClientSideTicketRequest2{
-      .mModes = opts.modes,
-      .mParticipantGroups = opts.participantGroups,
-      .mAccessSubjects = opts.pps,
-      .mColumnGroups = opts.columnGroups,
-      .mColumns = opts.columns,
-      .mIncludeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});
+      .modes = opts.modes,
+      .participantGroups = opts.participantGroups,
+      .accessSubjects = opts.pps,
+      .columnGroups = opts.columnGroups,
+      .columns = opts.columns,
+      .includeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});
 }
 
 

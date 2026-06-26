@@ -19,8 +19,8 @@ public:
     std::string target,
     std::string protocolChecksum);
 
-  inline const std::string& getTarget() const noexcept { return mTarget; } // 'mac', 'win', 'linux'
-  inline const std::string& getProtocolChecksum() const noexcept { return mProtocolChecksum; } // hex-encoded binary checksum for the network protocol (version)
+  inline const std::string& getTarget() const noexcept { return target_; } // 'mac', 'win', 'linux'
+  inline const std::string& getProtocolChecksum() const noexcept { return protocolChecksum_; } // hex-encoded binary checksum for the network protocol (version)
 
   std::string getSummary() const override;
   std::string prettyPrint() const override;
@@ -28,8 +28,8 @@ public:
   static const BinaryVersion current;
 
 private:
-  std::string mTarget;
-  std::string mProtocolChecksum;
+  std::string target_;
+  std::string protocolChecksum_;
 };
 
 class ConfigVersion : public GitlabVersion {
@@ -45,7 +45,7 @@ public:
     std::string projectCaption);
   static std::optional<ConfigVersion> TryRead(const std::filesystem::path& directory);
 
-  inline const std::string& getProjectCaption() const noexcept { return mProjectCaption; } // 'dtap', 'ppp' ... (specified in file)
+  inline const std::string& getProjectCaption() const noexcept { return projectCaption_; } // 'dtap', 'ppp' ... (specified in file)
   bool exposesProductionData() const noexcept;
 
   std::string getSummary() const override;
@@ -58,7 +58,7 @@ private:
   static std::optional<ConfigVersion> loaded_;
   static std::optional<std::filesystem::path> loadDir_;
 
-  std::string mProjectCaption;
+  std::string projectCaption_;
 };
 
 }

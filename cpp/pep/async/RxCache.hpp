@@ -49,16 +49,16 @@ public:
   using CreateSourceFunction = std::function<rxcpp::observable<T>()>;
 
 private:
-  mutable std::optional<CreateSourceFunction> mCreateSource;
-  mutable bool mRetrieving = false;
-  mutable std::vector<rxcpp::subscriber<T>> mFollowers;
-  mutable std::shared_ptr<std::vector<T>> mItems;
+  mutable std::optional<CreateSourceFunction> createSource_;
+  mutable bool retrieving_ = false;
+  mutable std::vector<rxcpp::subscriber<T>> followers_;
+  mutable std::shared_ptr<std::vector<T>> items_;
 
 private:
   void emitItemsTo(rxcpp::subscriber<T> subscriber) const {
-    assert(mItems != nullptr);
+    assert(items_ != nullptr);
     try {
-      for (const auto& item : *mItems) {
+      for (const auto& item : *items_) {
         subscriber.on_next(item);
       }
       subscriber.on_completed();
@@ -69,31 +69,31 @@ private:
   }
 
   void finishRetrieving(std::shared_ptr<std::vector<T>> items) const {
-    assert(mRetrieving);
-    mRetrieving = false;
-    mItems = items;
+    assert(retrieving_);
+    retrieving_ = false;
+    items_ = items;
   }
 
   void processFollowers() const {
     /* Deal with followers as though they just enlisted after our state change.
      * This will emit the items if we have them, or allow the first follower to become the primary subscriber.
      */
-    assert(!mRetrieving);
-    auto followers = std::move(mFollowers);
+    assert(!retrieving_);
+    auto followers = std::move(followers_);
     for (const auto& follower : followers) {
       this->handleSubscriber(follower);
     }
   }
 
   void startRetrieving(rxcpp::subscriber<T> subscriber) const {
-    assert(!mRetrieving);
-    mRetrieving = true;
+    assert(!retrieving_);
+    retrieving_ = true;
 
     auto items = std::make_shared<std::vector<T>>();
     auto self = SharedFrom(*this);
 
-    assert(mCreateSource.has_value());
-    (*mCreateSource)().subscribe(
+    assert(createSource_.has_value());
+    (*createSource_)().subscribe(
       [subscriber, items](const T& item) {
         items->push_back(item); // Collect the item in our local vector...
         subscriber.on_next(item); // ... and let the primary subscriber know about it immediately.
@@ -108,20 +108,20 @@ private:
       },
       [subscriber, items, self]() {
         self->finishRetrieving(items); // Update our own state...
-        self->mCreateSource = std::nullopt; // ... and discard the item retrieval lambda (including any resources such as captured variables)...
+        self->createSource_ = std::nullopt; // ... and discard the item retrieval lambda (including any resources such as captured variables)...
         subscriber.on_completed(); // ... then finish dealing with the primary subscriber...
         self->processFollowers(); // ... before emitting cached items to followers.
       });
   }
   
   void handleSubscriber(rxcpp::subscriber<T> subscriber) const {
-    if (mItems != nullptr) {
+    if (items_ != nullptr) {
       // We already have the items in our cache: simply emit them.
       this->emitItemsTo(subscriber);
     }
-    else if (mRetrieving) {
+    else if (retrieving_) {
       // A (primary) subscriber is already retrieving the items: enlist this one as a follower.
-      mFollowers.push_back(subscriber);
+      followers_.push_back(subscriber);
     }
     else {
       // This will be the primary subscriber: let it retrieve items from the source.
@@ -130,7 +130,7 @@ private:
   }
 
   explicit WaitlessRxCache(const CreateSourceFunction& createSource)
-    : mCreateSource(createSource) {
+    : createSource_(createSource) {
   }
 
 public:

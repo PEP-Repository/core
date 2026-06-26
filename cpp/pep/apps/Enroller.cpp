@@ -32,19 +32,19 @@ void ServiceEnroller::setProperties(Client::Builder& builder, const Configuratio
   AsymmetricKey privateKey(ReadFile(this->getParameterValues().get<std::filesystem::path>("private-key-file")));
   X509CertificateChain certificateChain(X509CertificatesFromPem(ReadFile(this->getParameterValues().get<std::filesystem::path>("certificate-file"))));
 
-  if (!mServer.signingIdentityMatches(certificateChain)) {
-    throw std::runtime_error("Cannot enroll " + mServer.description() + " with certificate chain for " + certificateChain.leaf().getOrganizationalUnit().value_or("unknown party"));
+  if (!server_.signingIdentityMatches(certificateChain)) {
+    throw std::runtime_error("Cannot enroll " + server_.description() + " with certificate chain for " + certificateChain.leaf().getOrganizationalUnit().value_or("unknown party"));
   }
 
   builder.setSigningIdentity(std::make_shared<X509Identity>(std::move(privateKey), std::move(certificateChain)));
 }
 
 EndPoint ServiceEnroller::getAccessManagerEndPoint(const Configuration& config) const {
-  if (mServer == ServerTraits::AccessManager()) {
+  if (server_ == ServerTraits::AccessManager()) {
     EndPoint result;
     result.hostname = "127.0.0.1";
     result.port = config.get<uint16_t>("ListenPort");
-    result.expectedCommonName = mServer.certificateSubject();
+    result.expectedCommonName = server_.certificateSubject();
     return result;
   }
 

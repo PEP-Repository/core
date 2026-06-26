@@ -36,53 +36,53 @@ using NamedMetadataXEntry = std::pair<const std::string, MetadataXEntry>;
 
 /// Extra metadata entry, may be in encrypted or decrypted form
 class MetadataXEntry {
-  /// Payload, may be in encrypted or decrypted form according to \ref mIsEncrypted
-  std::string mPayload;
+  /// Payload, may be in encrypted or decrypted form according to \ref isEncrypted_
+  std::string payload_;
   /// Should payload be stored in encrypted form at the server?
-  bool mStoreEncrypted = false;
-  bool mIsEncrypted = false;
-  bool mBound = false;
+  bool storeEncrypted_ = false;
+  bool isEncrypted_ = false;
+  bool bound_ = false;
 
 public:
   [[nodiscard]] static MetadataXEntry FromStored(std::string payload, bool encrypted, bool bound) {
     MetadataXEntry entry;
-    entry.mPayload = std::move(payload);
-    entry.mIsEncrypted = entry.mStoreEncrypted = encrypted;
-    entry.mBound = bound;
+    entry.payload_ = std::move(payload);
+    entry.isEncrypted_ = entry.storeEncrypted_ = encrypted;
+    entry.bound_ = bound;
     return entry;
   }
 
   [[nodiscard]] static MetadataXEntry FromPlaintext(std::string plaintext, bool storeEncrypted, bool bound) {
     MetadataXEntry entry;
-    entry.mPayload = std::move(plaintext);
-    entry.mIsEncrypted = false;
-    entry.mStoreEncrypted = storeEncrypted;
-    entry.mBound = bound;
+    entry.payload_ = std::move(plaintext);
+    entry.isEncrypted_ = false;
+    entry.storeEncrypted_ = storeEncrypted;
+    entry.bound_ = bound;
     return entry;
   }
 
-  [[nodiscard]] bool storeEncrypted() const { return mStoreEncrypted; }
-  [[nodiscard]] bool isEncrypted() const { return mIsEncrypted; }
-  [[nodiscard]] bool bound() const { return mBound; }
+  [[nodiscard]] bool storeEncrypted() const { return storeEncrypted_; }
+  [[nodiscard]] bool isEncrypted() const { return isEncrypted_; }
+  [[nodiscard]] bool bound() const { return bound_; }
 
   /// Return payload for store operations, which may be encrypted.
   /// Requires \ref prepareForStore to be called first
   /// \throws std::runtime_error if payload is not in encrypted form but should be
   [[nodiscard]] const std::string& payloadForStore() const {
-    if (mStoreEncrypted && !mIsEncrypted) {
+    if (storeEncrypted_ && !isEncrypted_) {
       throw std::runtime_error("Metadata entry is not encrypted yet");
     }
-    return mPayload;
+    return payload_;
   }
 
   /// Return decrypted payload.
   /// Requires \ref preparePlaintext to be called first
   /// \throws std::runtime_error if payload is not in decrypted form
   [[nodiscard]] const std::string& plaintext() const {
-    if (mIsEncrypted) {
+    if (isEncrypted_) {
       throw std::runtime_error("Metadata entry is not decrypted yet");
     }
-    return mPayload;
+    return payload_;
   }
 
   /// Returns a copy, but with payload encrypted if required
@@ -104,45 +104,45 @@ struct KeyBlindingAdditionalData {
 
 class Metadata {
  public:
-  inline Metadata(): mBlindingTimestamp{/*zero*/} {}
+  inline Metadata(): blindingTimestamp_{/*zero*/} {}
   inline Metadata(std::string tag, Timestamp date)
-    : mBlindingTimestamp(date), mTag(std::move(tag)) { }
+    : blindingTimestamp_(date), tag_(std::move(tag)) { }
   inline Metadata(std::string tag, Timestamp date, EncryptionScheme scheme)
-    : mBlindingTimestamp(date), mTag(std::move(tag)), mEncryptionScheme(scheme) { }
+    : blindingTimestamp_(date), tag_(std::move(tag)), encryptionScheme_(scheme) { }
 
   inline Timestamp getBlindingTimestamp() const {
-    return mBlindingTimestamp;
+    return blindingTimestamp_;
   }
   inline Metadata& setBlindingTimestamp(const Timestamp& date) {
-    mBlindingTimestamp = date;
+    blindingTimestamp_ = date;
     return *this;
   }
   inline std::string getTag() const {
-    return mTag;
+    return tag_;
   }
   inline Metadata& setTag(const std::string& tag) {
-    mTag = tag;
+    tag_ = tag;
     return *this;
   }
   inline EncryptionScheme getEncryptionScheme() const {
-      return mEncryptionScheme;
+      return encryptionScheme_;
   }
   inline void setEncryptionScheme(EncryptionScheme scheme) {
-      mEncryptionScheme = scheme;
+      encryptionScheme_ = scheme;
   }
   inline const std::optional<std::string>& getOriginalPayloadEntryId() const {
-    return mOriginalPayloadEntryId;
+    return originalPayloadEntryId_;
   }
   inline void setOriginalPayloadEntryId(std::string id) {
-    mOriginalPayloadEntryId = std::move(id);
+    originalPayloadEntryId_ = std::move(id);
   }
 
   inline std::map<std::string,MetadataXEntry>& extra() {
-    return this->mExtra;
+    return this->extra_;
   }
 
   inline const std::map<std::string,MetadataXEntry>& extra() const {
-    return this->mExtra;
+    return this->extra_;
   }
 
   Metadata decrypt(const std::string& aeskey) const;
@@ -154,14 +154,14 @@ class Metadata {
   KeyBlindingAdditionalData computeKeyBlindingAdditionalData(const LocalPseudonym& localPseudonym) const;
 
  private:
-  Timestamp mBlindingTimestamp;
-  std::string mTag;
-  EncryptionScheme mEncryptionScheme = EncryptionScheme::V3;
-  std::optional<std::string> mOriginalPayloadEntryId;
+  Timestamp blindingTimestamp_;
+  std::string tag_;
+  EncryptionScheme encryptionScheme_ = EncryptionScheme::V3;
+  std::optional<std::string> originalPayloadEntryId_;
 
   // N.B. for a consistent result when blinding the encrypted AES key
-  // it is important that mExtra is a sorted std::map.
-  std::map<std::string,MetadataXEntry> mExtra;
+  // it is important that extra_ is a sorted std::map.
+  std::map<std::string,MetadataXEntry> extra_;
 
   void checkFieldsConsistentWithVersion() const;
 };

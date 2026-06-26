@@ -9,7 +9,7 @@ namespace castor {
 class RepeatingDataPoint : public DataPoint<RepeatingDataPoint, RepeatingDataInstance>, public SharedConstructor<RepeatingDataPoint> {
 
  public:
-  static const std::string RELATIVE_API_ENDPOINT;
+  static const std::string RelativeApiEndpoint;
 
   std::string makeUrl() const override;
 

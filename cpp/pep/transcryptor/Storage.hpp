@@ -17,14 +17,14 @@ namespace pep {
 
 class TranscryptorStorage {
 private:
-  std::shared_ptr<TranscryptorStorageBackend> mStorage;
-  std::string mPath;
-  PropertyBasedContainer<std::unique_ptr<transcryptor::ChecksumChain>, &transcryptor::ChecksumChain::name>::set mChecksumChains;
+  std::shared_ptr<TranscryptorStorageBackend> storage_;
+  std::string path_;
+  PropertyBasedContainer<std::unique_ptr<transcryptor::ChecksumChain>, &transcryptor::ChecksumChain::name>::set checksumChains_;
 
   void ensureInitialized();
   void ensureInitialized_unguarded(bool& migrated);
   void migrate();
-  void migrate_from_v1_to_v2();
+  void migrateFromV1toV2();
   void removeOutdatedRecords();
 
   int64_t getOrCreatePseudonymSet(const std::vector<LocalPseudonym>& ps);
@@ -37,7 +37,7 @@ private:
 
  public:
 
-  std::string getPath() const { return mPath; }
+  std::string getPath() const { return path_; }
 
   TranscryptorStorage(const std::filesystem::path& path);
 

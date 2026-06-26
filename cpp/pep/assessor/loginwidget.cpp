@@ -40,20 +40,20 @@ std::filesystem::path GetPepAppDataPath() {
 
 LoginWidget::LoginWidget(std::shared_ptr<boost::asio::io_context> io_context, const pep::Configuration& projectConfig, const pep::Configuration& config, const std::filesystem::path& exeDirectory)
   : QWidget(nullptr)
-  , authy(pep::OAuthClient::Create(pep::OAuthClient::Parameters{
-      .io_context = io_context,
+  , authy_(pep::OAuthClient::Create(pep::OAuthClient::Parameters{
+      .ioContext = io_context,
       .config = config.get_child("OAuthServer"),
       .authorizationMethod = pep::BrowserAuthorization,
     }))
-  , exeDirectory(exeDirectory)
-  , adminAccountSampleFormat(projectConfig.get<std::optional<std::string>>("AdminAccountSampleFormat"))
-  , ui(new Ui::LoginWidget) {
+  , exeDirectory_(exeDirectory)
+  , adminAccountSampleFormat_(projectConfig.get<std::optional<std::string>>("AdminAccountSampleFormat"))
+  , ui_(new Ui::LoginWidget) {
   Q_INIT_RESOURCE(resources);
-  ui->setupUi(this);
+  ui_->setupUi(this);
 
   auto branding = Branding::Get(projectConfig, "Branding");
   setWindowTitle(branding.getProjectName());
-  branding.showLogo(*ui->pepLabel);
+  branding.showLogo(*ui_->pepLabel);
 
   auto cfgVersion = pep::ConfigVersion::Current();
   if (cfgVersion != std::nullopt) {
@@ -73,12 +73,12 @@ LoginWidget::LoginWidget(std::shared_ptr<boost::asio::io_context> io_context, co
   // For OSes other than Windows or MacOS, do not show the Update button
   #if defined(_WIN32) || (defined(__APPLE__) && defined(__MACH__))
   // Show the Update button with checking for updates text, but make it unclickable
-  ui->updateButton->setText(tr("Checking for updates"));
-  ui->updateButton->setEnabled(false);
-  ui->updateButton->setVisible(true);
+  ui_->updateButton->setText(tr("Checking for updates"));
+  ui_->updateButton->setEnabled(false);
+  ui_->updateButton->setVisible(true);
 
   // Also make the login button unclickable for now
-  ui->loginButton->setEnabled(false);
+  ui_->loginButton->setEnabled(false);
   #endif
 
   #ifdef _WIN32
@@ -98,7 +98,7 @@ void LoginWidget::provideUpdateIfAvailable() {
   auto installer = Installer::GetAvailable();
 
   // After checking for updates, change the login button back to normal
-  ui->loginButton->setEnabled(true);
+  ui_->loginButton->setEnabled(true);
 
   auto current = pep::ConfigVersion::Current();
   assert(current != std::nullopt);
@@ -107,12 +107,12 @@ void LoginWidget::provideUpdateIfAvailable() {
     PEP_LOG(LogTag, pep::Severity::Debug) << "No available installer found: do not do update";
 
     // If no update is found, disable and remove the Update button
-    ui->updateButton->setVisible(false);
+    ui_->updateButton->setVisible(false);
   }
   else if (!installer->supersedesRunningVersion()) {
     PEP_LOG(LogTag, pep::Severity::Debug) << "Available installer does not supersede running software version: do not do update";
 
-    ui->updateButton->setVisible(false);
+    ui_->updateButton->setVisible(false);
   }
   else {
     PEP_LOG(LogTag, pep::Severity::Debug) << "Superseding installer found: providing update option";
@@ -127,15 +127,15 @@ void LoginWidget::provideUpdateIfAvailable() {
       QString::fromStdString(installer->getSemver().format())));
 
     // Connect the Update button to perform the update process, and disable the login button
-    QObject::connect(ui->updateButton, &QPushButton::clicked, [this, installer]() {
-      ui->loginButton->setEnabled(false);
-      ui->updateButton->setEnabled(false);
-      ui->updateButton->setText(tr("Updating..."));
+    QObject::connect(ui_->updateButton, &QPushButton::clicked, [this, installer]() {
+      ui_->loginButton->setEnabled(false);
+      ui_->updateButton->setEnabled(false);
+      ui_->updateButton->setText(tr("Updating..."));
       Async::Run(this, [this, installer]() {
-        Installer::Context context{ GetPepAppDataPath(), this->exeDirectory / "pepElevate.exe", [this]() {
-    auto message = adminAccountSampleFormat
+        Installer::Context context{ GetPepAppDataPath(), this->exeDirectory_ / "pepElevate.exe", [this]() {
+    auto message = adminAccountSampleFormat_
       ? tr("Please enter credentials for an administrative account that can install the software. Use format 'user@domain.tld' for domain accounts, e.g. '%1'.")
-      .arg(QString::fromStdString(*adminAccountSampleFormat))
+      .arg(QString::fromStdString(*adminAccountSampleFormat_))
       : tr("Please enter credentials for an administrative account that can install the software. Use format 'user@domain.tld' for domain accounts.");
     return pep::win32api::PlaintextCredentials::FromPrompt(
       reinterpret_cast<HWND>(this->winId()),
@@ -144,12 +144,12 @@ void LoginWidget::provideUpdateIfAvailable() {
         } };
 
         installer->start(context);
-      }, [this](std::exception_ptr error) {this->on_updateStarted(error); });
+      }, [this](std::exception_ptr error) {this->onUpdateStarted(error); });
     });
 
     // Set the update button text to "Update" and enable it
-    ui->updateButton->setText(tr("Update"));
-    ui->updateButton->setEnabled(true);
+    ui_->updateButton->setText(tr("Update"));
+    ui_->updateButton->setEnabled(true);
   }
 }
 
@@ -162,15 +162,15 @@ void LoginWidget::provideUpdate(bool updateFound) {
 void LoginWidget::provideUpdateIfAvailable(bool updateFound) {
 
   // After checking for updates, change the login button back to normal
-    ui->loginButton->setEnabled(true);
+    ui_->loginButton->setEnabled(true);
 
   // if no update is available, change the login button back to normal
   if (!updateFound) {
     PEP_LOG(LogTag, pep::Severity::Debug) << "No available installer found: do not do update";
 
     // If no update is found, disable and remove the Update button
-    ui->updateButton->setEnabled(false);
-    ui->updateButton->setVisible(false);
+    ui_->updateButton->setEnabled(false);
+    ui_->updateButton->setVisible(false);
 
   } else {
     PEP_LOG(LogTag, pep::Severity::Debug) << "Superseding installer found: providing update option";
@@ -183,26 +183,26 @@ void LoginWidget::provideUpdateIfAvailable(bool updateFound) {
     this->style()->polish(this);
 
     // Connect the Update button to perform the update process, and disable the login button
-    QObject::connect(ui->updateButton, &QPushButton::clicked, [this]() {
-      ui->loginButton->setEnabled(false);
+    QObject::connect(ui_->updateButton, &QPushButton::clicked, [this]() {
+      ui_->loginButton->setEnabled(false);
       updater->checkForUpdates();
     });
 
     // Set update text and re-enable the Update button
-    ui->updateButton->setText(tr("Update"));
-    ui->updateButton->setEnabled(true);
+    ui_->updateButton->setText(tr("Update"));
+    ui_->updateButton->setEnabled(true);
   }
 }
 #endif
 
 LoginWidget::~LoginWidget() {
-  delete ui;
+  delete ui_;
 }
 
 /*! \brief Run surfconext login
  */
-void LoginWidget::on_loginButton_clicked() {
-  if (ui->updateButton->isVisible() && ui->updateButton->isEnabled()) {
+void LoginWidget::onLoginButtonClicked() {
+  if (ui_->updateButton->isVisible() && ui_->updateButton->isEnabled()) {
     auto reply = QMessageBox::warning(this, tr("Update Available"),
                                   tr("An update is available. If you do not update, the application might not work correctly. Do you want to continue without updating?"),
                                   QMessageBox::Yes | QMessageBox::No);
@@ -212,22 +212,22 @@ void LoginWidget::on_loginButton_clicked() {
   }
   std::cerr << "loginButton clicked" << std::endl;
 
-  ui->loginButton->setEnabled(false);
-  ui->updateButton->setEnabled(false);
-  authy->run()
-    .observe_on(observe_on_gui())
+  ui_->loginButton->setEnabled(false);
+  ui_->updateButton->setEnabled(false);
+  authy_->run()
+    .observe_on(ObserveOnGui())
     .subscribe(
     [this](const pep::AuthorizationResult& result) {
       if (!result) {
-        this->on_loginFailure(tr("Logon failed"), result.exception());
+        this->onLoginFailure(tr("Logon failed"), result.exception());
       }
       else {
-        this->on_userLoggedin(QString::fromStdString(*result));
-        ui->loginButton->setEnabled(true);
+        this->onUserLoggedin(QString::fromStdString(*result));
+        ui_->loginButton->setEnabled(true);
       }
     },
     [this](std::exception_ptr ep) {
-      this->on_loginFailure(tr("Logon failed because of a technical issue. Please contact your software supplier and report the following error text:"), ep);
+      this->onLoginFailure(tr("Logon failed because of a technical issue. Please contact your software supplier and report the following error text:"), ep);
       });
 }
 
@@ -235,7 +235,7 @@ void LoginWidget::on_loginButton_clicked() {
  *
  * Runs the client update helper and terminates pep client.
  */
-void LoginWidget::on_updateStarted(std::exception_ptr error) {
+void LoginWidget::onUpdateStarted(std::exception_ptr error) {
   if (error == nullptr) {
     // At this point, the update has been initiated. Terminate pepAssessor so that the .exe can be replaced
     //NOLINTNEXTLINE(concurrency-mt-unsafe) Could be improved, but we're not doing stuff here that needs to be shut down gracefully
@@ -280,10 +280,10 @@ void LoginWidget::on_updateStarted(std::exception_ptr error) {
   this->style()->polish(this);
 
   //Reconfigure login button.
-  QObject::disconnect(ui->loginButton, nullptr, nullptr, nullptr);
-  ui->loginButton->setText("Login");
-  QObject::connect(ui->loginButton, SIGNAL(clicked()), this, SLOT(on_loginButton_clicked()));
-  ui->loginButton->setEnabled(true);
+  QObject::disconnect(ui_->loginButton, nullptr, nullptr, nullptr);
+  ui_->loginButton->setText("Login");
+  QObject::connect(ui_->loginButton, SIGNAL(clicked()), this, SLOT(onLoginButtonClicked()));
+  ui_->loginButton->setEnabled(true);
 }
 
 /*! \brief Code run once a login has been confirmed
@@ -292,7 +292,7 @@ void LoginWidget::on_updateStarted(std::exception_ptr error) {
  *
  * \param token to use for pep login.
  */
-void LoginWidget::on_userLoggedin(QString token) {
+void LoginWidget::onUserLoggedin(QString token) {
   //Put actual login auth code here
   qDebug() << "OAuth token in use: " << token;
   emit loginSuccess(token);
@@ -302,7 +302,7 @@ void LoginWidget::on_userLoggedin(QString token) {
  *
  * Changes the UI background to red. This is done to make it immediately clear to the user that something has gone wrong.
  */
-void LoginWidget::on_loginFailure(QString announcement, std::exception_ptr error) {
+void LoginWidget::onLoginFailure(QString announcement, std::exception_ptr error) {
   //Change color to alert user of error
   this->setStyleSheet(QStringLiteral("background-color: #d36358;"));
   this->style()->unpolish(this);

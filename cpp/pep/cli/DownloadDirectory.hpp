@@ -20,7 +20,7 @@ class DownloadDirectory : public std::enable_shared_from_this<DownloadDirectory>
   friend class SharedConstructor<DownloadDirectory>;
 
 public:
-  static const bool APPLY_FILE_EXTENSIONS_BY_DEFAULT = true;
+  static const bool ApplyFileExtensionsByDefault = true;
 
   struct ContentSpecification {
     std::vector<std::string> groups;
@@ -32,7 +32,7 @@ public:
   struct Specification {
     ContentSpecification content;
     std::string accessGroup;
-    bool applyFileExtensions = APPLY_FILE_EXTENSIONS_BY_DEFAULT;
+    bool applyFileExtensions = ApplyFileExtensionsByDefault;
 
     std::string toString() const;
     static Specification FromString(const std::string& value);
@@ -42,15 +42,15 @@ public:
     friend class DownloadDirectory;
 
   private:
-    std::shared_ptr<DownloadDirectory> mDestination;
-    RecordDescriptor mDescriptor;
-    std::filesystem::path mPath;
-    std::string mFileName;
-    std::uint64_t mFileSize, mWritten = 0;
-    std::shared_ptr<std::ofstream> mRaw;
-    XxHasher mHasher;
-    bool mPseudonymisationRequired{false};
-    bool mArchiveExtractingRequired{false};
+    std::shared_ptr<DownloadDirectory> destination_;
+    RecordDescriptor descriptor_;
+    std::filesystem::path path_;
+    std::string fileName_;
+    std::uint64_t fileSize_, written_ = 0;
+    std::shared_ptr<std::ofstream> raw_;
+    XxHasher hasher_;
+    bool pseudonymisationRequired_{false};
+    bool archiveExtractionRequired_{false};
 
   private:
     explicit RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, std::uint64_t fileSize);
@@ -65,7 +65,7 @@ public:
 
     ~RecordStorageStream() noexcept;
 
-    const RecordDescriptor& getRecordDescriptor() const noexcept { return mDescriptor; }
+    const RecordDescriptor& getRecordDescriptor() const noexcept { return descriptor_; }
 
     std::filesystem::path getRelativePath() const;
 
@@ -92,10 +92,10 @@ public:
   };
 
 private:
-  std::filesystem::path mRoot;
-  bool mApplyFileExtensions = APPLY_FILE_EXTENSIONS_BY_DEFAULT;
-  DownloadMetadata mMetadata;
-  std::shared_ptr<GlobalConfiguration> mGlobalConfig;
+  std::filesystem::path root_;
+  bool applyFileExtensions_ = ApplyFileExtensionsByDefault;
+  DownloadMetadata metadata_;
+  std::shared_ptr<GlobalConfiguration> globalConfig_;
 
   void setStoredDataHash(const RecordDescriptor& field, const std::filesystem::path& path, const std::string& fileName, XxHasher::Hash hash);
   std::optional<XxHasher::Hash> getCurrentDataHash(const std::filesystem::path& path) const;
@@ -133,7 +133,7 @@ public:
 
   rxcpp::observable<FakeVoid> pull(std::shared_ptr<CoreClient> source, const PullOptions& options, const Progress::OnCreation& onCreateProgress);
 
-  const std::filesystem::path& getPath() const noexcept { return mRoot; }
+  const std::filesystem::path& getPath() const noexcept { return root_; }
   std::filesystem::path getSpecificationFilePath() const;
   std::filesystem::path getParticipantDirectory(const ParticipantIdentifier& id) const;
   std::optional<std::filesystem::path> getParticipantDirectoryIfExists(const ParticipantIdentifier& id) const;

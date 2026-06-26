@@ -67,7 +67,7 @@ auto MakeStorage(const std::filesystem::path& dbFile) {
 
 /// Returns true if the path has no special meaning within Sqlite.
 bool IsPlainPath(const std::filesystem::path& path) {
-  return !path.empty() && path != database::BasicStorage::STORE_IN_MEMORY
+  return !path.empty() && path != database::BasicStorage::StoreInMemory
     && !boost::trim_left_copy(path.string()).starts_with("file:");
 }
 
@@ -83,11 +83,11 @@ struct SqliteBlocklist::Data final : database::Storage<MakeStorage> {
 
 SqliteBlocklist::~SqliteBlocklist() = default;
 
-SqliteBlocklist::SqliteBlocklist(const std::filesystem::path& dbFile) : mData{std::make_unique<Data>(dbFile)} {}
+SqliteBlocklist::SqliteBlocklist(const std::filesystem::path& dbFile) : data_{std::make_unique<Data>(dbFile)} {}
 
 std::unique_ptr<SqliteBlocklist> SqliteBlocklist::CreateWithMemoryStorage() {
   // std::make_unique does not work here because the constructor is private
-  return std::unique_ptr<SqliteBlocklist>{new SqliteBlocklist{Data::STORE_IN_MEMORY}};
+  return std::unique_ptr<SqliteBlocklist>{new SqliteBlocklist{Data::StoreInMemory}};
 }
 
 std::unique_ptr<SqliteBlocklist> SqliteBlocklist::CreateWithStorageLocation(const std::filesystem::path& dbFile) {
@@ -101,25 +101,25 @@ std::unique_ptr<SqliteBlocklist> SqliteBlocklist::CreateWithStorageLocation(cons
   return std::unique_ptr<SqliteBlocklist>{new SqliteBlocklist{dbFile}};
 }
 
-std::size_t SqliteBlocklist::size() const { return static_cast<std::size_t>(mData->raw.count<FlatEntry>()); }
+std::size_t SqliteBlocklist::size() const { return static_cast<std::size_t>(data_->raw.count<FlatEntry>()); }
 
 std::vector<Blocklist::Entry> SqliteBlocklist::allEntries() const {
-  auto retrievedEntries = mData->raw.get_all<FlatEntry>();
+  auto retrievedEntries = data_->raw.get_all<FlatEntry>();
   return InflateAll(std::move(retrievedEntries));
 }
 
 std::vector<Blocklist::Entry> SqliteBlocklist::allEntriesMatching(const TokenIdentifier& t) const {
-  return InflateAll(mData->raw.get_all<FlatEntry>(where(
+  return InflateAll(data_->raw.get_all<FlatEntry>(where(
       c(&FlatEntry::targetSubject) == t.subject && c(&FlatEntry::targetUserGroup) == t.userGroup
       && c(&FlatEntry::targetIssueDateTime) >= TicksSinceEpoch<milliseconds>(t.issueDateTime))));
 }
 
 std::optional<Blocklist::Entry> SqliteBlocklist::entryById(int64_t id) const {
-  return Inflate(mData->raw.get_optional<FlatEntry>(id));
+  return Inflate(data_->raw.get_optional<FlatEntry>(id));
 }
 
 int64_t SqliteBlocklist::add(const TokenIdentifier& t, const Entry::Metadata& m) {
-  return mData->raw.insert(FlatEntry{
+  return data_->raw.insert(FlatEntry{
       .id = 0, // overwritten in storage
       .targetSubject = t.subject,
       .targetUserGroup = t.userGroup,
@@ -131,14 +131,14 @@ int64_t SqliteBlocklist::add(const TokenIdentifier& t, const Entry::Metadata& m)
 
 std::optional<Blocklist::Entry> SqliteBlocklist::removeById(int64_t id) {
   std::optional<FlatEntry> removedEntry;
-  mData->raw.transaction([&] {
-    removedEntry = mData->raw.get_optional<FlatEntry>(id);
-    mData->raw.remove<FlatEntry>(id);
+  data_->raw.transaction([&] {
+    removedEntry = data_->raw.get_optional<FlatEntry>(id);
+    data_->raw.remove<FlatEntry>(id);
     return true;
   });
   return Inflate(std::move(removedEntry));
 }
 
-bool SqliteBlocklist::isPersistent() const { return mData->isPersistent; }
+bool SqliteBlocklist::isPersistent() const { return data_->isPersistent; }
 
 } // namespace pep::tokenBlocking

@@ -20,10 +20,11 @@ class HTTPMessage {
 public:
   using HeaderMap = std::map<std::string, std::string, CaseInsensitiveCompare>;
 
-protected:
-  HeaderMap headers;
-  std::vector<std::shared_ptr<std::string>> bodyparts;
+private:
+  HeaderMap headers_;
+  std::vector<std::shared_ptr<std::string>> bodyparts_;
 
+protected:
   /*!
     * \brief Construct a message
     *
@@ -60,15 +61,15 @@ public:
   std::map<std::string, std::string> getBodyAsFormData() const;
 
   std::vector<std::shared_ptr<std::string>>& getBodyparts() {
-    return this->bodyparts;
+    return this->bodyparts_;
   }
 };
 
 //! A HTTP Response
 class HTTPResponse : public HTTPMessage {
 private:
-  unsigned int statuscode{};
-  std::string statusMessage;
+  unsigned int statuscode_{};
+  std::string statusMessage_;
 
 public:
   //! Construct an empty response 
@@ -102,20 +103,20 @@ public:
 
   //! \return HTTP status code of the response
   unsigned int getStatusCode() const {
-    return statuscode;
+    return statuscode_;
   }
 
   void setStatusCode(unsigned int statuscode) {
-    this->statuscode = statuscode;
+    statuscode_ = statuscode;
   }
 
   //! \return Status message of the response
   const std::string& getStatusMessage() const {
-    return statusMessage;
+    return statusMessage_;
   }
 
   void setStatusMessage(std::string statusMessage) {
-    this->statusMessage = std::move(statusMessage);
+    statusMessage_ = std::move(statusMessage);
   }
 
   void completeHeaders();
@@ -186,19 +187,19 @@ public:
 
   //! \return HTTP Method of the request
   const networking::HttpMethod& getMethod() const {
-    return mMethod;
+    return method_;
   }
 
   const std::string& getHost() const {
-    return mHost;
+    return host_;
   }
 
   const boost::urls::url& uri() const {
-    return mUri;
+    return uri_;
   }
 
   boost::urls::url& uri() {
-    return mUri;
+    return uri_;
   }
 
   void completeHeaders();
@@ -206,9 +207,9 @@ public:
 private:
   void ensureHeader(const std::string& key, const std::string& value);
 
-  std::string mHost;
-  networking::HttpMethod mMethod;
-  boost::urls::url mUri;
+  std::string host_;
+  networking::HttpMethod method_;
+  boost::urls::url uri_;
 };
 
 }

@@ -7,15 +7,15 @@ namespace castor {
 
 class RepeatingDataForm : public SimpleCastorChildObject<RepeatingDataForm, RepeatingData>, public SharedConstructor<RepeatingDataForm> {
  private:
-  std::string mName;
-  int mNumber;
+  std::string name_;
+  int number_;
 
  public:
-  static const std::string RELATIVE_API_ENDPOINT;
-  static const std::string EMBEDDED_API_NODE_NAME;
+  static const std::string RelativeApiEndpoint;
+  static const std::string EmbeddedApiNodeName;
 
-  std::string getName() const { return mName; }
-  int getNumber() const { return mNumber; }
+  std::string getName() const { return name_; }
+  int getNumber() const { return number_; }
 
   std::shared_ptr<RepeatingData> getRepeatingData() const { return this->getParent(); }
 

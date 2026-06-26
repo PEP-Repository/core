@@ -11,13 +11,13 @@ namespace detail {
 
 /// Implementor class for RxInstead<> function (below).
 template <typename T>
-struct RxInsteadOperator {
+class RxInsteadOperator {
 private:
-  T mReplacement;
+  T replacement_;
 
 public:
   explicit RxInsteadOperator(const T& replacement)
-    : mReplacement(replacement) {
+    : replacement_(replacement) {
   }
 
   template <typename TItem, typename SourceOperator>
@@ -28,8 +28,8 @@ public:
     return items
       .ignore_elements()
       .reduce(
-        mReplacement,
-        [](const T& replacement, const TItem&) {assert(false); return  replacement; } // Should never be called due to .ignore_elements() above
+        replacement_,
+        [](const T& replacement, const TItem&) {assert(false); return replacement; } // Should never be called due to .ignore_elements() above
       );
   }
 };

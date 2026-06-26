@@ -11,8 +11,6 @@ std::string Quote(const std::string& value) {
 }
 
 class MakeS3request : public pep::Application {
-private:
-
 public:
   std::string getName() const override { return "MakeS3request"; }
   std::string getDescription() const override { return "Produces an S3 HTTP PUT request"; }

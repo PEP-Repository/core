@@ -13,7 +13,7 @@ using ElgamalTranslationKey = CurveScalar;
  */
 class ElgamalEncryption {
  public:
-  static constexpr size_t PACKEDBYTES = CurvePoint::PACKEDBYTES * 3;
+  static constexpr size_t PackedBytes = CurvePoint::PackedBytes * 3;
 
   ElgamalEncryption(
     const ElgamalPublicKey& publicKey,

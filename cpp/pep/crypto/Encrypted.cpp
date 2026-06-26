@@ -7,9 +7,9 @@ namespace pep {
 EncryptedBase::EncryptedBase(const std::string& key,
   const std::string& plaintext) {
   auto ctx = createGcmContext();
-  mIv = RandomString(16);
-  mTag.resize(16);
-  mCiphertext.resize(plaintext.size());
+  iv = RandomString(16);
+  tag.resize(16);
+  ciphertext.resize(plaintext.size());
   if (key.size() != 32)
     throw std::runtime_error("keys should be 32 bytes");
   int ret{};
@@ -19,7 +19,7 @@ EncryptedBase::EncryptedBase(const std::string& key,
   ret = EVP_CIPHER_CTX_ctrl(
     ctx.get(),
     EVP_CTRL_GCM_SET_IVLEN,
-    static_cast<int>(mIv.size()),
+    static_cast<int>(iv.size()),
     nullptr
   );
   if (ret != 1)
@@ -28,24 +28,24 @@ EncryptedBase::EncryptedBase(const std::string& key,
     nullptr,
     nullptr,
     reinterpret_cast<const uint8_t*>(key.data()),
-    reinterpret_cast<const uint8_t*>(mIv.data())
+    reinterpret_cast<const uint8_t*>(iv.data())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_EncryptInit_ex 2nd failed");
   int len{};
   ret = EVP_EncryptUpdate(ctx.get(),
-    reinterpret_cast<uint8_t*>(mCiphertext.data()),
+    reinterpret_cast<uint8_t*>(ciphertext.data()),
     &len,
     reinterpret_cast<const uint8_t*>(plaintext.data()),
     static_cast<int>(plaintext.size())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_EncryptUpdate for plaintext failed");
-  if (len != static_cast<int>(mCiphertext.size()))
+  if (len != static_cast<int>(ciphertext.size()))
     throw std::runtime_error("EVP_EncryptUpdate wrote wrong amount of data");
   ret = EVP_EncryptFinal_ex(
     ctx.get(),
-    reinterpret_cast<uint8_t*>(mCiphertext.data() + len),
+    reinterpret_cast<uint8_t*>(ciphertext.data() + len),
     &len
   );
   if (ret != 1)
@@ -54,8 +54,8 @@ EncryptedBase::EncryptedBase(const std::string& key,
     throw std::runtime_error("EVP_EncryptFinal overshot");
   ret = EVP_CIPHER_CTX_ctrl(ctx.get(),
     EVP_CTRL_GCM_GET_TAG,
-    static_cast<int>(mTag.size()),
-    reinterpret_cast<int8_t*>(mTag.data())
+    static_cast<int>(tag.size()),
+    reinterpret_cast<int8_t*>(tag.data())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_CIPHER_CTX_ctrl GET_TAG failed");
@@ -66,7 +66,7 @@ std::string EncryptedBase::baseDecrypt(const std::string& key) const {
   int ret = 0;
   int len = 0;
   std::string plaintext;
-  plaintext.resize(mCiphertext.size());
+  plaintext.resize(ciphertext.size());
   if (key.size() != 32)
     throw std::runtime_error("keys should be 32 bytes");
 
@@ -76,7 +76,7 @@ std::string EncryptedBase::baseDecrypt(const std::string& key) const {
   ret = EVP_CIPHER_CTX_ctrl(
     ctx.get(),
     EVP_CTRL_GCM_SET_IVLEN,
-    static_cast<int>(mIv.size()),
+    static_cast<int>(iv.size()),
     nullptr
   );
   if (ret != 1)
@@ -85,15 +85,15 @@ std::string EncryptedBase::baseDecrypt(const std::string& key) const {
     nullptr,
     nullptr,
     reinterpret_cast<const uint8_t*>(key.data()),
-    reinterpret_cast<const uint8_t*>(mIv.data())
+    reinterpret_cast<const uint8_t*>(iv.data())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_DecryptInit_ex 2nd failed");
   ret = EVP_DecryptUpdate(ctx.get(),
     reinterpret_cast<uint8_t*>(plaintext.data()),
     &len,
-    reinterpret_cast<const uint8_t*>(mCiphertext.data()),
-    static_cast<int>(mCiphertext.size())
+    reinterpret_cast<const uint8_t*>(ciphertext.data()),
+    static_cast<int>(ciphertext.size())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_DecryptUpdate for plaintext failed");
@@ -101,9 +101,9 @@ std::string EncryptedBase::baseDecrypt(const std::string& key) const {
     throw std::runtime_error("EVP_DecryptUpdate wrote wrong amount of data");
   ret = EVP_CIPHER_CTX_ctrl(ctx.get(),
     EVP_CTRL_GCM_SET_TAG,
-    static_cast<int>(mTag.size()),
+    static_cast<int>(tag.size()),
     //NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) Not written to for EVP_CTRL_GCM_SET_TAG
-    const_cast<char*>(mTag.data())
+    const_cast<char*>(tag.data())
   );
   if (ret != 1)
     throw std::runtime_error("EVP_CIPHER_CTX_ctrl TAG failed");

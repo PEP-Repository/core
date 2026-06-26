@@ -19,11 +19,11 @@ class RepeatingData;
 //! A study in Castor
 class Study : public CastorObject, public SharedConstructor<Study> {
  private:
-  std::string mName;
-  std::string mSlug;
+  std::string name_;
+  std::string slug_;
 
  public:
-  std::shared_ptr<CastorConnection> getConnection() const override { return mConnection; }
+  std::shared_ptr<CastorConnection> getConnection() const override { return connection_; }
 
   /*!
    * \brief Create a participant in this study.
@@ -89,9 +89,9 @@ class Study : public CastorObject, public SharedConstructor<Study> {
   Study(std::shared_ptr<CastorConnection> connection, JsonPtr json);
 
  private:
-  std::shared_ptr<CastorConnection> mConnection;
-  std::optional<std::string> mDefaultSiteAbbrev;
-  std::optional<std::string> mDefaultSiteId;
+  std::shared_ptr<CastorConnection> connection_;
+  std::optional<std::string> defaultSiteAbbrev_;
+  std::optional<std::string> defaultSiteId_;
 
   //! \return Observable that, if no error occurs, emits the ID of the default site of the study. This will not emit any updates to the default site
   rxcpp::observable<std::string> getDefaultSiteId();

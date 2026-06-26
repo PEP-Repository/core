@@ -24,29 +24,29 @@ namespace pep {
 namespace win32api {
 
 PlaintextCredentials::PlaintextCredentials()
-  : mUserName(CREDUI_MAX_USERNAME_LENGTH + 1), mPassword(CREDUI_MAX_PASSWORD_LENGTH + 1), mDomain(CREDUI_MAX_DOMAIN_TARGET_LENGTH + 1) {
+  : userName_(CREDUI_MAX_USERNAME_LENGTH + 1), password_(CREDUI_MAX_PASSWORD_LENGTH + 1), domain_(CREDUI_MAX_DOMAIN_TARGET_LENGTH + 1) {
 }
 
 /* If the buffer contains credentials produced by CredUIPromptForWindowsCredentialsW, and the
  * user entered "user@domain.suffix" then the domain name is not extracted from that information.
- * Instead the mUserName will contain the complete "user@domain.suffix", and the mDomain
+ * Instead the userName_ will contain the complete "user@domain.suffix", and the domain_
  * will be empty.
  */
 PlaintextCredentials PlaintextCredentials::FromAuthenticationBuffer(PVOID buffer, DWORD bufferSize) {
   PlaintextCredentials result;
-  auto userNameChars = static_cast<DWORD>(result.mUserName.getMaxItems());
-  auto passwordChars = static_cast<DWORD>(result.mPassword.getMaxItems());
-  auto domainChars = static_cast<DWORD>(result.mDomain.getMaxItems());
+  auto userNameChars = static_cast<DWORD>(result.userName_.getMaxItems());
+  auto passwordChars = static_cast<DWORD>(result.password_.getMaxItems());
+  auto domainChars = static_cast<DWORD>(result.domain_.getMaxItems());
   // https://flylib.com/books/en/1.286.1.88/1/
   BOOL fOK = ::CredUnPackAuthenticationBufferW(
     CRED_PACK_PROTECTED_CREDENTIALS,
     buffer,
     bufferSize,
-    result.mUserName.getAddress(),
+    result.userName_.getAddress(),
     &userNameChars,
-    result.mDomain.getAddress(),
+    result.domain_.getAddress(),
     &domainChars,
-    result.mPassword.getAddress(),
+    result.password_.getAddress(),
     &passwordChars);
   if (!fOK) {
     pep::win32api::ApiCallFailure::RaiseLastError();
@@ -96,12 +96,12 @@ PlaintextCredentials PlaintextCredentials::FromPrompt(HWND parentWindow, const s
 
 void PlaintextCredentials::runCommandLine(const std::string& cmdLine) const {
   // Default to passing the raw member values to CreateProcessWithLogonW
-  LPCWSTR passedUserName = mUserName.getAddress();
-  LPCWSTR passedDomain = mDomain.getAddress();
+  LPCWSTR passedUserName = userName_.getAddress();
+  LPCWSTR passedDomain = domain_.getAddress();
 
-  // But if our mUserName contains a "domain\username" specification, split them for the call to CreateProcessWithLogonW (below)
+  // But if our userName_ contains a "domain\username" specification, split them for the call to CreateProcessWithLogonW (below)
   std::vector<std::wstring> parts;
-  boost::split(parts, std::wstring(mUserName.getAddress()), std::bind_front(std::equal_to{}, L'\\'));
+  boost::split(parts, std::wstring(userName_.getAddress()), std::bind_front(std::equal_to{}, L'\\'));
 
   switch (parts.size()) {
   case 0: // Empty user name: pass as specified. Presumably the call to CreateProcessWithLogonW will return an error.
@@ -121,7 +121,7 @@ void PlaintextCredentials::runCommandLine(const std::string& cmdLine) const {
     if (passedDomain[0] != L'\0') {
       throw std::runtime_error("Cannot specify both a domain\\username and a separate domain name");
     }
-    PEP_LOG(LogTag, Severity::Info) << "Splitting domain\\username specification '" << mUserName.getAddress() << "' into separate fields";
+    PEP_LOG(LogTag, Severity::Info) << "Splitting domain\\username specification '" << userName_.getAddress() << "' into separate fields";
     passedDomain = parts[0].c_str();
     passedUserName = parts[1].c_str();
     break;
@@ -138,11 +138,11 @@ void PlaintextCredentials::runCommandLine(const std::string& cmdLine) const {
   STARTUPINFOW si{};
   si.cb = sizeof(STARTUPINFOW);
   /* CreateProcessWithLogonW works for domain account information entered as "user@domain.suffix",
-   * even though mUserName will contain that entire string and mDomain will be empty.
+   * even though userName_ will contain that entire string and domain_ will be empty.
    */
   if (::CreateProcessWithLogonW(passedUserName,
                                 passedDomain,
-                                mPassword.getAddress(),
+                                password_.getAddress(),
                                 LOGON_WITH_PROFILE,
                                 nullptr,
                                 wideCmdLine.data(),

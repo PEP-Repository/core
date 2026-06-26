@@ -82,7 +82,7 @@ private:
   template <class TOwner, typename... TArgs>
   friend class Event;
 
-  std::shared_ptr<detail::EventContract> mContract;
+  std::shared_ptr<detail::EventContract> contract_;
 };
 
 
@@ -147,49 +147,49 @@ private:
 
   // Keep state externally (i.e. not in a direct member) so it can be updated from const methods.
   // Keep state in a shared_ptr so it can outlive the Event<> instance: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2764
-  std::shared_ptr<Contracts> mContracts = std::make_shared<Contracts>();
+  std::shared_ptr<Contracts> contracts_ = std::make_shared<Contracts>();
 };
 
 
 template <class TOwner, typename... TArgs>
 class Event<TOwner, TArgs...>::Contract : public detail::EventContract {
 public:
-  explicit Contract(Handler handler) : mHandler(std::move(handler)) {}
+  explicit Contract(Handler handler) : handler_(std::move(handler)) {}
 
-  bool active() const noexcept override { return mHandler.has_value(); }
-  void cancel() noexcept override { mHandler.reset(); }
+  bool active() const noexcept override { return handler_.has_value(); }
+  void cancel() noexcept override { handler_.reset(); }
   bool notify(TArgs... args); // Returns TRUE if the contract was active and remained so; FALSE otherwise
 
 private:
-  std::optional<Handler> mHandler;
+  std::optional<Handler> handler_;
 };
 
 
 template <class TOwner, typename... TArgs>
 EventSubscription Event<TOwner, TArgs...>::subscribe(Handler handler) const {
   auto contract = std::make_shared<Contract>(std::move(handler));
-  mContracts->emplace_back(contract);
+  contracts_->emplace_back(contract);
   EventSubscription result;
-  result.mContract = std::move(contract);
+  result.contract_ = std::move(contract);
   return result;
 }
 
 template <class TOwner, typename... TArgs>
 bool Event<TOwner, TArgs...>::Contract::notify(TArgs... args) {
-  if (!mHandler.has_value()) {
+  if (!handler_.has_value()) {
     return false;
   }
 
-  // Use a copy of mHandler to prevent state corruption if the contract is cancelled during notification
-  auto invokable = mHandler;
+  // Use a copy of handler_ to prevent state corruption if the contract is cancelled during notification
+  auto invokable = handler_;
   (*invokable)(args...);
 
-  return mHandler.has_value(); // Invocation of the handler may have cancel()led this contract
+  return handler_.has_value(); // Invocation of the handler may have cancel()led this contract
 }
 
 template <class TOwner, typename... TArgs>
 Event<TOwner, TArgs...>::~Event() noexcept {
-  for (auto& contract : *mContracts) {
+  for (auto& contract : *contracts_) {
     contract->cancel();
   }
 }
@@ -197,7 +197,7 @@ Event<TOwner, TArgs...>::~Event() noexcept {
 template <class TOwner, typename... TArgs>
 void Event<TOwner, TArgs...>::notify(TArgs... args) const {
   // Keep state alive during notification so it can be processed even if the Event<> instance is destroyed: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2764
-  auto contracts = mContracts;
+  auto contracts = contracts_;
   // Work on a copy of the list-of-contracts to prevent state corruption if (the contract is cancelled and) the event is re-signalled during notification
   auto notifiable = *contracts;
 

@@ -19,13 +19,13 @@ std::shared_ptr<messaging::Node> CreateNetworkingNode(boost::asio::io_context& i
 // Helper class that (1) keeps a connection (and itself) alive until the connection is closed and (2) forwards the connection's uncaught read exceptions to a Server
 class ConnectionKeeper {
 private:
-  std::shared_ptr<messaging::Connection> mConnection;
-  EventSubscription mStatusChange;
-  EventSubscription mUncaughtReadException;
+  std::shared_ptr<messaging::Connection> connection_;
+  EventSubscription statusChange_;
+  EventSubscription uncaughtReadException_;
 
   ConnectionKeeper(std::shared_ptr<messaging::Connection> connection, std::shared_ptr<Server> server)
-    : mConnection(std::move(connection)) {
-    mUncaughtReadException = mConnection->onUncaughtReadException.subscribe([server](std::exception_ptr exception) {
+    : connection_(std::move(connection)) {
+    uncaughtReadException_ = connection_->onUncaughtReadException.subscribe([server](std::exception_ptr exception) {
       server->registerUncaughtReadException(exception);
       });
   }
@@ -35,10 +35,10 @@ public:
     std::shared_ptr<ConnectionKeeper> result(new ConnectionKeeper(connection, server));
 
     // Let the ConnectionKeeper keep itself alive until the connection gets closed
-    result->mStatusChange = result->mConnection->onStatusChange.subscribe([result /* keep the ConnectionKeeper instance alive */](const LifeCycler::StatusChange& change) {
+    result->statusChange_ = result->connection_->onStatusChange.subscribe([result /* keep the ConnectionKeeper instance alive */](const LifeCycler::StatusChange& change) {
       if (change.updated >= LifeCycler::Status::Finalizing) {
-        // Discard this lambda, getting rid of the shared_ptr to the ConnectionKeeper, allowing the instance and its mConnection to be destroyed.
-        result->mStatusChange.cancel();
+        // Discard this lambda, getting rid of the shared_ptr to the ConnectionKeeper, allowing the instance and its connection_ to be destroyed.
+        result->statusChange_.cancel();
       }
       });
 
@@ -49,31 +49,31 @@ public:
 }
 
 NetworkedServer::NetworkedServer(std::shared_ptr<boost::asio::io_context> ioContext, std::shared_ptr<Server> server, const X509RootCertificates& rootCas, const Configuration& config)
-  : mIoContext(ioContext), mServer(std::move(server)), mNetwork(CreateNetworkingNode(*ioContext, mServer, rootCas, config)) {
+  : ioContext_(ioContext), server_(std::move(server)), network_(CreateNetworkingNode(*ioContext, server_, rootCas, config)) {
 }
 
 void NetworkedServer::start() {
-  mNetwork->start()
+  network_->start()
     .subscribe(
       [this](const messaging::Connection::Attempt::Result& result) {
         if (!result) {
-          PEP_LOG(LogTag, Severity::Warning) << "Incoming connection to " << mServer->describe() << " could not be established: " << GetExceptionMessage(result.exception());
+          PEP_LOG(LogTag, Severity::Warning) << "Incoming connection to " << server_->describe() << " could not be established: " << GetExceptionMessage(result.exception());
         } else {
-          ConnectionKeeper::Create(*result, mServer);
+          ConnectionKeeper::Create(*result, server_);
         }
       },
       [](std::exception_ptr error) {
         PEP_LOG(LogTag, Severity::Error) << "Server networking failed due to " << GetExceptionMessage(error);
       },
       []() {
-        assert(false); // Should never occur because we don't invoke mNetwork.shutdown()
+        assert(false); // Should never occur because we don't invoke network_.shutdown()
       });
 
-  mIoContext->run();
+  ioContext_->run();
 }
 
 void NetworkedServer::stop() {
-  mIoContext->stop();
+  ioContext_->stop();
 }
 
 }

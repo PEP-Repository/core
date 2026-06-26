@@ -42,12 +42,12 @@ bool MessageType::IsValidValue(Value value) noexcept {
 }
 
 MessageType::MessageType(Value value)
-  : mValue(value) {
-  assert(IsValidValue(mValue));
+  : value_(value) {
+  assert(IsValidValue(value_));
 }
 
 std::string MessageType::describe() const {
-  switch (mValue) {
+  switch (value_) {
   case Request:
     return "request";
   case Response:
@@ -55,12 +55,12 @@ std::string MessageType::describe() const {
   case Control:
     return "control message";
   }
-  throw std::runtime_error("Unsupported message type value " + std::to_string(mValue));
+  throw std::runtime_error("Unsupported message type value " + std::to_string(value_));
 }
 
 EncodedMessageProperties MessageType::encode() const noexcept {
-  assert(IsValidValue(mValue));
-  if (mValue == Response) {
+  assert(IsValidValue(value_));
+  if (value_ == Response) {
     static_assert(TYPE_RESPONSE != NO_MESSAGE_PROPERTY_BITS);
     return TYPE_RESPONSE;
   }
@@ -70,13 +70,13 @@ EncodedMessageProperties MessageType::encode() const noexcept {
 EncodedMessageProperties Flags::encode() const noexcept {
   EncodedMessageProperties result = NO_MESSAGE_PROPERTY_BITS;
 
-  if (mClose) {
+  if (close_) {
     result |= FLAG_CLOSE;
   }
-  if (mError) {
+  if (error_) {
     result |= FLAG_ERROR;
   }
-  if (mPayload) {
+  if (payload_) {
     result |= FLAG_PAYLOAD;
   }
 
@@ -100,11 +100,11 @@ Flags Flags::MakeClose(bool payload) noexcept {
 }
 
 bool Flags::areValid() const noexcept {
-  if (mError) {
-    if (mPayload) { // Error messages cannot have payload (and vice versa)
+  if (error_) {
+    if (payload_) { // Error messages cannot have payload (and vice versa)
       return false;
     }
-    if (!mClose) { // Error implies close (and that bit must be set)
+    if (!close_) { // Error implies close (and that bit must be set)
       return false;
     }
   }
@@ -112,11 +112,11 @@ bool Flags::areValid() const noexcept {
 }
 
 bool Flags::empty() const noexcept {
-  return !mClose && !mError && !mPayload;
+  return !close_ && !error_ && !payload_;
 }
 
 Flags::Flags(bool close, bool error, bool payload)
-  : mClose(close), mError(error), mPayload(payload) {
+  : close_(close), error_(error), payload_(payload) {
   if (!areValid()) {
     throw std::invalid_argument((boost::format("Inconsistent set of message flags: %s") % *this).str());
   }
@@ -141,7 +141,7 @@ std::ostream& operator<<(std::ostream& out, Flags flags) {
 }
 
 EncodedMessageProperties MessageId::encode() const noexcept {
-  return mType.encode() | mStreamId.encode();
+  return type_.encode() | streamId_.encode();
 }
 
 bool StreamId::IsValidValue(Value value) noexcept {
@@ -149,8 +149,8 @@ bool StreamId::IsValidValue(Value value) noexcept {
 }
 
 StreamId::StreamId(Value value)
-  : mValue(value) {
-  assert(IsValidValue(mValue));
+  : value_(value) {
+  assert(IsValidValue(value_));
 }
 
 StreamId StreamId::BeforeFirst() noexcept {
@@ -172,7 +172,7 @@ StreamId StreamId::MakeNext(const StreamId& previous) noexcept {
 }
 
 MessageId::MessageId(MessageType type, StreamId streamId)
-  : mType(type), mStreamId(streamId) {
+  : type_(type), streamId_(streamId) {
 }
 
 MessageId MessageId::MakeForControlMessage() noexcept {
@@ -180,8 +180,8 @@ MessageId MessageId::MakeForControlMessage() noexcept {
 }
 
 MessageProperties::MessageProperties(MessageId messageId, Flags flags)
-  : mMessageId(messageId), mFlags(flags) {
-  assert(mFlags.empty() || mMessageId.type().value() != MessageType::Control);
+  : messageId_(messageId), flags_(flags) {
+  assert(flags_.empty() || messageId_.type().value() != MessageType::Control);
 }
 
 EncodedMessageProperties MessageProperties::encode() const noexcept {

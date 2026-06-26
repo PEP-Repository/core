@@ -32,6 +32,8 @@ set(PEPCLI_SRCS
     MultiCellQuery.cpp MultiCellQuery.hpp
     Ping.cpp
     Pull.cpp
+    pseudonym/CommandConvert.cpp pseudonym/CommandConvert.hpp
+    Pseudonym.cpp Pseudonym.hpp
     Query.cpp
     Register.cpp
     server/CommandCertificate.cpp server/CommandCertificate.hpp

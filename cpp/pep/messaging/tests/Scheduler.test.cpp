@@ -20,15 +20,15 @@ public:
   };
 
 private:
-  std::shared_ptr<pep::messaging::Scheduler> mScheduler;
-  std::map<pep::messaging::MessageId, StreamOutput> mStreams;
-  pep::EventSubscription mAvailableSubscription;
-  pep::EventSubscription mErrorSubscription;
+  std::shared_ptr<pep::messaging::Scheduler> scheduler_;
+  std::map<pep::messaging::MessageId, StreamOutput> streams_;
+  pep::EventSubscription availableSubscription_;
+  pep::EventSubscription errorSubscription_;
 
   void ensureSend() {
-    while (mScheduler->available()) {
-      auto outgoing = mScheduler->pop();
-      auto& stream = mStreams[outgoing.properties.messageId()];
+    while (scheduler_->available()) {
+      auto outgoing = scheduler_->pop();
+      auto& stream = streams_[outgoing.properties.messageId()];
 
       ASSERT_FALSE(stream.closed) << "Scheduler produced message after CLOSE";
       if (outgoing.properties.flags().close()) {
@@ -46,20 +46,20 @@ private:
     ASSERT_NE(error, nullptr) << "Scheduler sent notification of a NULL error";
     ASSERT_FALSE(id.type() == pep::messaging::MessageType::Request && pep::Error::IsSerializable(error)) << "Request streams shouldn't produce exceptions of type Error (or derived)";
 
-    ASSERT_EQ(mStreams[id].exception, nullptr) << "Scheduler sent multiple error notifications";
-    mStreams[id].exception = error;
+    ASSERT_EQ(streams_[id].exception, nullptr) << "Scheduler sent multiple error notifications";
+    streams_[id].exception = error;
   }
 
 public:
   explicit FakeSender(std::shared_ptr<pep::messaging::Scheduler> scheduler)
-    : mScheduler(scheduler) {
-    mAvailableSubscription = mScheduler->onAvailable.subscribe([this]() {this->handleAvailable(); });
-    mErrorSubscription = mScheduler->onError.subscribe([this](const pep::messaging::MessageId& id, std::exception_ptr error) {this->handleError(id, error); });
+    : scheduler_(scheduler) {
+    availableSubscription_ = scheduler_->onAvailable.subscribe([this]() {this->handleAvailable(); });
+    errorSubscription_ = scheduler_->onError.subscribe([this](const pep::messaging::MessageId& id, std::exception_ptr error) {this->handleError(id, error); });
   }
 
-  size_t count() const noexcept { return std::accumulate(mStreams.cbegin(), mStreams.cend(), size_t{}, [](size_t total, const auto& pair) {return total + pair.second.items; }); }
-  bool closed() const noexcept { return std::all_of(mStreams.cbegin(), mStreams.cend(), [](const auto& pair) { return pair.second.closed; }); }
-  bool error() const noexcept { return std::any_of(mStreams.cbegin(), mStreams.cend(), [](const auto& pair) { return pair.second.exception != nullptr; }); }
+  size_t count() const noexcept { return std::accumulate(streams_.cbegin(), streams_.cend(), size_t{}, [](size_t total, const auto& pair) {return total + pair.second.items; }); }
+  bool closed() const noexcept { return std::all_of(streams_.cbegin(), streams_.cend(), [](const auto& pair) { return pair.second.closed; }); }
+  bool error() const noexcept { return std::any_of(streams_.cbegin(), streams_.cend(), [](const auto& pair) { return pair.second.exception != nullptr; }); }
 };
 
 
@@ -71,25 +71,25 @@ class Emitter : public std::enable_shared_from_this<Emitter>, public pep::Shared
   friend class pep::SharedConstructor<Emitter>;
 
 private:
-  boost::asio::steady_timer mTimer;
-  rxcpp::subscriber<std::shared_ptr<std::string>> mSubscriber;
-  size_t& mExhaustCount;
-  std::string mPrefix;
-  size_t mTotal;
-  size_t mIndex = 0U;
+  boost::asio::steady_timer timer_;
+  rxcpp::subscriber<std::shared_ptr<std::string>> subscriber_;
+  size_t& exhaustCount_;
+  std::string prefix_;
+  size_t total_;
+  size_t index_ = 0U;
 
   explicit Emitter(boost::asio::io_context& ioContext, rxcpp::subscriber<std::shared_ptr<std::string>> subscriber, size_t& exhaustCount, size_t index)
-    : mTimer(ioContext), mSubscriber(subscriber), mExhaustCount(exhaustCount), mPrefix(std::to_string(index) + '.'), mTotal(ItemCount(index)) {}
+    : timer_(ioContext), subscriber_(subscriber), exhaustCount_(exhaustCount), prefix_(std::to_string(index) + '.'), total_(ItemCount(index)) {}
 
   void handleTimerExpired(const boost::system::error_code& error) {
     if (error && error != boost::asio::error::operation_aborted) {
       throw boost::system::system_error(error);
     }
 
-    mSubscriber.on_next(pep::MakeSharedCopy(mPrefix + std::to_string(mIndex++)));
+    subscriber_.on_next(pep::MakeSharedCopy(prefix_ + std::to_string(index_++)));
     if (this->finished()) {
-      ++mExhaustCount;
-      mSubscriber.on_completed();
+      ++exhaustCount_;
+      subscriber_.on_completed();
     } else {
       this->scheduleNext();
     }
@@ -99,11 +99,11 @@ private:
     if (this->finished()) {
       throw std::runtime_error("Can't schedule a next item from a finished emitter");
     }
-    mTimer.expires_after(10ms);
-    mTimer.async_wait([self = SharedFrom(*this)](const boost::system::error_code& error) { self->handleTimerExpired(error); });
+    timer_.expires_after(10ms);
+    timer_.async_wait([self = SharedFrom(*this)](const boost::system::error_code& error) { self->handleTimerExpired(error); });
   }
 
-  bool finished() const noexcept { return mIndex >= mTotal; }
+  bool finished() const noexcept { return index_ >= total_; }
 
 public:
   static pep::messaging::MessageSequence MakeBatch(boost::asio::io_context& ioContext, size_t& exhaustCount, size_t index) {

@@ -20,11 +20,11 @@ const std::string SUPPLEMENT_INDENT(SUPPLEMENT_INDENT_WIDTH, ' ');
 
 class HelpItemColumn {
 private:
-  std::string mText;
+  std::string text_;
 
 public:
-  explicit HelpItemColumn(const std::string& text) : mText(text) {}
-  void streamTo(std::ostream& destination) const { destination << std::setw(COLUMN_WIDTH) << std::left << mText; }
+  explicit HelpItemColumn(const std::string& text) : text_(text) {}
+  void streamTo(std::ostream& destination) const { destination << std::setw(COLUMN_WIDTH) << std::left << text_; }
 };
 
 std::ostream& operator <<(std::ostream& lhs, const HelpItemColumn& column) {

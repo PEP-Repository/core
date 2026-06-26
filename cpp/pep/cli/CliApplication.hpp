@@ -14,9 +14,9 @@ extern const std::string LogTag;
 
 class CliApplication : public pep::commandline::Utility {
 private:
-  std::shared_ptr<pep::Client> mClient = nullptr;
-  std::unique_ptr<WorkGuard> mWorkGuard;
-  std::optional<std::string> mRequiredGroup, mRequiredSubject;
+  std::shared_ptr<pep::Client> client_ = nullptr;
+  std::unique_ptr<WorkGuard> workGuard_;
+  std::optional<std::string> requiredGroup_, requiredSubject_;
 
 protected:
   std::optional<pep::Severity> consoleLogMinimumSeverityLevel() const override;

@@ -29,7 +29,7 @@ class BasicMessageMagician {
   template <typename TMessage>
   friend struct MessageMagician;
 
-  template <class TDerived, class TRegistrar, bool REGISTER>
+  template <class TDerived, class TRegistrar, bool registerDerived>
   friend class SelfRegistering;
 
 private:
@@ -59,7 +59,7 @@ public:
 
 template <typename TMessage>
 struct MessageMagician : public SelfRegistering<MessageMagician<TMessage>, BasicMessageMagician> {
-  static inline MessageMagic GetMagic() { return SelfRegistering<MessageMagician<TMessage>, BasicMessageMagician>::REGISTRATION_ID; }
+  static inline MessageMagic GetMagic() { return SelfRegistering<MessageMagician<TMessage>, BasicMessageMagician>::TheRegistrationId; }
   static inline void WriteMagicTo(std::ostream& destination) { BasicMessageMagician::WriteMagicTo(destination, GetMagic()); }
   static inline std::string_view SkipMessageMagic(std::string_view szMessage) { return BasicMessageMagician::SkipMessageMagic(szMessage, GetMagic()); }
 };

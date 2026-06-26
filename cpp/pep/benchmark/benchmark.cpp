@@ -295,30 +295,30 @@ BENCHMARK(BM_PageDeserialize);
 static pep::EncryptionKeyRequest CreateRandomEncryptionKeyRequest() {
   pep::EncryptionKeyRequest ret;
   pep::Ticket2 ticket;
-  ticket.mModes = {"read", "write"};
+  ticket.modes = {"read", "write"};
   for (int i = 0; i < 200; i++)
-    ticket.mColumns.push_back("Column" + std::to_string(i));
-  ticket.mUserGroup = "some user group";
+    ticket.columns.push_back("Column" + std::to_string(i));
+  ticket.userGroup = "some user group";
   auto p1 = pep::LocalPseudonym::Random();
   auto p4 = pep::LocalPseudonym::Random();
   for (int i = 0; i < 600; i++) {
     auto q = pep::ElgamalPublicKey::Random();
     pep::LocalPseudonyms lp;
-    lp.mAccessManager = p1.encrypt(q);
-    lp.mPolymorphic = pep::PolymorphicPseudonym::FromIdentifier(q, "1234");
-    lp.mStorageFacility = p4.encrypt(q);
-    ticket.mAccessSubjects.push_back(lp);
+    lp.accessManager = p1.encrypt(q);
+    lp.polymorphic = pep::PolymorphicPseudonym::FromIdentifier(q, "1234");
+    lp.storageFacility = p4.encrypt(q);
+    ticket.accessSubjects.push_back(lp);
   }
   auto identity = pep::X509Identity::MakeSelfSigned("Benchmarker, inc.", "PepBenchmark");
-  ret.mTicket2 = std::make_shared<pep::SignedTicket2>(
+  ret.ticket2 = std::make_shared<pep::SignedTicket2>(
       ticket, identity);
   for (uint32_t i = 0; i < 1000; i++) {
     pep::KeyRequestEntry kre;
-    kre.mMetadata.setTag("some tag" + std::to_string(i));
-    kre.mPseudonymIndex = i;
+    kre.metadata.setTag("some tag" + std::to_string(i));
+    kre.pseudonymIndex = i;
     auto p = pep::CurvePoint::Random();
-    kre.mPolymorphEncryptionKey = pep::EncryptedKey(p, p);
-    ret.mEntries.push_back(std::move(kre));
+    kre.polymorphEncryptionKey = pep::EncryptedKey(p, p);
+    ret.entries.push_back(std::move(kre));
   }
   return ret;
 }

@@ -6,8 +6,8 @@
 namespace pep::networking {
 
 void TcpBasedProtocol::Socket::raiseTransferStartFailure(size_t& pending, size_t pend, const std::string& reason) const {
-  assert(&pending == &mPendingReadBytes || &pending == &mPendingWriteBytes);
-  auto type = (&pending == &mPendingReadBytes) ? "read" : "write";
+  assert(&pending == &pendingReadBytes_ || &pending == &pendingWriteBytes_);
+  auto type = (&pending == &pendingReadBytes_) ? "read" : "write";
   throw std::runtime_error("Can't start a new " + std::to_string(pend) + "-byte " + type + " action " + reason);
 }
 
@@ -41,7 +41,7 @@ void TcpBasedProtocol::Socket::onTransferComplete(size_t& pendingBytes, const bo
 }
 
 TcpBasedProtocol::Socket::Socket(const TcpBasedProtocol& protocol, boost::asio::io_context& ioContext)
-  : Protocol::Socket(protocol, ioContext), TcpBound(protocol), mReadBuffer(SocketReadBuffer::Create()) {
+  : Protocol::Socket(protocol, ioContext), TcpBound(protocol), readBuffer_(SocketReadBuffer::Create()) {
 }
 
 std::string TcpBasedProtocol::Socket::remoteAddress() const {
@@ -58,10 +58,10 @@ std::string TcpBasedProtocol::Socket::remoteAddress() const {
 }
 
 void TcpBasedProtocol::Socket::asyncRead(void* destination, size_t bytes, const SizedTransfer::Handler& onTransferred) {
-  this->startTransfer(mPendingReadBytes, bytes);
+  this->startTransfer(pendingReadBytes_, bytes);
 
-  mReadBuffer->asyncRead(this->streamSocket(), destination, bytes, [self = SharedFrom(*this), onTransferred](const boost::system::error_code& error, size_t bytes) {
-    self->onTransferComplete(self->mPendingReadBytes, error, bytes);
+  readBuffer_->asyncRead(this->streamSocket(), destination, bytes, [self = SharedFrom(*this), onTransferred](const boost::system::error_code& error, size_t bytes) {
+    self->onTransferComplete(self->pendingReadBytes_, error, bytes);
     onTransferred(BoostOperationResult(error, bytes));
     });
 }
@@ -69,23 +69,23 @@ void TcpBasedProtocol::Socket::asyncRead(void* destination, size_t bytes, const 
 void TcpBasedProtocol::Socket::asyncReadUntil(const char* delimiter, const DelimitedTransfer::Handler& onTransferred) {
   assert(delimiter != nullptr);
   auto delimiterSize = strlen(delimiter);
-  this->startTransfer(mPendingReadBytes, delimiterSize); // We're going to read (at least) the delimiter's number of bytes
+  this->startTransfer(pendingReadBytes_, delimiterSize); // We're going to read (at least) the delimiter's number of bytes
 
-  mReadBuffer->asyncReadUntil(this->streamSocket(),
+  readBuffer_->asyncReadUntil(this->streamSocket(),
     delimiter,
     [self = SharedFrom(*this), delimiterSize, onTransferred](const boost::system::error_code& error, const std::string& result) {
-      self->onTransferComplete(self->mPendingReadBytes, error, delimiterSize);
+      self->onTransferComplete(self->pendingReadBytes_, error, delimiterSize);
       onTransferred(BoostOperationResult(error, result));
     });
 }
 
 void TcpBasedProtocol::Socket::asyncReadAll(const DelimitedTransfer::Handler& onTransferred) {
-  this->startTransfer(mPendingReadBytes, 1U); // We don't know how much we're going to read, but we need to indicate that a (non-zero) read is pending
-  mReadBuffer->asyncReadAll(this->streamSocket(),
+  this->startTransfer(pendingReadBytes_, 1U); // We don't know how much we're going to read, but we need to indicate that a (non-zero) read is pending
+  readBuffer_->asyncReadAll(this->streamSocket(),
     [self = SharedFrom(*this), onTransferred](const boost::system::error_code& error, const std::string& result) {
       if (error) {
         // Normal sequence of events: update own state before notifying caller of the failure
-        self->onTransferComplete(self->mPendingReadBytes, error, 1U); // Closes the socket
+        self->onTransferComplete(self->pendingReadBytes_, error, 1U); // Closes the socket
         onTransferred(BoostOperationResult(error, result));
       }
       else {
@@ -96,17 +96,17 @@ void TcpBasedProtocol::Socket::asyncReadAll(const DelimitedTransfer::Handler& on
         // own state. If the caller tries to schedule a new (read or write) transfer from the callback,
         // it'll get a "can't start a new [...] action" exception.
         onTransferred(BoostOperationResult(error, result));
-        self->onTransferComplete(self->mPendingReadBytes, error, 1U);
+        self->onTransferComplete(self->pendingReadBytes_, error, 1U);
         self->close();
       }
     });
 }
 
 void TcpBasedProtocol::Socket::asyncWrite(const void* source, size_t bytes, const SizedTransfer::Handler& onTransferred) {
-  this->startTransfer(mPendingWriteBytes, bytes);
+  this->startTransfer(pendingWriteBytes_, bytes);
 
   this->streamSocket().asyncWrite(source, bytes, [self = SharedFrom(*this), onTransferred](const boost::system::error_code& error, size_t bytes) {
-    self->onTransferComplete(self->mPendingWriteBytes, error, bytes);
+    self->onTransferComplete(self->pendingWriteBytes_, error, bytes);
     onTransferred(BoostOperationResult(error, bytes));
     });
 }
@@ -114,14 +114,14 @@ void TcpBasedProtocol::Socket::asyncWrite(const void* source, size_t bytes, cons
 TcpBasedProtocol::ClientComponent::ClientComponent(const ClientParameters& parameters)
   : Protocol::ClientComponent(parameters)
   , TcpBound(parameters.tcp())
-  , mEndPoint(parameters.endPoint())
-  , mResolver(parameters.ioContext()) {
+  , endPoint_(parameters.endPoint())
+  , resolver_(parameters.ioContext()) {
 }
 
 void TcpBasedProtocol::ClientComponent::onResolved(const ConnectionAttempt::Handler& notify, std::shared_ptr<Socket> socket, const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::results_type results) {
   assert(socket != nullptr);
 
-  if (ec || mClosed) {
+  if (ec || closed_) {
     socket->close();
     notify(BoostOperationResult<std::shared_ptr<Protocol::Socket>>(ec));
   }
@@ -154,9 +154,9 @@ std::shared_ptr<Protocol::Socket> TcpBasedProtocol::ClientComponent::openSocket(
   auto result = this->tcp().createSocket(*this);
   result->setConnectivityStatus(Socket::ConnectivityStatus::Connecting);
 
-  auto portString = MakeSharedCopy(std::to_string(mEndPoint.port));
+  auto portString = MakeSharedCopy(std::to_string(endPoint_.port));
   // Likely spawns a background thread, see https://www.boost.org/doc/libs/latest/doc/html/boost_asio/overview/implementation.html
-  mResolver.async_resolve(boost::asio::ip::tcp::v4(), mEndPoint.hostname, *portString, [self = SharedFrom(*this), notify, result, portString](const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::results_type results) {
+  resolver_.async_resolve(boost::asio::ip::tcp::v4(), endPoint_.hostname, *portString, [self = SharedFrom(*this), notify, result, portString](const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::results_type results) {
     self->onResolved(notify, self->tcp().downcastSocket(result), ec, results);
     });
 
@@ -164,41 +164,41 @@ std::shared_ptr<Protocol::Socket> TcpBasedProtocol::ClientComponent::openSocket(
 }
 
 void TcpBasedProtocol::ClientComponent::close() {
-  mResolver.cancel();
-  mClosed = true;
+  resolver_.cancel();
+  closed_ = true;
 }
 
 TcpBasedProtocol::ServerComponent::ServerComponent(const ServerParameters& parameters)
 try : Protocol::ServerComponent(parameters)
   , TcpBound(parameters.tcp())
-  , mEndPoint(boost::asio::ip::tcp::v4(), parameters.port())
-  , mAcceptor(parameters.ioContext()) {
-  mAcceptor.open(mEndPoint.protocol());
-  mAcceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
-  mAcceptor.bind(mEndPoint);
+  , endPoint_(boost::asio::ip::tcp::v4(), parameters.port())
+  , acceptor_(parameters.ioContext()) {
+  acceptor_.open(endPoint_.protocol());
+  acceptor_.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+  acceptor_.bind(endPoint_);
 
   /* TODO: code was cargo culted from previous networking code but seems faulty. See e.g. https://stackoverflow.com/a/40494078, which mentions that
     * > keep-alive on the listening socket is not directly useful
     * > Asio does not copy socket options to the new socket
     * So we'll probably want/need to set the keep_alive(true) option on the socket once a client connects (in the lambda in the "openSocket" method below).
     */
-  mAcceptor.set_option(boost::asio::socket_base::keep_alive(true));
+  acceptor_.set_option(boost::asio::socket_base::keep_alive(true));
 
-  mAcceptor.listen();
+  acceptor_.listen();
 }
 catch (const boost::system::system_error&) { // Also catch exceptions in member initializers
   std::throw_with_nested(std::runtime_error("Could not set up listener on port " + std::to_string(parameters.port())));
 }
 
 uint16_t TcpBasedProtocol::ServerComponent::port() const {
-  return mAcceptor.local_endpoint().port();
+  return acceptor_.local_endpoint().port();
 }
 
 std::shared_ptr<Protocol::Socket> TcpBasedProtocol::ServerComponent::openSocket(const ConnectionAttempt::Handler& notify) {
   auto result = this->tcp().createSocket(*this);
   result->setConnectivityStatus(Socket::ConnectivityStatus::Connecting);
 
-  mAcceptor.async_accept(result->basicSocket(), [notify, result, weak = WeakFrom(*this)](const boost::system::error_code& ec) {
+  acceptor_.async_accept(result->basicSocket(), [notify, result, weak = WeakFrom(*this)](const boost::system::error_code& ec) {
     auto self = weak.lock();
 
     if (ec || self == nullptr) {
@@ -217,7 +217,7 @@ std::shared_ptr<Protocol::Socket> TcpBasedProtocol::ServerComponent::openSocket(
 }
 
 void TcpBasedProtocol::ServerComponent::close() {
-  mAcceptor.cancel();
+  acceptor_.cancel();
 }
 
 

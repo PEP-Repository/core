@@ -14,6 +14,7 @@ std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandHistory(CliApplicat
 std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandList(CliApplication& parent);
 std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandMetrics(CliApplication& parent);
 std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandPing(CliApplication& parent);
+std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandPseudonym(CliApplication& parent);
 std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandPull(CliApplication& parent);
 std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandQuery(CliApplication& parent);
 std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandRegister(CliApplication& parent);

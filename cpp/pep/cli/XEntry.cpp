@@ -11,7 +11,7 @@ namespace {
 
 class CommandXEntry : public ChildCommandOf<CliApplication> {
 private:
-  std::optional<std::string> mPayload;
+  std::optional<std::string> payload_;
 
 public:
   explicit CommandXEntry(CliApplication& parent)
@@ -46,12 +46,12 @@ protected:
     }
 
     if (parameterValues.has("payload")) {
-      mPayload = parameterValues.get<std::string>("payload");
+      payload_ = parameterValues.get<std::string>("payload");
     }
     else {
       assert(parameterValues.has("payload-hex"));
       try {
-        mPayload = boost::algorithm::unhex(
+        payload_ = boost::algorithm::unhex(
           parameterValues.get<std::string>("payload-hex"));
       }
       catch (const boost::algorithm::non_hex_input&) {
@@ -68,13 +68,13 @@ protected:
   }
 
   int execute() override {
-    assert(mPayload.has_value());
+    assert(payload_.has_value());
     const auto& parameterValues = this->getParameterValues();
 
     auto name = parameterValues.get<std::string>("name");
 
     pep::MetadataXEntry xentry = pep::MetadataXEntry::FromPlaintext(
-      *mPayload,
+      *payload_,
       parameterValues.has("encrypt"),
       parameterValues.has("bind"));
 

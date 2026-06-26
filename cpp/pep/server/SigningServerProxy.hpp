@@ -7,8 +7,8 @@ namespace pep {
 
 class SigningServerProxy : public ServerProxy {
 private:
-  std::string mExpectedCommonName;
-  std::shared_ptr<X509RootCertificates> mRootCertificates;
+  std::string expectedCommonName_;
+  std::shared_ptr<X509RootCertificates> rootCertificates_;
 
   void validateCertificateChain(const X509CertificateChain& chain, bool allowChangingSubject) const;
 
@@ -23,9 +23,9 @@ public:
   /// @remark Caller must ensure that the MessageSigner outlives the ServerProxy
   SigningServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& clientMessageSigner,
     std::string expectedCommonName, std::shared_ptr<X509RootCertificates> rootCertificates)
-    : ServerProxy(std::move(untyped), clientMessageSigner), mExpectedCommonName(std::move(expectedCommonName)), mRootCertificates(std::move(rootCertificates)) {}
+    : ServerProxy(std::move(untyped), clientMessageSigner), expectedCommonName_(std::move(expectedCommonName)), rootCertificates_(std::move(rootCertificates)) {}
 
-  const std::string& getExpectedCommonName() const { return mExpectedCommonName; }
+  const std::string& getExpectedCommonName() const { return expectedCommonName_; }
 
   rxcpp::observable<PingResponse> requestPing() const override;
   rxcpp::observable<X509CertificateChain> requestCertificateChain() const;

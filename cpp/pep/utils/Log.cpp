@@ -56,15 +56,15 @@ std::string getInstallationUuid() {
 template <typename TBoost>
 class SinkWrapper : public Logging::Sink {
 private:
-  boost::shared_ptr<TBoost> mImplementor;
+  boost::shared_ptr<TBoost> implementor_;
 
 public:
   explicit SinkWrapper(boost::shared_ptr<TBoost> implementor)
-    : mImplementor(implementor) {
+    : implementor_(implementor) {
   }
 
   void setMinimumSeverity(Severity minimum) override {
-    mImplementor->set_filter(severity >= minimum);
+    implementor_->set_filter(severity >= minimum);
   }
 };
 
@@ -126,7 +126,7 @@ Logging::pep_severity_channel_logger& Logging::GetLogger() {
 }
 
 void Logging::apply() const {
-  this->registerSink()->setMinimumSeverity(minimum);
+  this->registerSink()->setMinimumSeverity(minimum_);
 }
 
 void Logging::Initialize(const std::vector<std::shared_ptr<Logging>>& settings) {
@@ -165,7 +165,7 @@ std::shared_ptr<Logging::Sink> ConsoleLogging::registerSink() const {
 std::shared_ptr<Logging::Sink> FileLogging::registerSink() const {
   return CreateSinkWrapper(
     boost::log::add_file_log(
-                prefix + "_%N.log",
+                prefix_ + "_%N.log",
                 boost::log::keywords::format = (boost::log::expressions::stream << boost::log::expressions::format_date_time< boost::posix_time::ptime >("TimeStamp", "%Y-%m-%d %H:%M:%S") << ": <" << severity << "> [" << threadName << channel << "] " << boost::log::expressions::smessage),
                 boost::log::keywords::open_mode = std::ios_base::app,
                 boost::log::keywords::rotation_size = 1024 * 1024,
@@ -202,13 +202,13 @@ boost::shared_ptr<SystemLogBackend> createSyslogBackend(const std::string& szHos
     lpBackend->set_target_address(szHostname, wPort);
   }
 
-  boost::log::sinks::syslog::custom_severity_mapping<Severity> mSeverityMapper("PepSeverityMapper");
-  mSeverityMapper[Severity::Debug] = boost::log::sinks::syslog::debug;
-  mSeverityMapper[Severity::Info] = boost::log::sinks::syslog::info;
-  mSeverityMapper[Severity::Warning] = boost::log::sinks::syslog::warning;
-  mSeverityMapper[Severity::Error] = boost::log::sinks::syslog::error;
-  mSeverityMapper[Severity::Critical] = boost::log::sinks::syslog::critical;
-  lpBackend->set_severity_mapper(mSeverityMapper);
+  boost::log::sinks::syslog::custom_severity_mapping<Severity> severityMapper_("PepSeverityMapper");
+  severityMapper_[Severity::Debug] = boost::log::sinks::syslog::debug;
+  severityMapper_[Severity::Info] = boost::log::sinks::syslog::info;
+  severityMapper_[Severity::Warning] = boost::log::sinks::syslog::warning;
+  severityMapper_[Severity::Error] = boost::log::sinks::syslog::error;
+  severityMapper_[Severity::Critical] = boost::log::sinks::syslog::critical;
+  lpBackend->set_severity_mapper(severityMapper_);
 
   return lpBackend;
 }
@@ -224,13 +224,13 @@ boost::shared_ptr<SystemLogBackend> createSyslogBackend(const std::string& szHos
                      boost::log::keywords::log_source = "pep"
                    );
 
-  boost::log::sinks::event_log::custom_event_type_mapping< Severity > mSeverityMapper("PepSeverityMapper");
-  mSeverityMapper[Severity::Debug] = boost::log::sinks::event_log::info;
-  mSeverityMapper[Severity::Info] = boost::log::sinks::event_log::info;
-  mSeverityMapper[Severity::Warning] = boost::log::sinks::event_log::warning;
-  mSeverityMapper[Severity::Error] = boost::log::sinks::event_log::error;
-  mSeverityMapper[Severity::Critical] = boost::log::sinks::event_log::error;
-  lpBackend->set_event_type_mapper(mSeverityMapper);
+  boost::log::sinks::event_log::custom_event_type_mapping< Severity > severityMapper_("PepSeverityMapper");
+  severityMapper_[Severity::Debug] = boost::log::sinks::event_log::info;
+  severityMapper_[Severity::Info] = boost::log::sinks::event_log::info;
+  severityMapper_[Severity::Warning] = boost::log::sinks::event_log::warning;
+  severityMapper_[Severity::Error] = boost::log::sinks::event_log::error;
+  severityMapper_[Severity::Critical] = boost::log::sinks::event_log::error;
+  lpBackend->set_event_type_mapper(severityMapper_);
 
   return lpBackend;
 }
@@ -241,7 +241,7 @@ boost::shared_ptr<SystemLogBackend> createSyslogBackend(const std::string& szHos
 std::shared_ptr<Logging::Sink> SysLogging::registerSink() const {
   try {
     using sink_t = boost::log::sinks::synchronous_sink<SystemLogBackend>;
-    auto lpBackend = createSyslogBackend(host_name, port);
+    auto lpBackend = createSyslogBackend(hostName_, port_);
 
     boost::shared_ptr<sink_t> lpSink = boost::make_shared<sink_t>(lpBackend);
     lpSink->set_formatter(

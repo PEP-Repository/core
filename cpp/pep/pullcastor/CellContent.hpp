@@ -52,7 +52,7 @@ class PreloadedCellContent : public CellContent, public SharedConstructor<Preloa
   friend class SharedConstructor<PreloadedCellContent>;
 
 private:
-  std::string mValue;
+  std::string value_;
 
   explicit PreloadedCellContent(const std::string& value);
 
@@ -85,7 +85,7 @@ public:
     * \brief Produces (an observable emitting) the raw (binary) data in the cell.
     * \return (An observable emitting) the cell's raw, binary data.
     */
-  inline const std::string& getValue() const noexcept { return mValue; }
+  inline const std::string& getValue() const noexcept { return value_; }
 };
 
 
@@ -99,7 +99,7 @@ class LazyCellContent : public CellContent, private SharedConstructor<LazyCellCo
   using SharedConstructor<LazyCellContent>::Create;
 
 private:
-  std::shared_ptr<RxCache<std::string>> mData;
+  std::shared_ptr<RxCache<std::string>> data_;
 
   LazyCellContent(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, std::shared_ptr<EnumerateResult> entry);
 

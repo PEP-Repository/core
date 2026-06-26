@@ -7,85 +7,54 @@
 
 namespace pep {
 
-class RekeyRequest {
-public:
-  std::vector<EncryptedKey> mKeys;
-  X509CertificateChain mClientCertificateChain;
+struct RekeyRequest {
+  std::vector<EncryptedKey> keys;
+  X509CertificateChain clientCertificateChain;
 };
 
-class RekeyResponse {
-public:
-  std::vector<EncryptedKey> mKeys;
+struct RekeyResponse {
+  std::vector<EncryptedKey> keys;
 };
 
-class TranscryptorRequestEntry {
-public:
-  TranscryptorRequestEntry() = default;
-  TranscryptorRequestEntry(
-    const PolymorphicPseudonym& pp,
-    const EncryptedLocalPseudonym& am,
-    const EncryptedLocalPseudonym& sf,
-    const EncryptedLocalPseudonym& ts,
-    const std::optional<EncryptedLocalPseudonym>& ug,
-    const RskProof& amProof,
-    const RskProof& sfProof,
-    const RskProof& tsProof,
-    const std::optional<RskProof>& ugProof)
-    : mPolymorphic(pp),
-    mAccessManager(am),
-    mStorageFacility(sf),
-    mTranscryptor(ts),
-    mUserGroup(ug),
-    mAccessManagerProof(amProof),
-    mStorageFacilityProof(sfProof),
-    mTranscryptorProof(tsProof),
-    mUserGroupProof(ugProof) { }
-
-  PolymorphicPseudonym mPolymorphic;
+struct TranscryptorRequestEntry {
+  PolymorphicPseudonym polymorphic;
 
   // Partially translated
-  EncryptedLocalPseudonym mAccessManager;
-  EncryptedLocalPseudonym mStorageFacility;
-  EncryptedLocalPseudonym mTranscryptor;
-  std::optional<EncryptedLocalPseudonym> mUserGroup;
+  EncryptedLocalPseudonym accessManager;
+  EncryptedLocalPseudonym storageFacility;
+  EncryptedLocalPseudonym transcryptor;
+  std::optional<EncryptedLocalPseudonym> userGroup;
 
-  RskProof mAccessManagerProof;
-  RskProof mStorageFacilityProof;
-  RskProof mTranscryptorProof;
-  std::optional<RskProof> mUserGroupProof;
+  RskProof accessManagerProof;
+  RskProof storageFacilityProof;
+  RskProof transcryptorProof;
+  std::optional<RskProof> userGroupProof;
 
   // Ensures the underlying CurvePoint's are pre-packed for serialization.
   // See CurvePoint::ensurePacked().
   void ensurePacked() const;
 };
 
-class TranscryptorRequestEntries {
-public:
-  std::vector<TranscryptorRequestEntry> mEntries;
+struct TranscryptorRequestEntries {
+  std::vector<TranscryptorRequestEntry> entries;
 };
 
-class TranscryptorRequest {
-public:
-  SignedTicketRequest2 mRequest;
+struct TranscryptorRequest {
+  SignedTicketRequest2 request;
 };
 
-class TranscryptorResponse {
-public:
-  TranscryptorResponse() = default;
-  std::vector<LocalPseudonyms> mEntries;
-  std::string mId;
+struct TranscryptorResponse {
+  std::vector<LocalPseudonyms> entries;
+  std::string id;
 };
 
-class LogIssuedTicketRequest {
-public:
-  SignedTicket2 mTicket;
-  std::string mId;
+struct LogIssuedTicketRequest {
+  SignedTicket2 ticket;
+  std::string id;
 };
 
-class LogIssuedTicketResponse {
-public:
-  LogIssuedTicketResponse(Signature sig) : mSignature(std::move(sig)) { }
-  Signature mSignature;
+struct LogIssuedTicketResponse {
+  Signature signature;
 };
 
 }
