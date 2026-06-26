@@ -39,7 +39,9 @@ public:
   AliasCommand(TParent& parent, const std::string& aliasName,
     Command& ancestor, CommandPath childPath,
     std::function<NamedValues(std::queue<std::string>&)> transformer = nullptr)
-  : ChildCommandOf<TParent>(aliasName, "Alias for: " + childPath.toString(), parent),
+  : ChildCommandOf<TParent>(aliasName,
+      "Alias for: " + ancestor.getName() + (childPath.empty() ? "" : " " + childPath.toString()),
+      parent),
     mAncestor(ancestor),
     mChildPath(std::move(childPath)),
     mTransformer(std::move(transformer)) {}
