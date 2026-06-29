@@ -78,11 +78,7 @@ public:
   bool blockTokens_ = false;
 };
 
-class UpdateExpiration {
-public:
-  UpdateExpiration() = default;
-  UpdateExpiration(std::string uid, std::string group, std::optional<Timestamp> expiration)
-    : uid_(std::move(uid)), group_(std::move(group)), expiration_(expiration) { }
+struct UpdateExpiration {
   std::string uid_;
   std::string group_;
   std::optional<Timestamp> expiration_;
