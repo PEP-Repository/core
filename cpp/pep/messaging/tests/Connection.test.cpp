@@ -60,14 +60,14 @@ TEST(Connection, Basics) {
 }
 
 TEST(Connection, ClientReconnects) {
-  constexpr uint16_t PORT = 2022; // TODO: support port randomization?
+  constexpr uint16_t Port = 2022; // TODO: support port randomization?
 
   constexpr auto MAX_ATTEMPTS = 4U;
   auto attempts = pep::MakeSharedCopy(0U);
 
   boost::asio::io_context io_context;
   auto client = pep::messaging::Node::Create(
-    pep::networking::Tcp::ClientParameters(io_context, pep::EndPoint("localhost", PORT)),
+    pep::networking::Tcp::ClientParameters(io_context, pep::EndPoint("localhost", Port)),
     pep::networking::Client::ReconnectParameters(std::chrono::milliseconds(200), std::chrono::milliseconds(1000)));
 
   client->start()

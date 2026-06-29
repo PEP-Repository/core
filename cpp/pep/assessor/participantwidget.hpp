@@ -26,7 +26,7 @@ class ParticipantWidget;
 class ParticipantWidget : public QWidget {
   Q_OBJECT
  private:
-  static const QString NoParticipantSid;
+  static const QString NoParticipantId;
 
   std::shared_ptr<pep::Client> pepClient_;
   Ui::ParticipantWidget* ui_;
@@ -54,7 +54,7 @@ class ParticipantWidget : public QWidget {
   pep::UserRole currentPepRole_;
 
   bool readOnly_ = false;
-  QString participantSID_ = NoParticipantSid;
+  QString participantId_ = NoParticipantId;
   QString baseUrl_;
   std::optional<std::filesystem::path> bartenderPath_;
   std::filesystem::path stickerFilePath_;
@@ -95,7 +95,7 @@ class ParticipantWidget : public QWidget {
  public:
   explicit ParticipantWidget(MainWindow* parent,
                              std::shared_ptr<pep::Client>,
-                             QString SID,
+                             QString participantId,
                              const pep::Configuration& configuration,
                              const pep::GlobalConfiguration& globalConfiguration,
                              const pep::StudyContexts& allContexts,

@@ -402,12 +402,12 @@ static void BM_RNG_RandomBytes(benchmark::State& state) {
 }
 BENCHMARK(BM_RNG_RandomBytes);
 
-template <std::uniform_random_bit_generator URBG>
+template <std::uniform_random_bit_generator TUrbg>
 static void BM_RNG_URBG(benchmark::State& state) {
-  URBG gen;
+  TUrbg gen;
   std::array<
-    typename URBG::result_type,
-    NumRandomBytes / sizeof(typename URBG::result_type)
+    typename TUrbg::result_type,
+    NumRandomBytes / sizeof(typename TUrbg::result_type)
   > buffer{};
   for (auto _ : state) {
     std::ranges::generate(buffer, std::ref(gen));

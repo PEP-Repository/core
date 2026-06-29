@@ -21,7 +21,7 @@ using namespace std::literals;
 
 namespace {
 
-const auto TIMEOUT = std::chrono::seconds(5);
+const auto Timeout = std::chrono::seconds(5);
 
 // Not defined with a PEP_ prefix so that it matches gtest macros
 // Implemented as "invoke this lambda" so that a semicolon is required: ASSERT_THROW_WITH_MESSAGE(mycode(), std::runtime_error);
@@ -51,7 +51,7 @@ TEST_F(CastorClientTest, Authentication) {
 
   options_->authenticated = false;
   ASSERT_THROW_WITH_MESSAGE(
-    castorConnection_->getStudies().timeout(TIMEOUT).as_blocking()
+    castorConnection_->getStudies().timeout(Timeout).as_blocking()
     .subscribe_with_rethrow([](std::shared_ptr<Study> study) {
       FAIL() << "Received a study without being authenticated.";
       })
@@ -59,7 +59,7 @@ TEST_F(CastorClientTest, Authentication) {
 
   castorConnection_->reauthenticate();
   bool authenticationError = castorConnection_->authenticationStatus()
-                             .timeout(TIMEOUT)
+                             .timeout(Timeout)
   .map([](AuthenticationStatus status) {
     return status.state;
   })
@@ -70,7 +70,7 @@ TEST_F(CastorClientTest, Authentication) {
   options_->authenticated = true;
   castorConnection_->reauthenticate();
   bool authenticated = castorConnection_->authenticationStatus()
-                       .timeout(TIMEOUT)
+                       .timeout(Timeout)
   .map([](AuthenticationStatus status) {
     return status.state;
   })

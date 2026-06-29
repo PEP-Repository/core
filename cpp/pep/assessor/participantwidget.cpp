@@ -132,11 +132,11 @@ std::optional<std::filesystem::path> ReadConfiguredBartenderPath(const std::opti
 
 }
 
-const QString ParticipantWidget::NoParticipantSid = QString();
+const QString ParticipantWidget::NoParticipantId = QString();
 
 ParticipantWidget::ParticipantWidget(MainWindow* parent,
                                      std::shared_ptr<pep::Client> client,
-                                     QString SID,
+                                     QString participantId,
                                      const pep::Configuration& configuration,
                                      const pep::GlobalConfiguration& globalConfiguration,
                                      const pep::StudyContexts& allContexts,
@@ -149,8 +149,8 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
   baseUrl_ = QString::fromStdString(configuration.get<std::string>("Castor.BaseUrl"));
   stickerFilePath_ = configuration.get<std::optional<std::filesystem::path>>("StickerFilePath").value_or(QCoreApplication::applicationDirPath().toStdString() + "/pepStickerTemplate.btw");
   bartenderPath_ = ReadConfiguredBartenderPath(configuration);
-  currentUserPp_ = pepClient_->generateParticipantPolymorphicPseudonym(SID.toStdString()); // TODO: accept as a parameter: most (or all?) callers will already have a PP
-  participantSID_ = SID;
+  currentUserPp_ = pepClient_->generateParticipantPolymorphicPseudonym(participantId.toStdString()); // TODO: accept as a parameter: most (or all?) callers will already have a PP
+  participantId_ = participantId;
 
   setAttribute(Qt::WA_DeleteOnClose);
 
@@ -300,12 +300,12 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
         .arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
   }, [this, aggregator, completeRegistration] {
     if (!aggregator->hasParticipantData()) {
-      std::cerr << tr("No participant with ID %1 found").arg(participantSID_).toStdString() << std::endl;
-      emit participantLookupError(tr("No participant with ID %1 found").arg(participantSID_), pep::Severity::Error);
+      std::cerr << tr("No participant with ID %1 found").arg(participantId_).toStdString() << std::endl;
+      emit participantLookupError(tr("No participant with ID %1 found").arg(participantId_), pep::Severity::Error);
     }
     else if (completeRegistration && currentPepRole_.canRegisterParticipants() && !aggregator->hasCompleteParticipantData()) {
       emit statusMessage(tr("Participant registration is not complete. Attempting to complete registration..."), pep::Severity::Warning);
-      pepClient_->completeParticipantRegistration(participantSID_.toStdString())
+      pepClient_->completeParticipantRegistration(participantId_.toStdString())
         .observe_on(ObserveOnGui())
         .subscribe([](pep::FakeVoid) {
       }, [this, aggregator](std::exception_ptr ep) {
@@ -672,7 +672,7 @@ void ParticipantWidget::printSummary() {
   if (participantData_.isTestParticipant) {
     htmlFormattedSummary.append("<h4>" + tr("This is a test participant") + "</h4>");
   }
-  htmlFormattedSummary.append(QString("<h4>")+participantSID_+"</h4>");
+  htmlFormattedSummary.append(QString("<h4>")+participantId_+"</h4>");
 
   appendShortPseudonymsHtmlTable(htmlFormattedSummary, std::nullopt, tr("Participant pseudonyms"),
     [](const pep::ShortPseudonymDefinition& sp) {return true; });
@@ -813,7 +813,7 @@ void ParticipantWidget::locateBartender() {
 void ParticipantWidget::closeParticipant() {
   //Should also clear out current patient data
   mainWindow_->changeActiveTab(0);
-  mainWindow_->openedParticipants_.remove(participantSID_);
+  mainWindow_->openedParticipants_.remove(participantId_);
   deleteLater();
   parent()->deleteLater();
 }
@@ -833,7 +833,7 @@ void ParticipantWidget::onTranslation() {
  * This code block does a lot. All of the current UI is configured in this function. No arguments are taken, but many class variables are used.
  */
 void ParticipantWidget::processData() {
-  ui_->participant->setText(tr("participant '%1'").arg(participantSID_));
+  ui_->participant->setText(tr("participant '%1'").arg(participantId_));
 
   if (!participantStudyContexts_.contains(studyContext_)) {
     ui_->label_unavailable->setText(tr("This participant is unavailable in the current (%1) context.").arg(QString::fromStdString(studyContext_.getId())));

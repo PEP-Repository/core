@@ -17,7 +17,7 @@ ExportableVisitAssessorItem::ExportableVisitAssessorItem(const std::string& colu
 
 std::optional<std::function<void(ExportDataTable&, const std::optional<std::string>& value)>> ExportableDeviceHistoryItem::getDetailExpander() const {
   return [](ExportDataTable& destination, const std::optional<std::string>& value) {
-    const auto CELLS = 3U;
+    const auto Cells = 3U;
 
     if (value) {
       auto history = pep::ParticipantDeviceHistory::Parse(*value, false);
@@ -28,12 +28,12 @@ std::optional<std::function<void(ExportDataTable&, const std::optional<std::stri
         row.emplace_back(entry.serial);
         row.emplace_back(pep::TimestampToXmlDateTime(entry.time));
 
-        assert(row.size() == CELLS);
+        assert(row.size() == Cells);
       }
     }
     else {
       auto& row = destination.emplace_back();
-      for (auto i = 0U; i < CELLS; ++i) {
+      for (auto i = 0U; i < Cells; ++i) {
         row.emplace_back(std::nullopt);
       }
     }

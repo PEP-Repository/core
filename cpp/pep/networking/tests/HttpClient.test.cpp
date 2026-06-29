@@ -9,15 +9,15 @@
 
 namespace {
 
-const std::string RESPONSE_BODY = "Found someone you have, I would say, hmmm?";
+const std::string ResponseBody = "Found someone you have, I would say, hmmm?";
 
 class AsyncHttpServer : boost::noncopyable {
 public:
-  static constexpr uint16_t PORT = 1880; // Port 80 might be taken by a "real" HTTP server. TODO: try random ports until we find a vacant one
+  static constexpr uint16_t Port = 1880; // Port 80 might be taken by a "real" HTTP server. TODO: try random ports until we find a vacant one
 
 private:
   std::shared_ptr<boost::asio::io_context> ioContext_ = std::make_shared<boost::asio::io_context>();
-  pep::HTTPServer server_ = pep::HTTPServer(PORT, ioContext_);
+  pep::HTTPServer server_ = pep::HTTPServer(Port, ioContext_);
   pep::IoContextThread thread_ = pep::IoContextThread("HTTP server", ioContext_);
 
 public:
@@ -42,7 +42,7 @@ void RegisterAndRetrieve(AsyncHttpServer& server, const std::string& relativeUri
 
   boost::asio::io_context ioContext;
 
-  auto client = pep::networking::HttpClient::Create(pep::networking::HttpClient::Parameters(ioContext, boost::urls::url("http://localhost:" + std::to_string(AsyncHttpServer::PORT) + relativeUri)));
+  auto client = pep::networking::HttpClient::Create(pep::networking::HttpClient::Parameters(ioContext, boost::urls::url("http://localhost:" + std::to_string(AsyncHttpServer::Port) + relativeUri)));
   client->start();
 
   auto request = client->makeRequest();
@@ -55,7 +55,7 @@ void RegisterAndRetrieve(AsyncHttpServer& server, const std::string& relativeUri
         ASSERT_FALSE(*received) << "Received multiple responses from HTTP client";
         *received = true;
         EXPECT_EQ(2U, response.getStatusCode() / 100U) << "Got unsuccessful status code " << response.getStatusCode() << " from " << relativeUri.c_str();
-        EXPECT_EQ(RESPONSE_BODY, response.getBody());
+        EXPECT_EQ(ResponseBody, response.getBody());
       },
       [client](std::exception_ptr exception) {client->shutdown(); },
       [client]() {client->shutdown(); }
@@ -71,8 +71,8 @@ void RegisterAndRetrieve(AsyncHttpServer& server, const std::string& relativeUri
 TEST(HttpClient, BasicFunctioning) {
   AsyncHttpServer server;
 
-  RegisterAndRetrieve(server, "/default", std::make_shared<pep::HTTPResponse>(200U, "OK", RESPONSE_BODY)); // A well-behaved response
-  RegisterAndRetrieve(server, "/unsized", std::make_shared<pep::HTTPResponse>(200U, "OK", RESPONSE_BODY, pep::HTTPResponse::HeaderMap(), false)); // No "Content-Length" (or in fact any) header
+  RegisterAndRetrieve(server, "/default", std::make_shared<pep::HTTPResponse>(200U, "OK", ResponseBody)); // A well-behaved response
+  RegisterAndRetrieve(server, "/unsized", std::make_shared<pep::HTTPResponse>(200U, "OK", ResponseBody, pep::HTTPResponse::HeaderMap(), false)); // No "Content-Length" (or in fact any) header
   // TODO: test HTTPS as well
 
   // Code below has been disabled to prevent our unit test from requiring a network connection
