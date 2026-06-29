@@ -6,7 +6,7 @@ using namespace pep::cli;
 namespace {
 pep::commandline::Parameters appendExpirationParameters(pep::commandline::Parameters&& params) {
   return params
-    + pep::commandline::Parameter("end-date", "Date at which membership of the user group for the user should end. Format: YYYYMMDD")
+    + pep::commandline::Parameter("expiration-date", "Date at which membership of the user group for the user should end. Format: YYYYMMDD")
       .value(pep::commandline::Value<std::string>()).alias("expiration-yyyymmdd")
     + pep::commandline::Parameter("expiration-unixtime", "Date and time at which membership of the user group for the user should end, as a unix timestamp")
       .value(pep::commandline::Value<std::chrono::seconds::rep>());
