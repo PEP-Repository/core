@@ -107,8 +107,8 @@ MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& bran
   qRegisterMetaType<std::string>("std::string");
   qRegisterMetaType<pep::PolymorphicPseudonym>("pep::PolymorphicPseudonym");
 
-  QObject::connect(this, &MainWindow::announcePP, this, &MainWindow::selectByPolymorphicPseudonym);
-  QObject::connect(this, &MainWindow::announceSID, this, &MainWindow::showParticipantData);
+  QObject::connect(this, &MainWindow::announcePp, this, &MainWindow::selectByPolymorphicPseudonym);
+  QObject::connect(this, &MainWindow::announceParticipantId, this, &MainWindow::showParticipantData);
   QObject::connect(this, &MainWindow::announceLookupFailure, this, &MainWindow::on_lookupFailure);
   QObject::connect(this, &MainWindow::statusMessage, this, &MainWindow::updateStatus);
   QObject::connect(ui_->content_tabs, &QTabWidget::currentChanged, this, &MainWindow::ensureFocus);
@@ -363,7 +363,7 @@ void MainWindow::handleOpenByShortPseudonym(std::string shortPseudonym) {
   updateStatus(tr("Searching for short pseudonym %1").arg(QString::fromStdString(shortPseudonym)), pep::Severity::Info);
   pepClient_->findPPforShortPseudonym(shortPseudonym, getCurrentStudyContext()).subscribe(
     [this](pep::PolymorphicPseudonym pp) {
-      emit announcePP(pp);
+      emit announcePp(pp);
     },
     [this, shortPseudonym](std::exception_ptr ep) {
       try {
@@ -448,25 +448,25 @@ void MainWindow::on_lookupFailure(QString reason) {
 }
 
 void MainWindow::selectByPolymorphicPseudonym(pep::PolymorphicPseudonym foundPP) {
-  auto sid = std::make_shared<std::string>();
+  auto id = std::make_shared<std::string>();
 
   pep::EnumerateAndRetrieveData2Opts opts;
   opts.pps = { foundPP };
   opts.columns = { "ParticipantIdentifier" };
   pepClient_->enumerateAndRetrieveData2(opts)
-    .subscribe([sid](const pep::EnumerateAndRetrieveResult& result) {
-    if (!sid->empty()) {
+    .subscribe([id](const pep::EnumerateAndRetrieveResult& result) {
+    if (!id->empty()) {
       throw std::runtime_error("Multiple identifiers found for participant");
     }
-  *sid = result.data;
+  *id = result.data;
       }, [this](std::exception_ptr ep) {
         emit announceLookupFailure(QString::fromStdString(pep::GetExceptionMessage(ep)));
-      }, [this, sid]() {
-        if (sid->empty()) {
+      }, [this, id]() {
+        if (id->empty()) {
           emit announceLookupFailure("Identifier for this participant was not stored yet. Please open the participant's details to complete storage.");
         }
         else {
-          emit announceSID(*sid);
+          emit announceParticipantId(*id);
         }
       });
 }

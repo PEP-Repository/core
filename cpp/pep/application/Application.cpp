@@ -31,7 +31,7 @@ static const Application* applicationInstance = nullptr;
 //NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static bool usingConsoleLog = false;
 
-const std::string CONSOLE_REDIRECTION_WARNING = "Note that output cannot be piped or redirected (e.g. to file) in this mode.";
+const std::string ConsoleRedirectionWarning = "Note that output cannot be piped or redirected (e.g. to file) in this mode.";
 
 void LogVersionInfo(const std::string& tag, std::string summary) {
   if (summary.empty()) {
@@ -417,7 +417,7 @@ commandline::Parameters Application::getSupportedParameters() const {
 
 #ifdef _WIN32
   if (runningOnWindowsSubsystem) {
-    result = result + commandline::Parameter("bind-to-console", "Send output to parent console instead of stdio. " + CONSOLE_REDIRECTION_WARNING);
+    result = result + commandline::Parameter("bind-to-console", "Send output to parent console instead of stdio. " + ConsoleRedirectionWarning);
   }
   result = result + commandline::Parameter("allow-non-utf8", "Allow starting with non-UTF-8 charset (for older Windows versions, not recommended)");
 #endif
@@ -434,7 +434,7 @@ std::optional<int> Application::processLexedParameters(const commandline::LexedV
         std::cerr << '\n' // Don't write on the line containing the next user prompt
           << "The " << this->getName() << " application will write its stdio output to this console\n"
           << "because it was invoked with the --bind-to-console command line switch.\n"
-          << CONSOLE_REDIRECTION_WARNING << '\n'
+          << ConsoleRedirectionWarning << '\n'
           << std::endl;
       }
     }

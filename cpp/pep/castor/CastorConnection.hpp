@@ -33,7 +33,7 @@ enum class AuthenticationState { Unauthenticated, Error, Authenticating, Authent
 //! Describes the status of the authentication
 struct AuthenticationStatus {
   //! The state the authentication is in.
-  /*! If the token is expired, the state will remain AUTHENTICATED
+  /*! If the token is expired, the state will remain "Authenticated"
    */
   AuthenticationState state;
 
@@ -51,7 +51,7 @@ struct AuthenticationStatus {
   std::exception_ptr exceptionPtr;
 
   /*!
-   * \brief Construct an AUTHENTICATED AuthenticationStatus
+   * \brief Construct an "Authenticated" AuthenticationStatus
    * \param token The received token
    * \param expiresIn The number of seconds until expiration of the token
    */
@@ -59,7 +59,7 @@ struct AuthenticationStatus {
     : state(AuthenticationState::Authenticated), token(token), expires(TimeNow() + expiresIn) {}
 
   /*!
-   * \brief Construct an AUTHENTICATION_ERROR AuthenticationStatus
+   * \brief Construct an "AuthenticationError" AuthenticationStatus
    * \param exception_ptr The exception that occured causing the authentication error
    */
   AuthenticationStatus(const std::exception_ptr& exception_ptr)
@@ -72,7 +72,7 @@ struct AuthenticationStatus {
   AuthenticationStatus(const AuthenticationState& state = AuthenticationState::Unauthenticated) : state(state) {}
 
   /*!
-   * \return true if the state is AUTHENTICATED, and the token has not expired, taking EXPIRY_MARGIN_SECONDS into account. false otherwise
+   * \return true if the state is "Authenticated", and the token has not expired, taking ExpiryMarginSeconds into account. false otherwise
    */
   bool authenticated() const;
 };

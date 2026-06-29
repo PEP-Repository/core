@@ -58,7 +58,7 @@ public:
 
 
   static void SetUpTestSuite() {
-    globalConf = std::make_shared<GlobalConfiguration>(Serialization::FromJsonString<GlobalConfiguration>(tests::TEST_SUITE_GLOBAL_CONFIGURATION));
+    globalConf = std::make_shared<GlobalConfiguration>(Serialization::FromJsonString<GlobalConfiguration>(tests::TestSuiteGlobalConfiguration));
   }
 
   // Create a new AccessManager::Backend::Storage with a clean database

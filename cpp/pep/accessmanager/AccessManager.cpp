@@ -65,12 +65,12 @@ void FillTranscryptorRequestEntry(
 }
 
 const std::string LogTag ("AccessManager");
-const Severity TICKET_REQUEST_LOGGING_SEVERITY = Severity::Debug;
+const Severity TicketRequestLoggingSeverity = Severity::Debug;
 
-constexpr size_t TS_REQUEST_BATCH_SIZE = 400U;
+constexpr size_t TsRequestBatchSize = 400U;
 
-const size_t MAX_AMA_QUERY_RESPONSE_STRINGS = 25000; // See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2089#note_25719
-const std::size_t AMA_QUERY_RESPONSE_STRINGS_WARNING_THRESHOLD = static_cast<std::size_t>(0.8 * MAX_AMA_QUERY_RESPONSE_STRINGS);
+const size_t MaxAmaQueryResponseStrings = 25000; // See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2089#note_25719
+const std::size_t AmaQueryResponseStringsWarningThreshold = static_cast<std::size_t>(0.8 * MaxAmaQueryResponseStrings);
 
 void FillTranscryptorRequestEntry(
     TranscryptorRequestEntry& entry,
@@ -105,23 +105,23 @@ std::vector<AmaQueryResponse> ExtractPartialQueryResponse(const AmaQueryResponse
 
   std::vector<AmaQueryResponse> responses; // The (partial) AmaQueryResponse items that we'll send out
   std::vector<T>* responseEntries = nullptr; // The AmaQRxyz entries within the AmaQueryResponse that's being filled
-  size_t responseStrings = MAX_AMA_QUERY_RESPONSE_STRINGS + 1U; // Mark "previous response full" to have first AmaQueryResponse created
+  size_t responseStrings = MaxAmaQueryResponseStrings + 1U; // Mark "previous response full" to have first AmaQueryResponse created
 
   // TODO: use more efficient chunking for T with fixed number of strings
   for (size_t i = 0U; i < sourceEntries.size(); ++i) {
     // Get source AmaQRxyz entry and check whether it'll fit in a message at all
     const T& entry = sourceEntries[i];
     auto entryStrings = CountAmaQueryResponseEntryStrings(entry);
-    if (entryStrings > AMA_QUERY_RESPONSE_STRINGS_WARNING_THRESHOLD) {
+    if (entryStrings > AmaQueryResponseStringsWarningThreshold) {
       PEP_LOG(LogTag, Severity::Warning) << "(Excessively) large AMA query response entry: " << NormalizedTypeNamer<T>::GetTypeName() << " contains " + std::to_string(entryStrings) + " strings";
     }
 
     // Create a new  if the entry can't be added to the one that's being filled
-    if (responseStrings + entryStrings > MAX_AMA_QUERY_RESPONSE_STRINGS) { // This entry can't be added to the AmaQueryResponse that we're currently filling
+    if (responseStrings + entryStrings > MaxAmaQueryResponseStrings) { // This entry can't be added to the AmaQueryResponse that we're currently filling
       // Create a new AmaQueryResponse and initialize stuff for it to be filled
       auto& response = responses.emplace_back();
       responseEntries = &(response.*member);
-      responseEntries->reserve(MAX_AMA_QUERY_RESPONSE_STRINGS);
+      responseEntries->reserve(MaxAmaQueryResponseStrings);
       responseStrings = 0U;
     }
 
@@ -525,7 +525,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   auto time = std::chrono::steady_clock::now();
   auto requestNumber = nextTicketRequestNumber_++;
 
-  PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " received";
+  PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " received";
 
   // openAsAccessManager checks that signature_ and logSignature_ are set,
   // are valid and match.
@@ -604,7 +604,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   // Prepare transcryptor request
   ctx->tsReqEntries.entries.resize(ctx->pps.size());
 
-  PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " constructing observable";
+  PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " constructing observable";
 
   // workerPool_->batched_map() does not tell us which index we're handling,
   // so we let it process indices to work around this.  If we need this
@@ -634,22 +634,22 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
     auto numEntries = ctx->tsReqEntries.entries.size();
     auto tail = RxIterate(std::move(ctx->tsReqEntries.entries))
-      .buffer(static_cast<int>(TS_REQUEST_BATCH_SIZE))
+      .buffer(static_cast<int>(TsRequestBatchSize))
       .as_dynamic() // Reduce compiler memory usage
       .op(RxIndexed<std::uint32_t>())
       .map([requestNumber = ctx->requestNumber](std::pair<std::uint32_t, std::vector<TranscryptorRequestEntry>> pair) {
         auto& [batchNum, batch] = pair;
-        PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " sending transcryptor request entry batch " << batchNum << " containing " << batch.size() << " entries";
+        PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " sending transcryptor request entry batch " << batchNum << " containing " << batch.size() << " entries";
         return messaging::MakeTailSegment(TranscryptorRequestEntries{std::move(batch)});
       })
       .op(RxBeforeCompletion([requestNumber = ctx->requestNumber, numEntries] {
-        PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " sent " << numEntries << " transcryptor request entries";
+        PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " sent " << numEntries << " transcryptor request entries";
       }));
 
-    PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " sending transcryptor request";
+    PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " sending transcryptor request";
     return ctx->server->transcryptorProxy_.requestTranscryption(ctx->tsReq, tail);
   }).flat_map([ctx](TranscryptorResponse resp) {
-    PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " received transcryptor response";
+    PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " received transcryptor response";
     // Now we have local pseudonyms for the original PPs.
     if (resp.entries.size() != ctx->pps.size()) {
       throw std::runtime_error("Transcryptor returned wrong number of entries");
@@ -677,10 +677,10 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     LogIssuedTicketRequest logReq;
     logReq.ticket = ctx->signedTicket;
     logReq.id = resp.id;
-    PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " logging issued ticket";
+    PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " logging issued ticket";
     return ctx->server->transcryptorProxy_.requestLogIssuedTicket(std::move(logReq));
   }).map([ctx](LogIssuedTicketResponse resp) {
-    PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " finishing up";
+    PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " finishing up";
     ctx->signedTicket.addTranscryptorSignature(std::move(resp.signature));
 
     std::string response;
@@ -696,7 +696,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     auto result = rxcpp::observable<>::from(MakeSharedCopy(std::move(response))).as_dynamic();
 
     ctx->server->lpMetrics_->ticketRequest2Duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count());
-    PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " returning ticket to requestor";
+    PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " returning ticket to requestor";
     return result;
   });
 
@@ -705,11 +705,11 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
       [](auto) { /*ignore */},
       [](std::exception_ptr) { /*ignore */},
       [ctx]() {
-        PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << ctx->requestNumber << " starting asynchronous processing";
+        PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " starting asynchronous processing";
       })
     .concat(result);
 
-  PEP_LOG(LogTag, TICKET_REQUEST_LOGGING_SEVERITY) << "Ticket request " << requestNumber << " returning observable";
+  PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " returning observable";
   return result;
 }
 
@@ -759,7 +759,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
       .request = SignedTicketRequest2(std::nullopt, Signature::Make(data, *self->getSigningIdentity(), true), data)
     };
     TranscryptorRequestEntries tsRequestEntries;
-    tsRequestEntries.entries.resize(list.size());  // TODO: chunk according to TS_REQUEST_BATCH_SIZE
+    tsRequestEntries.entries.resize(list.size());  // TODO: chunk according to TsRequestBatchSize
     for (size_t i = 0; i < list.size(); i++) {
       TranscryptorRequestEntry& entry = tsRequestEntries.entries[i];
       entry.polymorphic = list[i];

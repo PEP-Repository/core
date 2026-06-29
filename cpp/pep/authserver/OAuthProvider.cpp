@@ -39,10 +39,10 @@ using boost::urls::url;
 
 #ifndef ENABLE_OAUTH_TEST_USERS
 namespace {
-  const std::string PRIMARY_UID_HEADER = "PEP-Primary-Uid";
-  const std::string HUMAN_READABLE_UID_HEADER = "PEP-Human-Readable-Uid";
-  const std::string ALTERNATIVE_UIDS_HEADER = "PEP-Alternative-Uids";
-  const std::string SPOOF_CHECK_HEADER = "PEP-Spoof-Check";
+  const std::string PrimaryUidHeader = "PEP-Primary-Uid";
+  const std::string HumanReadableUidHeader = "PEP-Human-Readable-Uid";
+  const std::string AlternativeUidsHeader = "PEP-Alternative-Uids";
+  const std::string SpoofCheckHeader = "PEP-Spoof-Check";
 }
 #endif
 
@@ -76,7 +76,7 @@ namespace {
 
 const std::string PepClientId = "123";
 
-const std::string SERVER_ERROR_DESCRIPTION = "Internal server error";
+const std::string ServerErrorDescription = "Internal server error";
 
 const std::initializer_list<url> DefaultRedirectUris{
   url("http://localhost:16515/"),
@@ -306,29 +306,29 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     alternativeUidsString = (*it).value;
   }
 #else
-  if(!request.hasHeader(SPOOF_CHECK_HEADER) || !const_time::IsEqual(request.header(SPOOF_CHECK_HEADER), spoofKey_)) {
+  if(!request.hasHeader(SpoofCheckHeader) || !const_time::IsEqual(request.header(SpoofCheckHeader), spoofKey_)) {
     PEP_LOG(LogTag, Severity::Critical) << "Spoofkey was not correctly set on the request. Looks like someone has direct access to the authserver, without being authenticated first. Remote IP: " << remoteIp;
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("500 Internal Server Error", "Internal Server Error"));
   }
-  for(auto& header : {PRIMARY_UID_HEADER, HUMAN_READABLE_UID_HEADER, ALTERNATIVE_UIDS_HEADER})
+  for(auto& header : {PrimaryUidHeader, HumanReadableUidHeader, AlternativeUidsHeader})
     if(!request.hasHeader(header)) {
       PEP_LOG(LogTag, Severity::Error) << "No user header '" << header << "' received. Apache/Shibboleth is misconfigured.";
       return rxcpp::rxs::just(MakeErrorTextHttpResponse("500 Internal Server Error", "Internal Server Error"));
     }
 
-  std::string primaryUid = request.header(PRIMARY_UID_HEADER);
+  std::string primaryUid = request.header(PrimaryUidHeader);
   if (primaryUid.empty()) {
-    PEP_LOG(LogTag, Severity::Error) << "Empty user header '" << PRIMARY_UID_HEADER << "' received. Apache/Shibboleth is misconfigured.";
+    PEP_LOG(LogTag, Severity::Error) << "Empty user header '" << PrimaryUidHeader << "' received. Apache/Shibboleth is misconfigured.";
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("500 Internal Server Error", "Internal Server Error"));
   }
 
-  std::string humanReadableUid = request.header(HUMAN_READABLE_UID_HEADER);
+  std::string humanReadableUid = request.header(HumanReadableUidHeader);
   if (humanReadableUid.empty()) {
-    PEP_LOG(LogTag, Severity::Error) << "Empty user header '" << HUMAN_READABLE_UID_HEADER << "' received. Apache/Shibboleth is misconfigured.";
+    PEP_LOG(LogTag, Severity::Error) << "Empty user header '" << HumanReadableUidHeader << "' received. Apache/Shibboleth is misconfigured.";
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("500 Internal Server Error", "Internal Server Error"));
   }
 
-  std::string alternativeUidsString = request.header(ALTERNATIVE_UIDS_HEADER);
+  std::string alternativeUidsString = request.header(AlternativeUidsHeader);
 #endif //ENABLE_OAUTH_TEST_USERS
 
   std::vector<std::string> alternativeUids;
@@ -392,7 +392,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
   }
   catch (std::exception& e) {
     PEP_LOG(LogTag, Severity::Error) << "Unexpected error: " << e.what();
-    return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ErrorServerError, SERVER_ERROR_DESCRIPTION));
+    return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ErrorServerError, ServerErrorDescription));
   }
 
   return authserverBackend_->findUserGroupsAndStorePrimaryIdIfMissing(primaryUid, alternativeUids)
@@ -419,13 +419,13 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
       }
       else {
         std::ostringstream body;
-        body << BEGIN_GROUP_SELECTION_TEMPLATE;
+        body << BeginGroupSelectionTemplate;
         std::set<std::string> sortedGroups;
         std::ranges::transform(*groups, std::inserter(sortedGroups, sortedGroups.begin()), [](const auto& g) {return g.name;});
         for(auto& g : sortedGroups) {
           body << "<option>" << g << "</option>";
         }
-        body << END_GROUP_SELECTION_TEMPLATE;
+        body << EndGroupSelectionTemplate;
         return HTTPResponse("200 OK", std::move(body).str());
       }
     }
@@ -468,7 +468,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
       return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ErrorServerError, e.what()));
     } catch(const std::exception& e) {
       PEP_LOG(LogTag, Severity::Error) << "Unexpected error: " << e.what();
-      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ErrorServerError, SERVER_ERROR_DESCRIPTION));
+      return rxcpp::rxs::just(MakeErrorRedirect(redirectUri, ErrorServerError, ServerErrorDescription));
     }
   });
 }
@@ -528,7 +528,7 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
     return MakeErrorJsonHttpResponse(ErrorServerError, err.what());
   }
   catch(...) {
-    return MakeErrorJsonHttpResponse(ErrorServerError, SERVER_ERROR_DESCRIPTION);
+    return MakeErrorJsonHttpResponse(ErrorServerError, ServerErrorDescription);
   }
 }
 

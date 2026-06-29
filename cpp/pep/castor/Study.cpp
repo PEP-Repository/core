@@ -35,7 +35,7 @@ namespace castor {
 
 namespace {
 
-const std::string API_ENDPOINT = "study";
+const std::string ApiEndpoint = "study";
 
 }
 
@@ -168,11 +168,11 @@ rxcpp::observable<std::shared_ptr<Field>> Study::getFields() {
 
 //! \return A url that can be used to retrieve this study from the Castor API
 std::string Study::makeUrl() const {
-  return API_ENDPOINT + "/" + this->getId();
+  return ApiEndpoint + "/" + this->getId();
 }
 
 rxcpp::observable<std::shared_ptr<Study>> Study::RetrieveForParent(std::shared_ptr<CastorConnection> connection) {
-  return connection->getJsonEntries(API_ENDPOINT, "study")
+  return connection->getJsonEntries(ApiEndpoint, "study")
     .map([connection](JsonPtr studyProperties) {
     return Study::Create(connection, studyProperties);
       });

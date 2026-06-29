@@ -47,7 +47,7 @@ using namespace pep::tests;
 using CastorClientTest = FakeCastorTest;
 
 TEST_F(CastorClientTest, Authentication) {
-  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(RESPONSE_STUDIES));
+  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(ResponseStudies));
 
   options_->authenticated = false;
   ASSERT_THROW_WITH_MESSAGE(
@@ -111,7 +111,7 @@ TEST_F(CastorClientTest, SendCastorRequest) {
 }
 
 TEST_F(CastorClientTest, GetStudies) {
-  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(RESPONSE_STUDIES));
+  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(ResponseStudies));
 
   std::shared_ptr<Study> study = castorConnection_->getStudies().as_blocking().first();
   ASSERT_EQ(study->getId(), "14F7C4E0-0FA5-C430-B7A2-9ECCB6271FA6");
@@ -132,8 +132,8 @@ TEST_F(CastorClientTest, GetStudies) {
 }
 
 TEST_F(CastorClientTest, MultiPage) {
-  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(RESPONSE_STUDIES_MULTIPAGE_PAGE1));
-  options_->responses.emplace("/api/study?page=2&page_size=1000", FakeCastorApi::Response(RESPONSE_STUDIES_MULTIPAGE_PAGE2));
+  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(ResponseStudiesMultipagePage1));
+  options_->responses.emplace("/api/study?page=2&page_size=1000", FakeCastorApi::Response(ResponseStudiesMultipagePage2));
 
   std::shared_ptr<Study> study = castorConnection_->getStudies().as_blocking().first();
   ASSERT_EQ(study->getId(), "14F7C4E0-0FA5-C430-B7A2-9ECCB6271FA6");

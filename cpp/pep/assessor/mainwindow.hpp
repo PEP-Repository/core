@@ -70,9 +70,9 @@ public:
 signals:
   void translation();
 
-  void announceSID(std::string SID);
+  void announceParticipantId(std::string id);
 
-  void announcePP(pep::PolymorphicPseudonym foundPP);
+  void announcePp(pep::PolymorphicPseudonym foundPp);
 
   void announceLookupFailure(QString reason);
 

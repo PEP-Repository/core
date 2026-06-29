@@ -27,7 +27,7 @@ using namespace pep::cli;
 namespace {
 
 const std::string LogTag = "Download Data";
-const std::string SPECIFICATION_FILENAME = DownloadMetadata::GetFilenamePrefix() + "specification" + DownloadMetadata::GetFilenameExtension();
+const std::string SpecificationFilename = DownloadMetadata::GetFilenamePrefix() + "specification" + DownloadMetadata::GetFilenameExtension();
 
 std::filesystem::path ValidateDirectory(const std::filesystem::path& raw) {
   auto result = std::filesystem::absolute(raw);
@@ -68,7 +68,7 @@ DownloadDirectory::DownloadDirectory(const std::filesystem::path& root, std::sha
 }
 
 std::filesystem::path DownloadDirectory::getSpecificationFilePath() const {
-  return root_ / SPECIFICATION_FILENAME;
+  return root_ / SpecificationFilename;
 }
 
 std::optional<DownloadDirectory::Specification> DownloadDirectory::tryReadSpecification() const {

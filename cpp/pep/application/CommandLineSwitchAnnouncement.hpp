@@ -18,7 +18,7 @@ private:
   SwitchAnnouncement(const std::string& prefix, const std::string& text);
 
 public:
-  static const std::string STOP_PROCESSING;
+  static const std::string StopProcessing;
 
   explicit SwitchAnnouncement(const std::string& name);
   explicit SwitchAnnouncement(char shorthand);
