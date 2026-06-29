@@ -812,7 +812,6 @@ void ParticipantWidget::locateBartender() {
  */
 void ParticipantWidget::closeParticipant() {
   //Should also clear out current patient data
-  //std::cout << ">>>ParticipantWidget on_exitPatient_clicked called" << std::endl;
   mainWindow_->changeActiveTab(0);
   mainWindow_->openedParticipants_.remove(participantSID_);
   deleteLater();
