@@ -1348,7 +1348,12 @@ void ParticipantDataAggregator::processShortPseudonym(const pep::EnumerateAndRet
   auto definition = getShortPseudonymDefinition(shortPseudonymTag);
   if (definition != nullptr) {
     shortPseudonyms_[shortPseudonymTag] = result.data;
-    unfilledShortPseudonyms_.erase(std::remove(unfilledShortPseudonyms_.begin(), unfilledShortPseudonyms_.end(), definition), unfilledShortPseudonyms_.end());
+    auto removed = std::remove(unfilledShortPseudonyms_.begin(), unfilledShortPseudonyms_.end(), definition);
+    /* Since we're receiving SP data matching a known definition, that definition must have been added to our
+     * "unfilledShortPseudonyms_" field at construction time.
+     */
+    assert(removed != unfilledShortPseudonyms_.end());
+    unfilledShortPseudonyms_.erase(removed, unfilledShortPseudonyms_.end());
   }
 }
 
