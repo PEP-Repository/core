@@ -143,6 +143,7 @@ ExportWidget::ExportWidget(const pep::GlobalConfiguration& configuration, const 
     }
   }
 
+  QObject::connect(ui_->exportButton, &QPushButton::clicked, this, &ExportWidget::onExportButtonClicked);
   if (!multiSelect_) {
     QObject::connect(ui_->listWidget, &QListWidget::itemSelectionChanged, this, &ExportWidget::onSelectedItemChanged);
     QObject::connect(ui_->listWidget, &QListWidget::itemActivated, this, &ExportWidget::onItemActivated);
