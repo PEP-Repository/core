@@ -112,7 +112,7 @@ MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& bran
   QObject::connect(this, &MainWindow::announceLookupFailure, this, &MainWindow::on_lookupFailure);
   QObject::connect(this, &MainWindow::statusMessage, this, &MainWindow::updateStatus);
   QObject::connect(ui_->content_tabs, &QTabWidget::currentChanged, this, &MainWindow::ensureFocus);
-  QObject::connect(ui_->contextComboBox, SIGNAL(currentIndexChanged(int)), SLOT(contextComboIndexChanged(int)));
+  QObject::connect(ui_->contextComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::contextComboIndexChanged);
 }
 
 /*! \brief Mainwindows destructor
@@ -409,7 +409,7 @@ void MainWindow::showParticipantData(std::string participantIdentifier) {
     auto selector = new ParticipantWidget(this, pepClient_, QString::fromStdString(participantIdentifier), config_, globalConfiguration, *allContexts_, branding_, spareStickerCount_, getCurrentStudyContext(), getVisitCaptionsForCurrentStudyContext(), *currentPepRole_);
   selector->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
   selector->setVisible(false);
-  QObject::connect(this, SIGNAL(translation()), selector, SLOT(onTranslation()));
+  QObject::connect(this, &MainWindow::translation, selector, &ParticipantWidget::onTranslation);
   QObject::connect(selector, &ParticipantWidget::queryComplete, [this, selector, participantIdentifier, widgets]() {
     QString participantSID = QString::fromStdString(participantIdentifier);
 
@@ -436,7 +436,7 @@ void MainWindow::showParticipantData(std::string participantIdentifier) {
   }
     });
   QObject::connect(selector, &ParticipantWidget::participantLookupError, this, &MainWindow::on_participantLookupError);
-  QObject::connect(selector, SIGNAL(statusMessage(QString, pep::Severity)), this, SLOT(updateStatus(QString, pep::Severity)));
+  QObject::connect(selector, &ParticipantWidget::statusMessage, this, &MainWindow::updateStatus);
   selector->runQuery();
     });
 }
@@ -500,8 +500,7 @@ void MainWindow::initializeRegisterPatientContent(bool setFocus) {
       showPatienceWidget(currentStackedWidget, "Loading...");
       });
     QObject::connect(enroll, &EnrollmentWidget::enrollComplete, this, &MainWindow::showParticipantData);
-    QObject::connect(enroll, SIGNAL(enrollFailed(QString, pep::Severity)), this,
-      SLOT(updateStatus(QString, pep::Severity)));
+    QObject::connect(enroll, &EnrollmentWidget::enrollFailed, this, &MainWindow::updateStatus);
     QObject::connect(enroll, &EnrollmentWidget::participantRegistered, this, &MainWindow::on_participantRegistered);
     currentEnrollmentWidget_ = enroll;
     currentStackedWidget->addWidget(enroll);

@@ -208,7 +208,7 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
   printOneStickerButton_ = printButtons_->addButton(tr("print-one-sticker"), std::bind(&ParticipantWidget::printSingleParticipantSticker, this), currentPepRole_.canPrintStickers());
   printButtons_->addButton(tr("locate-bartender"), std::bind(&ParticipantWidget::locateBartender, this), currentPepRole_.canPrintStickers());
 
-  QObject::connect(ui_->tabWidget_right, SIGNAL(currentChanged(int)), this, SLOT(setCurrentVisitNumber(int))); // Track visit number for printing
+  QObject::connect(ui_->tabWidget_right, &QTabWidget::currentChanged, this, &ParticipantWidget::setCurrentVisitNumber); // Track visit number for printing
 
   auto numberOfVisits = globalConfig_.getNumberOfVisits(studyContext_.getIdIfNonDefault());
   for (auto visitIndex = 0U; visitIndex < numberOfVisits; ++visitIndex) {

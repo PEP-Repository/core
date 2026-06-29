@@ -119,6 +119,9 @@ class ParticipantWidget : public QWidget {
 
   void queryComplete();
 
+public slots:
+  void onTranslation();
+
  private slots:
   void onParticipantDataReceived(ParticipantData data, std::string studyContexts);
 
@@ -141,8 +144,6 @@ class ParticipantWidget : public QWidget {
   void printSummary();
 
   void locateBartender();
-
-  void onTranslation();
 
   void openEditParticipant();
 
