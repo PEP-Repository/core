@@ -11,18 +11,15 @@ public:
   class Storage; // Public to allow unit testing
 
   struct Pp {
-    Pp() = default;
-    Pp(PolymorphicPseudonym pp, bool isClientProvided)
-      : pp(pp), isClientProvided(isClientProvided) {}
     PolymorphicPseudonym pp;
     bool isClientProvided{}; // have we seen this pp before?
   };
 
   Backend() = delete; // AccessManager::Backend needs a properly configured storage
-  Backend(std::shared_ptr<AccessManager::Backend::Storage> storage) : mStorage(storage) {}
+  Backend(std::shared_ptr<AccessManager::Backend::Storage> storage) : storage_(storage) {}
   Backend(const std::filesystem::path& path, std::shared_ptr<GlobalConfiguration> globalConf);
 
-  void setAccessManager(AccessManager* accessManager) { mAccessManager = accessManager; }
+  void setAccessManager(AccessManager* accessManager) { accessManager_ = accessManager; }
 
   // Purely passing through to AccessManager::Backend::Storage
 
@@ -140,9 +137,9 @@ private:
   rxcpp::observable<FakeVoid> updateTokenBlocking (int64_t internalUserId, std::string group, std::optional<Timestamp> issueDateTime,
     std::string note, std::optional<Timestamp> blockStartDateTime);
 
-  std::shared_ptr<AccessManager::Backend::Storage> mStorage;
+  std::shared_ptr<AccessManager::Backend::Storage> storage_;
   //We want to assign this pointer from within the constructor of access manager. shared_from_this doesn't work there, so we use a raw pointer. Should be safe, because without access manager there is also no backend.
-  AccessManager* mAccessManager = nullptr;
+  AccessManager* accessManager_ = nullptr;
 };
 
 }

@@ -25,7 +25,7 @@ struct ColumnNameMapping {
 
 class ColumnNameMappings {
 private:
-  std::unordered_map<std::string, ColumnNameMapping> mEntries;
+  std::unordered_map<std::string, ColumnNameMapping> entries_;
 
 public:
   explicit ColumnNameMappings(const std::vector<ColumnNameMapping>& entries);

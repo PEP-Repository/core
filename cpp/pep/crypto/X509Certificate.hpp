@@ -21,13 +21,13 @@ public:
   ~X509Extension() noexcept;
   X509Extension& operator=(X509Extension other) noexcept;
 
-  explicit X509Extension(X509_EXTENSION* extension) noexcept : mRaw(extension) {}
+  explicit X509Extension(X509_EXTENSION* extension) noexcept : raw_(extension) {}
 
   bool isCritical() const noexcept;
   std::string getName() const;
   std::string getValue() const;
 private:
-  X509_EXTENSION* mRaw;
+  X509_EXTENSION* raw_;
 };
 
 class X509Certificate {
@@ -41,7 +41,7 @@ public:
   X509Certificate& operator=(const X509Certificate& other);
   X509Certificate& operator=(X509Certificate&& other) noexcept;
 
-  explicit X509Certificate(X509& cert) noexcept : mRaw(&cert) {} // Takes ownership
+  explicit X509Certificate(X509& cert) noexcept : raw_(&cert) {} // Takes ownership
 
   AsymmetricKey getPublicKey() const;
   std::optional<std::string> getCommonName() const;
@@ -73,12 +73,12 @@ public:
   std::strong_ordering operator<=>(const X509Certificate& other) const;
   // We have a non-defaulted operator<=>. Unfortunately, only a defaulted operator<=> comes with a synthesized operator==.
   // So we have to add it explicitly.
-  // Furthermore, a defaulted operator== would bypass our operator<=>, so that would just compare the mRaw pointers.
+  // Furthermore, a defaulted operator== would bypass our operator<=>, so that would just compare the raw_ pointers.
   // We therefore implement it ourselves so we can explicitly call our custom operator<=>.
   bool operator==(const X509Certificate& other) const { return operator<=>(other) == std::strong_ordering::equal; };
 
  private:
-  X509* mRaw = nullptr;
+  X509* raw_ = nullptr;
 
   [[nodiscard]] X509& raw() const noexcept; // Some of our "const" methods require the X509 structure to be mutable
   std::optional<std::string> searchOIDinSubject(int nid) const;
@@ -112,7 +112,7 @@ public:
 
 class X509CertificateChain {
 private:
-  X509Certificates mCertificates;
+  X509Certificates certificates_;
 
 public:
   X509CertificateChain(X509Certificates certificates);
@@ -125,8 +125,8 @@ public:
   bool certifiesPrivateKey(const AsymmetricKey& privateKey) const;
 
   // You should have no business accessing these methods unless you're serializing
-  const X509Certificates& certificates() const& { return mCertificates; }
-  X509Certificates certificates()&& { return mCertificates; }
+  const X509Certificates& certificates() const& { return certificates_; }
+  X509Certificates certificates()&& { return certificates_; }
 
   auto operator<=>(const X509CertificateChain&) const = default;
 };
@@ -175,43 +175,43 @@ class X509CertificateSigningRequest {
 
   void sign(const AsymmetricKeyPair& keyPair);
 
-  X509_REQ* mCSR = nullptr;
+  X509_REQ* csr_ = nullptr;
 
-  explicit X509CertificateSigningRequest(X509_REQ& csr) noexcept : mCSR(&csr) {} // Takes ownership
+  explicit X509CertificateSigningRequest(X509_REQ& csr) noexcept : csr_(&csr) {} // Takes ownership
   std::optional<std::string> searchOIDinSubject(int nid) const;
 };
 
 
 class X509Identity {
 private:
-  AsymmetricKey mPrivateKey;
-  X509CertificateChain mCertificateChain;
+  AsymmetricKey privateKey_;
+  X509CertificateChain certificateChain_;
 
 public:
   X509Identity(AsymmetricKey privateKey, X509CertificateChain certificateChain);
 
   static X509Identity MakeSelfSigned(std::string_view organization, std::string_view commonName, std::string_view countryCode = X509Certificate::defaultSelfSignedCountryCode, std::chrono::seconds validityPeriod = X509Certificate::defaultSelfSignedValidity);
 
-  const AsymmetricKey& getPrivateKey() const noexcept { return mPrivateKey; }
-  const X509CertificateChain& getCertificateChain() const noexcept { return mCertificateChain; }
+  const AsymmetricKey& getPrivateKey() const noexcept { return privateKey_; }
+  const X509CertificateChain& getCertificateChain() const noexcept { return certificateChain_; }
 };
 
 
 class X509IdentityFiles {
 private:
-  std::filesystem::path mPrivateKeyFilePath;
-  std::filesystem::path mCertificateChainFilePath;
-  std::shared_ptr<X509Identity> mIdentity;
+  std::filesystem::path privateKeyFilePath_;
+  std::filesystem::path certificateChainFilePath_;
+  std::shared_ptr<X509Identity> identity_;
 
 public:
   X509IdentityFiles(std::filesystem::path privateKeyFilePath, std::filesystem::path certificateChainFilePath, const X509RootCertificates& rootCas);
 
   static X509IdentityFiles FromConfig(const Configuration& identityConfig, const X509RootCertificates& rootCas);
 
-  const std::filesystem::path& getPrivateKeyFilePath() const noexcept { return mPrivateKeyFilePath; }
-  const std::filesystem::path& getCertificateChainFilePath() const noexcept { return mCertificateChainFilePath; }
-  std::shared_ptr<const X509Identity> identity() const noexcept { return mIdentity; }
-  std::shared_ptr<X509Identity> identity() noexcept { return mIdentity; }
+  const std::filesystem::path& getPrivateKeyFilePath() const noexcept { return privateKeyFilePath_; }
+  const std::filesystem::path& getCertificateChainFilePath() const noexcept { return certificateChainFilePath_; }
+  std::shared_ptr<const X509Identity> identity() const noexcept { return identity_; }
+  std::shared_ptr<X509Identity> identity() noexcept { return identity_; }
 };
 
 }

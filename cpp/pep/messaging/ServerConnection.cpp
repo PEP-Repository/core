@@ -11,15 +11,15 @@ const std::string LogTag = "ServerConnection";
 namespace pep::messaging {
 
 ServerConnection::ServerConnection(std::shared_ptr<Node> node) noexcept
-  : mNode(node) {
-  assert(mNode != nullptr);
+  : node_(node) {
+  assert(node_ != nullptr);
 }
 
 void ServerConnection::handleConnectivityChange(const LifeCycler::StatusChange& change) {
   if (change.updated == LifeCycler::Status::Initialized) {
-    this->handleConnectivityChange(Connection::Attempt::Result::Success(mConnection));
+    this->handleConnectivityChange(Connection::Attempt::Result::Success(connection_));
   } else {
-    this->handleConnectivityChange(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Connectivity lost")))); // TODO: get reason from mConnection or "change" parameter
+    this->handleConnectivityChange(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Connectivity lost")))); // TODO: get reason from connection_ or "change" parameter
   }
 }
 
@@ -42,15 +42,15 @@ void ServerConnection::handleConnectivityChange(const Connection::Attempt::Resul
     }
   }
 
-  mStatusSubscriber.on_next(status);
+  statusSubscriber_.on_next(status);
 }
 
 void ServerConnection::onConnected(std::shared_ptr<Connection> connection) {
-  assert(mConnection == nullptr || mConnection == connection);
+  assert(connection_ == nullptr || connection_ == connection);
 
-  if (mConnection == nullptr) {
-    mConnection = connection;
-    mConnectionStatusSubscription = mConnection->onStatusChange.subscribe([weak = WeakFrom(*this)](const LifeCycler::StatusChange& change) {
+  if (connection_ == nullptr) {
+    connection_ = connection;
+    connectionStatusSubscription_ = connection_->onStatusChange.subscribe([weak = WeakFrom(*this)](const LifeCycler::StatusChange& change) {
       auto self = weak.lock();
       if (self != nullptr) {
         self->handleConnectivityChange(change);
@@ -58,21 +58,21 @@ void ServerConnection::onConnected(std::shared_ptr<Connection> connection) {
       });
 
     // Send pending requests now
-    auto send = std::exchange(mPendingRequests, Default<decltype(mPendingRequests)>);
+    auto send = std::exchange(pendingRequests_, Default<decltype(pendingRequests_)>);
     if (!send.empty()) {
-      PEP_LOG(LogTag, Severity::Debug) << (mNode ? mNode->describe() + ": " : "") << "Sending " << send.size() << " previously pending requests";
+      PEP_LOG(LogTag, Severity::Debug) << (node_ ? node_->describe() + ": " : "") << "Sending " << send.size() << " previously pending requests";
     }
     for (const auto& request: send) {
       rxcpp::observable<std::string> obs;
       try {
-        obs = mConnection->sendRequest(request.message, request.tail);
+        obs = connection_->sendRequest(request.message, request.tail);
       }
       catch (...) { // Notify subscriber that request can't be sent
         request.subscriber.on_error(std::current_exception());
         continue; // ... then continue with the next pending request
       }
 
-      // Request has been scheduled onto the mConnection: hook up the subscriber
+      // Request has been scheduled onto the connection_: hook up the subscriber
       obs.subscribe(request.subscriber);
     }
   }
@@ -80,18 +80,18 @@ void ServerConnection::onConnected(std::shared_ptr<Connection> connection) {
 
 void ServerConnection::finalize() {
   this->shutdown();
-  mNode.reset();
-  mConnection.reset();
+  node_.reset();
+  connection_.reset();
 }
 
 void ServerConnection::handleConnectivityError(std::exception_ptr error) {
   this->finalize();
-  mStatusSubscriber.on_error(error);
+  statusSubscriber_.on_error(error);
 }
 
 void ServerConnection::handleConnectivityEnd() {
   this->finalize();
-  mStatusSubscriber.on_completed();
+  statusSubscriber_.on_completed();
 }
 
 std::shared_ptr<ServerConnection> ServerConnection::Create(std::shared_ptr<boost::asio::io_context> io_context, const EndPoint& endPoint, const std::filesystem::path& caCertFilepath) {
@@ -120,25 +120,25 @@ std::shared_ptr<ServerConnection> ServerConnection::TryCreate
 }
 
 rxcpp::observable<ConnectionStatus> ServerConnection::connectionStatus() {
-  return mStatus.get_observable();
+  return status_.get_observable();
 }
 
 rxcpp::observable<std::string> ServerConnection::sendRequest(std::shared_ptr<std::string> message, std::optional<messaging::MessageBatches> tail) {
-  if (mConnection != nullptr) {
-    return mConnection->sendRequest(message, tail);
+  if (connection_ != nullptr) {
+    return connection_->sendRequest(message, tail);
   }
 
-  PEP_LOG(LogTag, Severity::Debug) << (mNode ? mNode->describe() + ": " : "") << "Adding request to pending requests list while waiting for connection";
+  PEP_LOG(LogTag, Severity::Debug) << (node_ ? node_->describe() + ": " : "") << "Adding request to pending requests list while waiting for connection";
   return CreateObservable<std::string>([weak = WeakFrom(*this), message, tail](rxcpp::subscriber<std::string> subscriber) {
       auto self = weak.lock();
       if (self == nullptr) {
         subscriber.on_error(std::make_exception_ptr(std::runtime_error("Server connection was destroyed")));
       }
-      else if (self->mConnection != nullptr) { // Connection has been established before caller subscribed
-        self->mConnection->sendRequest(message, tail).subscribe(subscriber);
+      else if (self->connection_ != nullptr) { // Connection has been established before caller subscribed
+        self->connection_->sendRequest(message, tail).subscribe(subscriber);
       }
       else { // Connection has not been established yet
-        self->mPendingRequests.emplace_back(PendingRequest{ // Store the request so it can be sent when the connection is established later
+        self->pendingRequests_.emplace_back(PendingRequest{ // Store the request so it can be sent when the connection is established later
           .message = message,
           .tail = tail,
           .subscriber = subscriber,
@@ -148,13 +148,13 @@ rxcpp::observable<std::string> ServerConnection::sendRequest(std::shared_ptr<std
 }
 
 rxcpp::observable<FakeVoid> ServerConnection::shutdown() {
-  if (mNode == nullptr) {
+  if (node_ == nullptr) {
     return rxcpp::observable<>::just(FakeVoid());
   }
 
-  auto result = mNode->shutdown();
-  auto pending = std::move(mPendingRequests);
-  mPendingRequests.clear(); // Our call to std::move doesn't (necessarily) clear the vector
+  auto result = node_->shutdown();
+  auto pending = std::move(pendingRequests_);
+  pendingRequests_.clear(); // Our call to std::move doesn't (necessarily) clear the vector
   for (const auto& request : pending) {
     request.subscriber.on_error(std::make_exception_ptr(std::runtime_error("Server connection is shutting down")));
   }

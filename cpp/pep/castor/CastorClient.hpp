@@ -67,8 +67,8 @@ private:
   rxcpp::observable<HTTPResponse> sendPreAuthorizedRequest(std::shared_ptr<HTTPRequest> request);
   rxcpp::observable<JsonPtr> handleCastorResponse(std::shared_ptr<HTTPRequest> request, const HTTPResponse& response);
 
-  static constexpr int PAGE_SIZE = 1000;
-  static const std::string BASE_PATH;
+  static constexpr int PageSize = 1000;
+  static const std::string BasePath;
 
   rxcpp::subjects::behavior<AuthenticationStatus>
     authenticationSubject_{ AuthenticationStatus(AuthenticationState::Unauthenticated) };

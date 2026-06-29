@@ -128,14 +128,14 @@ class Parameters {
   friend class Command;
 
 private:
-  std::vector<Parameter> mEntries;
-  using Index = typename std::vector<Parameter>::size_type;
+  std::vector<Parameter> entries_;
+  using Index = decltype(entries_)::size_type;
   /// Non-positional parameters
-  std::vector<Index> mNamed;
+  std::vector<Index> named_;
   /// Positional parameters
-  std::vector<Index> mPositional;
+  std::vector<Index> positional_;
   /// All parameters, including positional
-  std::unordered_map<std::string, Index> mByAnnouncement;
+  std::unordered_map<std::string, Index> byAnnouncement_;
 
   void add(const Parameter& parameter);
   void writeHelpText(std::ostream& destination, const std::string& header, std::vector<Index> indices) const;
@@ -162,7 +162,7 @@ private:
    */
   std::vector<const Parameter*> getSwitchesToAutocomplete(const LexedValues& lexed) const noexcept;
 
-  inline bool empty() const { return mEntries.empty(); }
+  inline bool empty() const { return entries_.empty(); }
   bool hasRequired() const;
   /*!
    * \brief Is there a positional parameter accepting multiple arguments?
@@ -171,13 +171,13 @@ private:
   std::vector<std::string> getInvocationSummary() const;
   void writeHelpText(std::ostream& destination) const;
 
-  inline auto begin() const { return mEntries.cbegin(); }
-  inline auto end() const { return mEntries.cend(); }
+  inline auto begin() const { return entries_.cbegin(); }
+  inline auto end() const { return entries_.cend(); }
 
 public:
   Parameters operator +(const Parameter& parameter) const;
   Parameters operator +(const std::vector<Parameter>& parameters) const;
-  inline Parameters operator +(const Parameters& parameters) const { return *this + parameters.mEntries; }
+  inline Parameters operator +(const Parameters& parameters) const { return *this + parameters.entries_; }
 
   const Parameter* find(const std::string& name) const;
 };

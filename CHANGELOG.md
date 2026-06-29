@@ -8,6 +8,8 @@
 
 - #2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
 
+- core#2488: Added command `pepcli pseudonym convert`, which converts a pseudonym of any form into a polymorphic, local, or brief-local pseudonym.
+
 ---------------
 *Past changes, do not edit (except by person doing release):*
 
@@ -621,7 +623,7 @@
   - https://pep.cs.ru.nl/nolai/acc/client.sif
   - https://pep.cs.ru.nl/dtap/master/client.sif
   - https://pep.cs.ru.nl/dtap/stable/client.sif
-  
+
   Note that these images are provided "as is". The PEP team does not provide
   support for Apptainer/Singularity, nor for (problems arising from) running the
   PEP software from an Apptainer/Singularity container.
@@ -943,7 +945,7 @@
     Note that you need the key under HKLM, not the one under HKCU.
   - Delete value "InstallLocation" (or the entire key).
   - Start the installation again.
-  
+
   The new installation attempt should now default to (a subdirectory of)
   "C:\Program Files". Leave the location at its default.
   After installation, delete any shortcuts that were previously manually
@@ -1363,7 +1365,7 @@ environments are still running the code base of the release before that, i.e.
      pepAssessor.exe.
   5. Switch to your regular user account (POM: your Z account) and start
      pepAssessor using the shortcut in the Windows Start Menu.
-  
+
   The pepAssessor application will check on startup if an update is available.
   If so, it will provide a button to start the update process. When prompted,
   provide administrative credentials (POM: MANZ credentials) to perform the

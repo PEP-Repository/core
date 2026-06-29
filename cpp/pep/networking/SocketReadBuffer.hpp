@@ -16,14 +16,14 @@ public:
   using DelimitedReadHandler = std::function<void(const boost::system::error_code&, const std::string&)>;
 
 private:
-  std::string mClientBuffer; // Here we store excess data received from StreamSocket::asyncReadUntil
-  boost::asio::streambuf mSocketBuffer; // Helper for calls to StreamSocket::asyncReadUntil; stored as a member variable so that we don't have to heap-allocate a new one for every invocation
+  std::string clientBuffer_; // Here we store excess data received from StreamSocket::asyncReadUntil
+  boost::asio::streambuf socketBuffer_; // Helper for calls to StreamSocket::asyncReadUntil; stored as a member variable so that we don't have to heap-allocate a new one for every invocation
 
   // The method (pointer) to invoke for calls to the "asyncRead" method:
-  // - either asyncReadBuffered to deal with excess data that we received and stored earlier in our mClientBuffer,
-  // - or asyncReadDirectly from the StreamSocket if the mClientBuffer is empty.
+  // - either asyncReadBuffered to deal with excess data that we received and stored earlier in our clientBuffer_,
+  // - or asyncReadDirectly from the StreamSocket if the clientBuffer_ is empty.
   using AsyncReadMethod = void (SocketReadBuffer::*)(StreamSocket&, void*, size_t, const RawReadHandler&);
-  AsyncReadMethod mAsyncRead;
+  AsyncReadMethod asyncRead_;
 
   SocketReadBuffer();
 

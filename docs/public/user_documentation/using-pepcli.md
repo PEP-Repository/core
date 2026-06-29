@@ -147,6 +147,8 @@ General purpose:
   - [`query column-access`](#query-column-access) lists the columns and column groups accessible to the enrolled user.
   - [`query participant-group-access`](#query-participant-group-access) lists the participant groups accessible to the enrolled user.
   - [`query enrollment`](#query-enrollment) tells users how they're enrolled.
+- [`pseudonym`](#pseudonym) provides ad hoc pseudonym operations: converting between formats and inspecting their type.
+  - [`pseudonym convert`](#pseudonym-convert) converts a pseudonym between different formats.
 
 Data storage and retrieval:
 
@@ -1033,9 +1035,26 @@ pepcli query enrollment
 
 The output will include your user name (ID) and the user group to which you belong. The command will produce an error if you haven't enrolled yet, or if your enrollment has expired.
 
+## pseudonym
+
+Use the `pepcli pseudonym` command to perform ad hoc operations on pseudonyms.
+
+### pseudonym convert
+
+The `convert` subcommand converts a pseudonym from one format into another.
+
+```plaintext
+pepcli pseudonym convert <from> <to>
+```
+
+`<from>` is the pseudonym value to convert. `<to>` specifies the target type:
+`local-pseudonym` (or `lp`), `polymorphic-pseudonym` (or `pp`), or
+`brief-local-pseudonym` (or `blp`).
+
+
 ## store
 
-You can store data with this command:
+You can store data with this command:-
 
 ```plaintext
 pepcli store -c <column name> -p <participant> -i /PATH/TO/DATA/FILE

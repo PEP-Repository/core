@@ -1,6 +1,7 @@
 #include <pep/httpserver/HTTPServer.hpp>
 
 #include <pep/async/OnAsio.hpp>
+#include <pep/async/SingleWorker.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 
@@ -11,8 +12,6 @@
 namespace pep {
 
 static const std::string LogTag ("HTTPServer");
-
-SingleWorker HTTPServer::CleanupWorker = SingleWorker();
 
 struct HttpRequestHandlerParams {
   std::string method;
@@ -31,6 +30,9 @@ protected:
 
 namespace {
 
+//NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+SingleWorker cleanupWorker;
+
 struct HttpRequestHandlerParamsBasic : HttpRequestHandlerParams {
   HTTPServer::BasicHandler func;
 
@@ -38,7 +40,7 @@ struct HttpRequestHandlerParamsBasic : HttpRequestHandlerParams {
     : HttpRequestHandlerParams(method, uri, exactMatchOnly, io_context), func(func) {}
 
   rxcpp::observable<HTTPResponse> runHandler(const HTTPRequest& request, std::string remoteIp) override {
-    return run_on_asio(*io_context, std::bind(func, request, std::move(remoteIp)));
+    return RunOnAsio(*io_context, std::bind(func, request, std::move(remoteIp)));
   }
 };
 
@@ -131,7 +133,7 @@ int requestHandler(struct mg_connection *conn, void *cbdata)
 } // namespace
 
 HTTPServer::HTTPServer(uint16_t port, std::shared_ptr<boost::asio::io_context> io_context, std::optional<std::filesystem::path> tlsCertificate)
-  : mRegisteredHandlers(std::make_unique<decltype(mRegisteredHandlers)::element_type>()), mIoContext(io_context) {
+  : registeredHandlers_(std::make_unique<decltype(registeredHandlers_)::element_type>()), ioContext_(io_context) {
   auto portStr = std::to_string(port);
   std::vector<const char*> options;
   [[maybe_unused]] std::string tlsCertificateStr; // Needs to remain valid until mg_start2 call
@@ -163,13 +165,13 @@ HTTPServer::HTTPServer(uint16_t port, std::shared_ptr<boost::asio::io_context> i
   startError.text = startErrorMsgBuf.data();
   startError.text_buffer_size = startErrorMsgBuf.size();
 
-  mCtx = mg_start2(&init, &startError);
+  ctx_ = mg_start2(&init, &startError);
   // Make sure that code isn't changed to prematurely discard these variables, which must remain valid until the above function call
   (void) options;
   (void) portStr;
   (void) tlsCertificateStr;
 
-  if(!mCtx) {
+  if(!ctx_) {
     throw std::runtime_error("Could not start web server on port " + std::to_string(port) + ": " + startError.text);
   }
   // Make sure that code isn't changed to prematurely discard this variable, which must remain valid until the above throw statement
@@ -181,41 +183,41 @@ HTTPServer::~HTTPServer() noexcept {
 }
 
 void HTTPServer::registerHandler(const std::string& uri, bool exactMatchOnly, BasicHandler handler, const std::string& method) {
-  auto handlerParams = std::make_shared<HttpRequestHandlerParamsBasic>(handler, method, uri, exactMatchOnly, mIoContext);
+  auto handlerParams = std::make_shared<HttpRequestHandlerParamsBasic>(handler, method, uri, exactMatchOnly, ioContext_);
   registerHandlerParams(handlerParams);
 }
 
 void HTTPServer::registerHandler(const std::string& uri, bool exactMatchOnly, ObservableHandler handler, const std::string& method) {
-  auto handlerParams = std::make_shared<HttpRequestHandlerParamsObservable>(handler, method, uri, exactMatchOnly, mIoContext);
+  auto handlerParams = std::make_shared<HttpRequestHandlerParamsObservable>(handler, method, uri, exactMatchOnly, ioContext_);
   registerHandlerParams(handlerParams);
 }
 
 void HTTPServer::asyncStop() {
-  if (!mCtx) {
+  if (!ctx_) {
     return;
   }
-  PEP_LOG(LogTag, Severity::Debug) << "Stopping server " << mCtx;
+  PEP_LOG(LogTag, Severity::Debug) << "Stopping server " << ctx_;
 
   //We don't want to block on the call to mg_stop, because:
   // 1. This method is usually called from the main thread
   // 2. mg_stop waits for all civetweb worker threads to finish handling any requests
-  // 3. When handling a request, we schedule the handler on mIoContext, which runs on the main thread, and then use `as_blocking` to wait for the result
+  // 3. When handling a request, we schedule the handler on ioContext_, which runs on the main thread, and then use `as_blocking` to wait for the result
   // So: we have mg_stop blocking the main thread, which will therefore never handle the request on which mg_stop is waiting.
-  // We also capture mRegisteredHandlers, in order to make sure the HttpRequestHandlerParams it contains are not cleaned up before all ongoing request handlers have finished
-  CleanupWorker.doWork([ctx = std::exchange(mCtx, {}), registeredHandlers = std::exchange(mRegisteredHandlers, {})]{
+  // We also capture registeredHandlers_, in order to make sure the HttpRequestHandlerParams it contains are not cleaned up before all ongoing request handlers have finished
+  cleanupWorker.doWork([ctx = std::exchange(ctx_, {}), registeredHandlers = std::exchange(registeredHandlers_, {})]{
     mg_stop(ctx);
     // I'd like to log here that we're stopped, but the logger may actually be destructed here
   });
 }
 
 void HTTPServer::registerHandlerParams(std::shared_ptr<HttpRequestHandlerParams> params) {
-  if(!mRegisteredHandlers->try_emplace(params->uri, params).second) {
+  if(!registeredHandlers_->try_emplace(params->uri, params).second) {
     std::ostringstream msg;
     msg << "A handler for uri " << params->uri << "is already registered";
     throw std::runtime_error(msg.str());
   }
 
-  mg_set_request_handler(mCtx, params->uri.c_str(), requestHandler, params.get());
+  mg_set_request_handler(ctx_, params->uri.c_str(), requestHandler, params.get());
 }
 
 } // namespace pep

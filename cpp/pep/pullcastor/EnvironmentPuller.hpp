@@ -28,20 +28,20 @@ class EnvironmentPuller : public std::enable_shared_from_this<EnvironmentPuller>
 private:
   using StudiesBySlug = std::unordered_map<std::string, std::shared_ptr<Study>>;
 
-  bool mDry;
-  std::optional<std::vector<std::string>> mSps;
-  Timestamp mCooldownThreshold;
+  bool dry_;
+  std::optional<std::vector<std::string>> sps_;
+  Timestamp cooldownThreshold_;
   std::shared_ptr<Client> client_;
-  std::string mOauthToken;
-  std::shared_ptr<CastorConnection> mCastor;
-  EventSubscription mCastorOnRequestSubscription;
-  std::shared_ptr<Metrics> mMetrics;
-  std::unordered_map<std::string, size_t> mCastorRequests;
-  std::shared_ptr<StoredData> mStoredData;
+  std::string oauthToken_;
+  std::shared_ptr<CastorConnection> castor_;
+  EventSubscription castorOnRequestSubscription_;
+  std::shared_ptr<Metrics> metrics_;
+  std::unordered_map<std::string, size_t> castorRequests_;
+  std::shared_ptr<StoredData> storedData_;
 
-  std::shared_ptr<RxCache<StudyAspect>> mAspects;
-  std::shared_ptr<RxCache<std::shared_ptr<ImportColumnNamer>>> mColumnNamer;
-  std::shared_ptr<RxCache<std::shared_ptr<StudiesBySlug>>> mStudiesBySlug;
+  std::shared_ptr<RxCache<StudyAspect>> aspects_;
+  std::shared_ptr<RxCache<std::shared_ptr<ImportColumnNamer>>> columnNamer_;
+  std::shared_ptr<RxCache<std::shared_ptr<StudiesBySlug>>> studiesBySlug_;
 
   EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config, bool dry, const std::optional<std::vector<std::string>>& spColumns, const std::optional<std::vector<std::string>>& sps);
 
@@ -120,13 +120,13 @@ public: // Functions providing context data to child pullers
   * \brief Produces (an observable emitting) study aspects that should be pulled from Castor.
   * \return The aspects to retrieve from Castor.
   */
-  inline rxcpp::observable<StudyAspect> getStudyAspects() { return mAspects->observe(); }
+  inline rxcpp::observable<StudyAspect> getStudyAspects() { return aspects_->observe(); }
 
   /*!
   * \brief Produces an optional set of short pseudonyms (i.e. Castor participant IDs) that processing should be limited to.
   * \return Short pseudonyms to process, or std::nullopt if all participants should be processed.
   */
-  inline const std::optional<std::vector<std::string>>& getShortPseudonymsToProcess() const noexcept { return mSps; }
+  inline const std::optional<std::vector<std::string>>& getShortPseudonymsToProcess() const noexcept { return sps_; }
 
   /*!
   * \brief Produces (an observable emitting) a representation of the data currently stored in PEP.
@@ -138,7 +138,7 @@ public: // Functions providing context data to child pullers
   * \brief Produces (an observable emitting) the import column namer for this PEP environment.
   * \return The import column namer for this environment.
   */
-  inline rxcpp::observable<std::shared_ptr<ImportColumnNamer>> getImportColumnNamer() { return mColumnNamer->observe(); }
+  inline rxcpp::observable<std::shared_ptr<ImportColumnNamer>> getImportColumnNamer() { return columnNamer_->observe(); }
 
   /*!
   * \brief Produces (an observable emitting) the Castor Study object associated with the specified slug.
@@ -152,13 +152,13 @@ public: // Functions providing context data to child pullers
   * \brief Produces (an observable emitting) the Castor connection associated with this environment.
   * \return The Castor connection from which to retrieve Castor data.
   */
-  inline std::shared_ptr<CastorConnection> getCastor() const noexcept { return mCastor; }
+  inline std::shared_ptr<CastorConnection> getCastor() const noexcept { return castor_; }
 
   /*!
   * \brief Produces the timestamp that corresponds with the configured cooldown period. Data requiring cooldown should be older than this timestamp.
   * \return The timestamp marking the end of the cooldown period for affected data.
   */
-  inline const Timestamp& getCooldownThreshold() const noexcept { return mCooldownThreshold; }
+  inline const Timestamp& getCooldownThreshold() const noexcept { return cooldownThreshold_; }
 };
 
 }

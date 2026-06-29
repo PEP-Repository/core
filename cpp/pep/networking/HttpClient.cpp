@@ -60,62 +60,62 @@ boost::urls::url UrlPlusRelative(const boost::urls::url& url, const std::string&
 }
 
 HttpClient::Parameters::Parameters(boost::asio::io_context& ioContext, boost::urls::url absoluteBase, std::optional<std::string> expectedCommonName)
-  : mIoContext(ioContext), mTls(false), mBaseUri(std::move(absoluteBase)) {
+  : ioContext_(ioContext), tls_(false), baseUri_(std::move(absoluteBase)) {
   this->validateBaseUri();
 
-  auto protocol = std::find_if(SUPPORTED_PROTOCOLS.begin(), SUPPORTED_PROTOCOLS.end(), [scheme = mBaseUri.scheme()](const ProtocolProperties& candidate) { return candidate.scheme == scheme; });
+  auto protocol = std::find_if(SUPPORTED_PROTOCOLS.begin(), SUPPORTED_PROTOCOLS.end(), [scheme = baseUri_.scheme()](const ProtocolProperties& candidate) { return candidate.scheme == scheme; });
   if (protocol == SUPPORTED_PROTOCOLS.end()) {
-    throw std::runtime_error("Unsupported protocol " + std::string(mBaseUri.scheme()));
+    throw std::runtime_error("Unsupported protocol " + std::string(baseUri_.scheme()));
   }
 
-  mTls = protocol->tls;
+  tls_ = protocol->tls;
 
-  mEndPoint.hostname = mBaseUri.host();
-  mEndPoint.port = mBaseUri.port_number();
-  if (mEndPoint.port == 0) {
-    mEndPoint.port = protocol->defaultPort;
+  endPoint_.hostname = baseUri_.host();
+  endPoint_.port = baseUri_.port_number();
+  if (endPoint_.port == 0) {
+    endPoint_.port = protocol->defaultPort;
   }
   if (expectedCommonName.has_value()) {
-    mEndPoint.expectedCommonName = *expectedCommonName;
+    endPoint_.expectedCommonName = *expectedCommonName;
   }
 }
 
 HttpClient::Parameters::Parameters(boost::asio::io_context& ioContext, bool tls, const EndPoint& endPoint, const std::optional<std::string>& relativeBase)
-  : mIoContext(ioContext), mTls(tls), mBaseUri(FormatHttpUrl(tls, endPoint)), mEndPoint(endPoint) {
+  : ioContext_(ioContext), tls_(tls), baseUri_(FormatHttpUrl(tls, endPoint)), endPoint_(endPoint) {
   this->validateBaseUri();
   if (relativeBase.has_value()) {
-    mBaseUri = UrlPlusRelative(mBaseUri, *relativeBase);
+    baseUri_ = UrlPlusRelative(baseUri_, *relativeBase);
     this->validateBaseUri();
   }
 }
 
 std::shared_ptr<Client> HttpClient::Parameters::createBinaryClient() const {
   std::unique_ptr<Protocol::ClientParameters> parameters;
-  if (mTls) {
-    auto tls = std::make_unique<Tls::ClientParameters>(mIoContext, mEndPoint);
+  if (tls_) {
+    auto tls = std::make_unique<Tls::ClientParameters>(ioContext_, endPoint_);
     tls->caCertFilePath(this->caCertFilepath());
     parameters = std::move(tls);
   }
   else {
-    parameters = std::make_unique<Tcp::ClientParameters>(mIoContext, mEndPoint);
+    parameters = std::make_unique<Tcp::ClientParameters>(ioContext_, endPoint_);
   }
   return Client::Create(*parameters, this->reconnectParameters());
 }
 
 void HttpClient::Parameters::validateBaseUri() const {
-  if (!mBaseUri.has_scheme() || !mBaseUri.has_authority()) {
+  if (!baseUri_.has_scheme() || !baseUri_.has_authority()) {
     throw std::runtime_error("HttpClient requires an absolute base URI");
   }
-  if (mBaseUri.has_query()) {
+  if (baseUri_.has_query()) {
     throw std::runtime_error("HttpClient base URI may not contain queries"); // You can add those to the HTTPRequest that you get from HttpClient::makeRequest
   }
-  if (mBaseUri.host().empty()) {
+  if (baseUri_.host().empty()) {
     throw std::runtime_error("HttpClient base URI requires a host name");
   }
 }
 
 HttpClient::HttpClient(Parameters parameters)
-  : mParameters(std::move(parameters)) {
+  : parameters_(std::move(parameters)) {
 }
 
 void HttpClient::shutdown() {
@@ -136,31 +136,31 @@ void HttpClient::start() {
   if (status > Status::Initialized) {
     throw std::runtime_error("Can't (re)start an HttpClient after it has been shut down");
   }
-  if (mBinaryClient != nullptr) {
+  if (binaryClient_ != nullptr) {
     throw std::runtime_error("Can't start an HttpClient more than once");
   }
   this->setStatus(Status::Initializing);
 
-  mBinaryClient = mParameters.createBinaryClient();
-  mBinaryClientConnectionAttempt = mBinaryClient->onConnectionAttempt.subscribe([weak = WeakFrom(*this)](const networking::Connection::Attempt::Result& result) {
+  binaryClient_ = parameters_.createBinaryClient();
+  binaryClientConnectionAttempt_ = binaryClient_->onConnectionAttempt.subscribe([weak = WeakFrom(*this)](const networking::Connection::Attempt::Result& result) {
     auto self = weak.lock();
     if (result && self != nullptr) {
-      self->mConnection = *result; // TODO: clear when connection loses connectivity (and always check whether mConnection != nullptr before using it)
+      self->connection_ = *result; // TODO: clear when connection loses connectivity (and always check whether connection_ != nullptr before using it)
       self->setStatus(Status::Initialized);
       self->ensureSend();
     }
     });
-  mBinaryClient->start();
+  binaryClient_->start();
 }
 
 HTTPRequest HttpClient::makeRequest(HttpMethod method, const std::optional<std::string>& path) const {
-  const auto& baseUri = mParameters.baseUri();
+  const auto& baseUri = parameters_.baseUri();
   return HTTPRequest(baseUri.host(), method, UrlPlusRelative(baseUri, path.value_or(std::string())), std::vector<std::shared_ptr<std::string>>(), std::map<std::string, std::string, CaseInsensitiveCompare>(), false);
 }
 
 std::string HttpClient::pathFromUrl(const boost::urls::url& full) {
   std::string str = full.c_str();
-  std::string base = mParameters.baseUri().c_str();
+  std::string base = parameters_.baseUri().c_str();
   if (!str.starts_with(base)) {
     throw std::runtime_error("Client for " + base + " can't extract path from unrelated URL " + str);
   }
@@ -171,7 +171,7 @@ rxcpp::observable<HTTPResponse> HttpClient::sendRequest(HTTPRequest request) {
   if (!this->isRunning()) {
     throw std::runtime_error("HttpClient must be running to send a request");
   }
-  if (!std::string(request.uri().c_str()).starts_with(mParameters.baseUri().c_str())) {
+  if (!std::string(request.uri().c_str()).starts_with(parameters_.baseUri().c_str())) {
     throw std::runtime_error("Can't send request that doesn't match the HTTP client's base URI");
   }
 
@@ -180,22 +180,22 @@ rxcpp::observable<HTTPResponse> HttpClient::sendRequest(HTTPRequest request) {
   onRequest.notify(sendable);
 
   return CreateObservable<HTTPResponse>([self = SharedFrom(*this), sendable](rxcpp::subscriber<HTTPResponse> subscriber) {
-    self->mPendingRequests.push(MakeSharedCopy(PendingRequest{ sendable, subscriber }));
+    self->pendingRequests_.push(MakeSharedCopy(PendingRequest{ sendable, subscriber }));
 
     // Stop (re)sending if/when the subscriber unsubscribes
     subscriber.add([self, sendable]() { self->unpend(sendable); });
 
     self->ensureSend();
-    }).subscribe_on(observe_on_asio(mParameters.ioContext()));
+    }).subscribe_on(ObserveOnAsio(parameters_.ioContext()));
 }
 
 void HttpClient::stop() {
-  if (mBinaryClient != nullptr) {
-    mBinaryClientConnectionAttempt.cancel();
+  if (binaryClient_ != nullptr) {
+    binaryClientConnectionAttempt_.cancel();
     auto subscription = std::make_shared<EventSubscription>();
     if (this->status() == Status::Finalizing) {
       // Notify that we've been finalized when the binary client becomes finalized
-      *subscription = mBinaryClient->onStatusChange.subscribe([subscription, weak = WeakFrom(*this)](StatusChange change) {
+      *subscription = binaryClient_->onStatusChange.subscribe([subscription, weak = WeakFrom(*this)](StatusChange change) {
         assert(change.updated >= Status::Finalizing);
         auto self = weak.lock();
         if (self != nullptr && change.updated == Status::Finalized) {
@@ -204,8 +204,8 @@ void HttpClient::stop() {
         }
         });
     }
-    mBinaryClient->shutdown();
-    mBinaryClient = nullptr;
+    binaryClient_->shutdown();
+    binaryClient_ = nullptr;
   }
 }
 
@@ -226,7 +226,7 @@ bool HttpClient::continueSending(std::exception_ptr error) {
     return false;
   }
 
-  if (mPendingRequests.empty() || mPendingRequests.front() != mSending) {
+  if (pendingRequests_.empty() || pendingRequests_.front() != sending_) {
     this->finishSending();
     return false;
   }
@@ -236,31 +236,31 @@ bool HttpClient::continueSending(std::exception_ptr error) {
 
 void HttpClient::ensureSend() {
   auto status = this->status();
-  assert(status == Status::Finalized || mBinaryClient != nullptr);
-  if (mSending != nullptr || status >= Status::Finalizing || mConnection == nullptr || !mConnection->isConnected()) {
+  assert(status == Status::Finalized || binaryClient_ != nullptr);
+  if (sending_ != nullptr || status >= Status::Finalizing || connection_ == nullptr || !connection_->isConnected()) {
     return;
   }
 
   // Don't send abandoned requests
-  while (!mPendingRequests.empty() && !mPendingRequests.front()->subscriber.is_subscribed()) {
-    mPendingRequests.pop();
+  while (!pendingRequests_.empty() && !pendingRequests_.front()->subscriber.is_subscribed()) {
+    pendingRequests_.pop();
   }
-  if (mPendingRequests.empty()) {
+  if (pendingRequests_.empty()) {
     return;
   }
 
-  mSending = mPendingRequests.front();
-  mResponse = HTTPResponse();
+  sending_ = pendingRequests_.front();
+  response_ = HTTPResponse();
 
-  auto header = MakeSharedCopy(mSending->request->headerToString());
-  mConnection->asyncWrite(header->data(), header->size(), [self = SharedFrom(*this), header](const SizedTransfer::Result& result) {
+  auto header = MakeSharedCopy(sending_->request->headerToString());
+  connection_->asyncWrite(header->data(), header->size(), [self = SharedFrom(*this), header](const SizedTransfer::Result& result) {
     self->handleRequestPartWritten(result, 0);
     });
 }
 
 bool HttpClient::unpend(std::shared_ptr<HTTPRequest> request) {
-  if (!mPendingRequests.empty() && mPendingRequests.front()->request == request) {
-    mPendingRequests.pop();
+  if (!pendingRequests_.empty() && pendingRequests_.front()->request == request) {
+    pendingRequests_.pop();
     return true;
   }
 
@@ -269,16 +269,16 @@ bool HttpClient::unpend(std::shared_ptr<HTTPRequest> request) {
 
 void HttpClient::finishSending(std::exception_ptr error) {
   if (error == nullptr) {
-    assert(mSending != nullptr);
-    auto subscriber = mSending->subscriber;
-    if (this->unpend(mSending->request)) { // Otherwise the subscriber has already unsubscribed
-      subscriber.on_next(mResponse);
+    assert(sending_ != nullptr);
+    auto subscriber = sending_->subscriber;
+    if (this->unpend(sending_->request)) { // Otherwise the subscriber has already unsubscribed
+      subscriber.on_next(response_);
       subscriber.on_completed();
     }
   }
   // TODO: else notify subscriber of the error (they may wish to abort instead of having us retry)
 
-  mSending.reset();
+  sending_.reset();
   this->ensureSend();
 }
 
@@ -287,11 +287,11 @@ void HttpClient::handleRequestPartWritten(const SizedTransfer::Result& result, s
     return;
   }
 
-  const auto& parts = mSending->request->getBodyparts();
+  const auto& parts = sending_->request->getBodyparts();
   for (auto i = sentBodyParts; i < parts.size(); ++i) {
     const auto& part = parts[i];
     if (!part->empty()) {
-      mConnection->asyncWrite(part->data(), part->size(), [self = SharedFrom(*this), sent = i + 1](const SizedTransfer::Result& result) {
+      connection_->asyncWrite(part->data(), part->size(), [self = SharedFrom(*this), sent = i + 1](const SizedTransfer::Result& result) {
         self->handleRequestPartWritten(result, sent);
         });
       return;
@@ -299,7 +299,7 @@ void HttpClient::handleRequestPartWritten(const SizedTransfer::Result& result, s
   }
 
   // Done sending body parts: start receiving the HTTPResponse
-  mConnection->asyncReadUntil(PEP_CRLF, [self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
+  connection_->asyncReadUntil(PEP_CRLF, [self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
     self->handleReadStatusLine(result);
     });
 }
@@ -321,7 +321,7 @@ void HttpClient::handleReadStatusLine(const DelimitedTransfer::Result& result) {
 
   unsigned int statuscode{};
   responseStream >> statuscode;
-  mResponse.setStatusCode(statuscode);
+  response_.setStatusCode(statuscode);
 
   std::string statusMessage;
   std::getline(responseStream, statusMessage);
@@ -331,13 +331,13 @@ void HttpClient::handleReadStatusLine(const DelimitedTransfer::Result& result) {
   }
 
   TrimOutsideWhitespace(statusMessage);
-  mResponse.setStatusMessage(statusMessage);
+  response_.setStatusMessage(statusMessage);
 
   this->readHeaderLine();
 }
 
 void HttpClient::readHeaderLine() {
-  mConnection->asyncReadUntil(PEP_CRLF, [self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
+  connection_->asyncReadUntil(PEP_CRLF, [self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
     self->handleReadHeaderLine(result);
     });
 }
@@ -359,7 +359,7 @@ void HttpClient::handleReadHeaderLine(const DelimitedTransfer::Result& result) {
       std::string headerName = header.substr(0, index);
       std::string headerValue = header.substr(index + 1);
       TrimOutsideWhitespace(headerValue);
-      mResponse.setHeader(headerName, headerValue);
+      response_.setHeader(headerName, headerValue);
     }
     else {
       PEP_LOG(LogTag, Severity::Warning) << "Ignoring malformed header: " << header << '\n';
@@ -369,10 +369,10 @@ void HttpClient::handleReadHeaderLine(const DelimitedTransfer::Result& result) {
 }
 
 void HttpClient::readBody() {
-  auto transferEncodingHeader = mResponse.getHeaders().find("Transfer-Encoding");
-  if (transferEncodingHeader != mResponse.getHeaders().end()) {
+  auto transferEncodingHeader = response_.getHeaders().find("Transfer-Encoding");
+  if (transferEncodingHeader != response_.getHeaders().end()) {
     if (transferEncodingHeader->second.find("chunked") == std::string::npos) {
-      // Since mBinaryClient may have received (or may still receive) stuff that we can't process, we can't (reliably) keep using it
+      // Since binaryClient_ may have received (or may still receive) stuff that we can't process, we can't (reliably) keep using it
       this->restart();
       this->finishSending(std::make_exception_ptr(std::runtime_error("Unsupported transfer encoding " + transferEncodingHeader->second)));
       return;
@@ -380,12 +380,12 @@ void HttpClient::readBody() {
     this->readChunkSize();
   }
   else {
-    auto contentLengthHeader = mResponse.getHeaders().find("Content-Length");
-    if (contentLengthHeader != mResponse.getHeaders().end()) {
+    auto contentLengthHeader = response_.getHeaders().find("Content-Length");
+    if (contentLengthHeader != response_.getHeaders().end()) {
       auto contentlength = boost::lexical_cast<size_t>(contentLengthHeader->second);
       if (contentlength > 0) {
-        mContentBuffer.resize(contentlength);
-        mConnection->asyncRead(mContentBuffer.data(), mContentBuffer.size(), [self = SharedFrom(*this)](const SizedTransfer::Result& result) {
+        contentBuffer_.resize(contentlength);
+        connection_->asyncRead(contentBuffer_.data(), contentBuffer_.size(), [self = SharedFrom(*this)](const SizedTransfer::Result& result) {
           self->handleReadKnownSizeBody(result);
           });
       }
@@ -394,7 +394,7 @@ void HttpClient::readBody() {
       }
     }
     else {
-      mConnection->asyncReadAll([self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
+      connection_->asyncReadAll([self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
         self->handleReadConnectionBoundBody(result);
         });
     }
@@ -402,7 +402,7 @@ void HttpClient::readBody() {
 }
 
 void HttpClient::readChunkSize() {
-  mConnection->asyncReadUntil(PEP_CRLF, [self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
+  connection_->asyncReadUntil(PEP_CRLF, [self = SharedFrom(*this)](const DelimitedTransfer::Result& result) {
     self->handleReadChunkSize(result);
     });
 }
@@ -419,20 +419,20 @@ void HttpClient::handleReadChunkSize(const DelimitedTransfer::Result& result) {
 
   if (chunkSize > 0) {
     // Read the chunk, including the trailing PEP_CRLF
-    mContentBuffer.resize(chunkSize + 2);
-    mConnection->asyncRead(mContentBuffer.data(), mContentBuffer.size(), [self = SharedFrom(*this)](const SizedTransfer::Result& result) {
+    contentBuffer_.resize(chunkSize + 2);
+    connection_->asyncRead(contentBuffer_.data(), contentBuffer_.size(), [self = SharedFrom(*this)](const SizedTransfer::Result& result) {
       self->handleReadChunk(result);
       });
   }
   else {
     // We're processing the last (empty) chunk: read the PEP_CRLF that's written after its (empty) content
-    mContentBuffer.resize(2);
-    mConnection->asyncRead(mContentBuffer.data(), mContentBuffer.size(), [self = SharedFrom(*this)](const SizedTransfer::Result& result) {
+    contentBuffer_.resize(2);
+    connection_->asyncRead(contentBuffer_.data(), contentBuffer_.size(), [self = SharedFrom(*this)](const SizedTransfer::Result& result) {
       if (!self->continueSending(result.exception())) {
         return;
       }
 
-      assert(self->mContentBuffer == PEP_CRLF);
+      assert(self->contentBuffer_ == PEP_CRLF);
       self->finishSending();
       });
   }
@@ -443,9 +443,9 @@ void HttpClient::handleReadChunk(const SizedTransfer::Result& result) {
     return;
   }
 
-  assert(boost::ends_with(mContentBuffer, PEP_CRLF));
-  mContentBuffer.resize(mContentBuffer.size() - 2U);
-  mResponse.getBodyparts().push_back(MakeSharedCopy(mContentBuffer));
+  assert(boost::ends_with(contentBuffer_, PEP_CRLF));
+  contentBuffer_.resize(contentBuffer_.size() - 2U);
+  response_.getBodyparts().push_back(MakeSharedCopy(contentBuffer_));
 
   this->readChunkSize();
 }
@@ -455,8 +455,8 @@ void HttpClient::handleReadKnownSizeBody(const SizedTransfer::Result& result) {
     return;
   }
 
-  assert(*result == mContentBuffer.size());
-  this->handleReadBody(std::move(mContentBuffer));
+  assert(*result == contentBuffer_.size());
+  this->handleReadBody(std::move(contentBuffer_));
 }
 
 void HttpClient::handleReadConnectionBoundBody(const DelimitedTransfer::Result& result) {
@@ -467,7 +467,7 @@ void HttpClient::handleReadConnectionBoundBody(const DelimitedTransfer::Result& 
 }
 
 void HttpClient::handleReadBody(std::string body) {
-  mResponse.getBodyparts().push_back(MakeSharedCopy(std::move(body)));
+  response_.getBodyparts().push_back(MakeSharedCopy(std::move(body)));
   this->finishSending();
 }
 

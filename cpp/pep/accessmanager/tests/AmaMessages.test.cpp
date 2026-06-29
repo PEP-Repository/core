@@ -16,8 +16,8 @@ TEST(AmaQRColumnGroupFillColumnGroupToCapacity, simple) {
 
   //Assert
   pep::AmaQRColumnGroup expectedCG{"cgName", std::vector<std::string>{"col1", "col2", "col3"}};
-  ASSERT_EQ(dest.name_, expectedCG.name_);
-  ASSERT_EQ(dest.mColumns, expectedCG.mColumns);
+  ASSERT_EQ(dest.name, expectedCG.name);
+  ASSERT_EQ(dest.columns, expectedCG.columns);
   ASSERT_EQ(actualLength, 26U);
 }
 
@@ -32,8 +32,8 @@ TEST(AmaQRColumnGroupFillColumnGroupToCapacity, capacityZero) {
   size_t actualLength = pep::AmaQRColumnGroup::FillToProtobufSerializationCapacity(dest, source, capactity, offset);
 
   //Assert
-  ASSERT_EQ(dest.name_, "");
-  ASSERT_EQ(dest.mColumns, std::vector<std::string>{});
+  ASSERT_EQ(dest.name, "");
+  ASSERT_EQ(dest.columns, std::vector<std::string>{});
   ASSERT_EQ(actualLength, 0U);
 }
 
@@ -50,8 +50,8 @@ TEST(AmaQRColumnGroupFillColumnGroupToCapacity, CapacityLimited) {
 
   //Assert
   pep::AmaQRColumnGroup expectedCG{"cgName", std::vector<std::string>{"col1"}};
-  ASSERT_EQ(expectedCG.name_, dest.name_);
-  ASSERT_EQ(expectedCG.mColumns, dest.mColumns);
+  ASSERT_EQ(expectedCG.name, dest.name);
+  ASSERT_EQ(expectedCG.columns, dest.columns);
   ASSERT_EQ(actualLength, 14U);
 }
 
@@ -67,8 +67,8 @@ TEST(AmaQRColumnGroupFillColumnGroupToCapacity, OffsetLimited) {
 
   //Assert
   pep::AmaQRColumnGroup expectedCG{"cgName", std::vector<std::string>{"col3"}};
-  ASSERT_EQ(expectedCG.name_, dest.name_);
-  ASSERT_EQ(expectedCG.mColumns, dest.mColumns);
+  ASSERT_EQ(expectedCG.name, dest.name);
+  ASSERT_EQ(expectedCG.columns, dest.columns);
   ASSERT_EQ(actualLength, 14U);
 }
 
@@ -84,8 +84,8 @@ TEST(AmaQRColumnGroupFillColumnGroupToCapacity, OffsetAndCapacity) {
 
   //Assert
   pep::AmaQRColumnGroup expectedCG{"cgName", std::vector<std::string>{"col3"}};
-  ASSERT_EQ(expectedCG.name_, dest.name_);
-  ASSERT_EQ(expectedCG.mColumns, dest.mColumns);
+  ASSERT_EQ(expectedCG.name, dest.name);
+  ASSERT_EQ(expectedCG.columns, dest.columns);
   ASSERT_EQ(actualLength, 14U);
 }
 
@@ -103,8 +103,8 @@ TEST(AmaQRColumnGroupFillColumnGroupToCapacity, NoPadding) {
 
   //Assert
   pep::AmaQRColumnGroup expectedCG{"cgName", std::vector<std::string>{"col1", "col2", "col3"}};
-  ASSERT_EQ(dest.name_, expectedCG.name_);
-  ASSERT_EQ(dest.mColumns, expectedCG.mColumns);
+  ASSERT_EQ(dest.name, expectedCG.name);
+  ASSERT_EQ(dest.columns, expectedCG.columns);
   ASSERT_EQ(actualLength, 18U);
 }
 

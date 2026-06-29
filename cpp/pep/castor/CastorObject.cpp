@@ -4,13 +4,13 @@
 namespace pep {
 namespace castor {
 
-const std::string CastorObject::DEFAULT_ID_FIELD = "id";
+const std::string CastorObject::DefaultIdField = "id";
 
 CastorObject::CastorObject(JsonPtr json, const std::string& idField)
-  : mId(GetFromPtree<std::string>(*json, idField)) {}
+  : id_(GetFromPtree<std::string>(*json, idField)) {}
 
 std::string CastorObject::getId() const {
-  return mId;
+  return id_;
 }
 
 }

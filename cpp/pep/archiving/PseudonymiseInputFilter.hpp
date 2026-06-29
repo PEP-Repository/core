@@ -28,7 +28,7 @@ public:
     assert(!oldPseudonym_.empty());
   }
 
-  /* Reads data from source and replaces all instances of the old pseudonym with the new. Uses a fixed length buffer mPreReadFromSource and keeps reading bytes from the source until
+  /* Reads data from source and replaces all instances of the old pseudonym with the new. Uses a fixed length buffer preReadFromSource_ and keeps reading bytes from the source until
    * the requested amount of bytes, plus the length of the old pseudonym are in buffer. After processing, it can then be safely said that the first n bytes do not contain any part of
    * the old pseudonym.
    * \param src: Templated Source object. The data is collected from here.

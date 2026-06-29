@@ -145,7 +145,7 @@ rxcpp::observable < std::shared_ptr<StoreContext>> CreateContext(std::shared_ptr
           .op(pep::RxGetOne("short pseudonym result"))
           .map([context](pep::EnumerateAndRetrieveResult result) {
           assert(!context->pseudonym.has_value());
-          context->pseudonym = result.mData;
+          context->pseudonym = result.data;
           auto placeholder = pep::Pseudonymiser::GetDefaultPlaceholder().substr(0, context->pseudonym->length());
           std::string placeholderKey{"pseudonymPlaceholder"};
 
@@ -284,7 +284,7 @@ private:
         }
 
         pep::StoreData2Entry entry(context->pp, context->column, batches);
-        entry.mXMetadata = context->meta;
+        entry.xMetadata = context->meta;
         return client->storeData2({ entry }, opts);
         })
         .op(pep::RxBeforeTermination([cleanupFiles](std::optional<std::exception_ptr>) {
@@ -304,7 +304,7 @@ private:
 
   rxcpp::observable<pep::DataStorageResult2> updateCellMetadata(std::shared_ptr<pep::CoreClient> client, const pep::StoreData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) {
     pep::StoreMetadata2Entry entry(pp, column);
-    AddSpecifiedMetadata(entry.mXMetadata, this->getParameterValues());
+    AddSpecifiedMetadata(entry.xMetadata, this->getParameterValues());
     return client->updateMetadata2({ entry }, opts);
   }
 
@@ -384,7 +384,7 @@ protected:
       .op(pep::RxGetOne())
       .map([](pep::DataStorageResult2 res) {
         pt::ptree out;
-        out.put("id", boost::algorithm::hex(res.mIds[0]));
+        out.put("id", boost::algorithm::hex(res.ids[0]));
         pt::write_json(std::cout, out);
         return pep::FakeVoid();
       });

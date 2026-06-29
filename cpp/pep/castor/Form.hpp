@@ -15,8 +15,8 @@ class Form : public SimpleCastorChildObject<Form, Study>, public SharedConstruct
   std::shared_ptr<Visit> visit_;
 
  public:
-  static const std::string RELATIVE_API_ENDPOINT;
-  static const std::string EMBEDDED_API_NODE_NAME;
+  static const std::string RelativeApiEndpoint;
+  static const std::string EmbeddedApiNodeName;
 
   std::string getName() const { return name_; }
 

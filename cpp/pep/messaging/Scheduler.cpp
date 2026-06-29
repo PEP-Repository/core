@@ -36,7 +36,7 @@ MessageId Scheduler::push(const StreamId& streamId, std::shared_ptr<std::string>
     this->emplaceOutgoing(result, Flags::MakePayload(true), request);
   } else {
     // There's more to this request: we'll send tail entries later
-    mGenerators[result]; // make sure (entry for) this generator exists so that assertion is satisfied if the (non-final) head message is pop()ped before we can activate the generator
+    generators_[result]; // make sure (entry for) this generator exists so that assertion is satisfied if the (non-final) head message is pop()ped before we can activate the generator
     this->emplaceOutgoing(result, Flags::MakePayload(false), request);
     this->activateGenerator(result, *tail);
   }
@@ -52,10 +52,10 @@ MessageId Scheduler::push(const StreamId& streamId, MessageBatches responses) {
 }
 
 Scheduler::OutgoingMessage Scheduler::pop() {
-  assert(!mOutgoing.empty());
+  assert(!outgoing_.empty());
 
-  auto result = std::move(mOutgoing.front());
-  mOutgoing.pop_front();
+  auto result = std::move(outgoing_.front());
+  outgoing_.pop_front();
 
   const auto& messageId = result.properties.messageId();
 
@@ -63,12 +63,12 @@ Scheduler::OutgoingMessage Scheduler::pop() {
   if (result.properties.flags().close()) {
     assert(!this->isScheduledMessageId(messageId));
   } else {
-    auto closeLater = std::ranges::any_of(mOutgoing, [&messageId](const OutgoingMessage& candidate) {
+    auto closeLater = std::ranges::any_of(outgoing_, [&messageId](const OutgoingMessage& candidate) {
       return candidate.properties.messageId() == messageId && candidate.properties.flags().close();
       });
     // check if the stream is closed in a later packet in the queue
     // or that there is an observable
-    assert(closeLater || mGenerators.find(messageId) != mGenerators.end());
+    assert(closeLater || generators_.find(messageId) != generators_.end());
   }
 #endif
 
@@ -79,7 +79,7 @@ Scheduler::OutgoingMessage Scheduler::pop() {
 }
 
 bool Scheduler::available() const noexcept {
-  return !mOutgoing.empty();
+  return !outgoing_.empty();
 }
 
 bool Scheduler::hasPendingResponseFor(const StreamId& streamId) const {
@@ -87,36 +87,36 @@ bool Scheduler::hasPendingResponseFor(const StreamId& streamId) const {
 }
 
 void Scheduler::clear() {
-  mGenerators.clear(); // Prevent generators from producing any more stuff before we...
-  mOutgoing.clear(); // ...discard stuff that they already produced
+  generators_.clear(); // Prevent generators from producing any more stuff before we...
+  outgoing_.clear(); // ...discard stuff that they already produced
 }
 
 Scheduler::Scheduler(boost::asio::io_context& io_context) noexcept
-  : mIoContext(io_context) {
+  : ioContext_(io_context) {
 }
 
 void Scheduler::emplaceOutgoing(const MessageId& messageId, const Flags& flags, std::shared_ptr<std::string> message) {
-  if (message->size() >= MAX_SIZE_OF_MESSAGE) {
+  if (message->size() >= MaxSizeOfMessage) {
     throw std::runtime_error("Message too large to enqueue: " + std::to_string(message->size()) + " bytes");
   }
-  auto wasEmpty = mOutgoing.empty();
-  mOutgoing.emplace_back(MessageProperties(messageId, flags), message);
+  auto wasEmpty = outgoing_.empty();
+  outgoing_.emplace_back(MessageProperties(messageId, flags), message);
   if (wasEmpty) {
     onAvailable.notify();
   }
 }
 
 void Scheduler::activateGenerator(const MessageId& messageId, MessageBatches batches) {
-  assert(mGenerators[messageId].batches.empty()); // Creates the entry if it didn't exist yet, which is no problem since we're going to need it anyway
+  assert(generators_[messageId].batches.empty()); // Creates the entry if it didn't exist yet, which is no problem since we're going to need it anyway
 
   auto self = SharedFrom(*this);
 
-  mGenerators[messageId].subscription = batches
-    .observe_on(observe_on_asio(mIoContext))
+  generators_[messageId].subscription = batches
+    .observe_on(ObserveOnAsio(ioContext_))
     .subscribe(
       // On_next
       [messageId, self](MessageSequence batch) {
-        self->mGenerators[messageId].batches.emplace_back(batch);
+        self->generators_[messageId].batches.emplace_back(batch);
         self->queueNextBatch(messageId);
       },
 
@@ -134,11 +134,11 @@ void Scheduler::activateGenerator(const MessageId& messageId, MessageBatches bat
 
 void Scheduler::queueNextBatch(const MessageId& messageId) {
   // if there are messages queued for this message id, wait with requesting the next batch
-  if (std::any_of(mOutgoing.begin(), mOutgoing.end(), [&messageId](const OutgoingMessage& entry) { return entry.properties.messageId() == messageId; }))
+  if (std::any_of(outgoing_.begin(), outgoing_.end(), [&messageId](const OutgoingMessage& entry) { return entry.properties.messageId() == messageId; }))
     return;
-  auto it = mGenerators.find(messageId);
+  auto it = generators_.find(messageId);
   // if not found, do nothing
-  if (it == mGenerators.end())
+  if (it == generators_.end())
     return;
   auto& batches = it->second.batches;
   // if nothing to send or first observable is already active, do nothing
@@ -149,7 +149,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
   auto& batch = batches[0];
   batch.active = true; // mark active
   batch.messages
-    .observe_on(observe_on_asio(mIoContext))
+    .observe_on(ObserveOnAsio(ioContext_))
     .subscribe(
       // on_next
       [messageId, self](std::shared_ptr<std::string> message) {
@@ -168,7 +168,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
             std::rethrow_exception(e);
           } catch (const Error& err) {
             serialized = MakeSharedCopy(Serialization::ToString(err));
-            if (serialized->size() >= MAX_SIZE_OF_MESSAGE) {
+            if (serialized->size() >= MaxSizeOfMessage) {
               serialized = MakeSharedCopy(Serialization::ToString(Error{"<Error message too large>"}));
             }
           } catch (...) {
@@ -187,7 +187,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
                                 : "Internal error";
           serialized = MakeSharedCopy(Serialization::ToString(Error{std::move(message)}));
         }
-        self->mGenerators.erase(messageId);
+        self->generators_.erase(messageId);
         self->emplaceOutgoing(messageId, Flags::MakeError(), serialized);
       },
 
@@ -195,11 +195,11 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
       [messageId, sendClose = batch.final, self]() {
         if (sendClose) {
           // We're done sending batches for this message(Id)
-          self->mGenerators.erase(messageId);
+          self->generators_.erase(messageId);
 
           bool adjustedInlinePayload = false;
-          // try to reuse a packet already in the mOutgoing queue
-          for (auto it = self->mOutgoing.rbegin(); it != self->mOutgoing.rend(); ++it) {
+          // try to reuse a packet already in the outgoing_ queue
+          for (auto it = self->outgoing_.rbegin(); it != self->outgoing_.rend(); ++it) {
             if (it->properties.messageId() == messageId) {
               it->properties = MessageProperties(it->properties.messageId(), it->properties.flags() | Flags::MakeClose());
               adjustedInlinePayload = true;
@@ -211,8 +211,8 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
           }
         } else {
           // erase current observable (because it is not active anymore)
-          auto it = self->mGenerators.find(messageId);
-          if (it != self->mGenerators.end()) { // Presumably not an assertion because mGenerators may have been cleared
+          auto it = self->generators_.find(messageId);
+          if (it != self->generators_.end()) { // Presumably not an assertion because generators_ may have been cleared
             auto& batches = it->second.batches;
             assert(!batches.empty());
             if (!batches.empty() && batches[0].active)
@@ -225,7 +225,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
 }
 
 void Scheduler::finalizeBatches(const MessageId& messageId, const std::optional<MessageSequence>& last) {
-  auto& queue = mGenerators[messageId].batches;
+  auto& queue = generators_[messageId].batches;
   assert(std::none_of(queue.cbegin(), queue.cend(), [](const Batch& existing) { return existing.final; }));
 
   // only change inline if we are not processing the stream already
@@ -237,8 +237,8 @@ void Scheduler::finalizeBatches(const MessageId& messageId, const std::optional<
 }
 
 bool Scheduler::isScheduledMessageId(const MessageId& messageId) const {
-  return std::any_of(mOutgoing.cbegin(), mOutgoing.cend(), [&messageId](const OutgoingMessage& candidate) { return candidate.properties.messageId() == messageId; })
-    || mGenerators.contains(messageId);
+  return std::any_of(outgoing_.cbegin(), outgoing_.cend(), [&messageId](const OutgoingMessage& candidate) { return candidate.properties.messageId() == messageId; })
+    || generators_.contains(messageId);
 }
 
 void Scheduler::verifyNewMessageId(const MessageId& messageId) const {

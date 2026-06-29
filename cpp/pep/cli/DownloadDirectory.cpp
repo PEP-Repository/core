@@ -298,7 +298,7 @@ std::optional<XxHasher::Hash> DownloadDirectory::getCurrentDataHash(const std::f
     }
     else {
       std::ifstream stream(path.string().c_str(), std::ios::in | std::ios::binary);
-      return XxHasher(HashedArchive::DOWNLOAD_HASH_SEED)
+      return XxHasher(HashedArchive::DownloadHashSeed)
         .update(stream)
         .digest();
     }
@@ -401,7 +401,7 @@ std::string DownloadDirectory::Specification::toString() const {
 
 
 DownloadDirectory::RecordStorageStream::RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, std::uint64_t fileSize)
-  : destination_(std::move(destination)), descriptor_(std::move(descriptor)), path_(std::move(path)), fileName_(path_.filename().string()), fileSize_(fileSize), hasher_(HashedArchive::DOWNLOAD_HASH_SEED), pseudonymisationRequired_(pseudonymisationRequired), archiveExtractionRequired_(archiveExtractionRequired) {
+  : destination_(std::move(destination)), descriptor_(std::move(descriptor)), path_(std::move(path)), fileName_(path_.filename().string()), fileSize_(fileSize), hasher_(HashedArchive::DownloadHashSeed), pseudonymisationRequired_(pseudonymisationRequired), archiveExtractionRequired_(archiveExtractionRequired) {
 
   raw_ = std::make_shared<std::ofstream>(path_.string(), std::ios::out | std::ios::binary);
   if (!raw_->is_open()) {

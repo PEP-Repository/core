@@ -10,9 +10,9 @@ namespace win32api {
 
 class PlaintextCredentials {
 private:
-  pep::win32api::SecureBuffer<WCHAR> mUserName;
-  pep::win32api::SecureBuffer<WCHAR> mPassword;
-  pep::win32api::SecureBuffer<WCHAR> mDomain;
+  SecureBuffer<WCHAR> userName_;
+  SecureBuffer<WCHAR> password_;
+  SecureBuffer<WCHAR> domain_;
 
   PlaintextCredentials();
 

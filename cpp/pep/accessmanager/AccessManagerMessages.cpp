@@ -26,7 +26,7 @@ std::vector<std::string> IndexedTicket2::getParticipantGroups() const {
 
 std::vector<std::string> IndexedTicket2::getColumns() const {
   std::vector<std::string> ret;
-  const auto& columns = openTicketWithoutCheckingSignature()->mColumns;
+  const auto& columns = openTicketWithoutCheckingSignature()->columns;
   ret.reserve(columns.size());
   for (const auto& column : columns)
     ret.push_back(column);
@@ -35,7 +35,7 @@ std::vector<std::string> IndexedTicket2::getColumns() const {
 
 std::vector<std::string> IndexedTicket2::getModes() const {
   std::vector<std::string> ret;
-  const auto& modes = openTicketWithoutCheckingSignature()->mModes;
+  const auto& modes = openTicketWithoutCheckingSignature()->modes;
   ret.reserve(modes.size());
   for (const auto& mode : modes)
     ret.push_back(mode);
@@ -44,7 +44,7 @@ std::vector<std::string> IndexedTicket2::getModes() const {
 
 
 std::vector<PolymorphicPseudonym> IndexedTicket2::getAccessSubjects() const {
-  return GetPolymorphicPseudonyms(openTicketWithoutCheckingSignature()->mAccessSubjects);
+  return GetPolymorphicPseudonyms(openTicketWithoutCheckingSignature()->accessSubjects);
 }
 
 std::shared_ptr<Ticket2> IndexedTicket2::openTicketWithoutCheckingSignature() const {

@@ -71,7 +71,7 @@ TEST(FileStore, Basic) {
   pep::EncryptedKey polymorphicKey(pep::CurvePoint::Random(), pep::CurvePoint::Random(), pep::CurvePoint::Random());
 
   std::string page;
-  for (size_t i = 0; page.size() < pep::INLINE_PAGE_THRESHOLD; i++)
+  for (size_t i = 0; page.size() < pep::InlinePageThreshold; i++)
     page += " " + std::to_string(i);
 
   auto change = store->modifyEntry(name, true);

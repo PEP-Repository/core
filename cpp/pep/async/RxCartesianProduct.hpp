@@ -12,17 +12,17 @@ namespace detail {
 template <typename TItem2, typename SourceOperator2>
 class RxCartesianProductOperator {
 private:
-  rxcpp::observable<TItem2, SourceOperator2> mObservable2;
+  rxcpp::observable<TItem2, SourceOperator2> observable2_;
 
 public:
   explicit RxCartesianProductOperator(rxcpp::observable<TItem2, SourceOperator2> observable2)
-    : mObservable2(observable2) {
+    : observable2_(observable2) {
   }
 
   /// \param o1 The first observable
   template <typename TItem, typename SourceOperator>
   rxcpp::observable<std::pair<TItem, TItem2>> operator()(rxcpp::observable<TItem, SourceOperator> o1) const {
-    return mObservable2
+    return observable2_
       .op(RxToVector()) // Collect o2's items into a (single) vector to prevent o2 from being subscribed multiple times: see #1070
       .flat_map([o1](std::shared_ptr<std::vector<TItem2>> v2) {
       // Adapted from https://stackoverflow.com/a/26588822

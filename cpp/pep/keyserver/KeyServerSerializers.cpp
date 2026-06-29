@@ -10,18 +10,18 @@ EnrollmentRequest Serializer<EnrollmentRequest>::fromProtocolBuffer(proto::Enrol
 }
 
 void Serializer<EnrollmentRequest>::moveIntoProtocolBuffer(proto::EnrollmentRequest& dest, EnrollmentRequest value) const {
-  *dest.mutable_oauth_token() = std::move(value.mOAuthToken);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_signing_request(), std::move(value.mCertificateSigningRequest));
+  *dest.mutable_oauth_token() = std::move(value.oAuthToken);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_signing_request(), std::move(value.certificateSigningRequest));
 }
 
 EnrollmentResponse Serializer<EnrollmentResponse>::fromProtocolBuffer(proto::EnrollmentResponse&& source) const {
   return EnrollmentResponse{
-    .mCertificateChain = Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_chain()))
+    .certificateChain = Serialization::FromProtocolBuffer(std::move(*source.mutable_certificate_chain()))
   };
 }
 
 void Serializer<EnrollmentResponse>::moveIntoProtocolBuffer(proto::EnrollmentResponse& dest, EnrollmentResponse value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), std::move(value.mCertificateChain));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_certificate_chain(), std::move(value.certificateChain));
 }
 
 void Serializer<TokenBlockingTokenIdentifier>::moveIntoProtocolBuffer(

@@ -14,14 +14,14 @@ template <typename TDerived>
 class TestableSelfRegistering : public pep::SelfRegistering<TDerived, TestRegistrar> {
 protected:
   TestableSelfRegistering(const char* constructorFile) noexcept
-    : mConstructorFile(constructorFile) {
+    : constructorFile_(constructorFile) {
   }
 
 public:
-  const char* getConstructorFile() const noexcept { return mConstructorFile; }
+  const char* getConstructorFile() const noexcept { return constructorFile_; }
 
 private:
-  const char* mConstructorFile;
+  const char* constructorFile_;
 };
 
 

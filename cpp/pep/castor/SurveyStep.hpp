@@ -10,8 +10,8 @@ class SurveyStep : public SimpleCastorChildObject<SurveyStep, Survey>, public Sh
   std::string name_;
 
  public:
-  static const std::string RELATIVE_API_ENDPOINT;
-  static const std::string EMBEDDED_API_NODE_NAME;
+  static const std::string RelativeApiEndpoint;
+  static const std::string EmbeddedApiNodeName;
 
   std::string getName() const { return name_; }
   std::shared_ptr<Survey> getSurvey() const { return this->getParent(); }

@@ -9,15 +9,15 @@ namespace pep {
 
 class OAuthToken {
 private:
-  std::string mSerialized;
+  std::string serialized_;
 
-  std::string mData;
-  std::string mHmac;
+  std::string data_;
+  std::string hmac_;
 
-  std::string mSubject;
+  std::string subject_;
   std::string group_;
 
-  std::chrono::sys_seconds mIssuedAt, mExpiresAt;
+  std::chrono::sys_seconds issuedAt_, expiresAt_;
 
 private:
   explicit OAuthToken(const std::string& serialized);
@@ -27,14 +27,14 @@ private:
   bool verifyGroup(const std::string& required) const;
 
 public:
-  static const std::string DEFAULT_JSON_FILE_NAME;
+  static const std::string DefaultJsonFileName;
 
   OAuthToken() = default;
-  const std::string& getSerializedForm() const noexcept { return mSerialized; }
-  const std::string& getSubject() const noexcept { return mSubject; }
+  const std::string& getSerializedForm() const noexcept { return serialized_; }
+  const std::string& getSubject() const noexcept { return subject_; }
   const std::string& getGroup() const noexcept { return group_; }
-  std::chrono::sys_seconds getIssuedAt() const noexcept { return mIssuedAt; }
-  std::chrono::sys_seconds getExpiresAt() const noexcept { return mExpiresAt; }
+  std::chrono::sys_seconds getIssuedAt() const noexcept { return issuedAt_; }
+  std::chrono::sys_seconds getExpiresAt() const noexcept { return expiresAt_; }
 
   bool verify(const std::string& secret, const std::string& requiredSubject, const std::string& requiredGroup) const;
   bool verify(const std::optional<std::string>& requiredSubject, const std::optional<std::string>& requiredGroup) const;

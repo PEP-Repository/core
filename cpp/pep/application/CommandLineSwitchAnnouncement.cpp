@@ -21,10 +21,10 @@ const std::string SWITCH_NAME_PREFIX = SWITCH_SHORTHAND_PREFIX + SWITCH_SHORTHAN
 const std::string SwitchAnnouncement::STOP_PROCESSING = SWITCH_NAME_PREFIX;
 
 SwitchAnnouncement::SwitchAnnouncement(const std::string& prefix, const std::string& text)
-  : mPrefix(prefix), mText(text) {
-  assert(!mText.empty());
-  assert(mText[0] != SWITCH_PREFIX_CHARACTER);
-  assert(!std::any_of(mText.begin(), mText.end(), [](char c) {return !std::isprint(c); }));
+  : prefix_(prefix), text_(text) {
+  assert(!text_.empty());
+  assert(text_[0] != SWITCH_PREFIX_CHARACTER);
+  assert(!std::any_of(text_.begin(), text_.end(), [](char c) {return !std::isprint(c); }));
 }
 
 SwitchAnnouncement::SwitchAnnouncement(const std::string& name)

@@ -143,7 +143,7 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
         throw std::runtime_error("Failed to initiate HTTP fetch");
       }
     })
-    .subscribe_on(observe_on_asio(*io_context));
+    .subscribe_on(ObserveOnAsio(*io_context));
 }
 
 #else // ! __EMSCRIPTEN__

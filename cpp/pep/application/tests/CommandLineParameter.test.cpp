@@ -346,7 +346,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> AppCmd::createChildComma
 }
 
 void AppCmd::recordCommandValues(const pep::commandline::CommandPath& commandPath, const pep::commandline::NamedValues& values) {
-  mCapturedParams[commandPath.toString()] = values;
+  capturedParams_[commandPath.toString()] = values;
 }
 
 // UserCmd implementation

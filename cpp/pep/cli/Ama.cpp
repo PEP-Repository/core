@@ -27,9 +27,9 @@ namespace {
 
 class ParticipantState {
 private:
-  std::optional<std::string> mId;
-  std::optional<pep::StudyContexts> mContexts;
-  std::optional<bool> mIsTest;
+  std::optional<std::string> id_;
+  std::optional<pep::StudyContexts> contexts_;
+  std::optional<bool> isTest_;
 
   void readField(std::shared_ptr<pep::GlobalConfiguration> gc, const pep::EnumerateAndRetrieveResult& ear);
 
@@ -44,9 +44,9 @@ private:
 public:
   static rxcpp::observable<std::shared_ptr<ParticipantState>> Get(std::shared_ptr<pep::CoreClient> client, std::shared_ptr<pep::GlobalConfiguration> gc);
 
-  const std::optional<std::string>& getId() const noexcept { return mId; }
-  const std::optional<pep::StudyContexts>& getStudyContexts() const noexcept { return mContexts; }
-  bool isTestParticipant() const noexcept { return mIsTest.value_or(false); }
+  const std::optional<std::string>& getId() const noexcept { return id_; }
+  const std::optional<pep::StudyContexts>& getStudyContexts() const noexcept { return contexts_; }
+  bool isTestParticipant() const noexcept { return isTest_.value_or(false); }
 };
 
 const ParticipantState::FieldReadMethods& ParticipantState::GetFieldReadMethods() {
@@ -58,29 +58,29 @@ const ParticipantState::FieldReadMethods& ParticipantState::GetFieldReadMethods(
 
 void ParticipantState::readField(std::shared_ptr<pep::GlobalConfiguration> gc, const pep::EnumerateAndRetrieveResult& ear) {
   const auto& readers = GetFieldReadMethods();
-  auto entry = readers.find(ear.mColumn);
+  auto entry = readers.find(ear.column);
   if (entry == readers.cend()) {
-    throw std::runtime_error("Cannot read participant state from field " + ear.mColumn);
+    throw std::runtime_error("Cannot read participant state from field " + ear.column);
   }
   auto method = entry->second;
 
-  assert(ear.mDataSet); // TODO: support data that isn't returned inline
-  (this->*method)(gc, ear.mData);
+  assert(ear.dataSet); // TODO: support data that isn't returned inline
+  (this->*method)(gc, ear.data);
 }
 
 void ParticipantState::readParticipantIdentifier(std::shared_ptr<pep::GlobalConfiguration> gc, const std::string& value) {
-  assert(mId == std::nullopt);
-  mId = value;
+  assert(id_ == std::nullopt);
+  id_ = value;
 }
 
 void ParticipantState::readStudyContexts(std::shared_ptr<pep::GlobalConfiguration> gc, const std::string& value) {
-  assert(mContexts == std::nullopt);
-  mContexts = gc->getStudyContexts().parse(value);
+  assert(contexts_ == std::nullopt);
+  contexts_ = gc->getStudyContexts().parse(value);
 }
 
 void ParticipantState::readIsTestParticipant(std::shared_ptr<pep::GlobalConfiguration> gc, const std::string& value) {
-  assert(mIsTest == std::nullopt);
-  mIsTest = pep::StringToBool(value);
+  assert(isTest_ == std::nullopt);
+  isTest_ = pep::StringToBool(value);
 }
 
 rxcpp::observable<std::shared_ptr<ParticipantState>> ParticipantState::Get(std::shared_ptr<pep::CoreClient> client, std::shared_ptr<pep::GlobalConfiguration> gc) {
@@ -96,7 +96,7 @@ rxcpp::observable<std::shared_ptr<ParticipantState>> ParticipantState::Get(std::
     .reduce(
       std::make_shared<StateMap>(),
       [gc](std::shared_ptr<StateMap> states, const pep::EnumerateAndRetrieveResult& ear) {
-        auto& participant = (*states)[ear.mLocalPseudonymsIndex];
+        auto& participant = (*states)[ear.localPseudonymsIndex];
         if (participant == nullptr) {
           participant = std::make_shared<ParticipantState>();
         }
@@ -105,7 +105,7 @@ rxcpp::observable<std::shared_ptr<ParticipantState>> ParticipantState::Get(std::
       })
     .concat_map([](std::shared_ptr<StateMap> states) {return pep::RxIterate(std::move(*states)); })
     .map([](std::pair<const uint32_t, std::shared_ptr<ParticipantState>> pair) {return std::move(pair.second); })
-    .filter([](std::shared_ptr<ParticipantState> participant) {return participant->mId != std::nullopt; }); // Rows without ParticipantIdentifier cannot be processed
+    .filter([](std::shared_ptr<ParticipantState> participant) {return participant->id_ != std::nullopt; }); // Rows without ParticipantIdentifier cannot be processed
 }
 
 class ParticipantGroup : public pep::SharedConstructor<ParticipantGroup> {
@@ -119,8 +119,8 @@ public:
 
   private:
     std::shared_ptr<pep::CoreClient> client_;
-    bool mApply;
-    std::map<std::string, std::string> mMappings;
+    bool apply_;
+    std::map<std::string, std::string> mappings_;
 
     static inline std::string GetGroupNamePrefix() { return "all"; }
     static inline std::string GetContextBoundGroupNameDelimiter() { return "-"; }
@@ -132,14 +132,14 @@ public:
   public:
     std::string getGroupNameForStudyContext(const std::optional<pep::StudyContext>& context = std::nullopt) const;
     inline std::shared_ptr<pep::CoreClient> getClient() const noexcept { return client_; }
-    inline bool applyUpdates() const noexcept { return mApply; }
+    inline bool applyUpdates() const noexcept { return apply_; }
     static bool IsAutoAssignedGroupName(const std::string& name);
     static void OnManualAssignment(const std::string& group);
   };
 
 private:
   std::string name_;
-  std::set<std::string> mParticipantIds;
+  std::set<std::string> participantIds_;
 
   explicit ParticipantGroup(const std::string& name) : name_(name) {}
 
@@ -164,7 +164,7 @@ void ParticipantGroup::IncludeParticipant(Map& destination, const std::string& g
     position = inserted.first;
   }
   assert(position != destination.end());
-  position->second->mParticipantIds.emplace(participantId);
+  position->second->participantIds_.emplace(participantId);
 }
 
 void ParticipantGroup::IncludeRequiredAssignments(Map& destination, const ParticipantState& participant, const pep::GlobalConfiguration& gc, const AutoAssignContext& context) {
@@ -202,20 +202,20 @@ rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetR
 
 rxcpp::observable<std::shared_ptr<ParticipantGroup::Map>> ParticipantGroup::GetExisting(std::shared_ptr<pep::CoreClient> client) {
   return client->getAccessManagerProxy()->amaQuery(pep::AmaQuery{})
-    .concat_map([](const pep::AmaQueryResponse& response) {return RxIterate(response.participantGroups_); })
-    .filter([](const pep::AmaQRParticipantGroup& group) {return AutoAssignContext::IsAutoAssignedGroupName(group.name_); })
+    .concat_map([](const pep::AmaQueryResponse& response) {return RxIterate(response.participantGroups); })
+    .filter([](const pep::AmaQRParticipantGroup& group) {return AutoAssignContext::IsAutoAssignedGroupName(group.name); })
     .concat_map([client](const pep::AmaQRParticipantGroup& group) {
     pep::EnumerateAndRetrieveData2Opts opts;
-    opts.groups.push_back(group.name_);
+    opts.groups.push_back(group.name);
     opts.columns.push_back("ParticipantIdentifier");
     // TODO: re-use ticket from ParticipantGroup::GetRequired
     return client->enumerateAndRetrieveData2(opts)
       .reduce(
-        ParticipantGroup::Create(group.name_),
+        ParticipantGroup::Create(group.name),
         [](std::shared_ptr<ParticipantGroup> group, const pep::EnumerateAndRetrieveResult& ear) {
-          assert(ear.mDataSet); // TODO: support data not being returned inline
-          assert(ear.mColumn == "ParticipantIdentifier");
-          group->mParticipantIds.emplace(ear.mData);
+          assert(ear.dataSet); // TODO: support data not being returned inline
+          assert(ear.column == "ParticipantIdentifier");
+          group->participantIds_.emplace(ear.data);
           return group;
         }
       );
@@ -284,11 +284,11 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupConfiguration(std:
     }
 
     return create
-      .concat_map([context, required](const pep::FakeVoid&) {return UpdateGroupContents(context, required->name_, required->mParticipantIds, std::set<std::string>()); });
+      .concat_map([context, required](const pep::FakeVoid&) {return UpdateGroupContents(context, required->name_, required->participantIds_, std::set<std::string>()); });
   }
 
   if (required == nullptr) {
-    return UpdateGroupContents(context, existing->name_, std::set<std::string>(), existing->mParticipantIds)
+    return UpdateGroupContents(context, existing->name_, std::set<std::string>(), existing->participantIds_)
       .op(RxInstead(pep::FakeVoid())) // Ensure remainder of pipeline gets exactly one item
       .concat_map([context, existing](const pep::FakeVoid&) -> rxcpp::observable<pep::FakeVoid> {
       std::cout << "Removing group " << existing->name_ << std::endl;
@@ -299,7 +299,7 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupConfiguration(std:
         });
   }
 
-  return UpdateGroupContents(context, required->name_, required->mParticipantIds, existing->mParticipantIds);
+  return UpdateGroupContents(context, required->name_, required->participantIds_, existing->participantIds_);
 }
 
 rxcpp::observable<pep::FakeVoid> ParticipantGroup::UpdateGroupConfigurations(std::shared_ptr<AutoAssignContext> context, const Map& required, const Map& existing) {
@@ -323,7 +323,7 @@ rxcpp::observable<pep::FakeVoid> ParticipantGroup::AutoAssign(std::shared_ptr<Au
 }
 
 ParticipantGroup::AutoAssignContext::AutoAssignContext(std::shared_ptr<pep::CoreClient> client, bool apply, const std::vector<std::string>& mappings)
-  : client_(client), mApply(apply) {
+  : client_(client), apply_(apply) {
   for (const auto& mapping : mappings) {
     std::vector<std::string> parts;
     boost::split(parts, mapping, std::bind_front(std::equal_to{}, '='));
@@ -332,7 +332,7 @@ ParticipantGroup::AutoAssignContext::AutoAssignContext(std::shared_ptr<pep::Core
     }
     ToLower(parts[0]);
     ToLower(parts[1]);
-    auto emplaced = mMappings.emplace(parts[0], parts[1]);
+    auto emplaced = mappings_.emplace(parts[0], parts[1]);
     if (!emplaced.second) {
       throw std::runtime_error("Multiple name mappings specified for original " + parts[0]);
     }
@@ -352,8 +352,8 @@ std::string ParticipantGroup::AutoAssignContext::getGroupNameForStudyContext(con
     ToLower(id);
 
     // Apply mapping if there is one
-    auto mapping = mMappings.find(id);
-    if (mapping != mMappings.cend()) {
+    auto mapping = mappings_.find(id);
+    if (mapping != mappings_.cend()) {
       id = mapping->second;
     }
 
@@ -456,15 +456,15 @@ private:
 
     static pep::AmaQuery extractQuery(const pep::commandline::NamedValues& values) {
       return {
-        .mAt = pep::GetOptionalValue(values.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
+        .at = pep::GetOptionalValue(values.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
           return pep::Timestamp(milliseconds{ms});
         }),
-        .mColumnFilter = values.getOptional<std::string>("column").value_or(""),
-        .mColumnGroupFilter = values.getOptional<std::string>("column-group").value_or(""),
-        .mParticipantGroupFilter = values.getOptional<std::string>("participant-group").value_or(""),
-        .mUserGroupFilter = values.getOptional<std::string>("user-group").value_or(""),
-        .mColumnGroupModeFilter = values.getOptional<std::string>("column-mode").value_or(""),
-        .mParticipantGroupModeFilter = values.getOptional<std::string>("participant-group-mode").value_or(""),
+        .columnFilter = values.getOptional<std::string>("column").value_or(""),
+        .columnGroupFilter = values.getOptional<std::string>("column-group").value_or(""),
+        .participantGroupFilter = values.getOptional<std::string>("participant-group").value_or(""),
+        .userGroupFilter = values.getOptional<std::string>("user-group").value_or(""),
+        .columnGroupModeFilter = values.getOptional<std::string>("column-mode").value_or(""),
+        .participantGroupModeFilter = values.getOptional<std::string>("participant-group-mode").value_or(""),
       };
     }
 
@@ -704,8 +704,6 @@ private:
     }
 
   private:
-
-
     class AmaColumnGroupCreateCommand : public ChildCommandOf<CommandAmaColumnGroup> {
     public:
       AmaColumnGroupCreateCommand(CommandAmaColumnGroup& parent)
@@ -825,8 +823,8 @@ private:
             .flat_map([group, client](const pep::IndexedTicket2& indexed) {
             auto ticket = indexed.openTicketWithoutCheckingSignature();
             std::vector<pep::PolymorphicPseudonym> pps;
-            pps.reserve(ticket->mAccessSubjects.size());
-            std::transform(ticket->mAccessSubjects.begin(), ticket->mAccessSubjects.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.mPolymorphic; });
+            pps.reserve(ticket->accessSubjects.size());
+            std::transform(ticket->accessSubjects.begin(), ticket->accessSubjects.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.polymorphic; });
             return client->getAccessManagerProxy()->amaRemoveParticipantsFromGroup(group, pps);
               });
           });

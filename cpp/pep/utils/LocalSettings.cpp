@@ -96,7 +96,7 @@ class LocalSettingsRegistry: public LocalSettings {
  public:
   explicit LocalSettingsRegistry (const std::string& szSubKeyName = "");
   ~LocalSettingsRegistry() override {
-    ::RegCloseKey(mRegistryHandle);
+    ::RegCloseKey(registryHandle_);
   }
 
   /* LocalSettings::storeValue, with bookkeeping of what settings are modified */
@@ -111,7 +111,7 @@ class LocalSettingsRegistry: public LocalSettings {
    * Recursive in order to be depth agnostic (although currently only 2 levels are used by LocalSettings).
    */
   static boost::property_tree::ptree RetrieveRecursive (
-    HKEY mRegistrySubKey
+    HKEY registrySubKey_
   );
   /* StoreRecursive stores the modifications to the internal tree into the registry.
    * it takes the actual property tree and the modification bookkeeping
@@ -119,26 +119,26 @@ class LocalSettingsRegistry: public LocalSettings {
    * Recursive, as with RetrieveRecursive.
    */
   static void StoreRecursive (
-    HKEY mRegistrySubKey,
-    boost::property_tree::ptree& mPropertySubtree,
-    boost::property_tree::ptree& mModifiedSubtree
+    HKEY registrySubKey_,
+    boost::property_tree::ptree& propertySubtree_,
+    boost::property_tree::ptree& modifiedSubtree_
   );
   /* DeleteRecursive deletes values from registry that have been flagged deleted
    * in the internal boost property tree.
    */
   static void DeleteRecursive(
-    HKEY mRegistrySubKey,
-    boost::property_tree::ptree& mDeletedSubtree
+    HKEY registrySubKey_,
+    boost::property_tree::ptree& deletedSubtree_
   );
   /* setModifiedFlag flags the given property so that it will be updated when flushChanges() is called.
    * Additionally, in case the property was flagged deleted before, the flag is removed
    */
   void setModifiedFlag(const std::string& szNamespace, const std::string& szPropertyName);
 
-  HKEY mRegistryHandle;
+  HKEY registryHandle_;
   std::string szSubKeyName;
-  boost::property_tree::ptree mDeletedValues;
-  boost::property_tree::ptree mModifiedValues;
+  boost::property_tree::ptree deletedValues_;
+  boost::property_tree::ptree modifiedValues_;
 };
 
 bool LocalSettingsRegistry::storeValue(
@@ -166,17 +166,17 @@ bool LocalSettingsRegistry::storeValue(
 }
 
 void LocalSettingsRegistry::setModifiedFlag (const std::string& szNamespace, const std::string& szPropertyName) {
-  mModifiedValues.put(szNamespace + "." + szPropertyName, "");
+  modifiedValues_.put(szNamespace + "." + szPropertyName, "");
 }
 
 bool LocalSettingsRegistry::deleteValue (const std::string& szNamespace, const std::string& szPropertyName) {
   LocalSettings::deleteValue(szNamespace, szPropertyName);
-  boost::property_tree::ptree mNamespace;
+  boost::property_tree::ptree namespace_;
 
-  mDeletedValues.put(szNamespace + "." + szPropertyName, "");
+  deletedValues_.put(szNamespace + "." + szPropertyName, "");
   try {
-    mNamespace = mModifiedValues.get_child(szNamespace);
-    mNamespace.erase(szPropertyName);
+    namespace_ = modifiedValues_.get_child(szNamespace);
+    namespace_.erase(szPropertyName);
   } catch (const boost::property_tree::ptree_bad_path&) { }
   return true;
 }
@@ -196,40 +196,40 @@ LocalSettingsRegistry::LocalSettingsRegistry (const std::string& szSubKeyName) {
         0,
         KEY_READ | KEY_WRITE,
         nullptr,
-        &mRegistryHandle,
+        &registryHandle_,
         nullptr
       ) != ERROR_SUCCESS) {
     return;
   }
 
-  propertyTree_ = RetrieveRecursive (mRegistryHandle);
+  propertyTree_ = RetrieveRecursive (registryHandle_);
 }
 
 bool LocalSettingsRegistry::flushChanges () {
-  DeleteRecursive (mRegistryHandle, mDeletedValues);
-  StoreRecursive (mRegistryHandle, propertyTree_, mModifiedValues);
-  mDeletedValues.clear();
-  mModifiedValues.clear();
+  DeleteRecursive (registryHandle_, deletedValues_);
+  StoreRecursive (registryHandle_, propertyTree_, modifiedValues_);
+  deletedValues_.clear();
+  modifiedValues_.clear();
   return true;
 }
 
 boost::property_tree::ptree LocalSettingsRegistry::RetrieveRecursive (
-  HKEY mRegistrySubKey
+  HKEY registrySubKey_
 ) {
   DWORD dwIndex;
   DWORD dwType;
-  boost::property_tree::ptree mResult;
+  boost::property_tree::ptree result_;
   char abKeyBuffer[256];
   BYTE abValueBuffer[256];
   DWORD dwKeyLength;
   DWORD dwValueLength;
-  HKEY mChildSubKey;
+  HKEY childSubKey_;
 
   for(dwIndex = 0; ; dwIndex ++) {
     dwKeyLength = 256;
 
     if (::RegEnumKeyExA (
-          mRegistrySubKey,
+          registrySubKey_,
           dwIndex,
           abKeyBuffer,
           &dwKeyLength,
@@ -242,14 +242,14 @@ boost::property_tree::ptree LocalSettingsRegistry::RetrieveRecursive (
     }
 
     if (::RegOpenKeyExA (
-          mRegistrySubKey,
+          registrySubKey_,
           abKeyBuffer,
           0,
           KEY_READ,
-          &mChildSubKey
+          &childSubKey_
         ) == ERROR_SUCCESS) {
-      mResult.put_child (abKeyBuffer, RetrieveRecursive(mChildSubKey));
-      RegCloseKey (mChildSubKey);
+      result_.put_child (abKeyBuffer, RetrieveRecursive(childSubKey_));
+      RegCloseKey (childSubKey_);
     }
   }
 
@@ -257,7 +257,7 @@ boost::property_tree::ptree LocalSettingsRegistry::RetrieveRecursive (
     dwKeyLength = 256;
 
     if (::RegEnumValueA (
-          mRegistrySubKey,
+          registrySubKey_,
           dwIndex,
           abKeyBuffer,
           &dwKeyLength,
@@ -272,7 +272,7 @@ boost::property_tree::ptree LocalSettingsRegistry::RetrieveRecursive (
     dwValueLength = 256;
 
     if (::RegQueryValueExA (
-          mRegistrySubKey,
+          registrySubKey_,
           abKeyBuffer,
           0,
           &dwType,
@@ -281,117 +281,117 @@ boost::property_tree::ptree LocalSettingsRegistry::RetrieveRecursive (
         ) == ERROR_SUCCESS) {
       switch (dwType) {
       case REG_SZ:
-        mResult.put (abKeyBuffer, std::string(reinterpret_cast<char*>(abValueBuffer), dwValueLength - 1));
+        result_.put (abKeyBuffer, std::string(reinterpret_cast<char*>(abValueBuffer), dwValueLength - 1));
         break;
       case REG_BINARY:
-        mResult.put (abKeyBuffer, std::string(reinterpret_cast<char*>(abValueBuffer), dwValueLength));
+        result_.put (abKeyBuffer, std::string(reinterpret_cast<char*>(abValueBuffer), dwValueLength));
         break;
       case REG_DWORD:
-        mResult.put (abKeyBuffer, std::to_string(*reinterpret_cast<uint32_t*>(abValueBuffer)));
+        result_.put (abKeyBuffer, std::to_string(*reinterpret_cast<uint32_t*>(abValueBuffer)));
         break;
       case REG_QWORD:
-        mResult.put (abKeyBuffer, std::to_string(*reinterpret_cast<uint64_t*>(abValueBuffer)));
+        result_.put (abKeyBuffer, std::to_string(*reinterpret_cast<uint64_t*>(abValueBuffer)));
         break;
       }
     }
   }
 
-  return mResult;
+  return result_;
 }
 
 void LocalSettingsRegistry::DeleteRecursive(
-  HKEY mRegistrySubKey,
-  boost::property_tree::ptree& mDeletedSubtree
+  HKEY registrySubKey_,
+  boost::property_tree::ptree& deletedSubtree_
 ) {
   boost::property_tree::ptree::iterator it;
 
-  for (it = mDeletedSubtree.begin(); it != mDeletedSubtree.end(); it++) {
-    HKEY mChildSubKey;
+  for (it = deletedSubtree_.begin(); it != deletedSubtree_.end(); it++) {
+    HKEY childSubKey_;
     if (it->second.empty()) {
       if (::RegDeleteValue(
-            mRegistrySubKey,
+            registrySubKey_,
             it->first.c_str()
           ) != ERROR_SUCCESS) {
         //::RegDeleteKey(
-        //  mRegistrySubKey,
+        //  registrySubKey_,
         //  it->first.c_str()
         //);
       }
     } else {
       if (::RegOpenKeyExA(
-            mRegistrySubKey,
+            registrySubKey_,
             it->first.c_str(),
             0,
             KEY_READ | KEY_WRITE,
-            &mChildSubKey
+            &childSubKey_
           ) != ERROR_SUCCESS) {
         continue;
       }
-      DeleteRecursive(mChildSubKey, it->second);
-      ::RegCloseKey(mChildSubKey);
+      DeleteRecursive(childSubKey_, it->second);
+      ::RegCloseKey(childSubKey_);
     }
   }
 }
 
 void LocalSettingsRegistry::StoreRecursive (
-  HKEY mRegistrySubKey,
-  boost::property_tree::ptree& mPropertySubtree,
-  boost::property_tree::ptree& mModifiedSubtree
+  HKEY registrySubKey_,
+  boost::property_tree::ptree& propertySubtree_,
+  boost::property_tree::ptree& modifiedSubtree_
 ) {
   boost::property_tree::ptree::iterator it;
 
-  for (it = mModifiedSubtree.begin(); it != mModifiedSubtree.end(); it++) {
-    HKEY mChildSubKey;
-    boost::property_tree::ptree mChildPropertySubtree;
+  for (it = modifiedSubtree_.begin(); it != modifiedSubtree_.end(); it++) {
+    HKEY childSubKey_;
+    boost::property_tree::ptree childPropertySubtree_;
 
     if (it->second.empty()) {
       /* empty means leaf node -- node is modified */
 
-      auto nodeRef = mPropertySubtree.get_child_optional(it->first);
+      auto nodeRef = propertySubtree_.get_child_optional(it->first);
       if (!nodeRef) {
         PEP_LOG(LogTag, Severity::Debug) << "Unable to find entry " << it->first << " in value subtree";
         continue;
       }
-      const auto& mValueNode = *nodeRef;
+      const auto& valueNode_ = *nodeRef;
 
-      if (!mValueNode.empty()) {
-        /* mValueNode should always contain values, not subtrees */
+      if (!valueNode_.empty()) {
+        /* valueNode_ should always contain values, not subtrees */
         PEP_LOG(LogTag, Severity::Debug) << "Entry " << it->first << " in value subtree is not a leaf";
         continue;
       }
 
       ::RegSetValueExA(
-        mRegistrySubKey,
+        registrySubKey_,
         it->first.c_str(),
         0,
         REG_SZ,
-        reinterpret_cast<const BYTE*>(mValueNode.data().c_str()),
-        static_cast<DWORD>(mValueNode.data().length())
+        reinterpret_cast<const BYTE*>(valueNode_.data().c_str()),
+        static_cast<DWORD>(valueNode_.data().length())
       );
     } else {
       /* internal node -- create reg key if not already exists */
       if (::RegCreateKeyExA(
-            mRegistrySubKey,
+            registrySubKey_,
             it->first.c_str(),
             0,
             nullptr,
             0,
             KEY_READ | KEY_WRITE,
             nullptr,
-            &mChildSubKey,
+            &childSubKey_,
             nullptr
           ) != ERROR_SUCCESS) {
         continue;
       }
 
       try {
-        mChildPropertySubtree = mPropertySubtree.get_child(it->first);
-        StoreRecursive(mChildSubKey, mChildPropertySubtree, it->second);
+        childPropertySubtree_ = propertySubtree_.get_child(it->first);
+        StoreRecursive(childSubKey_, childPropertySubtree_, it->second);
       } catch (const boost::property_tree::ptree_bad_path&) {
         PEP_LOG(LogTag, Severity::Debug) << "Entry " << it->first << " is flagged modified but not found in property tree";
       }
 
-      ::RegCloseKey(mChildSubKey);
+      ::RegCloseKey(childSubKey_);
     }
   }
 }
@@ -407,7 +407,7 @@ class LocalSettingsIni : public LocalSettings {
   bool flushChanges () override;
 
  private:
-  std::string szFilename;
+  std::string szFilename_;
 };
 
 LocalSettingsIni::LocalSettingsIni (const std::string& szFilename) {
@@ -434,25 +434,25 @@ LocalSettingsIni::LocalSettingsIni (const std::string& szFilename) {
       assert(result);
       homeDir = result->pw_dir;
     }
-    this->szFilename = std::string(homeDir) + "/.pep/LocalSettings.ini";
+    szFilename_ = std::string(homeDir) + "/.pep/LocalSettings.ini";
   } else {
-    this->szFilename = szFilename;
+    szFilename_ = szFilename;
   }
 
   // Can we find & open the file?
-  if (std::ifstream iniStream{this->szFilename}) {
+  if (std::ifstream iniStream{szFilename_}) {
     read_ini(iniStream, propertyTree_);
   }
 }
 
 
 bool LocalSettingsIni::flushChanges() {
-  const auto dir = std::filesystem::path(this->szFilename).parent_path();
+  const auto dir = std::filesystem::path(szFilename_).parent_path();
   create_directory(dir);
   permissions(dir, std::filesystem::perms::owner_all);
 
   try {
-    boost::property_tree::write_ini (this->szFilename, propertyTree_);
+    boost::property_tree::write_ini (szFilename_, propertyTree_);
   } catch (const std::exception& e) {
     PEP_LOG(LogTag, Severity::Debug) << "Unable to write ini : " << e.what();
     return false;

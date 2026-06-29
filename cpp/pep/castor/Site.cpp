@@ -4,8 +4,8 @@
 namespace pep {
 namespace castor {
 
-const std::string Site::RELATIVE_API_ENDPOINT = "site";
-const std::string Site::EMBEDDED_API_NODE_NAME = "sites";
+const std::string Site::RelativeApiEndpoint = "site";
+const std::string Site::EmbeddedApiNodeName = "sites";
 
 Site::Site(std::shared_ptr<Study> study, JsonPtr json)
   : SimpleCastorChildObject<Site, Study>(study, json),

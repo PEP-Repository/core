@@ -710,6 +710,70 @@ fi
 
 ####################
 
+if should_run_test pseudonym-conversion; then
+  PC_CONFIG='{
+    "userGroups": [{ "name": "pcUsers" }],
+    "columnGroups": [{
+      "name": "pcData",
+      "columns": [ "pcData.id" ],
+      "cgars": {
+        "pcUsers": [ "read" ],
+        "Data Administrator": [ "read", "write" ]
+      }
+    }],
+    "subjectGroups": [{
+      "name": "pcSubjects",
+      "subjects": [
+        { "pcData.id": "ID_0" },
+        { "pcData.id": "ID_1" }
+      ],
+      "pgars": { "pcUsers": [ "enumerate", "access" ] }
+    }]
+  }'
+
+  test_setup "$PC_CONFIG"
+
+  PSEUDONYM_LIST_JSON="$DATA_DIR/test_output/pc-local-pseudonyms.json"
+
+  pepcli --oauth-token-group pcUsers list\
+      -P pcSubjects -C pcData --show-dataless --local-pseudonyms\
+      > "$PSEUDONYM_LIST_JSON"
+
+  pcLookup() {
+    local -r fromId=$1
+    local -r toType=$2
+    jq -r ".[] | select(.data.\"pcData.id\"== \"$fromId\") | .$toType" "$PSEUDONYM_LIST_JSON"
+  }
+
+  assert_equivalent_pp() {
+    public_key() { echo "$1" | cut -d: -f3; }
+    stable_id() { pepcli pseudonym convert "$1" user; }
+
+    assert_equal "$(public_key "$1")" "$(public_key "$2")"
+    assert_equal "$(stable_id "$1")" "$(stable_id "$2")"
+  }
+
+  PP=$(pcLookup ID_1 pp)
+  LP=$(pcLookup ID_1 lp)
+  UP=$(pcLookup ID_1 blp)
+
+  assert_equal "$(pepcli pseudonym convert "$PP" local-pseudonym)" "$LP"
+  assert_equal "$(pepcli pseudonym convert "$LP" local-pseudonym)" "$LP"
+  assert_equal "$(pepcli pseudonym convert "$UP" local-pseudonym)" "$LP"
+
+  assert_equal "$(pepcli pseudonym convert "$PP" brief-local-pseudonym)" "$UP"
+  assert_equal "$(pepcli pseudonym convert "$LP" brief-local-pseudonym)" "$UP"
+  assert_equal "$(pepcli pseudonym convert "$UP" brief-local-pseudonym)" "$UP"
+
+  assert_equal "$(pepcli pseudonym convert "$PP" polymorphic-pseudonym)" "$PP"
+  assert_equivalent_pp "$(pepcli pseudonym convert "$LP" polymorphic-pseudonym)" "$PP"
+  assert_equivalent_pp "$(pepcli pseudonym convert "$UP" polymorphic-pseudonym)" "$PP"
+
+  test_cleanup "$PC_CONFIG"
+fi
+
+####################
+
 if should_run_test user-id-collision; then
   pepcli --oauth-token-group "Access Administrator" user create "Aart.Appel@fake.ru.nl"
 

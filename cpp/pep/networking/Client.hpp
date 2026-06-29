@@ -15,10 +15,10 @@ public:
 private:
   class Connection;
 
-  boost::asio::io_context& mIoContext;
-  std::shared_ptr<Connection> mConnection;
-  EventSubscription mInitialConnectivity;
-  std::optional<ReconnectParameters> mReconnectParameters;
+  boost::asio::io_context& ioContext_;
+  std::shared_ptr<Connection> connection_;
+  EventSubscription initialConnectivity_;
+  std::optional<ReconnectParameters> reconnectParameters_;
 
   explicit Client(const Protocol::ClientParameters& parameters, std::optional<ReconnectParameters> reconnectParameters = ReconnectParameters());
 

@@ -26,19 +26,19 @@ const std::string OAUTH_TOKEN_JSON_KEY = "OAuthToken";
 
 namespace pep {
 
-const std::string OAuthToken::DEFAULT_JSON_FILE_NAME = "OAuthToken.json";
+const std::string OAuthToken::DefaultJsonFileName = "OAuthToken.json";
 
 bool OAuthToken::verify(const std::string& secret, const std::string& requiredSubject, const std::string& requiredGroup) const {
-  PEP_LOG("OAuthToken::verify", Severity::Debug) << "Verifying OAuth token " << mSerialized;
-  PEP_LOG("OAuthToken::verify", Severity::Debug) << "EncodeBase64Url(remoteJSON): " << EncodeBase64Url(mData);
+  PEP_LOG("OAuthToken::verify", Severity::Debug) << "Verifying OAuth token " << serialized_;
+  PEP_LOG("OAuthToken::verify", Severity::Debug) << "EncodeBase64Url(remoteJSON): " << EncodeBase64Url(data_);
 
   auto result = true;
 
   // Compute the HMAC on the json using the shared secret
-  std::string localHMAC = Hmac<Sha256>(secret, mData);
+  std::string localHMAC = Hmac<Sha256>(secret, data_);
 
   // Check whether the received HMAC is equal to the computed one
-  if (!const_time::IsEqual(localHMAC, mHmac)) {
+  if (!const_time::IsEqual(localHMAC, hmac_)) {
     PEP_LOG("OAuthToken::verify", Severity::Info) << "MAC in token invalid";
     result = false;
   }
@@ -77,8 +77,8 @@ bool OAuthToken::verify(const std::optional<std::string>& requiredSubject, const
 }
 
 bool OAuthToken::verifySubject(const std::string& required) const {
-  if (required != mSubject) {
-    PEP_LOG("OAuthToken::verify", Severity::Info) << "Subject in token '" << mSubject << "' does not match required subject '" << required << "'";
+  if (required != subject_) {
+    PEP_LOG("OAuthToken::verify", Severity::Info) << "Subject in token '" << subject_ << "' does not match required subject '" << required << "'";
     return false;
   }
   return true;
@@ -96,13 +96,13 @@ bool OAuthToken::verifyValidityPeriod() const {
   Timestamp now = TimeNow();
 
   // Check time of issuance
-  if (mIssuedAt >= now + 1min) { // Account for clock drift.  See #677
+  if (issuedAt_ >= now + 1min) { // Account for clock drift.  See #677
     PEP_LOG("OAuthToken::verifyValidityPeriod", Severity::Info) << "Token issued after current time";
     return false;
   }
 
   // Check whether token already expired
-  if (mExpiresAt <= now) {
+  if (expiresAt_ <= now) {
     PEP_LOG("OAuthToken::verifyValidityPeriod", Severity::Info) << "Token expired";
     return false;
   }
@@ -145,7 +145,7 @@ OAuthToken OAuthToken::Generate(
 }
 
 OAuthToken::OAuthToken(const std::string& serialized)
-  : mSerialized(serialized) {
+  : serialized_(serialized) {
   std::vector<std::string> splitToken;
   boost::split(splitToken, serialized, std::bind_front(std::equal_to{}, '.'));
 
@@ -162,25 +162,25 @@ OAuthToken::OAuthToken(const std::string& serialized)
   }
 
   try {
-    mData = DecodeBase64Url(splitToken[0]);
-    mHmac = DecodeBase64Url(splitToken[1]);
+    data_ = DecodeBase64Url(splitToken[0]);
+    hmac_ = DecodeBase64Url(splitToken[1]);
 
     boost::property_tree::ptree root;
-    std::istringstream jsonStream(mData);
+    std::istringstream jsonStream(data_);
     boost::property_tree::read_json(jsonStream, root);
 
-    mSubject = root.get<std::string>("sub");
+    subject_ = root.get<std::string>("sub");
     group_ = root.get<std::string>("group");
-    mIssuedAt = sys_seconds(seconds{root.get<seconds::rep>("iat")});
-    mExpiresAt = sys_seconds(seconds{root.get<seconds::rep>("exp")});
+    issuedAt_ = sys_seconds(seconds{root.get<seconds::rep>("iat")});
+    expiresAt_ = sys_seconds(seconds{root.get<seconds::rep>("exp")});
 
     /* Legacy: the "exp" field was filled with milliseconds-since-epoch under some circumstances.
      * For affected tokens, we convert the faulty value to the intended seconds-since-epoch.
      * See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2649#note_50424
      */
-    if (mIssuedAt   < sys_days(2025y / October / 1d)  // Issued by a code base affected by the bug
-      && mExpiresAt > sys_days(2100y / January / 1d)) { // Issued for a period longer than was (likely) intended
-      mExpiresAt = sys_seconds(mExpiresAt.time_since_epoch() /= 1'000);
+    if (issuedAt_   < sys_days(2025y / October / 1d)  // Issued by a code base affected by the bug
+      && expiresAt_ > sys_days(2100y / January / 1d)) { // Issued for a period longer than was (likely) intended
+      expiresAt_ = sys_seconds(expiresAt_.time_since_epoch() /= 1'000);
     }
   }
   catch(const boost::archive::iterators::dataflow_exception& e) {

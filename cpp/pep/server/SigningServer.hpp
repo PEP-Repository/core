@@ -24,20 +24,20 @@ protected:
   explicit SigningServer(std::shared_ptr<Parameters> parameters);
 
 private:
-  std::shared_ptr<X509IdentityFiles> mIdentityFiles;
-  std::optional<AsymmetricKey> mNewPrivateKey;
+  std::shared_ptr<X509IdentityFiles> identityFiles_;
+  std::optional<AsymmetricKey> newPrivateKey_;
 };
 
 
 /// \copydoc Server::Parameters
 class SigningServer::Parameters : public Server::Parameters {
 private:
-  std::shared_ptr<X509IdentityFiles> mIdentityFiles;
+  std::shared_ptr<X509IdentityFiles> identityFiles_;
 
 protected:
   void check() const override {
     auto traits = this->serverTraits();
-    if (!traits.signingIdentityMatches(mIdentityFiles->identity()->getCertificateChain())) {
+    if (!traits.signingIdentityMatches(identityFiles_->identity()->getCertificateChain())) {
       throw std::runtime_error("Invalid certificate chain for " + traits.description());
     }
 
@@ -48,8 +48,8 @@ protected:
   Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 
 public:
-  std::shared_ptr<const X509Identity> getSigningIdentity() const { return mIdentityFiles->identity(); }
-  std::shared_ptr<X509IdentityFiles> getIdentityFilesConfig() const { return mIdentityFiles; }
+  std::shared_ptr<const X509Identity> getSigningIdentity() const { return identityFiles_->identity(); }
+  std::shared_ptr<X509IdentityFiles> getIdentityFilesConfig() const { return identityFiles_; }
 };
 
 }

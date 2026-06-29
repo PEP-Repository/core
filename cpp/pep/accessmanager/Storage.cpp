@@ -55,7 +55,7 @@ std::optional<uint64_t> to_optional_uint64(std::optional<std::chrono::seconds> v
 }
 
 // This function defines the database scheme used.
-auto am_create_db(const std::string& path) {
+auto CreateAmDb(const std::string& path) {
   return make_storage(path,
     make_table("SelectStarPseudonyms",
       make_column("LocalPseudonym",
@@ -237,7 +237,7 @@ auto am_create_db(const std::string& path) {
 }
 
 // Can't be a typedef because we need to forward declare it for our pimpl idiom
-struct AccessManager::Backend::Storage::Implementor : database::Storage<am_create_db> {
+struct AccessManager::Backend::Storage::Implementor : database::Storage<CreateAmDb> {
   using Storage::Storage;
 };
 
@@ -433,10 +433,10 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
    */
   PEP_LOG(LogTag, Severity::Info) << "Checking whether the serialization of local pseudonyms is up to date";
   auto selectStarPseudonymRecordCountTotal = implementor_->raw.count<SelectStarPseudonymRecord>();
-  auto selectStarPseudonymRecordCountOldFormat = implementor_->raw.count<SelectStarPseudonymRecord>(where(length(&SelectStarPseudonymRecord::localPseudonym) > CurvePoint::PACKEDBYTES &&
-      length(&SelectStarPseudonymRecord::polymorphicPseudonym) > ElgamalEncryption::PACKEDBYTES));
+  auto selectStarPseudonymRecordCountOldFormat = implementor_->raw.count<SelectStarPseudonymRecord>(where(length(&SelectStarPseudonymRecord::localPseudonym) > CurvePoint::PackedBytes &&
+      length(&SelectStarPseudonymRecord::polymorphicPseudonym) > ElgamalEncryption::PackedBytes));
   auto participantGroupParticipantRecordCountTotal = implementor_->raw.count<ParticipantGroupParticipantRecord>();
-  auto participantGroupParticipantRecordCountOldFormat = implementor_->raw.count<ParticipantGroupParticipantRecord>(where(length(&ParticipantGroupParticipantRecord::localPseudonym) > CurvePoint::PACKEDBYTES));
+  auto participantGroupParticipantRecordCountOldFormat = implementor_->raw.count<ParticipantGroupParticipantRecord>(where(length(&ParticipantGroupParticipantRecord::localPseudonym) > CurvePoint::PackedBytes));
 
   if (selectStarPseudonymRecordCountOldFormat == 0 && participantGroupParticipantRecordCountOldFormat == 0) {
     PEP_LOG(LogTag, Severity::Info) << "everything up to date";
@@ -1405,7 +1405,7 @@ void AccessManager::Backend::Storage::removeUser(int64_t internalUserId) {
         oss << ", ";
         first = false;
       }
-      oss << group.name_;
+      oss << group.name;
     }
     throw Error(oss.str());
   }
@@ -1692,18 +1692,18 @@ bool AccessManager::Backend::Storage::userGroupIsEmpty(int64_t userGroupId) cons
 }
 
 int64_t AccessManager::Backend::Storage::createUserGroup(UserGroup userGroup) {
-  if (hasUserGroup(userGroup.name_)) {
+  if (hasUserGroup(userGroup.name)) {
     std::ostringstream msg;
-    msg << "User group " << Logging::Escape(userGroup.name_) << " already exists";
+    msg << "User group " << Logging::Escape(userGroup.name) << " already exists";
     throw Error(msg.str());
   }
   int64_t userGroupId = getNextUserGroupId();
-  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.name_), to_optional_uint64(userGroup.mMaxAuthValidity)));
+  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.name), to_optional_uint64(userGroup.maxAuthValidity)));
   return userGroupId;
 }
 
 void AccessManager::Backend::Storage::modifyUserGroup(UserGroup userGroup) {
-  modifyUserGroup(userGroup.name_, userGroup);
+  modifyUserGroup(userGroup.name, userGroup);
 }
 
 void AccessManager::Backend::Storage::modifyUserGroup(std::string_view name, UserGroup userGroup) {
@@ -1714,7 +1714,7 @@ void AccessManager::Backend::Storage::modifyUserGroup(std::string_view name, Use
   }
 
   auto userGroupId = getUserGroupId(name);
-  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.name_), to_optional_uint64(userGroup.mMaxAuthValidity)));
+  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.name), to_optional_uint64(userGroup.maxAuthValidity)));
 }
 
 void AccessManager::Backend::Storage::removeUserGroup(std::string name) {
@@ -1780,13 +1780,13 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   using namespace std::ranges;
   using namespace pep::database;
 
-  auto timestamp = query.mAt ? *query.mAt : TimeNow();
+  auto timestamp = query.at ? *query.at : TimeNow();
 
   // Select groups matching group filter
   auto groups = RangeToCollection<std::map<int64_t, UserGroup>>(
     implementor_->getCurrentRecords(
       c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-      && instr(&UserGroupRecord::name, query.mGroupFilter) /*true if filter is empty*/,
+      && instr(&UserGroupRecord::name, query.groupFilter) /*true if filter is empty*/,
       &UserGroupRecord::userGroupId,
       &UserGroupRecord::name,
       &UserGroupRecord::maxAuthValiditySeconds)
@@ -1800,7 +1800,7 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   // List users matching user filter
   for (auto internalId: implementor_->getCurrentRecords(
          c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-         && instr(lower(&UserIdRecord::identifier), boost::to_lower_copy(query.mUserFilter)) /*true if filter is empty*/,
+         && instr(lower(&UserIdRecord::identifier), boost::to_lower_copy(query.userFilter)) /*true if filter is empty*/,
          &UserIdRecord::internalUserId)) {
     // Add internalId, we add all identifiers below
     usersInfo.try_emplace(internalId);
@@ -1810,14 +1810,14 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
   // List group memberships for filtered groups & users
   for (auto tuple: implementor_->getCurrentRecords(
          c(&UserGroupUserRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-         && (query.mGroupFilter.empty()
+         && (query.groupFilter.empty()
            || in(&UserGroupUserRecord::userGroupId,
              // Avoid passing list to query when not filtered
-             RangeToVector(views::keys(!query.mGroupFilter.empty() ? groups : Default<decltype(groups)>))) )
-         && (query.mUserFilter.empty()
+             RangeToVector(views::keys(!query.groupFilter.empty() ? groups : Default<decltype(groups)>))) )
+         && (query.userFilter.empty()
            || in(&UserGroupUserRecord::internalUserId,
              // Avoid passing list to query when not filtered
-             RangeToVector(views::keys(!query.mUserFilter.empty() ? usersInfo : Default<decltype(usersInfo)>)))),
+             RangeToVector(views::keys(!query.userFilter.empty() ? usersInfo : Default<decltype(usersInfo)>)))),
              having(is_null(&UserGroupUserRecord::expirationTimestamp) || c(&UserGroupUserRecord::expirationTimestamp) >= TicksSinceEpoch<milliseconds>(timestamp)),
          &UserGroupUserRecord::userGroupId,
          &UserGroupUserRecord::internalUserId,
@@ -1828,21 +1828,21 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
     if (expirationTimestamp) {
       expiration = Timestamp(milliseconds(*expirationTimestamp));
     }
-    usersInfo.at(internalUserId).mGroups.push_back({groups.at(userGroupId).name_, expiration});
+    usersInfo.at(internalUserId).groups.push_back({groups.at(userGroupId).name, expiration});
     groupsWithUsers.insert(userGroupId);
   }
 
   // Backpropagate user filter to filter groups
-  if (!query.mUserFilter.empty()) {
+  if (!query.userFilter.empty()) {
     // Remove groups without selected users
     std::erase_if(groups, [&groupsWithUsers](const std::pair<int64_t, UserGroup>& keyValuePair) {
       return !groupsWithUsers.contains(keyValuePair.first);
     });
   }
   // Backpropagate group filter to filter users
-  if (!query.mGroupFilter.empty()) {
+  if (!query.groupFilter.empty()) {
     erase_if(usersInfo, [](const std::pair<int64_t, QRUser>& userInfo) {
-      return userInfo.second.mGroups.empty();
+      return userInfo.second.groups.empty();
     });
   }
 
@@ -1856,13 +1856,13 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
 
     QRUser& user = usersInfo.at(internalId);
     if (isDisplayId) {
-      user.mDisplayId = identifier;
+      user.displayId = identifier;
     }
     if (isPrimaryId) {
-      user.mPrimaryId = identifier;
+      user.primaryId = identifier;
     }
     if (!isPrimaryId && !isDisplayId) {
-      user.mOtherUids.push_back(std::move(identifier));
+      user.otherUids.push_back(std::move(identifier));
     }
   }
 

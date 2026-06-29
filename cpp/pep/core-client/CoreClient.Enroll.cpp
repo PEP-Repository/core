@@ -44,16 +44,16 @@ rxcpp::observable<EnrolledPartyKeys> CoreClient::completeEnrollment(std::shared_
   return getAccessManagerProxy(true)->requestKeyComponent(ctx->keyComponentRequest)
     .flat_map([this, ctx](KeyComponentResponse lpResponse) {
       // Store returned key components in local context
-      ctx->pseudonymEncryptionKeyComponentAM = lpResponse.mPseudonymEncryptionKeyComponent;
-      ctx->dataEncryptionKeyComponentAM = lpResponse.mDataEncryptionKeyComponent;
+      ctx->pseudonymEncryptionKeyComponentAM = lpResponse.pseudonymEncryptionKeyComponent;
+      ctx->dataEncryptionKeyComponentAM = lpResponse.dataEncryptionKeyComponent;
 
       // Send request to Transcryptor
         return getTranscryptorProxy(true)->requestKeyComponent(ctx->keyComponentRequest);
     })
     .map([this, ctx](KeyComponentResponse lpResponse) {
       // Store returned key components in local context
-      ctx->pseudonymEncryptionKeyComponentTS = lpResponse.mPseudonymEncryptionKeyComponent;
-      ctx->dataEncryptionKeyComponentTS = lpResponse.mDataEncryptionKeyComponent;
+      ctx->pseudonymEncryptionKeyComponentTS = lpResponse.pseudonymEncryptionKeyComponent;
+      ctx->dataEncryptionKeyComponentTS = lpResponse.dataEncryptionKeyComponent;
 
       // Compute final keys
       this->privateKeyPseudonyms_ = ctx->pseudonymEncryptionKeyComponentAM * ctx->pseudonymEncryptionKeyComponentTS;

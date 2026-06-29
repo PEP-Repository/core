@@ -1,5 +1,5 @@
 #include <pep/archiving/HashedArchive.hpp>
-#include <pep/archiving/NOPArchive.hpp>
+#include <pep/archiving/NoOpArchive.hpp>
 
 #include <boost/iostreams/device/mapped_file.hpp>
 
@@ -7,7 +7,7 @@
 
 namespace pep {
 
-HashedArchive::HashedArchive(std::shared_ptr<Archive> archive) : archive_(archive), hasher_(std::make_unique<XxHasher>(DOWNLOAD_HASH_SEED)) {}
+HashedArchive::HashedArchive(std::shared_ptr<Archive> archive) : archive_(archive), hasher_(std::make_unique<XxHasher>(DownloadHashSeed)) {}
 
 void HashedArchive::nextEntry(const std::filesystem::path& path, int64_t size) {
   if(!currentEntry_.empty()) {
@@ -37,7 +37,7 @@ void HashedArchive::closeEntry() {
     throw std::runtime_error("HashedArchive: Multiple entries with the same name: " + currentEntry_);
   }
   currentEntry_ = "";
-  hasher_ = std::make_unique<XxHasher>(DOWNLOAD_HASH_SEED);
+  hasher_ = std::make_unique<XxHasher>(DownloadHashSeed);
   archive_->closeEntry();
 }
 
@@ -46,7 +46,7 @@ bool HashedArchive::expectsSizeUpFront() {
 }
 
 XxHasher::Hash HashedArchive::digest() const {
-  XxHasher hasher(DOWNLOAD_HASH_SEED);
+  XxHasher hasher(DownloadHashSeed);
   for(auto& [key, value] : hashes_) {
     hasher.update(key.data(), key.length());
     hasher.update(&value, sizeof(XxHasher::Hash));
@@ -80,7 +80,7 @@ void HashedArchive::processDirectory(const std::filesystem::path& path, const::s
 
 
 XxHasher::Hash HashedArchive::HashDirectory(const std::filesystem::path& path) {
-  HashedArchive hashedArchive(std::make_shared<NOPArchive>());
+  HashedArchive hashedArchive(std::make_shared<NoOpArchive>());
   hashedArchive.processDirectory(path, std::filesystem::path());
   return hashedArchive.digest();
 }

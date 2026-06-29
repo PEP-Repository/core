@@ -20,8 +20,6 @@ const size_t RETRIES = 3;
 struct TarCtx {
    std::istream& stream;
    std::array<char, 10240> buf{};
-
-   TarCtx(std::istream &stream) : stream(stream) {}
 };
 
 int open_callback(archive* archive, void* clientData) {
@@ -124,14 +122,14 @@ bool readBlockToStream(archive* archive, std::ostream& out) {
 } // end namespace
 
 
-Tar::Tar(std::shared_ptr<std::ostream> stream) : mStream(stream), archive_(archive_write_new()) {
+Tar::Tar(std::shared_ptr<std::ostream> stream) : stream_(stream), archive_(archive_write_new()) {
   if(archive_write_set_format_pax_restricted(archive_) != ARCHIVE_OK) {
     std::ostringstream oss;
     oss << "Error while setting tar format to pax_restricted: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
     throw std::runtime_error(oss.str());
   }
 
-  if(archive_write_open(archive_, mStream.get(), open_callback, write_callback, close_callback) != ARCHIVE_OK) {
+  if(archive_write_open(archive_, stream_.get(), open_callback, write_callback, close_callback) != ARCHIVE_OK) {
     std::ostringstream oss;
     oss << "Error opening tar file for writing: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
     throw std::runtime_error(oss.str());

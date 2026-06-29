@@ -16,9 +16,9 @@
 namespace pep {
 
 class WorkerPool : private boost::noncopyable {
-  std::unique_ptr<boost::asio::io_context> mIoContext;
+  std::unique_ptr<boost::asio::io_context> ioContext_;
   std::unique_ptr<WorkGuard> workGuard_;
-  std::vector<std::thread> mThreads;
+  std::vector<std::thread> threads_;
 
   static std::shared_ptr<WorkerPool> shared;
   static std::mutex sharedMux;

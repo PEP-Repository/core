@@ -15,7 +15,7 @@ namespace pep {
 
 Server::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   RegisteredMetrics(registry),
-  uncaughtExceptions_count(prometheus::BuildGauge()
+  uncaughtExceptionsCount(prometheus::BuildGauge()
     .Name("pep_uncaughtExceptions_count")
     .Help("Number of uncaught exceptions while dealing with a request")
     .Register(*registry)
@@ -103,23 +103,23 @@ Server::handleChecksumChainRequest(
   const auto& request = certified.message;
   std::optional<uint64_t> maxCheckpoint;
 
-  if (!request.mCheckpoint.empty()) {
-    if (request.mCheckpoint.size() != 8)
+  if (!request.checkpoint.empty()) {
+    if (request.checkpoint.size() != 8)
       throw Error("checkpoint field should either be 8 bytes or 0");
-    maxCheckpoint = UnpackUint64BE(request.mCheckpoint);
+    maxCheckpoint = UnpackUint64BE(request.checkpoint);
   }
 
   uint64_t checksum{}, checkpoint{};
   computeChecksumChainChecksum(
-    request.name_,
+    request.name,
     maxCheckpoint,
     checksum,
     checkpoint
   );
 
   ChecksumChainResponse resp;
-  resp.mXorredChecksums = PackUint64BE(checksum);
-  resp.mCheckpoint = PackUint64BE(checkpoint);
+  resp.xorredChecksums = PackUint64BE(checksum);
+  resp.checkpoint = PackUint64BE(checkpoint);
   return messaging::BatchSingleMessage(std::move(resp));
 }
 
@@ -129,17 +129,17 @@ Server::handleChecksumChainNamesRequest(
   auto signatory = signedRequest->validate(*getRootCAs());
   UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), signatory.organizationalUnit(), "Requesting checksum chain names");
   ChecksumChainNamesResponse resp;
-  resp.mNames = getChecksumChainNames();
+  resp.names = getChecksumChainNames();
   return messaging::BatchSingleMessage(std::move(resp));
 }
 
 Server::Server(std::shared_ptr<Parameters> parameters)
-  : mRegistry(std::make_shared<prometheus::Registry>()),
-  mMetrics(std::make_shared<Metrics>(mRegistry)),
-  mEGCache(EGCache::get()),
-  mServerTraits(parameters->serverTraits()),
-  mIoContext(parameters->getIoContext()),
-  mRootCAs(parameters->ensureValid().getRootCAs()) {
+  : registry_(std::make_shared<prometheus::Registry>()),
+  metrics_(std::make_shared<Metrics>(registry_)),
+  eGCache_(EGCache::get()),
+  serverTraits_(parameters->serverTraits()),
+  ioContext_(parameters->getIoContext()),
+  rootCAs_(parameters->ensureValid().getRootCAs()) {
   RegisterRequestHandlers(*this,
     &Server::handleMetricsRequest,
     &Server::handleChecksumChainNamesRequest,
@@ -151,36 +151,36 @@ std::filesystem::path Server::EnsureDirectoryPath(std::filesystem::path path) {
 }
 
 std::shared_ptr<prometheus::Registry> Server::getMetricsRegistry() {
-  if(mMetrics == nullptr) {
+  if(metrics_ == nullptr) {
     throw std::runtime_error("Requesting metrics registry on a server that has no metrics.");
   }
 
   // Collect some metrics ad hoc
-  mMetrics->uncaughtExceptions_count.Set(static_cast<double>(getNumberOfUncaughtReadExceptions()));
+  metrics_->uncaughtExceptionsCount.Set(static_cast<double>(getNumberOfUncaughtReadExceptions()));
 
   auto dataLocation = getStoragePath();
 
   // Will be NaN for servers without dataLocation
-  mMetrics->diskUsageProportion.Set(ApplicationMetrics::GetDiskUsageProportion(dataLocation));
-  mMetrics->diskUsageTotal.Set(ApplicationMetrics::GetDiskUsageBytes(dataLocation));
+  metrics_->diskUsageProportion.Set(ApplicationMetrics::GetDiskUsageProportion(dataLocation));
+  metrics_->diskUsageTotal.Set(ApplicationMetrics::GetDiskUsageBytes(dataLocation));
 
   auto [memoryUsagePhysicalRatio, memoryUsageTotalRatio] = pep::ApplicationMetrics::GetMemoryUsageProportion();
-  mMetrics->memoryUsagePhysicalProportion.Set(memoryUsagePhysicalRatio);
-  mMetrics->memoryUsageProportion.Set(memoryUsageTotalRatio);
-  mMetrics->memoryUsageTotal.Set(pep::ApplicationMetrics::GetMemoryUsageBytes());
+  metrics_->memoryUsagePhysicalProportion.Set(memoryUsagePhysicalRatio);
+  metrics_->memoryUsageProportion.Set(memoryUsageTotalRatio);
+  metrics_->memoryUsageTotal.Set(pep::ApplicationMetrics::GetMemoryUsageBytes());
 
   auto egcm = this->getEgCache().getMetrics();
 
-  mMetrics->egcacheRSKGeneration.Set(static_cast<double>(egcm.rsk.generation));
-  mMetrics->egcacheTableGeneration.Set(static_cast<double>(egcm.table.generation));
-  mMetrics->egcacheRSKUseCount.Set(static_cast<double>(egcm.rsk.useCount));
-  mMetrics->egcacheTableUseCount.Set(static_cast<double>(egcm.table.useCount));
-  mMetrics->uptimeMetric.Set(std::chrono::duration<double>(std::chrono::steady_clock::now() - mMetrics->startupTime).count()); // in seconds
-  return mRegistry;
+  metrics_->egcacheRSKGeneration.Set(static_cast<double>(egcm.rsk.generation));
+  metrics_->egcacheTableGeneration.Set(static_cast<double>(egcm.table.generation));
+  metrics_->egcacheRSKUseCount.Set(static_cast<double>(egcm.rsk.useCount));
+  metrics_->egcacheTableUseCount.Set(static_cast<double>(egcm.table.useCount));
+  metrics_->uptimeMetric.Set(std::chrono::duration<double>(std::chrono::steady_clock::now() - metrics_->startupTime).count()); // in seconds
+  return registry_;
 }
 
 Server::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> ioContext, const Configuration& config)
-  : mIoContext(std::move(ioContext)),
+  : ioContext_(std::move(ioContext)),
   rootCACertificatesFilePath_(config.get<std::filesystem::path>("CaCertificateFile")),
   rootCAs_(MakeSharedCopy(X509RootCertificates::FromFile(rootCACertificatesFilePath_))) {}
 

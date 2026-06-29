@@ -6,7 +6,7 @@
 
 namespace pep::messaging {
 
-const size_t MAX_SIZE_OF_MESSAGE =
+const size_t MaxSizeOfMessage =
 // #1156: use larger message size in release builds so things will fail in debug builds (on dev boxes) before they bring prod down
 #if PEP_BUILD_HAS_RELEASE_FLAVOR()
   2 *
@@ -17,10 +17,10 @@ const size_t MAX_SIZE_OF_MESSAGE =
 
 
 MessageHeader::MessageHeader(MessageLength length, MessageProperties properties)
-  : mLength(length), mProperties(properties) {
-  if (mProperties.messageId().type().value() == MessageType::Control) {
-    if (mLength != 0U) {
-      throw std::runtime_error(std::format("Control messages must have zero length, length is {}", mLength));
+  : length_(length), properties_(properties) {
+  if (properties_.messageId().type().value() == MessageType::Control) {
+    if (length_ != 0U) {
+      throw std::runtime_error(std::format("Control messages must have zero length, length is {}", length_));
     }
   }
 }
@@ -35,8 +35,8 @@ MessageHeader MessageHeader::MakeForControlMessage() noexcept {
 
 EncodedMessageHeader MessageHeader::encode() const noexcept {
   return EncodedMessageHeader{
-    .length = htonl(mLength),
-    .properties = htonl(mProperties.encode())
+    .length = htonl(length_),
+    .properties = htonl(properties_.encode())
   };
 }
 

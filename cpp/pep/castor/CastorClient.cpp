@@ -39,15 +39,15 @@ std::shared_ptr<networking::HttpClient> CreateHttpClient(boost::asio::io_context
 
 }
 
-const std::chrono::seconds AuthenticationStatus::EXPIRY_MARGIN{30};
-const std::string CastorClient::BASE_PATH = "/api/";
+const std::chrono::seconds AuthenticationStatus::ExpiryMargin{30};
+const std::string CastorClient::BasePath = "/api/";
 
 bool AuthenticationStatus::authenticated() const {
   if (state != AuthenticationState::Authenticated) {
     return false;
   }
   assert(expires.has_value());
-  return TimeNow() < *expires - EXPIRY_MARGIN;
+  return TimeNow() < *expires - ExpiryMargin;
 }
 
 CastorClient::CastorClient(boost::asio::io_context& ioContext, const EndPoint& endPoint, std::string clientId, std::string clientSecret, std::optional<std::filesystem::path> caCertFilepath)
@@ -104,7 +104,7 @@ void CastorClient::reauthenticate() {
 rxcpp::observable<HTTPResponse> CastorClient::sendPreAuthorizedRequest(std::shared_ptr<HTTPRequest> request) {
   request->setHeader("Accept", "application/json");
   if(request->getMethod() == networking::HttpMethod::Get) {
-    request->uri().params().set("page_size", std::to_string(PAGE_SIZE));
+    request->uri().params().set("page_size", std::to_string(PageSize));
   }
   return http_->sendRequest(*request);
 }
@@ -117,7 +117,7 @@ rxcpp::observable<HTTPResponse> CastorClient::sendPreAuthorizedRequest(std::shar
  * \return The created Request
  */
 std::shared_ptr<HTTPRequest> CastorClient::makeGet(const std::string& path, const bool& useBasePath) {
-  return MakeSharedCopy(http_->makeRequest(networking::HttpMethod::Get, (useBasePath ? BASE_PATH : "") + path));
+  return MakeSharedCopy(http_->makeRequest(networking::HttpMethod::Get, (useBasePath ? BasePath : "") + path));
 };
 
 /*!
@@ -131,7 +131,7 @@ std::shared_ptr<HTTPRequest> CastorClient::makeGet(const std::string& path, cons
 std::shared_ptr<HTTPRequest> CastorClient::makePost(const std::string& path,
   const std::string& body,
   const bool& useBasePath) {
-  auto result = MakeSharedCopy(http_->makeRequest(networking::HttpMethod::Post, (useBasePath ? BASE_PATH : "") + path));
+  auto result = MakeSharedCopy(http_->makeRequest(networking::HttpMethod::Post, (useBasePath ? BasePath : "") + path));
   assert(result->getBodyparts().empty());
   result->getBodyparts().emplace_back(MakeSharedCopy(body));
   return result;

@@ -41,7 +41,7 @@ public:
   }
 
   /// The name of every column in the table in order
-  ConstRecordRef header() const noexcept { return {ConstRecordRef{mHeader.begin(), mHeader.end()}}; }
+  ConstRecordRef header() const noexcept { return {ConstRecordRef{header_.begin(), header_.end()}}; }
 
   /// The name of every column in the table in order
   RecordRef header() noexcept { return asMutable(std::as_const(*this).header()); }
@@ -55,20 +55,20 @@ public:
   std::vector<RecordRef> records() noexcept { return asMutable(std::as_const(*this).records()); }
 
   /// The number of records in the table
-  std::size_t size() const noexcept { return mData.size() / mRecordSize; }
+  std::size_t size() const noexcept { return data_.size() / recordSize_; }
 
   /// The number of records that the table can hold before needing to reallocate memory
-  std::size_t capacity() const noexcept { return mData.capacity() / mRecordSize; }
+  std::size_t capacity() const noexcept { return data_.capacity() / recordSize_; }
 
   /// The number of fields in every record
-  std::size_t recordSize() const noexcept { return mRecordSize; }
+  std::size_t recordSize() const noexcept { return recordSize_; }
 
   /// True if there are no records in the table
-  bool empty() const noexcept { return mData.empty(); }
+  bool empty() const noexcept { return data_.empty(); }
 
   /// Ensures that enough memory is allocated for at least \p n records.
   /// @warning May reallocate internal data and invalidate ConstRecordRef objects that point into this Table
-  void reserve(std::size_t n) { mData.reserve(n * mRecordSize); }
+  void reserve(std::size_t n) { data_.reserve(n * recordSize_); }
 
   /// Appends a new record to the end of the table
   /// @return A reference to the record that was created
@@ -80,16 +80,16 @@ private:
   Table(std::vector<std::string> header, std::vector<std::string> data, std::size_t recordSize);
 
   /// Remove const qualification from a reference to internal data
-  /// @pre ConstRecordRef must point into mData
+  /// @pre ConstRecordRef must point into data_
   RecordRef asMutable(ConstRecordRef);
 
   /// Remove const qualification from references to internal data
-  /// @pre every ConstRecordRef must point into mData
+  /// @pre every ConstRecordRef must point into data_
   std::vector<RecordRef> asMutable(const std::vector<ConstRecordRef>&);
 
-  std::vector<std::string> mHeader; ///< name of each column
-  std::vector<std::string> mData;   ///< all fields in row-major order
-  std::size_t mRecordSize;          ///< number of fields in each record
+  std::vector<std::string> header_; ///< name of each column
+  std::vector<std::string> data_;   ///< all fields in row-major order
+  std::size_t recordSize_;          ///< number of fields in each record
 };
 
 /// Calls \p func on every field in column \p col of \p table

@@ -25,11 +25,11 @@ Tree TreeFrom(const pep::UserQueryResponse& res, const QueryDisplayConfig<UserQu
   if (printUserGroups) {
     json groups = json::array();
 
-    for (const auto& group : res.mUserGroups) {
+    for (const auto& group : res.userGroups) {
       json item = json::object();
-      item.emplace(GetKeyName(queryKeys::name, useDescriptive), group.name_);
-      if (group.mMaxAuthValidity) {
-        item.emplace(GetKeyName(queryKeys::maxAuthValidity, useDescriptive), pep::chrono::ToString(*group.mMaxAuthValidity));
+      item.emplace(GetKeyName(queryKeys::name, useDescriptive), group.name);
+      if (group.maxAuthValidity) {
+        item.emplace(GetKeyName(queryKeys::maxAuthValidity, useDescriptive), pep::chrono::ToString(*group.maxAuthValidity));
       }
       groups.push_back(std::move(item));
     }
@@ -41,22 +41,22 @@ Tree TreeFrom(const pep::UserQueryResponse& res, const QueryDisplayConfig<UserQu
   if (printUsers) {
     json users = json::array();
 
-    for (const auto& user : res.mUsers) {
+    for (const auto& user : res.users) {
       json item = json::object();
 
-      if (user.mDisplayId) {
-        item.emplace(GetKeyName(queryKeys::displayId, useDescriptive), *user.mDisplayId);
+      if (user.displayId) {
+        item.emplace(GetKeyName(queryKeys::displayId, useDescriptive), *user.displayId);
       }
 
-      if (user.mPrimaryId) {
-        item.emplace(GetKeyName(queryKeys::primaryId, useDescriptive), *user.mPrimaryId);
+      if (user.primaryId) {
+        item.emplace(GetKeyName(queryKeys::primaryId, useDescriptive), *user.primaryId);
       }
 
-      item.emplace(GetKeyName(queryKeys::otherIdentifiers, useDescriptive), user.mOtherUids);
+      item.emplace(GetKeyName(queryKeys::otherIdentifiers, useDescriptive), user.otherUids);
 
       if (printUserGroupsForUsers) {
         json groups = json::object();
-        for (const auto& group : user.mGroups) {
+        for (const auto& group : user.groups) {
           json groupItem = json::object();
           if (group.expiration) {
             groupItem.emplace(GetKeyName(queryKeys::expiration, useDescriptive), TimestampToXmlDateTime(*group.expiration));

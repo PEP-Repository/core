@@ -100,8 +100,8 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
       .reduce(
         std::make_shared<std::unordered_map<std::string, PolymorphicPseudonym>>(),
         [this](std::shared_ptr<std::unordered_map<std::string, PolymorphicPseudonym>> all, const LocalPseudonyms& entry) {
-          auto decrypted = entry.mAccessGroup->decrypt(privateKeyPseudonyms_);
-          all->emplace(decrypted.text(), entry.mPolymorphic); // Don't assert that it's emplaced; we may be processing idsAndOrPps that refer to the same participant
+          auto decrypted = entry.accessGroup->decrypt(privateKeyPseudonyms_);
+          all->emplace(decrypted.text(), entry.polymorphic); // Don't assert that it's emplaced; we may be processing idsAndOrPps that refer to the same participant
           return all;
         }
       );
@@ -367,11 +367,11 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
     .reduce(
       std::make_shared<std::vector<std::optional<PolymorphicPseudonym>>>(allSps->size()),
       [allSps](std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>> result, const EnumerateAndRetrieveResult& ear) {
-        assert(ear.mDataSet);
-        auto position = allSps->find(ear.mData);
+        assert(ear.dataSet);
+        auto position = allSps->find(ear.data);
         if (position != allSps->cend()) {
           auto index = position->second;
-          (*result)[index] = ear.mLocalPseudonyms->mPolymorphic;
+          (*result)[index] = ear.localPseudonyms->polymorphic;
         }
         return result;
       });
@@ -403,12 +403,13 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
     }
     return requestTicket2(tOpts);
   }).flat_map([this](IndexedTicket2 ticket) {
-    return RxIterate(ticket.getTicket()->open(*rootCAs_, getEnrolledGroup()).mAccessSubjects);
+    return RxIterate(ticket.getTicket()->open(*rootCAs_, getEnrolledGroup()).accessSubjects);
   });
 
 }
 
-rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const RequestTicket2Opts& opts) {
+rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(
+    const RequestTicket2Opts &opts) {
   PEP_LOG(LogTag, Severity::Debug) << "requestTicket";
 
   if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())
@@ -423,12 +424,12 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const RequestTicket
   }
   assert(ContainsUniqueValues(opts.pps));
   return getAccessManagerProxy(true)->requestIndexedTicket(ClientSideTicketRequest2{
-      .mModes = opts.modes,
-      .participantGroups_ = opts.participantGroups,
-      .mAccessSubjects = opts.pps,
-      .columnGroups_ = opts.columnGroups,
-      .mColumns = opts.columns,
-      .mIncludeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});
+      .modes = opts.modes,
+      .participantGroups = opts.participantGroups,
+      .accessSubjects = opts.pps,
+      .columnGroups = opts.columnGroups,
+      .columns = opts.columns,
+      .includeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});
 }
 
 

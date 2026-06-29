@@ -14,7 +14,7 @@ class RepeatingDataAspectPuller : public TypedStudyAspectPuller<RepeatingDataAsp
   friend class SharedConstructor<RepeatingDataAspectPuller>;
 
 private:
-  std::shared_ptr<RxCache<std::shared_ptr<std::vector<std::shared_ptr<RepeatingDataPuller>>>>> mRepeatingDataPullers;
+  std::shared_ptr<RxCache<std::shared_ptr<std::vector<std::shared_ptr<RepeatingDataPuller>>>>> repeatingDataPullers_;
 
   RepeatingDataAspectPuller(std::shared_ptr<StudyPuller> study, const StudyAspect& aspect);
 

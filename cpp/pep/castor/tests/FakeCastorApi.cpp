@@ -41,25 +41,25 @@ private:
   void handleWrite(const networking::SizedTransfer::Result& result);
   void writeOutput(const std::string& body, const std::string& status = "200 OK", std::map<std::string, std::string> responseHeaders = std::map<std::string, std::string>());
   std::string getUrl() {
-    return "https://localhost:" + std::to_string(mServer->getListenPort());
+    return "https://localhost:" + std::to_string(server_->getListenPort());
   };
 
-  std::shared_ptr<FakeCastorApi> mServer;
-  std::shared_ptr<networking::Connection> mBinary;
+  std::shared_ptr<FakeCastorApi> server_;
+  std::shared_ptr<networking::Connection> binary_;
   std::string method_;
   std::string path_;
-  std::map<std::string, std::string> mHeaders;
-  std::string mBody;
-  size_t mContentlength = 0U;
-  std::string mOutput;
+  std::map<std::string, std::string> headers_;
+  std::string body_;
+  size_t contentlength_ = 0U;
+  std::string output_;
 };
 
 FakeCastorApi::Connection::Connection(std::shared_ptr<FakeCastorApi> server, std::shared_ptr<networking::Connection> binary)
-  : mServer(server), mBinary(binary) {
+  : server_(server), binary_(binary) {
 }
 
 void FakeCastorApi::Connection::acceptMessage() {
-  mBinary->asyncReadUntil("\r\n", [self = SharedFrom(*this)](const networking::DelimitedTransfer::Result& result) { self->handleReadRequestLine(result); });
+  binary_->asyncReadUntil("\r\n", [self = SharedFrom(*this)](const networking::DelimitedTransfer::Result& result) { self->handleReadRequestLine(result); });
 }
 
 void FakeCastorApi::Connection::handleError(std::exception_ptr error) {
@@ -79,7 +79,7 @@ void FakeCastorApi::Connection::handleReadRequestLine(const networking::Delimite
   responseStream >> path_;
   std::getline(responseStream, httpVersion);
 
-  mBinary->asyncReadUntil("\r\n\r\n", [self = SharedFrom(*this)](const networking::DelimitedTransfer::Result& result) {self->handleReadHeaders(result); });
+  binary_->asyncReadUntil("\r\n\r\n", [self = SharedFrom(*this)](const networking::DelimitedTransfer::Result& result) {self->handleReadHeaders(result); });
 }
 
 void FakeCastorApi::Connection::handleReadHeaders(const networking::DelimitedTransfer::Result& result) {
@@ -96,21 +96,21 @@ void FakeCastorApi::Connection::handleReadHeaders(const networking::DelimitedTra
       std::string headerName = header.substr(0, index);
       std::string headerValue = header.substr(index + 1);
       boost::trim_if(headerValue, boost::is_space());
-      mHeaders[headerName] = headerValue;
+      headers_[headerName] = headerValue;
     } else {
       PEP_LOG(LogTag, Severity::Warning) << "Ignoring malformed header: " << header << '\n';
     }
   }
 
-  assert(mContentlength == 0);
-  auto contentLengthHeader = mHeaders.find("Content-Length");
-  if (contentLengthHeader != mHeaders.end()) {
-    mContentlength = boost::lexical_cast<size_t>(contentLengthHeader->second);
+  assert(contentlength_ == 0);
+  auto contentLengthHeader = headers_.find("Content-Length");
+  if (contentLengthHeader != headers_.end()) {
+    contentlength_ = boost::lexical_cast<size_t>(contentLengthHeader->second);
   }
 
-  if (mContentlength > 0) {
-    mBody.resize(mContentlength);
-    mBinary->asyncRead(mBody.data(), mContentlength, [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {self->handleReadBody(result); });
+  if (contentlength_ > 0) {
+    body_.resize(contentlength_);
+    binary_->asyncRead(body_.data(), contentlength_, [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {self->handleReadBody(result); });
   } else {
     handleRequest();
   }
@@ -125,17 +125,17 @@ void FakeCastorApi::Connection::handleReadBody(const networking::SizedTransfer::
 }
 
 void FakeCastorApi::Connection::handleRequest() {
-  PEP_LOG(LogTag, Severity::Debug) << "Received request: " << method_ << " " << path_ << std::endl << mBody;
+  PEP_LOG(LogTag, Severity::Debug) << "Received request: " << method_ << " " << path_ << std::endl << body_;
 
   if(path_.starts_with("/api/")) {
-    auto authzHeader = mHeaders.find("Authorization");
-    if(authzHeader == mHeaders.end() || authzHeader->second != "Bearer f74ffb4d8a4c9a0a3992836357d668bee1231172") {
+    auto authzHeader = headers_.find("Authorization");
+    if(authzHeader == headers_.end() || authzHeader->second != "Bearer f74ffb4d8a4c9a0a3992836357d668bee1231172") {
       writeOutput("{\"type\":\"http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html\",\"title\":\"Forbidden\",\"status\":403,\"detail\":\"You are not authorized to view this study.\"}", "403 Forbidden");
       return;
     }
   }
 
-  auto options = mServer->mOptions;
+  auto options = server_->options_;
   auto findResponse = options->responses.find(path_);
   if(findResponse != options->responses.end()) {
     writeOutput(boost::algorithm::replace_all_copy(findResponse->second.body, "[URL]", getUrl()), findResponse->second.status);
@@ -156,72 +156,72 @@ void FakeCastorApi::Connection::handleWrite(const networking::SizedTransfer::Res
     return;
   }
 
-  PEP_LOG(LogTag, Severity::Debug) << "Written output " << mOutput.substr(0, *result);
+  PEP_LOG(LogTag, Severity::Debug) << "Written output " << output_.substr(0, *result);
 }
 
 void FakeCastorApi::Connection::writeOutput(const std::string& body, const std::string& status, std::map<std::string, std::string> responseHeaders) {
   responseHeaders["Content-Length"] = std::to_string(body.length());
 
-  mOutput = "HTTP/1.1 " + status + "\r\n";
+  output_ = "HTTP/1.1 " + status + "\r\n";
   for(const auto& header : responseHeaders) {
-    mOutput += header.first + ": " + header.second + "\r\n";
+    output_ += header.first + ": " + header.second + "\r\n";
   }
-  mOutput += "\r\n";
-  mOutput += body;
+  output_ += "\r\n";
+  output_ += body;
   
-  mBinary->asyncWrite(mOutput.data(), mOutput.length(), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {self->handleWrite(result); });
+  binary_->asyncWrite(output_.data(), output_.length(), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {self->handleWrite(result); });
 }
 
 FakeCastorTest::FakeCastorTest()
-  : mIdentity(TemporaryX509IdentityFiles::Make("Fake Castor b.v.", "localhost")) { // Would be cheaper in a (global) RegisteredTestEnvironment, but this is good enough for now
+  : identity_(TemporaryX509IdentityFiles::Make("Fake Castor b.v.", "localhost")) { // Would be cheaper in a (global) RegisteredTestEnvironment, but this is good enough for now
   constexpr uint16_t port{ 0xca5 };  // 'CAS'(tor), just some arbitrary port
-  networking::Tls::ServerParameters parameters(*mServerSide.ioContext(), port, mIdentity.slicedToX509IdentityFiles());
-  mServer = FakeCastorApi::Create(parameters, port, options);
-  mServer->start();
+  networking::Tls::ServerParameters parameters(*serverSide_.ioContext(), port, identity_.slicedToX509IdentityFiles());
+  server_ = FakeCastorApi::Create(parameters, port, options_);
+  server_->start();
 
-  castorConnection = castor::CastorConnection::Create(
+  castorConnection_ = castor::CastorConnection::Create(
     EndPoint("localhost", port),
     castor::ApiKey{ "SomeID", "SomeSecret" },
-    mClientSide.ioContext(),
-    mIdentity.getCertificateChainFilePath());
+    clientSide_.ioContext(),
+    identity_.getCertificateChainFilePath());
 
-  mClientSide.start();
-  mServerSide.start();
+  clientSide_.start();
+  serverSide_.start();
   PEP_LOG(LogTag, Severity::Info) << "FakeCastorApi listening on port " << port;
 }
 
 void FakeCastorTest::TearDown() {
-  castorConnection = nullptr;
-  mClientSide.stop(false);
+  castorConnection_ = nullptr;
+  clientSide_.stop(false);
 
-  mServer->stop();
-  mServerSide.stop(false);
+  server_->stop();
+  serverSide_.stop(false);
 }
 
 void FakeCastorTest::Side::start() {
-  if (mThread != nullptr) {
+  if (thread_ != nullptr) {
     throw std::runtime_error("Can't start FakeCastorTest::Side multiple times");
   }
-  mThread = std::make_shared<IoContextThread>("Fake Castor test " + this->role(), mIoContext);
+  thread_ = std::make_shared<IoContextThread>("Fake Castor test " + this->role(), ioContext_);
 }
 
 void FakeCastorTest::Side::stop(bool force) {
-  if (mIoContext == nullptr) {
+  if (ioContext_ == nullptr) {
     throw std::runtime_error("Can't stop FakeCastorTest::Side multiple times");
   }
-  if (mThread == nullptr) {
+  if (thread_ == nullptr) {
     throw std::runtime_error("Can't stop an unstarted FakeCastorTest::Side");
   }
-  mIoContext.reset(); // Allow detection that this instance has already been stop()ped
-  mThread->stop(force);
+  ioContext_.reset(); // Allow detection that this instance has already been stop()ped
+  thread_->stop(force);
 }
 
 FakeCastorApi::FakeCastorApi(const pep::networking::Protocol::ServerParameters& parameters, uint16_t port, std::shared_ptr<Options> options)
-  : mOptions(options), mConnectivity(networking::Server::Create(parameters)), mPort(port) {
+  : options_(options), connectivity_(networking::Server::Create(parameters)), port_(port) {
 }
 
 void FakeCastorApi::start() {
-  mConnectivityConnectionAttempt = mConnectivity->onConnectionAttempt.subscribe([self = SharedFrom(*this)](const networking::Connection::Attempt::Result& result) {
+  connectivityConnectionAttempt_ = connectivity_->onConnectionAttempt.subscribe([self = SharedFrom(*this)](const networking::Connection::Attempt::Result& result) {
     if (!*result) {
       PEP_LOG(LogTag, Severity::Warning) << "Incoming Fake Castor API connection failed: " << GetExceptionMessage(result.exception());
     }
@@ -229,12 +229,12 @@ void FakeCastorApi::start() {
       Connection::Create(self, *result)->acceptMessage();
     }
     });
-  mConnectivity->start();
+  connectivity_->start();
 }
 
 void FakeCastorApi::stop() {
-  mConnectivityConnectionAttempt.cancel();
-  mConnectivity->shutdown();
+  connectivityConnectionAttempt_.cancel();
+  connectivity_->shutdown();
 }
 
 }

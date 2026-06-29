@@ -40,12 +40,12 @@ class Autocomplete final {
     std::string description; // May be empty
 
     friend std::ostream& operator<<(std::ostream& out, const CompletionValue& v) {
-      detail::PrintRange(out, v.valueAliases, valueSep);
-      return out << colSep << v.displayValue << colSep << v.description;
+      detail::PrintRange(out, v.valueAliases, ValueSep);
+      return out << ColSep << v.displayValue << ColSep << v.description;
     }
 
   private:
-    constexpr static char colSep{ '\x1e' }, valueSep{ '\x1f' };
+    constexpr static char ColSep{ '\x1e' }, ValueSep{ '\x1f' };
   };
 
   struct CompletionEntry final {
@@ -56,15 +56,15 @@ class Autocomplete final {
 
     friend std::ostream& operator<<(std::ostream& out, const CompletionEntry& e) {
       // Prefix all rows with 'suggest' in case we want to add other types later
-      out << "suggest" << colSep << e.completionType << colSep << e.completionKey << colSep;
-      detail::PrintRange(out, e.values, valueSep);
-      return out << colSep << e.valueType;
+      out << "suggest" << ColSep << e.completionType << ColSep << e.completionKey << ColSep;
+      detail::PrintRange(out, e.values, ValueSep);
+      return out << ColSep << e.valueType;
     }
 
   private:
     // Fields are separated by ASCII separators (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes#Basic_ASCII_control_codes )
     //  such that escaping is not necessary (assuming these control characters do not occur in the values)
-    constexpr static char colSep{ '\x1c' }, valueSep{ '\x1d' };
+    constexpr static char ColSep{ '\x1c' }, ValueSep{ '\x1d' };
   };
 
   std::vector<CompletionEntry> entries_;

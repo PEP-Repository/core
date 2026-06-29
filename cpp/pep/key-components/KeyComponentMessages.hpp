@@ -5,22 +5,14 @@
 
 namespace pep {
 
-class KeyComponentRequest {
+struct KeyComponentRequest {
 };
 
 using SignedKeyComponentRequest = Signed<KeyComponentRequest>;
 
-class KeyComponentResponse {
-public:
-  KeyComponentResponse() = default;
-  inline KeyComponentResponse(
-    const CurveScalar& pseudonymKeyComponent,
-    const CurveScalar& encryptionKeyComponent
-  ) : mPseudonymEncryptionKeyComponent(pseudonymKeyComponent),
-    mDataEncryptionKeyComponent(encryptionKeyComponent) {}
-
-  CurveScalar mPseudonymEncryptionKeyComponent;
-  CurveScalar mDataEncryptionKeyComponent;
+struct KeyComponentResponse {
+  CurveScalar pseudonymEncryptionKeyComponent;
+  CurveScalar dataEncryptionKeyComponent;
 };
 
 }

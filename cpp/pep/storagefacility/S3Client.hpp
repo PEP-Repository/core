@@ -22,9 +22,9 @@ public:
 
     EndPoint endpoint;  // hostname, port
     Credentials credentials; // accessKey, secret, ...
-    std::shared_ptr<boost::asio::io_context> io_context;
-    std::optional<std::filesystem::path> ca_cert_path; // ignored if not set
-    std::optional<bool> use_https; // defaults to true
+    std::shared_ptr<boost::asio::io_context> ioContext;
+    std::optional<std::filesystem::path> caCertPath; // ignored if not set
+    std::optional<bool> useHttps; // defaults to true
   };
 
   static std::shared_ptr<Client> Create(const Parameters& params);
@@ -36,7 +36,7 @@ public:
   //
   // Returns the Etag (=MD5) of the payload, as computed by the S3 server.
   //
-  // NB. Preventing an object from being overriden (or deleted) seems
+  // NB. Preventing an object from being overridden (or deleted) seems
   // possible only by an extension of S3 called "Amazon S3 Object Lock", 
   // which is not supported by Minio.
   virtual rxcpp::observable<std::string> putObject(

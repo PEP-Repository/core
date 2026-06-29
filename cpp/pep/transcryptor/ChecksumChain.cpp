@@ -6,16 +6,16 @@
 namespace pep::transcryptor {
 
 uint64_t ChecksumChain::SeqNoToCheckpoint(int64_t seqNo) noexcept {
-  return FIRST_RECORD_CHECKPOINT + static_cast<uint64_t>(seqNo);
+  return FirstRecordCheckpoint + static_cast<uint64_t>(seqNo);
 }
 
 int64_t ChecksumChain::CheckpointToSeqNo(uint64_t checkpoint) noexcept {
-  assert(checkpoint >= FIRST_RECORD_CHECKPOINT);
-  return static_cast<int64_t>(checkpoint - FIRST_RECORD_CHECKPOINT);
+  assert(checkpoint >= FirstRecordCheckpoint);
+  return static_cast<int64_t>(checkpoint - FirstRecordCheckpoint);
 }
 
 ChecksumChain::Result ChecksumChain::get(std::shared_ptr<TranscryptorStorageBackend> storage, uint64_t maxCheckpoint) {
-  if (maxCheckpoint < EMPTY_TABLE_CHECKPOINT) {
+  if (maxCheckpoint < EmptyTableCheckpoint) {
     throw std::runtime_error("Invalid checkpoint " + std::to_string(maxCheckpoint));
   }
 
@@ -29,7 +29,7 @@ ChecksumChain::Result ChecksumChain::get(std::shared_ptr<TranscryptorStorageBack
     return lastResult_;
   }
 
-  assert(maxCheckpoint >= FIRST_RECORD_CHECKPOINT);
+  assert(maxCheckpoint >= FirstRecordCheckpoint);
   return lastResult_ = this->calculate(storage, lastResult_, maxCheckpoint);
 }
 

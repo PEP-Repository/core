@@ -153,7 +153,7 @@ ElgamalEncryption ElgamalEncryption::FromText(const std::string& text) {
 
 std::string ElgamalEncryption::pack() const {
   std::string packed;
-  packed.reserve(CurvePoint::PACKEDBYTES * 3);
+  packed.reserve(CurvePoint::PackedBytes * 3);
   packed += b.pack();
   packed += c.pack();
   packed += publicKey.pack();
@@ -162,9 +162,9 @@ std::string ElgamalEncryption::pack() const {
 
 ElgamalEncryption ElgamalEncryption::FromPacked(std::string_view packed) {
   return {
-      CurvePoint(packed.substr(CurvePoint::PACKEDBYTES * 0, CurvePoint::PACKEDBYTES)),
-      CurvePoint(packed.substr(CurvePoint::PACKEDBYTES * 1, CurvePoint::PACKEDBYTES)),
-      CurvePoint(packed.substr(CurvePoint::PACKEDBYTES * 2, CurvePoint::PACKEDBYTES)),
+      CurvePoint(packed.substr(CurvePoint::PackedBytes * 0, CurvePoint::PackedBytes)),
+      CurvePoint(packed.substr(CurvePoint::PackedBytes * 1, CurvePoint::PackedBytes)),
+      CurvePoint(packed.substr(CurvePoint::PackedBytes * 2, CurvePoint::PackedBytes)),
   };
 }
 

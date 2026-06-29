@@ -15,9 +15,9 @@ class StudyAspectPuller : public std::enable_shared_from_this<StudyAspectPuller>
   friend class pep::SelfRegistering;
 
 private:
-  std::shared_ptr<StudyPuller> mStudy;
-  std::string mSpColumn;
-  std::string mColumnNamePrefix;
+  std::shared_ptr<StudyPuller> study_;
+  std::string spColumn_;
+  std::string columnNamePrefix_;
 
   // A function that can create a (shared_ptr to) StudyAspectPuller. Such functions are statically registered by derived TypedStudyAspectPuller<> class.
   using CreateFunction = std::function<std::shared_ptr<StudyAspectPuller>(std::shared_ptr<StudyPuller>, const StudyAspect&)>;
@@ -29,9 +29,9 @@ protected:
   StudyAspectPuller(std::shared_ptr<StudyPuller> study, const StudyAspect& aspect);
 
   /*!
-  * \brief Registers the specified TDerived type as the handler for the import of its specified aspect STUDY_TYPE.
-  * \tparam TDerived The derived type that imports the specified STUDY_TYPE.
-  * \return The STUDY_TYPE specified by TDerived.
+  * \brief Registers the specified TDerived type as the handler for the import of its specified aspect StudyType.
+  * \tparam TDerived The derived type that imports the specified StudyType.
+  * \return The StudyType specified by TDerived.
   */
   template <typename TDerived>
   static CastorStudyType RegisterType() {
@@ -43,18 +43,18 @@ protected:
     };
 
     auto& registered = GetCreateFunctions();
-    if (!registered.emplace(std::make_pair(TDerived::STUDY_TYPE, createDerived)).second) {
-      throw std::runtime_error("Duplicate registration for study aspect puller type for Castor study type " + std::to_string(ToUnderlying(TDerived::STUDY_TYPE)));
+    if (!registered.emplace(std::make_pair(TDerived::StudyType, createDerived)).second) {
+      throw std::runtime_error("Duplicate registration for study aspect puller type for Castor study type " + std::to_string(ToUnderlying(TDerived::StudyType)));
     }
 
-    return TDerived::STUDY_TYPE;
+    return TDerived::StudyType;
   }
 
   /*!
   * \brief Produces the prefix to use for column names when importing data for this study aspect.
   * \return The prefix for column names.
   */
-  inline const std::string& getColumnNamePrefix() const noexcept { return mColumnNamePrefix; }
+  inline const std::string& getColumnNamePrefix() const noexcept { return columnNamePrefix_; }
 
 public:
   virtual ~StudyAspectPuller() = default;
@@ -77,13 +77,13 @@ public:
   * \brief Produces The StudyPuller instance associated with this StudyAspectPuller.
   * \return A StudyPuller instance.
   */
-  inline std::shared_ptr<StudyPuller> getStudyPuller() const noexcept { return mStudy; }
+  inline std::shared_ptr<StudyPuller> getStudyPuller() const noexcept { return study_; }
 
   /*!
   * \brief Produces The short pseudonym column name associated with this StudyAspectPuller.
   * \return The name of a PEP column that stores short pseudonym values.
   */
-  inline const std::string& getShortPseudonymColumn() const noexcept { return mSpColumn; }
+  inline const std::string& getShortPseudonymColumn() const noexcept { return spColumn_; }
 };
 
 /*!
@@ -92,7 +92,7 @@ public:
 template <typename TDerived, CastorStudyType TYPE, bool registerDerived = true>
 class TypedStudyAspectPuller : public StudyAspectPuller, public SelfRegistering<TDerived, StudyAspectPuller, registerDerived> {
 public:
-  static constexpr CastorStudyType STUDY_TYPE = TYPE;
+  static constexpr CastorStudyType StudyType = TYPE;
 
 protected:
   inline TypedStudyAspectPuller(std::shared_ptr<StudyPuller> study, const StudyAspect& aspect)

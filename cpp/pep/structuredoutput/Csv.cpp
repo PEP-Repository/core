@@ -38,7 +38,7 @@ std::ostream& append(std::ostream& stream, Table::ConstRecordRef record, Config 
 
 std::ostream& append(std::ostream& stream, const Table& table, Config config) {
   auto records = table.records();
-  if (config.force_header || !records.empty()) {
+  if (config.forceHeader || !records.empty()) {
     append(stream, table.header(), config);
     for (const auto& record : records) {
       append(stream, record, config);

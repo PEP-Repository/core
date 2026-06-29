@@ -14,9 +14,9 @@ namespace commandline {
  */
 class Command {
 private:
-  std::optional<NamedValues> mParameterValues;
-  bool mParametersLexed = false;
-  bool mParametersFinalized = false;
+  std::optional<NamedValues> parameterValues_;
+  bool parametersLexed_ = false;
+  bool parametersFinalized_ = false;
 
   int issueCommandLineHelp(const std::optional<std::string>& error);
   int printAutocompleteInfo(std::queue<std::string>& arguments);

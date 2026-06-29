@@ -38,43 +38,43 @@
 namespace pep {
 
 struct DataStorageResult2 {
-  std::vector<std::string> mIds;
+  std::vector<std::string> ids;
 };
 
 // Represents a cell denotation returned by a CoreClient method
 struct DataCellResult {
   // Encrypted local pseudonyms belonging to the polymorphic pseudonym to which
   // the file belongs.  The encrypted "row identifier".
-  std::shared_ptr<LocalPseudonyms> mLocalPseudonyms;
+  std::shared_ptr<LocalPseudonyms> localPseudonyms;
 
-  // Can be used to match equal mLocalPseudonyms (without having to
-  // compare mLocalPseudonyms) within the result of a single call
+  // Can be used to match equal localPseudonyms_ (without having to
+  // compare localPseudonyms_) within the result of a single call
   // to a CoreClient method that produces DataCellResult instances.
-  uint32_t mLocalPseudonymsIndex{};
+  uint32_t localPseudonymsIndex{};
 
-  std::string mColumn; // column to which this file belongs
+  std::string column; // column to which this file belongs
 
   // The decrypted local pseudonym for the access group of the client
   // belonging to the PP of this file.  This is the "row identifier"
   // of this file with respect to our access group.
   // This field is only set if includeAccessGroupPseudonyms was set.
-  std::shared_ptr<LocalPseudonym> mAccessGroupPseudonym;
+  std::shared_ptr<LocalPseudonym> accessGroupPseudonym;
 };
 
 /// Represents a file with metadata but without content
 struct EnumerateResult : public DataCellResult {
   /// Partially encrypted metadata of the file
-  Metadata mMetadata;
+  Metadata metadata;
 
   /// Encrypted key to decrypt the data
-  EncryptedKey mPolymorphicKey;
+  EncryptedKey polymorphicKey;
 
   /// Size of file on storage facility, in bytes
   /// Note that this is both the size of the encrypted ciphertext as its plaintext alternative
-  uint64_t mFileSize{};
+  uint64_t fileSize{};
 
   /// Storage facility identifier
-  std::string mId;
+  std::string id;
 };
 
 struct FileKey {
@@ -83,7 +83,7 @@ struct FileKey {
   std::string symmetricKey;
 
   [[nodiscard]] Metadata decryptMetadata() const {
-    return entry->mMetadata.decrypt(symmetricKey);
+    return entry->metadata.decrypt(symmetricKey);
   }
 };
 
@@ -102,52 +102,46 @@ struct RetrievePage {
 
 // Represents a file retrieved using enumerateAndRetrieveData2.
 struct EnumerateAndRetrieveResult : public EnumerateResult {
-  std::string mData;    // contents of the file
+  std::string data;    // contents of the file
 
   // metadata of the file with the decrypted metadata entries - set only
-  // when mDataSet is true.
-  std::optional<Metadata> mMetadataDecrypted;
+  // when dataSet_ is true.
+  std::optional<Metadata> metadataDecrypted;
 
-  // If a dataSizeLimit was specified, mData might not be set.  This
-  // field indicates whether mData was set.
-  bool mDataSet{};
+  // If a dataSizeLimit was specified, data_ might not be set.  This
+  // field indicates whether data_ was set.
+  bool dataSet{};
 };
 
 // Result of a getHistory2 or deleteData2 call
 struct HistoryResult : public DataCellResult {
-  Timestamp mTimestamp;
-  std::optional<std::string> mId{};
+  Timestamp timestamp;
+  std::optional<std::string> id{};
 };
 
 // Used as parameter to CoreClient::deleteData2
 struct Storage2Entry {
-  Storage2Entry(
-    std::shared_ptr<PolymorphicPseudonym> pp,
-    std::string column) :
-    mColumn(std::move(column)),
-    mPolymorphicPseudonym(std::move(pp)) { }
+  // Polymorphic pseudonym of the storage location.
+  std::shared_ptr<PolymorphicPseudonym> polymorphicPseudonym;
 
   // Column of the storage location.
-  std::string mColumn;
-
-  // Polymorphic pseudonym of the storage location.
-  std::shared_ptr<PolymorphicPseudonym> mPolymorphicPseudonym;
+  std::string column;
 
   // Request to overwrite timestamp.
   // XXX This is a temporary field and will be removed.
-  std::optional<Timestamp> mTimestamp;
+  std::optional<Timestamp> timestamp;
 };
 
 struct StoreMetadata2Entry : public Storage2Entry {
   StoreMetadata2Entry(
     std::shared_ptr<PolymorphicPseudonym> pp,
     std::string column) :
-    Storage2Entry(std::move(pp), std::move(column)) {}
+    Storage2Entry{ .polymorphicPseudonym = std::move(pp), .column = std::move(column), .timestamp{} } {}
 
   // Extra metadata entries. The payload of the MetadataXEntry-s with
   // encrypted=true will be encrypted by the storeData2 or
   // updateMetadata2 method.
-  std::map<std::string, MetadataXEntry> mXMetadata;
+  std::map<std::string, MetadataXEntry> xMetadata;
 };
 
 // Used as parameter to CoreClient::storeData2
@@ -157,7 +151,7 @@ struct StoreData2Entry : public StoreMetadata2Entry {
     std::string column,
     messaging::MessageBatches batches) :
       StoreMetadata2Entry(pp, column),
-      mBatches(batches) { }
+      batches(batches) { }
 
   StoreData2Entry(
       std::shared_ptr<PolymorphicPseudonym> pp,
@@ -166,7 +160,7 @@ struct StoreData2Entry : public StoreMetadata2Entry {
       const std::vector<NamedMetadataXEntry>& xentries = {});
 
   // The data to store should be provided as a rx stream^2 of strings (^2 due to have control over when stuff is send)
-  messaging::MessageBatches mBatches;
+  messaging::MessageBatches batches;
 };
 
 // Used as arguments for CoreClient::requestTicket2
@@ -244,15 +238,13 @@ class ShortPseudonymContextError : public std::runtime_error {
 
 class CoreClient : protected MessageSigner, boost::noncopyable {
  public:
-  static constexpr size_t DATA_RETRIEVAL_BATCH_SIZE{4000};
+  static constexpr size_t DataRetrievalBatchSize{4000};
 
  private:
   std::shared_ptr<boost::asio::io_context> ioContext_;
   std::optional<std::filesystem::path> keysFilePath_;
   const std::filesystem::path caCertFilepath_;
   std::shared_ptr<WorkerPool> workerPool_ = nullptr;
-
-  std::shared_ptr<WorkerPool> getWorkerPool();
 
   std::shared_ptr<X509RootCertificates> rootCAs_;
 
@@ -272,6 +264,8 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   rxcpp::subjects::subject<FakeVoid> registrationSubject_;
   rxcpp::composite_subscription registrationExpiryTimer_;
   rxcpp::subjects::subject<EnrolledPartyKeys> enrollmentSubject_;
+
+  std::shared_ptr<WorkerPool> getWorkerPool();
 
  public:
   class Builder {
@@ -512,7 +506,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
     std::shared_ptr<SignedTicket2> ticket);
 
   /// Retrieve cell contents.
-  /// \param batchedSubjects Must be split in batches of \c DATA_RETRIEVAL_BATCH_SIZE (usually by \c getKeys)
+  /// \param batchedSubjects Must be split in batches of \c DataRetrievalBatchSize (usually by \c getKeys)
   /// \returns Nested observable, where subscribing to each inner observable retrieves a batch
   /// \remark Verifies correct sizes. Returns files & pages in-order, except empty files, which go at the start. Other empty pages are omitted.
   rxcpp::observable<rxcpp::observable<RetrievePage>>
@@ -530,12 +524,12 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
 
   rxcpp::observable<std::shared_ptr<GlobalConfiguration>> getGlobalConfiguration();
 
-  static constexpr bool DEFAULT_PERSIST_KEYS_FILE = true;
+  static constexpr bool DefaultPersistKeysFile = true;
 
   static std::shared_ptr<CoreClient> OpenClient(
       const Configuration& config,
       std::shared_ptr<boost::asio::io_context> io_context = nullptr,
-      bool persistKeysFile = DEFAULT_PERSIST_KEYS_FILE);
+      bool persistKeysFile = DefaultPersistKeysFile);
 
   using ServerProxies = std::unordered_map<ServerTraits, std::shared_ptr<const ServerProxy>>;
 
@@ -618,17 +612,17 @@ public:
 };
 
 struct CoreClient::AESKey {
-    CurvePoint point;
-    std::string bytes;
+  CurvePoint point;
+  std::string bytes;
 
-    explicit AESKey(const CurvePoint& point);
-    AESKey() : AESKey(CurvePoint::Random()) {}
+  explicit AESKey(const CurvePoint& point);
+  AESKey() : AESKey(CurvePoint::Random()) {}
 };
 
 class CoreClient::TicketPseudonyms {
 private:
-  std::vector<std::shared_ptr<LocalPseudonyms>> mPseudonyms;
-  std::optional<std::vector<std::shared_ptr<LocalPseudonym>>> mAgPseuds;
+  std::vector<std::shared_ptr<LocalPseudonyms>> pseudonyms_;
+  std::optional<std::vector<std::shared_ptr<LocalPseudonym>>> agPseuds_;
 
 public:
   TicketPseudonyms(const SignedTicket2& ticket, const ElgamalPrivateKey& privateKeyPseudonyms);
@@ -636,7 +630,7 @@ public:
   TicketPseudonyms(const TicketPseudonyms&) = delete;
   TicketPseudonyms& operator =(const TicketPseudonyms&) = delete;
 
-  std::shared_ptr<LocalPseudonyms> getLocalPseudonyms(uint32_t index) const { return mPseudonyms.at(index); }
+  std::shared_ptr<LocalPseudonyms> getLocalPseudonyms(uint32_t index) const { return pseudonyms_.at(index); }
   std::shared_ptr<LocalPseudonym> getAccessGroupPseudonym(uint32_t index) const; // Returns NULL if ticket didn't include access group pseudonyms
 };
 

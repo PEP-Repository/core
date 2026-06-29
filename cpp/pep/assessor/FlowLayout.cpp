@@ -8,12 +8,12 @@
 #include <utility>
 
 FlowLayout::FlowLayout(QWidget *parent, int margin, int hSpacing, int vSpacing)
-: QLayout(parent), m_hSpace(hSpacing), m_vSpace(vSpacing) {
+: QLayout(parent), hSpace_(hSpacing), vSpace_(vSpacing) {
   setContentsMargins(margin, margin, margin, margin);
 }
 
 FlowLayout::FlowLayout(int margin, int hSpacing, int vSpacing)
-: m_hSpace(hSpacing), m_vSpace(vSpacing) {
+: hSpace_(hSpacing), vSpace_(vSpacing) {
     setContentsMargins(margin, margin, margin, margin);
 }
 
@@ -23,36 +23,36 @@ FlowLayout::~FlowLayout() {
 }
 
 void FlowLayout::addItem(QLayoutItem *item) {
-  itemList.append(item);
+  itemList_.append(item);
 }
 
 int FlowLayout::horizontalSpacing() const {
-  if (m_hSpace >= 0) {
-    return m_hSpace;
+  if (hSpace_ >= 0) {
+    return hSpace_;
   } else {
     return smartSpacing(QStyle::PM_LayoutHorizontalSpacing);
   }
 }
 
 int FlowLayout::verticalSpacing() const {
-  if (m_vSpace >= 0) {
-    return m_vSpace;
+  if (vSpace_ >= 0) {
+    return vSpace_;
   } else {
     return smartSpacing(QStyle::PM_LayoutVerticalSpacing);
   }
 }
 
 int FlowLayout::count() const {
-  return static_cast<int>(itemList.size());
+  return static_cast<int>(itemList_.size());
 }
 
 QLayoutItem *FlowLayout::itemAt(int index) const {
-  return itemList.value(index);
+  return itemList_.value(index);
 }
 
 QLayoutItem *FlowLayout::takeAt(int index) {
-  if (index >= 0 && index < itemList.size())
-    return itemList.takeAt(index);
+  if (index >= 0 && index < itemList_.size())
+    return itemList_.takeAt(index);
   return nullptr;
 }
 
@@ -80,7 +80,7 @@ QSize FlowLayout::sizeHint() const {
 
 QSize FlowLayout::minimumSize() const {
   QSize size;
-  for (const QLayoutItem *item : std::as_const(itemList))
+  for (const QLayoutItem *item : std::as_const(itemList_))
     size = size.expandedTo(item->minimumSize());
 
   const QMargins margins = contentsMargins();
@@ -97,7 +97,7 @@ int FlowLayout::doLayout(const QRect &rect, bool testOnly) const {
   int y = effectiveRect.y();
   int lineHeight = 0;
 
-  for (QLayoutItem *item : std::as_const(itemList)) {
+  for (QLayoutItem *item : std::as_const(itemList_)) {
     const QWidget *wid = item->widget();
     int spaceX = horizontalSpacing();
     if (spaceX == -1)

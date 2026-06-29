@@ -25,6 +25,9 @@ namespace {
 
 const std::string LogTag = "Win32Api";
 
+ParentConsoleBinding* parentConsoleBinding = nullptr;
+
+
 GUID KnownFolderToFolderId(KnownFolder folder) {
   switch (folder) {
   case KnownFolder::RoamingAppData:
@@ -412,21 +415,19 @@ void ClearMemory(void* address, size_t bytes) {
   }
 }
 
-ParentConsoleBinding* ParentConsoleBinding::theInstance = nullptr;
-
 ParentConsoleBinding::ParentConsoleBinding() {
-  assert(theInstance == nullptr);
-  theInstance = this;
+  assert(parentConsoleBinding == nullptr);
+  parentConsoleBinding = this;
 }
 
 ParentConsoleBinding::~ParentConsoleBinding() noexcept {
-  assert(theInstance == this);
-  theInstance = nullptr;
+  assert(parentConsoleBinding == this);
+  parentConsoleBinding = nullptr;
   ReleaseConsole();
 }
 
 std::unique_ptr<ParentConsoleBinding> ParentConsoleBinding::TryCreate() {
-  if (theInstance != nullptr) {
+  if (parentConsoleBinding != nullptr) {
     return nullptr;
   }
   if (!AttachParentConsole(1024)) {

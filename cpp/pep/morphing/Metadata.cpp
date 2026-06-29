@@ -15,7 +15,7 @@ namespace pep {
 Metadata Metadata::decrypt(const std::string& aeskey) const {
   Metadata result = *this;
 
-  for (auto&& [name, xentry] : result.mExtra) {
+  for (auto&& [name, xentry] : result.extra_) {
     xentry = xentry.preparePlaintext(aeskey);
   }
 
@@ -24,14 +24,14 @@ Metadata Metadata::decrypt(const std::string& aeskey) const {
 
 /// \throws std::runtime_error When new fields are used with an old version, where this may be a problem for key blinding
 void Metadata::checkFieldsConsistentWithVersion() const {
-  if (mEncryptionScheme < EncryptionScheme::V3) {
+  if (encryptionScheme_ < EncryptionScheme::V3) {
     // MetadataXEntry was introduced after V3,
     // so old versions should never have them.
     // Instead, a new V3 Metadata object should be created to insert them.
-    if (!mExtra.empty()) {
+    if (!extra_.empty()) {
       throw std::invalid_argument(
           std::format("This metadata version cannot have x-entries, but found {} (first '{}')",
-              mExtra.size(), mExtra.begin()->first));
+              extra_.size(), extra_.begin()->first));
     }
   }
 }
@@ -44,10 +44,10 @@ Metadata Metadata::getBound() const {
   checkFieldsConsistentWithVersion();
 
   Metadata result;
-  result.mBlindingTimestamp = mBlindingTimestamp;
-  result.mTag = mTag;
-  result.mEncryptionScheme = mEncryptionScheme;
-  result.mExtra = RangeToCollection<std::map<std::string, MetadataXEntry>>(mExtra
+  result.blindingTimestamp_ = blindingTimestamp_;
+  result.tag_ = tag_;
+  result.encryptionScheme_ = encryptionScheme_;
+  result.extra_ = RangeToCollection<std::map<std::string, MetadataXEntry>>(extra_
       | views::filter([](const std::pair<const std::string, MetadataXEntry>& entry) { return entry.second.bound(); }));
   return result;
 }
@@ -108,10 +108,10 @@ KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const Local
 MetadataXEntry MetadataXEntry::preparePlaintext(const std::string& aeskey) const {
   MetadataXEntry result = *this;
 
-  if (result.mIsEncrypted) {
-    result.mPayload = Serialization::FromString<EncryptedBytes>(result.mPayload, false)
-        .decrypt(aeskey).mData;
-    result.mIsEncrypted = false;
+  if (result.isEncrypted_) {
+    result.payload_ = Serialization::FromString<EncryptedBytes>(result.payload_, false)
+        .decrypt(aeskey).data;
+    result.isEncrypted_ = false;
   }
 
   return result;
@@ -121,15 +121,15 @@ MetadataXEntry MetadataXEntry::prepareForStore(const std::string& aeskey) const 
   MetadataXEntry result = *this;
 
   // Only encrypt if desired
-  if (result.mStoreEncrypted && !result.mIsEncrypted) {
-    if (result.mBound) {
+  if (result.storeEncrypted_ && !result.isEncrypted_) {
+    if (result.bound_) {
       // Protobuf serialization is not stable,
       // see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2525
       throw std::runtime_error("encrypted bound metadata is currently not supported");
     }
-    result.mPayload = Serialization::ToString(
-        EncryptedBytes(aeskey, Bytes(std::move(result.mPayload))), false);
-    result.mIsEncrypted = true;
+    result.payload_ = Serialization::ToString(
+        EncryptedBytes(aeskey, Bytes(std::move(result.payload_))), false);
+    result.isEncrypted_ = true;
   }
 
   return result;
