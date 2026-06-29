@@ -448,7 +448,15 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
     }
 
     std::string code = EncodeBase64Url(RandomString(32));
-    self->addActiveGrant(code, Grant(clientId, humanReadableUid,  std::move(group), redirectUriString, codeChallenge, validityDuration));
+    self->addActiveGrant(code, Grant{
+      .clientId = clientId,
+      .humanReadableId = humanReadableUid,
+      .usergroup = std::move(group),
+      .redirectUri = redirectUriString,
+      .codeChallenge = codeChallenge,
+      .validity = validityDuration,
+      .createdAt = std::chrono::steady_clock::now(),
+      });
     url returnUri = redirectUri;
     returnUri.params().set("code", code);
 
