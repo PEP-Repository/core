@@ -75,7 +75,7 @@ private:
   bool isVisitAssessorColumn(const std::string& columnName, std::string* context = nullptr, unsigned* visitNumber = nullptr) const;
 
 public:
-  ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig_) noexcept;
+  ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept;
 
   // Prevent copying, which would have the copy's unfilledShortPseudonyms_ point to the original's shortPseudonymDefinitions_
   ParticipantDataAggregator(const ParticipantDataAggregator&) = delete;
@@ -1401,8 +1401,8 @@ bool ParticipantDataAggregator::isDeviceHistoryColumn(const std::string& columnN
   return std::find_if(devices.cbegin(), end, [&columnName](const pep::DeviceRegistrationDefinition& definition) {return definition.columnName == columnName; }) != end;
 }
 
-ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig_) noexcept
-  : globalConfig_(globalConfig_), participantIdentifierIsSet_(false) {
+ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept
+  : globalConfig_(globalConfig), participantIdentifierIsSet_(false) {
   auto inserter = std::back_inserter(unfilledShortPseudonyms_);
   std::transform(globalConfig_.getShortPseudonyms().begin(), globalConfig_.getShortPseudonyms().end(), inserter, [](const pep::ShortPseudonymDefinition& definition) {return &definition; });
 }
