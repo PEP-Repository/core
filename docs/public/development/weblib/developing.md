@@ -629,6 +629,7 @@ You may need to substitute paths, especially when debugging remotely. E.g.:
   "name": "pepUtilsUnitTests",
   "program": "${workspaceFolder}/build/wasm32/Debug/cpp/pep/utils/pepUtilsUnitTests",
 
+  "outputCapture": "std",
   "type": "node",
   "request": "launch",
   "skipFiles": ["<node_internals>/**"],
