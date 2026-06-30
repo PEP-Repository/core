@@ -390,7 +390,7 @@ delete_package_version() {
 # ==== PEP FOSS binaries_for_* branch cleanup ====
 # ================================================
 # See https://gitlab.pep.cs.ru.nl/pep/core/-/branches?state=all&sort=updated_desc&search=binaries_for_.
-# binaries_for_* branches are created by scripts/gitlab-pipeline.sh and not cleaned up on timeout etc.
+# binaries_for_* branches are created by scripts/provide-binaries.sh and not cleaned up on timeout etc.
 
 # See https://docs.gitlab.com/api/pipelines/#list-project-pipelines
 list_running_foss_pipelines() {

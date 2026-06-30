@@ -1,8 +1,7 @@
 #!/usr/bin/env sh
 
 # Downloads FOSS Docker images and binary packages needed by PEP project repositories.
-# If any required artifact is missing or outdated, triggers a FOSS CI pipeline to
-# (re-)produce it.
+# If any required artifact is missing or outdated, triggers a FOSS CI pipeline to (re-)produce it.
 
 set -eu
 
