@@ -6,7 +6,7 @@ variables:
 
   # This tag can be overwritten by the trigger in docker-build
   # Plus it may be changed in a commit from docker-build, so keep in this format
-  RUNNER_IMAGE_TAG: sha-505e79c9a33f371cac6ba6544dabb526f2e588ac
+  RUNNER_IMAGE_TAG: sha-f3cb4c483039122fa0d22875047d2d6472171a73
 
   DOCKER_BUILD_PROJECT: pep/docker-build
 
