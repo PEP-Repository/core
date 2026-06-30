@@ -357,8 +357,8 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
   while (!arguments.empty()) {
     const auto& token = arguments.front();
 
-    if (token == SwitchAnnouncement::STOP_PROCESSING) {
-      arguments.pop(); // discard the STOP_PROCESSING token from remaining arguments
+    if (token == SwitchAnnouncement::StopProcessing) {
+      arguments.pop(); // discard the StopProcessing token from remaining arguments
       if (terminated) *terminated = true;
       break;
     }

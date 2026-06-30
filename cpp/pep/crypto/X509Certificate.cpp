@@ -37,7 +37,7 @@ namespace pep {
 
 static const std::string LogTag ("X509Certificate");
 
-constexpr std::chrono::seconds MAX_PEP_CERTIFICATE_VALIDITY_PERIOD = std::chrono::years{2};
+constexpr std::chrono::seconds MaxPepCertificateValidityPeriod = std::chrono::years{2};
 
 namespace {
 
@@ -837,7 +837,7 @@ X509Certificate X509Certificate::MakeUnsigned(const AsymmetricKey& publicKey, co
   if (validityPeriod <= std::chrono::seconds{0}) {
     throw std::invalid_argument("Validity period must be greater than zero");
   }
-  if (validityPeriod > MAX_PEP_CERTIFICATE_VALIDITY_PERIOD) {
+  if (validityPeriod > MaxPepCertificateValidityPeriod) {
     throw std::invalid_argument("Validity period exceeds the maximum allowed duration");
   }
 

@@ -220,9 +220,9 @@ rxcpp::observable<bool> ClientTestApplication::Mode2Command::getTestResults(std:
 }
 
 rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std::shared_ptr<Client> client) {
-  const unsigned NUM_RECORDS = 10;
+  const unsigned NumRecords = 10;
   
-  std::cout << "Testing storing of " << NUM_RECORDS << " data items" << std::endl;
+  std::cout << "Testing storing of " << NumRecords << " data items" << std::endl;
 
   PolymorphicPseudonym pp = client->generateParticipantPolymorphicPseudonym(this->getRecordIdentifier());
 
@@ -230,7 +230,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std:
 
   // Test storage of data
   std::vector<rxcpp::observable<DataStorageResult2>> pepRequests;
-  for (unsigned i = 0; i < NUM_RECORDS; i++) {
+  for (unsigned i = 0; i < NumRecords; i++) {
     pepRequests.push_back(client->storeData2(pp, "ParticipantInfo",
                 std::make_shared<std::string>(lpPayload), { MetadataXEntry::MakeFileExtension(".txt") }));
     std::cout << i;

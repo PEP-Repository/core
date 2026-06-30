@@ -43,14 +43,14 @@ std::string DownloadMetadata::GetDirectoryName() {
 
 namespace {
 
-const std::string PRISTINE_STATE_FILENAME = DownloadMetadata::GetFilenamePrefix() + "pristine" + DownloadMetadata::GetFilenameExtension();
-const std::string LEGACY_PARTICIPANT_META_FILENAME = DownloadMetadata::GetFilenamePrefix() + "participant" + DownloadMetadata::GetFilenameExtension();
+const std::string PristineStateFilename = DownloadMetadata::GetFilenamePrefix() + "pristine" + DownloadMetadata::GetFilenameExtension();
+const std::string LegacyParticipantMetaFilename = DownloadMetadata::GetFilenamePrefix() + "participant" + DownloadMetadata::GetFilenameExtension();
 
 std::vector<std::filesystem::path> GetLegacyParticipantMetaFilePaths(const std::filesystem::path& downloadDirectory) {
   std::vector<std::filesystem::path> result;
   for (std::filesystem::directory_iterator i(downloadDirectory); i != std::filesystem::directory_iterator(); ++i) {
     if (std::filesystem::is_directory(i->path())) {
-      auto filename = i->path() / LEGACY_PARTICIPANT_META_FILENAME;
+      auto filename = i->path() / LegacyParticipantMetaFilename;
       if (std::filesystem::exists(filename)) {
         result.push_back(filename);
       }
@@ -133,7 +133,7 @@ void DownloadMetadata::ensureFormatUpToDate() {
    * foolproof.
    */
 
-  auto legacyPristineFile = downloadDirectory_ / PRISTINE_STATE_FILENAME;
+  auto legacyPristineFile = downloadDirectory_ / PristineStateFilename;
   if (std::filesystem::exists(legacyPristineFile)) {
     PEP_LOG(LogTag, Severity::Warning) << "Upgrading legacy download directory format.";
     boost::property_tree::ptree stateProperties;

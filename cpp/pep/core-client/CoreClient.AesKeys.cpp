@@ -14,7 +14,7 @@ namespace {
 
 const std::string LogTag("CoreClient.AesKeys");
 
-constexpr unsigned KEY_REQUEST_BATCH_SIZE = 2500;
+constexpr unsigned KeyRequestBatchSize = 2500;
 
 }
 
@@ -45,13 +45,13 @@ CoreClient::unblindAndDecryptKeys(
   };
   auto baseCtx = std::make_shared<Context>();
   baseCtx->encKeys.resize(entries.size());
-  baseCtx->reqSizes.reserve(entries.size() / KEY_REQUEST_BATCH_SIZE + 1);
-  baseCtx->reqs.reserve(entries.size() / KEY_REQUEST_BATCH_SIZE + 1);
-  for (unsigned offset = 0; offset < entries.size(); offset += KEY_REQUEST_BATCH_SIZE) {
+  baseCtx->reqSizes.reserve(entries.size() / KeyRequestBatchSize + 1);
+  baseCtx->reqs.reserve(entries.size() / KeyRequestBatchSize + 1);
+  for (unsigned offset = 0; offset < entries.size(); offset += KeyRequestBatchSize) {
     EncryptionKeyRequest request;
     request.ticket2 = ticket;
     for (unsigned i = offset;
-         i < std::min(static_cast<unsigned>(entries.size()), offset + KEY_REQUEST_BATCH_SIZE);
+         i < std::min(static_cast<unsigned>(entries.size()), offset + KeyRequestBatchSize);
          i++) {
       const auto& entry = *entries[i];
       request.entries.emplace_back(
@@ -72,7 +72,7 @@ CoreClient::unblindAndDecryptKeys(
     ctx->subscriber = subscriber;
     ctx->wg = WaitGroup::Create();
     for (unsigned i = 0; i < ctx->reqs.size(); i++) {
-      unsigned offset = i * KEY_REQUEST_BATCH_SIZE;
+      unsigned offset = i * KeyRequestBatchSize;
       auto action = ctx->wg->add(
           "unblindKeys offset " + std::to_string(offset));
       auto req_index = i;
@@ -91,7 +91,7 @@ CoreClient::unblindAndDecryptKeys(
         }
 
         for (unsigned i = offset;
-            i < std::min(static_cast<unsigned>(ctx->encKeys.size()), offset + KEY_REQUEST_BATCH_SIZE);
+            i < std::min(static_cast<unsigned>(ctx->encKeys.size()), offset + KeyRequestBatchSize);
             i++)
           ctx->encKeys[i] = resp.keys.at(i - offset);
         action.done();
@@ -123,13 +123,13 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
 
   // Use multiple KeyRequest instances as needed to keep message size down.
   std::unordered_map<size_t, EncryptionKeyRequest> keyRequests; // Associate each KeyRequest with the corresponding offset in DataEntriesRequest2::entries_
-  keyRequests.reserve(request->entries.size() / KEY_REQUEST_BATCH_SIZE + 1);
+  keyRequests.reserve(request->entries.size() / KeyRequestBatchSize + 1);
   for (size_t i = 0U; i < request->entries.size(); i++) {
     const auto& entry = request->entries[i];
 
-    auto indexInKeyRequest = i % KEY_REQUEST_BATCH_SIZE;
-    auto offset = i - indexInKeyRequest; // a multiple of KEY_REQUEST_BATCH_SIZE
-    assert(offset % KEY_REQUEST_BATCH_SIZE == 0U);
+    auto indexInKeyRequest = i % KeyRequestBatchSize;
+    auto offset = i - indexInKeyRequest; // a multiple of KeyRequestBatchSize
+    assert(offset % KeyRequestBatchSize == 0U);
     assert(keyRequests[offset].entries.size() == indexInKeyRequest);
     keyRequests[offset].entries.emplace_back(
       entry.metadata,

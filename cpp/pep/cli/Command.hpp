@@ -28,8 +28,8 @@ public:
    */
   template <typename TCallback>
   int executeEventLoopFor(bool ensureEnrolled, TCallback callback) {
-    constexpr bool CALLBACK_ACCEPTS_CORE_CLIENT = std::is_invocable_v<TCallback, std::shared_ptr<pep::CoreClient>>; // Check if the callback can be invoked with (a shared_ptr to) a CoreClient instance
-    using Client = std::conditional_t<CALLBACK_ACCEPTS_CORE_CLIENT, pep::CoreClient, pep::Client>; // If the callback doesn't accept a CoreClient, it must accept a (full) Client instance.
+    constexpr bool CallbackAcceptsCoreClient = std::is_invocable_v<TCallback, std::shared_ptr<pep::CoreClient>>; // Check if the callback can be invoked with (a shared_ptr to) a CoreClient instance
+    using Client = std::conditional_t<CallbackAcceptsCoreClient, pep::CoreClient, pep::Client>; // If the callback doesn't accept a CoreClient, it must accept a (full) Client instance.
     using Function = std::function<rxcpp::observable<FakeVoid>(std::shared_ptr<Client>)>; // Wrap the callback in a (non-templated) std::function<>.
     return this->executeEventLoopForClient(ensureEnrolled, Function(callback)); // Invoke a method overload depending on the std::function's type (i.e. signature).
   }

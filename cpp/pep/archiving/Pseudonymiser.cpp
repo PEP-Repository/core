@@ -8,13 +8,13 @@ namespace pep {
 
 namespace {
 
-const std::streamsize PSEUDONYMISER_BUFFER_SIZE{ 4096 };
+const std::streamsize PseudonymiserBufferSize{ 4096 };
 
 }
 
 const std::string& Pseudonymiser::GetDefaultPlaceholder() {
-  static const std::string DEFAULT_PLACEHOLDER = "idQE6abTtIA8QspTOBeNshr6pf4Y5y74QGwJ2Pa9"; //Random, so virtually 0 chance of occurring in actual data. Substring will be taken to match length of the short pseudonym
-  return DEFAULT_PLACEHOLDER;
+  static const std::string DefaultPlaceholder = "idQE6abTtIA8QspTOBeNshr6pf4Y5y74QGwJ2Pa9"; //Random, so virtually 0 chance of occurring in actual data. Substring will be taken to match length of the short pseudonym
+  return DefaultPlaceholder;
 }
 
 void Pseudonymiser::pseudonymise(std::istream& in, std::function<void(const char*, const std::streamsize)> writeToDestination) {
@@ -22,7 +22,7 @@ void Pseudonymiser::pseudonymise(std::istream& in, std::function<void(const char
   boost::iostreams::filtering_istream filteringStream;
   filteringStream.push(pseudonymiseFilter);
   filteringStream.push(in);
-  std::array<char, PSEUDONYMISER_BUFFER_SIZE> buffer{};
+  std::array<char, PseudonymiserBufferSize> buffer{};
   for (;;) {
     auto amount = boost::iostreams::read(filteringStream, buffer.data(), buffer.size());
 

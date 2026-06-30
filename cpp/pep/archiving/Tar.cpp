@@ -15,7 +15,7 @@ namespace {
 
 const std::string LogTag ("Tar");
 
-const size_t RETRIES = 3;
+const size_t Retries = 3;
 
 struct TarCtx {
    std::istream& stream;
@@ -57,8 +57,8 @@ int close_callback(archive* archive, void* clientData) {
 archive_entry* readNextHeader(archive* archive) {
   archive_entry* entry{};
   int result = archive_read_next_header(archive, &entry);
-  for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= RETRIES; ++retry) {
-    PEP_LOG(LogTag, Severity::Warning) << "Retry " << retry << " of " << RETRIES << " after warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
+  for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= Retries; ++retry) {
+    PEP_LOG(LogTag, Severity::Warning) << "Retry " << retry << " of " << Retries << " after warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
     result = archive_read_next_header(archive, &entry);
   }
   std::ostringstream oss;
@@ -88,8 +88,8 @@ bool readBlockToStream(archive* archive, std::ostream& out) {
   la_int64_t offset{};
 
   int result = archive_read_data_block(archive, &buff, &len, &offset);
-  for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= RETRIES; ++retry) {
-    PEP_LOG(LogTag, Severity::Warning) << "Retry " << retry << " of " << RETRIES << " after warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
+  for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= Retries; ++retry) {
+    PEP_LOG(LogTag, Severity::Warning) << "Retry " << retry << " of " << Retries << " after warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
     result = archive_read_data_block(archive, &buff, &len, &offset);
   }
   std::ostringstream oss;
@@ -151,8 +151,8 @@ void Tar::nextEntry(const std::filesystem::path& path, int64_t size) {
   archive_entry_set_filetype(entry, AE_IFREG);
   archive_entry_set_perm(entry, 0644);
   int result = archive_write_header(archive_, entry);
-  for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= RETRIES; ++retry) {
-    PEP_LOG(LogTag, Severity::Warning) << "Retry " << retry << " of " << RETRIES << " after warning while writing tar entry header: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
+  for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= Retries; ++retry) {
+    PEP_LOG(LogTag, Severity::Warning) << "Retry " << retry << " of " << Retries << " after warning while writing tar entry header: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
     result = archive_write_header(archive_, entry);
   }
   if(result == ARCHIVE_WARN) {

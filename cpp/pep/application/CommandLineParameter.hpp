@@ -141,7 +141,7 @@ private:
   void writeHelpText(std::ostream& destination, const std::string& header, std::vector<Index> indices) const;
 
   /*!
-   * \param terminated If non-null, will be set to true if lexing stopped after a `SwitchAnnouncement::STOP_PROCESSING` token
+   * \param terminated If non-null, will be set to true if lexing stopped after a `SwitchAnnouncement::StopProcessing` token
    */
   LexedValues lex(std::queue<std::string>& arguments, bool* terminated = nullptr) const;
   NamedValues parse(const LexedValues& lexed) const;

@@ -75,7 +75,7 @@ private:
   bool isVisitAssessorColumn(const std::string& columnName, std::string* context = nullptr, unsigned* visitNumber = nullptr) const;
 
 public:
-  ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig_) noexcept;
+  ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept;
 
   // Prevent copying, which would have the copy's unfilledShortPseudonyms_ point to the original's shortPseudonymDefinitions_
   ParticipantDataAggregator(const ParticipantDataAggregator&) = delete;
@@ -132,11 +132,11 @@ std::optional<std::filesystem::path> ReadConfiguredBartenderPath(const std::opti
 
 }
 
-const QString ParticipantWidget::NoParticipantSid = QString();
+const QString ParticipantWidget::NoParticipantId = QString();
 
 ParticipantWidget::ParticipantWidget(MainWindow* parent,
                                      std::shared_ptr<pep::Client> client,
-                                     QString SID,
+                                     QString participantId,
                                      const pep::Configuration& configuration,
                                      const pep::GlobalConfiguration& globalConfiguration,
                                      const pep::StudyContexts& allContexts,
@@ -149,8 +149,8 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
   baseUrl_ = QString::fromStdString(configuration.get<std::string>("Castor.BaseUrl"));
   stickerFilePath_ = configuration.get<std::optional<std::filesystem::path>>("StickerFilePath").value_or(QCoreApplication::applicationDirPath().toStdString() + "/pepStickerTemplate.btw");
   bartenderPath_ = ReadConfiguredBartenderPath(configuration);
-  currentUserPp_ = pepClient_->generateParticipantPolymorphicPseudonym(SID.toStdString()); // TODO: accept as a parameter: most (or all?) callers will already have a PP
-  participantSID_ = SID;
+  currentUserPp_ = pepClient_->generateParticipantPolymorphicPseudonym(participantId.toStdString()); // TODO: accept as a parameter: most (or all?) callers will already have a PP
+  participantId_ = participantId;
 
   setAttribute(Qt::WA_DeleteOnClose);
 
@@ -208,7 +208,7 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
   printOneStickerButton_ = printButtons_->addButton(tr("print-one-sticker"), std::bind(&ParticipantWidget::printSingleParticipantSticker, this), currentPepRole_.canPrintStickers());
   printButtons_->addButton(tr("locate-bartender"), std::bind(&ParticipantWidget::locateBartender, this), currentPepRole_.canPrintStickers());
 
-  QObject::connect(ui_->tabWidget_right, SIGNAL(currentChanged(int)), this, SLOT(setCurrentVisitNumber(int))); // Track visit number for printing
+  QObject::connect(ui_->tabWidget_right, &QTabWidget::currentChanged, this, &ParticipantWidget::setCurrentVisitNumber); // Track visit number for printing
 
   auto numberOfVisits = globalConfig_.getNumberOfVisits(studyContext_.getIdIfNonDefault());
   for (auto visitIndex = 0U; visitIndex < numberOfVisits; ++visitIndex) {
@@ -300,12 +300,12 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
         .arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
   }, [this, aggregator, completeRegistration] {
     if (!aggregator->hasParticipantData()) {
-      std::cerr << tr("No participant with ID %1 found").arg(participantSID_).toStdString() << std::endl;
-      emit participantLookupError(tr("No participant with ID %1 found").arg(participantSID_), pep::Severity::Error);
+      std::cerr << tr("No participant with ID %1 found").arg(participantId_).toStdString() << std::endl;
+      emit participantLookupError(tr("No participant with ID %1 found").arg(participantId_), pep::Severity::Error);
     }
     else if (completeRegistration && currentPepRole_.canRegisterParticipants() && !aggregator->hasCompleteParticipantData()) {
       emit statusMessage(tr("Participant registration is not complete. Attempting to complete registration..."), pep::Severity::Warning);
-      pepClient_->completeParticipantRegistration(participantSID_.toStdString())
+      pepClient_->completeParticipantRegistration(participantId_.toStdString())
         .observe_on(ObserveOnGui())
         .subscribe([](pep::FakeVoid) {
       }, [this, aggregator](std::exception_ptr ep) {
@@ -672,7 +672,7 @@ void ParticipantWidget::printSummary() {
   if (participantData_.isTestParticipant) {
     htmlFormattedSummary.append("<h4>" + tr("This is a test participant") + "</h4>");
   }
-  htmlFormattedSummary.append(QString("<h4>")+participantSID_+"</h4>");
+  htmlFormattedSummary.append(QString("<h4>")+participantId_+"</h4>");
 
   appendShortPseudonymsHtmlTable(htmlFormattedSummary, std::nullopt, tr("Participant pseudonyms"),
     [](const pep::ShortPseudonymDefinition& sp) {return true; });
@@ -812,9 +812,8 @@ void ParticipantWidget::locateBartender() {
  */
 void ParticipantWidget::closeParticipant() {
   //Should also clear out current patient data
-  //std::cout << ">>>ParticipantWidget on_exitPatient_clicked called" << std::endl;
   mainWindow_->changeActiveTab(0);
-  mainWindow_->openedParticipants_.remove(participantSID_);
+  mainWindow_->openedParticipants_.remove(participantId_);
   deleteLater();
   parent()->deleteLater();
 }
@@ -834,7 +833,7 @@ void ParticipantWidget::onTranslation() {
  * This code block does a lot. All of the current UI is configured in this function. No arguments are taken, but many class variables are used.
  */
 void ParticipantWidget::processData() {
-  ui_->participant->setText(tr("participant '%1'").arg(participantSID_));
+  ui_->participant->setText(tr("participant '%1'").arg(participantId_));
 
   if (!participantStudyContexts_.contains(studyContext_)) {
     ui_->label_unavailable->setText(tr("This participant is unavailable in the current (%1) context.").arg(QString::fromStdString(studyContext_.getId())));
@@ -1349,7 +1348,12 @@ void ParticipantDataAggregator::processShortPseudonym(const pep::EnumerateAndRet
   auto definition = getShortPseudonymDefinition(shortPseudonymTag);
   if (definition != nullptr) {
     shortPseudonyms_[shortPseudonymTag] = result.data;
-    unfilledShortPseudonyms_.erase(std::remove(unfilledShortPseudonyms_.begin(), unfilledShortPseudonyms_.end(), definition), unfilledShortPseudonyms_.end());
+    auto removed = std::remove(unfilledShortPseudonyms_.begin(), unfilledShortPseudonyms_.end(), definition);
+    /* Since we're receiving SP data matching a known definition, that definition must have been added to our
+     * "unfilledShortPseudonyms_" field at construction time.
+     */
+    assert(removed != unfilledShortPseudonyms_.end());
+    unfilledShortPseudonyms_.erase(removed, unfilledShortPseudonyms_.end());
   }
 }
 
@@ -1397,8 +1401,8 @@ bool ParticipantDataAggregator::isDeviceHistoryColumn(const std::string& columnN
   return std::find_if(devices.cbegin(), end, [&columnName](const pep::DeviceRegistrationDefinition& definition) {return definition.columnName == columnName; }) != end;
 }
 
-ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig_) noexcept
-  : globalConfig_(globalConfig_), participantIdentifierIsSet_(false) {
+ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept
+  : globalConfig_(globalConfig), participantIdentifierIsSet_(false) {
   auto inserter = std::back_inserter(unfilledShortPseudonyms_);
   std::transform(globalConfig_.getShortPseudonyms().begin(), globalConfig_.getShortPseudonyms().end(), inserter, [](const pep::ShortPseudonymDefinition& definition) {return &definition; });
 }

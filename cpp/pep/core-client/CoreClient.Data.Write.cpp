@@ -13,7 +13,7 @@ namespace {
 
 const std::string LogTag("CoreClient.Data.Write");
 
-constexpr unsigned METADATA_UPDATE_BATCH_SIZE = 2500;
+constexpr unsigned MetadataUpdateBatchSize = 2500;
 
 }
 
@@ -299,11 +299,11 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
         .flat_map([this, ctx](FakeVoid) {
         // (The entries in) our MetadataUpdateRequest2 are now ready: split them over multiple requests to prevent individual messages from becoming too large for our network layer
         std::unordered_map<size_t, std::shared_ptr<MetadataUpdateRequest2>> batches;
-        batches.reserve(ctx->request->entries.size() / METADATA_UPDATE_BATCH_SIZE + 1);
+        batches.reserve(ctx->request->entries.size() / MetadataUpdateBatchSize + 1);
         for (size_t i = 0U; i < ctx->request->entries.size(); ++i) {
-          auto indexInBatch = i % METADATA_UPDATE_BATCH_SIZE;
+          auto indexInBatch = i % MetadataUpdateBatchSize;
           auto offset = i - indexInBatch;
-          assert(offset % METADATA_UPDATE_BATCH_SIZE == 0U);
+          assert(offset % MetadataUpdateBatchSize == 0U);
           if (batches[offset] == nullptr) {
             batches[offset] = std::make_shared<MetadataUpdateRequest2>();
             batches[offset]->ticket = ctx->request->ticket;

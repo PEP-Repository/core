@@ -26,7 +26,7 @@ namespace pep {
 
 namespace {
 
-constexpr auto SYSTEM_LOCAL_TIME_ZONE = "SYSTEM_TIME_ZONE";
+constexpr auto SystemLocalTimeZone = "SYSTEM_TIME_ZONE";
 
 const bpt::ptime UnixEpochPtime(BoostDateFromStd(sys_days{}));
 
@@ -104,7 +104,7 @@ protected:
       }
     }
 
-    if (timeZone_ == SYSTEM_LOCAL_TIME_ZONE) {
+    if (timeZone_ == SystemLocalTimeZone) {
       using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
       return TimestampFromBoostPtime(Adjustor::utc_to_local(bpt::ptime(parsedDate)));
     }
@@ -137,7 +137,7 @@ private:
 
 } // namespace
 
-TimeZone TimeZone::Local() { return {SYSTEM_LOCAL_TIME_ZONE}; }
+TimeZone TimeZone::Local() { return {SystemLocalTimeZone}; }
 
 bpt::ptime TimestampToBoostPtime(Timestamp time) {
   if (time == Timestamp::min()) { return boost::date_time::neg_infin; }
