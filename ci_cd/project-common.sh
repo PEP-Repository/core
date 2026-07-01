@@ -5,8 +5,8 @@
 # Common helpers for project scripts, such as:
 # provide-binaries.sh, config-dockerfiles.sh, publish.sh.
 #
-# Source this after parsing arguments. Before sourcing, the sourcing script must define:
-# SCRIPTPATH, git_dir, environment, foss_dir. For docker_login it must also define: api_key
+# Source this after parsing arguments and after defining: `SCRIPTPATH`, `git_dir`, `environment`, `foss_dir`.
+# The `docker_login` function requires `api_key` to be defined as well
 
 # shellcheck source=scripts/sh-utils.sh
 . "$SCRIPTPATH/../scripts/sh-utils.sh"
