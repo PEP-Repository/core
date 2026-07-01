@@ -6,7 +6,9 @@
 set -eu
 
 SCRIPTSELF=$(command -v "$0")
+readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+readonly SCRIPTPATH
 
 command="${1:?Expected command (update-latest|publish-client|publish)}"; shift
 

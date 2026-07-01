@@ -8,7 +8,9 @@
 set -eu
 
 SCRIPTSELF=$(command -v "$0")
+readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+readonly SCRIPTPATH
 
 # shellcheck source=scripts/sh-utils.sh
 . "$SCRIPTPATH/sh-utils.sh"
@@ -32,9 +34,9 @@ while [ "$#" != 0 ]; do
   shift
 done
 
-git_dir="${1:?Expected git dir}"; shift
-api_key="${1:?Expected API key}"; shift
-command="${1:?Expected command}"; shift
+readonly git_dir="${1:?Expected git dir}"; shift
+readonly api_key="${1:?Expected API key}"; shift
+readonly command="${1:?Expected command}"; shift
 
 # Commands that don't require a project URL or API connection
 case $command in

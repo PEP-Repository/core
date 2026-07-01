@@ -12,11 +12,14 @@
 . "$SCRIPTPATH/../scripts/sh-utils.sh"
 
 git_root=$(cd "$git_dir" && pwd)
-git_config_dir="$git_root/config"
-env_config_dir="$git_config_dir/$environment"
-env_project_dir="$env_config_dir/project"
+readonly git_root
+readonly git_config_dir="$git_root/config"
+readonly env_config_dir="$git_config_dir/$environment"
+readonly env_project_dir="$env_config_dir/project"
 foss_root=$(cd "$git_root" && cd "$foss_dir" && pwd)
+readonly foss_root
 foss_sha=$("$SCRIPTPATH"/../scripts/gitdir.sh commit-sha "$foss_root")
+readonly foss_sha
 
 get_project_caption() {
   if [ -f "$env_project_dir/caption.txt" ]; then

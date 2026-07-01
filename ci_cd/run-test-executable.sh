@@ -3,7 +3,9 @@
 set -eu
 
 SCRIPTSELF=$(command -v "$0")
+readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+readonly SCRIPTPATH
 
 staging_dir="$1"
 mem_analysis_tool="$2" # Either "valgrind", "leaks" or "none"

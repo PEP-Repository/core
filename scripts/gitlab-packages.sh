@@ -4,8 +4,10 @@
 
 set -eu
 
-readonly SCRIPTSELF=$(command -v "$0")
-readonly SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+SCRIPTSELF=$(command -v "$0")
+readonly SCRIPTSELF
+SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+readonly SCRIPTPATH
 
 readonly git_dir="${1:?Expected git dir}"; shift
 readonly api_key="${1:?Expected API key}"; shift

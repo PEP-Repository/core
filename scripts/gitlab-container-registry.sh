@@ -10,7 +10,9 @@ set -o errexit
 set -o nounset
 
 SCRIPTSELF=$(command -v "$0")
+readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+readonly SCRIPTPATH
 
 git_dir="$1"
 api_key="$2"
@@ -71,8 +73,8 @@ get_image_location() {
     return
   fi
 
-  repoid=$(printf '%s' "$repo" | jq ".id")
-  details=$(gitlab_api get "registry/repositories/$repoid/tags/$sha" || true)
+  repo_id=$(printf '%s' "$repo" | jq ".id")
+  details=$(gitlab_api get "registry/repositories/$repo_id/tags/$sha" || true)
   if [ -z "$details" ]; then
     >&2 echo "FOSS Docker image $imgname not found for SHA $sha."
     return

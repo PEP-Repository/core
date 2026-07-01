@@ -18,7 +18,9 @@
 set -eu
 
 SCRIPTSELF=$(command -v "$0")
+readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+readonly SCRIPTPATH
 
 # Portable envsubst replacement (But beware: also replaces shell variables and allows command injections)
 envsubst() { eval "echo \"$(sed 's/\\/\\\\/g; s/"/\\"/g')\""; }
