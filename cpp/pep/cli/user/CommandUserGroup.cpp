@@ -1,6 +1,7 @@
 #include <pep/cli/user/CommandUserGroup.hpp>
 #include <pep/application/CommandLineCommandWrappers.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/structuredoutput/Common.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
 
@@ -80,7 +81,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CommandUser::CommandUser
       [](std::queue<std::string>& /*forwarded*/) {
         pep::commandline::NamedValues injected;
         pep::commandline::Values includeValues;
-        includeValues.add<std::string>("user-groups");
+        includeValues.add<std::string>(std::string{pep::structuredOutput::queryKeys::userGroups.simple});
         injected.set("include", includeValues);
         return injected;
       }),
