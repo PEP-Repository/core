@@ -1,4 +1,4 @@
-/label ~"4: Low Priority" /label ~"Chore" <!-- Labels applied by default -->
+/label ~"4: Low Priority" /label ~"Kind: Chore" <!-- Labels applied by default -->
 
 ## Summary <!-- Single sentence description of the issue -->
 
