@@ -1,14 +1,19 @@
-# Building
+# Prerequisites
 
 1. Download and install VSCode from https://code.visualstudio.com/download# . Choose the "System Installer" to prevent every user from having to store an instance in their `AppData` directory.
 1. Install [C/C++ Extension Pack](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools-extension-pack) and [WebAssembly DWARF Debugging](https://marketplace.visualstudio.com/items?itemName=ms-vscode.wasm-dwarf-debugging) extensions
-1. Discard existing `build` directory contents.
-1. `Install requirements via Conan` and `Configure PEP` as detailed in our `quickstart.md`.
-1. Run `build\wasm32\Debug\generators\conanbuild.bat` to set environment variables, then start VSCode from that same command line: "C:\Program Files\Microsoft VS Code\Code.exe" . Unfortunately it'll spam some (apparently error) logging to this console.
+
+# Building
+
+1. `Install requirements via Conan` and `Configure PEP` as detailed in the `quickstart.md` document.
+1. Run `build\wasm32\Debug\generators\conanbuild.bat` to set environment variables, then start VSCode from that same command line: `"C:\Program Files\Microsoft VS Code\Code.exe"` . Unfortunately it'll spam some (apparently error) logging to this console.
 1. Open the project directory in VSCode. Wait until the `OUTPUT` for `[cmake]` completes with `Build files have been written [...]`.
-1. Click the `Build` button on the CMake toolbar (at the bottom of the IDE). In the same toolbar you can select the target that the `Build` button applies to.
+1. Click the `CMake` icon in the LHS panel, then right-click the target you want to build and choose `Set Build Target` from the context menu.
+1. Click the `Build` button on the CMake toolbar (at the bottom of the IDE) to build your target.
 
 # Debugging
+
+VSCode provides two ways to debug targets: a native one (accessed through the "Run and Debug" icon in the LHS panel) and one based on CMake (accessed through the CMake toolbar (at the bottom of the IDE). These instructions are based on VSCode's native debugging support.
 
 1. Click the "Run and Debug" icon in the LHS panel, then click the "Create a launch.json file" link. Choose "Node.js" debugger from dropdown. (If the dropdown doesn't contain this entry, close all open documents and try again.)
 1. Find the "sample `launch.json` configuration" in `developing.md` and paste its contents into the `launch.json` file as an entry in the `configurations` array.
