@@ -71,6 +71,7 @@ conan install \
   -o"&:subbuild_name=wasm32"
 ```
 
+- If you get an `ERROR: It's not possible to compose str values and list ones.` you may be invoking the `conan install` command from a shell in which you've previously activated the conan build, e.g. by running `build\wasm32\Debug\generators\conanbuild.bat` on Windows. Fix this by using a fresh shell instead.
 - If you did not install EMSDK via Conan, you can use `--profile=./docker-build/builder/conan/conan_profile_wasm32` as you didn't need to create a custom `wasm32` profile
 - `--profile` == `--profile:host`: the target platform
 - Also add `--profile:build=./docker-build/builder/conan/conan_profile` if you have no default build profile installed (see pep/core> README)
