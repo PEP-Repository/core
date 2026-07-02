@@ -1,4 +1,4 @@
-/label ~"4: Medium Priority" /label ~"Kind: Bug" <!-- Labels that are added by default -->
+/label ~"Kind: Bug" <!-- Labels that are added by default -->
 
 ## Summary <!-- Single sentence description of the issue. -->
 
