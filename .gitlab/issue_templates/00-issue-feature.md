@@ -19,5 +19,3 @@ _not provided_
  - [ ] Update user documentation
  - [ ] Update CHANGELOG
 
-_not provided_
-
