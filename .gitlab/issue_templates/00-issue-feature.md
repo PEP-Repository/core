@@ -14,10 +14,6 @@
 
 _not provided_
 
-## Blocked By <!-- Bullet list of items and external factors that need to be resolved before this item -->
-
-_no blockers_
-
 ## Checklist <!-- Reminder of what to do before closing the ticket -->
 
  - [ ] Update user documentation
