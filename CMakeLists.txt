@@ -234,7 +234,7 @@ if(DEFINED EMSCRIPTEN)
       "$<$<CONFIG:Debug>:-Wno-limited-postlink-optimizations>"
       "$<$<CONFIG:RelWithDebInfo>:-Wno-error=limited-postlink-optimizations>"
       # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
-      "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG>"
+      "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG;-sEXCEPTION_DEBUG>"
   )
 
   define_property(TARGET PROPERTY PEP_SKIP_DEFAULT_EMSCRIPTEN_CLI_CONFIG
