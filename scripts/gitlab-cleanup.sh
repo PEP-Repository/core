@@ -581,8 +581,7 @@ clean_foss_npm_packages() {
     list_foss_npm_package_versions \
     .version \
     "\"\(.name)$chr_tab\(.version)$chr_tab(\(._links.web_path))\"" \
-    delete_foss_npm_package_version \
-    false
+    delete_foss_npm_package_version
 }
 
 
