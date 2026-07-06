@@ -271,8 +271,13 @@ if(DEFINED EMSCRIPTEN)
   else()
     list(APPEND emscripten_cli_link_flags
         -sENVIRONMENT=node
-        -sNODERAWFS # Use host file system
     )
+    # Use host file system (but not on Windows since it doesn't provide /dev/urandom and the likes)
+    if(NOT ${CMAKE_HOST_SYSTEM_NAME} MATCHES "Windows")
+      list(APPEND emscripten_cli_link_flags
+          -sNODERAWFS
+      )
+    endif()
   endif()
 
   add_link_options("$<$<NOT:$<BOOL:$<TARGET_PROPERTY:PEP_SKIP_DEFAULT_EMSCRIPTEN_CLI_CONFIG>>>:${emscripten_cli_link_flags}>")
