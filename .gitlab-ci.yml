@@ -1381,7 +1381,8 @@ upload-weblib-npm:
     - PEP_NPM_REGISTRY="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/npm/"
     # Only authenticate to the GitLab registry, do not set it as the default registry (registry=), otherwise
     # npm tries to fetch public (transitive) dependencies from it too and they 404.
-    - npm config set "//${PEP_NPM_REGISTRY}:_authToken=${CI_JOB_TOKEN}"
+    - PEP_NPM_AUTH_REGISTRY="${PEP_NPM_REGISTRY#https://}"
+    - npm config set "//${PEP_NPM_AUTH_REGISTRY}:_authToken=${CI_JOB_TOKEN}"
     - cd weblib/pep-repo-client-lib
     - npm version --no-git-tag-version "${PACKAGE_VERSION}"
     - npm install
