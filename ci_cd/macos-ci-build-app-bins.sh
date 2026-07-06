@@ -43,6 +43,11 @@ else
 
   CMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE:-Release}"
 
+  conan remote add pep-local-recipes \
+    "$PEP_MACOS_ROOT_DIR/docker-build/builder/conan/local-recipes" \
+    --type local-recipes-index \
+    --force
+
   echo "Installing Conan packages."
   # Set macOS version to prevent building things for different versions
   # We set build_type for build requirements as well (with :a), because macdeployqt copies its own dylibs,
@@ -59,7 +64,16 @@ else
     -o "&:with_tests=False" \
     -o "&:with_benchmark=False" \
     -o "&:custom_build_folder=True" \
-    --output-folder="./$BUILD_DIR/"
+    --output-folder="./$BUILD_DIR/" && true
+  conan_error="$?"
+
+  # Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
+  conan remote remove pep-local-recipes
+
+  if [[ "$conan_error" != 0 ]]; then
+    exit "$conan_error"
+  fi
+
   if [[ -n "$CLEAN_CONAN" ]]; then
     echo 'Cleaning Conan cache.'
     # Remove old recipes
@@ -232,6 +246,17 @@ if [[ "$MACOS_SYS_ARCH" != "arm64" ]] && [[ "$MACOS_SYS_ARCH" != "x86_64" ]]; th
     echo "Error: Unable to retrieve macOS system architecture in $0"
     exit 1
 fi
+
+# Bundle Sparkle's generate_appcast tool into the binaries zip, so the macos-generate-appcast CI job can use it without
+# invoking Conan or Homebrew. The cli CMake target copies it next to pepcli from the Sparkle Conan package
+echo "Staging generate_appcast tool."
+GENERATE_APPCAST_SRC="$PEP_MACOS_ROOT_DIR/$BUILD_DIR/$BUILD_TYPE_DIR/cpp/pep/cli/generate_appcast"
+if [[ ! -f "$GENERATE_APPCAST_SRC" ]]; then
+    echo "Error: generate_appcast not found at $GENERATE_APPCAST_SRC"
+    exit 1
+fi
+mkdir -p "$BUILD_DIR/macOS_artifacts/sparkle-tools"
+cp "$GENERATE_APPCAST_SRC" "$BUILD_DIR/macOS_artifacts/sparkle-tools/generate_appcast"
 
 echo "Creating zip file with macOS binaries."
 

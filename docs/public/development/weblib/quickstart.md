@@ -71,6 +71,7 @@ conan install \
   -o"&:subbuild_name=wasm32"
 ```
 
+- If you get an `ERROR: It's not possible to compose str values and list ones.` you may be invoking the `conan install` command from a shell in which you've previously activated the conan build environment, e.g. by running `build\wasm32\Debug\generators\conanbuild.bat` on Windows, while you installed EMSDK via Conan. Fix this by using a fresh shell instead.
 - If you did not install EMSDK via Conan, you can use `--profile=./docker-build/builder/conan/conan_profile_wasm32` as you didn't need to create a custom `wasm32` profile
 - `--profile` == `--profile:host`: the target platform
 - Also add `--profile:build=./docker-build/builder/conan/conan_profile` if you have no default build profile installed (see pep/core> README)
@@ -113,6 +114,6 @@ To develop the weblib, you may want to try one of these IDEs:
 - JetBrains CLion (has both C++ and web support via default plugins)
   - In the CMake panel, activate presets for both the native and the wasm32 build
   - Select the active preset and target in the top right
-- Microsoft VSCode with [C/C++ Extension Pack](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools-extension-pack) and optionally [WebAssembly DWARF Debugging](https://marketplace.visualstudio.com/items?itemName=ms-vscode.wasm-dwarf-debugging) extensions
+- Microsoft VSCode with [C/C++ Extension Pack](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools-extension-pack) and optionally [WebAssembly DWARF Debugging](https://marketplace.visualstudio.com/items?itemName=ms-vscode.wasm-dwarf-debugging) extensions (see [_PEP Weblib: development_](./developing.md) for debugging instructions)
 
 Both also have support for developing remotely with SSH.

@@ -11,7 +11,9 @@ if [[ $# -gt 3 ]]; then
     exit 1
 fi
 SCRIPTSELF=$(command -v "$0")
+readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+readonly SCRIPTPATH
 PEP_CORE_DIR="$SCRIPTPATH/../.."
 
 MACOS_SYS_ARCH=${1:-"$(uname -m)"}
