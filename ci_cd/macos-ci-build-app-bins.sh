@@ -14,25 +14,25 @@ else
     PEP_MACOS_ROOT_DIR=$(readlink -f "$(dirname -- "$0")/..")
 fi
 
-# Development helper: check if CI_COMMIT_REF_NAME is specified, if not, set it to "Local". Local can use incremental builds.
+# Development helper: check if CI_COMMIT_REF_NAME is specified, if not, set it to "local". Local can use incremental builds.
 if [[ -z "$CI_COMMIT_REF_NAME" ]]; then
-    echo "No CI_COMMIT_REF_NAME specified: performing 'Local' build."
-    CI_COMMIT_REF_NAME="Local"
+    echo "No CI_COMMIT_REF_NAME specified: performing 'local' build."
+    CI_COMMIT_REF_NAME="local"
 fi
 
 echo "Creating macOS CI artifacts for $CI_COMMIT_REF_NAME build."
 
 # Check if the "build" directory already exists.
 if [[ -d "$PEP_MACOS_ROOT_DIR/$BUILD_DIR" ]]; then
-    # If CI_COMMIT_REF_NAME is not "Local", exit with an error message.
-    if [[ "$CI_COMMIT_REF_NAME" != "Local" ]]; then
+    # If CI_COMMIT_REF_NAME is not "local", exit with an error message.
+    if [[ "$CI_COMMIT_REF_NAME" != "local" ]]; then
         echo "Build directory $PEP_MACOS_ROOT_DIR/$BUILD_DIR already exists."
     else
         echo "Performing incremental build on existing build directory."
     fi
 fi
 
-if [[ "$CI_COMMIT_REF_NAME" == "Local" ]]; then
+if [[ "$CI_COMMIT_REF_NAME" == "local" ]]; then
   LOCAL_BUILD_INFRA=${1:-local}
   LOCAL_BUILD_TYPE=${2:-Debug}
   MACOS_CMAKE_CONFIGURE_PRESET="$(tr "[:upper:]" "[:lower:]" <<< "$LOCAL_BUILD_INFRA"_"$LOCAL_BUILD_TYPE")"
@@ -182,7 +182,7 @@ create_cli_app() {
     echo "Copying pepcli frameworks."
     cp -R "$PEP_MACOS_ROOT_DIR/$BUILD_DIR/$BUILD_TYPE_DIR/cpp/pep/cli/Frameworks/"* "$build_root_dir/Contents/Frameworks/"
 
-    if [[ "$CI_COMMIT_REF_NAME" == "Local" ]]; then
+    if [[ "$CI_COMMIT_REF_NAME" == "local" ]]; then
         echo "Copying local config."
         cp "$PEP_MACOS_ROOT_DIR/$BUILD_DIR/$BUILD_TYPE_DIR"/cpp/pep/cli/{ClientConfig.json,rootCA.cert,ShadowAdministration.pub} "$build_root_dir/Contents/Resources/"
         cp "$PEP_MACOS_ROOT_DIR/config/local/authserver/AuthserverHTTPSCertificate.pem" "$build_root_dir/Contents/Resources/"
