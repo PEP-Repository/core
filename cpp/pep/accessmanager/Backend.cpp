@@ -152,10 +152,14 @@ rxcpp::observable<std::shared_ptr<std::set<int64_t>>> AccessManager::Backend::bl
 
 rxcpp::observable<FakeVoid> AccessManager::Backend::removeBlockEntries(int64_t internalUserId, std::string group, std::set<int64_t> excludeBlockEntries) {
   auto identifiers = storage_->getAllIdentifiersForUser(internalUserId);
+  auto myCommonName=accessManager_->getSigningIdentity(true)->getCertificateChain().leaf().getCommonName().value();
   return accessManager_->keyServerProxy_.requestTokenBlockingList().flat_map([](TokenBlockingListResponse response) {
     return RxIterate(std::move(response.entries));
-  }).filter([identifiers, group=std::move(group), excludeBlockEntries](const tokenBlocking::BlocklistEntry& entry) {
-    return identifiers.contains(entry.target.subject) && entry.target.userGroup == group && !excludeBlockEntries.contains(entry.id) && entry.metadata.blockStartDateTime > TimeNow();
+  }).filter([identifiers, group=std::move(group), excludeBlockEntries, myCommonName=std::move(myCommonName)](const tokenBlocking::BlocklistEntry& entry) {
+    return /*entry.metadata.issuer == myCommonName // We don't want to remove blocklist entries that have explicitly been created by an access administrator.
+      && */identifiers.contains(entry.target.subject) && entry.target.userGroup == group
+      && !excludeBlockEntries.contains(entry.id)
+      && entry.metadata.blockStartDateTime && entry.metadata.blockStartDateTime > TimeNow(); // We only remove entries that are not yet in effect. Once a token is actually blocked, it does not get unblocked again
   }).flat_map([accessManager=accessManager_](const tokenBlocking::BlocklistEntry& entry) {
     return accessManager->keyServerProxy_.requestTokenBlockingRemove(TokenBlockingRemoveRequest{
       .id=entry.id
