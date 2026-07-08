@@ -10,6 +10,9 @@
 
 - core#2488: Added command `pepcli pseudonym convert`, which converts a pseudonym of any form into a polymorphic, local, or brief-local pseudonym.
 
+- Study context ids are now validated (only alphanumerics and underscores are allowed) and compared case insensitively everywhere.
+  Duplicate ids are rejected. Generated names (columns, participant groups) keep using the casing as configured, so existing data is unaffected.
+
 ---------------
 *Past changes, do not edit (except by person doing release):*
 
