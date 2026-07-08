@@ -14,10 +14,12 @@ const std::string content("lorem ipsum dolor sit amet");
 
 /// Creates a directory with a randomized name within the system's temp directory.
 pep::filesystem::Temporary CreateTestDir() {
-  pep::filesystem::Temporary temp{fs::temp_directory_path()
-                                  / pep::filesystem::RandomizedName("pepTest-file-%%%%-%%%%-%%%%")};
-  fs::create_directory(temp.path());
-  return temp;
+  const auto path = fs::temp_directory_path() / pep::filesystem::RandomizedName("pepTest-file-%%%%-%%%%-%%%%");
+  fs::create_directory(path);
+  // Canonicalize so the returned path matches what fs::current_path() reports for it: on macOS
+  // the temp dir lives under /var/folders/... where /var is a symlink to /private/var, which
+  // fs::current_path() resolves but temp_directory_path() does not.
+  return pep::filesystem::Temporary{fs::canonical(path)};
 }
 
 
