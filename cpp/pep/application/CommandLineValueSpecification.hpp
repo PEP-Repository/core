@@ -69,6 +69,13 @@ struct Format<std::chrono::duration<R, P>> {
 };
 
 template <>
+struct Format<Timestamp> {
+  std::string operator()(const Timestamp& v) {
+    return TimestampToXmlDateTime(v);
+  }
+};
+
+template <>
 struct Format<std::filesystem::path> {
   inline std::string operator()(const std::filesystem::path& v) {
     return v.string(); // Format without quotes
