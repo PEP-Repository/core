@@ -144,10 +144,10 @@ TEST(File, GetParentDirectory) {
   EXPECT_THROW(pep::GetParentDirectory("/"), std::invalid_argument);
 
 #ifdef _WIN32
-  EXPECT_EQ(pep::StripTrailingSlash("C:abc/def"), "C:abc");
-  EXPECT_EQ(pep::StripTrailingSlash("C:."), "C:..");
-  EXPECT_EQ(pep::StripTrailingSlash("C:/abc/def/"), "C:/abc");
-  EXPECT_THROW(pep::StripTrailingSlash("C:/"), std::invalid_argument);
+  EXPECT_EQ(pep::GetParentDirectory("C:abc/def"), "C:abc");
+  EXPECT_EQ(pep::GetParentDirectory("C:."), "C:..");
+  EXPECT_EQ(pep::GetParentDirectory("C:/abc/def/"), "C:/abc");
+  EXPECT_THROW(pep::GetParentDirectory("C:/"), std::invalid_argument);
 #endif
 }
 
