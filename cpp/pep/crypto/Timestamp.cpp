@@ -78,6 +78,10 @@ protected:
       }
     }
     if (parsed.zone() == nullptr) {
+      if (timeZone_ == SystemLocalTimeZone) {
+        using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
+        return TimestampFromBoostPtime(Adjustor::utc_to_local(bpt::ptime(parsed.utc_time())));
+      }
       auto offset = blt::posix_time_zone(timeZone_).base_utc_offset();
       parsed+=offset;
     }
