@@ -4,8 +4,7 @@
 
 namespace pep {
 
-class Mod97 {
- public:
+struct Mod97 {
   /*!
    * \brief Compute check digits (2 characters) using the MOD 97-10 method (ISO 7064). This is the same method as used to verify IBAN numbers. Spaces and '-' characters are ignored and all alpha characters are converted to uppercase.
    *

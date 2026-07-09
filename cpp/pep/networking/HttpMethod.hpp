@@ -13,23 +13,24 @@ class HttpMethod {
 public:
   /**
    * @brief An enum representing the supported method(type)s.
+   * @remark Intentionally not an enum _class_ so we can write e.g. "HttpMethod::Post"
    */
   enum Value {
-    GET,
-    POST,
-    PUT
+    Get,
+    Post,
+    Put
   };
 
   /**
    * @brief Constructor.
    * @param value The method(type) that this instance will represent.
    */
-  HttpMethod(Value value) noexcept : mValue(value) {} // Implicitly convertible
+  HttpMethod(Value value) noexcept : value_(value) {} // Implicitly convertible
 
   /**
    * @brief Produces the method(type) that this instance represents.
    */
-  Value value() const noexcept { return mValue; }
+  Value value() const noexcept { return value_; }
 
   /**
    * @brief Produces the (HTTP compliant) string representation of this method(type).
@@ -51,7 +52,7 @@ public:
   auto operator<=>(const HttpMethod&) const = default;
 
 private:
-  Value mValue;
+  Value value_;
 };
 
 /**

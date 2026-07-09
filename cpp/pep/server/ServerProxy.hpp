@@ -8,8 +8,8 @@ namespace pep {
 
 class ServerProxy {
 private:
-  std::shared_ptr<messaging::ServerConnection> mUntyped;
-  const MessageSigner& mClientMessageSigner;
+  std::shared_ptr<messaging::ServerConnection> untyped_;
+  const MessageSigner& clientMessageSigner_;
 
   static void ValidateResponse(MessageMagic magic, std::string_view response, const std::type_info& responseInfo, const std::type_info& requestInfo);
 
@@ -23,19 +23,19 @@ private:
 protected:
   template <typename T>
   Signed<T> sign(T message) const {
-    return mClientMessageSigner.sign(std::move(message));
+    return clientMessageSigner_.sign(std::move(message));
   }
 
   template <typename TResponse, typename TRequest>
   rxcpp::observable<TResponse> sendRequest(TRequest request) const {
-    return mUntyped->sendRequest(MakeSharedCopy(Serialization::ToString(std::move(request))))
+    return untyped_->sendRequest(MakeSharedCopy(Serialization::ToString(std::move(request))))
       .map(&DeserializeResponse<TResponse, TRequest>);
   }
 
   template <typename TResponse, typename TRequest>
   rxcpp::observable<TResponse> sendRequest(TRequest request, messaging::MessageBatches tail) const {
     // TODO: ensure that tail is long rather than wide: see comment for MessageBatches
-    return mUntyped->sendRequest(MakeSharedCopy(Serialization::ToString(std::move(request))), tail)
+    return untyped_->sendRequest(MakeSharedCopy(Serialization::ToString(std::move(request))), tail)
       .map(&DeserializeResponse<TResponse, TRequest>);
   }
 

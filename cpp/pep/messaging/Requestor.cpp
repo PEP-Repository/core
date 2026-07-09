@@ -13,7 +13,7 @@ namespace pep::messaging {
 
 namespace {
 
-const std::string LOG_TAG = "Requestor";
+const std::string LogTag = "Requestor";
 
 }
 
@@ -25,19 +25,19 @@ Requestor::Entry::Entry(std::shared_ptr<std::string> message,
 }
 
 Requestor::Requestor(boost::asio::io_context& io_context, Scheduler& scheduler)
-  : mIoContext(io_context), mScheduler(scheduler) {
+  : ioContext_(io_context), scheduler_(scheduler) {
 }
 
 Requestor::~Requestor() noexcept {
-  if (mEntries.size() != 0) {
-    LOG(LOG_TAG, severity_level::error)
+  if (entries_.size() != 0) {
+    PEP_LOG(LogTag, Severity::Error)
       << "outstanding requests list is not empty:";
-    for (const auto& kv : mEntries) {
+    for (const auto& kv : entries_) {
       std::string msgType = "(too short)";
       auto msg = kv.second.message;
       if (msg->size() >= sizeof(MessageMagic))
         msgType = DescribeMessageMagic(*msg);
-      LOG(LOG_TAG, severity_level::error)
+      PEP_LOG(LogTag, Severity::Error)
         << " streamid " << kv.first
         << " " << msgType;
     }
@@ -47,15 +47,15 @@ Requestor::~Requestor() noexcept {
 
 StreamId Requestor::getNewRequestStreamId() {
   // use the previous request ID to start looking for a new one
-  auto result = mPreviousRequestStreamId;
+  auto result = previousRequestStreamId_;
 
   do {
     // ensure that ID differs from the previously generated one
     result = StreamId::MakeNext(result);
-  } while (mEntries.find(result) != mEntries.end()); // ensure that we don't recycle IDs of requests that we haven't received a reply to
+  } while (entries_.find(result) != entries_.end()); // ensure that we don't recycle IDs of requests that we haven't received a reply to
 
   // ensure that a future call doesn't produce this ID again
-  return mPreviousRequestStreamId = result;
+  return previousRequestStreamId_ = result;
 }
 
 rxcpp::observable<std::string> Requestor::send(std::shared_ptr<std::string> request, std::optional<MessageBatches> tail, bool immediately, bool resend) {
@@ -64,20 +64,20 @@ rxcpp::observable<std::string> Requestor::send(std::shared_ptr<std::string> requ
   return CreateObservable<std::string>([self = SharedFrom(*this), request, tail, immediately, resend](rxcpp::subscriber<std::string> s) {
     auto streamId = self->getNewRequestStreamId();
 
-    auto emplacement = self->mEntries.emplace(streamId, Entry(request, tail, resend, s));
+    auto emplacement = self->entries_.emplace(streamId, Entry(request, tail, resend, s));
     assert(emplacement.second);
 
     if (immediately) {
       self->schedule(*emplacement.first);
     }
     })
-    .subscribe_on(observe_on_asio(mIoContext));
+    .subscribe_on(ObserveOnAsio(ioContext_));
 }
 
 void Requestor::processResponse(const std::string& recipient, const StreamId& streamId, const Flags& flags, std::string body) {
-  auto it = mEntries.find(streamId);
-  if (it == mEntries.end()) {
-    LOG(LOG_TAG, warning) << "received response for non existent stream: " << streamId << " (to " << recipient << ")";
+  auto it = entries_.find(streamId);
+  if (it == entries_.end()) {
+    PEP_LOG(LogTag, Severity::Warning) << "received response for non existent stream: " << streamId << " (to " << recipient << ")";
     return;
   }
 
@@ -89,11 +89,11 @@ void Requestor::processResponse(const std::string& recipient, const StreamId& st
   bool payload = flags.payload();
 
   if (error || close) {
-    mEntries.erase(it);
+    entries_.erase(it);
   }
   PEP_DEFER(
     if (error || close) {
-      LOG(LOG_TAG, severity_level::verbose)
+      PEP_LOG(LogTag, Severity::Verbose)
         << "Closed stream " << streamId
         << " (to " << recipient << ")";
     });
@@ -104,7 +104,7 @@ void Requestor::processResponse(const std::string& recipient, const StreamId& st
       // Backward compatible: if no Error instance could be deserialized, report on an empty instance
       err = std::make_exception_ptr(Error(std::string()));
     }
-    LOG(LOG_TAG, severity_level::error)
+    PEP_LOG(LogTag, Severity::Error)
       << "Received an error! (stream id " << streamId
       << " to " << recipient << "): "
       << GetExceptionMessage(err);
@@ -119,7 +119,7 @@ void Requestor::processResponse(const std::string& recipient, const StreamId& st
 
 void Requestor::purge(bool all) {
   // remove requests that should not be re-sent
-  for (auto it = mEntries.begin(); it != mEntries.end(); /* sic */) {
+  for (auto it = entries_.begin(); it != entries_.end(); /* sic */) {
     // confused? See the example of:
     //  https://en.cppreference.com/w/cpp/container/map/erase
 
@@ -131,16 +131,16 @@ void Requestor::purge(bool all) {
       // notify caller of the failure, but not directly!, since this might
       // affect the this->requests map while we're looping over it
       //
-      // it might be more consistent to put an "observe_on(observe_on_asio(..))"
+      // it might be more consistent to put an "observe_on(ObserveOnAsio(..))"
       // on the observable returned by sendRequest, but I do not oversee the
       // all the consequences that might have
-      post(mIoContext.get_executor(),
+      post(ioContext_,
         [subscriber = std::move(request.subscriber)] {
           subscriber.on_error(std::make_exception_ptr(
             Error("Aborting multi-message request")));
         });
 
-      it = mEntries.erase(it); // Position "it" on the next item, i.e. the one after the one that we erased
+      it = entries_.erase(it); // Position "it" on the next item, i.e. the one after the one that we erased
     } else {
       it++; // Move "it" to the next item
     }
@@ -148,7 +148,7 @@ void Requestor::purge(bool all) {
 }
 
 void Requestor::resend() {
-  for (auto& entry : mEntries) {
+  for (auto& entry : entries_) {
     auto& request = entry.second;
     if (request.resendable) {
       assert(request.message->size() != 0U);
@@ -157,13 +157,13 @@ void Requestor::resend() {
   }
 }
 
-void Requestor::schedule(decltype(mEntries)::value_type& entry) {
+void Requestor::schedule(decltype(entries_)::value_type& entry) {
   const auto& streamId = entry.first;
   auto& request = entry.second;
   if (request.tail.has_value()) {
     request.resendable = false; // currently we cannot re-generate tail messages already sent, see #1225
   }
-  mScheduler.push(streamId, request.message, request.tail);
+  scheduler_.push(streamId, request.message, request.tail);
 }
 
 }

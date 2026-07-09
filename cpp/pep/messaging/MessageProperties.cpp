@@ -12,72 +12,72 @@ namespace pep::messaging {
 namespace {
 
 // MessageProperties uses the (single) high bit to indicate message type
-constexpr EncodedMessageProperties TYPE_REQUEST = 0x00000000;
-constexpr EncodedMessageProperties TYPE_RESPONSE = 0x80000000;
-constexpr EncodedMessageProperties TYPE_BITS = TYPE_REQUEST | TYPE_RESPONSE;
+constexpr EncodedMessageProperties TypeRequest = 0x00000000;
+constexpr EncodedMessageProperties TypeResponse = 0x80000000;
+constexpr EncodedMessageProperties TypeBits = TypeRequest | TypeResponse;
 
 // MessageProperties uses (the next-highest) three bits for state-related flags
-constexpr EncodedMessageProperties FLAG_CLOSE = 0x40000000; // This is the last piece of the (possibly multi-part) message
-constexpr EncodedMessageProperties FLAG_ERROR = 0x20000000; // The sending party encountered an error constructing or sending the (possibly multi-part) message. Implies FLAG_CLOSE.
-constexpr EncodedMessageProperties FLAG_PAYLOAD = 0x10000000; // The message includes content
-constexpr EncodedMessageProperties FLAG_BITS = FLAG_CLOSE | FLAG_ERROR | FLAG_PAYLOAD;
+constexpr EncodedMessageProperties FlagClose = 0x40000000; // This is the last piece of the (possibly multi-part) message
+constexpr EncodedMessageProperties FlagError = 0x20000000; // The sending party encountered an error constructing or sending the (possibly multi-part) message. Implies FlagClose.
+constexpr EncodedMessageProperties FlagPayload = 0x10000000; // The message includes content
+constexpr EncodedMessageProperties FlagBits = FlagClose | FlagError | FlagPayload;
 
 // MessageProperties uses remaining bits for a unique (serial) number for every request+response cycle
-constexpr EncodedMessageProperties STREAM_ID_BITS = ~(TYPE_BITS | FLAG_BITS);
+constexpr EncodedMessageProperties StreamIdBits = ~(TypeBits | FlagBits);
 
-constexpr EncodedMessageProperties NO_MESSAGE_PROPERTY_BITS = 0;
+constexpr EncodedMessageProperties NoMessagePropertyBits = 0;
 
-constexpr StreamId::Value CONTROL_STREAM_ID = 0;
+constexpr StreamId::Value ControlStreamId = 0;
 
 }
 
 bool MessageType::IsValidValue(Value value) noexcept {
   switch (value) {
-  case CONTROL:
-  case REQUEST:
-  case RESPONSE:
+  case Control:
+  case Request:
+  case Response:
     return true;
   }
   return false;
 }
 
 MessageType::MessageType(Value value)
-  : mValue(value) {
-  assert(IsValidValue(mValue));
+  : value_(value) {
+  assert(IsValidValue(value_));
 }
 
 std::string MessageType::describe() const {
-  switch (mValue) {
-  case REQUEST:
+  switch (value_) {
+  case Request:
     return "request";
-  case RESPONSE:
+  case Response:
     return "response";
-  case CONTROL:
+  case Control:
     return "control message";
   }
-  throw std::runtime_error("Unsupported message type value " + std::to_string(mValue));
+  throw std::runtime_error("Unsupported message type value " + std::to_string(value_));
 }
 
 EncodedMessageProperties MessageType::encode() const noexcept {
-  assert(IsValidValue(mValue));
-  if (mValue == RESPONSE) {
-    static_assert(TYPE_RESPONSE != NO_MESSAGE_PROPERTY_BITS);
-    return TYPE_RESPONSE;
+  assert(IsValidValue(value_));
+  if (value_ == Response) {
+    static_assert(TypeResponse != NoMessagePropertyBits);
+    return TypeResponse;
   }
-  return NO_MESSAGE_PROPERTY_BITS;
+  return NoMessagePropertyBits;
 }
 
 EncodedMessageProperties Flags::encode() const noexcept {
-  EncodedMessageProperties result = NO_MESSAGE_PROPERTY_BITS;
+  EncodedMessageProperties result = NoMessagePropertyBits;
 
-  if (mClose) {
-    result |= FLAG_CLOSE;
+  if (close_) {
+    result |= FlagClose;
   }
-  if (mError) {
-    result |= FLAG_ERROR;
+  if (error_) {
+    result |= FlagError;
   }
-  if (mPayload) {
-    result |= FLAG_PAYLOAD;
+  if (payload_) {
+    result |= FlagPayload;
   }
 
   return result;
@@ -100,11 +100,11 @@ Flags Flags::MakeClose(bool payload) noexcept {
 }
 
 bool Flags::areValid() const noexcept {
-  if (mError) {
-    if (mPayload) { // Error messages cannot have payload (and vice versa)
+  if (error_) {
+    if (payload_) { // Error messages cannot have payload (and vice versa)
       return false;
     }
-    if (!mClose) { // Error implies close (and that bit must be set)
+    if (!close_) { // Error implies close (and that bit must be set)
       return false;
     }
   }
@@ -112,11 +112,11 @@ bool Flags::areValid() const noexcept {
 }
 
 bool Flags::empty() const noexcept {
-  return !mClose && !mError && !mPayload;
+  return !close_ && !error_ && !payload_;
 }
 
 Flags::Flags(bool close, bool error, bool payload)
-  : mClose(close), mError(error), mPayload(payload) {
+  : close_(close), error_(error), payload_(payload) {
   if (!areValid()) {
     throw std::invalid_argument((boost::format("Inconsistent set of message flags: %s") % *this).str());
   }
@@ -141,16 +141,16 @@ std::ostream& operator<<(std::ostream& out, Flags flags) {
 }
 
 EncodedMessageProperties MessageId::encode() const noexcept {
-  return mType.encode() | mStreamId.encode();
+  return type_.encode() | streamId_.encode();
 }
 
 bool StreamId::IsValidValue(Value value) noexcept {
-  return (value & ~STREAM_ID_BITS) == NO_MESSAGE_PROPERTY_BITS;
+  return (value & ~StreamIdBits) == NoMessagePropertyBits;
 }
 
 StreamId::StreamId(Value value)
-  : mValue(value) {
-  assert(IsValidValue(mValue));
+  : value_(value) {
+  assert(IsValidValue(value_));
 }
 
 StreamId StreamId::BeforeFirst() noexcept {
@@ -163,7 +163,7 @@ StreamId StreamId::MakeNext(const StreamId& previous) noexcept {
   if (!IsValidValue(value)) { // ensure that our increment didn't spill into the (high) bits reserved for stuff other than the stream ID
     value = 1U;
   }
-  if (value == CONTROL_STREAM_ID) { // ensure that we didn't wrap to zero (if CONTROL_STREAM_ID is ever changed)
+  if (value == ControlStreamId) { // ensure that we didn't wrap to zero (if ControlStreamId is ever changed)
     ++value;
   }
   assert(IsValidValue(value));
@@ -172,16 +172,16 @@ StreamId StreamId::MakeNext(const StreamId& previous) noexcept {
 }
 
 MessageId::MessageId(MessageType type, StreamId streamId)
-  : mType(type), mStreamId(streamId) {
+  : type_(type), streamId_(streamId) {
 }
 
 MessageId MessageId::MakeForControlMessage() noexcept {
-  return MessageId(MessageType::CONTROL, StreamId(CONTROL_STREAM_ID));
+  return MessageId(MessageType::Control, StreamId(ControlStreamId));
 }
 
 MessageProperties::MessageProperties(MessageId messageId, Flags flags)
-  : mMessageId(messageId), mFlags(flags) {
-  assert(mFlags.empty() || mMessageId.type().value() != MessageType::CONTROL);
+  : messageId_(messageId), flags_(flags) {
+  assert(flags_.empty() || messageId_.type().value() != MessageType::Control);
 }
 
 EncodedMessageProperties MessageProperties::encode() const noexcept {
@@ -189,22 +189,22 @@ EncodedMessageProperties MessageProperties::encode() const noexcept {
 }
 
 MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties properties) {
-  auto typeBits = properties & TYPE_BITS;
-  auto flagBits = properties & FLAG_BITS;
-  auto streamId = properties & STREAM_ID_BITS;
+  auto typeBits = properties & TypeBits;
+  auto flagBits = properties & FlagBits;
+  auto streamId = properties & StreamIdBits;
 
-  MessageType::Value type = MessageType::REQUEST;
-  if (streamId == CONTROL_STREAM_ID) {
-    if (properties != CONTROL_STREAM_ID) {
+  MessageType::Value type = MessageType::Request;
+  if (streamId == ControlStreamId) {
+    if (properties != ControlStreamId) {
       throw std::runtime_error("Message properties cannot specify a control stream ID with additional properties");
     }
-    type = MessageType::CONTROL;
+    type = MessageType::Control;
   }
-  else if (typeBits & TYPE_RESPONSE) {
-    type = MessageType::RESPONSE;
+  else if (typeBits & TypeResponse) {
+    type = MessageType::Response;
   }
 
-  Flags flags(flagBits & FLAG_CLOSE, flagBits & FLAG_ERROR, flagBits & FLAG_PAYLOAD);
+  Flags flags(flagBits & FlagClose, flagBits & FlagError, flagBits & FlagPayload);
 
   if (!StreamId::IsValidValue(streamId)) {
     throw std::runtime_error("Message properties specify an invalid stream ID");

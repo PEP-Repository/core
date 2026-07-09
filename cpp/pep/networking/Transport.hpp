@@ -13,7 +13,7 @@ using DelimitedTransfer = OperationInvocation<std::string>;
 /*!
  * \brief Interface for classes that communicate binary data asynchronously (across a network).
  * \remark Inheritors must cancel pending read and/or write actions when close() is called.
- *         This implies that derived classes themselves alive (e.g. using shared_from_this) for
+ *         This implies that derived classes keep themselves alive (e.g. using shared_from_this) for
  *         long enough to coordinate calls to the asyncRead[Until], asyncWrite, and close methods,
  *         and invocations of the TransferHandler callbacks.
  * \remark Note the _private_ inheritance from LifeCycler: we want the functionality, but
@@ -112,7 +112,7 @@ protected:
   ConnectivityStatus setConnectivityStatus(ConnectivityStatus status);
 
 private:
-  EventSubscription mLifeCycleStatusForwarding;
+  EventSubscription lifeCycleStatusForwarding_;
 
   void handleLifeCycleStatusChanged(const StatusChange& change) const;
 };

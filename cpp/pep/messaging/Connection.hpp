@@ -40,15 +40,15 @@ public:
 
   // ******************** State and callbacks for message exchange using pep::networking classes ********************
 private:
-  bool mSendActive = false;
+  bool sendActive_ = false;
 
   // helper buffer for output
-  EncodedMessageHeader mMessageOutHeader{};
-  std::shared_ptr<std::string> mMessageOutBody;
+  EncodedMessageHeader messageOutHeader_{};
+  std::shared_ptr<std::string> messageOutBody_;
 
   // buffer to read incoming messages
-  EncodedMessageHeader mMessageInHeader{};
-  std::string mMessageInBody;
+  EncodedMessageHeader messageInHeader_{};
+  std::string messageInBody_;
 
   // sending a message is in two stages: first sending a header, afterwards sending a body. These are completion handlers associated with them
   void handleHeaderSent(const networking::SizedTransfer::Result& result);
@@ -64,9 +64,9 @@ private:
 
   // ******************** State and callback for keep-alive timer ********************
 private:
-  bool mKeepAliveTimerRunning = false;
-  boost::asio::steady_timer mKeepAliveTimer;
-  std::chrono::steady_clock::time_point mLastSend;
+  bool keepAliveTimerRunning_ = false;
+  boost::asio::steady_timer keepAliveTimer_;
+  std::chrono::steady_clock::time_point lastSend_;
 
   void handleKeepAliveTimerExpired(const boost::system::error_code& error);
 
@@ -75,13 +75,13 @@ private:
   void ensureSend();
   void handleSchedulerError(const MessageId& id, std::exception_ptr error);
 
-  std::shared_ptr<Scheduler> mScheduler;
-  EventSubscription mSchedulerAvailableSubscription;
-  EventSubscription mSchedulerExceptionSubscription;
+  std::shared_ptr<Scheduler> scheduler_;
+  EventSubscription schedulerAvailableSubscription_;
+  EventSubscription schedulerExceptionSubscription_;
 
   // ******************** Outgoing requests ********************
 private:
-  std::shared_ptr<Requestor> mRequestor;
+  std::shared_ptr<Requestor> requestor_;
 
   rxcpp::observable<std::string> sendRequest(std::shared_ptr<std::string> message, std::optional<MessageBatches> tail, bool isVersionCheck);
   void processReceivedResponse(const StreamId& streamId, const Flags& flags, std::string content);
@@ -90,17 +90,17 @@ private:
 private:
   class IncomingRequestTail {
   private:
-    std::vector<std::shared_ptr<std::string>> mQueuedItems; // items that are queued if there is no subscriber to push them to
-    std::shared_ptr<rxcpp::subscriber<std::shared_ptr<std::string>>> mSubscriber;
-    bool mError = false;
-    bool mCompleted = false;
+    std::vector<std::shared_ptr<std::string>> queuedItems_; // items that are queued if there is no subscriber to push them to
+    std::shared_ptr<rxcpp::subscriber<std::shared_ptr<std::string>>> subscriber_;
+    bool error_ = false;
+    bool completed_ = false;
 
   public:
     void handleChunk(const Flags& flags, std::shared_ptr<std::string> content);
     void forwardTo(rxcpp::subscriber<std::shared_ptr<std::string>> subscriber);
     void abort();
   };
-  std::map<StreamId, IncomingRequestTail> mIncomingRequestTails;
+  std::map<StreamId, IncomingRequestTail> incomingRequestTails_;
 
   struct PrematureRequest {
     StreamId streamId;
@@ -108,7 +108,7 @@ private:
     std::shared_ptr<std::string> head;
     MessageSequence tail;
   };
-  std::vector<PrematureRequest> mPrematureRequests;
+  std::vector<PrematureRequest> prematureRequests_;
 
   void processReceivedRequest(const StreamId& streamId, const Flags& flags, std::string content);
   void dispatchRequest(const StreamId& streamId, std::shared_ptr<std::string> request, MessageSequence chunks);
@@ -116,9 +116,9 @@ private:
 
   // ******************** Version verification ********************
 private:
-  bool mVersionValidated = false;
-  bool mVersionCheckScheduled = false;
-  std::optional<ExponentialBackoff> mVersionCheckBackoff;
+  bool versionValidated_ = false;
+  bool versionCheckScheduled_ = false;
+  std::optional<ExponentialBackoff> versionCheckBackoff_;
 
   void handleBinaryConnectionEstablished();
   void postponeVersionCheck();
@@ -140,12 +140,12 @@ private:
   Connection(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler);
   static std::shared_ptr<Connection> Open(std::shared_ptr<Node> node, std::shared_ptr<networking::Connection> binary, boost::asio::io_context& ioContext, RequestHandler* requestHandler);
 
-  std::weak_ptr<Node> mNode;
-  std::string mDescription;
-  std::shared_ptr<networking::Connection> mBinary;
-  EventSubscription mBinaryStatusSubscription;
-  boost::asio::io_context& mIoContext;
-  RequestHandler* mRequestHandler;
+  std::weak_ptr<Node> node_;
+  std::string description_;
+  std::shared_ptr<networking::Connection> binary_;
+  EventSubscription binaryStatusSubscription_;
+  boost::asio::io_context& ioContext_;
+  RequestHandler* requestHandler_;
 };
 
 

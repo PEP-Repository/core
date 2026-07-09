@@ -7,7 +7,7 @@ namespace commandline {
 
 class Utility : public pep::Application {
 protected:
-  std::optional<severity_level> syslogLogMinimumSeverityLevel() const override;
+  std::optional<Severity> syslogLogMinimumSeverityLevel() const override;
 };
 
 }

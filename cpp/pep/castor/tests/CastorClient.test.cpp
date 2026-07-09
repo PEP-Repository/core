@@ -21,8 +21,9 @@ using namespace std::literals;
 
 namespace {
 
-const auto TIMEOUT = std::chrono::seconds(5);
+const auto Timeout = std::chrono::seconds(5);
 
+// Not defined with a PEP_ prefix so that it matches gtest macros
 // Implemented as "invoke this lambda" so that a semicolon is required: ASSERT_THROW_WITH_MESSAGE(mycode(), std::runtime_error);
 #define ASSERT_THROW_WITH_MESSAGE(statement, expected_exception) \
 [&]() { \
@@ -46,106 +47,106 @@ using namespace pep::tests;
 using CastorClientTest = FakeCastorTest;
 
 TEST_F(CastorClientTest, Authentication) {
-  options->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(RESPONSE_STUDIES));
+  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(ResponseStudies));
 
-  options->authenticated = false;
+  options_->authenticated = false;
   ASSERT_THROW_WITH_MESSAGE(
-    castorConnection->getStudies().timeout(TIMEOUT).as_blocking()
+    castorConnection_->getStudies().timeout(Timeout).as_blocking()
     .subscribe_with_rethrow([](std::shared_ptr<Study> study) {
       FAIL() << "Received a study without being authenticated.";
       })
     , CastorException);
 
-  castorConnection->reauthenticate();
-  bool authenticationError = castorConnection->authenticationStatus()
-                             .timeout(TIMEOUT)
+  castorConnection_->reauthenticate();
+  bool authenticationError = castorConnection_->authenticationStatus()
+                             .timeout(Timeout)
   .map([](AuthenticationStatus status) {
     return status.state;
   })
-  .contains(AUTHENTICATION_ERROR)
+  .contains(AuthenticationState::Error)
   .as_blocking().first();
   ASSERT_TRUE(authenticationError) << "Castor authentication did not result in an error";
 
-  options->authenticated = true;
-  castorConnection->reauthenticate();
-  bool authenticated = castorConnection->authenticationStatus()
-                       .timeout(TIMEOUT)
+  options_->authenticated = true;
+  castorConnection_->reauthenticate();
+  bool authenticated = castorConnection_->authenticationStatus()
+                       .timeout(Timeout)
   .map([](AuthenticationStatus status) {
     return status.state;
   })
-  .contains(AUTHENTICATED)
+  .contains(AuthenticationState::Authenticated)
   .as_blocking().first();
   ASSERT_TRUE(authenticated) << "Castor authentication did not succeed";
 
 
   ASSERT_NO_THROW(
-    castorConnection->getStudies().as_blocking()
+    castorConnection_->getStudies().as_blocking()
   .subscribe_with_rethrow([](std::shared_ptr<Study> study) {}));
 }
 
 TEST_F(CastorClientTest, SendCastorRequest) {
 
   ASSERT_THROW_WITH_MESSAGE(
-    castorConnection->sendCastorRequest(castorConnection->makeGet("not/existing/path")).as_blocking()
+    castorConnection_->sendCastorRequest(castorConnection_->makeGet("not/existing/path")).as_blocking()
     .subscribe_with_rethrow([](JsonPtr json) {
       FAIL() << "Received a response for a not existing path.";
       })
     , CastorException
   );
 
-  options->responses.emplace("/api/some/path?page_size=1000", FakeCastorApi::Response("Incorrect json"));
+  options_->responses.emplace("/api/some/path?page_size=1000", FakeCastorApi::Response("Incorrect json"));
   ASSERT_THROW_WITH_MESSAGE(
-    castorConnection->sendCastorRequest(castorConnection->makeGet("some/path")).as_blocking()
+    castorConnection_->sendCastorRequest(castorConnection_->makeGet("some/path")).as_blocking()
     .subscribe_with_rethrow([](JsonPtr json) {
       FAIL() << "Received a response for incorrect json";
       })
     , boost::property_tree::json_parser_error);
 
-  options->responses.emplace("/api/another/path?page_size=1000", FakeCastorApi::Response("{\"key\": \"value\"}"));
-  JsonPtr result = castorConnection->sendCastorRequest(castorConnection->makeGet("another/path")).as_blocking().first();
+  options_->responses.emplace("/api/another/path?page_size=1000", FakeCastorApi::Response("{\"key\": \"value\"}"));
+  JsonPtr result = castorConnection_->sendCastorRequest(castorConnection_->makeGet("another/path")).as_blocking().first();
   ASSERT_EQ(result->get<std::string>("key"), "value");
 
-  int count = castorConnection->sendCastorRequest(castorConnection->makeGet("another/path")).as_blocking().count();
+  int count = castorConnection_->sendCastorRequest(castorConnection_->makeGet("another/path")).as_blocking().count();
   ASSERT_EQ(count, 1);
 }
 
 TEST_F(CastorClientTest, GetStudies) {
-  options->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(RESPONSE_STUDIES));
+  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(ResponseStudies));
 
-  std::shared_ptr<Study> study = castorConnection->getStudies().as_blocking().first();
+  std::shared_ptr<Study> study = castorConnection_->getStudies().as_blocking().first();
   ASSERT_EQ(study->getId(), "14F7C4E0-0FA5-C430-B7A2-9ECCB6271FA6");
 
-  int count = castorConnection->getStudies().as_blocking().count();
+  int count = castorConnection_->getStudies().as_blocking().count();
   ASSERT_EQ(count, 23);
 
   ASSERT_THROW_WITH_MESSAGE(
-    castorConnection->getStudyBySlug("NotExisting").as_blocking()
+    castorConnection_->getStudyBySlug("NotExisting").as_blocking()
     .subscribe_with_rethrow([](std::shared_ptr<Study> study) {
       FAIL() << "Received a study for not existing slug.";
       })
     , rxcpp::empty_error);
 
-  ASSERT_EQ(castorConnection->getStudyBySlug("pep-hq1").as_blocking().first()->getId(), "22B35F42-DB4F-09E4-F5F0-71CDCF4F34ED");
+  ASSERT_EQ(castorConnection_->getStudyBySlug("pep-hq1").as_blocking().first()->getId(), "22B35F42-DB4F-09E4-F5F0-71CDCF4F34ED");
 
-  ASSERT_EQ(castorConnection->getStudyBySlug("pep-hq1").as_blocking().count(), 1);
+  ASSERT_EQ(castorConnection_->getStudyBySlug("pep-hq1").as_blocking().count(), 1);
 }
 
 TEST_F(CastorClientTest, MultiPage) {
-  options->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(RESPONSE_STUDIES_MULTIPAGE_PAGE1));
-  options->responses.emplace("/api/study?page=2&page_size=1000", FakeCastorApi::Response(RESPONSE_STUDIES_MULTIPAGE_PAGE2));
+  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(ResponseStudiesMultipagePage1));
+  options_->responses.emplace("/api/study?page=2&page_size=1000", FakeCastorApi::Response(ResponseStudiesMultipagePage2));
 
-  std::shared_ptr<Study> study = castorConnection->getStudies().as_blocking().first();
+  std::shared_ptr<Study> study = castorConnection_->getStudies().as_blocking().first();
   ASSERT_EQ(study->getId(), "14F7C4E0-0FA5-C430-B7A2-9ECCB6271FA6");
 
-  int count = castorConnection->getStudies().as_blocking().count();
+  int count = castorConnection_->getStudies().as_blocking().count();
   ASSERT_EQ(count, 46);
 
-  bool containsFromPage1 = castorConnection->getStudies().map([](std::shared_ptr<Study> study) {
+  bool containsFromPage1 = castorConnection_->getStudies().map([](std::shared_ptr<Study> study) {
     return study->getId();
   }).contains(std::string("14F7C4E0-0FA5-C430-B7A2-9ECCB6271FA6")).as_blocking().first();
   ASSERT_TRUE(containsFromPage1) << "getStudies did not return a result containing a study from the first page";
 
-  bool containsFromPage2 = castorConnection->getStudies().map([](std::shared_ptr<Study> study) {
+  bool containsFromPage2 = castorConnection_->getStudies().map([](std::shared_ptr<Study> study) {
     return study->getId();
   }).contains(std::string("24F7C4E0-0FA5-C430-B7A2-9ECCB6271FA6")).as_blocking().first();
   ASSERT_TRUE(containsFromPage2) << "getStudies did not return a result containing a study from the second page";
@@ -155,16 +156,16 @@ TEST_F(CastorClientTest, MultiPage) {
 TEST_F(CastorClientTest, RateLimited) {
   //First, make the FakeCastorApi return a "Too Many Requests" response, telling the client to retry after 2 seconds
   auto after = TimestampToXmlDateTime(TimeNow() + 2s);
-  options->responses.emplace("/api/throttle?page_size=1000",
+  options_->responses.emplace("/api/throttle?page_size=1000",
     FakeCastorApi::Response(
       R"({"success":false,"errors":[{"id":"fa420c23","code":"CODE_QUOTA_EXCEEDED","message":"Too many requests, retry after: )" + after + R"(","data":[]}]})",
       "429 Too Many Requests"));
   //Then, update the resonse after 1 second
-  auto updateResponseObservable = rxcpp::rxs::timer(std::chrono::seconds(1)).map([opts = options](auto) -> JsonPtr {
+  auto updateResponseObservable = rxcpp::rxs::timer(std::chrono::seconds(1)).map([opts = options_](auto) -> JsonPtr {
     opts->responses.at("/api/throttle?page_size=1000") = FakeCastorApi::Response("{\"key\": \"value\"}");
     return nullptr;
   });
-  auto castorObservable = castorConnection->sendCastorRequest(castorConnection->makeGet("throttle"));
+  auto castorObservable = castorConnection_->sendCastorRequest(castorConnection_->makeGet("throttle"));
   //Merge both observables, so they are both subscribed to, and therefore executed simultaneously
   JsonPtr result = castorObservable.merge(updateResponseObservable)
     .filter([](JsonPtr v){ return v != nullptr; })

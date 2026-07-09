@@ -31,15 +31,15 @@ TEST(PageStore, basic) {
   sftest::Envs envs; // filled by constructor
 
   boost::property_tree::ptree s3Conf;
-  SerializeProperties(s3Conf, "EndPoint", EndPoint(envs.host, envs.port, envs.expect_common_name));
+  SerializeProperties(s3Conf, "EndPoint", EndPoint(envs.host, envs.port, envs.expectCommonName));
   SerializeProperties(s3Conf, "Credentials", s3::Credentials{
-    .accessKey = envs.s3_access_key,
-    .secret = envs.s3_secret_key,
-    .service = envs.s3_service_name,
+    .accessKey = envs.s3AccessKey,
+    .secret = envs.s3SecretKey,
+    .service = envs.s3ServiceName,
   });
   s3Conf.put("CaCertificateFile", envs.GetCaCertFilepath().string());
-  s3Conf.put("WriteToBucket", envs.s3_test_bucket);
-  SerializeProperties(s3Conf, "ReadFromBuckets", std::vector{envs.s3_test_bucket, envs.s3_test_bucket2});
+  s3Conf.put("WriteToBucket", envs.s3TestBucket);
+  SerializeProperties(s3Conf, "ReadFromBuckets", std::vector{envs.s3TestBucket, envs.s3TestBucket2});
 
   boost::property_tree::ptree pageStoreConf;
   pageStoreConf.put_child("S3", s3Conf);
@@ -68,7 +68,7 @@ TEST(PageStore, basic) {
 
   // we put data2 under at "path" in the backup bucket s3_test_bucket2
   EXPECT_EQ(testutils::exhaust<std::string>(*io_context,
-    direct_conn->putObject(path, envs.s3_test_bucket2, data2))->size(), 1);
+    direct_conn->putObject(path, envs.s3TestBucket2, data2))->size(), 1);
 
   // now store->get(path) should yield data2
   {
@@ -78,7 +78,7 @@ TEST(PageStore, basic) {
     EXPECT_EQ(*((*results)[0]), data2);
   }
 
-  // if we put data under path in s3_test_bucket, ...
+  // if we put data under path in s3TestBucket, ...
   EXPECT_EQ(testutils::exhaust<std::string>(
     *io_context, store->put(path, data))->size(), 1);
 

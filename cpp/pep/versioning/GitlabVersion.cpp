@@ -17,15 +17,15 @@ GitlabVersion::GitlabVersion(
     unsigned int build,
     unsigned int revision
     )
-  : mProjectPath(std::move(projectPath)),
-    mReference(std::move(reference)), mCommit(std::move(commit)),
-    mSemver(majorVersion, minorVersion, build, revision) {}
+  : projectPath_(std::move(projectPath)),
+    reference_(std::move(reference)), commit_(std::move(commit)),
+    semver_(majorVersion, minorVersion, build, revision) {}
 
 bool GitlabVersion::isGitlabBuild() const {
-  return mSemver.hasGitlabProperties()
-    // Not checking mProjectPath because legacy servers will not report this field, making us think that they're development versions
-    && !mCommit.empty()
-    && !mReference.empty();
+  return semver_.hasGitlabProperties()
+    // Not checking projectPath_ because legacy servers will not report this field, making us think that they're development versions
+    && !commit_.empty()
+    && !reference_.empty();
 }
 
 std::string GitlabVersion::getSummary() const {
@@ -34,17 +34,17 @@ std::string GitlabVersion::getSummary() const {
 
 std::string GitlabVersion::prettyPrint() const {
   std::ostringstream result{};
-  result << "Version: " << mSemver.format() << '\n'
+  result << "Version: " << semver_.format() << '\n'
          << "Commit: " << getCommit() << '\n'
          << "Project path: " << getProjectPath() << '\n';
   return std::move(result).str();
 }
 
 std::string GitlabVersion::constructSummary(const std::optional<std::string>& project, bool includeReference) const {
-  auto projectSpec = project.value_or(mProjectPath);
-  auto env = includeReference ? ConcatSummaryParts(projectSpec, ":", mReference) : projectSpec;
+  auto projectSpec = project.value_or(projectPath_);
+  auto env = includeReference ? ConcatSummaryParts(projectSpec, ":", reference_) : projectSpec;
 
-  return ConcatSummaryParts(env, " ", mSemver.format());
+  return ConcatSummaryParts(env, " ", semver_.format());
 }
 
 std::string GitlabVersion::ConcatSummaryParts(const std::string& first, const std::string& delim, const std::string& last) {

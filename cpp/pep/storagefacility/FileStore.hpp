@@ -29,7 +29,7 @@ public:
     Timestamp validFrom;
     uint64_t checksumSubstitute{};
     uint64_t payloadSize{};
-    bool isOriginalPayloadOwner;
+    bool isOriginalPayloadOwner{};
   };
   using EntryHeaders = typename PropertyBasedContainer<EntryHeader, &EntryHeader::validFrom>::set;
 
@@ -41,14 +41,14 @@ public:
    */
   class EntryBase {
   private:
-    Cell& mCell;
-    uint64_t mChecksumSubstitute;
-    std::unique_ptr<EntryContent> mContent;
+    Cell& cell_;
+    uint64_t checksumSubstitute_;
+    std::unique_ptr<EntryContent> content_;
 
   protected:
     EntryBase(Cell& cell, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
 
-    void setContent(std::unique_ptr<EntryContent>&& content) { mContent = std::move(content); }
+    void setContent(std::unique_ptr<EntryContent>&& content) { content_ = std::move(content); }
 
     // Allow move-construction (when EntryChange::commit converts the EntryChange into an Entry)...
     EntryBase(EntryBase&&) = default;
@@ -60,14 +60,14 @@ public:
 
     virtual ~EntryBase() noexcept = default; // Class isn't used polymorphically, but just in case
 
-    Cell& getCell() const noexcept { return mCell; }
-    uint64_t getChecksumSubstitute() const { return mChecksumSubstitute; }
+    Cell& getCell() const noexcept { return cell_; }
+    uint64_t getChecksumSubstitute() const { return checksumSubstitute_; }
     FileStore& getFileStore() const noexcept;
 
-    const std::unique_ptr<EntryContent>& content() const { return mContent; }
+    const std::unique_ptr<EntryContent>& content() const { return content_; }
     EntryName getName() const;
 
-    bool isTombstone() const { return mContent == nullptr; }
+    bool isTombstone() const { return content_ == nullptr; }
     uint64_t payloadSize() const;
     bool isOriginalPayloadOwner() const;
   };
@@ -82,15 +82,15 @@ public:
     friend class FileStore;
 
   private:
-    Timestamp mLastEntryValidFrom;
-    bool mValid = true;
-    std::shared_ptr<PagedEntryPayload> mPagedPayload;
+    Timestamp lastEntryValidFrom_;
+    bool valid_ = true;
+    std::shared_ptr<PagedEntryPayload> pagedPayload_;
 
     explicit EntryChange(Cell& cell);
     explicit EntryChange(const Entry& overwrites);
 
   public:
-    Timestamp getLastEntryValidFrom() const { return mLastEntryValidFrom; }
+    Timestamp getLastEntryValidFrom() const { return lastEntryValidFrom_; }
 
     using EntryBase::setContent;
     rxcpp::observable<std::string> appendPage(std::shared_ptr<std::string> rawPage, uint64_t payloadSize, uint64_t pagenr); // returns MD5( data xxhash(data) )
@@ -111,9 +111,9 @@ public:
     friend class EntryChange;
 
   private:
-    static const std::string FILE_EXTENSION;
+    static const std::string FileExtension;
 
-    Timestamp mValidFrom;
+    Timestamp validFrom_;
 
     Entry(EntryChange&& source, Timestamp validFrom);
     Entry(Cell& cell, Timestamp validFrom, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
@@ -123,7 +123,7 @@ public:
   public:
     std::unique_ptr<EntryContent> cloneContent() const;
 
-    Timestamp getValidFrom() const noexcept { return mValidFrom; }
+    Timestamp getValidFrom() const noexcept { return validFrom_; }
     EntryHeader header() const;
     messaging::MessageSequence readPage(size_t index);
 
@@ -136,21 +136,21 @@ public:
 
   class Cell {
   private:
-    Participant& mParticipant;
-    const std::string& mColumnName; // reference to unique string in FileStore::mColumnNames
-    EntryHeaders mEntryHeaders;
-    std::shared_ptr<Entry> mLatest;
+    Participant& participant_;
+    const std::string& columnName_; // reference to unique string in FileStore::columnNames_
+    EntryHeaders entryHeaders_;
+    std::shared_ptr<Entry> latest_;
 
   public:
     Cell(Participant& participant, const std::string& columnName, bool load = false);
 
-    Participant& getParticipant() const { return mParticipant; }
-    const std::string& columnName() const noexcept { return mColumnName; }
+    Participant& getParticipant() const { return participant_; }
+    const std::string& columnName() const noexcept { return columnName_; }
 
     EntryName entryName() const;
     SafePath path() const;
 
-    const EntryHeaders& entryHeaders() const noexcept { return mEntryHeaders; }
+    const EntryHeaders& entryHeaders() const noexcept { return entryHeaders_; }
     void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const;
     void addEntry(std::shared_ptr<Entry> entry);
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
@@ -158,9 +158,9 @@ public:
 
   class Participant {
   private:
-    FileStore& mStore;
-    std::string mName; // text representation of the local SF pseudonym
-    PropertyBasedContainer<std::unique_ptr<Cell>, &Cell::columnName>::set mCells;
+    FileStore& store_;
+    std::string name_; // text representation of the local SF pseudonym
+    PropertyBasedContainer<std::unique_ptr<Cell>, &Cell::columnName>::set cells_;
 
     Cell* getCell(const std::string& columnName) const;
     Cell& provideCell(const std::string& columnName);
@@ -168,8 +168,8 @@ public:
   public:
     Participant(FileStore& store, std::string name, bool load = false);
 
-    FileStore& getFileStore() const noexcept { return mStore; }
-    const std::string& name() const noexcept { return mName; }
+    FileStore& getFileStore() const noexcept { return store_; }
+    const std::string& name() const noexcept { return name_; }
 
     SafePath path() const;
 
@@ -193,7 +193,7 @@ public:
   void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
 
   const SafePath& metaDir() const {
-    return mPath;
+    return path_;
   }
 
 private:
@@ -206,18 +206,18 @@ private:
   // Keep collections of unique strings to save memory: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2322 .
   // Note that "No iterators or references are invalidated" when an std::set or std::map changes, so
   // we can store and use references to these strings as long as we don't discard them from the collection.
-  std::set<std::string> mColumnNames;
-  std::map<std::string, std::set<std::string>> mMetadataValues;
+  std::set<std::string> columnNames_;
+  std::map<std::string, std::set<std::string>> metadataValues_;
+
+  PropertyBasedContainer<std::unique_ptr<Participant>, &Participant::name>::set participants_;
+  SafePath path_;
+  std::shared_ptr<PageStore> pagestore_;
 
   const std::string& getColumnString(const std::string& value);
   EntryContent::MetadataEntry makeMetadataEntry(std::string key, std::string value);
 
   Participant* getParticipant(const std::string& name) const;
   Participant& provideParticipant(const std::string& name);
-
-  PropertyBasedContainer<std::unique_ptr<Participant>, &Participant::name>::set mParticipants;
-  SafePath mPath;
-  std::shared_ptr<PageStore> mPagestore;
 };
 
 }

@@ -5,7 +5,7 @@
 #include <array>
 #include <chrono>
 #include <filesystem>
-#include <gmock/gmock.h>
+#include <gmock/gmock-more-matchers.h>
 #include <gtest/gtest.h>
 #include <pep/utils/Filesystem.hpp>
 #include <span>
@@ -54,7 +54,7 @@ public:
 };
 
 /// Some arbitrary point in time to be used as a reference point in tests.
-constexpr auto REFERENCE_TIMESTAMP = pep::Timestamp{1577836800ms};
+constexpr auto ReferenceTimestamp = pep::Timestamp{1577836800ms};
 
 pep::filesystem::Temporary MakeUniqueTempDir() {
   namespace fs = pep::filesystem;
@@ -66,10 +66,10 @@ pep::filesystem::Temporary MakeUniqueTempDir() {
 template <std::size_t size>
 std::span<const TokenIdentifier> ArbitraryTokens() {
   const static std::array<TokenIdentifier, 4> hardcodedTestTokens{
-      {{"subject_A", "groupA", REFERENCE_TIMESTAMP},
-       {"subject_C", "groupB", REFERENCE_TIMESTAMP + days{3}},
-       {"subject_B", "groupA", REFERENCE_TIMESTAMP + days{1}},
-       {"subject_C", "groupB", REFERENCE_TIMESTAMP + days{1}}}};
+      {{"subject_A", "groupA", ReferenceTimestamp},
+       {"subject_C", "groupB", ReferenceTimestamp + days{3}},
+       {"subject_B", "groupA", ReferenceTimestamp + days{1}},
+       {"subject_C", "groupB", ReferenceTimestamp + days{1}}}};
 
   // passing the size as a template param allows us to do a static_assert on it
   static_assert(size <= hardcodedTestTokens.size(), "expand the array if a test needs more tokens");
@@ -102,7 +102,7 @@ const Blocklist::Entry::Metadata emptyMetadata{
 // A token (identifier) A supersedes another token (identifier) B when
 // A was issued after B and is otherwise equivalent to B.
 TEST(TokenBlocking_TokenIdentifier, Supersedes) {
-  const auto referencePoint = REFERENCE_TIMESTAMP + days{250}; // arbitrary point in time
+  const auto referencePoint = ReferenceTimestamp + days{250}; // arbitrary point in time
   const auto oldToken =
       TokenIdentifier{.subject = "the_subject", .userGroup = "the_user_group", .issueDateTime = referencePoint};
   const auto newToken = TokenIdentifier{
@@ -115,7 +115,7 @@ TEST(TokenBlocking_TokenIdentifier, Supersedes) {
 
 // A token supersedes itself by definition.
 TEST(TokenBlocking_TokenIdentifier, Supersedes_Itself) {
-  const auto arbitraryTimepoint = REFERENCE_TIMESTAMP + days{150};
+  const auto arbitraryTimepoint = ReferenceTimestamp + days{150};
   const auto token =
       TokenIdentifier{.subject = "the_subject", .userGroup = "the_user_group", .issueDateTime = arbitraryTimepoint};
 
@@ -124,7 +124,7 @@ TEST(TokenBlocking_TokenIdentifier, Supersedes_Itself) {
 
 // A rule does not apply to a token that has a different subject
 TEST(TokenBlocking_TokenIdentifier, Supersedes_DifferentSubject) {
-  const auto referencePoint = REFERENCE_TIMESTAMP + days{300}; // arbitrary point in time
+  const auto referencePoint = ReferenceTimestamp + days{300}; // arbitrary point in time
   const auto original =
       TokenIdentifier{.subject = "subject_A", .userGroup = "user_group_A", .issueDateTime = referencePoint};
   const auto tokenWithDifferentSubject =
@@ -135,7 +135,7 @@ TEST(TokenBlocking_TokenIdentifier, Supersedes_DifferentSubject) {
 
 // A rule does not apply to a token that has a different group
 TEST(TokenBlocking_TokenIdentifier, Supersedes_DifferentUserGroup) {
-  const auto boundary = REFERENCE_TIMESTAMP + days{433}; // arbitrary point in time
+  const auto boundary = ReferenceTimestamp + days{433}; // arbitrary point in time
   const auto original = TokenIdentifier{.subject = "subject_A", .userGroup = "user_group_A", .issueDateTime = boundary};
   const auto tokenWithDifferentUserGroup =
       TokenIdentifier{.subject = "subject_A", .userGroup = "user_group_B", .issueDateTime = boundary - days{200}};
@@ -145,7 +145,7 @@ TEST(TokenBlocking_TokenIdentifier, Supersedes_DifferentUserGroup) {
 
 // A rule does not apply to a token that was issued after the issuedBefore boundary
 TEST(TokenBlocking_TokenIdentifier, Supersedes_DifferentIssueDateTime) {
-  const auto boundary = REFERENCE_TIMESTAMP + days{50}; // arbitrary point in time
+  const auto boundary = ReferenceTimestamp + days{50}; // arbitrary point in time
   const auto original = TokenIdentifier{.subject = "subject_A", .userGroup = "user_group_A", .issueDateTime = boundary};
   const auto tokenIssuedAtALaterPoint =
       TokenIdentifier{.subject = "subject_A", .userGroup = "user_group_A", .issueDateTime = boundary + days{1}};
@@ -155,7 +155,7 @@ TEST(TokenBlocking_TokenIdentifier, Supersedes_DifferentIssueDateTime) {
 
 // A blocklist entry blocks a token if the entries target matches or supersedes the token.
 TEST(TokenBlocking_BlocklistEntry, IsBlocking) {
-  const auto blockDateTime = REFERENCE_TIMESTAMP + days{50};
+  const auto blockDateTime = ReferenceTimestamp + days{50};
   const auto entry = BlocklistEntry{
       .id = 24,
       .target{.subject = "subject", .userGroup = "group", .issueDateTime = blockDateTime},
@@ -172,7 +172,7 @@ TEST(TokenBlocking_BlocklistEntry, IsBlocking) {
 
 // A blocklist entry does not block a token if the entries target does not match or supersede the token.
 TEST(TokenBlocking_BlocklistEntry, IsBlocking_False) {
-  const auto blockDateTime = REFERENCE_TIMESTAMP + days{50};
+  const auto blockDateTime = ReferenceTimestamp + days{50};
   const auto entry = BlocklistEntry{
       .id = 29,
       .target{.subject = "subject", .userGroup = "group", .issueDateTime = blockDateTime},
@@ -219,14 +219,14 @@ TYPED_TEST(TokenBlocking_Blocklist_Implementations, AddingTokens) {
   using TestSuite = TokenBlocking_Blocklist_Implementations<TypeParam>;
   using EntryTuple = std::pair<TokenIdentifier, BlocklistEntry::Metadata>;
   const auto identifiersWithMetadata = std::array<EntryTuple, 4>{
-      {{{"user1@project.net", "researcher", REFERENCE_TIMESTAMP + days{1}},
-        {"admin1@pep.cs.ru.nl", "obsolete", REFERENCE_TIMESTAMP + days{8}}},
-       {{"user2@project.net", "researcher", REFERENCE_TIMESTAMP + days{2}},
-        {"admin2@pep.cs.ru.nl", "compromised", REFERENCE_TIMESTAMP + days{9}}},
-       {{"user3@project.net", "uploader", REFERENCE_TIMESTAMP + days{3}},
-        {"admin1@pep.cs.ru.nl", "assigned to wrong user", REFERENCE_TIMESTAMP + days{4}}},
-       {{"user4@project.net", "uploader", REFERENCE_TIMESTAMP + days{4}},
-        {"admin2@pep.cs.ru.nl", "obsolete", REFERENCE_TIMESTAMP + days{12}}}}};
+      {{{"user1@project.net", "researcher", ReferenceTimestamp + days{1}},
+        {"admin1@pep.cs.ru.nl", "obsolete", ReferenceTimestamp + days{8}}},
+       {{"user2@project.net", "researcher", ReferenceTimestamp + days{2}},
+        {"admin2@pep.cs.ru.nl", "compromised", ReferenceTimestamp + days{9}}},
+       {{"user3@project.net", "uploader", ReferenceTimestamp + days{3}},
+        {"admin1@pep.cs.ru.nl", "assigned to wrong user", ReferenceTimestamp + days{4}}},
+       {{"user4@project.net", "uploader", ReferenceTimestamp + days{4}},
+        {"admin2@pep.cs.ru.nl", "obsolete", ReferenceTimestamp + days{12}}}}};
   auto blocklist = TestSuite::createEmptyBlocklist();
 
   for (auto& e : identifiersWithMetadata) { blocklist->add(e.first, e.second); }
@@ -327,7 +327,7 @@ TYPED_TEST(TokenBlocking_Blocklist_Implementations, RemovingTokens) {
 TYPED_TEST(TokenBlocking_Blocklist_Implementations, RemoveSuccess) {
   using TestSuite = TokenBlocking_Blocklist_Implementations<TypeParam>;
   const auto addedToken = ArbitraryTokens<1>().front();
-  const auto metadata = Blocklist::Entry::Metadata{"issuer", "reason", REFERENCE_TIMESTAMP};
+  const auto metadata = Blocklist::Entry::Metadata{"issuer", "reason", ReferenceTimestamp};
   auto blocklist = TestSuite::createEmptyBlocklist();
   const auto id = blocklist->add(addedToken, metadata);
 
@@ -350,11 +350,11 @@ TEST(TokenBlocking_SqliteBlocklist, CreateWithStorageLocation) {
   const auto addedToken = TokenIdentifier{
       .subject = "user_user",
       .userGroup = "group_group",
-      .issueDateTime = REFERENCE_TIMESTAMP + days{33}};
+      .issueDateTime = ReferenceTimestamp + days{33}};
   const auto addedMetadata = Blocklist::Entry::Metadata{
       .note = "note_note",
       .issuer = "issuer_issuer",
-      .creationDateTime = REFERENCE_TIMESTAMP + days{52}};
+      .creationDateTime = ReferenceTimestamp + days{52}};
 
   { // original instance scope
     const auto instanceA = SqliteBlocklist::CreateWithStorageLocation(sqliteFile);

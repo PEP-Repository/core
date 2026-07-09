@@ -7,6 +7,15 @@
 
 namespace {
 
+class ClientServer : public ::testing::Test {
+public:
+  static void SetUpTestSuite() {
+#ifdef __EMSCRIPTEN__
+    GTEST_SKIP() << "Server not supported on Emscripten";
+#endif
+  }
+};
+
 void TestClientServerBasics(TestServerFactory& factory) {
   const size_t MESSAGE_SIZE = 1024;
 
@@ -18,7 +27,7 @@ void TestClientServerBasics(TestServerFactory& factory) {
 
   auto protocol = factory.protocol().name();
 
-  auto serverParameters = factory.createServerParameters(context, pep::networking::TcpBasedProtocol::ServerParameters::RANDOM_PORT);
+  auto serverParameters = factory.createServerParameters(context, pep::networking::TcpBasedProtocol::ServerParameters::RandomPort);
   auto server = pep::networking::Server::Create(*serverParameters);
   auto started = pep::MakeSharedCopy(false), stopped = pep::MakeSharedCopy(false);
   auto serverConnectionAttempt = std::make_shared<pep::EventSubscription>();
@@ -85,12 +94,12 @@ void TestClientServerBasics(TestServerFactory& factory) {
 
 }
 
-TEST(ClientServer, Tcp) {
+TEST_F(ClientServer, Tcp) {
   TcpTestServerFactory factory;
   TestClientServerBasics(factory);
 }
 
-TEST(ClientServer, Tls) {
+TEST_F(ClientServer, Tls) {
   TlsTestServerFactory factory;
   TestClientServerBasics(factory);
 }

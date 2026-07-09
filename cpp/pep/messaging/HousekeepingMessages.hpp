@@ -6,11 +6,9 @@
 
 namespace pep {
 
-class VersionRequest {
-};
+struct VersionRequest {};
 
-class VersionResponse {
-public:
+struct VersionResponse {
   BinaryVersion binary;
   std::optional<ConfigVersion> config;
 };
@@ -18,17 +16,25 @@ public:
 class PingRequest {
 public:
   PingRequest(); // sets ID to a random value
-  explicit PingRequest(uint64_t id) : mId(id) {}
-  uint64_t mId;
+  explicit PingRequest(uint64_t id) : id_(id) {}
+
+  uint64_t id() const noexcept { return id_; }
+
+private:
+  uint64_t id_;
 };
 
 class PingResponse {
+  friend class Serializer<PingResponse>;
+
+  uint64_t id_;
+  Timestamp timestamp_;
+
+  PingResponse(uint64_t id, Timestamp timestamp) : id_(id), timestamp_(timestamp) {}
+
 public:
-  explicit PingResponse(uint64_t id) : mId(id), mTimestamp(TimeNow()) { }
-
-  uint64_t mId;
-  Timestamp mTimestamp;
-
+  explicit PingResponse(uint64_t id) : PingResponse(id, TimeNow()) {}
+  Timestamp timestamp() const noexcept { return timestamp_; }
   void validate(const PingRequest& isReplyTo) const;
 };
 

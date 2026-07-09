@@ -14,14 +14,14 @@ struct BrandingConfiguration {
 
 class Branding {
 private:
-  QPixmap mLogo;
-  QString mProjectName;
+  QPixmap logo_;
+  QString projectName_;
 
 private:
   Branding(const QString& logoPath, const QString& projectName);
 
 public:
-  const QString& getProjectName() const noexcept { return mProjectName; }
+  const QString& getProjectName() const noexcept { return projectName_; }
   void showLogo(QLabel& host) const;
   
   static Branding Get(const pep::Configuration& configuration, const std::string& path);

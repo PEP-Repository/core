@@ -14,25 +14,25 @@ else
     PEP_MACOS_ROOT_DIR=$(readlink -f "$(dirname -- "$0")/..")
 fi
 
-# Development helper: check if CI_COMMIT_REF_NAME is specified, if not, set it to "Local". Local can use incremental builds.
+# Development helper: check if CI_COMMIT_REF_NAME is specified, if not, set it to "local". Local can use incremental builds.
 if [[ -z "$CI_COMMIT_REF_NAME" ]]; then
-    echo "No CI_COMMIT_REF_NAME specified: performing 'Local' build."
-    CI_COMMIT_REF_NAME="Local"
+    echo "No CI_COMMIT_REF_NAME specified: performing 'local' build."
+    CI_COMMIT_REF_NAME="local"
 fi
 
 echo "Creating macOS CI artifacts for $CI_COMMIT_REF_NAME build."
 
 # Check if the "build" directory already exists.
 if [[ -d "$PEP_MACOS_ROOT_DIR/$BUILD_DIR" ]]; then
-    # If CI_COMMIT_REF_NAME is not "Local", exit with an error message.
-    if [[ "$CI_COMMIT_REF_NAME" != "Local" ]]; then
+    # If CI_COMMIT_REF_NAME is not "local", exit with an error message.
+    if [[ "$CI_COMMIT_REF_NAME" != "local" ]]; then
         echo "Build directory $PEP_MACOS_ROOT_DIR/$BUILD_DIR already exists."
     else
         echo "Performing incremental build on existing build directory."
     fi
 fi
 
-if [[ "$CI_COMMIT_REF_NAME" == "Local" ]]; then
+if [[ "$CI_COMMIT_REF_NAME" == "local" ]]; then
   LOCAL_BUILD_INFRA=${1:-local}
   LOCAL_BUILD_TYPE=${2:-Debug}
   MACOS_CMAKE_CONFIGURE_PRESET="$(tr "[:upper:]" "[:lower:]" <<< "$LOCAL_BUILD_INFRA"_"$LOCAL_BUILD_TYPE")"
@@ -42,6 +42,11 @@ else
   export CC=clang CXX=clang++
 
   CMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE:-Release}"
+
+  conan remote add pep-local-recipes \
+    "$PEP_MACOS_ROOT_DIR/docker-build/builder/conan/local-recipes" \
+    --type local-recipes-index \
+    --force
 
   echo "Installing Conan packages."
   # Set macOS version to prevent building things for different versions
@@ -59,7 +64,16 @@ else
     -o "&:with_tests=False" \
     -o "&:with_benchmark=False" \
     -o "&:custom_build_folder=True" \
-    --output-folder="./$BUILD_DIR/"
+    --output-folder="./$BUILD_DIR/" && true
+  conan_error="$?"
+
+  # Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
+  conan remote remove pep-local-recipes
+
+  if [[ "$conan_error" != 0 ]]; then
+    exit "$conan_error"
+  fi
+
   if [[ -n "$CLEAN_CONAN" ]]; then
     echo 'Cleaning Conan cache.'
     # Remove old recipes
@@ -168,7 +182,7 @@ create_cli_app() {
     echo "Copying pepcli frameworks."
     cp -R "$PEP_MACOS_ROOT_DIR/$BUILD_DIR/$BUILD_TYPE_DIR/cpp/pep/cli/Frameworks/"* "$build_root_dir/Contents/Frameworks/"
 
-    if [[ "$CI_COMMIT_REF_NAME" == "Local" ]]; then
+    if [[ "$CI_COMMIT_REF_NAME" == "local" ]]; then
         echo "Copying local config."
         cp "$PEP_MACOS_ROOT_DIR/$BUILD_DIR/$BUILD_TYPE_DIR"/cpp/pep/cli/{ClientConfig.json,rootCA.cert,ShadowAdministration.pub} "$build_root_dir/Contents/Resources/"
         cp "$PEP_MACOS_ROOT_DIR/config/local/authserver/AuthserverHTTPSCertificate.pem" "$build_root_dir/Contents/Resources/"
@@ -232,6 +246,17 @@ if [[ "$MACOS_SYS_ARCH" != "arm64" ]] && [[ "$MACOS_SYS_ARCH" != "x86_64" ]]; th
     echo "Error: Unable to retrieve macOS system architecture in $0"
     exit 1
 fi
+
+# Bundle Sparkle's generate_appcast tool into the binaries zip, so the macos-generate-appcast CI job can use it without
+# invoking Conan or Homebrew. The cli CMake target copies it next to pepcli from the Sparkle Conan package
+echo "Staging generate_appcast tool."
+GENERATE_APPCAST_SRC="$PEP_MACOS_ROOT_DIR/$BUILD_DIR/$BUILD_TYPE_DIR/cpp/pep/cli/generate_appcast"
+if [[ ! -f "$GENERATE_APPCAST_SRC" ]]; then
+    echo "Error: generate_appcast not found at $GENERATE_APPCAST_SRC"
+    exit 1
+fi
+mkdir -p "$BUILD_DIR/macOS_artifacts/sparkle-tools"
+cp "$GENERATE_APPCAST_SRC" "$BUILD_DIR/macOS_artifacts/sparkle-tools/generate_appcast"
 
 echo "Creating zip file with macOS binaries."
 

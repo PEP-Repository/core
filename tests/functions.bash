@@ -107,6 +107,15 @@ fail() {
   exit 1
 }
 
+assert_equal() {
+  local -r lhs=$1
+  local -r rhs=$2
+  local -r message=${3:-"\"$lhs\" does not equal \"$rhs\""}
+  if [ "$lhs" != "$rhs" ]; then
+    fail "$message"
+  fi
+}
+
 readonly IMAGE_REPOSITORY="gitlabregistry.pep.cs.ru.nl/pep/core/pep-services"
 default_image() {
   commit_sha=$("$1/scripts/gitdir.sh" commit-sha "$1")
@@ -125,13 +134,19 @@ contains() {
   [ "${string#*"$substring"}" != "$string" ] && true
 }
 
+is_test_included() {
+  test="$1"
+  ([ -z "$TESTS_TO_RUN" ] || contains " $TESTS_TO_RUN " " $test ") && ! contains " $TESTS_TO_SKIP " " $test " && true
+}
+
 list_of_tests=()
 tests_ran=()
 
+# Prints & returns if test will be ran
 should_run_test() {
   local test="$1"
   list_of_tests+=("$test")
-  if ([ -z "$TESTS_TO_RUN" ] || contains " $TESTS_TO_RUN " " $test ") && ! contains " $TESTS_TO_SKIP " " $test "; then
+  if is_test_included "$test"; then
     tests_ran+=("$test")
     echo
     printGreen "==== Running tests: $test ===="

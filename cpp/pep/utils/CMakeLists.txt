@@ -4,10 +4,10 @@
 
 if((CMAKE_BUILD_TYPE STREQUAL "Release") OR
    (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
-    message("Note: log statements with severity less than info are left out")
-    set(DEFAULT_LOGGING info)
+    message("Note: log statements with severity less than Info are left out")
+    set(DEFAULT_LOGGING Info)
 else()
-    set(DEFAULT_LOGGING verbose)
+    set(DEFAULT_LOGGING Verbose)
 endif()
 set(LOGGING ${DEFAULT_LOGGING} CACHE STRING
         "Logging stataments to compile into binaries.  (Note: there are also runtime filters.)")
@@ -73,6 +73,8 @@ find_package(Boost REQUIRED)
 find_package(OpenSSL REQUIRED COMPONENTS
   Crypto
 )
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 find_package(xxHash REQUIRED)
 
 target_link_libraries(${PROJECT_NAME}Utilslib
@@ -83,6 +85,7 @@ target_link_libraries(${PROJECT_NAME}Utilslib
   Boost::log
   Boost::log_setup
   OpenSSL::Crypto
+  Threads::Threads
   xxHash::xxhash
 )
 
@@ -96,6 +99,7 @@ if (WITH_TESTS)
     RegisteredTestEnvironment.cpp RegisteredTestEnvironment.hpp
     TestApplicationMainFunction.cpp
     VerifyBackwardCompatibleSerialization.hpp
+    TestError.hpp
     TestTiming.hpp
   )
   find_package(GTest REQUIRED)
@@ -121,6 +125,7 @@ function(add_unit_tests libname)
 
     file(GLOB UNITTEST_SOURCES tests/*.cpp tests/*.hpp)
     add_executable(${PROJECT_NAME}${libname}UnitTests ${UNITTEST_SOURCES})
+    make_js_file_executable(${PROJECT_NAME}${libname}UnitTests)
     set_target_properties(${PROJECT_NAME}${libname}UnitTests PROPERTIES
         FOLDER pep-UnitTests
     )

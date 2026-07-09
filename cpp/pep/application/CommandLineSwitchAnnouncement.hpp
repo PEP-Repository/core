@@ -11,22 +11,22 @@ namespace commandline {
  */
 class SwitchAnnouncement {
 private:
-  std::string mPrefix;
-  std::string mText;
+  std::string prefix_;
+  std::string text_;
 
 private:
   SwitchAnnouncement(const std::string& prefix, const std::string& text);
 
 public:
-  static const std::string STOP_PROCESSING;
+  static const std::string StopProcessing;
 
   explicit SwitchAnnouncement(const std::string& name);
   explicit SwitchAnnouncement(char shorthand);
 
-  constexpr const std::string& getPrefix() const noexcept { return mPrefix; }
-  constexpr const std::string& getText() const noexcept { return mText; }
+  constexpr const std::string& getPrefix() const noexcept { return prefix_; }
+  constexpr const std::string& getText() const noexcept { return text_; }
 
-  inline std::string string() const { return mPrefix + mText; }
+  inline std::string string() const { return prefix_ + text_; }
 };
 
 inline bool operator ==(const SwitchAnnouncement& lhs, const SwitchAnnouncement& rhs) {

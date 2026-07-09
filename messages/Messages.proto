@@ -12,9 +12,9 @@ option go_package = "./pep_proto";
 //option cc_api_version = 2;
 
 enum KeyBlindMode {
-  BLIND_MODE_UNKNOWN = 0;
-  BLIND_MODE_BLIND = 1;
-  BLIND_MODE_UNBLIND = 2;
+  Unknown = 0;
+  Blind = 1;
+  Unblind = 2;
 }
 
 // Method by which pages are encrypted and how their metadata is
@@ -23,11 +23,11 @@ enum KeyBlindMode {
 enum EncryptionScheme {
   // Old scheme which uses protobuf to serialize metadata and
   // does not bind page numbers.  See issue #566 and #460.
-  V1 = 0;
+  EncryptionV1 = 0;
 
   // New scheme which uses a stable serializer for metadata and
   // binds page numbers.
-  V2 = 1;
+  EncryptionV2 = 1;
 
   // Moves inverse() from unblinding to blinding and binds participant
   // to blinding.  See #719 and #720.
@@ -35,37 +35,33 @@ enum EncryptionScheme {
   // Extra (possibly encrypted and bound-to-blinding) metadata fields
   // have been added to the blinding without breaking backwards compatibility,
   // see #1343.
-  V3 = 2;
+  EncryptionV3 = 2;
 }
 
 // Scheme by which signatures are made.
 enum SignatureScheme {
-  SIGNATURE_SCHEME_V1 = 0; // deprecated
+  SignatureV1 = 0; // deprecated
 
   reserved 1;
 
   // RSA PKCS1v15(SHA256) with as hash the first 32 bytes of the SHA512
   // of the object concatenated with the big endian encoded timestamp.
   // Signature also includes the X509 certificate chains for the public key.
-  SIGNATURE_SCHEME_V3 = 2;
+  SignatureV3 = 2;
 
   // Like V3 but with support for the is_log_copy field.
-  SIGNATURE_SCHEME_V4 = 3;
+  SignatureV4 = 3;
 }
 
 enum EnrollmentScheme {
+  // LEGACY: values are defined as UPPERCASE constants so that protobuf can parse existing JSON key files
+
   // deprecated. Uses the protobuf serialization of the certificate of the user to derive keys.
   // This is not guaranteed to be stable. See issue #567
   ENROLLMENT_SCHEME_V1 = 0;
 
   // Uses DER serialization of the certificate for key component derivation, which is guaranteed to be stable.
   ENROLLMENT_SCHEME_V2 = 1;
-}
-
-enum FileOpenType {
-  FILE_OPEN_UNKNOWN = 0;
-  FILE_OPEN_CREATE = 1;
-  FILE_OPEN_EXISTING = 2;
 }
 
 message CurveScalar {
@@ -468,7 +464,7 @@ message ChecksumChainRequest {
 }
 message ChecksumChainResponse {
   bytes checkpoint = 1; // The last checkpoint included in the XOR
-  bytes xorredChecksums = 2;
+  bytes xorred_checksums = 2;
 }
 
 // New API
@@ -849,7 +845,8 @@ message CastorShortPseudonymDefinition {
   repeated CastorStorageDefinition storage = 3; // optional
 }
 enum CastorStudyType {
-  STUDY = 0;
+  // LEGACY: values are defined as UPPERCASE constants so that protobuf can parse existing (global) configuration JSON
+  STUDY = 0; // LEGACY: this enumerator is called "Crf" in C++ code
   SURVEY = 1;
   REPEATING_DATA = 2;
 }
@@ -924,10 +921,10 @@ message ColumnNameMapping {
 }
 
 enum CrudAction {
-  CRUD_ACTION_CREATE = 0;
-  CRUD_ACTION_READ = 1;
-  CRUD_ACTION_UPDATE = 2;
-  CRUD_ACTION_DELETE = 3;
+  CrudActionCreate = 0;
+  CrudActionRead = 1;
+  CrudActionUpdate = 2;
+  CrudActionDelete = 3;
 }
 
 message SignedColumnNameMappingRequest {
@@ -1307,8 +1304,8 @@ message SignedColumnAccessRequest {
 }
 
 message ColumnAccessRequest {
-  bool includeImplicitlyGranted = 1;
-  repeated string requireModes = 2;
+  bool include_implicitly_granted = 1;
+  repeated string require_modes = 2;
 }
 
 message ColumnGroupAccess {
@@ -1317,8 +1314,8 @@ message ColumnGroupAccess {
 }
 
 message ColumnAccessResponse {
-  repeated ColumnGroupAccess columnGroups = 1;
-  repeated IndexList columnGroupColumns = 2;
+  repeated ColumnGroupAccess column_groups = 1;
+  repeated IndexList column_group_columns = 2;
   repeated string columns = 3;
 }
 
@@ -1379,7 +1376,7 @@ message SignedParticipantGroupAccessRequest {
 }
 
 message ParticipantGroupAccessRequest {
-  bool includeImplicitlyGranted = 1;
+  bool include_implicitly_granted = 1;
 }
 
 message ParticipantGroupAccess {
@@ -1388,21 +1385,21 @@ message ParticipantGroupAccess {
 }
 
 message ParticipantGroupAccessResponse {
-  repeated ParticipantGroupAccess participantGroups = 1;
+  repeated ParticipantGroupAccess participant_groups = 1;
 }
 
 message TokenBlockingTokenIdentifier {
   string subject = 1;
-  string userGroup = 2;
-  Timestamp issueDateTime = 3;
+  string user_group = 2;
+  Timestamp issue_date_time = 3;
 }
 
 message TokenBlockingBlocklistEntry {
   int64 id = 1;
   TokenBlockingTokenIdentifier target = 2;
-  string metadataNote = 3;
-  string metadataIssuer = 4;
-  Timestamp metadataCreationDateTime = 5;
+  string metadata_note = 3;
+  string metadata_issuer = 4;
+  Timestamp metadata_creation_date_time = 5;
 }
 
 message TokenBlockingListRequest {}

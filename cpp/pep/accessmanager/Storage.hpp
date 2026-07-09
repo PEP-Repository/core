@@ -26,11 +26,10 @@ private:
   static inline constexpr auto CaseSensitive = CaseSensitivity::CaseSensitive;
   static inline constexpr auto CaseInsensitive = CaseSensitivity::CaseInsensitive;
 
-  std::shared_ptr<Implementor> mImplementor;
-  std::shared_ptr<GlobalConfiguration> mGlobalConf;
-  std::filesystem::path mStoragePath;
-
-  std::unordered_map<LocalPseudonym, PolymorphicPseudonym> mLpToPpMap; // Use a map as checking existence and retrieval of a key takes O(1) time
+  std::shared_ptr<Implementor> implementor_;
+  std::shared_ptr<GlobalConfiguration> globalConf_;
+  std::filesystem::path storagePath_;
+  std::unordered_map<LocalPseudonym, PolymorphicPseudonym> lpToPpMap_; // Use a map as checking existence and retrieval of a key takes O(1) time
 
   // Initialisation
 
@@ -78,7 +77,7 @@ public:
 
 
   std::filesystem::path getPath() {
-    return mStoragePath;
+    return storagePath_;
   }
 
   /* Core operations on Participants */

@@ -12,8 +12,8 @@ namespace castor {
   */
 class ColumnBoundParticipantId {
 private:
-  std::string mColumnName;
-  std::string mParticipantId;
+  std::string columnName_;
+  std::string participantId_;
 
 public:
   /*!
@@ -27,13 +27,13 @@ public:
     * \brief Property accessor for the column name.
     * \return The PEP (SP) column name associated with this instance's Castor participant ID.
     */
-  inline const std::string& getColumnName() const { return mColumnName; }
+  inline const std::string& getColumnName() const { return columnName_; }
 
   /*!
     * \brief Property accessor for the Castor participant ID.
     * \return The Castor participant ID.
     */
-  inline const std::string& getParticipantId() const { return mParticipantId; }
+  inline const std::string& getParticipantId() const { return participantId_; }
 };
 
 /*!

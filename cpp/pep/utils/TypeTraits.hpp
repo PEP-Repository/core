@@ -6,7 +6,7 @@ namespace pep {
 namespace detail {
 
 /// Mechanism to tracks if PEP_MARK_AS_FLAG_ENUM_TYPE was called on T
-template <typename T> inline constexpr bool MARKED_AS_FLAG_ENUM_TYPE = false;
+template <typename T> inline constexpr bool MarkedAsFlagEnumType = false;
 
 }
 
@@ -31,7 +31,7 @@ concept FlagEnumCandidate = requires {
 ///
 /// Implies `FlagEnumCandidate<T>`
 template <typename T>
-concept FlagEnum = FlagEnumCandidate<T> && detail::MARKED_AS_FLAG_ENUM_TYPE<T>;
+concept FlagEnum = FlagEnumCandidate<T> && detail::MarkedAsFlagEnumType<T>;
 
 template<typename T, typename Ref>
 using CopyConstness = std::conditional_t<std::is_const_v<Ref>, const T, T>;
@@ -54,6 +54,11 @@ concept DerivedFromSpecialization = requires(const T& t) {
   detail::DerivedFromSpecializationImpl<Template>(t);
 };
 
+template <typename Class, typename FieldType>
+constexpr const FieldType Class::* FieldAsConst(FieldType Class::* field) {
+  return field;
+}
+
 } // namespace pep
 
 /// Marks T as a `FlagEnum`, enabling `FlagEnum`-constrained functions and bitwise operators for T.
@@ -64,5 +69,4 @@ concept DerivedFromSpecialization = requires(const T& t) {
 ///          it does not work from nested namespaces within `::pep`.
 #define PEP_MARK_AS_FLAG_ENUM_TYPE(T) \
   static_assert(::pep::FlagEnumCandidate<T>); \
-  template <> constexpr inline bool ::pep::detail::MARKED_AS_FLAG_ENUM_TYPE<T> = true;
-
+  template <> constexpr inline bool ::pep::detail::MarkedAsFlagEnumType<T> = true;

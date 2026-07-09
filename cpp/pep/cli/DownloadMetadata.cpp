@@ -21,7 +21,7 @@ std::string GetMetaFilenameCore() {
   return "pepData";
 }
 
-const std::string LOG_TAG = "Download metadata";
+const std::string LogTag = "Download metadata";
 
 SafeFileName DataFileNameToMetaFileName(const std::string& dataFileName) {
   return SafeFileName(DownloadMetadata::GetFilenamePrefix() + dataFileName + DownloadMetadata::GetFilenameExtension());
@@ -43,14 +43,14 @@ std::string DownloadMetadata::GetDirectoryName() {
 
 namespace {
 
-const std::filesystem::path PRISTINE_STATE_FILENAME = DownloadMetadata::GetFilenamePrefix() + "pristine" + DownloadMetadata::GetFilenameExtension();
-const std::filesystem::path LEGACY_PARTICIPANT_META_FILENAME = DownloadMetadata::GetFilenamePrefix() + "participant" + DownloadMetadata::GetFilenameExtension();
+const std::filesystem::path PristineStateFilename = DownloadMetadata::GetFilenamePrefix() + "pristine" + DownloadMetadata::GetFilenameExtension();
+const std::filesystem::path LegacyParticipantMetaFilename = DownloadMetadata::GetFilenamePrefix() + "participant" + DownloadMetadata::GetFilenameExtension();
 
 std::vector<std::filesystem::path> GetLegacyParticipantMetaFilePaths(const std::filesystem::path& downloadDirectory) {
   std::vector<std::filesystem::path> result;
   for (std::filesystem::directory_iterator i(downloadDirectory); i != std::filesystem::directory_iterator(); ++i) {
     if (i->is_directory()) {
-      auto filename = i->path() / LEGACY_PARTICIPANT_META_FILENAME;
+      auto filename = i->path() / LegacyParticipantMetaFilename;
       if (std::filesystem::exists(filename)) {
         result.push_back(filename);
       }
@@ -62,28 +62,28 @@ std::vector<std::filesystem::path> GetLegacyParticipantMetaFilePaths(const std::
 }
 
 ParticipantIdentifier::ParticipantIdentifier(const PolymorphicPseudonym& polymorphic, const LocalPseudonym& local)
-  : mPolymorphic(polymorphic), mLocal(local) {
-  if (mPolymorphic == PolymorphicPseudonym{}) {
+  : polymorphic_(polymorphic), local_(local) {
+  if (polymorphic_ == PolymorphicPseudonym{}) {
     throw std::runtime_error("Participant identifier requires a nonempty polymorphic pseudonym");
   }
-  if (mLocal == LocalPseudonym{}) {
+  if (local_ == LocalPseudonym{}) {
     throw std::runtime_error("Participant identifier requires a nonempty local pseudonym");
   }
 }
 
 RecordDescriptor::RecordDescriptor(const ParticipantIdentifier& participant, const std::string& column, const Timestamp& blindingTimestamp, const std::optional<Timestamp>& payloadBlindingTimestamp)
-  : mParticipant(participant), mColumn(column), mBlindingTimestamp(blindingTimestamp), mPayloadBlindingTimestamp(payloadBlindingTimestamp) {
+  : participant_(participant), column_(column), blindingTimestamp_(blindingTimestamp), payloadBlindingTimestamp_(payloadBlindingTimestamp) {
 }
 
 RecordDescriptor::RecordDescriptor(const ParticipantIdentifier& participant, const std::string& column, const Timestamp& blindingTimestamp, const std::map<std::string, MetadataXEntry>& extra, const std::optional<Timestamp>& payloadBlindingTimestamp)
-  : mParticipant(participant), mColumn(column), mBlindingTimestamp(blindingTimestamp), mPayloadBlindingTimestamp(payloadBlindingTimestamp), mExtra(extra) {
+  : participant_(participant), column_(column), blindingTimestamp_(blindingTimestamp), payloadBlindingTimestamp_(payloadBlindingTimestamp), extra_(extra) {
 }
 
 const Timestamp& RecordDescriptor::getPayloadBlindingTimestamp() const noexcept {
-  if (mPayloadBlindingTimestamp.has_value()) {
-    return *mPayloadBlindingTimestamp;
+  if (payloadBlindingTimestamp_.has_value()) {
+    return *payloadBlindingTimestamp_;
   }
-  return mBlindingTimestamp;
+  return blindingTimestamp_;
 }
 
 SafeFileName RecordDescriptor::getFileName(bool includingExtension) const noexcept {
@@ -100,7 +100,7 @@ SafeFileName RecordDescriptor::getFileName(bool includingExtension) const noexce
 }
 
 bool RecordDescriptor::operator==(const RecordDescriptor& other) const {
-  return (mParticipant == other.mParticipant) && (mColumn == other.mColumn) && (mBlindingTimestamp == other.mBlindingTimestamp);
+  return (participant_ == other.participant_) && (column_ == other.column_) && (blindingTimestamp_ == other.blindingTimestamp_);
 }
 
 SafePath DownloadMetadata::provideDirectory() const {
@@ -119,7 +119,7 @@ SafePath DownloadMetadata::provideParticipantDirectory(const LocalPseudonym& loc
     return result;
   }
 
-  auto pseudonym = mGlobalConfig->getUserPseudonymFormat().makeUserPseudonym(localPseudonym);
+  auto pseudonym = globalConfig_->getUserPseudonymFormat().makeUserPseudonym(localPseudonym);
   result = provideDirectory() / SafeFileName(pseudonym);
   std::filesystem::create_directories(result);
   return result;
@@ -135,14 +135,14 @@ void DownloadMetadata::ensureFormatUpToDate() {
    * foolproof.
    */
 
-  auto legacyPristineFile = mDownloadDirectory / PRISTINE_STATE_FILENAME;
+  auto legacyPristineFile = downloadDirectory_ / PristineStateFilename;
   if (std::filesystem::exists(legacyPristineFile)) {
-    LOG(LOG_TAG, warning) << "Upgrading legacy download directory format.";
+    PEP_LOG(LogTag, Severity::Warning) << "Upgrading legacy download directory format.";
     boost::property_tree::ptree stateProperties;
     boost::property_tree::read_json(legacyPristineFile.string(), stateProperties);
     auto states = DeserializeProperties<std::vector<RecordState>>(stateProperties, "records", DeserializationContext());
 
-    auto participantMetaFiles = GetLegacyParticipantMetaFilePaths(mDownloadDirectory);
+    auto participantMetaFiles = GetLegacyParticipantMetaFilePaths(downloadDirectory_);
     for (const auto& participantFile : participantMetaFiles) {
       boost::property_tree::ptree participantProperties;
       boost::property_tree::read_json(participantFile.string(), participantProperties);
@@ -189,16 +189,16 @@ void DownloadMetadata::ensureFormatUpToDate() {
           + ", blinding timestamp " + std::to_string(TicksSinceEpoch<std::chrono::milliseconds>(first.getBlindingTimestamp())));
     }
     std::filesystem::remove(legacyPristineFile);
-    LOG(LOG_TAG, warning) << "Download directory metadata format upgraded. Please update your (offline) copies.";
+    PEP_LOG(LogTag, Severity::Warning) << "Download directory metadata format upgraded. Please update your (offline) copies.";
   }
 
-  if (!GetLegacyParticipantMetaFilePaths(mDownloadDirectory).empty()) {
+  if (!GetLegacyParticipantMetaFilePaths(downloadDirectory_).empty()) {
     throw std::runtime_error("Participant metadata file(s) found in directory after conversion, or directory contains no pristine metadata file");
   }
 }
 
 DownloadMetadata::DownloadMetadata(const std::filesystem::path& downloadDirectory, std::shared_ptr<GlobalConfiguration> globalConfig, const Progress::OnCreation& onCreateProgress)
-  : mGlobalConfig(globalConfig), mDownloadDirectory(SafePath::FromTrusted(std::filesystem::canonical(downloadDirectory))) {
+  : globalConfig_(globalConfig), downloadDirectory_(SafePath::FromTrusted(std::filesystem::canonical(downloadDirectory))) {
   ensureFormatUpToDate();
 
   auto directory = getDirectory();
@@ -231,23 +231,23 @@ DownloadMetadata::DownloadMetadata(const std::filesystem::path& downloadDirector
 
         // Cache deserialized value
         auto relative = SafePath::FromTrusted(participantDirectory) / SafeFileName(filename);
-        [[maybe_unused]] auto added = mSnapshotsByRelativePath->emplace(relative, Snapshot{ serialized, record }).second;
+        [[maybe_unused]] auto added = snapshotsByRelativePath_->emplace(relative, Snapshot{ serialized, record }).second;
         assert(added);
-        added = mRelativePathsByDescriptor->emplace(record.descriptor, relative).second;
+        added = relativePathsByDescriptor_->emplace(record.descriptor, relative).second;
         assert(added);
-        assert(mSnapshotsByRelativePath->size() == mRelativePathsByDescriptor->size());
+        assert(snapshotsByRelativePath_->size() == relativePathsByDescriptor_->size());
       }
     }
   }
 }
 
 SafePath DownloadMetadata::getDirectory() const {
-  return mDownloadDirectory / SafeFileName(DownloadMetadata::GetDirectoryName());
+  return downloadDirectory_ / SafeFileName(DownloadMetadata::GetDirectoryName());
 }
 
 std::vector<RecordState> DownloadMetadata::getRecords() const {
   using namespace std::ranges;
-  return RangeToVector(*mSnapshotsByRelativePath
+  return RangeToVector(*snapshotsByRelativePath_
     | views::values
     | views::transform(std::mem_fn(&Snapshot::record)));
 }
@@ -255,8 +255,8 @@ std::vector<RecordState> DownloadMetadata::getRecords() const {
 std::optional<XxHasher::Hash> DownloadMetadata::getHash(const RecordDescriptor& record) const {
   auto relative = getRelativePath(record);
   if (relative) {
-    auto position = mSnapshotsByRelativePath->find(*relative);
-    if (position != mSnapshotsByRelativePath->cend()) {
+    auto position = snapshotsByRelativePath_->find(*relative);
+    if (position != snapshotsByRelativePath_->cend()) {
       return position->second.record.hash;
     }
   }
@@ -264,8 +264,8 @@ std::optional<XxHasher::Hash> DownloadMetadata::getHash(const RecordDescriptor& 
 }
 
 std::optional<SafeRelativeFilePath> DownloadMetadata::getRelativePath(const RecordDescriptor& record) const {
-  auto position = mRelativePathsByDescriptor->find(record);
-  if (position != mRelativePathsByDescriptor->cend()) {
+  auto position = relativePathsByDescriptor_->find(record);
+  if (position != relativePathsByDescriptor_->cend()) {
     return position->second;
   }
   return std::nullopt;
@@ -288,25 +288,25 @@ void DownloadMetadata::add(const RecordDescriptor& record, const SafeFileName& d
   WriteFile(path, serialized);
 
   auto relative = participantDirectory.fileName() / dataFileName;
-  mSnapshotsByRelativePath->emplace(relative, Snapshot{serialized, state});
-  mRelativePathsByDescriptor->emplace(state.descriptor, relative);
+  snapshotsByRelativePath_->emplace(relative, Snapshot{serialized, state});
+  relativePathsByDescriptor_->emplace(state.descriptor, relative);
 }
 
 bool DownloadMetadata::remove(const RecordDescriptor& record) {
-  auto position = mRelativePathsByDescriptor->find(record);
-  if (position == mRelativePathsByDescriptor->cend()) {
+  auto position = relativePathsByDescriptor_->find(record);
+  if (position == relativePathsByDescriptor_->cend()) {
     return false;
   }
   const std::filesystem::path& relative = position->second;
   assert(relative.parent_path().string() == record.getParticipant().getLocalPseudonym().text()
-    || relative.parent_path().string() == mGlobalConfig->getUserPseudonymFormat().makeUserPseudonym(record.getParticipant().getLocalPseudonym()));
+    || relative.parent_path().string() == globalConfig_->getUserPseudonymFormat().makeUserPseudonym(record.getParticipant().getLocalPseudonym()));
   auto metaFileName = DataFileNameToMetaFileName(relative.filename().string());
   auto participantDirectory = getDirectory() / SafeFileName(record.getParticipant().getLocalPseudonym().text());
   if(!std::filesystem::is_directory(participantDirectory)) {
-    participantDirectory = getDirectory() / SafeFileName(mGlobalConfig->getUserPseudonymFormat().makeUserPseudonym(record.getParticipant().getLocalPseudonym()));
+    participantDirectory = getDirectory() / SafeFileName(globalConfig_->getUserPseudonymFormat().makeUserPseudonym(record.getParticipant().getLocalPseudonym()));
   }
   SafePath path = participantDirectory / metaFileName;
-  mSnapshotsByRelativePath->erase(position->second);
-  mRelativePathsByDescriptor->erase(position);
+  snapshotsByRelativePath_->erase(position->second);
+  relativePathsByDescriptor_->erase(position);
   return std::filesystem::remove_all(path);
 }

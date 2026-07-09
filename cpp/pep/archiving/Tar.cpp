@@ -14,15 +14,13 @@ using namespace pep;
 
 namespace {
 
-const std::string LOG_TAG ("Tar");
+const std::string LogTag ("Tar");
 
-const size_t RETRIES = 3;
+const size_t Retries = 3;
 
 struct TarCtx {
    std::istream& stream;
    std::array<char, 10240> buf{};
-
-   TarCtx(std::istream &stream) : stream(stream) {}
 };
 
 int open_callback(archive* archive, void* clientData) {
@@ -60,8 +58,8 @@ int close_callback(archive* archive, void* clientData) {
 archive_entry* readNextHeader(archive* archive) {
   archive_entry* entry{};
   int result = archive_read_next_header(archive, &entry);
-  for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= RETRIES; ++retry) {
-    LOG(LOG_TAG, warning) << "Retry " << retry << " of " << RETRIES << " after warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
+  for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= Retries; ++retry) {
+    PEP_LOG(LogTag, Severity::Warning) << "Retry " << retry << " of " << Retries << " after warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
     result = archive_read_next_header(archive, &entry);
   }
   std::ostringstream oss;
@@ -70,7 +68,7 @@ archive_entry* readNextHeader(archive* archive) {
       oss << "Error while reading tar entry header. Too many retries for error: " << archive_errno(archive) << " - " << archive_error_string(archive);
       throw std::runtime_error(oss.str());
     case ARCHIVE_WARN:
-      LOG(LOG_TAG, warning) << "Warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
+      PEP_LOG(LogTag, Severity::Warning) << "Warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
       return entry;
     case ARCHIVE_FATAL:
       oss << "Error while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
@@ -91,8 +89,8 @@ bool readBlockToStream(archive* archive, std::ostream& out) {
   la_int64_t offset{};
 
   int result = archive_read_data_block(archive, &buff, &len, &offset);
-  for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= RETRIES; ++retry) {
-    LOG(LOG_TAG, warning) << "Retry " << retry << " of " << RETRIES << " after warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
+  for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= Retries; ++retry) {
+    PEP_LOG(LogTag, Severity::Warning) << "Retry " << retry << " of " << Retries << " after warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
     result = archive_read_data_block(archive, &buff, &len, &offset);
   }
   std::ostringstream oss;
@@ -101,7 +99,7 @@ bool readBlockToStream(archive* archive, std::ostream& out) {
       oss << "Error while reading tar entry header. Too many retries for error: " << archive_errno(archive) << " - " << archive_error_string(archive);
       throw std::runtime_error(oss.str());
     case ARCHIVE_WARN:
-      LOG(LOG_TAG, warning) << "Warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
+      PEP_LOG(LogTag, Severity::Warning) << "Warning while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
       break;
     case ARCHIVE_FATAL:
       oss << "Error while reading tar entry header: " << archive_errno(archive) << " - " << archive_error_string(archive);
@@ -125,23 +123,23 @@ bool readBlockToStream(archive* archive, std::ostream& out) {
 } // end namespace
 
 
-Tar::Tar(std::shared_ptr<std::ostream> stream) : mStream(stream), mArchive(archive_write_new()) {
-  if(archive_write_set_format_pax_restricted(mArchive) != ARCHIVE_OK) {
+Tar::Tar(std::shared_ptr<std::ostream> stream) : stream_(stream), archive_(archive_write_new()) {
+  if(archive_write_set_format_pax_restricted(archive_) != ARCHIVE_OK) {
     std::ostringstream oss;
-    oss << "Error while setting tar format to pax_restricted: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+    oss << "Error while setting tar format to pax_restricted: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
     throw std::runtime_error(oss.str());
   }
 
-  if(archive_write_open(mArchive, mStream.get(), open_callback, write_callback, close_callback) != ARCHIVE_OK) {
+  if(archive_write_open(archive_, stream_.get(), open_callback, write_callback, close_callback) != ARCHIVE_OK) {
     std::ostringstream oss;
-    oss << "Error opening tar file for writing: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+    oss << "Error opening tar file for writing: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
     throw std::runtime_error(oss.str());
   }
 }
 
 Tar::~Tar() {
-  archive_write_close(mArchive);
-  archive_write_free(mArchive);
+  archive_write_close(archive_);
+  archive_write_free(archive_);
 }
 
 
@@ -153,22 +151,22 @@ void Tar::nextEntry(const SafePath& path, int64_t size) {
   archive_entry_set_size(entry, size);
   archive_entry_set_filetype(entry, AE_IFREG);
   archive_entry_set_perm(entry, 0644);
-  int result = archive_write_header(mArchive, entry);
-  for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= RETRIES; ++retry) {
-    LOG(LOG_TAG, warning) << "Retry " << retry << " of " << RETRIES << " after warning while writing tar entry header: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
-    result = archive_write_header(mArchive, entry);
+  int result = archive_write_header(archive_, entry);
+  for(unsigned int retry = 1; result == ARCHIVE_RETRY && retry <= Retries; ++retry) {
+    PEP_LOG(LogTag, Severity::Warning) << "Retry " << retry << " of " << Retries << " after warning while writing tar entry header: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
+    result = archive_write_header(archive_, entry);
   }
   if(result == ARCHIVE_WARN) {
-      LOG(LOG_TAG, warning) << "Warning while writing tar entry header: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+      PEP_LOG(LogTag, Severity::Warning) << "Warning while writing tar entry header: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
   }
   else if(result == ARCHIVE_RETRY) {
       std::ostringstream oss;
-      oss << "Error while writing tar entry header. Too many retries for error: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+      oss << "Error while writing tar entry header. Too many retries for error: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
       throw std::runtime_error(oss.str());
   }
   else if(result == ARCHIVE_FATAL) {
       std::ostringstream oss;
-      oss << "Error while writing tar entry header: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+      oss << "Error while writing tar entry header: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
       throw std::runtime_error(oss.str());
   }
   archive_entry_free(entry);
@@ -178,9 +176,9 @@ void Tar::nextEntry(const SafePath& path, int64_t size) {
 
 void Tar::writeData(std::string_view data) {
 
-  if(archive_write_data(mArchive, data.data(), data.length()) < 0) {
+  if(archive_write_data(archive_, data.data(), data.length()) < 0) {
     std::ostringstream oss;
-    oss << "Error writing data to tar: " << archive_errno(mArchive) << " - " << archive_error_string(mArchive);
+    oss << "Error writing data to tar: " << archive_errno(archive_) << " - " << archive_error_string(archive_);
     throw std::runtime_error(oss.str());
   }
 }
@@ -204,7 +202,7 @@ void Tar::Extract(std::istream& stream, const std::filesystem::path& outputDirec
   while( (archive_entry = readNextHeader(archive)) ) {
     std::filesystem::path rawEntryPath(archive_entry_pathname(archive_entry));
     if (archive_entry_filetype(archive_entry) != AE_IFREG) {
-      LOG(LOG_TAG, debug) << "Skipping non-regular file in tar archive: " << rawEntryPath;
+      PEP_LOG(LogTag, Severity::Debug) << "Skipping non-regular file in tar archive: " << rawEntryPath;
       continue;
     }
 

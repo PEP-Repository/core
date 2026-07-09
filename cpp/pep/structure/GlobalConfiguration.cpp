@@ -6,14 +6,14 @@
 namespace pep {
 
 UserPseudonymFormat::UserPseudonymFormat(const std::string &prefix, size_t length)
-  : mPrefix(prefix),mLength(length) {
-  if(mPrefix.empty()) {
+  : prefix_(prefix),length_(length) {
+  if(prefix_.empty()) {
     throw std::runtime_error("User pseudonym format prefix must be nonempty");
   }
-  if(mLength <= 0) {
+  if(length_ <= 0) {
     throw std::runtime_error("Length of user pseudonym must be positive");
   }
-  if (mLength > LocalPseudonym::TextLength()) {
+  if (length_ > LocalPseudonym::TextLength()) {
     throw std::runtime_error("User pseudonym cannot be longer than local pseudonym");
   }
 }
@@ -32,48 +32,48 @@ size_t UserPseudonymFormat::getTotalLength() const {
 
 std::string UserPseudonymFormat::stripPrefix(std::string userPseudonym) const {
   assert(this->matches(userPseudonym));
-  return userPseudonym.erase(0, mPrefix.length());
+  return userPseudonym.erase(0, prefix_.length());
 }
 
 std::string UserPseudonymFormat::makeUserPseudonym(const LocalPseudonym& localpseudonym) const {
-  return mPrefix + localpseudonym.text().substr(0, mLength);
+  return prefix_ + localpseudonym.text().substr(0, length_);
 }
 
 bool UserPseudonymFormat::matches(const std::string& input) const
 {
-  return input.length() == this->getTotalLength() && input.starts_with(mPrefix);
+  return input.length() == this->getTotalLength() && input.starts_with(prefix_);
 }
 
 PseudonymFormat::PseudonymFormat(std::string prefix, size_t digits)
-  : mPrefix(std::move(prefix)), mDigits(digits) {
-  if (mPrefix.empty()) {
+  : prefix_(std::move(prefix)), digits_(digits) {
+  if (prefix_.empty()) {
     throw std::runtime_error("Pseudonym format prefix must be nonempty");
   }
-  if (mDigits == 0U) {
+  if (digits_ == 0U) {
     throw std::runtime_error("Number of generated pseudonym digits must be a positive number");
   }
 
   // Case insensitive matching on prefix
-  for (auto c : mPrefix) {
+  for (auto c : prefix_) {
     char upper = static_cast<char>(toupper(c));
     char lower = static_cast<char>(tolower(c));
     assert(c == upper || c == lower);
     if (upper == lower) {
-      mRegexPattern += upper;
+      regexPattern_ += upper;
     }
     else
     {
-      mRegexPattern += std::string{'[', upper, lower, ']'};
+      regexPattern_ += std::string{'[', upper, lower, ']'};
     }
   }
 
   // Require as many digits as configured, plus those for the checksum
-  mRegexPattern += "[0-9]{" + std::to_string(*getTotalNumberOfDigits()) + "}";
+  regexPattern_ += "[0-9]{" + std::to_string(*getTotalNumberOfDigits()) + "}";
 }
 
 PseudonymFormat::PseudonymFormat(std::string regexPattern)
-  : mPrefix(), mDigits(0U), mRegexPattern(std::move(regexPattern)) {
-  if (mRegexPattern.empty()) {
+  : prefix_(), digits_(0U), regexPattern_(std::move(regexPattern)) {
+  if (regexPattern_.empty()) {
     throw std::runtime_error("No pattern specified for pseudonym format");
   }
 }
@@ -95,8 +95,8 @@ std::optional<size_t> PseudonymFormat::getLength() const {
 }
 
 std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonym(const std::string& column) const noexcept {
-  auto end = mShortPseudonyms.cend();
-  auto position = std::find_if(mShortPseudonyms.cbegin(), end, [column](ShortPseudonymDefinition candidate) {
+  auto end = shortPseudonyms_.cend();
+  auto position = std::find_if(shortPseudonyms_.cbegin(), end, [column](ShortPseudonymDefinition candidate) {
     return column == candidate.getColumn().getFullName();
   });
   if (position == end) {
@@ -107,16 +107,16 @@ std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonym(c
 
 std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonymForValue(const std::string& value) const noexcept {
   // Look up the value in the errata
-  auto errataEnd = mSpErrata.cend();
-  auto erratum = std::find_if(mSpErrata.cbegin(), errataEnd, [&value](const ShortPseudonymErratum& candidate) { return candidate.value == value; });
+  auto errataEnd = spErrata_.cend();
+  auto erratum = std::find_if(spErrata_.cbegin(), errataEnd, [&value](const ShortPseudonymErratum& candidate) { return candidate.value == value; });
   if (erratum != errataEnd) {
     assert(!erratum->column.empty());
     return this->getShortPseudonym(erratum->column);
   }
 
   // Look up the value's prefix in the short pseudonym definitions
-  auto spsEnd = mShortPseudonyms.cend();
-  auto sp = std::find_if(mShortPseudonyms.cbegin(), spsEnd, [&value](const ShortPseudonymDefinition& candidate) {return value.starts_with(candidate.getPrefix()); });
+  auto spsEnd = shortPseudonyms_.cend();
+  auto sp = std::find_if(shortPseudonyms_.cbegin(), spsEnd, [&value](const ShortPseudonymDefinition& candidate) {return value.starts_with(candidate.getPrefix()); });
   if (sp != spsEnd) {
     return *sp;
   }
@@ -127,8 +127,8 @@ std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonymFo
 
 
 std::optional<ColumnSpecification> GlobalConfiguration::getColumnSpecification(const std::string& column) const noexcept {
-  auto end = mColumnSpecifications.cend();
-  auto position = std::find_if(mColumnSpecifications.cbegin(), end, [column](ColumnSpecification candidate) {
+  auto end = columnSpecifications_.cend();
+  auto position = std::find_if(columnSpecifications_.cbegin(), end, [column](ColumnSpecification candidate) {
     return column == candidate.getColumn();
   });
   if (position == end) {
@@ -147,28 +147,28 @@ GlobalConfiguration::GlobalConfiguration(
   std::vector<AssessorDefinition> assessors,
   std::vector<ColumnSpecification> columnSpecifications,
   std::vector<ShortPseudonymErratum> spErrata)
-  : mParticipantIdentifierFormats(std::move(participantIdentifierFormats))
-  , mStudyContexts(std::move(studyContexts))
-  , mShortPseudonyms(std::move(shortPseudonyms))
-  , mUserPseudonymFormat(std::move(userPseudonymFormat))
-  , mAdditionalStickers(std::move(additionalStickers))
-  , mDevices(std::move(devices))
-  , mAssessors(std::move(assessors))
-  , mColumnSpecifications(std::move(columnSpecifications))
-  , mSpErrata(std::move(spErrata)) {
-  if (mParticipantIdentifierFormats.empty()) {
+  : participantIdentifierFormats_(std::move(participantIdentifierFormats))
+  , studyContexts_(std::move(studyContexts))
+  , shortPseudonyms_(std::move(shortPseudonyms))
+  , userPseudonymFormat_(std::move(userPseudonymFormat))
+  , additionalStickers_(std::move(additionalStickers))
+  , devices_(std::move(devices))
+  , assessors_(std::move(assessors))
+  , columnSpecifications_(std::move(columnSpecifications))
+  , spErrata_(std::move(spErrata)) {
+  if (participantIdentifierFormats_.empty()) {
     throw std::runtime_error("No participant identifier formats specified");
   }
-  if (!mParticipantIdentifierFormats.front().isGenerable()) {
+  if (!participantIdentifierFormats_.front().isGenerable()) {
     throw std::runtime_error("First specified participant identifier format must be generable");
   }
 
-  for (auto i = mShortPseudonyms.cbegin(); i != mShortPseudonyms.cend(); ++i) {
+  for (auto i = shortPseudonyms_.cbegin(); i != shortPseudonyms_.cend(); ++i) {
     const auto& sp = *i;
     const auto& context = sp.getStudyContext();
-    mNumberOfVisits[context] = std::max(getNumberOfVisits(context), sp.getColumn().getVisitNumber().value_or(0));
+    numberOfVisits_[context] = std::max(getNumberOfVisits(context), sp.getColumn().getVisitNumber().value_or(0));
 
-    for (auto j = i + 1; j < mShortPseudonyms.cend(); ++j) {
+    for (auto j = i + 1; j < shortPseudonyms_.cend(); ++j) {
       if (sp.getColumn().getFullName() == j->getColumn().getFullName()) {
         throw std::runtime_error("Duplicate short pseudonym column name found: " + sp.getColumn().getFullName());
       }
@@ -178,20 +178,20 @@ GlobalConfiguration::GlobalConfiguration(
     }
   }
 
-  for (const auto& additional : mAdditionalStickers) {
-    if (ShortPseudonymColumn::Parse(additional.mStudyContext, additional.mColumn).getVisitNumber() == additional.mVisit) {
-      throw std::runtime_error("Use regular instead of additional sticker specification for short pseudonym " + additional.mColumn);
+  for (const auto& additional : additionalStickers_) {
+    if (ShortPseudonymColumn::Parse(additional.studyContext, additional.column).getVisitNumber() == additional.visit) {
+      throw std::runtime_error("Use regular instead of additional sticker specification for short pseudonym " + additional.column);
     }
-    if (!getShortPseudonym(additional.mColumn)) {
-      throw std::runtime_error("Cannot specify additional stickers for undefined short pseudonym " + additional.mColumn);
+    if (!getShortPseudonym(additional.column)) {
+      throw std::runtime_error("Cannot specify additional stickers for undefined short pseudonym " + additional.column);
     }
-    mNumberOfVisits[additional.mStudyContext] = std::max(getNumberOfVisits(additional.mStudyContext), additional.mVisit);
+    numberOfVisits_[additional.studyContext] = std::max(getNumberOfVisits(additional.studyContext), additional.visit);
   }
 
-  for (const auto& assessor : mAssessors) {
+  for (const auto& assessor : assessors_) {
     for (const auto& contextId : assessor.studyContexts) {
       try {
-        mStudyContexts.getById(contextId); // Throws an exception if context not found
+        studyContexts_.getById(contextId); // Throws an exception if context not found
       }
       catch (...) {
         throw std::runtime_error("Error finding study context '" + contextId + "', configured for assessor " + std::to_string(assessor.id));
@@ -199,7 +199,7 @@ GlobalConfiguration::GlobalConfiguration(
     }
   }
 
-  for (const auto& columnSpec : mColumnSpecifications) {
+  for (const auto& columnSpec : columnSpecifications_) {
     if(auto sp = columnSpec.getAssociatedShortPseudonymColumn()) {
       if(!getShortPseudonym(*sp)) {
         throw std::runtime_error("Associated short pseudonym column " + *sp + " for column " + columnSpec.getColumn() + " does not exist");
@@ -207,7 +207,7 @@ GlobalConfiguration::GlobalConfiguration(
     }
   }
 
-  for (const auto& erratum : mSpErrata) {
+  for (const auto& erratum : spErrata_) {
     assert(!erratum.column.empty());
     if (!getShortPseudonym(erratum.column)) {
       throw std::runtime_error("Short pseudonym erratum column " + erratum.column + " does not exist");
@@ -218,13 +218,13 @@ GlobalConfiguration::GlobalConfiguration(
 std::vector<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonyms(const std::string& studyContext, const std::optional<uint32_t>& visitNumber) const {
   std::vector<ShortPseudonymDefinition> result;
   auto inserter = std::back_inserter(result);
-  std::copy_if(mShortPseudonyms.cbegin(), mShortPseudonyms.cend(), inserter, [studyContext, visitNumber](const ShortPseudonymDefinition& candidate) {return candidate.getStudyContext() == studyContext && candidate.getColumn().getVisitNumber() == visitNumber; });
+  std::copy_if(shortPseudonyms_.cbegin(), shortPseudonyms_.cend(), inserter, [studyContext, visitNumber](const ShortPseudonymDefinition& candidate) {return candidate.getStudyContext() == studyContext && candidate.getColumn().getVisitNumber() == visitNumber; });
 
-  for (const auto& entry : mAdditionalStickers) {
-    if (entry.mStudyContext == studyContext && entry.mVisit == visitNumber) {
-      auto defined = *getShortPseudonym(entry.mColumn);
-      result.emplace_back(entry.mColumn, defined.getPrefix(), defined.getLength(), defined.getCastor(),
-        entry.mStickers, entry.mSuppressAdditionalStickers, defined.getConfiguredDescription(),
+  for (const auto& entry : additionalStickers_) {
+    if (entry.studyContext == studyContext && entry.visit == visitNumber) {
+      auto defined = *getShortPseudonym(entry.column);
+      result.emplace_back(entry.column, defined.getPrefix(), defined.getLength(), defined.getCastor(),
+        entry.stickers, entry.suppressAdditionalStickers, defined.getConfiguredDescription(),
         defined.getStudyContext());
     }
   }
@@ -245,8 +245,8 @@ std::vector<std::string> GlobalConfiguration::getVisitAssessorColumns(const pep:
 
 
 uint32_t GlobalConfiguration::getNumberOfVisits(const std::string& studyContext) const noexcept {
-  auto i = mNumberOfVisits.find(studyContext);
-  if (i == mNumberOfVisits.cend()) {
+  auto i = numberOfVisits_.find(studyContext);
+  if (i == numberOfVisits_.cend()) {
     return 0;
   }
   return i->second;

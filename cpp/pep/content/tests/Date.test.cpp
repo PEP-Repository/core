@@ -17,9 +17,11 @@ const auto DateNotOk = std::not_fn(std::mem_fn(&year_month_day::ok));
 TEST(Date, MultiFormat) {
   using PP = pep::ParticipantPersonalia; // class under test
 
+  // Tests TryParseDdMonthAbbrevYyyyDate
   auto dateWithMonthAbbrev = PP::ParseDateOfBirth("23-jun-1912");
   EXPECT_EQ(year_month_day{dateWithMonthAbbrev}, 1912y / June / 23d) << "date with month abbreviation parsed incorrectly";
 
+  // Tests TryParseDdMmYyyy
   auto ddmmyyyy = PP::ParseDateOfBirth("28-12-1903");
   EXPECT_EQ(year_month_day{ddmmyyyy}, 1903y / December / 28d) << "DD-MM-YYYY date parsed incorrectly";
 
@@ -50,6 +52,10 @@ TEST(Date, MultiFormat_IncorrectInput) {
   EXPECT_THROW(PP::ParseDateOfBirth(""), RequiredErrorT) << "Should not accept empty string";
 }
 
-
+TEST(Date, ToDdMonthAbbrevYyyyDate) {
+  EXPECT_EQ(pep::ToDdMonthAbbrevYyyyDate(1912y / June / 23d), "23-jun-1912");
+  EXPECT_THROW((void) pep::ToDdMonthAbbrevYyyyDate(-1y / June / 23d), std::range_error)
+    << "Negative year should be rejected";
+}
 
 }

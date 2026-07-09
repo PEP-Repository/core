@@ -20,7 +20,7 @@ class TokenApplication : public pep::commandline::Utility {
     return "Creates a token for user enrollment at the key server";
   }
 
-  std::optional<pep::severity_level> consoleLogMinimumSeverityLevel() const override {
+  std::optional<pep::Severity> consoleLogMinimumSeverityLevel() const override {
     return std::nullopt;
   }
 

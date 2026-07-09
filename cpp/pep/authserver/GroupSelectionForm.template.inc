@@ -1,4 +1,4 @@
-const static std::string BEGIN_GROUP_SELECTION_TEMPLATE = R"RAWSTRING(
+const static std::string BeginGroupSelectionTemplate = R"RAWSTRING(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,7 +31,7 @@ div groupForm {
       <option value="">Please select...</option>
 )RAWSTRING";
 
-const static std::string END_GROUP_SELECTION_TEMPLATE = R"RAWSTRING(
+const static std::string EndGroupSelectionTemplate = R"RAWSTRING(
     </select>
     <input type="submit">
   </form>

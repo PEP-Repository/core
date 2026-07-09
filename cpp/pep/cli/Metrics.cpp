@@ -58,7 +58,7 @@ protected:
           .map([caption = traits.description()](pep::MetricsResponse metrics) {
           std::cout
             << "============================ " << caption << " ============================\n"
-            << metrics.mMetrics
+            << metrics.metrics
             << std::endl;
           return pep::FakeVoid();
             });

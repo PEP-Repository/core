@@ -32,11 +32,11 @@ QRegularExpression GetPseudonymsRegex(const std::vector<pep::PseudonymFormat>& f
  */
 ParticipantSelector::ParticipantSelector(QWidget* parent, const pep::GlobalConfiguration& config) :
   QWidget(parent),
-  ui(new Ui::ParticipantSelector) {
-  ui->setupUi(this);
-  ui->retranslateUi(this);
+  ui_(new Ui::ParticipantSelector) {
+  ui_->setupUi(this);
+  ui_->retranslateUi(this);
 
-  ui->sidInput->setAttribute(Qt::WA_MacShowFocusRect, false);
+  ui_->sidInput->setAttribute(Qt::WA_MacShowFocusRect, false);
 
   // See #1784: ensure we can enter IDs produced by the (primary) generated format...
   auto maxLength = *config.getGeneratedParticipantIdentifierFormat().getLength();
@@ -47,48 +47,48 @@ ParticipantSelector::ParticipantSelector(QWidget* parent, const pep::GlobalConfi
       maxLength = std::max(maxLength, *length);
     }
   }
-  ui->sidInput->setMaxLength(static_cast<int>(maxLength));
+  ui_->sidInput->setMaxLength(static_cast<int>(maxLength));
 
   const auto& sps = config.getShortPseudonyms();
   std::vector<pep::PseudonymFormat> spFormats;
   spFormats.reserve(sps.size());
   std::transform(sps.cbegin(), sps.cend(), std::back_inserter(spFormats), [](const pep::ShortPseudonymDefinition& definition) {return pep::PseudonymFormat(definition.getPrefix(), definition.getLength()); });
 
-  ui->sidInput->setValidator(new QRegularExpressionValidator(GetPseudonymsRegex(config.getParticipantIdentifierFormats()), ui->sidInput));
-  SetInputValidationTooltip(ui->sidInput, tr("participant-id-tooltip"));
+  ui_->sidInput->setValidator(new QRegularExpressionValidator(GetPseudonymsRegex(config.getParticipantIdentifierFormats()), ui_->sidInput));
+  SetInputValidationTooltip(ui_->sidInput, tr("participant-id-tooltip"));
   if (spFormats.empty()) {
-    ui->shortPseudonymInput->setEnabled(false);
+    ui_->shortPseudonymInput->setEnabled(false);
   }
   else {
-    ui->shortPseudonymInput->setValidator(new QRegularExpressionValidator(GetPseudonymsRegex(spFormats), ui->shortPseudonymInput));
-    SetInputValidationTooltip(ui->shortPseudonymInput, tr("participant-short-pseudonym-tooltip"));
+    ui_->shortPseudonymInput->setValidator(new QRegularExpressionValidator(GetPseudonymsRegex(spFormats), ui_->shortPseudonymInput));
+    SetInputValidationTooltip(ui_->shortPseudonymInput, tr("participant-short-pseudonym-tooltip"));
   }
 
-  QObject::connect(ui->sidInput, &QLineEdit::textChanged, this, [this]() {
-    ui->openParticipantButton->setEnabled(ui->sidInput->hasAcceptableInput());
+  QObject::connect(ui_->sidInput, &QLineEdit::textChanged, this, [this]() {
+    ui_->openParticipantButton->setEnabled(ui_->sidInput->hasAcceptableInput());
   });
-  QObject::connect(ui->shortPseudonymInput, &QLineEdit::textChanged, this, [this]() {
-    ui->findShortPseudonymButton->setEnabled(ui->shortPseudonymInput->hasAcceptableInput());
-    SetInputValidationTooltip(ui->shortPseudonymInput, tr("participant-short-pseudonym-tooltip"));
+  QObject::connect(ui_->shortPseudonymInput, &QLineEdit::textChanged, this, [this]() {
+    ui_->findShortPseudonymButton->setEnabled(ui_->shortPseudonymInput->hasAcceptableInput());
+    SetInputValidationTooltip(ui_->shortPseudonymInput, tr("participant-short-pseudonym-tooltip"));
   });
 
-  QObject::connect(ui->cancelButton, &QPushButton::clicked, this, [this]() {
+  QObject::connect(ui_->cancelButton, &QPushButton::clicked, this, [this]() {
     emit cancelled();
   });
-  QObject::connect(ui->openParticipantButton, &QPushButton::clicked, this, [this]() {
-    if (ui->sidInput->hasAcceptableInput()) {
+  QObject::connect(ui_->openParticipantButton, &QPushButton::clicked, this, [this]() {
+    if (ui_->sidInput->hasAcceptableInput()) {
       //Do normal SID lookup
-      emit participantSidSelected(ui->sidInput->text().toUpper().toStdString());
+      emit participantSidSelected(ui_->sidInput->text().toUpper().toStdString());
     }
   });
-  QObject::connect(ui->findShortPseudonymButton, &QPushButton::clicked, this, [this]() {
-    if (ui->shortPseudonymInput->hasAcceptableInput()) {
+  QObject::connect(ui_->findShortPseudonymButton, &QPushButton::clicked, this, [this]() {
+    if (ui_->shortPseudonymInput->hasAcceptableInput()) {
       //Do Short pseudonym lookup
-      emit participantShortPseudonymSelected(ui->shortPseudonymInput->text().toUpper().toStdString());
+      emit participantShortPseudonymSelected(ui_->shortPseudonymInput->text().toUpper().toStdString());
     }
   });
-  QObject::connect(ui->sidInput, &QLineEdit::returnPressed, ui->openParticipantButton, &QPushButton::click);
-  QObject::connect(ui->shortPseudonymInput, &QLineEdit::returnPressed, ui->findShortPseudonymButton, &QPushButton::click);
+  QObject::connect(ui_->sidInput, &QLineEdit::returnPressed, ui_->openParticipantButton, &QPushButton::click);
+  QObject::connect(ui_->shortPseudonymInput, &QLineEdit::returnPressed, ui_->findShortPseudonymButton, &QPushButton::click);
 }
 
 /*! \brief Destructor
@@ -96,12 +96,12 @@ ParticipantSelector::ParticipantSelector(QWidget* parent, const pep::GlobalConfi
  * Clears out the UI object.
  */
 ParticipantSelector::~ParticipantSelector() {
-  delete ui;
+  delete ui_;
 }
 
 /*! \brief Set UI focus to the SID input
  */
 void ParticipantSelector::doFocus() {
-  ui->sidInput->setFocus();
+  ui_->sidInput->setFocus();
 }
 

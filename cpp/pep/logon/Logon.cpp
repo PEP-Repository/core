@@ -19,14 +19,14 @@
 
 namespace {
 
-const std::string LOG_TAG = "Logon utility";
+const std::string LogTag = "Logon utility";
 
 class LogonApplication : public pep::commandline::Utility {
 
 private:
-  pep::Configuration mConfig;
-  std::shared_ptr<boost::asio::io_context> mIoContext;
-  bool mLongLived = false;
+  pep::Configuration config_;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
+  bool longLived_ = false;
 
   rxcpp::observable<pep::AuthorizationResult> authorize(const pep::commandline::NamedValues& params) {
     std::optional<std::chrono::seconds> validity = std::nullopt;
@@ -43,36 +43,36 @@ private:
       limitedEnvironment |= std::string_view(limitedEnvironmentEnvVar) == "1";
     }
 
-    assert(mIoContext != nullptr);
+    assert(ioContext_ != nullptr);
     auto oauth = pep::OAuthClient::Create(pep::OAuthClient::Parameters{
-      .io_context = mIoContext,
-      .config = mConfig.get_child("OAuthServer"),
+      .ioContext = ioContext_,
+      .config = config_.get_child("OAuthServer"),
       .authorizationMethod = limitedEnvironment ? pep::ConsoleAuthorization : pep::BrowserAuthorization,
-      .longLived = mLongLived,
+      .longLived = longLived_,
       .validityDuration = validity });
 
     // Use a work guard to ensure that the I/O service doesn't terminate while we authenticate e.g. using BrowserAuthorization.
     // TODO: BrowserAuthorization should do this itself, making it more compatible with ConsoleAuthorization (which blocks until user has authorized)
-    auto workGuard = pep::MakeSharedCopy(make_work_guard(*mIoContext));
+    auto workGuard = pep::MakeSharedCopy(make_work_guard(*ioContext_));
     return oauth->run()
       .finally([workGuard]() { workGuard->reset(); });
   }
 
   rxcpp::observable<bool> handleAuthorizationResult(const pep::AuthorizationResult& auth) {
     if (!auth) {
-      LOG(LOG_TAG, pep::error) << "Authorization failed: " + pep::GetExceptionMessage(auth.exception());
+      PEP_LOG(LogTag, pep::Severity::Error) << "Authorization failed: " + pep::GetExceptionMessage(auth.exception());
       return rxcpp::observable<>::just(false);
     }
 
     const auto& token = *auth;
-    if (mLongLived) {
+    if (longLived_) {
       return this->writeToken(token);
     }
 
-    assert(mIoContext != nullptr);
-    auto client = pep::Client::OpenClient(mConfig, mIoContext);
+    assert(ioContext_ != nullptr);
+    auto client = pep::Client::OpenClient(config_, ioContext_);
     return this->writeShortLived(token, client)
-      .op(pep::RxFinallyExhaust(pep::observe_on_asio(*mIoContext), [client]() {
+      .op(pep::RxFinallyExhaust(pep::ObserveOnAsio(*ioContext_), [client]() {
       return client->shutdown()
         .tap(
           [](pep::FakeVoid) { /* ignore*/ },
@@ -95,24 +95,24 @@ private:
         })
       .on_error_resume_next([](std::exception_ptr error) // Don't let the application report an **unexpected** problem
         {
-          LOG(LOG_TAG, pep::error) << "Enrollment failed: " << pep::GetExceptionMessage(error);
+          PEP_LOG(LogTag, pep::Severity::Error) << "Enrollment failed: " << pep::GetExceptionMessage(error);
           return rxcpp::observable<>::just(false);
         });
   }
 
   rxcpp::observable<bool> writeToken(const std::string& token) {
-    auto tokenPath = std::filesystem::current_path() / pep::OAuthToken::DEFAULT_JSON_FILE_NAME;
+    auto tokenPath = std::filesystem::current_path() / pep::OAuthToken::DefaultJsonFileName;
     pep::OAuthToken::Parse(token).writeJson(tokenPath);
     std::cout << "Wrote token to \"" << tokenPath.string() << '"' << std::endl;
     return rxcpp::observable<>::just(true);
   }
 
   int execute() override {
-    mConfig = this->loadMainConfigFile();
+    config_ = this->loadMainConfigFile();
     auto& params = this->getParameterValues();
 
-    mIoContext = std::make_shared<boost::asio::io_context>();
-    mLongLived = params.has("long-lived");
+    ioContext_ = std::make_shared<boost::asio::io_context>();
+    longLived_ = params.has("long-lived");
 
     int exitCode = EXIT_FAILURE;
     this->authorize(params)
@@ -124,11 +124,11 @@ private:
           }
         },
         [](std::exception_ptr ep) {
-          LOG(LOG_TAG, pep::error) << "Unexpected problem occurred: " + pep::GetExceptionMessage(ep);
+          PEP_LOG(LogTag, pep::Severity::Error) << "Unexpected problem occurred: " + pep::GetExceptionMessage(ep);
         }
       );
 
-    mIoContext->run();
+    ioContext_->run();
     return exitCode;
   }
 
@@ -145,7 +145,7 @@ protected:
       + pep::commandline::Parameter("validity-duration", "If a long-lived authentication file is requested, it should be valid for the specified amount of time."
           "Use either 'max' or a numerical value with suffix d/day(s), h/hour(s), m/minute(s) or s/second(s)").shorthand('d').value(pep::commandline::Value<std::string>().defaultsTo("max"))
      + pep::commandline::Parameter("oauth-token-path", "Store the OAuthToken file to the specified location.").shorthand('o').value(pep::commandline::Value<std::filesystem::path>()
-       .defaultsTo(pep::OAuthToken::DEFAULT_JSON_FILE_NAME))
+       .defaultsTo(pep::OAuthToken::DefaultJsonFileName))
      + pep::commandline::Parameter("limited-environment", "Use this if you are running on a limited environment, e.g. a server."
                                                           " Can also be enabled by setting environment variable 'PEP_LOGON_LIMITED' to 1.");
   }

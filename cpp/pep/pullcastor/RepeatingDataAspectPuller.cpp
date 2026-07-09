@@ -7,12 +7,12 @@ namespace pep {
 namespace castor {
 
 RepeatingDataAspectPuller::RepeatingDataAspectPuller(std::shared_ptr<StudyPuller> sp, const StudyAspect& aspect)
-  : TypedStudyAspectPuller<RepeatingDataAspectPuller, CastorStudyType::REPEATING_DATA>(sp, aspect) {
-  mRepeatingDataPullers = CreateRxCache([sp]() { return sp->getRepeatingDataPullers().op(RxToVector()); });
+  : TypedStudyAspectPuller<RepeatingDataAspectPuller, CastorStudyType::RepeatingData>(sp, aspect) {
+  repeatingDataPullers_ = CreateRxCache([sp]() { return sp->getRepeatingDataPullers().op(RxToVector()); });
 }
 
 rxcpp::observable<std::shared_ptr<StorableColumnContent>> RepeatingDataAspectPuller::getStorableContent(std::shared_ptr<CastorParticipant> participant) {
-  return mRepeatingDataPullers->observe()
+  return repeatingDataPullers_->observe()
     .flat_map([sp = this->getStudyPuller(), participant](auto rdps) {
     return RepeatingDataPuller::Aggregate(sp, rdps, participant->getRepeatingDataInstances())
       .op(RxGetOne("reports tree"));

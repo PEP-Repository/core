@@ -76,11 +76,11 @@ class RegistrationServer : public SigningServer {
     void check() const override;
 
    private:
-    std::shared_ptr<CoreClient> client;
-    std::filesystem::path shadowStorageFile;
-    AsymmetricKey shadowPublicKey;
+    std::shared_ptr<CoreClient> client_;
+    std::filesystem::path shadowStorageFile_;
+    AsymmetricKey shadowPublicKey_;
 #ifdef WITH_CASTOR
-    std::shared_ptr<castor::CastorConnection> castorConnection;
+    std::shared_ptr<castor::CastorConnection> castorConnection_;
 #endif
   };
 
@@ -102,14 +102,14 @@ private:
 private:
   class ShortPseudonymCache;
 
-  ::sqlite3* pShadowStorage = nullptr;
-  std::shared_ptr<CoreClient> pClient;
-  AsymmetricKey shadowPublicKey;
-  std::shared_ptr<RxCache<std::shared_ptr<GlobalConfiguration>>> mGlobalConfiguration;
-  std::shared_ptr<ShortPseudonymCache> mShortPseudonyms;
+  ::sqlite3* shadowStorage_ = nullptr;
+  std::shared_ptr<CoreClient> client_;
+  AsymmetricKey shadowPublicKey_;
+  std::shared_ptr<RxCache<std::shared_ptr<GlobalConfiguration>>> globalConfiguration_;
+  std::shared_ptr<ShortPseudonymCache> shortPseudonyms_;
 #ifdef WITH_CASTOR
-  std::shared_ptr<castor::CastorConnection> mCastorConnection;
-  std::shared_ptr<RxCache<std::shared_ptr<castor::Study>>> mCastorStudies;
+  std::shared_ptr<castor::CastorConnection> castorConnection_;
+  std::shared_ptr<RxCache<std::shared_ptr<castor::Study>>> castorStudies_;
 
   std::shared_ptr<castor::CastorConnection> getCastorConnection() const;
   rxcpp::observable<std::shared_ptr<castor::Participant>> storeShortPseudonymInCastor(std::shared_ptr<castor::Study> study, ShortPseudonymDefinition definition);

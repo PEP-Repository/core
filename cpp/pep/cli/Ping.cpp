@@ -35,7 +35,7 @@ private:
       if (printDrift) {
         std::cout
           << duration_cast<std::chrono::milliseconds>(
-            pep::TimeNow() - response.mTimestamp
+            pep::TimeNow() - response.timestamp()
           ).count();
       } else {
         std::cout << "Received response";
@@ -73,7 +73,7 @@ protected:
     auto printCertificateChain = parameterValues.has("print-certificate-chain");
     auto printDrift = parameterValues.has("print-drift");
     if (printDrift && printCertificateChain) {
-      LOG(LOG_TAG, pep::error) << "--print-drift and --print-certificate-chain"
+      PEP_LOG(LogTag, pep::Severity::Error) << "--print-drift and --print-certificate-chain"
         << " can not be combined.";
       return 3;
     }
@@ -85,7 +85,7 @@ protected:
     assert(traits.has_value());
 
     if (printCertificateChain && !traits->hasSigningIdentity()) {
-      LOG(LOG_TAG, pep::error) << traits->description() << " does not produce a certificate chain to print";
+      PEP_LOG(LogTag, pep::Severity::Error) << traits->description() << " does not produce a certificate chain to print";
       return 3;
     }
 

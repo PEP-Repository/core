@@ -31,33 +31,33 @@ class MainWindow;
 class MainWindow : public QMainWindow {
   Q_OBJECT
 
-    static const int statusMessageDuration;
+  static const int StatusMessageDuration;
 
   static QFont* tooltipFont;
-  std::shared_ptr<QTranslator> currentTranslator = nullptr;
-  QString enrollmentToken;
-  QString currentUser;
-  std::optional<pep::UserRole> currentPEPRole;
-  std::shared_ptr<pep::Client> pepClient;
-  pep::Configuration config;
-  pep::ConnectionStatus accessManagerConnectionStatus;
-  pep::ConnectionStatus keyServerConnectionStatus;
-  pep::ConnectionStatus storageFacilityConnectionStatus;
-  std::queue<std::pair<QString, pep::severity_level>> statusMessages;
-  QTimer* statusTimer;
-  QLabel* statusbarLabel;
-  QPushButton* statusbarCancelButton;
-  QWidget* notConnectedWidget = nullptr;
-  std::shared_ptr<pep::StudyContexts> mAllContexts;
-  Branding mBranding;
-  unsigned mSpareStickerCount;
-  EnrollmentWidget* currentEnrollmentWidget = nullptr;
-  ParticipantSelector* currentSelectorWidget = nullptr;
-  ExportWidget* currentExportWidget = nullptr;
-  VisitCaptionsByContext mVisitCaptionsByContext;
+  std::shared_ptr<QTranslator> currentTranslator_ = nullptr;
+  QString enrollmentToken_;
+  QString currentUser_;
+  std::optional<pep::UserRole> currentPepRole_;
+  std::shared_ptr<pep::Client> pepClient_;
+  pep::Configuration config_;
+  pep::ConnectionStatus accessManagerConnectionStatus_;
+  pep::ConnectionStatus keyServerConnectionStatus_;
+  pep::ConnectionStatus storageFacilityConnectionStatus_;
+  std::queue<std::pair<QString, pep::Severity>> statusMessages_;
+  QTimer* statusTimer_;
+  QLabel* statusbarLabel_;
+  QPushButton* statusbarCancelButton_;
+  QWidget* notConnectedWidget_ = nullptr;
+  std::shared_ptr<pep::StudyContexts> allContexts_;
+  Branding branding_;
+  unsigned spareStickerCount_;
+  EnrollmentWidget* currentEnrollmentWidget_ = nullptr;
+  ParticipantSelector* currentSelectorWidget_ = nullptr;
+  ExportWidget* currentExportWidget_ = nullptr;
+  VisitCaptionsByContext visitCaptionsByContext_;
 
 public:
-  QMap<QString, QWidget*> mOpenedParticipants;
+  QMap<QString, QWidget*> openedParticipants_; // TODO: reduce visibility
 
   explicit MainWindow(std::shared_ptr<pep::Client> incommingIOObject, const Branding& branding, const pep::Configuration& config_tree, unsigned spareStickerCount, const VisitCaptionsByContext& visitCaptionsByContext);
   ~MainWindow() override;
@@ -70,13 +70,13 @@ public:
 signals:
   void translation();
 
-  void announceSID(std::string SID);
+  void announceParticipantId(std::string id);
 
-  void announcePP(pep::PolymorphicPseudonym foundPP);
+  void announcePp(pep::PolymorphicPseudonym foundPp);
 
   void announceLookupFailure(QString reason);
 
-  void statusMessage(QString message, pep::severity_level severity);
+  void statusMessage(QString message, pep::Severity severity);
 
 private slots:
   void initializeRegisterPatientContent(bool setFocus = false);
@@ -87,7 +87,7 @@ private slots:
 
   void on_participantRegistered();
 
-  void on_participantLookupError(QString str, pep::severity_level sev);
+  void on_participantLookupError(QString str, pep::Severity sev);
 
   void on_registerWidgetClosed();
 
@@ -103,7 +103,7 @@ private slots:
 
   void updateConnectionStatus(bool expired = false);
 
-  void updateStatus(QString message, pep::severity_level mode);
+  void updateStatus(QString message, pep::Severity mode);
 
   void updateStatusBar(bool manuallyCalled = true);
 
@@ -119,7 +119,7 @@ private slots:
 
 public slots:
   void showForToken(QString token);
-  void handleWidgetMessage(QString message, pep::severity_level severity);
+  void handleWidgetMessage(QString message, pep::Severity severity);
 
 private:
   void applyLanguage(QLocale::Language language);
@@ -131,5 +131,5 @@ private:
   const pep::StudyContext& getCurrentStudyContext() const;
   const VisitCaptions* getVisitCaptionsForCurrentStudyContext() const;
 
-  Ui::MainWindow* ui;
+  Ui::MainWindow* ui_;
 };

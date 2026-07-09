@@ -6,15 +6,15 @@
 using namespace pep;
 
 LocalPseudonym::LocalPseudonym(CurvePoint point0)
-    : mPoint(point0) {
+    : point_(point0) {
   (void) getValidCurvePoint();
 }
 
 const CurvePoint& LocalPseudonym::getValidCurvePoint() const {
-  if (mPoint.isZero()) {
+  if (point_.isZero()) {
     throw std::invalid_argument("LocalPseudonym cannot have zero point");
   }
-  return mPoint;
+  return point_;
 }
 
 LocalPseudonym LocalPseudonym::Random() {
@@ -46,24 +46,24 @@ EncryptedLocalPseudonym LocalPseudonym::encrypt(const ElgamalPublicKey& pk) cons
 }
 
 void LocalPseudonym::ensurePacked() const {
-  mPoint.ensurePacked();
+  point_.ensurePacked();
 }
 
 void LocalPseudonym::ensureThreadSafe() const {
-  mPoint.ensureThreadSafe();
+  point_.ensureThreadSafe();
 }
 
 
 EncryptedPseudonym::EncryptedPseudonym(ElgamalEncryption encryption0)
-    : mEncryption(encryption0) {
+    : encryption_(encryption0) {
   (void) getValidElgamalEncryption();
 }
 
 const ElgamalEncryption& EncryptedPseudonym::getValidElgamalEncryption() const {
-  if (mEncryption.getPublicKey().isZero()) { // See #500 (check used to be in Transcryptor::handleTranscryptorRequest)
+  if (encryption_.getPublicKey().isZero()) { // See #500 (check used to be in Transcryptor::handleTranscryptorRequest)
     throw std::invalid_argument("EncryptedPseudonym cannot have zero public key");
   }
-  return mEncryption;
+  return encryption_;
 }
 
 ElgamalEncryption EncryptedPseudonym::FromText(std::string_view text) {
@@ -91,11 +91,11 @@ std::string EncryptedPseudonym::pack() const {
 }
 
 void EncryptedPseudonym::ensurePacked() const {
-  mEncryption.ensurePacked();
+  encryption_.ensurePacked();
 }
 
 void EncryptedPseudonym::ensureThreadSafe() const {
-  mEncryption.ensureThreadSafe();
+  encryption_.ensureThreadSafe();
 }
 
 
@@ -111,10 +111,10 @@ PolymorphicPseudonym PolymorphicPseudonym::FromIdentifier(
 }
 
 size_t std::hash<LocalPseudonym>::operator()(const LocalPseudonym& p) const {
-  return hash<CurvePoint>{}(p.mPoint);
+  return hash<CurvePoint>{}(p.point_);
 }
 
 size_t std::hash<EncryptedPseudonym>::operator()(
     const EncryptedPseudonym& p) const {
-  return hash<ElgamalEncryption>{}(p.mEncryption);
+  return hash<ElgamalEncryption>{}(p.encryption_);
 }

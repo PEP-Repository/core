@@ -92,8 +92,8 @@ TEST_F(StorageTest, syncSchema_with_new_column_fails_without_default_value) {
       FAIL() << "syncShema should have thrown";
     }
     catch (pep::database::SchemaError& e) {
-      EXPECT_EQ(e.mTable, "MyTable");
-      EXPECT_EQ(e.mReason, pep::database::SchemaError::Reason::DroppedAndRecreated);
+      EXPECT_EQ(e.table, "MyTable");
+      EXPECT_EQ(e.reason, pep::database::SchemaError::Reason::DroppedAndRecreated);
     }
   }
 }
@@ -123,8 +123,8 @@ TEST_F(StorageTest, syncSchema_with_removed_column_depends_on_parameter) {
       FAIL() << "syncShema should have thrown";
     }
     catch (pep::database::SchemaError& e) {
-      EXPECT_EQ(e.mTable, "MyTable");
-      EXPECT_EQ(e.mReason, pep::database::SchemaError::Reason::OldColumnsRemoved);
+      EXPECT_EQ(e.table, "MyTable");
+      EXPECT_EQ(e.reason, pep::database::SchemaError::Reason::OldColumnsRemoved);
     }
   }
   {

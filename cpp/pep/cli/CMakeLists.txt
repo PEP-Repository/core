@@ -1,3 +1,13 @@
+if(DEFINED EMSCRIPTEN)
+  # pepcli can be used with Emscripten & Node.js, but currently requires some manual actions:
+  # - `npm install ws` in the cli build folder
+  # - Making sure the ClientConfig points to a websocket proxy
+  # - Optional for build performance: disabling -gsource-map and adding -sNO_STACK_OVERFLOW_CHECK (see notes in weblib CMakeLists.txt)
+  set_directory_properties(PROPERTIES
+      EXCLUDE_FROM_ALL ON
+  )
+endif()
+
 set(PEPCLI_SRCS
     Ama.cpp
     Castor.cpp
@@ -22,6 +32,8 @@ set(PEPCLI_SRCS
     MultiCellQuery.cpp MultiCellQuery.hpp
     Ping.cpp
     Pull.cpp
+    pseudonym/CommandConvert.cpp pseudonym/CommandConvert.hpp
+    Pseudonym.cpp Pseudonym.hpp
     Query.cpp
     Register.cpp
     server/CommandCertificate.cpp server/CommandCertificate.hpp
@@ -59,6 +71,10 @@ if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
     # Append the relative path to the Sparkle binary
     set(SPARKLE_BINARY "${SPARKLE_DIR}/sparkle.app/Contents/MacOS/sparkle")
 
+    # generate_appcast tool from the Sparkle package. It is not bundled into the app; it is copied
+    # next to the target so CI (macos-ci-build-app-bins.sh) can stage it for appcast generation.
+    set(SPARKLE_GENERATE_APPCAST "${SPARKLE_DIR}/bin/generate_appcast")
+
     #TODO cleanup using --install approach as used on Windows?
     add_custom_command(TARGET ${PROJECT_NAME}cli POST_BUILD
         COMMENT "Copy Sparkle framework files to cli"
@@ -67,6 +83,9 @@ if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
 
         # Copy the Sparkle binary next to the target file
         COMMAND cp ${SPARKLE_BINARY} $<TARGET_FILE_DIR:${PROJECT_NAME}cli>
+
+        # Copy the generate_appcast tool next to the target file (staged by CI, not bundled)
+        COMMAND cp ${SPARKLE_GENERATE_APPCAST} $<TARGET_FILE_DIR:${PROJECT_NAME}cli>
     )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_sources(${PROJECT_NAME}cli PRIVATE VersionInfo.rc)

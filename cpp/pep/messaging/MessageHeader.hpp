@@ -6,7 +6,7 @@ namespace pep::messaging {
 
 using MessageLength = uint32_t;
 
-extern const size_t MAX_SIZE_OF_MESSAGE;
+extern const size_t MaxSizeOfMessage;
 
 // Helper struct to send and receive message headers across the network
 #pragma pack(push, 1)
@@ -28,15 +28,15 @@ public:
 
   static MessageHeader MakeForControlMessage() noexcept;
 
-  MessageLength length() const noexcept { return mLength; }
-  const MessageProperties& properties() const noexcept { return mProperties; }
+  MessageLength length() const noexcept { return length_; }
+  const MessageProperties& properties() const noexcept { return properties_; }
 
   EncodedMessageHeader encode() const noexcept;
   static MessageHeader Decode(const EncodedMessageHeader& encoded);
 
 private:
-  MessageLength mLength;
-  MessageProperties mProperties;
+  MessageLength length_;
+  MessageProperties properties_;
 };
 
 }

@@ -35,26 +35,19 @@
 // #define PEP_INSTALLER_ALWAYS_PROMPT_FOR_CREDENTIALS
 
 namespace {
-  const std::string LOG_TAG = "Installer";
+  const std::string LogTag = "Installer";
 
   class PublishedInstaller : public Installer {
-  public:
-    struct Context {
-      std::filesystem::path logDirectory;
-      std::filesystem::path elevateExe;
-      std::function<pep::win32api::PlaintextCredentials()> getAdministrativeCredentials;
-    };
-
   private:
-    std::shared_ptr<boost::property_tree::ptree> mProperties;
+    std::shared_ptr<boost::property_tree::ptree> properties_;
 
   private:
     PublishedInstaller(std::shared_ptr<boost::property_tree::ptree> properties)
-      : mProperties(properties) {
+      : properties_(properties) {
     }
 
     static std::string GetDownloadUrl();
-    unsigned getUnsignedProperty(const std::string& partialKey) const { return mProperties->get<unsigned>("installer." + partialKey); }
+    unsigned getUnsignedProperty(const std::string& partialKey) const { return properties_->get<unsigned>("installer." + partialKey); }
 
   protected:
     std::filesystem::path getLocalMsiPath() const override;
@@ -80,15 +73,15 @@ namespace {
 
   class LocalInstaller : public Installer {
   private:
-    std::filesystem::path mPath;
+    std::filesystem::path path_;
 
   private:
     explicit LocalInstaller(const std::string& path)
-      : mPath(path) {
+      : path_(path) {
     }
 
   protected:
-    std::filesystem::path getLocalMsiPath() const override { return mPath; }
+    std::filesystem::path getLocalMsiPath() const override { return path_; }
 
   public:
     unsigned getMajorVersion() const override { return 0U; }
@@ -125,11 +118,11 @@ namespace {
   std::shared_ptr<PublishedInstaller> PublishedInstaller::GetAvailable() {
     auto version = pep::ConfigVersion::Current();
     if (version == std::nullopt) {
-      LOG(LOG_TAG, pep::debug) << "Cannot determine configuration version. Not retrieving installer properties.";
+      PEP_LOG(LogTag, pep::Severity::Debug) << "Cannot determine configuration version. Not retrieving installer properties.";
       return nullptr;
     }
     if (!version->isGitlabBuild()) {
-      LOG(LOG_TAG, pep::debug) << "Manual build - running debug session? Not retrieving installer properties.";
+      PEP_LOG(LogTag, pep::Severity::Debug) << "Manual build - running debug session? Not retrieving installer properties.";
       return nullptr;
     }
 
@@ -147,7 +140,7 @@ namespace {
       return std::shared_ptr<PublishedInstaller>(new PublishedInstaller(updateXMLTree));
     }
     catch (std::exception& e) {
-      LOG(LOG_TAG, pep::error) << "Error retrieving installer properties: " << e.what();
+      PEP_LOG(LogTag, pep::Severity::Error) << "Error retrieving installer properties: " << e.what();
     }
     return nullptr;
   }
@@ -156,7 +149,7 @@ namespace {
     auto directory = pep::win32api::CreateTemporaryDirectory(); // TODO: delete when done
     std::filesystem::path result;
 
-    for (const auto& node : mProperties->get_child("installer.files")) {
+    for (const auto& node : properties_->get_child("installer.files")) {
       auto relative = node.second.get<std::string>("path");
       if (!boost::iends_with(relative, std::string(".msi"))) {
         throw std::runtime_error("Only .MSI update files are currently supported");
@@ -221,7 +214,7 @@ void Installer::start(const Context& context) const {
 
   auto prompt = true;
 #ifndef PEP_INSTALLER_ALWAYS_PROMPT_FOR_CREDENTIALS
-  prompt = pep::win32api::GetElevationState() == pep::win32api::CANNOT_ELEVATE;
+  prompt = pep::win32api::GetElevationState() == pep::win32api::ElevationState::CannotElevate;
 #endif
   if (prompt) {
     // Use helper (bootstrapper) .EXE to elevate a different account: see https://techcommunity.microsoft.com/t5/Windows-Blog-Archive/Why-Can-8217-t-I-Elevate-My-Application-to-Run-As-Administrator/ba-p/228626

@@ -4,35 +4,35 @@
 namespace pep {
 
 size_t AmaQRColumnGroup::FillToProtobufSerializationCapacity(AmaQRColumnGroup& dest, const AmaQRColumnGroup& source, const size_t& cap, const size_t& offset, const size_t& padding) {
-  assert(offset == 0 || offset < source.mColumns.size());
-  assert(!source.mName.empty());
-  size_t paddedNameLength = source.mName.length() + padding;
+  assert(offset == 0 || offset < source.columns.size());
+  assert(!source.name.empty());
+  size_t paddedNameLength = source.name.length() + padding;
   if (paddedNameLength > cap) {
     return 0; // sentinel value indicating not even the name fits in the new group.
   }
-  dest.mName = source.mName;
-  return paddedNameLength + FillVectorToCapacity(dest.mColumns, source.mColumns, cap - paddedNameLength, offset, padding);
+  dest.name = source.name;
+  return paddedNameLength + FillVectorToCapacity(dest.columns, source.columns, cap - paddedNameLength, offset, padding);
 }
 
 bool AmaMutationRequest::hasDataAdminOperation() const {
   // if any of these operations are present, the Data Admin accessgroup is required:
-  return (!this->mCreateColumn.empty() ||
-    !this->mRemoveColumn.empty() ||
-    !this->mCreateColumnGroup.empty() ||
-    !this->mRemoveColumnGroup.empty() ||
-    !this->mAddColumnToGroup.empty() ||
-    !this->mRemoveColumnFromGroup.empty() ||
-    !this->mCreateParticipantGroup.empty() ||
-    !this->mRemoveParticipantGroup.empty() ||
-    !this->mAddParticipantToGroup.empty() ||
-    !this->mRemoveParticipantFromGroup.empty());
+  return (!this->createColumn.empty() ||
+    !this->removeColumn.empty() ||
+    !this->createColumnGroup.empty() ||
+    !this->removeColumnGroup.empty() ||
+    !this->addColumnToGroup.empty() ||
+    !this->removeColumnFromGroup.empty() ||
+    !this->createParticipantGroup.empty() ||
+    !this->removeParticipantGroup.empty() ||
+    !this->addParticipantToGroup.empty() ||
+    !this->removeParticipantFromGroup.empty());
 }
 bool AmaMutationRequest::hasAccessAdminOperation() const {
   // if any of these operations are present, the Access Admin accessgroup is required:
-  return (!this->mCreateColumnGroupAccessRule.empty() ||
-    !this->mRemoveColumnGroupAccessRule.empty() ||
-    !this->mCreateParticipantGroupAccessRule.empty() ||
-    !this->mRemoveParticipantGroupAccessRule.empty());
+  return (!this->createColumnGroupAccessRule.empty() ||
+    !this->removeColumnGroupAccessRule.empty() ||
+    !this->createParticipantGroupAccessRule.empty() ||
+    !this->removeParticipantGroupAccessRule.empty());
 }
 
 }

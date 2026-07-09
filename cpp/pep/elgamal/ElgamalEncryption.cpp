@@ -10,7 +10,7 @@ namespace pep {
 
 namespace {
 
-const char ELGAMAL_ENCRYPTION_TEXT_DELIMITER = ':';
+const char ElgamalEncryptionTextDelimiter = ':';
 
 }
 
@@ -126,18 +126,18 @@ const ElgamalPublicKey& ElgamalEncryption::getPublicKey() const {
 }
 
 size_t ElgamalEncryption::TextLength() {
-  // Ideally we'd calculate ELGAMAL_ENCRYPTION_TEXT_DELIMITER's length on the fly, but we'd then want to be prepared
+  // Ideally we'd calculate ElgamalEncryptionTextDelimiter's length on the fly, but we'd then want to be prepared
   // for its type changing as well (from char to e.g. wchar_t , or char* , or std::string, or std::wstring, or...).
   // Since I don't want to bother with writing all the required support code, I just use the magic constant "2" below.
   // This static_assert ensures that it has the correct value.
-  static_assert(std::is_same_v<const char, decltype(ELGAMAL_ENCRYPTION_TEXT_DELIMITER)>,
+  static_assert(std::is_same_v<const char, decltype(ElgamalEncryptionTextDelimiter)>,
     "ElGamal encryption text length calculation depends on the use of single-character delimiters");
 
   return 3 * CurvePoint::TextLength() + 2;
 }
 
 std::string ElgamalEncryption::text() const {
-  auto result = b.text() + ELGAMAL_ENCRYPTION_TEXT_DELIMITER + c.text() + ELGAMAL_ENCRYPTION_TEXT_DELIMITER + publicKey.text();
+  auto result = b.text() + ElgamalEncryptionTextDelimiter + c.text() + ElgamalEncryptionTextDelimiter + publicKey.text();
   assert(result.size() == TextLength());
   return result;
 }
@@ -145,15 +145,15 @@ std::string ElgamalEncryption::text() const {
 ElgamalEncryption ElgamalEncryption::FromText(const std::string& text) {
   std::istringstream ss(text);
   std::string tb, tc, ty;
-  std::getline(ss, tb, ELGAMAL_ENCRYPTION_TEXT_DELIMITER);
-  std::getline(ss, tc, ELGAMAL_ENCRYPTION_TEXT_DELIMITER);
+  std::getline(ss, tb, ElgamalEncryptionTextDelimiter);
+  std::getline(ss, tc, ElgamalEncryptionTextDelimiter);
   ss >> ty;
   return ElgamalEncryption(CurvePoint::FromText(tb), CurvePoint::FromText(tc), CurvePoint::FromText(ty));
 }
 
 std::string ElgamalEncryption::pack() const {
   std::string packed;
-  packed.reserve(CurvePoint::PACKEDBYTES * 3);
+  packed.reserve(CurvePoint::PackedBytes * 3);
   packed += b.pack();
   packed += c.pack();
   packed += publicKey.pack();
@@ -162,9 +162,9 @@ std::string ElgamalEncryption::pack() const {
 
 ElgamalEncryption ElgamalEncryption::FromPacked(std::string_view packed) {
   return {
-      CurvePoint(packed.substr(CurvePoint::PACKEDBYTES * 0, CurvePoint::PACKEDBYTES)),
-      CurvePoint(packed.substr(CurvePoint::PACKEDBYTES * 1, CurvePoint::PACKEDBYTES)),
-      CurvePoint(packed.substr(CurvePoint::PACKEDBYTES * 2, CurvePoint::PACKEDBYTES)),
+      CurvePoint(packed.substr(CurvePoint::PackedBytes * 0, CurvePoint::PackedBytes)),
+      CurvePoint(packed.substr(CurvePoint::PackedBytes * 1, CurvePoint::PackedBytes)),
+      CurvePoint(packed.substr(CurvePoint::PackedBytes * 2, CurvePoint::PackedBytes)),
   };
 }
 

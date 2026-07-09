@@ -5,7 +5,7 @@
 namespace pep {
 namespace castor {
 
-const std::string StudyDataPoint::RELATIVE_API_ENDPOINT = "study";
+const std::string StudyDataPoint::RelativeApiEndpoint = "study";
 
 std::string StudyDataPoint::makeUrl() const {
   return this->getParticipant()->makeUrl() + "/study-data-point/" + this->getId();
@@ -18,7 +18,7 @@ std::shared_ptr<Participant> StudyDataPoint::getParticipant() const {
 rxcpp::observable<std::shared_ptr<StudyDataPoint>> StudyDataPoint::BulkRetrieve(std::shared_ptr<Study> study, rxcpp::observable<std::shared_ptr<Participant>> participants) {
   return BulkRetrieveChildren<StudyDataPoint, Participant>(
     participants,
-    GetApiRoot(study, RELATIVE_API_ENDPOINT),
+    GetApiRoot(study, RelativeApiEndpoint),
     "items",
     "participant_id");
 }

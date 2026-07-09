@@ -26,9 +26,9 @@ public:
   * \brief Produces a human-readable description of the server.
   * \return A string describing the server (type).
   */
-  const std::string& describe() const { return mServerTraits.description(); }
+  const std::string& describe() const { return serverTraits_.description(); }
 
-  const ServerTraits& getServerTraits() const noexcept { return mServerTraits; }
+  const ServerTraits& getServerTraits() const noexcept { return serverTraits_; }
 
   /*!
   * \brief Produces the path where the server stores its data (if any).
@@ -40,15 +40,15 @@ public:
   * \brief Produces the number of uncaught (read) exceptions encountered by the server('s network exposure).
   * \return The number of uncaught (read) exceptions.
   */
-  unsigned int getNumberOfUncaughtReadExceptions() const noexcept { return mUncaughtReadExceptions; }
+  unsigned int getNumberOfUncaughtReadExceptions() const noexcept { return uncaughtReadExceptions_; }
 
   /*!
   * \brief Registers an uncaught (read) exception encountered by the server('s network exposure).
   */
-  void registerUncaughtReadException(std::exception_ptr) { ++mUncaughtReadExceptions; }
+  void registerUncaughtReadException(std::exception_ptr) { ++uncaughtReadExceptions_; }
 
 protected:
-  std::shared_ptr<prometheus::Registry> mRegistry;
+  std::shared_ptr<prometheus::Registry> registry_;
 
   Server(std::shared_ptr<Parameters> parameters);
 
@@ -71,9 +71,9 @@ protected:
     throw Error("Does not support checksum chains");
   }
 
-  const std::shared_ptr<boost::asio::io_context>& getIoContext() const noexcept { return mIoContext; }
-  std::shared_ptr<X509RootCertificates> getRootCAs() const noexcept { return mRootCAs; }
-  EGCache& getEgCache() { return mEGCache; }
+  const std::shared_ptr<boost::asio::io_context>& getIoContext() const noexcept { return ioContext_; }
+  std::shared_ptr<X509RootCertificates> getRootCAs() const noexcept { return rootCAs_; }
+  EGCache& getEgCache() { return eGCache_; }
 
   static std::filesystem::path EnsureDirectoryPath(std::filesystem::path);
 
@@ -88,7 +88,7 @@ private:
 
     std::chrono::steady_clock::time_point startupTime;
 
-    prometheus::Gauge& uncaughtExceptions_count;
+    prometheus::Gauge& uncaughtExceptionsCount;
 
     prometheus::Gauge& diskUsageProportion;
     prometheus::Gauge& diskUsageTotal;
@@ -110,12 +110,12 @@ private:
     prometheus::Gauge& uptimeMetric;
   };
 
-  std::shared_ptr<Metrics> mMetrics;
-  EGCache& mEGCache; // <- for metrics
-  unsigned int mUncaughtReadExceptions = 0;
-  ServerTraits mServerTraits;
-  std::shared_ptr<boost::asio::io_context> mIoContext;
-  std::shared_ptr<X509RootCertificates> mRootCAs;
+  std::shared_ptr<Metrics> metrics_;
+  EGCache& eGCache_; // <- for metrics
+  unsigned int uncaughtReadExceptions_ = 0;
+  ServerTraits serverTraits_;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
+  std::shared_ptr<X509RootCertificates> rootCAs_;
 };
 
 
@@ -124,7 +124,7 @@ private:
 */
 class Server::Parameters {
 private:
-  std::shared_ptr<boost::asio::io_context> mIoContext;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
   std::filesystem::path rootCACertificatesFilePath_;
   std::shared_ptr<X509RootCertificates> rootCAs_;
 
@@ -159,7 +159,7 @@ public:
    * \brief Produces the I/O context associated with this server.
    * \return The I/O context associated with this server.
    */
-  const std::shared_ptr<boost::asio::io_context>& getIoContext() const noexcept { return mIoContext; }
+  const std::shared_ptr<boost::asio::io_context>& getIoContext() const noexcept { return ioContext_; }
 
   /*!
    * \brief Produces the path to the file containing the root CA certificate(s) for this server's constellation.

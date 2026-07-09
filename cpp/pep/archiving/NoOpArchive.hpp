@@ -7,7 +7,7 @@
 
 namespace pep {
 
-class NOPArchive : public Archive {
+class NoOpArchive : public Archive {
 public:
   void nextEntry(const SafePath& path, int64_t size) override {}
   void writeData(std::string_view data) override {}

@@ -21,7 +21,7 @@ class DownloadDirectory : public std::enable_shared_from_this<DownloadDirectory>
   friend class SharedConstructor<DownloadDirectory>;
 
 public:
-  static const bool APPLY_FILE_EXTENSIONS_BY_DEFAULT = true;
+  static const bool ApplyFileExtensionsByDefault = true;
 
   struct ContentSpecification {
     std::vector<std::string> groups;
@@ -33,7 +33,7 @@ public:
   struct Specification {
     ContentSpecification content;
     std::string accessGroup;
-    bool applyFileExtensions = APPLY_FILE_EXTENSIONS_BY_DEFAULT;
+    bool applyFileExtensions = ApplyFileExtensionsByDefault;
 
     std::string toString() const;
     static Specification FromString(const std::string& value);
@@ -43,19 +43,18 @@ public:
     friend class DownloadDirectory;
 
   private:
-    std::shared_ptr<DownloadDirectory> mDestination;
-    RecordDescriptor mDescriptor;
-    SafePath mPath;
-    SafeFileName mFileName;
-    size_t mFileSize;
-    size_t mWritten = 0;
-    std::shared_ptr<std::ofstream> mRaw;
-    XxHasher mHasher;
-    bool mPseudonymisationRequired{false};
-    bool mArchiveExtractingRequired{false};
+    std::shared_ptr<DownloadDirectory> destination_;
+    RecordDescriptor descriptor_;
+    SafePath path_;
+    SafeFileName fileName_;
+    std::uint64_t fileSize_, written_ = 0;
+    std::shared_ptr<std::ofstream> raw_;
+    XxHasher hasher_;
+    bool pseudonymisationRequired_{false};
+    bool archiveExtractionRequired_{false};
 
   private:
-    explicit RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, SafePath path, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize);
+    explicit RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, SafePath path, bool pseudonymisationRequired, bool archiveExtractionRequired, std::uint64_t fileSize);
 
   public:
     // This class has reference semantics: prevent compiler from generating copy operations
@@ -67,7 +66,7 @@ public:
 
     ~RecordStorageStream() noexcept;
 
-    const RecordDescriptor& getRecordDescriptor() const noexcept { return mDescriptor; }
+    const RecordDescriptor& getRecordDescriptor() const noexcept { return descriptor_; }
 
     SafePath getRelativePath() const;
 
@@ -94,10 +93,10 @@ public:
   };
 
 private:
-  SafePath mRoot;
-  bool mApplyFileExtensions = APPLY_FILE_EXTENSIONS_BY_DEFAULT;
-  DownloadMetadata mMetadata;
-  std::shared_ptr<GlobalConfiguration> mGlobalConfig;
+  SafePath root_;
+  bool applyFileExtensions_ = ApplyFileExtensionsByDefault;
+  DownloadMetadata metadata_;
+  std::shared_ptr<GlobalConfiguration> globalConfig_;
 
   void setStoredDataHash(const RecordDescriptor& field, const SafePath& path, const SafeFileName& fileName, XxHasher::Hash hash);
   std::optional<XxHasher::Hash> getCurrentDataHash(const SafePath& path) const;
@@ -129,13 +128,13 @@ public:
 
   bool hasPristineData(const RecordDescriptor& descriptor) const;
 
-  std::shared_ptr<RecordStorageStream> create(RecordDescriptor descriptor, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize);
+  std::shared_ptr<RecordStorageStream> create(RecordDescriptor descriptor, bool pseudonymisationRequired, bool archiveExtractionRequired, std::uint64_t fileSize);
   bool remove(const RecordDescriptor& descriptor); // Would be called "delete" if that weren't a keyword
   bool update(const RecordDescriptor& descriptor, const RecordDescriptor& updated);
 
   rxcpp::observable<FakeVoid> pull(std::shared_ptr<CoreClient> source, const PullOptions& options, const Progress::OnCreation& onCreateProgress);
 
-  const SafePath& getPath() const noexcept { return mRoot; }
+  const SafePath& getPath() const noexcept { return root_; }
   std::filesystem::path getSpecificationFilePath() const;
   SafePath getParticipantDirectory(const ParticipantIdentifier& id) const;
   std::optional<SafePath> getParticipantDirectoryIfExists(const ParticipantIdentifier& id) const;

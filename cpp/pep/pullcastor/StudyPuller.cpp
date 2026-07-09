@@ -29,7 +29,7 @@ rxcpp::observable<std::shared_ptr<CastorParticipant>> GetKnownParticipants(
       ColumnBoundParticipantId cbpId(spColumn, id);
       auto result = stored->hasCastorParticipantId(cbpId);
       if (!result) {
-        PULLCASTOR_LOG(debug) << "Skipping participant " << id << ", which is not registered in PEP column " << spColumn;
+        PEP_PULLCASTOR_LOG(Severity::Debug) << "Skipping participant " << id << ", which is not registered in PEP column " << spColumn;
       }
       return result;
       });
@@ -39,9 +39,9 @@ rxcpp::observable<std::shared_ptr<CastorParticipant>> GetKnownParticipants(
 }
 
 StudyPuller::StudyPuller(std::shared_ptr<EnvironmentPuller> environment, std::shared_ptr<Study> study, std::shared_ptr<std::vector<StudyAspect>> aspects)
-  : mEnvironment(environment), mStudy(study), mAspects(aspects) {
-  PULLCASTOR_LOG(debug) << "Creating puller for study " << this->getStudy()->getSlug();
-  mParticipants = CreateRxCache([environment, study]() {
+  : environment_(environment), study_(study), aspects_(aspects) {
+  PEP_PULLCASTOR_LOG(Severity::Debug) << "Creating puller for study " << this->getStudy()->getSlug();
+  participants_ = CreateRxCache([environment, study]() {
     return study->getParticipants()
       .filter([environment](std::shared_ptr<Participant> participant) {
       const auto& allowed = environment->getShortPseudonymsToProcess();
@@ -54,21 +54,21 @@ StudyPuller::StudyPuller(std::shared_ptr<EnvironmentPuller> environment, std::sh
 
   // Bulk-retrieve and cache objects related to repeating data if we're processing all participants
   if (!environment->getShortPseudonymsToProcess().has_value()) {
-    mRepeatingDataInstances = CreateRxCache([study, participants = mParticipants]() {
+    repeatingDataInstances_ = CreateRxCache([study, participants = participants_]() {
       return RepeatingDataInstance::BulkRetrieve(study, participants->observe())
         .on_error_resume_next(&RepeatingDataInstance::ConvertNotFoundToEmpty);
       });
-    mRepeatingDataPoints = CreateRxCache([study, rdis = mRepeatingDataInstances]() {
+    repeatingDataPoints_ = CreateRxCache([study, rdis = repeatingDataInstances_]() {
       return RepeatingDataPoint::BulkRetrieve(study, rdis->observe());
       });
   }
 
-  mFields = CreateRxCache([study]() {return study->getFields(); });
-  mFieldsById = CreateRxCache([fields = mFields]() {
+  fields_ = CreateRxCache([study]() {return study->getFields(); });
+  fieldsById_ = CreateRxCache([fields = fields_]() {
     return fields->observe()
       .op(RxToUnorderedMap([](std::shared_ptr<Field> field) {return field->getId(); }));
     });
-  mRepeatingDataPullers = CreateRxCache([study, fields = mFields]() {
+  repeatingDataPullers_ = CreateRxCache([study, fields = fields_]() {
     return fields->observe()
       .op(RxToVector())
       .flat_map([study](std::shared_ptr<std::vector<std::shared_ptr<Field>>> allFields) {
@@ -97,7 +97,7 @@ rxcpp::observable<std::shared_ptr<StudyPuller>> StudyPuller::CreateChildrenFor(s
 rxcpp::observable<std::shared_ptr<StorableCellContent>> StudyPuller::getStorableContent() {
   auto self = SharedFrom(*this);
 
-  return mParticipants->observe()
+  return participants_->observe()
     .map([self](std::shared_ptr<Participant> participant) {return CastorParticipant::Create(self, participant); }) // Create caching object for this participant
     .op(RxToVector()) // Ensure that participants can be iterated over multiple times (for multiple aspects)
     .concat_map([self](std::shared_ptr<std::vector<std::shared_ptr<CastorParticipant>>> participants) {
@@ -115,40 +115,40 @@ rxcpp::observable<std::shared_ptr<StorableCellContent>> StudyPuller::getStorable
 }
 
 rxcpp::observable<std::shared_ptr<RepeatingDataInstance>> StudyPuller::getRepeatingDataInstances(std::shared_ptr<Participant> participant) {
-  if (mRepeatingDataInstances != nullptr) {
-    return mRepeatingDataInstances->observe()
+  if (repeatingDataInstances_ != nullptr) {
+    return repeatingDataInstances_->observe()
       .filter([participant](std::shared_ptr<RepeatingDataInstance> rdi) {return rdi->getParticipant() == participant; });
   }
   return participant->getRepeatingDataInstances();
 }
 
 rxcpp::observable<std::shared_ptr<RepeatingDataPoint>> StudyPuller::getRepeatingDataPoints(std::shared_ptr<RepeatingDataInstance> rdi) {
-  if (mRepeatingDataPoints != nullptr) {
-    return mRepeatingDataPoints->observe()
+  if (repeatingDataPoints_ != nullptr) {
+    return repeatingDataPoints_->observe()
       .filter([rdi](std::shared_ptr<RepeatingDataPoint> rdp) {return rdp->getRepeatingDataInstance() == rdi; });
   }
   return rdi->getRepeatingDataPoints();
 }
 
 rxcpp::observable<std::shared_ptr<Field>> StudyPuller::getFields() {
-  return mFieldsById->observe()
+  return fieldsById_->observe()
     .flat_map([](std::shared_ptr<FieldsById> byId) {return RxIterate(*byId); })
     .map([](const auto& pair) {return pair.second; });
 }
 
 rxcpp::observable<std::shared_ptr<RepeatingDataPuller>> StudyPuller::getRepeatingDataPullers() {
-  return mRepeatingDataPullers->observe()
+  return repeatingDataPullers_->observe()
     .flat_map([](auto byId) {return RxIterate(*byId); })
     .map([](const auto& pair) {return pair.second; });
 }
 
 rxcpp::observable<std::shared_ptr<RepeatingDataPuller>> StudyPuller::getRepeatingDataPuller(const std::string& repeatingDataId) {
-  return mRepeatingDataPullers->observe()
+  return repeatingDataPullers_->observe()
     .map([repeatingDataId](auto byId) {return byId->at(repeatingDataId); });
 }
 
 rxcpp::observable<std::shared_ptr<FieldValue>> StudyPuller::toFieldValue(std::shared_ptr<DataPointBase> dp) {
-  return mFieldsById->observe()
+  return fieldsById_->observe()
     .op(RxGetOne("Fields by ID"))
     .map([dp](std::shared_ptr<FieldsById> byId) {
     auto field = byId->at(dp->getId());

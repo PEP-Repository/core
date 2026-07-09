@@ -21,5 +21,6 @@
   "OAuthTokenSecretFile": "OAuthTokenSecret.json",
   "ActiveGrantExpirationSeconds": 300,
   "TokenExpirationSeconds": 60,
+  "ExtraRedirectUris": ["http://localhost:2280/weblib/pep-sample-client/pepWasmTest-auth-landing"],
   "SpoofKeyFile": "spoofKey"
 }

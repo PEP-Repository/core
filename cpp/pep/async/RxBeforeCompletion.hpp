@@ -6,16 +6,16 @@ namespace pep {
 
 /// \brief Invokes a callback when an observable has successfully finished emitting items.
 /// \remark The callback is invoked _before_ the observable is fully exhausted and its resources released. Also see \c RxSubsequently .
-struct RxBeforeCompletion {
+class RxBeforeCompletion {
 public:
   using Handler = std::function<void()>;
 
 private:
-  Handler mHandler;
+  Handler handler_;
 
 public:
   explicit RxBeforeCompletion(Handler handler)
-    : mHandler(std::move(handler)) {
+    : handler_(std::move(handler)) {
   }
 
   /// \param items The source observable.
@@ -25,7 +25,7 @@ public:
   template <typename TItem, typename SourceOperator>
   rxcpp::observable<TItem> operator()(rxcpp::observable<TItem, SourceOperator> items) const {
     //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
-    return items.op(RxBeforeTermination([handler = mHandler](std::optional<std::exception_ptr> error) {
+    return items.op(RxBeforeTermination([handler = handler_](std::optional<std::exception_ptr> error) {
       if (!error.has_value()) {
         handler();
       }

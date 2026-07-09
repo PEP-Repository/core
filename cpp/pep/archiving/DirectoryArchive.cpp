@@ -4,7 +4,7 @@
 
 namespace pep {
 
-DirectoryArchive::DirectoryArchive(const std::filesystem::path& directoryPath) : mDirectoryPath(directoryPath) {
+DirectoryArchive::DirectoryArchive(const std::filesystem::path& directoryPath) : directoryPath_(directoryPath) {
   if (std::filesystem::exists(directoryPath)) {
     throw std::runtime_error("Directory " + directoryPath.string() + " already exists");
   }
@@ -12,20 +12,20 @@ DirectoryArchive::DirectoryArchive(const std::filesystem::path& directoryPath) :
 }
 
 void DirectoryArchive::nextEntry(const SafePath& path, int64_t size) {
-  if (mCurrentFile.is_open()) {
-    mCurrentFile.close();
+  if (currentFile_.is_open()) {
+    currentFile_.close();
   }
-  std::filesystem::path nextEntryPath = mDirectoryPath / path;
+  std::filesystem::path nextEntryPath = directoryPath_ / path;
   std::filesystem::create_directories(nextEntryPath.parent_path());
-  mCurrentFile.open(nextEntryPath.string(), std::ios::binary);
-  if (!mCurrentFile) {
+  currentFile_.open(nextEntryPath.string(), std::ios::binary);
+  if (!currentFile_) {
     throw std::system_error(errno, std::generic_category(), "Failed to open " + nextEntryPath.string());
   }
 }
 
 void DirectoryArchive::writeData(const char* c, const std::streamsize l) {
-  mCurrentFile.write(c, l);
-  if (!mCurrentFile) {
+  currentFile_.write(c, l);
+  if (!currentFile_) {
     throw std::runtime_error("Could not write to file.");
   }
 }
@@ -34,8 +34,8 @@ void DirectoryArchive::writeData(std::string_view data) {
 }
 
 void DirectoryArchive::closeEntry() {
-  if (mCurrentFile.is_open()) {
-    mCurrentFile.close();
+  if (currentFile_.is_open()) {
+    currentFile_.close();
   }
 }
 

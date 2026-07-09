@@ -15,7 +15,7 @@ using namespace pep::cli;
 
 namespace {
 
-const std::string LOG_TAG("DownloadProcessor");
+const std::string LogTag("DownloadProcessor");
 
 rxcpp::observable<std::shared_ptr<std::vector<std::optional<Timestamp>>>> GetPayloadEntryBlindingTimestamps(std::shared_ptr<CoreClient> client, std::shared_ptr<SignedTicket2> ticket, const VectorOfVectors<std::shared_ptr<EnumerateResult>>& metaEntries) {
   // Collect (IDs of) entries containing original payload
@@ -24,7 +24,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<Timestamp>>>> GetPay
   auto m = metaEntries.begin();
   for (size_t i = 0U; i < metaEntries.size(); ++i, ++m) {
     assert(m != metaEntries.end());
-    const auto& metadata = (*m)->mMetadata;
+    const auto& metadata = (*m)->metadata;
     if (metadata.getOriginalPayloadEntryId().has_value()) {
       payloadIds.emplace_back(*metadata.getOriginalPayloadEntryId());
       metaIndices->emplace_back(i);
@@ -44,10 +44,10 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<Timestamp>>>> GetPay
   return client->enumerateDataByIds(payloadIds, ticket)
     .concat()
     .map([](const std::shared_ptr<EnumerateResult>& payloadEntry) {
-    if (payloadEntry->mMetadata.getOriginalPayloadEntryId().has_value()) {
+    if (payloadEntry->metadata.getOriginalPayloadEntryId().has_value()) {
       throw std::runtime_error("Received a metadata-only update entry from server, but expected a payload-bearing entry");
     }
-    return payloadEntry->mMetadata.getBlindingTimestamp();
+    return payloadEntry->metadata.getBlindingTimestamp();
       })
     .op(RxToVector())
     .map([metaCount = metaEntries.size(), metaIndices](std::shared_ptr<std::vector<Timestamp>> payloadTimestamps) { // Match timestamps to items in "metaEntries" vector
@@ -83,7 +83,7 @@ struct DownloadProcessor::Context {
 
 rxcpp::observable<FakeVoid> DownloadProcessor::update(std::shared_ptr<CoreClient> client, const DownloadDirectory::PullOptions& options, const Progress::OnCreation& onCreateProgress) {
   auto ctx = std::make_shared<Context>();
-  ctx->content = mDestination->getSpecification().content;
+  ctx->content = destination_->getSpecification().content;
   ctx->client = client;
   ctx->options = options;
 
@@ -101,7 +101,7 @@ rxcpp::observable<FakeVoid> DownloadProcessor::update(std::shared_ptr<CoreClient
 
 rxcpp::observable<std::shared_ptr<IndexedTicket2>> DownloadProcessor::requestTicket(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx) {
   // First request a ticket
-  requestTicket2Opts tOpts;
+  RequestTicket2Opts tOpts;
   tOpts.pps = ctx->content.pps;
   tOpts.columns = ctx->content.columns;
   tOpts.columnGroups = ctx->content.columnGroups;
@@ -140,10 +140,10 @@ rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, std::shar
       const std::optional<Timestamp>& payloadTimestamp = *t;
 
       ParticipantIdentifier id(
-        entry->mLocalPseudonyms->mPolymorphic,
-        *entry->mAccessGroupPseudonym);
+        entry->localPseudonyms->polymorphic,
+        *entry->accessGroupPseudonym);
       auto emplaced = mapped->emplace(
-        RecordDescriptor(id, entry->mColumn, entry->mMetadata.getBlindingTimestamp(), entry->mMetadata.extra(), payloadTimestamp),
+        RecordDescriptor(id, entry->column, entry->metadata.getBlindingTimestamp(), entry->metadata.extra(), payloadTimestamp),
         std::move(entry));
       if (!emplaced.second) {
         const RecordDescriptor& key = emplaced.first->first;
@@ -166,40 +166,40 @@ rxcpp::observable<std::shared_ptr<std::unordered_map<RecordDescriptor, std::shar
 void DownloadProcessor::prepareLocalData(
   std::shared_ptr<Progress> progress, std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads, bool assumePristine) {
   progress->advance("Preparing local data");
-  auto localRecords = mDestination->list();
+  auto localRecords = destination_->list();
   if (localRecords.empty()) {
     return;
   }
 
   auto ownProgress = pep::Progress::Create(localRecords.size(), progress->push());
   for (const auto& existing : localRecords) {
-    ownProgress->advance(mDestination->getRecordFileName(existing, false)->text());
+    ownProgress->advance(destination_->getRecordFileName(existing, false)->text());
     auto position = downloads->find(existing);
     if (position == downloads->cend()) {
       // Payload is not in the server's current data set: it has either been removed from the server,
       // or the payload will be updated to a newer version (i.e. same participant and column, but different timestamp)
-      if (!mDestination->remove(existing)) {
+      if (!destination_->remove(existing)) {
         if (assumePristine) {
           auto update = std::find_if(downloads->cbegin(), downloads->cend(), [&existing](const std::pair<const RecordDescriptor, std::shared_ptr<EnumerateResult>>& enumerated) {
-            return *enumerated.second->mAccessGroupPseudonym == existing.getParticipant().getLocalPseudonym()
-              && enumerated.second->mColumn == existing.getColumn();
+            return *enumerated.second->accessGroupPseudonym == existing.getParticipant().getLocalPseudonym()
+              && enumerated.second->column == existing.getColumn();
             });
           if (update == downloads->cend()) {
             // Data should have been removed from the local copy, but it wasn't there
-            LOG(LOG_TAG + ":update", pep::warning) << "Could not remove data that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
+            PEP_LOG(LogTag + ":update", Severity::Warning) << "Could not remove data that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
               << "; column " << existing.getColumn()
               << "; blinding timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(existing.getBlindingTimestamp());
           }
         }
       }
-    } else if (assumePristine || mDestination->hasPristineData(existing)) {
+    } else if (assumePristine || destination_->hasPristineData(existing)) {
       // We already have the payload: don't download
       if (existing.getBlindingTimestamp() != position->first.getBlindingTimestamp()) {
         // Server has different metadata than our download directory: apply metadata-only update to the payload that we already have
-        if (!mDestination->update(existing, position->first)) {
+        if (!destination_->update(existing, position->first)) {
           if (assumePristine) {
             // Data file should have been renamed in the local copy, but it wasn't there
-            LOG(LOG_TAG + ":update", pep::warning) << "Could not rename data file that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
+            PEP_LOG(LogTag + ":update", Severity::Warning) << "Could not rename data file that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
               << "; column " << existing.getColumn()
               << "; blinding timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(existing.getBlindingTimestamp());
           }
@@ -208,7 +208,7 @@ void DownloadProcessor::prepareLocalData(
       downloads->erase(position);
     } else {
       // Our copy is not pristine: payload will be downloaded
-      mDestination->remove(existing);
+      destination_->remove(existing);
     }
   }
 }
@@ -228,7 +228,7 @@ rxcpp::observable<FakeVoid> DownloadProcessor::retrieveFromServer(
   while (!downloads->empty()) {
     auto position = downloads->begin();
     ctx->descriptors.emplace_back(MakeSharedCopy(position->first));
-    ctx->sizes.emplace_back(position->second->mFileSize);
+    ctx->sizes.emplace_back(position->second->fileSize);
     subjects->push(std::move(position->second));
 
     downloads->erase(position); // Discard source value to reduce memory use
@@ -265,20 +265,20 @@ void DownloadProcessor::processDataChunk(std::shared_ptr<Progress> retrieveProgr
   }
 
   auto self = SharedFrom(*this);
-  stream->write(result.content, self->mGlobalConfig);
+  stream->write(result.content, self->globalConfig_);
 }
 
-std::shared_ptr<DownloadDirectory::RecordStorageStream> DownloadProcessor::openStorageStream(RecordDescriptor descriptor, size_t fileSize, Progress& progress) {
+std::shared_ptr<DownloadDirectory::RecordStorageStream> DownloadProcessor::openStorageStream(RecordDescriptor descriptor, std::uint64_t fileSize, Progress& progress) {
   bool pseudonymisationRequired{ false };
   bool archiveExtractionRequired{ false };
-  if (auto columnSpecification = mGlobalConfig->getColumnSpecification(descriptor.getColumn())) {
+  if (auto columnSpecification = globalConfig_->getColumnSpecification(descriptor.getColumn())) {
     if (columnSpecification->getAssociatedShortPseudonymColumn().has_value()) {
       pseudonymisationRequired = true;
     }
     archiveExtractionRequired = columnSpecification->getRequiresDirectory();
   }
 
-  auto result = mDestination->create(std::move(descriptor), pseudonymisationRequired, archiveExtractionRequired, fileSize);
+  auto result = destination_->create(std::move(descriptor), pseudonymisationRequired, archiveExtractionRequired, fileSize);
   progress.advance(result->getRelativePath().text());
   return result;
 }

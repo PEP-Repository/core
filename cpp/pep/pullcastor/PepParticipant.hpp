@@ -14,8 +14,8 @@ class PepParticipant : public std::enable_shared_from_this<PepParticipant>, priv
   friend class SharedConstructor<PepParticipant>;
 
 private:
-  PolymorphicPseudonym mPp;
-  UnOrOrderedMap<std::string, std::shared_ptr<CellContent>> mCells;
+  PolymorphicPseudonym pp_;
+  UnOrOrderedMap<std::string, std::shared_ptr<CellContent>> cells_;
 
   explicit PepParticipant(const PolymorphicPseudonym& pp);
 
@@ -42,7 +42,7 @@ public:
     * \brief Produces the polymorphic pseudonym associated with this participant.
     * \return A PolymorphicPseudonym instance specifying the participant's PP.
     */
-  inline const PolymorphicPseudonym& getPp() const noexcept { return mPp; }
+  inline const PolymorphicPseudonym& getPp() const noexcept { return pp_; }
 
   /*!
   * \brief Produces a CellContent instance representing this participant's data for the specified column.

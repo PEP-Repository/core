@@ -19,21 +19,21 @@ namespace transcryptor {
  */
 class ChecksumChain : boost::noncopyable {
 protected:
-  static constexpr uint64_t EMPTY_TABLE_CHECKPOINT = 1;
-  static constexpr uint64_t FIRST_RECORD_CHECKPOINT = EMPTY_TABLE_CHECKPOINT + 1U; // Record sequence number 0 (zero) is checkpoint 2
+  static constexpr uint64_t EmptyTableCheckpoint = 1;
+  static constexpr uint64_t FirstRecordCheckpoint = EmptyTableCheckpoint + 1U; // Record sequence number 0 (zero) is checkpoint 2
 
 public:
   struct Result {
     uint64_t checksum = 0;
-    uint64_t checkpoint = EMPTY_TABLE_CHECKPOINT;
+    uint64_t checkpoint = EmptyTableCheckpoint;
   };
 
 private:
-  std::string mName;
-  Result mLastResult;
+  std::string name_;
+  Result lastResult_;
 
 protected:
-  explicit ChecksumChain(std::string name) noexcept : mName(std::move(name)) {}
+  explicit ChecksumChain(std::string name) noexcept : name_(std::move(name)) {}
 
   virtual Result calculate(std::shared_ptr<TranscryptorStorageBackend> storage, const Result& partial, uint64_t maxCheckpoint) const = 0;
 
@@ -43,7 +43,7 @@ protected:
 public:
   virtual ~ChecksumChain() noexcept = default;
 
-  std::string name() const noexcept { return mName; }
+  std::string name() const noexcept { return name_; }
 
   /*!
    * \brief Returns the checksum chain's value at the highest available checkpoint not exceeding the specified one

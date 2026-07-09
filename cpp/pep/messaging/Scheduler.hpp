@@ -116,9 +116,9 @@ private:
     ~Generator() noexcept;
   };
 
-  boost::asio::io_context& mIoContext;
-  std::map<MessageId, Generator> mGenerators;
-  std::deque<OutgoingMessage> mOutgoing; // We need to (be able to) iterate over elements, so we can't use a simple std::queue<>.
+  boost::asio::io_context& ioContext_;
+  std::map<MessageId, Generator> generators_;
+  std::deque<OutgoingMessage> outgoing_; // We need to (be able to) iterate over elements, so we can't use a simple std::queue<>.
 };
 
 }

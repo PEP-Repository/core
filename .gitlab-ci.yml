@@ -8,6 +8,10 @@ spec:
       description: Enable SAST build (yes/no)
       type: boolean
       default: false
+    test_coverage:
+      options: ['no-coverage', 'coverage']
+      default: no-coverage
+      description: Enable code coverage reporting
 
 # https://docs.gitlab.com/ci/yaml/: "Specs must be declared at the top of a configuration file, in a header section separated from the rest of the configuration with ---."
 ---
@@ -15,8 +19,6 @@ spec:
 stages:
   - static-analysis
   - build
-  - runtime-analysis
-  - integration
   - upload
   - publish
   - cleanup
@@ -41,6 +43,11 @@ variables:
 
   # For CI scripts
   CLEAN_CONAN: 1
+
+  # Defaults, used in .configure-conan-and-cmake
+  CONAN_FLAGS:
+    -o &:with_assessor=False
+    -o &:with_castor=$WITH_CASTOR
 
   # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_APPS: >-
@@ -100,7 +107,6 @@ variables:
     cpp/pep/storagefacility/pepStorageFacilityUnitTests
 
   UNIT_TESTS_BASE: >-
-    cpp/pep/accessmanager/pepAccessManagerUnitTests
     cpp/pep/application/pepApplicationUnitTests
     cpp/pep/archiving/pepArchivingUnitTests
     cpp/pep/async/pepAsyncUnitTests
@@ -109,7 +115,6 @@ variables:
     cpp/pep/database/pepDatabaseUnitTests
     cpp/pep/crypto/pepCryptoUnitTests
     cpp/pep/elgamal/pepElgamalUnitTests
-    cpp/pep/keyserver/pepKeyServerUnitTests
     cpp/pep/messaging/pepMessagingUnitTests
     cpp/pep/morphing/pepMorphingUnitTests
     cpp/pep/networking/pepNetworkingUnitTests
@@ -119,18 +124,32 @@ variables:
     cpp/pep/structure/pepStructureUnitTests
     cpp/pep/structuredoutput/pepStructuredOutputUnitTests
     cpp/pep/ticketing/pepTicketingUnitTests
-    cpp/pep/transcryptor/pepTranscryptorUnitTests
     cpp/pep/utils/pepUtilsUnitTests
     cpp/pep/versioning/pepVersioningUnitTests
+
+  UNIT_TESTS_SERVER: >-
+    cpp/pep/accessmanager/pepAccessManagerUnitTests
+    cpp/pep/keyserver/pepKeyServerUnitTests
+    cpp/pep/transcryptor/pepTranscryptorUnitTests
 
   UNIT_TESTS_CASTOR: >-
     cpp/pep/castor/pepCastorUnitTests
     cpp/pep/pullcastor/pepPullCastorUnitTests
 
-  UNIT_TESTS_ALL: >-
+  UNIT_TESTS_WEBLIB: >-
+    cpp/pep/weblib/pepWebCommonUnitTests
+
+  # All non-weblib unit tests
+  UNIT_TESTS_ALL_NATIVE: >-
     $UNIT_TESTS_INTEGRATION
     $UNIT_TESTS_BASE
+    $UNIT_TESTS_SERVER
     $UNIT_TESTS_CASTOR
+
+  # All unit tests, including weblib unit tests
+  UNIT_TESTS_ALL: >-
+    $UNIT_TESTS_ALL_NATIVE
+    $UNIT_TESTS_WEBLIB
 
   FORCE_BUILD_STABLE_RELEASE:
     value: ''
@@ -205,14 +224,20 @@ include:
 .docker_login: &docker_login
   echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" --username gitlab-ci-token --password-stdin
 
-.not-stable-release: &not-stable-release
-  # Not on stable/release, unless $FORCE_BUILD_STABLE_RELEASE is set
-  if: $FORCE_BUILD_STABLE_RELEASE != '' || ($CI_COMMIT_BRANCH != $PEP_FOSS_TESTING_BRANCH && $CI_COMMIT_BRANCH !~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN)
-
 .skip-for-binaries-for-xyz:
   rules:
     - if: '$CI_COMMIT_REF_NAME =~ /^binaries_for_[0-9]+$/'
       when: never
+
+# Must be last in rules, as it will not run more rules
+.set-enable-linter-and-terminate-rules:
+  rules:
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
+      variables:
+        ENABLE_LINTER: yes
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+      variables:
+        ENABLE_LINTER: no
 
 # Sets credentials on the git repo in the current working directory to prevent "fatal: could not read Username"
 # See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2741
@@ -391,20 +416,30 @@ cleanup:
 .ccache-print: &ccache-print |
   CCACHE_DIR="$PWD/ccache" ccache --show-stats --verbose 2> /dev/null || true
 
-.stage-artifacts: &stage-artifacts |
-  ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY" --dest-prefix "$STAGING_DIRECTORY" "$ARTIFACTS"
+.stage-artifacts: &stage-artifacts
+  - |
+    if [ "$ARTIFACTS" != "" ]; then
+      ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY" --dest-prefix "$STAGING_DIRECTORY" "$ARTIFACTS"
+    else
+      echo "No artifacts to stage"
+    fi
 
+#language=sh
 .run-tests: &run-tests
   - |
     DID_JOB_FAIL=0
     for TEST in $TESTS; do
-      if ! ./ci_cd/run-test-executable.sh "$STAGING_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
+      if ! ./ci_cd/run-test-executable.sh "$BUILD_DIRECTORY" "$MEM_ANALYSIS_TOOL" "$TEST" --gtest_output="xml:$CI_PROJECT_DIR/temp/"; then
         DID_JOB_FAIL=1
       fi
     done
-    exit $DID_JOB_FAIL
+    if [ $DID_JOB_FAIL -ne 0 ]; then
+      exit 1
+    fi
 
 # This code is (only) executed on Windows CI runners, which are provisioned with Git (Bash) installed to the specified location.
+# See the ci_cd/windows-ci-runner.bat provisioning script.
+#language=powershell
 .run-tests-windows: &run-tests-windows
   - |
     $testsArray = $TESTS -split ' ';
@@ -447,12 +482,16 @@ retrieve-lockfile:
       concurrency_option_conan="-c:a tools.build:jobs=$concurrency_limit"
     fi
   - >
+    conan remote add pep-local-recipes
+    "$CI_PROJECT_DIR/docker-build/builder/conan/local-recipes"
+    --type local-recipes-index
+    --force
+  - >
     conan install ./
     --lockfile=./docker-build/builder/conan/conan-ci.lock
     -s build_type=$CMAKE_BUILD_TYPE
     $concurrency_option_conan
-    -o "&:with_assessor=False"
-    -o "&:with_castor=$WITH_CASTOR"
+    $CONAN_FLAGS
     -o "&:with_tests=$WITH_TESTS"
     -o "&:with_benchmark=$WITH_BENCHMARK"
     -o "&:custom_build_folder=True"
@@ -469,6 +508,7 @@ retrieve-lockfile:
     -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
     -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
     -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
+    -DENABLE_COVERAGE=${ENABLE_COVERAGE:-OFF}
 
 .ubuntu-build-base:
   <<: *ccache-configuration
@@ -482,6 +522,8 @@ retrieve-lockfile:
     HTTPSERVER_WITH_TLS: "OFF"
   #language=bash
   script:
+    # Add stuff like emsdk to PATH (profile is not loaded for docker runners: https://docs.gitlab.com/runner/shells/index.html#shell-profile-loading )
+    - . ~/.profile
     - *checkout-docker-build-script-sh-steps
     - *set_concurrency_limit
     - if [ "$ENABLE_LINTER" = yes ]; then
@@ -498,18 +540,126 @@ retrieve-lockfile:
       <(echo "$UNIT_TESTS_ALL" | tr -s ' ' '\n' | sort)
       <(cd "./$BUILD_DIRECTORY/" && find -name 'pep*UnitTests' | sort | sed 's/^.\///') |
       tee /dev/stderr)" ]; then
-    -   echo 'Unit tests were built that are not listed in .gitlab-ci.yml, see above. Should these be added to $UNIT_TESTS_BASE?'
+    -   echo 'Unit tests were built that are not listed in .gitlab-ci.yml, see above. Should these be added to $UNIT_TESTS_*?'
     -   exit 1
     - fi
+    - *run-tests
   after_script:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
     - *stage-artifacts
     - *ccache-print
+  artifacts:
+    reports:
+      junit: temp/*.xml
 
-ubuntu-lts-debug-with-sast:
-  stage: build
+.ubuntu-lts-settings:
+  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  variables:
+    BUILD_GO_SERVERS: "on"
+    WITH_TESTS: "True"
+
+#################### Ubuntu LTS Debug ####################
+
+.ubuntu-lts-debug-settings:
+  extends: .ubuntu-lts-settings
+  variables:
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    WITH_BENCHMARK: "True"
+    VERIFY_HEADERS_STANDALONE: "off"
+
+ubuntu-lts-debug:
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-lts-debug-settings
+  variables:
+    WITH_CASTOR: "True"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+      $UNIT_TESTS_CASTOR
+    MEM_ANALYSIS_TOOL: "none"
   rules:
-    - if: $[[ inputs.use_sast ]] == true
+    - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
+      variables:
+        ENABLE_COVERAGE: "ON"
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  before_script:
+    - !reference [.ubuntu-build-base, before_script]
+    - |
+      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
+        mkdir -p "$CI_PROJECT_DIR/profiles"
+        rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
+        export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
+      fi
+  script:
+    - !reference [.ubuntu-build-base, script]
+    - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
+    - | 
+       if [ "${ENABLE_COVERAGE:-OFF}" != "ON" ]; then
+         echo "Skipping code coverage processing steps"
+         exit 0
+       fi
+
+      # Merge raw profile files from profiles directory
+    - llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
+
+    - |
+       BINARIES=""
+       for BINARY in $UNIT_TESTS_ALL_NATIVE $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
+         BINARIES="$BINARIES --object $BUILD_DIRECTORY/$BINARY"
+       done
+    
+    - IGNORE_REGEX=".*(proto/generated/|/tests/|/apps/).*"
+
+      # Generate HTML report
+    - llvm-cov show $BINARIES
+        -instr-profile=combined-coverage.profdata
+        --ignore-filename-regex="$IGNORE_REGEX"
+        --project-title="Combined Coverage (Unit + Integration)"
+        --show-directory-coverage
+        -format=html
+        -output-dir=htmlcov
+
+      # Export to lcov format using llvm-cov
+    - llvm-cov export $BINARIES
+        -instr-profile=combined-coverage.profdata
+        --ignore-filename-regex="$IGNORE_REGEX"
+        -format=lcov > coverage.lcov
+
+      # Convert lcov to Cobertura XML using lcov_cobertura
+    - lcov_cobertura coverage.lcov --output coverage.xml
+        --base-dir "$CI_PROJECT_DIR"
+        --demangle
+
+      # Show summary with coverage percentage
+    - line_pct=$(awk -F'line-rate="' 'NF>1 { split($2,a,"\""); cvg=a[1]; printf "%.2f\n", cvg * 100; exit }' coverage.xml)
+    - 'echo "Line Coverage: ${line_pct}%"'
+  coverage: '/Line Coverage: (\d+\.?\d*)%/'
+  artifacts:
+    paths:
+      - htmlcov/
+    reports:
+      junit: temp/*.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+# To test the effect of removing Castor integration
+ubuntu-lts-debug-without-castor:
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-lts-debug-settings
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  variables:
+    WITH_CASTOR: "False"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+    MEM_ANALYSIS_TOOL: "none"
+
+.ubuntu-lts-debug-with-sast-base:
+  stage: build
   tags:
     - docker
     - sast
@@ -584,58 +734,21 @@ ubuntu-lts-debug-with-sast:
   artifacts:
     when: always
     paths:
+      - infer-out/report.json
       - reportFiltered.sarif
 
-.ubuntu-build-with-tests-base:
-  extends:
-    - .ubuntu-build-base
-  variables:
-    ARTIFACTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
-
-#################### Ubuntu LTS Debug ####################
-
-.ubuntu-lts-settings:
-  image: ${BUILDER_IMAGE_UBUNTU_LTS}
-  variables:
-    BUILD_GO_SERVERS: "on"
-    WITH_CASTOR: "True"
-    WITH_TESTS: "True"
-
-.ubuntu-lts-debug-settings:
-  extends: .ubuntu-lts-settings
+ubuntu-lts-debug-with-sast:
+  extends: .ubuntu-lts-debug-with-sast-base
   rules:
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
-  variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    WITH_BENCHMARK: "False"
-    VERIFY_HEADERS_STANDALONE: "off"
+    - if: $[[ inputs.use_sast ]] == true
 
-ubuntu-lts-debug:
-  extends:
-    - .ubuntu-build-with-tests-base
-    - .ubuntu-lts-debug-settings
-
-#################### Ubuntu LTS Debug w/o Castor ####################
-
-ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base template (anchor) job because it doesn't produce some of the artifacts
-  extends:
-    - .ubuntu-build-base
-    - .ubuntu-lts-debug-settings
+ubuntu-lts-debug-manual-sast:
+  extends: .ubuntu-lts-debug-with-sast-base
   rules:
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
-  variables:
-    WITH_CASTOR: "False"
-    ARTIFACTS: "$UNIT_TESTS_BASE"
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
+    - if: $[[ inputs.use_sast ]] != true
+      when: manual
+      allow_failure: true
+    - when: never
 
 #################### Ubuntu LTS Release ####################
 
@@ -643,22 +756,26 @@ ubuntu-lts-debug-without-castor: # Can't use the ubuntu-build-with-tests-base te
   extends: .ubuntu-lts-settings
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
-    WITH_BENCHMARK: "True"
     VERIFY_HEADERS_STANDALONE: "on"
+  artifacts:
+    expire_in: 8h
+    paths:
+      - $STAGING_DIRECTORY
+
+.ubuntu-lts-release-base:
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-lts-release-settings
 
 # Builds (and optionally lints) binaries for ubuntu-lts-release
 ubuntu-lts-release-$[[ inputs.autolinting ]]:
   extends:
-    - .ubuntu-build-base
-    - .ubuntu-lts-release-settings
-  rules:
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
-      variables:
-        ENABLE_LINTER: yes
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
-      variables:
-        ENABLE_LINTER: no
+    - .ubuntu-lts-release-base
+    - .set-enable-linter-and-terminate-rules
   variables:
+    WITH_BENCHMARK: "True"
+    WITH_CASTOR: "True"
+    MEM_ANALYSIS_TOOL: "valgrind"
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
       $EXECUTABLES_APPS
@@ -667,55 +784,32 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
       $EXECUTABLES_BENCHMARK
       $EXECUTABLE_PULLCASTOR
       $EXECUTABLES_GO
-      $UNIT_TESTS_INTEGRATION
+      $UNIT_TESTS_ALL_NATIVE
+    TESTS: >-
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
       $UNIT_TESTS_CASTOR
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
-
-# Collects/provides (linted or unlinted) binaries
-ubuntu-lts-release:
-  stage: build
-  tags: [docker-small]
-  needs:
-    - ubuntu-lts-release-$[[ inputs.autolinting ]]
-  script:
-    echo "Collecting artifacts from the ubuntu-lts-release-$[[ inputs.autolinting ]] job"
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
 
 ubuntu-lts-release-manual-lint:
-  extends:
-    - .ubuntu-build-base
-    - .ubuntu-lts-release-settings
+  extends: .ubuntu-lts-release-base
   rules:
-    # Redundant if CI already auto-lints
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
-      when: never
-    - <<: *not-stable-release
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
       when: manual
-      # Make pipeline still continue without manual action (default for when:manual outside of rules)
       allow_failure: true
+    - when: never
   variables:
     ENABLE_LINTER: yes
+    WITH_BENCHMARK: "True"
+    WITH_CASTOR: "True"
 
-#################### Ubuntu LTS Release w/o Castor ####################
-
-ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base template (anchor) job because it doesn't produce some of the artifacts
+ubuntu-lts-release-without-castor:
   extends:
-    - .ubuntu-build-base
-  image: ${BUILDER_IMAGE_UBUNTU_LTS}
+    - .ubuntu-lts-release-base
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
-    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
     BUILD_GO_SERVERS: "off"
     WITH_CASTOR: "False"
-    WITH_TESTS: "False"
     WITH_BENCHMARK: "False"
     HTTPSERVER_WITH_TLS: "ON"
     ARTIFACTS: >-
@@ -723,12 +817,12 @@ ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base 
       $EXECUTABLES_CLIENT
       $LOCAL_CONFIG_CLIENT
       $PEPSERVERS_MONOLITH
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+    MEM_ANALYSIS_TOOL: "none"
 
-#################### Ubuntu Rolling Debug ####################
+#################### Ubuntu Rolling ####################
 
 .ubuntu-rolling-settings:
   image: ${BUILDER_IMAGE_UBUNTU_ROLLING}
@@ -737,76 +831,56 @@ ubuntu-lts-release-without-castor: # Can't use the ubuntu-build-with-tests-base 
     WITH_CASTOR: "True"
     WITH_TESTS: "True"
     WITH_BENCHMARK: "False"
+    MEM_ANALYSIS_TOOL: "none"
 
-.ubuntu-rolling-debug-settings:
-  extends: .ubuntu-rolling-settings
+.ubuntu-rolling-debug-base:
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-rolling-settings
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     VERIFY_HEADERS_STANDALONE: "off"
-  rules:
-    - !reference [ .skip-for-binaries-for-xyz, rules ]
-    - when: on_success
 
 # Builds (and optionally lints) binaries for ubuntu-rolling-debug
 ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
   extends:
-    - .ubuntu-build-with-tests-base
-    - .ubuntu-rolling-debug-settings
+    - .ubuntu-rolling-debug-base
   rules:
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
-      variables:
-        ENABLE_LINTER: yes
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
-      variables:
-        ENABLE_LINTER: no
-
-# Collects/provides (linted or unlinted) binaries
-ubuntu-rolling-debug:
-  stage: build
-  tags: [docker-small]
-  needs:
-    - ubuntu-rolling-debug-$[[ inputs.autolinting ]]
-  script:
-    echo "Collecting artifacts from the ubuntu-rolling-debug-$[[ inputs.autolinting ]] job"
-  artifacts:
-    expire_in: 8h
-    paths:
-      - $STAGING_DIRECTORY
+    - !reference [ .skip-for-binaries-for-xyz, rules ]
+    - !reference [ .set-enable-linter-and-terminate-rules, rules ]
+  variables:
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+      $UNIT_TESTS_CASTOR
 
 ubuntu-rolling-debug-manual-lint:
-  extends:
-    - .ubuntu-build-base
-    - .ubuntu-rolling-debug-settings
+  extends: .ubuntu-rolling-debug-base
   rules:
-    # Redundant if CI already auto-lints
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
-      when: never
-    - <<: *not-stable-release
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
       when: manual
-      # Make pipeline still continue without manual action (default for when:manual outside of rules)
       allow_failure: true
+    - when: never
   variables:
     ENABLE_LINTER: yes
 
-#################### Ubuntu Rolling Release ####################
-
-.ubuntu-rolling-release-settings:
-  extends: .ubuntu-rolling-settings
+ubuntu-rolling-release:
+  extends:
+    - .ubuntu-build-base
+    - .ubuntu-rolling-settings
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
     VERIFY_HEADERS_STANDALONE: "on"
-
-ubuntu-rolling-release:
-  extends:
-    - .ubuntu-build-with-tests-base
-    - .ubuntu-rolling-release-settings
-
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+      $UNIT_TESTS_CASTOR
 
 #################### Python Packages ####################
 
-build-pep-connector:
+pep-connector:
   stage: build
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   tags:
@@ -830,7 +904,7 @@ build-pep-connector:
 
 #################### Flatpak ####################
 
-build-flatpak:
+flatpak:
   <<: *ccache-configuration
   stage: build
   needs:
@@ -883,7 +957,7 @@ windows-client:
       - $BUILD_DIRECTORY/wix/artifacts
       - $BUILD_DIRECTORY/wix/pepBinaries.wixlib
 
-windows-all-targets:
+windows-debug:
   stage: build
   needs:
     - job: retrieve-lockfile
@@ -907,9 +981,7 @@ windows-all-targets:
                       $EXECUTABLES_CLIENT
                       $EXECUTABLES_BENCHMARK
                       $PEPSERVERS_MONOLITH
-                      $UNIT_TESTS_INTEGRATION
-                      $UNIT_TESTS_BASE
-                      $UNIT_TESTS_CASTOR"
+                      $UNIT_TESTS_ALL_NATIVE"
     - '& "C:\Program Files\Git\bin\bash.exe" ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY"
                                                                           --dest-prefix "$STAGING_DIRECTORY"
                                                                           --build-mode "$CMAKE_BUILD_TYPE"
@@ -928,11 +1000,36 @@ windows-all-targets:
     paths:
       - $STAGING_DIRECTORY
 
+test-windows-debug:
+  stage: build
+  variables:
+    MEM_ANALYSIS_TOOL: "none"
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+      $UNIT_TESTS_CASTOR
+  tags:
+    # Do not run in parallel with other tests, as we may bind to static ports.
+    # May still run in parallel with build jobs.
+    - windows-sequential
+  needs: [windows-debug]
+  script:
+    - *run-tests-windows
+    - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
+  artifacts:
+    reports:
+      junit: temp/*.xml
+
 #################### MacOS ####################
 
-.macos-client-base:
+macos-client:
   <<: *ccache-configuration
   stage: build
+  parallel:
+    matrix:
+      - ARCH: [x86_64, arm64]
+  tags:
+    - macos-${ARCH}
   needs:
     - job: retrieve-lockfile
       optional: true
@@ -947,24 +1044,10 @@ windows-all-targets:
     - *ccache-print
   artifacts:
     expire_in: 7d
-
-macos-client-x86:
-  extends: .macos-client-base
-  tags:
-    - macos-intel
-  artifacts:
     paths:
-      - $BUILD_DIRECTORY/macOS_x86_64_bins.zip
+      - $BUILD_DIRECTORY/macOS_${ARCH}_bins.zip
 
-macos-client-arm:
-  extends: .macos-client-base
-  tags:
-    - macos-arm64
-  artifacts:
-    paths:
-      - $BUILD_DIRECTORY/macOS_arm64_bins.zip
-
-.macos-all-targets-base:
+macos-debug:
   stage: build
   needs:
     - job: retrieve-lockfile
@@ -975,36 +1058,50 @@ macos-client-arm:
     - when: manual
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
       allow_failure: true
+  parallel:
+    matrix:
+      - ARCH: [x86_64, arm64]
+  tags:
+    - macos-${ARCH}
   variables:
-    WITH_CASTOR: "False" # Currently castor does not compile on macOS
-    ARTIFACTS: >-
-      $EXECUTABLES_APPS
-      $EXECUTABLES_PEP_SERVICES
-      $EXECUTABLES_CLIENT
-      $EXECUTABLES_BENCHMARK
-      $PEPSERVERS_MONOLITH
-      $EXECUTABLES_GO
-      $UNIT_TESTS_INTEGRATION
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    WITH_CASTOR: "True"
+    MEM_ANALYSIS_TOOL: "leaks"
+    TESTS: >-
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
+      $UNIT_TESTS_CASTOR
   #language=bash
   script:
     - *checkout-docker-build-script-sh-steps
     - export CMAKE_COLOR_DIAGNOSTICS=ON  # Let CMake pass -fcolor-diagnostics
     - export CLICOLOR_FORCE=1  # Colored output for e.g. Conan & Ninja (otherwise -fcolor-diagnostics still won't work)
     - >
+      conan remote add pep-local-recipes
+      "$CI_PROJECT_DIR/docker-build/builder/conan/local-recipes"
+      --type local-recipes-index
+      --force
+    - >
       conan install .
       --lockfile="docker-build/builder/conan/conan-ci.lock"
       --profile:all="docker-build/builder/conan/conan_profile"
       --build=missing
       -s:a os.version=13.3
-      -s:a build_type="Debug"
+      -s:a build_type="$CMAKE_BUILD_TYPE"
       -o "&:with_assessor=True"
       -o "&:with_servers=True"
       -o "&:with_castor=$WITH_CASTOR"
       -o "&:with_tests=True"
       -o "&:with_benchmark=True"
       -o "&:custom_build_folder=True"
-      --output-folder=./$BUILD_DIRECTORY/
+      --output-folder=./$BUILD_DIRECTORY/ && true
+    - conan_error="$?"
+    # Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
+    - conan remote remove pep-local-recipes
+    - |
+      if [[ "$conan_error" != 0 ]]; then
+        exit "$conan_error"
+      fi
     - |
       if [[ -n "$CLEAN_CONAN" ]]; then
       echo 'Cleaning Conan cache.'
@@ -1025,33 +1122,77 @@ macos-client-arm:
       -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
       -DVERIFY_HEADERS_STANDALONE=ON
     - cmake --build --preset conan-debug
-  after_script:
-    - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
-    - *stage-artifacts
+    - *run-tests
+    - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
+  artifacts:
+    reports:
+      junit: temp/*.xml
+
+#################### Weblib ##################
+
+.weblib-base:
+  extends:
+    - .ubuntu-build-base
+  image: $BUILDER_IMAGE_WEBLIB
+  variables:
+    WITH_BENCHMARK: "False"
+    WITH_TESTS: "True"
+    MEM_ANALYSIS_TOOL: "none"
+    CONAN_FLAGS: --profile:host=./docker-build/builder/conan/conan_profile_wasm32
+    TESTS: >-
+      $UNIT_TESTS_BASE
+      $UNIT_TESTS_WEBLIB
   artifacts:
     expire_in: 8h
     paths:
-      - $STAGING_DIRECTORY
+      - weblib/pep-repo-client-wasm/package.json
+      - weblib/pep-repo-client-wasm/package-lock.json
+      - weblib/pep-repo-client-wasm/pepWeblib*
 
-macos-all-targets-x86:
-  extends: .macos-all-targets-base
-  tags:
-    - macos-intel
+.weblib-settings-debug:
+  rules:
+    - !reference [ .skip-for-binaries-for-xyz, rules ]
+    - when: on_success
+weblib-debug:
+  extends:
+    - .weblib-base
+    - .weblib-settings-debug
+  variables:
+    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
 
-macos-all-targets-arm:
-  extends: .macos-all-targets-base
-  tags:
-    - macos-arm64
+weblib-release:
+  extends:
+    - .weblib-base
+  variables:
+    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
+
+weblib-integration:
+  extends:
+    - .dind
+    - .weblib-settings-debug
+  image: $BUILDER_IMAGE_WEBLIB
+  needs:
+    # Use Debug pepWeblib binaries to run integration tests
+    - weblib-debug
+    - job: docker-images
+      artifacts: false
+  stage: build
+  #language=sh
+  script:
+    - *docker_login
+    # Add Node.js to PATH
+    - . ~/.profile
+    - ./tests/integration.sh --image "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" --tests-to-run weblib
 
 #################### Docker ####################
 
-build-docker-images:
+docker-images:
   stage: build
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
-    - ubuntu-lts-release
-    - build-pep-connector
+    - ubuntu-lts-release-$[[ inputs.autolinting ]]
+    - pep-connector
   #language=sh
   script:
     - *docker_login
@@ -1107,137 +1248,22 @@ build-sandbox-docker-image:
                           --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
                           --build-arg "BASE_IMAGE=$RUNTIME_IMAGE_UBUNTU_LTS" .
 
-###############################################
-# Configuration for the runtime-analysis stage#
-###############################################
-
-#################### Ubuntu ###################
-
-.ubuntu-test-base:
-  stage: runtime-analysis
-  tags:
-    - docker
-  variables:
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-  script:
-    - *run-tests
-  artifacts:
-    reports:
-      junit: temp/*.xml
-
-ubuntu-lts-debug-test:
-  extends:
-    - .ubuntu-test-base
-    - .ubuntu-lts-debug-settings
-  variables:
-    MEM_ANALYSIS_TOOL: "none"
-  needs: [ubuntu-lts-debug]
-
-ubuntu-lts-debug-without-castor-test: # Can't use the ubuntu-test-base template (anchor) job because the pepCastorUnitTests executable is not available
-  extends: .ubuntu-lts-debug-settings
-  variables:
-    MEM_ANALYSIS_TOOL: "none"
-    TESTS: "$UNIT_TESTS_BASE"
-  needs: [ubuntu-lts-debug-without-castor]
-  stage: runtime-analysis
-  tags:
-    - docker
-  script:
-    - *run-tests
-  artifacts:
-    reports:
-      junit: temp/*.xml
-
-ubuntu-lts-release-test:
-  extends:
-    - .ubuntu-test-base
-    - .ubuntu-lts-release-settings
-  variables:
-    MEM_ANALYSIS_TOOL: "valgrind"
-  needs: [ubuntu-lts-release]
-
-ubuntu-rolling-debug-test:
-  extends:
-    - .ubuntu-test-base
-    - .ubuntu-rolling-debug-settings
-  variables:
-    MEM_ANALYSIS_TOOL: "none"
-  needs: [ubuntu-rolling-debug]
-
-ubuntu-rolling-release-test:
-  extends:
-    - .ubuntu-test-base
-    - .ubuntu-rolling-release-settings
-  variables:
-    MEM_ANALYSIS_TOOL: "none"
-  needs: [ubuntu-rolling-release]
-
-#################### Windows ##################
-
-windows-test:
-  stage: runtime-analysis
-  variables:
-    MEM_ANALYSIS_TOOL: "none"
-    TESTS: >-
-      $UNIT_TESTS_BASE
-      $UNIT_TESTS_CASTOR
-  tags:
-    # Do not run in parallel with other tests, as we may bind to static ports.
-    # May still run in parallel with build jobs.
-    - windows-sequential
-  needs: [windows-all-targets]
-  script:
-    - *run-tests-windows
-  artifacts:
-    reports:
-      junit: temp/*.xml
-
-#################### MacOS ####################
-
-.macos-test-base:
-  stage: runtime-analysis
-  variables:
-    MEM_ANALYSIS_TOOL: "leaks"
-    TESTS: "$UNIT_TESTS_BASE"
-  script:
-    - *run-tests
-  artifacts:
-    reports:
-      junit: temp/*.xml
-
-macos-x86-test:
-  extends:
-    - .macos-test-base
-  tags:
-    - macos-intel
-  needs: [macos-all-targets-x86]
-
-macos-arm-test:
-  extends:
-    - .macos-test-base
-  tags:
-    - macos-arm64
-  needs: [macos-all-targets-arm]
-
-#################### Docker ####################
-
 # We also test directly in services image to try to make sure
 # executables don't depend on something in the builder image
-pep-services-image-test:
-  stage: runtime-analysis
+test-pep-services-image:
+  stage: build
   extends: .dind
   variables:
     TESTS: >-
       $UNIT_TESTS_BASE
+      $UNIT_TESTS_SERVER
       $UNIT_TESTS_CASTOR
   image: "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST"
   needs:
-    - job: build-docker-images
+    - job: docker-images
       artifacts: false
     # Use tests in $STAGING_DIRECTORY from artifacts
-    - ubuntu-lts-release
+    - ubuntu-lts-release-$[[ inputs.autolinting ]]
   #language=sh
   script:
     # First make sure included apps like pepcli work
@@ -1252,50 +1278,12 @@ pep-services-image-test:
     reports:
       junit: test-results/*.xml
 
-##########################################
-# Configuration for the integration stage#
-##########################################
-
-#################### Windows ####################
-
-windows-local-integration:
-  stage: integration
-  tags:
-    - windows-sequential
-  needs:
-    - windows-all-targets
-  script:
-    - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
-
-#################### MacOS ####################
-
-.macos-local-integration-base:
-  stage: integration
-  script:
-    - ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"
-
-macos-local-integration-x86:
-  extends: .macos-local-integration-base
-  tags:
-    - macos-intel
-  needs:
-    - macos-all-targets-x86
-
-macos-local-integration-arm:
-  extends: .macos-local-integration-base
-  tags:
-    - macos-arm64
-  needs:
-    - macos-all-targets-arm
-
-#################### Docker ####################
-
-docker-integration:
-  stage: integration
+test-docker-integration:
+  stage: build
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
-    - job: build-docker-images
+    - job: docker-images
       artifacts: false
   script:
     - *docker_login
@@ -1309,12 +1297,12 @@ docker-integration:
     paths:
       - ./integration_data
 
-docker-integration-on-base-data:
-  stage: integration
+test-docker-integration-on-base-data:
+  stage: build
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
-    - job: build-docker-images
+    - job: docker-images
       artifacts: false
   script:
     - *docker_login
@@ -1352,27 +1340,25 @@ upload-wix-library:
             --upload-file "$BUILD_DIRECTORY/wix/pepBinaries.wixlib"
             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/wixlibrary/${CI_COMMIT_SHA}/pepBinaries.wixlib"'
 
-upload-macos-client-x86:
+upload-macos-client:
   extends: .upload-curl-base
-  needs: [macos-client-x86]
+  parallel:
+    matrix:
+      - ARCH: [x86_64, arm64]
+  needs:
+    - job: macos-client
+      parallel:
+        matrix:
+          - ARCH: ['$[[ matrix.ARCH ]]']
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
-            --upload-file "$BUILD_DIRECTORY/macOS_x86_64_bins.zip"
-            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/macos-x86-bins/${CI_COMMIT_SHA}/macOS_x86_64_bins.zip"'
-
-upload-macos-client-arm:
-  extends: .upload-curl-base
-  needs: [macos-client-arm]
-  script:
-    - 'curl --no-progress-meter --fail
-            --header "JOB-TOKEN: $CI_JOB_TOKEN"
-            --upload-file "$BUILD_DIRECTORY/macOS_arm64_bins.zip"
-            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/macos-arm-bins/${CI_COMMIT_SHA}/macOS_arm64_bins.zip"'
+            --upload-file "$BUILD_DIRECTORY/macOS_${ARCH}_bins.zip"
+            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/macos-${ARCH}-bins/${CI_COMMIT_SHA}/macOS_${ARCH}_bins.zip"'
 
 upload-flatpak:
   extends: .upload-curl-base
-  needs: [build-flatpak]
+  needs: [flatpak]
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
@@ -1380,25 +1366,40 @@ upload-flatpak:
             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/flatpak/${CI_COMMIT_SHA}/pep.flatpak"'
 
 retag-pep-docker-images:
-  extends: .upload-base
-  image: docker
+  extends:
+    - .upload-base
+    - .dind-small
   needs:
-    - job: pep-services-image-test
+    - job: test-pep-services-image
       artifacts: false
-    - job: docker-integration
+    - job: test-docker-integration
       artifacts: false
-    - job: docker-integration-on-base-data
+    - job: test-docker-integration-on-base-data
       artifacts: false
   #language=sh
   script:
     - *docker_login
-    - docker buildx imagetools create "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
-    - docker buildx imagetools create "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
+    - docker image pull "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST"
+    - docker image pull "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST"
+    - docker image tag  "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST" "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
+    - docker image tag  "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST" "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
+    - docker image push "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
 
 ##########################################
 # Configuration for the publish stage    #
@@ -1413,11 +1414,11 @@ publish-sandbox-image:
   needs:
     - job: build-sandbox-docker-image
       artifacts: false
-    - job: pep-services-image-test
+    - job: test-pep-services-image
       artifacts: false
-    - job: docker-integration
+    - job: test-docker-integration
       artifacts: false
-    - job: docker-integration-on-base-data
+    - job: test-docker-integration-on-base-data
       artifacts: false
   #language=sh
   script:

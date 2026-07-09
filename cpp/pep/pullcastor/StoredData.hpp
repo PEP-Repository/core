@@ -17,7 +17,7 @@ class StoredData : public std::enable_shared_from_this<StoredData>, public Share
 
 private:
   using ParticipantsByColumnBoundParticipantId = std::unordered_map<ColumnBoundParticipantId, std::shared_ptr<PepParticipant>>;
-  std::shared_ptr<ParticipantsByColumnBoundParticipantId> mParticipants;
+  std::shared_ptr<ParticipantsByColumnBoundParticipantId> participants_;
 
   explicit StoredData(std::shared_ptr<ParticipantsByColumnBoundParticipantId> participants);
 

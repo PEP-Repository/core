@@ -16,38 +16,38 @@ namespace pep::cli {
 
 class ParticipantIdentifier {
 private:
-  PolymorphicPseudonym mPolymorphic;
-  LocalPseudonym mLocal;
+  PolymorphicPseudonym polymorphic_;
+  LocalPseudonym local_;
 
 public:
   ParticipantIdentifier(const PolymorphicPseudonym& polymorphic, const LocalPseudonym& local);
 
-  const PolymorphicPseudonym& getPolymorphicPseudonym() const noexcept { return mPolymorphic; }
-  const LocalPseudonym& getLocalPseudonym() const noexcept { return mLocal; }
+  const PolymorphicPseudonym& getPolymorphicPseudonym() const noexcept { return polymorphic_; }
+  const LocalPseudonym& getLocalPseudonym() const noexcept { return local_; }
 
-  bool operator ==(const ParticipantIdentifier& other) const { return mLocal == other.mLocal; }
+  bool operator ==(const ParticipantIdentifier& other) const { return local_ == other.local_; }
   bool operator !=(const ParticipantIdentifier& other) const { return !(*this == other); }
 };
 
 class RecordDescriptor {
 private:
-  ParticipantIdentifier mParticipant;
-  std::string mColumn;
-  Timestamp mBlindingTimestamp;
-  std::optional<Timestamp> mPayloadBlindingTimestamp;
-  std::map<std::string, MetadataXEntry> mExtra;
+  ParticipantIdentifier participant_;
+  std::string column_;
+  Timestamp blindingTimestamp_;
+  std::optional<Timestamp> payloadBlindingTimestamp_;
+  std::map<std::string, MetadataXEntry> extra_;
 
 public:
   RecordDescriptor(const ParticipantIdentifier& participant, const std::string& column, const Timestamp& blindingTimestamp, const std::optional<Timestamp>& payloadBlindingTimestamp = std::nullopt);
   RecordDescriptor(const ParticipantIdentifier& participant, const std::string& column, const Timestamp& blindingTimestamp, const std::map<std::string, MetadataXEntry>& extra, const std::optional<Timestamp>& payloadBlindingTimestamp = std::nullopt);
 
-  const ParticipantIdentifier& getParticipant() const noexcept { return mParticipant; }
-  const std::string& getColumn() const noexcept { return mColumn; }
-  const Timestamp& getBlindingTimestamp() const noexcept { return mBlindingTimestamp; }
+  const ParticipantIdentifier& getParticipant() const noexcept { return participant_; }
+  const std::string& getColumn() const noexcept { return column_; }
+  const Timestamp& getBlindingTimestamp() const noexcept { return blindingTimestamp_; }
   const Timestamp& getPayloadBlindingTimestamp() const noexcept;
 
   SafeFileName getFileName(bool includingExtension = true) const noexcept;
-  const std::map<std::string, MetadataXEntry>& getExtra() const noexcept { return mExtra; }
+  const std::map<std::string, MetadataXEntry>& getExtra() const noexcept { return extra_; }
 
   bool operator ==(const RecordDescriptor& other) const;
 };
@@ -70,10 +70,10 @@ private:
     RecordState record;
   };
 
-  std::shared_ptr<GlobalConfiguration> mGlobalConfig;
-  SafePath mDownloadDirectory;
-  std::shared_ptr<std::unordered_map<SafeRelativeFilePath, Snapshot>> mSnapshotsByRelativePath = std::make_shared<decltype(mSnapshotsByRelativePath)::element_type>(); // Heap-allocated so it can be updated from const methods
-  std::shared_ptr<std::unordered_map<RecordDescriptor, SafeRelativeFilePath>> mRelativePathsByDescriptor = std::make_shared<decltype(mRelativePathsByDescriptor)::element_type>(); // Heap-allocated so it can be updated from const methods
+  std::shared_ptr<GlobalConfiguration> globalConfig_;
+  SafePath downloadDirectory_;
+  std::shared_ptr<std::unordered_map<SafeRelativeFilePath, Snapshot>> snapshotsByRelativePath_ = std::make_shared<decltype(snapshotsByRelativePath_)::element_type>(); // Heap-allocated so it can be updated from const methods
+  std::shared_ptr<std::unordered_map<RecordDescriptor, SafeRelativeFilePath>> relativePathsByDescriptor_ = std::make_shared<decltype(relativePathsByDescriptor_)::element_type>(); // Heap-allocated so it can be updated from const methods
 
   SafePath provideDirectory() const;
   SafePath provideParticipantDirectory(const LocalPseudonym& localPseudonym) const;

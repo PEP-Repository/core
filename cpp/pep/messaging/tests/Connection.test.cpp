@@ -7,7 +7,7 @@
 
 namespace {
 
-void TestConnectionBasics(TestServerFactory& factory) {
+[[maybe_unused]] void TestConnectionBasics(TestServerFactory& factory) {
   boost::asio::io_context io_context;
   pep::messaging::RequestHandler handler;
 
@@ -46,32 +46,35 @@ void TestConnectionBasics(TestServerFactory& factory) {
   ASSERT_EQ(server.use_count(), 1U) << "Messaging server not discardable (due to circular dependency?)";
 }
 
-} // End anonymous namespace
-
 TEST(Connection, Basics) {
+#ifdef __EMSCRIPTEN__
+  GTEST_SKIP() << "Server not supported on Emscripten";
+#else
+
   TcpTestServerFactory tcp;
   TestConnectionBasics(tcp);
 
   TlsTestServerFactory tls;
   TestConnectionBasics(tls);
+#endif
 }
 
 TEST(Connection, ClientReconnects) {
-  constexpr uint16_t PORT = 2022; // TODO: support port randomization?
+  constexpr uint16_t Port = 2022; // TODO: support port randomization?
 
-  constexpr auto MAX_ATTEMPTS = 4U;
+  constexpr auto MaxAttempts = 4U;
   auto attempts = pep::MakeSharedCopy(0U);
 
   boost::asio::io_context io_context;
   auto client = pep::messaging::Node::Create(
-    pep::networking::Tcp::ClientParameters(io_context, pep::EndPoint("localhost", PORT)),
+    pep::networking::Tcp::ClientParameters(io_context, pep::EndPoint("localhost", Port)),
     pep::networking::Client::ReconnectParameters(std::chrono::milliseconds(200), std::chrono::milliseconds(1000)));
 
   client->start()
     .subscribe(
       [client, attempts](const pep::messaging::Connection::Attempt::Result& result) {
         ASSERT_FALSE(result) << "Client connection attempt succeeded";
-        if (++*attempts == MAX_ATTEMPTS) {
+        if (++*attempts == MaxAttempts) {
           client->shutdown();
         }
       },
@@ -83,7 +86,9 @@ TEST(Connection, ClientReconnects) {
     );
 
   ASSERT_NO_FATAL_FAILURE(io_context.run());
-  ASSERT_EQ(*attempts, MAX_ATTEMPTS) << "Client didn't make " << MAX_ATTEMPTS << " connection attempt(s)";
+  ASSERT_EQ(*attempts, MaxAttempts) << "Client didn't make " << MaxAttempts << " connection attempt(s)";
 
   ASSERT_EQ(client.use_count(), 1U) << "Messaging client not discardable (due to circular dependency?)";
 }
+
+} // End anonymous namespace

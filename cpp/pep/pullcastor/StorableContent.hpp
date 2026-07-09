@@ -14,9 +14,9 @@ class StorableColumnContent : public std::enable_shared_from_this<StorableColumn
   friend class SharedConstructor<StorableColumnContent>;
 
 private:
-  std::string mColumn;
-  std::shared_ptr<CellContent> mContent;
-  std::string mFileExtension;
+  std::string column_;
+  std::shared_ptr<CellContent> content_;
+  std::string fileExtension_;
 
   StorableColumnContent(const std::string& column, std::shared_ptr<CellContent> content, const std::string& fileExtension);
 
@@ -25,19 +25,19 @@ public:
     * \brief Produces the column name.
     * \return The column name.
     */
-  inline const std::string& getColumn() const noexcept { return mColumn; }
+  inline const std::string& getColumn() const noexcept { return column_; }
 
   /*!
     * \brief Produces the cell content.
     * \return A CellContent instance.
     */
-  inline std::shared_ptr<const CellContent> getContent() const noexcept { return mContent; }
+  inline std::shared_ptr<const CellContent> getContent() const noexcept { return content_; }
 
   /*!
     * \brief Produces the file extension for this column content.
     * \return The file extension for this column content.
     */
-  inline const std::string& getFileExtension() const noexcept { return mFileExtension; }
+  inline const std::string& getFileExtension() const noexcept { return fileExtension_; }
 
   /*!
     * \brief Produces (an observable emitting a single) StorableColumnContent with JsonCellContent containing the specified FieldValue values.
@@ -60,10 +60,10 @@ class StorableCellContent : public SharedConstructor<StorableCellContent> {
   friend class SharedConstructor<StorableCellContent>;
 
 private:
-  ColumnBoundParticipantId mCbpId;
-  std::string mColumn;
-  std::shared_ptr<const CellContent> mContent;
-  std::string mFileExtension;
+  ColumnBoundParticipantId cbpId_;
+  std::string column_;
+  std::shared_ptr<const CellContent> content_;
+  std::string fileExtension_;
 
   StorableCellContent(const ColumnBoundParticipantId& cbrId, const std::string& column, std::shared_ptr<const CellContent> content, const std::string& fileExtension);
 
@@ -72,25 +72,25 @@ public:
     * \brief Produces the column-bound participant ID.
     * \return The Castor participant ID associated with the PEP (SP) column that the ID applies to.
     */
-  inline const ColumnBoundParticipantId& getColumnBoundParticipantId() const noexcept { return mCbpId; }
+  inline const ColumnBoundParticipantId& getColumnBoundParticipantId() const noexcept { return cbpId_; }
 
   /*!
     * \brief Produces the column name.
     * \return The column name.
     */
-  inline const std::string& getColumn() const noexcept { return mColumn; }
+  inline const std::string& getColumn() const noexcept { return column_; }
 
   /*!
     * \brief Produces the cell content.
     * \return A CellContent instance.
     */
-  inline std::shared_ptr<const CellContent> getContent() const noexcept { return mContent; }
+  inline std::shared_ptr<const CellContent> getContent() const noexcept { return content_; }
 
   /*!
     * \brief Produces the file extension for this content.
     * \return The file extension for this content.
     */
-  inline const std::string& getFileExtension() const noexcept { return mFileExtension; }
+  inline const std::string& getFileExtension() const noexcept { return fileExtension_; }
 };
 
 }

@@ -16,34 +16,34 @@ public:
   class Builder : public CoreClient::Builder {
   public:
     const AsymmetricKey& getPublicKeyShadowAdministration() const {
-      return publicKeyShadowAdministration;
+      return publicKeyShadowAdministration_;
     }
     Builder& setPublicKeyShadowAdministration(const AsymmetricKey& publicKeyShadowAdministration) {
-      Builder::publicKeyShadowAdministration = publicKeyShadowAdministration;
+      publicKeyShadowAdministration_ = publicKeyShadowAdministration;
       return *this;
     }
 
     const EndPoint& getKeyServerEndPoint() const {
-      return keyServerEndPoint;
+      return keyServerEndPoint_;
     }
     Builder& setKeyServerEndPoint(const EndPoint& keyServerEndPoint) {
-      Builder::keyServerEndPoint = keyServerEndPoint;
+      keyServerEndPoint_ = keyServerEndPoint;
       return *this;
     }
 
     const EndPoint& getAuthserverEndPoint() const {
-      return authserverEndPoint;
+      return authserverEndPoint_;
     }
     Builder& setAuthserverEndPoint(const EndPoint& authserverEndPoint) {
-      Builder::authserverEndPoint = authserverEndPoint;
+      authserverEndPoint_ = authserverEndPoint;
       return *this;
     }
 
     const EndPoint& getRegistrationServerEndPoint() const {
-      return registrationServerEndPoint;
+      return registrationServerEndPoint_;
     }
     Builder& setRegistrationServerEndPoint(const EndPoint& registrationServerEndPoint) {
-      Builder::registrationServerEndPoint = registrationServerEndPoint;
+      registrationServerEndPoint_ = registrationServerEndPoint;
       return *this;
     }
 
@@ -58,10 +58,10 @@ public:
     }
 
   private:
-    AsymmetricKey publicKeyShadowAdministration;
-    EndPoint keyServerEndPoint;
-    EndPoint authserverEndPoint;
-    EndPoint registrationServerEndPoint;
+    AsymmetricKey publicKeyShadowAdministration_;
+    EndPoint keyServerEndPoint_;
+    EndPoint authserverEndPoint_;
+    EndPoint registrationServerEndPoint_;
   };
 
   /*!
@@ -109,17 +109,17 @@ public:
 
   static std::shared_ptr<Client> OpenClient(const Configuration& config,
     std::shared_ptr<boost::asio::io_context> io_context,
-    bool persistKeysFile = DEFAULT_PERSIST_KEYS_FILE);
+    bool persistKeysFile = DefaultPersistKeysFile);
 
 private:
-  const AsymmetricKey publicKeyShadowAdministration;
-  const EndPoint keyServerEndPoint;
-  const EndPoint authserverEndPoint;
-  const EndPoint registrationServerEndPoint;
+  const AsymmetricKey publicKeyShadowAdministration_;
+  const EndPoint keyServerEndPoint_;
+  const EndPoint authserverEndPoint_;
+  const EndPoint registrationServerEndPoint_;
 
-  std::shared_ptr<KeyServerProxy> keyServerProxy;
-  std::shared_ptr<AuthServerProxy> authServerProxy;
-  std::shared_ptr<RegistrationServerProxy> registrationServerProxy;
+  std::shared_ptr<KeyServerProxy> keyServerProxy_;
+  std::shared_ptr<AuthServerProxy> authServerProxy_;
+  std::shared_ptr<RegistrationServerProxy> registrationServerProxy_;
 
   Client(const Builder& builder);
 

@@ -36,13 +36,13 @@ public:
     void check() const;
 
   private:
-    EndPoint accessManagerEndpoint;
-    std::shared_ptr<messaging::ServerConnection> accessManager;
-    std::shared_ptr<const X509Identity> signingIdentity;
-    std::chrono::seconds tokenExpiration = std::chrono::seconds::zero();
-    std::string oauthTokenSecret;
-    std::optional<std::filesystem::path> storageFile;
-    std::shared_ptr<X509RootCertificates> rootCertificates;
+    EndPoint accessManagerEndpoint_;
+    std::shared_ptr<messaging::ServerConnection> accessManager_;
+    std::shared_ptr<const X509Identity> signingIdentity_;
+    std::chrono::seconds tokenExpiration_ = std::chrono::seconds::zero();
+    std::string oauthTokenSecret_;
+    std::optional<std::filesystem::path> storageFile_;
+    std::shared_ptr<X509RootCertificates> rootCertificates_;
   };
 
 public:
@@ -74,9 +74,9 @@ public:
 private:
   void migrateDatabase(const std::filesystem::path& storageFile);
 
-  std::shared_ptr<AccessManagerProxy> mAccessManager;
-  std::chrono::seconds mTokenExpiration;
-  std::string mOauthTokenSecret;
+  std::shared_ptr<AccessManagerProxy> accessManager_;
+  std::chrono::seconds tokenExpiration_;
+  std::string oauthTokenSecret_;
 };
 
 }
