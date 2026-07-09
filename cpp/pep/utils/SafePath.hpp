@@ -11,7 +11,7 @@ class SafeFileName;
 class SafePath {
   std::filesystem::path inner_;
 
-  void finalPathCheck() const;
+  void ensureNonEmpty() const;
 
 protected:
   static constexpr struct ConstructFromTrustedTag {} ConstructFromTrusted{};
@@ -36,10 +36,10 @@ public:
   SafePath parentDirectory() const;
 
   /// \throws std::invalid_argument if empty.
-  const std::filesystem::path& path() const & { finalPathCheck(); return uncheckedPath(); }
+  const std::filesystem::path& path() const & { ensureNonEmpty(); return uncheckedPath(); }
 
   /// \throws std::invalid_argument if empty.
-  std::filesystem::path path() && { finalPathCheck(); return std::move(*this).uncheckedPath(); }
+  std::filesystem::path path() && { ensureNonEmpty(); return std::move(*this).uncheckedPath(); }
 
   /// \throws std::invalid_argument if empty.
   operator const std::filesystem::path&() const & { return path(); }

@@ -5,7 +5,7 @@
 
 namespace pep {
 
-void SafePath::finalPathCheck() const {
+void SafePath::ensureNonEmpty() const {
   if (uncheckedPath().empty()) {
     throw std::invalid_argument("Encountered empty path");
   }
