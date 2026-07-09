@@ -70,8 +70,8 @@ private:
   std::unordered_map<std::type_index, std::any> values_;
 
   template <typename TTagged> static std::type_index KeyFor() noexcept;
-  template <typename TTagged, typename TValues> static auto ConstAgnosticGet(TValues& values);
-  template <typename TTagged, typename TValues> static auto ConstAgnosticGetValue(TValues& values);
+  template <typename TTagged, typename TValues> static CopyConstness<TTagged, TValues>* ConstAgnosticGet(TValues& values);
+  template <typename TTagged, typename TValues> static CopyConstness<typename TTagged::value_type, TValues>* ConstAgnosticGetValue(TValues& values);
 
 public:
   /// @brief Retrieves the TaggedValue associated with the specified tag
@@ -138,7 +138,7 @@ template <typename TTagged> void TaggedValues::add(TTagged value) {
 /// @return The address of the specified TaggedValue, or NULL if the instance does not contain the specified TaggedValue
 /// @remark Less code than implementing the TaggedValues::get overloads individually
 template <typename TTagged, typename TValues>
-auto TaggedValues::ConstAgnosticGet(TValues& values) {
+CopyConstness<TTagged, TValues>* TaggedValues::ConstAgnosticGet(TValues& values) {
   static_assert(std::is_same_v<decltype(TaggedValues::values_), std::remove_const_t<TValues>>, "Parameter must be (possibly const qualified) TaggedValues::values_");
 
   using Value = CopyConstness<TTagged, TValues>;
@@ -160,7 +160,7 @@ auto TaggedValues::ConstAgnosticGet(TValues& values) {
 /// @param values The values_ member
 /// @return The address of the (payload, i.e. value_type) value of the specified TaggedValue, or NULL if the instance does not contain the specified TaggedValue
 template <typename TTagged, typename TValues>
-auto TaggedValues::ConstAgnosticGetValue(TValues& values) {
+CopyConstness<typename TTagged::value_type, TValues>* TaggedValues::ConstAgnosticGetValue(TValues& values) {
   auto tagged = ConstAgnosticGet<TTagged>(values); // (Also) enforces that TTagged is a supported type, producing a compiler error if not
 
   using Value = CopyConstness<typename TTagged::value_type, TValues>;
