@@ -373,7 +373,7 @@ TEST_F(AccessManagerStorageTest, createColumn) {
     PEP_EXPECT_THROWS_MESSAGE(
       storage->createColumn(invalidName),
       pep::Error,
-      HasSubstr("Invalid column name"));
+      HasSubstr("Invalid column name")) << "Column name '" << invalidName << "' should have been rejected";
   }
 }
 
