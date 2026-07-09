@@ -56,7 +56,7 @@ private:
 
 class XmlDateTimeParser : public TimestampParser {
 public:
-  XmlDateTimeParser() : TimestampParser{"xml date-time"} {}
+  explicit XmlDateTimeParser(std::string timeZone) : TimestampParser{"xml date-time"}, timeZone_{std::move(timeZone)} {}
 
 protected:
   Timestamp parseImpl(std::string_view str) override {
@@ -77,9 +77,16 @@ protected:
         throw std::invalid_argument(std::format("Unparsed data remains: {}", remaining));
       }
     }
+    if (parsed.zone() == nullptr) {
+      auto offset = blt::posix_time_zone(timeZone_).base_utc_offset();
+      parsed+=offset;
+    }
 
     return TimestampFromBoostPtime(parsed.utc_time());
   }
+
+private:
+  std::string timeZone_;
 };
 
 class YyyyMmDdDateParser final : public TimestampParser {
@@ -168,12 +175,12 @@ std::string TimestampToXmlDateTime(Timestamp time) {
   return std::move(ss).str();
 }
 
-Timestamp TimestampFromXmlDataTime(std::string_view xml) {
-  return XmlDateTimeParser{}.parse(xml);
-}
-
 Timestamp TimeZone::timestampFromYyyyMmDd(std::string_view yyyyMmDd) const {
   return YyyyMmDdDateParser{str_}.parse(yyyyMmDd);
+}
+
+Timestamp TimeZone::timestampFromXmlDateTime(std::string_view xml) const {
+  return XmlDateTimeParser{str_}.parse(xml);
 }
 
 
