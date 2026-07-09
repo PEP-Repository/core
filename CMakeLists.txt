@@ -272,8 +272,9 @@ if(DEFINED EMSCRIPTEN)
     list(APPEND emscripten_cli_link_flags
         -sENVIRONMENT=node
     )
-    # Use host file system (but not on Windows since it doesn't provide /dev/urandom and the likes)
-    if(NOT ${CMAKE_HOST_SYSTEM_NAME} MATCHES "Windows")
+    # Use host file system on *nix-like systems that provide /dev/urandom and the likes.
+	# See https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/2925 and https://github.com/emscripten-core/emscripten/issues/9628
+    if(CMAKE_HOST_UNIX)
       list(APPEND emscripten_cli_link_flags
           -sNODERAWFS
       )
