@@ -28,16 +28,16 @@ void Serializer<TokenBlockingTokenIdentifier>::moveIntoProtocolBuffer(
     proto::TokenBlockingTokenIdentifier& dest,
     TokenBlockingTokenIdentifier value) const {
   dest.set_subject(value.subject);
-  dest.set_usergroup(value.userGroup);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_issuedatetime(), value.issueDateTime);
+  dest.set_user_group(value.userGroup);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_issue_date_time(), value.issueDateTime);
 }
 
 TokenBlockingTokenIdentifier Serializer<TokenBlockingTokenIdentifier>::fromProtocolBuffer(
     proto::TokenBlockingTokenIdentifier&& source) const {
   return {
       .subject = std::move(*source.mutable_subject()),
-      .userGroup = std::move(*source.mutable_usergroup()),
-      .issueDateTime = Serialization::FromProtocolBuffer(std::move(*source.mutable_issuedatetime()))};
+      .userGroup = std::move(*source.mutable_user_group()),
+      .issueDateTime = Serialization::FromProtocolBuffer(std::move(*source.mutable_issue_date_time()))};
 }
 
 void Serializer<TokenBlockingBlocklistEntry>::moveIntoProtocolBuffer(
@@ -45,10 +45,10 @@ void Serializer<TokenBlockingBlocklistEntry>::moveIntoProtocolBuffer(
     TokenBlockingBlocklistEntry value) const {
   dest.set_id(value.id);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_target(), std::move(value.target));
-  dest.set_metadatanote(std::move(value.metadata.note));
-  dest.set_metadataissuer(std::move(value.metadata.issuer));
+  dest.set_metadata_note(std::move(value.metadata.note));
+  dest.set_metadata_issuer(std::move(value.metadata.issuer));
   Serialization::MoveIntoProtocolBuffer(
-      *dest.mutable_metadatacreationdatetime(),
+      *dest.mutable_metadata_creation_date_time(),
       value.metadata.creationDateTime);
 }
 
@@ -58,10 +58,10 @@ TokenBlockingBlocklistEntry Serializer<TokenBlockingBlocklistEntry>::fromProtoco
       .id = source.id(),
       .target = Serialization::FromProtocolBuffer(std::move(*source.mutable_target())),
       .metadata{
-          .note = std::move(*source.mutable_metadatanote()),
-          .issuer = std::move(*source.mutable_metadataissuer()),
+          .note = std::move(*source.mutable_metadata_note()),
+          .issuer = std::move(*source.mutable_metadata_issuer()),
           .creationDateTime =
-              Serialization::FromProtocolBuffer(std::move(*source.mutable_metadatacreationdatetime()))}};
+              Serialization::FromProtocolBuffer(std::move(*source.mutable_metadata_creation_date_time()))}};
 }
 
 void Serializer<TokenBlockingListResponse>::moveIntoProtocolBuffer(
