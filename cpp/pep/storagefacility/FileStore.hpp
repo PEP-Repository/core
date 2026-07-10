@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/utils/SafePath.hpp>
+#include <pep/utils/CheckedPath.hpp>
 #include <pep/utils/Shared.hpp>
 #include <pep/storagefacility/EntryContent.hpp>
 #include <pep/messaging/MessageSequence.hpp>
@@ -118,7 +118,7 @@ public:
     Entry(EntryChange&& source, Timestamp validFrom);
     Entry(Cell& cell, Timestamp validFrom, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
 
-    SafePath getFilePath(const std::string& extension) const;
+    CheckedPath getFilePath(const std::string& extension) const;
 
   public:
     std::unique_ptr<EntryContent> cloneContent() const;
@@ -128,7 +128,7 @@ public:
     messaging::MessageSequence readPage(size_t index);
 
     void save() const;
-    static std::shared_ptr<Entry> TryLoad(Cell& cell, const SafePath& path);
+    static std::shared_ptr<Entry> TryLoad(Cell& cell, const CheckedPath& path);
     static std::shared_ptr<Entry> Load(Cell& cell, Timestamp timestamp);
   };
 
@@ -148,7 +148,7 @@ public:
     const std::string& columnName() const noexcept { return columnName_; }
 
     EntryName entryName() const;
-    SafePath path() const;
+    CheckedPath path() const;
 
     const EntryHeaders& entryHeaders() const noexcept { return entryHeaders_; }
     void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const;
@@ -171,7 +171,7 @@ public:
     FileStore& getFileStore() const noexcept { return store_; }
     const std::string& name() const noexcept { return name_; }
 
-    SafePath path() const;
+    CheckedPath path() const;
 
     std::shared_ptr<EntryChange> createEntry(const std::string& columnName) { return EntryChange::Create(this->provideCell(columnName)); }
 
@@ -192,7 +192,7 @@ public:
   void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns = {}) const;
   void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
 
-  const SafePath& metaDir() const {
+  const CheckedPath& metaDir() const {
     return path_;
   }
 
@@ -210,7 +210,7 @@ private:
   std::map<std::string, std::set<std::string>> metadataValues_;
 
   PropertyBasedContainer<std::unique_ptr<Participant>, &Participant::name>::set participants_;
-  SafePath path_;
+  CheckedPath path_;
   std::shared_ptr<PageStore> pagestore_;
 
   const std::string& getColumnString(const std::string& value);

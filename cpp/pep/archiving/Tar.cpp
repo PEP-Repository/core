@@ -143,7 +143,7 @@ Tar::~Tar() {
 }
 
 
-void Tar::nextEntry(const SafePath& path, int64_t size) {
+void Tar::nextEntry(const CheckedPath& path, int64_t size) {
   const auto pathString = path.path().generic_string();
 
   archive_entry* entry = archive_entry_new();
@@ -206,7 +206,7 @@ void Tar::Extract(std::istream& stream, const std::filesystem::path& outputDirec
       continue;
     }
 
-    SafeRelativeFilePath entryPath(std::move(rawEntryPath));
+    CheckedRelativeFilePath entryPath(std::move(rawEntryPath));
     std::filesystem::path outpath = outputDirectory / entryPath;
     std::filesystem::create_directories(GetParentDirectory(outpath));
     std::ofstream out(

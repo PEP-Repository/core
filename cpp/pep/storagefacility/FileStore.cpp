@@ -111,7 +111,7 @@ FileStore::FileStore(
   const Configuration& pageStoreConfig,
   std::shared_ptr<boost::asio::io_context> io_context,
   std::shared_ptr<prometheus::Registry> metrics_registry)
-  : path_(SafePath::FromTrusted(metadatapath)),
+  : path_(CheckedPath::FromTrusted(metadatapath)),
   pagestore_(PageStore::Create(io_context, metrics_registry, pageStoreConfig))
 {
   // throws when an error occurs while creating any of the given directories in the supplied path
@@ -159,7 +159,7 @@ FileStore::Cell::Cell(Participant& participant, const std::string& columnName, b
   : participant_(participant), columnName_(participant.getFileStore().getColumnString(columnName)) {
   if (load) {
     for (const auto& p : std::filesystem::directory_iterator(this->path())) {
-      auto entry = Entry::TryLoad(*this, SafePath::FromTrusted(p.path()));
+      auto entry = Entry::TryLoad(*this, CheckedPath::FromTrusted(p.path()));
       if (entry != nullptr) {
         this->addEntry(entry);
       }
@@ -259,9 +259,9 @@ FileStore::EntryChange::EntryChange(const Entry& overwrites)
   : EntryBase(overwrites.getCell(), GenerateChecksumSubstitute(), overwrites.cloneContent()), lastEntryValidFrom_(overwrites.getValidFrom()) {
 }
 
-SafePath FileStore::Entry::getFilePath(const std::string& extension) const {
+CheckedPath FileStore::Entry::getFilePath(const std::string& extension) const {
   auto filename = std::to_string(TicksSinceEpoch<milliseconds>(this->getValidFrom())) + extension;
-  return this->getCell().path() / SafeFileName(filename);
+  return this->getCell().path() / CheckedFileName(filename);
 }
 
 FileStore::EntryBase::EntryBase(Cell& cell, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content)
@@ -407,7 +407,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
   // See https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file.
   // So basically, we should not run the production StorageFacility on Windows with the current code.
   auto filename = std::to_string(TicksSinceEpoch<milliseconds>(timestamp)) + FileExtension;
-  auto result = TryLoad(cell, cell.path() / SafeFileName(filename));
+  auto result = TryLoad(cell, cell.path() / CheckedFileName(filename));
   if (result == nullptr) {
     throw std::runtime_error("Could not load entry for cell " + cell.entryName().string()
         + " at timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(timestamp)));
@@ -415,8 +415,8 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
   return result;
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const SafePath& safePath) {
-  const std::filesystem::path& path = safePath;
+std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedPath& checkedPath) {
+  const std::filesystem::path& path = checkedPath;
   if (!std::filesystem::is_regular_file(path) || path.extension().string() != FileExtension) {
     return nullptr;
   }
@@ -510,8 +510,8 @@ EntryName FileStore::Cell::entryName() const {
   return EntryName(this->getParticipant().name(), columnName_);
 }
 
-SafePath FileStore::Cell::path() const {
-  return this->getParticipant().path() / SafeFileName(columnName_);
+CheckedPath FileStore::Cell::path() const {
+  return this->getParticipant().path() / CheckedFileName(columnName_);
 }
 
 void FileStore::Cell::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const {
@@ -556,8 +556,8 @@ FileStore::Cell& FileStore::Participant::provideCell(const std::string& columnNa
   return **cells_.emplace(std::make_unique<Cell>(*this, columnName)).first;
 }
 
-SafePath FileStore::Participant::path() const {
-  return this->getFileStore().metaDir() / SafeFileName(name_);
+CheckedPath FileStore::Participant::path() const {
+  return this->getFileStore().metaDir() / CheckedFileName(name_);
 }
 
 void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {

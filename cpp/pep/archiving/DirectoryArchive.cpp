@@ -1,6 +1,6 @@
 #include <pep/archiving/DirectoryArchive.hpp>
 
-#include <pep/utils/SafePath.hpp>
+#include <pep/utils/CheckedPath.hpp>
 
 namespace pep {
 
@@ -11,7 +11,7 @@ DirectoryArchive::DirectoryArchive(const std::filesystem::path& directoryPath) :
   std::filesystem::create_directory(directoryPath);
 }
 
-void DirectoryArchive::nextEntry(const SafePath& path, int64_t size) {
+void DirectoryArchive::nextEntry(const CheckedPath& path, int64_t size) {
   if (currentFile_.is_open()) {
     currentFile_.close();
   }

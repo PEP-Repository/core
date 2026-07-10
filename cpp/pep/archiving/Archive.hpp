@@ -4,14 +4,14 @@
 #include <memory>
 
 #include <pep/archiving/Pseudonymiser.hpp>
-#include <pep/utils/SafePath.hpp>
+#include <pep/utils/CheckedPath.hpp>
 
 namespace pep {
 
 class Archive {
 public:
   virtual ~Archive() = default;
-  virtual void nextEntry(const SafePath& path, int64_t size) = 0;
+  virtual void nextEntry(const CheckedPath& path, int64_t size) = 0;
   virtual void writeData(const char* c, const std::streamsize l) = 0;
   virtual void writeData(std::string_view data) = 0;
   virtual void closeEntry() = 0;

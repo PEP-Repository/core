@@ -23,7 +23,7 @@ void WriteToArchive(const std::filesystem::path& baseDir, std::shared_ptr<Archiv
     }
     auto in = std::ifstream(currentPath, std::ios::binary);
 
-    SafeRelativeFilePath processedRelativePath;
+    CheckedRelativeFilePath processedRelativePath;
     auto rawRelativePath = currentPath.lexically_relative(baseDir);
     if (pseudonymiser.has_value()) {
       for (const std::filesystem::path& pathSegment : rawRelativePath) {
@@ -31,10 +31,10 @@ void WriteToArchive(const std::filesystem::path& baseDir, std::shared_ptr<Archiv
         std::ostringstream pathSegmentStreamOut;
         const auto writeToFilename = [&](const char* c, const std::streamsize l) { pathSegmentStreamOut.write(c, l); };
         pseudonymiser->pseudonymise(pathSegmentStreamIn, writeToFilename);
-        processedRelativePath = processedRelativePath / SafeFileName(std::move(pathSegmentStreamOut).str());
+        processedRelativePath = processedRelativePath / CheckedFileName(std::move(pathSegmentStreamOut).str());
       }
     } else {
-      processedRelativePath = SafeRelativeFilePath(std::move(rawRelativePath));
+      processedRelativePath = CheckedRelativeFilePath(std::move(rawRelativePath));
     }
 
     archive->nextEntry(processedRelativePath, static_cast<int64_t>(std::filesystem::file_size(currentPath)));
