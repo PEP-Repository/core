@@ -23,7 +23,7 @@ const std::streamsize DISK_IO_BUFFERSIZE{ 4096 };
 
 const std::array<std::string, 28> globalWindowsDeviceNames{
   "CON", "PRN", "AUX", "NUL",
-  // Also include ISO/IEC 8859-1 superscript numbers '\xb9' etc.
+  // Also include ISO/IEC 8859-1 U+00B9 (superscript 1) and U+00B2 (superscript 2) and U+00B3 (superscript 3)
   "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "COM\xb9", "COM\xb2", "COM\xb3",
   "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9", "LPT\xb9", "LPT\xb2", "LPT\xb3"
 };
