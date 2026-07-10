@@ -26,7 +26,7 @@ void IstreamToDestination(std::istream& in, std::function<void(const char* c, co
 
 /// Returns if \p path is a relative path not outside the reference folder.
 /// E.g. when normalized it does not contain "..".
-/// Also checks IsValidPlatformFileName for each non-empty non-dot segment.
+/// Also checks IsValidPlatformFileName for each non-empty non-dot element.
 /// Does not resolve symlinks.
 /// \param allowDirectories Disallow "." or trailing "/"
 [[nodiscard]] bool IsLexicallyRelativeChildPath(const std::filesystem::path& path, bool allowDirectories = true);
@@ -36,7 +36,7 @@ void IstreamToDestination(std::istream& in, std::function<void(const char* c, co
 
 /// \brief Returns parent directory path.
 /// \details Returns parent directory path. This is different from \c std::filesystem::path::parent_path,
-///   which just strips the last segment, even if it is empty or a dot.
+///   which just strips the last element, even if it is empty or a dot.
 ///   Does not make path absolute. Result may contain "." or "..".
 /// \throws std::invalid_argument if the relative path element is empty.
 std::filesystem::path GetParentDirectory(const std::filesystem::path& path);

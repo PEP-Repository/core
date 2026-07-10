@@ -144,8 +144,8 @@ bool IsLexicallyRelativeChildPath(const std::filesystem::path& path, bool allowD
     return false;
   }
   using namespace std::ranges;
-  if (!all_of(path | views::filter([] (const auto& segment) { return !segment.empty() && segment != "." && segment != ".."; }),
-        [] (const auto& segment) { return IsValidPlatformFileName(segment.string()); })) {
+  if (!all_of(path | views::filter([] (const auto& element) { return !element.empty() && element != "." && element != ".."; }),
+        [] (const auto& element) { return IsValidPlatformFileName(element.string()); })) {
     return false;
   }
   const auto normalPath = path.lexically_normal();
@@ -188,7 +188,7 @@ std::filesystem::path GetParentDirectory(const std::filesystem::path& path) {
   } else if (filename == "..") {
     normalPath /= "..";
   } else {
-    // If not "." or "..", it's safe to strip off the last component
+    // If not "." or "..", it's safe to strip off the last element
     // (we already know it's also not empty, see above)
     normalPath = normalPath.parent_path();
     // Prevent returning empty path

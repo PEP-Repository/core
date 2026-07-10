@@ -55,7 +55,7 @@ public:
   /// \note Either side may be empty, resulting in a trailing slash or no-op.
   [[nodiscard]] CheckedPath operator/(const CheckedPath& rhs) const { return FromTrusted(uncheckedPath() / rhs.uncheckedPath()); }
 
-  /// \throws std::invalid_argument if \p suffix contains multiple segments or the result does not have a valid filename for this platform.
+  /// \throws std::invalid_argument if \p suffix contains multiple elements or the result does not have a valid filename for this platform.
   [[nodiscard]] CheckedPath operator+(const std::filesystem::path& suffix) const;
 
   [[nodiscard]] auto operator<=>(const CheckedPath& rhs) const noexcept = default;
@@ -102,17 +102,17 @@ public:
 
 /// File name.
 ///
-/// It cannot contain multiple segments and must be a valid filename for this platform.
+/// It cannot contain multiple elements and must be a valid filename for this platform.
 class CheckedFileName : public CheckedRelativeFilePath {
   using CheckedRelativeFilePath::CheckedRelativeFilePath;
 
 public:
   CheckedFileName() noexcept = default;
 
-  /// \throws std::invalid_argument if it contains multiple segments or is not a valid filename for this platform.
+  /// \throws std::invalid_argument if it contains multiple elements or is not a valid filename for this platform.
   explicit CheckedFileName(std::filesystem::path fileName);
 
-  /// \throws std::invalid_argument if \p suffix contains multiple segments or the result is not a valid filename for this platform.
+  /// \throws std::invalid_argument if \p suffix contains multiple elements or the result is not a valid filename for this platform.
   [[nodiscard]] CheckedFileName operator+(const std::filesystem::path& suffix) const; //NOLINT(bugprone-derived-method-shadowing-base-method)
 };
 
