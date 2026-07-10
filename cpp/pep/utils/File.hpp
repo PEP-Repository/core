@@ -35,7 +35,8 @@ void IstreamToDestination(std::istream& in, std::function<void(const char* c, co
 [[nodiscard]] std::filesystem::path StripTrailingSlash(const std::filesystem::path& path);
 
 /// \brief Returns parent directory path.
-/// \details Returns parent directory path, which may be different from \c std::filesystem::path::parent_path.
+/// \details Returns parent directory path. This is different from \c std::filesystem::path::parent_path,
+///   which just strips the last segment, even if it is empty or a dot.
 ///   Does not make path absolute. Result may contain "." or "..".
 /// \throws std::invalid_argument if the relative path element is empty.
 std::filesystem::path GetParentDirectory(const std::filesystem::path& path);
