@@ -9,11 +9,11 @@ class SafeFileName;
 
 /// SafePath is a wrapper to help you guarantee that the contained path is trusted (or empty).
 class SafePath {
-protected:
   std::filesystem::path inner_;
 
   void finalPathCheck() const;
 
+protected:
   static constexpr struct ConstructFromTrustedTag {} ConstructFromTrusted{};
   explicit SafePath(ConstructFromTrustedTag, std::filesystem::path inner)
     : inner_(std::move(inner)) {}
@@ -29,11 +29,16 @@ public:
   /// \see GetParentDirectory
   SafePath parentDirectory() const;
 
-  /// \throws std::invalid_argument if empty.
-  const std::filesystem::path& path() const & { finalPathCheck(); return inner_; }
+  /// This does not check emptiness of the path, prefer using path() where possible.
+  const std::filesystem::path& uncheckedPath() const & { return inner_; }
+
+  std::filesystem::path uncheckedPath() && { return std::move(inner_); }
 
   /// \throws std::invalid_argument if empty.
-  std::filesystem::path path() && { finalPathCheck(); return std::move(inner_); }
+  const std::filesystem::path& path() const & { finalPathCheck(); return uncheckedPath(); }
+
+  /// \throws std::invalid_argument if empty.
+  std::filesystem::path path() && { finalPathCheck(); return std::move(*this).uncheckedPath(); }
 
   /// \throws std::invalid_argument if empty.
   operator const std::filesystem::path&() const & { return path(); }
@@ -42,12 +47,12 @@ public:
   operator std::filesystem::path() && { return std::move(*this).path(); }
 
   /// Get string representation, even for empty paths.
-  [[nodiscard]] std::string text() const { return inner_.string(); }
+  [[nodiscard]] std::string text() const { return uncheckedPath().string(); }
 
   // Note that for derived classes to be safe, SafePath cannot have modifying operations besides move/copy
 
   /// \note Either side may be empty, resulting in a trailing slash or no-op.
-  [[nodiscard]] SafePath operator/(const SafePath& rhs) const { return FromTrusted(inner_ / rhs.inner_); }
+  [[nodiscard]] SafePath operator/(const SafePath& rhs) const { return FromTrusted(uncheckedPath() / rhs.uncheckedPath()); }
 
   /// \throws std::invalid_argument if \p suffix contains multiple segments or the result does not have a valid filename for this platform.
   [[nodiscard]] SafePath operator+(const std::filesystem::path& suffix) const;
@@ -55,7 +60,7 @@ public:
   [[nodiscard]] auto operator<=>(const SafePath& rhs) const noexcept = default;
 
   friend std::ostream& operator<<(std::ostream& os, const SafePath& p) {
-    return os << p.inner_;
+    return os << p.uncheckedPath();
   }
 };
 
@@ -75,7 +80,7 @@ public:
 
   /// \note Either side may be empty, resulting in a trailing slash or no-op.
   [[nodiscard]] SafeRelativePath operator/(const SafeRelativePath& rhs) const {
-    return SafeRelativePath(ConstructFromTrusted, inner_ / rhs.inner_);
+    return SafeRelativePath(ConstructFromTrusted, uncheckedPath() / rhs.uncheckedPath());
   }
   /// \throws std::invalid_argument if \p rhs is empty.
   [[nodiscard]] inline SafeRelativeFilePath operator/(const SafeRelativeFilePath& rhs) const;
@@ -110,10 +115,10 @@ public:
   [[nodiscard]] SafeFileName operator+(const std::filesystem::path& suffix) const; //NOLINT(bugprone-derived-method-shadowing-base-method)
 };
 
-SafeFileName SafePath::fileName() const { return SafeFileName(inner_.filename()); }
+SafeFileName SafePath::fileName() const { return SafeFileName(uncheckedPath().filename()); }
 
 SafeRelativeFilePath SafeRelativePath::operator/(const SafeRelativeFilePath& rhs) const {
-  return SafeRelativeFilePath(ConstructFromTrusted, inner_ / rhs.path());
+  return SafeRelativeFilePath(ConstructFromTrusted, uncheckedPath() / rhs.path());
 }
 
 }

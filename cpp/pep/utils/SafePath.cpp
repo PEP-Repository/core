@@ -6,45 +6,45 @@
 namespace pep {
 
 void SafePath::finalPathCheck() const {
-  if (inner_.empty()) {
+  if (uncheckedPath().empty()) {
     throw std::invalid_argument("Encountered empty path");
   }
 }
 
 SafePath SafePath::parentDirectory() const {
-  return SafePath::FromTrusted(GetParentDirectory(inner_));
+  return SafePath::FromTrusted(GetParentDirectory(uncheckedPath()));
 }
 
 SafePath SafePath::operator+(const std::filesystem::path& suffix) const {
-  auto newPath = inner_;
+  auto newPath = uncheckedPath();
   newPath.replace_filename(fileName() + suffix);
   return SafePath::FromTrusted(newPath);
 }
 
 SafeRelativePath::SafeRelativePath(std::filesystem::path path)
     : SafePath(ConstructFromTrusted, std::move(path)) {
-  if (!IsLexicallyRelativeChildPath(inner_, true)) {
-    throw std::invalid_argument("Invalid relative path: " + Logging::Escape(inner_.string()));
+  if (!IsLexicallyRelativeChildPath(uncheckedPath(), true)) {
+    throw std::invalid_argument("Invalid relative path: " + Logging::Escape(text()));
   }
 }
 
 SafeRelativeFilePath::SafeRelativeFilePath(std::filesystem::path path)
     : SafeRelativePath(ConstructFromTrusted, std::move(path)) {
-  if (!IsLexicallyRelativeChildPath(inner_, false)) {
-    throw std::invalid_argument("Invalid relative file path: " + Logging::Escape(inner_.string()));
+  if (!IsLexicallyRelativeChildPath(uncheckedPath(), false)) {
+    throw std::invalid_argument("Invalid relative file path: " + Logging::Escape(text()));
   }
 }
 
 SafeFileName::SafeFileName(std::filesystem::path fileName)
     : SafeRelativeFilePath(ConstructFromTrusted, std::move(fileName)) {
-  auto str = inner_.string();
+  auto str = uncheckedPath().string();
   if (!IsValidPlatformFileName(str)) {
     throw std::invalid_argument("Invalid file name: " + Logging::Escape(str));
   }
 }
 
 SafeFileName SafeFileName::operator+(const std::filesystem::path& suffix) const {
-  auto concat = inner_;
+  auto concat = uncheckedPath();
   concat += suffix;
   return SafeFileName(concat);
 }
