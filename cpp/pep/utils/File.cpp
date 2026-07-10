@@ -168,7 +168,17 @@ std::filesystem::path StripTrailingSlash(const std::filesystem::path& path) {
 std::filesystem::path GetParentDirectory(const std::filesystem::path& path) {
   auto normalPath = StripTrailingSlash(path.lexically_normal());
   if (!normalPath.has_relative_path()) {
-    throw std::invalid_argument("Cannot get parent folder for empty relative path: " + Logging::Escape(path.string()));
+    // Path has e.g. "/", or "\" in "C:\"
+    if (normalPath.has_root_directory()) {
+      throw std::invalid_argument("Cannot get parent directory of root directory: " + Logging::Escape(path.string()));
+    } else {
+#ifdef _WIN32
+      // On Windows, "" is equivalent to "." and "C:" is equivalent to "C:."
+      normalPath.replace_filename(".");
+#else
+      throw std::invalid_argument("Cannot get parent directory for empty relative path: " + Logging::Escape(path.string()));
+#endif
+    }
   }
   assert(normalPath.has_filename() && "Expected filename after stripping trailing slash when relative path is present");
   const auto filename = normalPath.filename();
@@ -177,8 +187,11 @@ std::filesystem::path GetParentDirectory(const std::filesystem::path& path) {
   } else if (filename == "..") {
     normalPath /= "..";
   } else {
+    // If not "." or "..", it's safe to strip off the last component
+    // (we already know it's also not empty, see above)
     normalPath = normalPath.parent_path();
-    if (!normalPath.has_relative_path()) {
+    // Prevent returning empty path
+    if (normalPath.empty()) {
       normalPath.replace_filename(".");
     }
   }

@@ -136,19 +136,24 @@ TEST(File, GetParentDirectory) {
   EXPECT_EQ(pep::GetParentDirectory("abc/def"), "abc");
   EXPECT_EQ(pep::GetParentDirectory("abc/def/"), "abc");
   EXPECT_EQ(pep::GetParentDirectory("abc/def/."), "abc");
+  EXPECT_EQ(pep::GetParentDirectory("/abc/def"), fs::path{"/abc"}.make_preferred());
+  EXPECT_EQ(pep::GetParentDirectory("/abc"), fs::path{"/"}.make_preferred());
   EXPECT_EQ(pep::GetParentDirectory("abc"), ".");
   EXPECT_EQ(pep::GetParentDirectory("abc/def/ghi/.."), "abc");
   EXPECT_EQ(pep::GetParentDirectory("abc/def/.."), ".");
   EXPECT_EQ(pep::GetParentDirectory("abc/def/../.."), "..");
   EXPECT_EQ(pep::GetParentDirectory("."), "..");
-  EXPECT_EQ(pep::GetParentDirectory(".."), "../..");
+  EXPECT_EQ(pep::GetParentDirectory(".."), fs::path{".."} / fs::path{".."});
   EXPECT_THROW(pep::GetParentDirectory(""), std::invalid_argument);
   EXPECT_THROW(pep::GetParentDirectory("/"), std::invalid_argument);
 
 #ifdef _WIN32
   EXPECT_EQ(pep::GetParentDirectory("C:abc/def"), "C:abc");
+  EXPECT_EQ(pep::GetParentDirectory("C:abc"), "C:");
   EXPECT_EQ(pep::GetParentDirectory("C:."), "C:..");
-  EXPECT_EQ(pep::GetParentDirectory("C:/abc/def/"), "C:/abc");
+  EXPECT_EQ(pep::GetParentDirectory(""), "..");
+  EXPECT_EQ(pep::GetParentDirectory("C:"), "C:..");
+  EXPECT_EQ(pep::GetParentDirectory("C:/abc/def/"), R"(C:\abc)");
   EXPECT_THROW(pep::GetParentDirectory("C:/"), std::invalid_argument);
 #endif
 }
