@@ -7,7 +7,7 @@ namespace pep {
 
 class SafeFileName;
 
-// Note that for derived classes to be safe, SafePath cannot have modifying operations besides move/copy
+/// SafePath is a wrapper to help you guarantee that the contained path is trusted (or empty).
 class SafePath {
 protected:
   std::filesystem::path inner_;
@@ -44,9 +44,12 @@ public:
   /// Get string representation, even for empty paths.
   [[nodiscard]] std::string text() const { return inner_.string(); }
 
+  // Note that for derived classes to be safe, SafePath cannot have modifying operations besides move/copy
+
+  /// \note Either side may be empty, resulting in a trailing slash or no-op.
   [[nodiscard]] SafePath operator/(const SafePath& rhs) const { return FromTrusted(inner_ / rhs.inner_); }
 
-  /// \throws std::invalid_argument if \p suffix contains multiple segments or the result is not a valid filename for this platform.
+  /// \throws std::invalid_argument if \p suffix contains multiple segments or the result does not have a valid filename for this platform.
   [[nodiscard]] SafePath operator+(const std::filesystem::path& suffix) const;
 
   [[nodiscard]] auto operator<=>(const SafePath& rhs) const noexcept = default;
@@ -59,6 +62,8 @@ public:
 class SafeRelativeFilePath;
 
 /// Relative child path.
+///
+/// It cannot traverse to the parent directory or contain invalid filenames for this platform.
 class SafeRelativePath : public SafePath {
   using SafePath::SafePath;
 
@@ -68,12 +73,17 @@ public:
   /// \throws std::invalid_argument if it traverses to the parent directory or contains invalid filenames for this platform.
   explicit SafeRelativePath(std::filesystem::path path);
 
-  [[nodiscard]] SafeRelativePath operator/(const SafeRelativePath& rhs) const { return SafeRelativePath(ConstructFromTrusted, inner_ / rhs.inner_); }
+  /// \note Either side may be empty, resulting in a trailing slash or no-op.
+  [[nodiscard]] SafeRelativePath operator/(const SafeRelativePath& rhs) const {
+    return SafeRelativePath(ConstructFromTrusted, inner_ / rhs.inner_);
+  }
   /// \throws std::invalid_argument if \p rhs is empty.
   [[nodiscard]] inline SafeRelativeFilePath operator/(const SafeRelativeFilePath& rhs) const;
 };
 
 /// Relative non-directory child path.
+///
+/// It cannot have a trailing slash, traverse to the parent directory, or contain invalid filenames for this platform.
 class SafeRelativeFilePath : public SafeRelativePath {
   using SafeRelativePath::SafeRelativePath;
 
@@ -84,6 +94,9 @@ public:
   explicit SafeRelativeFilePath(std::filesystem::path path);
 };
 
+/// File name.
+///
+/// It cannot contain multiple segments and must be a valid filename for this platform.
 class SafeFileName : public SafeRelativeFilePath {
   using SafeRelativeFilePath::SafeRelativeFilePath;
 
@@ -106,7 +119,7 @@ SafeRelativeFilePath SafeRelativePath::operator/(const SafeRelativeFilePath& rhs
 }
 
 template <std::derived_from<pep::SafePath> Path>
-struct std::hash<Path> {
+struct std::hash<Path> { // NOLINT(bugprone-std-namespace-modification,cert-dcl58-cpp) Specializing std::hash with our (constrained) type is fine
   [[nodiscard]] size_t operator()(const Path& p) const {
     return std::hash<std::filesystem::path>{}(p);
   }
