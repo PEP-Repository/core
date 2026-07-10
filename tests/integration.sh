@@ -549,7 +549,9 @@ fi
 ####################
 
 for test in $TESTS_TO_RUN $TESTS_TO_SKIP; do
-  test_exists "$test" || fail "Test $test does not exist"
+  is_known_test "$test" || fail "Test $test does not exist"
 done
 
-ran_any_test || fail "Did not run any tests"
+if [ "${#known_enabled_tests[@]}" == 0 ]; then
+  fail "Did not run any tests"
+fi

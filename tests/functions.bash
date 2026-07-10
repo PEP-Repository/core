@@ -139,15 +139,15 @@ is_test_included() {
   ([ -z "$TESTS_TO_RUN" ] || contains " $TESTS_TO_RUN " " $test ") && ! contains " $TESTS_TO_SKIP " " $test " && true
 }
 
-list_of_tests=()
-tests_ran=()
+known_tests=()
+known_enabled_tests=()
 
 # Prints & returns if test will be ran
 should_run_test() {
   local test="$1"
-  list_of_tests+=("$test")
+  known_tests+=("$test")
   if is_test_included "$test"; then
-    tests_ran+=("$test")
+    known_enabled_tests+=("$test")
     echo
     printGreen "==== Running tests: $test ===="
   else
@@ -158,19 +158,15 @@ should_run_test() {
 }
 
 # Only works for tests for which should_run_test has been called
-test_exists() {
+is_known_test() {
   local test="$1"
   local test2
-  for test2 in "${list_of_tests[@]}"; do
+  for test2 in "${known_tests[@]}"; do
     if [ "$test2" = "$test" ]; then
       return 0
     fi
   done
   return 1
-}
-
-ran_any_test() {
-  [ "${#tests_ran[@]}" != 0 ] && true
 }
 
 url_encode() {
