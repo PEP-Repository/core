@@ -48,6 +48,8 @@ public:
   operator std::filesystem::path() && { return std::move(*this).path(); }
 
   /// Get string representation, even for empty paths.
+  ///
+  /// Mostly meant for printing paths.
   [[nodiscard]] std::string text() const { return uncheckedPath().string(); }
 
   // Note that for derived classes to be safe, CheckedPath cannot have modifying operations besides move/copy
