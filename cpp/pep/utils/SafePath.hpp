@@ -42,7 +42,7 @@ public:
   operator std::filesystem::path() && { return std::move(*this).path(); }
 
   /// Get string representation, even for empty paths.
-  [[nodiscard]] std::string text() { return inner_.string(); }
+  [[nodiscard]] std::string text() const { return inner_.string(); }
 
   [[nodiscard]] SafePath operator/(const SafePath& rhs) const { return FromTrusted(inner_ / rhs.inner_); }
 
@@ -70,7 +70,7 @@ public:
 
   [[nodiscard]] SafeRelativePath operator/(const SafeRelativePath& rhs) const { return SafeRelativePath(ConstructFromTrusted, inner_ / rhs.inner_); }
   /// \throws std::invalid_argument if \p rhs is empty.
-  [[nodiscard]] inline SafeRelativeFilePath operator/(const SafeRelativeFilePath& rhs);
+  [[nodiscard]] inline SafeRelativeFilePath operator/(const SafeRelativeFilePath& rhs) const;
 };
 
 /// Relative non-directory child path.
@@ -98,8 +98,8 @@ public:
 };
 
 SafeFileName SafePath::fileName() const { return SafeFileName(inner_.filename()); }
-  
-SafeRelativeFilePath SafeRelativePath::operator/(const SafeRelativeFilePath& rhs) {
+
+SafeRelativeFilePath SafeRelativePath::operator/(const SafeRelativeFilePath& rhs) const {
   return SafeRelativeFilePath(ConstructFromTrusted, inner_ / rhs.path());
 }
 
