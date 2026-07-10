@@ -27,6 +27,8 @@ public:
 
   [[nodiscard]] static SafePath FromTrusted(std::filesystem::path inner) { return SafePath(ConstructFromTrusted, std::move(inner)); }
 
+  [[nodiscard]] bool empty() const { return uncheckedPath().empty(); }
+
   /// \see SafeFileName::SafeFileName
   inline SafeFileName fileName() const;
 
