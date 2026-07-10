@@ -146,7 +146,7 @@ X509Extension& X509Extension::operator=(X509Extension other) noexcept {
 }
 
 bool X509Extension::isCritical() const noexcept {
-  return X509_EXTENSION_get_critical(raw_);
+  return X509_EXTENSION_get_critical(raw_) != 0;
 }
 
 std::string X509Extension::getName() const {

@@ -61,7 +61,7 @@ ShortPseudonymColumn ShortPseudonymColumn::Parse(const std::string& studyContext
   if (remaining.starts_with(SHORT_PSEUDONYM_VISIT_PREFIX)) {
     remaining = remaining.substr(SHORT_PSEUDONYM_VISIT_PREFIX_LENGTH);
     auto visit_start = remaining.data();
-    if (!isdigit(*visit_start)) { // Also catches end-of-string
+    if (isdigit(*visit_start) == 0) { // Also catches end-of-string
       throw std::runtime_error("Invalid short pseudonym column name: missing visit number");
     }
     char *visit_end{};

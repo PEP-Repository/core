@@ -136,7 +136,7 @@ CurveScalar CurveScalar::From64Bytes(std::string_view bytes) {
 }
 
 bool CurveScalar::operator==(const CurveScalar& other) const {
-  return group_scalar_equals(&inner_, &other.inner_);
+  return group_scalar_equals(&inner_, &other.inner_) != 0;
 }
 
 CurveScalar CurveScalar::Random() {

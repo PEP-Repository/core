@@ -200,11 +200,11 @@ MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties propert
     }
     type = MessageType::Control;
   }
-  else if (typeBits & TypeResponse) {
+  else if ((typeBits & TypeResponse) != 0) {
     type = MessageType::Response;
   }
 
-  Flags flags(flagBits & FlagClose, flagBits & FlagError, flagBits & FlagPayload);
+  Flags flags((flagBits & FlagClose) != 0, (flagBits & FlagError) != 0, (flagBits & FlagPayload) != 0);
 
   if (!StreamId::IsValidValue(streamId)) {
     throw std::runtime_error("Message properties specify an invalid stream ID");

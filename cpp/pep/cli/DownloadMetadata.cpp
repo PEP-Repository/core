@@ -306,5 +306,5 @@ bool DownloadMetadata::remove(const RecordDescriptor& record) {
   auto path =  participantDirectory / metaFileName;
   snapshotsByRelativePath_->erase(position->second);
   relativePathsByDescriptor_->erase(position);
-  return std::filesystem::remove_all(path);
+  return std::filesystem::remove_all(path) != 0;
 }
