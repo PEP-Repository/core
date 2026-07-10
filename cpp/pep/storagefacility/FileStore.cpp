@@ -403,8 +403,9 @@ void FileStore::EntryChange::cancel() && {
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp timestamp) {
   // Note: On case-insensitive filesystems (e.g. Windows), file names could collide.
-  // Additionally, NTFS 8.3 short names could collide.
+  // Additionally, NTFS 8.3 short names could collide (a column called "PARTIC~1" will collide with "ParticipantIdentifier").
   // See https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file.
+  // This may lead to security issues.
   // So basically, we should not run the production StorageFacility on Windows with the current code.
   auto filename = std::to_string(TicksSinceEpoch<milliseconds>(timestamp)) + FileExtension;
   auto result = TryLoad(cell, cell.path() / CheckedFileName(filename));
