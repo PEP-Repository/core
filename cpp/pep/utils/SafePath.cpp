@@ -22,21 +22,21 @@ SafePath SafePath::operator+(const std::filesystem::path& suffix) const {
 }
 
 SafeRelativePath::SafeRelativePath(std::filesystem::path path)
-    : SafePath(fromTrusted, std::move(path)) {
+    : SafePath(ConstructFromTrusted, std::move(path)) {
   if (!IsLexicallyRelativeChildPath(inner_, true)) {
     throw std::invalid_argument("Invalid relative path: " + Logging::Escape(inner_.string()));
   }
 }
 
 SafeRelativeFilePath::SafeRelativeFilePath(std::filesystem::path path)
-    : SafeRelativePath(fromTrusted, std::move(path)) {
+    : SafeRelativePath(ConstructFromTrusted, std::move(path)) {
   if (!IsLexicallyRelativeChildPath(inner_, false)) {
     throw std::invalid_argument("Invalid relative file path: " + Logging::Escape(inner_.string()));
   }
 }
 
 SafeFileName::SafeFileName(std::filesystem::path fileName)
-    : SafeRelativeFilePath(fromTrusted, std::move(fileName)) {
+    : SafeRelativeFilePath(ConstructFromTrusted, std::move(fileName)) {
   auto str = inner_.string();
   if (!IsValidPlatformFileName(str)) {
     throw std::invalid_argument("Invalid file name: " + Logging::Escape(str));

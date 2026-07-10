@@ -14,14 +14,14 @@ protected:
 
   void finalPathCheck() const;
 
-  static constexpr struct fromTrustedTag {} fromTrusted{};
-  explicit SafePath(fromTrustedTag, std::filesystem::path inner)
+  static constexpr struct ConstructFromTrustedTag {} ConstructFromTrusted{};
+  explicit SafePath(ConstructFromTrustedTag, std::filesystem::path inner)
     : inner_(std::move(inner)) {}
 
 public:
   SafePath() noexcept = default;
 
-  [[nodiscard]] static SafePath FromTrusted(std::filesystem::path inner) { return SafePath(fromTrusted, std::move(inner)); }
+  [[nodiscard]] static SafePath FromTrusted(std::filesystem::path inner) { return SafePath(ConstructFromTrusted, std::move(inner)); }
 
   /// \see SafeFileName::SafeFileName
   inline SafeFileName fileName() const;
@@ -68,7 +68,7 @@ public:
   /// \throws std::invalid_argument if it traverses to the parent directory or contains invalid filenames for this platform.
   explicit SafeRelativePath(std::filesystem::path path);
 
-  [[nodiscard]] SafeRelativePath operator/(const SafeRelativePath& rhs) const { return SafeRelativePath(fromTrusted, inner_ / rhs.inner_); }
+  [[nodiscard]] SafeRelativePath operator/(const SafeRelativePath& rhs) const { return SafeRelativePath(ConstructFromTrusted, inner_ / rhs.inner_); }
   /// \throws std::invalid_argument if \p rhs is empty.
   [[nodiscard]] inline SafeRelativeFilePath operator/(const SafeRelativeFilePath& rhs);
 };
@@ -100,7 +100,7 @@ public:
 SafeFileName SafePath::fileName() const { return SafeFileName(inner_.filename()); }
   
 SafeRelativeFilePath SafeRelativePath::operator/(const SafeRelativeFilePath& rhs) {
-  return SafeRelativeFilePath(fromTrusted, inner_ / rhs.path());
+  return SafeRelativeFilePath(ConstructFromTrusted, inner_ / rhs.path());
 }
 
 }
