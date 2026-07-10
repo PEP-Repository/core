@@ -163,7 +163,7 @@ namespace {
       }
       auto hash = boost::algorithm::unhex(node.second.get<std::string>("hash"));
 
-      std::ifstream file(destination.string(), std::ifstream::binary);
+      std::ifstream file(destination, std::ifstream::binary);
       if (!file) {
         throw std::runtime_error("Could not open downloaded file " + relative + " to check hash");
       }

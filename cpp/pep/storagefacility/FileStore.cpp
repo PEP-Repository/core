@@ -2,6 +2,7 @@
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/utils/BuildFlavor.hpp>
 #include <pep/storagefacility/Constants.hpp>
+#include <pep/utils/Log.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Raw.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
@@ -110,7 +111,7 @@ FileStore::FileStore(
   const Configuration& pageStoreConfig,
   std::shared_ptr<boost::asio::io_context> io_context,
   std::shared_ptr<prometheus::Registry> metrics_registry)
-  : path_(metadatapath),
+  : path_(CheckedPath::FromTrusted(metadatapath)),
   pagestore_(PageStore::Create(io_context, metrics_registry, pageStoreConfig))
 {
   // throws when an error occurs while creating any of the given directories in the supplied path
@@ -143,7 +144,7 @@ FileStore::Participant::Participant(FileStore& store, std::string name, bool loa
   : store_(store), name_(std::move(name)) {
   if (load) {
     for (const auto& p : std::filesystem::directory_iterator(this->path())) {
-      if (std::filesystem::is_directory(p.path())) {
+      if (p.is_directory()) {
         cells_.emplace(std::make_unique<Cell>(*this, p.path().filename().string(), true));
       }
     }
@@ -158,7 +159,7 @@ FileStore::Cell::Cell(Participant& participant, const std::string& columnName, b
   : participant_(participant), columnName_(participant.getFileStore().getColumnString(columnName)) {
   if (load) {
     for (const auto& p : std::filesystem::directory_iterator(this->path())) {
-      auto entry = Entry::TryLoad(*this, p.path());
+      auto entry = Entry::TryLoad(*this, CheckedPath::FromTrusted(p.path()));
       if (entry != nullptr) {
         this->addEntry(entry);
       }
@@ -258,9 +259,9 @@ FileStore::EntryChange::EntryChange(const Entry& overwrites)
   : EntryBase(overwrites.getCell(), GenerateChecksumSubstitute(), overwrites.cloneContent()), lastEntryValidFrom_(overwrites.getValidFrom()) {
 }
 
-std::filesystem::path FileStore::Entry::getFilePath(const std::string& extension) const {
+CheckedPath FileStore::Entry::getFilePath(const std::string& extension) const {
   auto filename = std::to_string(TicksSinceEpoch<milliseconds>(this->getValidFrom())) + extension;
-  return this->getCell().path() / filename;
+  return this->getCell().path() / CheckedFileName(filename);
 }
 
 FileStore::EntryBase::EntryBase(Cell& cell, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content)
@@ -338,9 +339,9 @@ void FileStore::Entry::save() const {
   std::string content = std::move(out).str();
   XXH64_hash_t hash = XXH64(content.data(), content.length(), 0ULL);
 
-  auto tempfile = this->getFilePath(".tmp");
+  std::filesystem::path tempfile = this->getFilePath(".tmp");
   std::ofstream outfile;
-  outfile.open(tempfile.string(), std::ios::binary | std::ios::out | std::ios::trunc);
+  outfile.open(tempfile, std::ios::binary | std::ios::out | std::ios::trunc);
   if (!outfile.is_open())
     throw std::invalid_argument("could not write file: " + tempfile.string());
 
@@ -401,8 +402,13 @@ void FileStore::EntryChange::cancel() && {
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp timestamp) {
+  // Note: On case-insensitive filesystems (e.g. Windows), file names could collide.
+  // Additionally, NTFS 8.3 short names could collide (a column called "PARTIC~1" will collide with "ParticipantIdentifier").
+  // See https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file.
+  // This may lead to security issues.
+  // So basically, we should not run the production StorageFacility on Windows with the current code.
   auto filename = std::to_string(TicksSinceEpoch<milliseconds>(timestamp)) + FileExtension;
-  auto result = TryLoad(cell, cell.path() / filename);
+  auto result = TryLoad(cell, cell.path() / CheckedFileName(filename));
   if (result == nullptr) {
     throw std::runtime_error("Could not load entry for cell " + cell.entryName().string()
         + " at timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(timestamp)));
@@ -410,17 +416,16 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
   return result;
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const std::filesystem::path& path) {
+std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedPath& checkedPath) {
+  const std::filesystem::path& path = checkedPath;
   if (!std::filesystem::is_regular_file(path) || path.extension().string() != FileExtension) {
     return nullptr;
   }
 
-  auto name = path.filename().string();
-  name = name.substr(0, name.size() - FileExtension.size());
-  Timestamp validFrom(milliseconds{boost::lexical_cast<milliseconds::rep>(name)});
+  Timestamp validFrom(milliseconds{boost::lexical_cast<milliseconds::rep>(path.stem().string())});
 
   std::ifstream infile;
-  infile.open(path.string(), std::ios::binary | std::ios::in);
+  infile.open(path, std::ios::binary | std::ios::in);
   if (!infile.is_open())
     throw std::invalid_argument("could not open file for reading");
 
@@ -506,8 +511,8 @@ EntryName FileStore::Cell::entryName() const {
   return EntryName(this->getParticipant().name(), columnName_);
 }
 
-std::filesystem::path FileStore::Cell::path() const {
-  return this->getParticipant().path() / columnName_;
+CheckedPath FileStore::Cell::path() const {
+  return this->getParticipant().path() / CheckedFileName(columnName_);
 }
 
 void FileStore::Cell::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const {
@@ -552,8 +557,8 @@ FileStore::Cell& FileStore::Participant::provideCell(const std::string& columnNa
   return **cells_.emplace(std::make_unique<Cell>(*this, columnName)).first;
 }
 
-std::filesystem::path FileStore::Participant::path() const {
-  return this->getFileStore().metaDir() / name_;
+CheckedPath FileStore::Participant::path() const {
+  return this->getFileStore().metaDir() / CheckedFileName(name_);
 }
 
 void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {

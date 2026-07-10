@@ -231,8 +231,8 @@ pepcli ama column create <column name>
 pepcli ama column remove <column name>
 ```
 
-Because of technical limitations, PEP column names may contain only [printable ASCII characters](https://en.wikipedia.org/wiki/ASCII#Printable_characters). Additional restrictions apply to the names of columns into which Castor data are imported.
-<!--- Link to and/or describe these resitrictions -->
+Because of technical limitations and the convenience of users downloading data, PEP column names must be valid file names on supported systems. For example, because of Microsoft Windows restrictions, column names cannot contain the characters `<>:"/\|?*`. Additional restrictions apply to the names of columns into which Castor data are imported.
+<!--- Link to and/or describe these restrictions -->
 
 Note that column removal will not discard data present in those columns; it will merely make the column's contents inaccessible. Therefore:
 

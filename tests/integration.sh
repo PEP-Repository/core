@@ -547,3 +547,11 @@ if should_run_test weblib; then
 fi
 
 ####################
+
+for test in $TESTS_TO_RUN $TESTS_TO_SKIP; do
+  is_known_test "$test" || fail "Test $test does not exist"
+done
+
+if [ "${#known_enabled_tests[@]}" == 0 ]; then
+  fail "Did not run any tests"
+fi
