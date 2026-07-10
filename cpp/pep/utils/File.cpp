@@ -168,7 +168,8 @@ std::filesystem::path StripTrailingSlash(const std::filesystem::path& path) {
 std::filesystem::path GetParentDirectory(const std::filesystem::path& path) {
   auto normalPath = StripTrailingSlash(path.lexically_normal());
   if (!normalPath.has_relative_path()) {
-    // Path has e.g. "/", or "\" in "C:\"
+    // Path has e.g. "/", or "\" in "C:\".
+    // Note that this is not the same as `is_absolute`, as "\" is not absolute on Windows (it is still relative to the drive).
     if (normalPath.has_root_directory()) {
       throw std::invalid_argument("Cannot get parent directory of root directory: " + Logging::Escape(path.string()));
     } else {
