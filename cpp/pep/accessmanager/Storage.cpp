@@ -969,7 +969,7 @@ std::optional<std::string> AccessManager::Backend::Storage::getColumnCaseInsensi
   auto results = implementor_->getCurrentRecords<ColumnRecord>(
     (c(&ColumnRecord::name) == name).collate_nocase(),
     &ColumnRecord::name);
-  if (results.begin() == results.end()) { return {}; }
+  if (results.begin() == results.end()) { return std::nullopt; }
   return *results.begin();
 }
 
