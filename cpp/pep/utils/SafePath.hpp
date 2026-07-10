@@ -18,6 +18,10 @@ protected:
   explicit SafePath(ConstructFromTrustedTag, std::filesystem::path inner)
     : inner_(std::move(inner)) {}
 
+  /// This does not check emptiness of the path, prefer using path() where possible.
+  [[nodiscard]] const std::filesystem::path& uncheckedPath() const & { return inner_; }
+  [[nodiscard]] std::filesystem::path uncheckedPath() && { return std::move(inner_); }
+
 public:
   SafePath() noexcept = default;
 
@@ -28,11 +32,6 @@ public:
 
   /// \see GetParentDirectory
   SafePath parentDirectory() const;
-
-  /// This does not check emptiness of the path, prefer using path() where possible.
-  const std::filesystem::path& uncheckedPath() const & { return inner_; }
-
-  std::filesystem::path uncheckedPath() && { return std::move(inner_); }
 
   /// \throws std::invalid_argument if empty.
   const std::filesystem::path& path() const & { finalPathCheck(); return uncheckedPath(); }
