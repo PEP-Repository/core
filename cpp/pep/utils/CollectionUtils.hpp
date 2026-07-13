@@ -73,8 +73,8 @@ bool ContainsUniqueValues(const std::vector<T>& vec) {
  * The resulting size of the destination vector is returned.
 
  * \param dest destination vector
- * \param source source vector
  * \param cap The max capacity of the destination vector in bytes
+ * \param source source vector
  * \param offset The source index from which to start filling.
  * \param padding The amount added to the length of each item.
 
@@ -82,7 +82,7 @@ bool ContainsUniqueValues(const std::vector<T>& vec) {
  *
  * \remark The size of each string's NULterminator is not included in the return value.
 */
-size_t FillVectorToCapacity(std::vector<std::string>& dest, const std::vector<std::string>& source, size_t cap, size_t offset = 0, size_t padding = 0);
+size_t FillVectorToCapacity(std::vector<std::string>& dest, size_t cap, const std::vector<std::string>& source, size_t offset = 0, size_t padding = 0);
 
 /*
 * \brief Determines if a character sequence ends with starting character(s) of another sequence.
