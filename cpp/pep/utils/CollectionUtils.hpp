@@ -79,6 +79,8 @@ bool ContainsUniqueValues(const std::vector<T>& vec) {
  * \param padding The amount added to the length of each item.
 
  * \return The size of the destination vector in bytes.
+ *
+ * \remark The size of each string's NULterminator is not included in the return value.
 */
 size_t FillVectorToCapacity(std::vector<std::string>& dest, const std::vector<std::string>& source, const size_t& cap, const size_t& offset = 0, const size_t& padding = 0);
 
