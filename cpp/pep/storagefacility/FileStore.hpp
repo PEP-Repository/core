@@ -196,6 +196,8 @@ public:
     return path_;
   }
 
+  std::set<std::string> pagePaths() const { return {}; } // TODO: implement
+
 private:
   FileStore(
     const std::filesystem::path& metadatapath,
