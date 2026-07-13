@@ -27,6 +27,7 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
        + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing")
              .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({"all-user-group", "all-user", "groups-per-user"})))
               .noLongerSupported("Use --include and --format options instead.")
+       // NOTE: the "user group query" alias forwards into this command by injecting "include"
        + pep::commandline::Parameter("include", "Prints only specified type of data.")
              .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({userGroupsOpt,
                                                                                            usersOpt,
