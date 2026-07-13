@@ -82,7 +82,7 @@ bool ContainsUniqueValues(const std::vector<T>& vec) {
  *
  * \remark The size of each string's NULterminator is not included in the return value.
 */
-size_t FillVectorToCapacity(std::vector<std::string>& dest, const std::vector<std::string>& source, const size_t& cap, const size_t& offset = 0, const size_t& padding = 0);
+size_t FillVectorToCapacity(std::vector<std::string>& dest, const std::vector<std::string>& source, size_t cap, size_t offset = 0, size_t padding = 0);
 
 /*
 * \brief Determines if a character sequence ends with starting character(s) of another sequence.
