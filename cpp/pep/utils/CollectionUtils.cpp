@@ -15,9 +15,13 @@ size_t pep::FillVectorToCapacity(std::vector<std::string>& dest, const std::vect
     const size_t& cap, const size_t& offset, const size_t& padding) {
   assert(offset == 0 || offset < source.size());
   size_t destLength{0};
-  for (auto i = source.cbegin() + offset; i != source.cend() && destLength + i->length() + padding <= cap; ++i) {
+  for (auto i = source.cbegin() + offset; i != source.cend(); ++i) {
+    auto add = i->length() + padding;
+    if (destLength + add > cap) {
+      break;
+    }
     dest.push_back(*i);
-    destLength += i->length() + padding;
+    destLength += add;
   }
   return destLength;
 }
