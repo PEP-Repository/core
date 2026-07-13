@@ -68,21 +68,37 @@ bool ContainsUniqueValues(const std::vector<T>& vec) {
 }
 
 /*!
- * \brief Given a source vector and a capacity, fill a destination vector with the items of the source until the capacity is reached. An offset can be set to start filling from that index in the source.
+ * \brief Given a capacity and a set of source iterators, fill a destination vector with the items of the source until the capacity is reached.
  * The size is calculated by iteratively adding the lengths of all items within the source vector with a optional padding added for each of those items. When this number is about to exceed the capacity, filling the destination vector will stop.
  * The resulting size of the destination vector is returned.
 
+ * \tparam TSource the type of source iterator
+ * \tparam TEnd the type of end sentinel or iterator
  * \param dest destination vector
  * \param cap The max capacity of the destination vector in bytes
- * \param source source vector
- * \param offset The source index from which to start filling.
+ * \param begin the beginning of the source range
+ * \param end the end of the source range
  * \param padding The amount added to the length of each item.
 
  * \return The size of the destination vector in bytes.
  *
  * \remark The size of each string's NULterminator is not included in the return value.
 */
-size_t FillVectorToCapacity(std::vector<std::string>& dest, size_t cap, const std::vector<std::string>& source, size_t offset = 0, size_t padding = 0);
+template <std::input_iterator TSource, std::sentinel_for<TSource> TEnd>
+  requires std::same_as<std::_Remove_cvref_t<std::iter_value_t<TSource>>, std::string>
+size_t FillVectorToCapacity(std::vector<std::string>& dest, size_t cap, const TSource& begin, const TEnd& end, size_t padding = 0) {
+  size_t destLength{ 0 };
+  for (auto i = begin; i != end; ++i) {
+    auto add = i->length() + padding;
+    if (destLength + add > cap) {
+      break;
+    }
+    dest.push_back(*i);
+    destLength += add;
+  }
+  return destLength;
+
+}
 
 /*
 * \brief Determines if a character sequence ends with starting character(s) of another sequence.

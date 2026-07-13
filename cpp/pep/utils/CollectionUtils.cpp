@@ -10,18 +10,3 @@ size_t pep::FindLongestPrefixAtEnd(const std::string_view haystack, std::string_
     }
   }
 }
-
-size_t pep::FillVectorToCapacity(std::vector<std::string>& dest, size_t cap, const std::vector<std::string>& source,
-    size_t offset, size_t padding) {
-  assert(offset == 0 || offset < source.size());
-  size_t destLength{0};
-  for (auto i = source.cbegin() + offset; i != source.cend(); ++i) {
-    auto add = i->length() + padding;
-    if (destLength + add > cap) {
-      break;
-    }
-    dest.push_back(*i);
-    destLength += add;
-  }
-  return destLength;
-}

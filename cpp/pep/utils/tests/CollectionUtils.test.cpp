@@ -75,7 +75,7 @@ TEST(MiscUtilsFillVectorToCapacity, simple) {
   size_t capacity{ 1024 };
 
   //Act
-  size_t length = pep::FillVectorToCapacity(dest, capacity, source);
+  size_t length = pep::FillVectorToCapacity(dest, capacity, source.begin(), source.end());
 
   //Assert
   std::vector<std::string> expected{ "A", "B", "C", "D" };
@@ -90,7 +90,7 @@ TEST(MiscUtilsFillVectorToCapacity, capacityZero) {
   size_t capacity{ 0 };
 
   //Act
-  size_t length = pep::FillVectorToCapacity(dest, capacity, source);
+  size_t length = pep::FillVectorToCapacity(dest, capacity, source.begin(), source.end());
 
   //Assert
   std::vector<std::string> expected{ };
@@ -106,7 +106,7 @@ TEST(MiscUtilsFillVectorToCapacity, CapacityLimited) {
   size_t capacity{ 2 };
 
   //Act
-  size_t length = pep::FillVectorToCapacity(dest, capacity, source);
+  size_t length = pep::FillVectorToCapacity(dest, capacity, source.begin(), source.end());
 
   //Assert
   std::vector<std::string> expected{ "A", "B"};
@@ -122,7 +122,7 @@ TEST(MiscUtilsFillVectorToCapacity, OffsetLimited) {
   size_t offset{ 2 };
 
   //Act
-  size_t length = pep::FillVectorToCapacity(dest, capacity, source, offset);
+  size_t length = pep::FillVectorToCapacity(dest, capacity, source.begin() + offset, source.end());
 
   //Assert
   std::vector<std::string> expected{"C", "D" };
