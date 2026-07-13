@@ -32,8 +32,7 @@ namespace cliParameterNames {
 
 constexpr auto subject = "subject";
 constexpr auto userGroup = "user-group";
-constexpr auto issuedBeforeUnixtime = "issuedBefore-unixtime";
-constexpr auto issuedBeforeYyyymmdd = "issuedBefore-yyyymmdd";
+constexpr auto issuedBefore = "issuedBefore";
 constexpr auto message = "message";
 
 } // namespace cliParameterNames
@@ -60,32 +59,16 @@ protected:
               "only block tokens that were issued for the specified user-group")
               .value(pep::commandline::Value<std::string>().positional().required())
         + pep::commandline::Parameter(
-              param::issuedBeforeUnixtime,
-              "only block tokens that were issued before the specified unix timestamp")
-              .value(pep::commandline::Value<int64_t>())
-        + pep::commandline::Parameter(
-              param::issuedBeforeYyyymmdd,
+              param::issuedBefore,
               "only block tokens that were issued before the specified date")
               .alias("before")
               .shorthand('b')
-              .value(pep::commandline::Value<std::string>())
+              .value(pep::commandline::Value<Timestamp>())
         + pep::commandline::Parameter(
               param::message,
               "explanatory text stored together with the created blocklist entry")
               .shorthand('m')
               .value(pep::commandline::Value<std::string>().required());
-  }
-
-  void finalizeParameters() override {
-    ChildCommandOf<CommandTokenBlock>::finalizeParameters();
-
-    const auto& values = this->getParameterValues();
-    namespace param = cliParameterNames;
-    if (values.has(param::issuedBeforeUnixtime) && values.has(param::issuedBeforeYyyymmdd)) {
-      throw std::runtime_error(
-          "Please specify the target issued date/time either via the --" + std::string{param::issuedBeforeYyyymmdd}
-          + " switch or the [" + std::string{param::issuedBeforeUnixtime} + "] parameter, but not both.");
-    }
   }
 
   struct Configuration final {
@@ -98,16 +81,8 @@ protected:
           .target{
               .subject = values.get<std::string>(param::subject),
               .userGroup = values.get<std::string>(param::userGroup),
-              .issueDateTime =
-                  [&] {
-                    if (const auto date = values.getOptional<std::string>(param::issuedBeforeYyyymmdd)) {
-                      return TimeZone::Local().timestampFromYyyyMmDd(*date);
-                    }
-                    if (const auto time = values.getOptional<std::chrono::seconds::rep>(param::issuedBeforeUnixtime)) {
-                      return Timestamp(std::chrono::seconds{*time});
-                    }
-                    return TimeNow(); // default to current time
-                  }()},
+              .issueDateTime = values.getOptional<Timestamp>(param::issuedBefore).value_or(TimeNow())
+          },
           .message = values.get<std::string>(param::message)};
     }
   };
