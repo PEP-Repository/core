@@ -297,5 +297,21 @@ void Serializer<DataSizeResponse>::moveIntoProtocolBuffer(proto::DataSizeRespons
   dest.set_rolling_blocks(value.rollingBlocks);
 }
 
+PagePathResponse Serializer<PagePathResponse>::fromProtocolBuffer(proto::PagePathResponse&& source) const {
+  PagePathResponse result;
+  for (const auto& path : source.paths()) {
+    if (!result.paths.emplace(path).second) {
+      throw std::runtime_error("Can't insert duplicate path '" + path + "' into page path response");
+    }
+  }
+  return result;
+}
+
+void Serializer<PagePathResponse>::moveIntoProtocolBuffer(proto::PagePathResponse& dest, PagePathResponse value) const {
+  dest.mutable_paths()->Reserve(static_cast<int>(value.paths.size()));
+  for (auto& path : value.paths) {
+    dest.add_paths(path);
+  }
+}
 
 }
