@@ -75,7 +75,7 @@ TEST(MiscUtilsFillToCapacity, simple) {
   size_t capacity{ 1024 };
 
   //Act
-  size_t length = pep::FillToCapacity(std::back_inserter(dest), capacity, source.begin(), source.end());
+  size_t length = pep::FillToCapacity(std::back_inserter(dest), capacity, source);
 
   //Assert
   std::vector<std::string> expected{ "A", "B", "C", "D" };
@@ -90,7 +90,7 @@ TEST(MiscUtilsFillToCapacity, capacityZero) {
   size_t capacity{ 0 };
 
   //Act
-  size_t length = pep::FillToCapacity(std::back_inserter(dest), capacity, source.begin(), source.end());
+  size_t length = pep::FillToCapacity(std::back_inserter(dest), capacity, source);
 
   //Assert
   std::vector<std::string> expected{ };
@@ -106,7 +106,7 @@ TEST(MiscUtilsFillToCapacity, CapacityLimited) {
   size_t capacity{ 2 };
 
   //Act
-  size_t length = pep::FillToCapacity(std::back_inserter(dest), capacity, source.begin(), source.end());
+  size_t length = pep::FillToCapacity(std::back_inserter(dest), capacity, source);
 
   //Assert
   std::vector<std::string> expected{ "A", "B"};
@@ -119,10 +119,10 @@ TEST(MiscUtilsFillToCapacity, OffsetLimited) {
   std::vector<std::string> source{ "A", "B", "C", "D" };
   std::vector<std::string> dest{};
   size_t capacity{ 1024 };
-  size_t offset{ 2 };
+  ptrdiff_t offset{ 2 };
 
   //Act
-  size_t length = pep::FillToCapacity(std::back_inserter(dest), capacity, source.begin() + offset, source.end());
+  size_t length = pep::FillToCapacity(std::back_inserter(dest), capacity, std::ranges::drop_view{ source, offset });
 
   //Assert
   std::vector<std::string> expected{"C", "D" };

@@ -71,31 +71,28 @@ bool ContainsUniqueValues(const std::vector<T>& vec) {
  * \brief Fills a destination range with strings from a source range without exceeding the specified destination capacity.
 
  * \tparam TDest the type of destination iterator
- * \tparam TSource the type of source iterator
- * \tparam TEnd the type of end sentinel or iterator
+ * \tparam TSrc the type of source range
 
  * \param dest destination iterator
  * \param cap The max capacity of the destination in bytes
- * \param begin the beginning of the source range
- * \param end the end of the source range
+ * \param src the source range
  * \param padding bytes of overhead associated with each string. Specify a non-zero value to take destination storage overhead into account; add one to take the strings' NULterminators into account.
 
  * \return The number of bytes written to the destination.
 */
-template <std::output_iterator<std::string> TDest, std::input_iterator TSource, std::sentinel_for<TSource> TEnd>
-  requires std::same_as<std::_Remove_cvref_t<std::iter_value_t<TSource>>, std::string>
-size_t FillToCapacity(TDest dest, size_t cap, const TSource& begin, const TEnd& end, size_t padding = 0) {
+template <std::output_iterator<std::string> TDest, std::ranges::input_range TSrc>
+  requires std::same_as<std::_Remove_cvref_t<std::ranges::range_value_t<TSrc>>, std::string>
+size_t FillToCapacity(TDest dest, size_t cap, const TSrc& src, size_t padding = 0) {
   size_t destLength{ 0 };
-  for (auto src = begin; src != end; ++src) {
-    auto add = src->length() + padding;
+  for (const auto& item: src) {
+    auto add = item.length() + padding;
     if (destLength + add > cap) {
       break;
     }
-    *dest++ = *src;
+    *dest++ = item;
     destLength += add;
   }
   return destLength;
-
 }
 
 /*
