@@ -967,7 +967,7 @@ windows-debug:
   tags:
     - windows-parallel
   rules:
-    - if: $BUILD_ALL_TARGETS
+    - if: $BUILD_ALL_TARGETS != ''
       when: on_success
     - when: manual
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
@@ -1053,7 +1053,7 @@ macos-debug:
     - job: retrieve-lockfile
       optional: true
   rules:
-    - if: $BUILD_ALL_TARGETS
+    - if: $BUILD_ALL_TARGETS != ''
       when: on_success
     - when: manual
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
