@@ -15,8 +15,8 @@ constexpr pep::Timestamp operator""_unixMs(const unsigned long long ms) noexcept
   return pep::Timestamp(milliseconds{ms});
 }
 
-TEST(Timestamp, FromXmlDataTime) {
-  const auto xml = pep::TimestampFromXmlDataTime; // function under test
+TEST(Timestamp, FromXmlDateTime) {
+  constexpr auto xml = [](std::string_view str){return pep::TimeZone::Utc().timestampFromXmlDateTime(str);}; // function under test
 
   // UTC dates
   EXPECT_EQ(xml("2023-01-31T00:32:32+00:00"), 1675125152000_unixMs);
@@ -45,7 +45,7 @@ TEST(Timestamp, FromXmlDataTime) {
 
 TEST(Timestamp, FromYyyyMmDd) {
   // function under test: timestampFromYyyyMmDd
-  constexpr auto xml = pep::TimestampFromXmlDataTime; // reference function
+  constexpr auto xml = [](std::string_view str){return pep::TimeZone::Utc().timestampFromXmlDateTime(str);}; // reference function
   const auto utc = pep::TimeZone::Utc();
 
   // Good dates - normal
@@ -61,7 +61,7 @@ TEST(Timestamp, FromYyyyMmDd) {
 // Check that timezones without DST are converted to UTC with the correct offset;
 TEST(Timestamp, FromYyyyMmDd_SimpleTimezones) {
   // function under test: timestampFromYyyyMmDd
-  constexpr auto xml = pep::TimestampFromXmlDataTime; // reference function
+  constexpr auto xml = [](std::string_view str){return pep::TimeZone::Utc().timestampFromXmlDateTime(str);}; // reference function
   constexpr auto ptz = pep::TimeZone::PosixTimezone;
 
   EXPECT_EQ(ptz("MST7").timestampFromYyyyMmDd("20001002"), xml("2000-10-02T07:00:00Z")) << " UTC-7";
@@ -80,7 +80,7 @@ TEST(Timestamp, FromYyyyMmDd_SimpleTimezones) {
 
 TEST(Timestamp, FromYyyyMmDd_ComplexTimezones) {
   // function under test: timestampFromYyyyMmDd
-  constexpr auto xml = pep::TimestampFromXmlDataTime; // reference function
+  constexpr auto xml = [](std::string_view str){return pep::TimeZone::Utc().timestampFromXmlDateTime(str);}; // reference function
   const auto centralEuropeanTime = pep::TimeZone::PosixTimezone("CEST-1CET,M3.2.0/2:00:00,M11.1.0/2:00:00");
   const auto pacificTime = pep::TimeZone::PosixTimezone("PST8PDT,M3.2.0/2:00:00,M11.1.0/2:00:00");
 
@@ -96,6 +96,31 @@ TEST(Timestamp, FromYyyyMmDd_ComplexTimezones) {
 
   // Edge case - date before Unix epoch
   EXPECT_EQ(centralEuropeanTime.timestampFromYyyyMmDd("19700101"), xml("1969-12-31T23:00:00Z")) << "Date before Unix epoch";
+}
+
+// Check that timezones without DST are converted to UTC with the correct offset;
+TEST(Timestamp, FromXmlDateTime_SimpleTimezones) {
+  // function under test: timestampFromXmlDateTime
+  constexpr auto utc = [](std::string_view str){return pep::TimeZone::Utc().timestampFromXmlDateTime(str);}; // reference function
+  constexpr auto ptz = pep::TimeZone::PosixTimezone;
+
+  EXPECT_EQ(ptz("MST7").timestampFromXmlDateTime("2000-10-02"), utc("2000-10-02T07:00:00Z")) << " UTC-7";
+  EXPECT_EQ(ptz("GMT").timestampFromXmlDateTime("2000-10-02"), utc("2000-10-02T00:00:00Z")) << " UTC+0";
+  EXPECT_EQ(ptz("MSK-3").timestampFromXmlDateTime("2000-10-02"), utc("2000-10-01T21:00:00Z")) << " UTC+3";
+  EXPECT_EQ(ptz("IST-5:30").timestampFromXmlDateTime("2000-10-02"), utc("2000-10-01T18:30:00Z")) << " UTC+5:30";
+  EXPECT_EQ(ptz("NPT-5:45").timestampFromXmlDateTime("2000-10-02"), utc("2000-10-01T18:15:00Z")) << " UTC+5:45";
+  EXPECT_EQ(ptz("JST-9").timestampFromXmlDateTime("2000-10-02"), utc("2000-10-01T15:00:00Z")) << " UTC+9";
+
+  // Edge case - push into leap day
+  EXPECT_EQ(ptz("MSK-3").timestampFromXmlDateTime("2004-03-01"), utc("2004-02-29T21:00:00Z")) << " UTC+3 and date follows a leapday";
+
+  // Edge case - date before Unix epoch
+  EXPECT_EQ(ptz("JST-9").timestampFromXmlDateTime("1970-01-01"), utc("1969-12-31T15:00:00Z")) << "Date before Unix epoch";
+
+  EXPECT_EQ(ptz("MST7").timestampFromXmlDateTime("2000-10-02T10:20:30"), utc("2000-10-02T17:20:30Z")) << " UTC-7, no timezone specified in date string";
+  EXPECT_EQ(ptz("MST7").timestampFromXmlDateTime("2000-10-02T10:20:30Z"), utc("2000-10-02T10:20:30Z")) << " UTC-7, but UTC specified in date string";
+  EXPECT_EQ(ptz("UTC").timestampFromXmlDateTime("2000-10-02T10:20:30+7:00"), utc("2000-10-02T03:20:30Z")) << " UTC, but UTC+7 specified in date string";
+  EXPECT_EQ(ptz("MST7").timestampFromXmlDateTime("2000-10-02T10:20:30-3:00"), utc("2000-10-02T13:20:30Z")) << " UTC-7, but UTC-3 specified in date string";
 }
 
 TEST(Timestamp, FromYyyyMmDd_TimezoneIndependentBehaviour) {
@@ -123,7 +148,7 @@ TEST(Timestamp, ToXmlDateTime) {
   auto epoch = pep::Timestamp{/*zero*/};
   EXPECT_EQ(pep::TimestampToXmlDateTime(epoch), "1970-01-01T00:00:00Z");
 
-  auto ts = pep::TimestampFromXmlDataTime("2023-01-31T00:32:32+00:00");
+  auto ts = pep::TimeZone::Utc().timestampFromXmlDateTime("2023-01-31T00:32:32+00:00");
   EXPECT_EQ(pep::TimestampToXmlDateTime(ts), "2023-01-31T00:32:32Z");
 }
 
