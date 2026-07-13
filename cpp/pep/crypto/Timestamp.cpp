@@ -26,7 +26,7 @@ namespace pep {
 
 namespace {
 
-constexpr auto SYSTEM_LOCAL_TIME_ZONE = "SYSTEM_TIME_ZONE";
+constexpr auto SystemLocalTimeZone = "SYSTEM_TIME_ZONE";
 
 const bpt::ptime UnixEpochPtime(BoostDateFromStd(sys_days{}));
 
@@ -56,7 +56,7 @@ private:
 
 class XmlDateTimeParser : public TimestampParser {
 public:
-  XmlDateTimeParser() : TimestampParser{"xml date-time"} {}
+  explicit XmlDateTimeParser(std::string timeZone) : TimestampParser{"xml date-time"}, timeZone_{std::move(timeZone)} {}
 
 protected:
   Timestamp parseImpl(std::string_view str) override {
@@ -77,9 +77,20 @@ protected:
         throw std::invalid_argument(std::format("Unparsed data remains: {}", remaining));
       }
     }
+    if (parsed.zone() == nullptr) {
+      if (timeZone_ == SystemLocalTimeZone) {
+        using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
+        return TimestampFromBoostPtime(Adjustor::utc_to_local(bpt::ptime(parsed.utc_time())));
+      }
+      auto offset = blt::posix_time_zone(timeZone_).base_utc_offset();
+      parsed+=offset;
+    }
 
     return TimestampFromBoostPtime(parsed.utc_time());
   }
+
+private:
+  std::string timeZone_;
 };
 
 class YyyyMmDdDateParser final : public TimestampParser {
@@ -104,7 +115,7 @@ protected:
       }
     }
 
-    if (timeZone_ == SYSTEM_LOCAL_TIME_ZONE) {
+    if (timeZone_ == SystemLocalTimeZone) {
       using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
       return TimestampFromBoostPtime(Adjustor::utc_to_local(bpt::ptime(parsedDate)));
     }
@@ -137,7 +148,7 @@ private:
 
 } // namespace
 
-TimeZone TimeZone::Local() { return {SYSTEM_LOCAL_TIME_ZONE}; }
+TimeZone TimeZone::Local() { return {SystemLocalTimeZone}; }
 
 bpt::ptime TimestampToBoostPtime(Timestamp time) {
   if (time == Timestamp::min()) { return boost::date_time::neg_infin; }
@@ -168,12 +179,12 @@ std::string TimestampToXmlDateTime(Timestamp time) {
   return std::move(ss).str();
 }
 
-Timestamp TimestampFromXmlDataTime(std::string_view xml) {
-  return XmlDateTimeParser{}.parse(xml);
-}
-
 Timestamp TimeZone::timestampFromYyyyMmDd(std::string_view yyyyMmDd) const {
   return YyyyMmDdDateParser{str_}.parse(yyyyMmDd);
+}
+
+Timestamp TimeZone::timestampFromXmlDateTime(std::string_view xml) const {
+  return XmlDateTimeParser{str_}.parse(xml);
 }
 
 

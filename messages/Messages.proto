@@ -464,7 +464,7 @@ message ChecksumChainRequest {
 }
 message ChecksumChainResponse {
   bytes checkpoint = 1; // The last checkpoint included in the XOR
-  bytes xorredChecksums = 2;
+  bytes xorred_checksums = 2;
 }
 
 // New API
@@ -1316,8 +1316,8 @@ message SignedColumnAccessRequest {
 }
 
 message ColumnAccessRequest {
-  bool includeImplicitlyGranted = 1;
-  repeated string requireModes = 2;
+  bool include_implicitly_granted = 1;
+  repeated string require_modes = 2;
 }
 
 message ColumnGroupAccess {
@@ -1326,8 +1326,8 @@ message ColumnGroupAccess {
 }
 
 message ColumnAccessResponse {
-  repeated ColumnGroupAccess columnGroups = 1;
-  repeated IndexList columnGroupColumns = 2;
+  repeated ColumnGroupAccess column_groups = 1;
+  repeated IndexList column_group_columns = 2;
   repeated string columns = 3;
 }
 
@@ -1388,7 +1388,7 @@ message SignedParticipantGroupAccessRequest {
 }
 
 message ParticipantGroupAccessRequest {
-  bool includeImplicitlyGranted = 1;
+  bool include_implicitly_granted = 1;
 }
 
 message ParticipantGroupAccess {
@@ -1397,13 +1397,13 @@ message ParticipantGroupAccess {
 }
 
 message ParticipantGroupAccessResponse {
-  repeated ParticipantGroupAccess participantGroups = 1;
+  repeated ParticipantGroupAccess participant_groups = 1;
 }
 
 message TokenBlockingTokenIdentifier {
   string subject = 1;
   string user_group = 2;
-  Timestamp issue_datetime = 3;
+  Timestamp issue_date_time = 3;
 }
 
 message TokenBlockingBlocklistEntry {
@@ -1411,8 +1411,8 @@ message TokenBlockingBlocklistEntry {
   TokenBlockingTokenIdentifier target = 2;
   string metadata_note = 3;
   string metadata_issuer = 4;
-  Timestamp metadata_creation_datetime = 5;
-  optional Timestamp metadata_block_start_datetime = 6;
+  Timestamp metadata_creation_date_time = 5;
+  optional Timestamp metadata_block_start_date_time = 6;
 }
 
 message TokenBlockingListRequest {}
@@ -1429,7 +1429,7 @@ message TokenBlockingListResponse {
 message TokenBlockingCreateRequest {
   TokenBlockingTokenIdentifier target = 1;
   string note = 2;
-  optional Timestamp block_start_datetime = 3;
+  optional Timestamp block_start_date_time = 3;
 }
 
 message SignedTokenBlockingCreateRequest {

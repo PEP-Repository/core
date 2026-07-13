@@ -21,7 +21,7 @@ using namespace std::literals;
 
 namespace {
 
-const auto TIMEOUT = std::chrono::seconds(5);
+const auto Timeout = std::chrono::seconds(5);
 
 // Not defined with a PEP_ prefix so that it matches gtest macros
 // Implemented as "invoke this lambda" so that a semicolon is required: ASSERT_THROW_WITH_MESSAGE(mycode(), std::runtime_error);
@@ -47,11 +47,11 @@ using namespace pep::tests;
 using CastorClientTest = FakeCastorTest;
 
 TEST_F(CastorClientTest, Authentication) {
-  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(RESPONSE_STUDIES));
+  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(ResponseStudies));
 
   options_->authenticated = false;
   ASSERT_THROW_WITH_MESSAGE(
-    castorConnection_->getStudies().timeout(TIMEOUT).as_blocking()
+    castorConnection_->getStudies().timeout(Timeout).as_blocking()
     .subscribe_with_rethrow([](std::shared_ptr<Study> study) {
       FAIL() << "Received a study without being authenticated.";
       })
@@ -59,7 +59,7 @@ TEST_F(CastorClientTest, Authentication) {
 
   castorConnection_->reauthenticate();
   bool authenticationError = castorConnection_->authenticationStatus()
-                             .timeout(TIMEOUT)
+                             .timeout(Timeout)
   .map([](AuthenticationStatus status) {
     return status.state;
   })
@@ -70,7 +70,7 @@ TEST_F(CastorClientTest, Authentication) {
   options_->authenticated = true;
   castorConnection_->reauthenticate();
   bool authenticated = castorConnection_->authenticationStatus()
-                       .timeout(TIMEOUT)
+                       .timeout(Timeout)
   .map([](AuthenticationStatus status) {
     return status.state;
   })
@@ -111,7 +111,7 @@ TEST_F(CastorClientTest, SendCastorRequest) {
 }
 
 TEST_F(CastorClientTest, GetStudies) {
-  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(RESPONSE_STUDIES));
+  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(ResponseStudies));
 
   std::shared_ptr<Study> study = castorConnection_->getStudies().as_blocking().first();
   ASSERT_EQ(study->getId(), "14F7C4E0-0FA5-C430-B7A2-9ECCB6271FA6");
@@ -132,8 +132,8 @@ TEST_F(CastorClientTest, GetStudies) {
 }
 
 TEST_F(CastorClientTest, MultiPage) {
-  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(RESPONSE_STUDIES_MULTIPAGE_PAGE1));
-  options_->responses.emplace("/api/study?page=2&page_size=1000", FakeCastorApi::Response(RESPONSE_STUDIES_MULTIPAGE_PAGE2));
+  options_->responses.emplace("/api/study?page_size=1000", FakeCastorApi::Response(ResponseStudiesMultipagePage1));
+  options_->responses.emplace("/api/study?page=2&page_size=1000", FakeCastorApi::Response(ResponseStudiesMultipagePage2));
 
   std::shared_ptr<Study> study = castorConnection_->getStudies().as_blocking().first();
   ASSERT_EQ(study->getId(), "14F7C4E0-0FA5-C430-B7A2-9ECCB6271FA6");

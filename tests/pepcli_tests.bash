@@ -219,17 +219,31 @@ fi
 
 if should_run_test structure-history; then
 
-  # Create a user group, remove it later and then verify that we can query the group that was removed through the --at option
+  # Create a user group, remove it later and then verify that we can query the group that was removed through the --point-in-time option
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user group create onceUponATimeGroup
-  UTC_TIMESTAMP=$($DATE_CMD +%s%N | cut -b1-13)
+  UTC_TIMESTAMP_MS=$($DATE_CMD +%s%N | cut -b1-13)
+  sleep 1s
+  UTC_TIMESTAMP=$($DATE_CMD +%s)
+  UTC_ISO_DATETIME=$($DATE_CMD -u +%FT%TZ)
+  DIFFERENT_TZ_ISO_DATETIME=$(TZ="<-07>+7" $DATE_CMD --date="$UTC_ISO_DATETIME" +%FT%T%:z)
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user group remove onceUponATimeGroup
-  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --at "$UTC_TIMESTAMP" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "unix-ms:$UTC_TIMESTAMP_MS" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "unix:$UTC_TIMESTAMP" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "$UTC_ISO_DATETIME" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "$DIFFERENT_TZ_ISO_DATETIME" | grep 'onceUponATimeGroup'
 
-  # Create a column, remove it later and then verify that we can still query the column that was removed through the --at option
+  # Create a column, remove it later and then verify that we can still query the column that was removed through the --point-in-time option
   pepcli --oauth-token-group "Data Administrator" ama column create onceUponATimeColumn
-  UTC_TIMESTAMP=$($DATE_CMD +%s%N | cut -b1-13)
+  UTC_TIMESTAMP_MS=$($DATE_CMD +%s%N | cut -b1-13)
+  sleep 1s
+  UTC_TIMESTAMP=$($DATE_CMD +%s)
+  UTC_ISO_DATETIME=$($DATE_CMD -u +%FT%TZ)
+  DIFFERENT_TZ_ISO_DATETIME=$(TZ="<-07>+7" $DATE_CMD --date="$UTC_ISO_DATETIME" +%FT%T%:z)
   pepcli --oauth-token-group "Data Administrator" ama column remove onceUponATimeColumn
-  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --at "$UTC_TIMESTAMP" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "unix-ms:$UTC_TIMESTAMP_MS" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "unix:$UTC_TIMESTAMP" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "$UTC_ISO_DATETIME" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "$DIFFERENT_TZ_ISO_DATETIME" | grep 'onceUponATimeColumn'
 
 fi
 
@@ -367,7 +381,7 @@ if should_run_test token-block; then
   # Add a new user to integrationGroup and generate token for that user
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user create userWithFreshToken
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user addTo userWithFreshToken integrationGroup
-  TOKEN_TEST_USER_TOKEN=$(pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" token request userWithFreshToken integrationGroup "$($DATE_CMD -d '2 days' +%s)")
+  TOKEN_TEST_USER_TOKEN=$(pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" token request userWithFreshToken integrationGroup "unix:$($DATE_CMD -d '2 days' +%s)")
 
   # Attempt to do a query with the generated token
   pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access

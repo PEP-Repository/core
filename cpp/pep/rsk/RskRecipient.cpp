@@ -8,7 +8,7 @@ using namespace pep;
 
 RecipientBase::RecipientBase(Type type, std::string payload)
     : type_(type), payload_(std::move(payload)) {
-  if (!type_) {
+  if (type_ == 0) {
     throw std::invalid_argument("Recipient type must be nonzero");
   }
   if (payload_.empty()) {

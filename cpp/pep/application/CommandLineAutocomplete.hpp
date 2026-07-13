@@ -84,7 +84,7 @@ public:
    * \brief Insert completion for '--'
    */
   void stopProcessingMarker() {
-    entries_.push_back({ "end subcommand", "", {{{SwitchAnnouncement::STOP_PROCESSING}, "", "End subcommand arguments"}}, {} });
+    entries_.push_back({ "end subcommand", "", {{{SwitchAnnouncement::StopProcessing}, "", "End subcommand arguments"}}, {} });
   }
 
   /*!

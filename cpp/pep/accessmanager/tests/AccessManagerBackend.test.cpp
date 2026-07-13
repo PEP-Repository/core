@@ -79,7 +79,7 @@ public:
   static Constants constants;
 
   static void SetUpTestSuite() {
-    globalConf = std::make_shared<GlobalConfiguration>(Serialization::FromJsonString<GlobalConfiguration>(tests::TEST_SUITE_GLOBAL_CONFIGURATION));
+    globalConf = std::make_shared<GlobalConfiguration>(Serialization::FromJsonString<GlobalConfiguration>(tests::TestSuiteGlobalConfiguration));
     std::filesystem::remove(constants.databasePath);
     storage = std::make_shared<AccessManager::Backend::Storage>(constants.databasePath, globalConf);
     backend = std::make_shared<AccessManager::Backend>(storage);

@@ -21,7 +21,7 @@
 
 namespace {
 
-const QString ALL_FILES_WILDCARD =
+const QString AllFilesWildcard =
 #ifdef _WIN32
 "*.*"
 #else
@@ -295,7 +295,7 @@ std::string ExportWidget::getExportFilename(const QList<std::shared_ptr<Exportab
   auto fileName = QFileDialog::getSaveFileName(this,
     tr("Export %1").arg(caption),
     QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + QDir::separator() + caption + ".csv",
-    tr("Comma-separated values (*.csv);;All Files (%1)").arg(ALL_FILES_WILDCARD));
+    tr("Comma-separated values (*.csv);;All Files (%1)").arg(AllFilesWildcard));
   return fileName.toStdString();
 }
 

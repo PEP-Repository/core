@@ -629,6 +629,7 @@ You may need to substitute paths, especially when debugging remotely. E.g.:
   "name": "pepUtilsUnitTests",
   "program": "${workspaceFolder}/build/wasm32/Debug/cpp/pep/utils/pepUtilsUnitTests",
 
+  "outputCapture": "std",
   "type": "node",
   "request": "launch",
   "skipFiles": ["<node_internals>/**"],
@@ -638,6 +639,8 @@ You may need to substitute paths, especially when debugging remotely. E.g.:
   }
 }
 ```
+
+This assumes `node` is in your `PATH` and `EMSDK` is also in your environment. Most convenient is to start VSCode from a shell where this is the case.
 
 Note: Extension doesn't seem to like `-gseparate-dwarf`.
 

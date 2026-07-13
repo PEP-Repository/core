@@ -8,7 +8,7 @@ AssessorWidget::AssessorWidget(QWidget *parent) :
 {
   ui_->setupUi(this);
 
-  QObject::connect(ui_->assessorComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onAssessorComboIndexChanged(int)));
+  QObject::connect(ui_->assessorComboBox, &QComboBox::currentIndexChanged, this, &AssessorWidget::onAssessorComboIndexChanged);
   QObject::connect(ui_->cancelButton, &QAbstractButton::clicked, this, &AssessorWidget::closeWidget);
   QObject::connect(ui_->updateButton, &QAbstractButton::clicked, [this]() {
     ui_->updateButton->setEnabled(false);

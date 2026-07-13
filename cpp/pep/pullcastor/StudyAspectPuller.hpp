@@ -89,10 +89,10 @@ public:
 /*!
   * \brief Helper (base) class that automatically registers the TDerived aspect puller type as the handler for the specified study aspect TYPE.
   */
-template <typename TDerived, CastorStudyType TYPE, bool registerDerived = true>
+template <typename TDerived, CastorStudyType Type, bool registerDerived = true>
 class TypedStudyAspectPuller : public StudyAspectPuller, public SelfRegistering<TDerived, StudyAspectPuller, registerDerived> {
 public:
-  static constexpr CastorStudyType StudyType = TYPE;
+  static constexpr CastorStudyType StudyType = Type;
 
 protected:
   inline TypedStudyAspectPuller(std::shared_ptr<StudyPuller> study, const StudyAspect& aspect)

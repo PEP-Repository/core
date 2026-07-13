@@ -220,6 +220,8 @@ This section lists our own coding guidelines, which we apply on top of the more 
     - Such types do not contain instance methods, putting state management responsibilities firmly into the caller's hands.
     - Field names are written in `camelCase`, starting with a `l`owerase `l`etter. Note that these names lack the trailing underscore `_` character that's used for non-public fields.
 
+- Names of Protobuf `message` and `enum` types are written in `PascalCase`, starting with an `U`ppercase `L`etter.
+- Names of Protobuf fields are written in `snake_case`, i.e. fully lowercase with underscores between words.
 
 - Use curly braces `{}` for loop code and condition branches:
 

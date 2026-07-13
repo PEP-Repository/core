@@ -2,7 +2,6 @@
 REM TODO: rewrite in PowerShell
 REM Having this code in a batch file (as opposed to in .gitlab-ci.yml) allows it to be run and debugged locally.
 REM Variables are prefixed with "PEP" to reduce chances of naming collisions.
-set OwnDir=%~dp0
 
 echo Starting CI job script for Windows build
 REM Colored output for e.g. Conan
@@ -60,7 +59,7 @@ if exist "%BUILD_DIR%" (
 echo Installing Conan packages.
 
 REM `__` will be replaced by `:` in script. Workaround for https://github.com/PowerShell/PowerShell/issues/16432.
-pwsh -ExecutionPolicy Bypass -File "%OwnDir%\windows-ci-conan.ps1" ^
+pwsh -ExecutionPolicy Bypass -File ".\docker-build\scripts\windows-ci-conan.ps1" ^
   install .\docker-build\builder\conan\conanfile.py ^
   --lockfile=.\docker-build\builder\conan\conan-ci.lock ^
   --profile__all=.\docker-build\builder\conan\conan_profile ^

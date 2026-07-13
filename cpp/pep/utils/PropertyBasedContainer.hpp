@@ -95,11 +95,11 @@ struct PropertyBasedContainer<TItem, GetPropertyFunction> {
   *     struct User { int id; }
   *     int GetUserId(const User& user) { return user.id; }
   *     PropertyBasedContainer<User*, &GetUserId>::set myUsers;
-  * \remark We "remove_const_t" and then re-add "const" to get prevent compilation failure when TItem itself is const, e.g. when
+  * \remark We "remove_const_t" and then re-add "const" to prevent compilation failure when TItem itself is const, e.g. when
   *         we compile a UniqueItemsContainer<const std::string*>. While I don't fully understand why this would not compile,
   *         the "const remove_const_t<>" approach gets rid of the problem. (I suspect that the compiler selects a different
   *         specialization due to SFINAE-related subtleties, but we want *this* specialization to be used whenever we need a
-  *         PropertyBasedContainer<> with a pointer as a key.
+  *         PropertyBasedContainer<> with a pointer as a key.)
   */
 template <typename TItem, typename TProperty, TProperty(*GetPropertyFunction)(const std::remove_const_t<TItem>&)>
 struct PropertyBasedContainer<TItem*, GetPropertyFunction> {

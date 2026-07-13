@@ -26,9 +26,9 @@ std::string Mod97::ComputeCheckDigits(const std::string& in) {
   // Convert all characters to their numeric values
   std::string numberstring;
   for (const auto c: working) {
-    if (std::isdigit(c)) {
+    if (std::isdigit(c) != 0) {
       numberstring += c  ;
-    } else if (std::isupper(c)) {
+    } else if (std::isupper(c) != 0) {
       numberstring += std::to_string(static_cast<int>(c) - 55);
     }
   }
