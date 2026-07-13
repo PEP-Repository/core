@@ -11,7 +11,7 @@ size_t AmaQRColumnGroup::FillToProtobufSerializationCapacity(AmaQRColumnGroup& d
     return 0; // sentinel value indicating not even the name fits in the new group.
   }
   dest.name = source.name;
-  return paddedNameLength + FillVectorToCapacity(dest.columns, cap - paddedNameLength, source.columns.cbegin() + offset, source.columns.cend(), padding);
+  return paddedNameLength + FillToCapacity(std::back_inserter(dest.columns), cap - paddedNameLength, source.columns.cbegin() + offset, source.columns.cend(), padding);
 }
 
 bool AmaMutationRequest::hasDataAdminOperation() const {

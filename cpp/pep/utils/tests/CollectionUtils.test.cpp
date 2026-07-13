@@ -68,14 +68,14 @@ TEST(MiscUtilTest, StartingChars) {
   TestFindLongestPrefixAtEnd("11111111111", "1011", 1U);
 }
 
-TEST(MiscUtilsFillVectorToCapacity, simple) {
+TEST(MiscUtilsFillToCapacity, simple) {
   // Arrange
   std::vector<std::string> source{ "A", "B", "C", "D" };
   std::vector<std::string> dest{};
   size_t capacity{ 1024 };
 
   //Act
-  size_t length = pep::FillVectorToCapacity(dest, capacity, source.begin(), source.end());
+  size_t length = pep::FillToCapacity(std::back_inserter(dest), capacity, source.begin(), source.end());
 
   //Assert
   std::vector<std::string> expected{ "A", "B", "C", "D" };
@@ -83,14 +83,14 @@ TEST(MiscUtilsFillVectorToCapacity, simple) {
   ASSERT_EQ(length, 4);
 }
 
-TEST(MiscUtilsFillVectorToCapacity, capacityZero) {
+TEST(MiscUtilsFillToCapacity, capacityZero) {
   // Arrange
   std::vector<std::string> source{ "A", "B", "C", "D" };
   std::vector<std::string> dest{};
   size_t capacity{ 0 };
 
   //Act
-  size_t length = pep::FillVectorToCapacity(dest, capacity, source.begin(), source.end());
+  size_t length = pep::FillToCapacity(std::back_inserter(dest), capacity, source.begin(), source.end());
 
   //Assert
   std::vector<std::string> expected{ };
@@ -99,14 +99,14 @@ TEST(MiscUtilsFillVectorToCapacity, capacityZero) {
 }
 
 
-TEST(MiscUtilsFillVectorToCapacity, CapacityLimited) {
+TEST(MiscUtilsFillToCapacity, CapacityLimited) {
   // Arrange
   std::vector<std::string> source{ "A", "B", "C", "D" };
   std::vector<std::string> dest{};
   size_t capacity{ 2 };
 
   //Act
-  size_t length = pep::FillVectorToCapacity(dest, capacity, source.begin(), source.end());
+  size_t length = pep::FillToCapacity(std::back_inserter(dest), capacity, source.begin(), source.end());
 
   //Assert
   std::vector<std::string> expected{ "A", "B"};
@@ -114,7 +114,7 @@ TEST(MiscUtilsFillVectorToCapacity, CapacityLimited) {
   ASSERT_EQ(length, 2);
 }
 
-TEST(MiscUtilsFillVectorToCapacity, OffsetLimited) {
+TEST(MiscUtilsFillToCapacity, OffsetLimited) {
   // Arrange
   std::vector<std::string> source{ "A", "B", "C", "D" };
   std::vector<std::string> dest{};
@@ -122,7 +122,7 @@ TEST(MiscUtilsFillVectorToCapacity, OffsetLimited) {
   size_t offset{ 2 };
 
   //Act
-  size_t length = pep::FillVectorToCapacity(dest, capacity, source.begin() + offset, source.end());
+  size_t length = pep::FillToCapacity(std::back_inserter(dest), capacity, source.begin() + offset, source.end());
 
   //Assert
   std::vector<std::string> expected{"C", "D" };
