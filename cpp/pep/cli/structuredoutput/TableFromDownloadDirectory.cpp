@@ -169,7 +169,7 @@ Table TableFrom(const DownloadDirectory& dir, const TableFromDownloadDirectoryCo
       config.idText,
       [&dir](const RecordDescriptor& record) {
         const auto filename = dir.getRecordFileName(record);
-        return (filename.has_value() && exists(*filename)) ? filename->string() : "";
+        return (filename.has_value() && std::filesystem::exists(*filename)) ? filename->path().string() : "";
       });
   auto table = TableFrom(pooled, config.participantIdentifierColumnName);
   ApplyConfiguration(table, config, dir.getPath());

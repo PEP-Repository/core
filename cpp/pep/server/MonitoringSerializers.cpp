@@ -40,13 +40,13 @@ void Serializer<ChecksumChainRequest>::moveIntoProtocolBuffer(proto::ChecksumCha
 
 ChecksumChainResponse Serializer<ChecksumChainResponse>::fromProtocolBuffer(proto::ChecksumChainResponse&& source) const {
   ChecksumChainResponse result;
-  result.xorredChecksums = source.xorredchecksums();
+  result.xorredChecksums = source.xorred_checksums();
   result.checkpoint = source.checkpoint();
   return result;
 }
 
 void Serializer<ChecksumChainResponse>::moveIntoProtocolBuffer(proto::ChecksumChainResponse& dest, ChecksumChainResponse value) const {
-  dest.set_xorredchecksums(value.xorredChecksums);
+  dest.set_xorred_checksums(value.xorredChecksums);
   dest.set_checkpoint(value.checkpoint);
 }
 

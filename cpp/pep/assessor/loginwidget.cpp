@@ -60,6 +60,7 @@ LoginWidget::LoginWidget(std::shared_ptr<boost::asio::io_context> io_context, co
     emit version(QString::fromStdString(cfgVersion->getSummary()));
   }
 
+  QObject::connect(ui_->loginButton, &QPushButton::clicked, this, &LoginWidget::onLoginButtonClicked);
   QObject::connect(this, &LoginWidget::loginSuccess, this, &LoginWidget::close);
 
   if (pep::ConfigVersion::Current() != std::nullopt) {
@@ -280,9 +281,7 @@ void LoginWidget::onUpdateStarted(std::exception_ptr error) {
   this->style()->polish(this);
 
   //Reconfigure login button.
-  QObject::disconnect(ui_->loginButton, nullptr, nullptr, nullptr);
   ui_->loginButton->setText("Login");
-  QObject::connect(ui_->loginButton, SIGNAL(clicked()), this, SLOT(onLoginButtonClicked()));
   ui_->loginButton->setEnabled(true);
 }
 

@@ -219,7 +219,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
       "Key",
       boost::algorithm::hex(encIdKey)
     );
-    std::ofstream os(encIdKeyFile.string());
+    std::ofstream os(encIdKeyFile);
     std::filesystem::permissions(encIdKeyFile, std::filesystem::perms::owner_read);
     boost::property_tree::write_json(os, root);
   }

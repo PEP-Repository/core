@@ -34,9 +34,6 @@ template<DerivedFromSpecialization<std::chrono::duration> TToDuration, typename 
 
 [[nodiscard]] Timestamp TimestampFromBoostPtime(boost::posix_time::ptime);
 
-/// Parses a timestamp value from an XML (ISO 8061) datetime string (yyyy-mm-ddThh:mm:ss(+-hh:mm))
-[[nodiscard]] Timestamp TimestampFromXmlDataTime(std::string_view xml);
-
 [[nodiscard]] boost::posix_time::ptime TimestampToBoostPtime(Timestamp);
 
 /// Converts to an XML (ISO 8601) datetime string, with a resolution in seconds.
@@ -54,6 +51,9 @@ public:
   /// Parses a pep::Timestamp value from a yyyyMmDd string, such as "20240523"
   /// @returns the timestamp matching zero milliseconds into the iso date, depending on the timezone
   [[nodiscard]] Timestamp timestampFromYyyyMmDd(std::string_view yyyyMmDd) const;
+  /// Parses a timestamp value from an XML (ISO 8061) datetime string (yyyy-mm-dd[Thh:mm:ss[Z|+-hh:mm]]).
+  /// If a timezone is specified in the string, that will be used. Otherwise, \p this timezone will be used.
+  [[nodiscard]] Timestamp timestampFromXmlDateTime(std::string_view xml) const;
 
 private:
   TimeZone(std::string str) : str_(std::move(str)) {}

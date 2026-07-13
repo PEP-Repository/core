@@ -35,7 +35,7 @@ namespace so = pep::structuredOutput;
 namespace fs = std::filesystem;
 
 namespace {
-constexpr auto SUPPORTED_EXPORT_FORMATS = so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml;
+constexpr auto SupportedExportFormats = so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml;
 
 struct Context {
   bool update{ false };
@@ -187,8 +187,8 @@ void checkContextSettings(const std::shared_ptr<Context> &ctx) {
 
 so::FormatFlags ParseSingleExportFormat(const std::string& name) {
   static_assert(
-      SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
-      "formats handled in this function must mirror the SUPPORTED_EXPORT_FORMATS");
+      SupportedExportFormats == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
+      "formats handled in this function must mirror the SupportedExportFormats");
 
   const auto parsed =
       FlagsIf(so::FormatFlags::Csv, name == "csv") |
@@ -196,7 +196,7 @@ so::FormatFlags ParseSingleExportFormat(const std::string& name) {
       FlagsIf(so::FormatFlags::Yaml, name == "yaml");
   if (parsed != so::FormatFlags::None) { return parsed; }
 
-  const auto supported = so::ToSingleString(SUPPORTED_EXPORT_FORMATS, ", ");
+  const auto supported = so::ToSingleString(SupportedExportFormats, ", ");
   throw std::runtime_error("\"" + name + "\" is not a valid export format. Supported formats are: " + supported);
 }
 
@@ -407,8 +407,8 @@ void ExecuteExports(const so::FormatFlags formats, const ExportContext ctx) {
   };
 
   static_assert(
-      SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
-      "formats handled in this function must mirror the SUPPORTED_EXPORT_FORMATS");
+      SupportedExportFormats == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
+      "formats handled in this function must mirror the SupportedExportFormats");
 
   if (HasFlags(formats, so::FormatFlags::Csv)) {
     exportAs("csv", [&table](std::ofstream& stream) { so::csv::append(stream, table); });
@@ -446,7 +446,7 @@ protected:
       + Parameter("report-progress", "Produce progress status messages")
       + Parameter("suppress-file-extensions", "Don't apply file extensions to downloaded files")
       + Parameter("export", "Add supplementary output in the selected format").value(Value<std::string>()
-        .multiple().allow(ToIndividualStrings(SUPPORTED_EXPORT_FORMATS)));
+        .multiple().allow(ToIndividualStrings(SupportedExportFormats)));
   }
 
   int execute() override {

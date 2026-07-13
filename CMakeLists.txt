@@ -234,7 +234,7 @@ if(DEFINED EMSCRIPTEN)
       "$<$<CONFIG:Debug>:-Wno-limited-postlink-optimizations>"
       "$<$<CONFIG:RelWithDebInfo>:-Wno-error=limited-postlink-optimizations>"
       # -sRUNTIME_DEBUG: Debug logging for Emscripten runtime
-      "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG>"
+      "$<$<CONFIG:Debug>:-sRUNTIME_DEBUG;-sEXCEPTION_DEBUG>"
   )
 
   define_property(TARGET PROPERTY PEP_SKIP_DEFAULT_EMSCRIPTEN_CLI_CONFIG
@@ -271,8 +271,14 @@ if(DEFINED EMSCRIPTEN)
   else()
     list(APPEND emscripten_cli_link_flags
         -sENVIRONMENT=node
-        -sNODERAWFS # Use host file system
     )
+    # Use host file system on *nix-like systems that provide /dev/urandom and the likes.
+	# See https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/2925 and https://github.com/emscripten-core/emscripten/issues/9628
+    if(CMAKE_HOST_UNIX)
+      list(APPEND emscripten_cli_link_flags
+          -sNODERAWFS
+      )
+    endif()
   endif()
 
   add_link_options("$<$<NOT:$<BOOL:$<TARGET_PROPERTY:PEP_SKIP_DEFAULT_EMSCRIPTEN_CLI_CONFIG>>>:${emscripten_cli_link_flags}>")

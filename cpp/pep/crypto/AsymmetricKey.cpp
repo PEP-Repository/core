@@ -322,7 +322,7 @@ bool AsymmetricKey::isPrivateKeyFor(const AsymmetricKey& publicKey) const {
   PEP_DEFER(BN_free(rsa_priv_n));
 
   // Extract n with EVP_PKEY_get_bn_param for private key
-  if (EVP_PKEY_is_a(key_, "RSA")) {
+  if (EVP_PKEY_is_a(key_, "RSA") != 0) {
     if (EVP_PKEY_get_bn_param(key_, OSSL_PKEY_PARAM_RSA_N, &rsa_priv_n) <= 0) {
       throw pep::OpenSSLError("Failed to get RSA private key n in AsymmetricKey::isPrivateKeyFor.");
     }
@@ -331,7 +331,7 @@ bool AsymmetricKey::isPrivateKeyFor(const AsymmetricKey& publicKey) const {
   }
 
   // Extract the modulus (n) from the public key
-  if (EVP_PKEY_is_a(publicKey.key_, "RSA")) {
+  if (EVP_PKEY_is_a(publicKey.key_, "RSA") != 0) {
     if (EVP_PKEY_get_bn_param(publicKey.key_, OSSL_PKEY_PARAM_RSA_N, &rsa_pub_n) <= 0) {
       throw pep::OpenSSLError("Failed to get RSA public key n in AsymmetricKey::isPrivateKeyFor.");
     }

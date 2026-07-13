@@ -12,22 +12,22 @@ namespace pep::messaging {
 namespace {
 
 // MessageProperties uses the (single) high bit to indicate message type
-constexpr EncodedMessageProperties TYPE_REQUEST = 0x00000000;
-constexpr EncodedMessageProperties TYPE_RESPONSE = 0x80000000;
-constexpr EncodedMessageProperties TYPE_BITS = TYPE_REQUEST | TYPE_RESPONSE;
+constexpr EncodedMessageProperties TypeRequest = 0x00000000;
+constexpr EncodedMessageProperties TypeResponse = 0x80000000;
+constexpr EncodedMessageProperties TypeBits = TypeRequest | TypeResponse;
 
 // MessageProperties uses (the next-highest) three bits for state-related flags
-constexpr EncodedMessageProperties FLAG_CLOSE = 0x40000000; // This is the last piece of the (possibly multi-part) message
-constexpr EncodedMessageProperties FLAG_ERROR = 0x20000000; // The sending party encountered an error constructing or sending the (possibly multi-part) message. Implies FLAG_CLOSE.
-constexpr EncodedMessageProperties FLAG_PAYLOAD = 0x10000000; // The message includes content
-constexpr EncodedMessageProperties FLAG_BITS = FLAG_CLOSE | FLAG_ERROR | FLAG_PAYLOAD;
+constexpr EncodedMessageProperties FlagClose = 0x40000000; // This is the last piece of the (possibly multi-part) message
+constexpr EncodedMessageProperties FlagError = 0x20000000; // The sending party encountered an error constructing or sending the (possibly multi-part) message. Implies FlagClose.
+constexpr EncodedMessageProperties FlagPayload = 0x10000000; // The message includes content
+constexpr EncodedMessageProperties FlagBits = FlagClose | FlagError | FlagPayload;
 
 // MessageProperties uses remaining bits for a unique (serial) number for every request+response cycle
-constexpr EncodedMessageProperties STREAM_ID_BITS = ~(TYPE_BITS | FLAG_BITS);
+constexpr EncodedMessageProperties StreamIdBits = ~(TypeBits | FlagBits);
 
-constexpr EncodedMessageProperties NO_MESSAGE_PROPERTY_BITS = 0;
+constexpr EncodedMessageProperties NoMessagePropertyBits = 0;
 
-constexpr StreamId::Value CONTROL_STREAM_ID = 0;
+constexpr StreamId::Value ControlStreamId = 0;
 
 }
 
@@ -61,23 +61,23 @@ std::string MessageType::describe() const {
 EncodedMessageProperties MessageType::encode() const noexcept {
   assert(IsValidValue(value_));
   if (value_ == Response) {
-    static_assert(TYPE_RESPONSE != NO_MESSAGE_PROPERTY_BITS);
-    return TYPE_RESPONSE;
+    static_assert(TypeResponse != NoMessagePropertyBits);
+    return TypeResponse;
   }
-  return NO_MESSAGE_PROPERTY_BITS;
+  return NoMessagePropertyBits;
 }
 
 EncodedMessageProperties Flags::encode() const noexcept {
-  EncodedMessageProperties result = NO_MESSAGE_PROPERTY_BITS;
+  EncodedMessageProperties result = NoMessagePropertyBits;
 
   if (close_) {
-    result |= FLAG_CLOSE;
+    result |= FlagClose;
   }
   if (error_) {
-    result |= FLAG_ERROR;
+    result |= FlagError;
   }
   if (payload_) {
-    result |= FLAG_PAYLOAD;
+    result |= FlagPayload;
   }
 
   return result;
@@ -145,7 +145,7 @@ EncodedMessageProperties MessageId::encode() const noexcept {
 }
 
 bool StreamId::IsValidValue(Value value) noexcept {
-  return (value & ~STREAM_ID_BITS) == NO_MESSAGE_PROPERTY_BITS;
+  return (value & ~StreamIdBits) == NoMessagePropertyBits;
 }
 
 StreamId::StreamId(Value value)
@@ -163,7 +163,7 @@ StreamId StreamId::MakeNext(const StreamId& previous) noexcept {
   if (!IsValidValue(value)) { // ensure that our increment didn't spill into the (high) bits reserved for stuff other than the stream ID
     value = 1U;
   }
-  if (value == CONTROL_STREAM_ID) { // ensure that we didn't wrap to zero (if CONTROL_STREAM_ID is ever changed)
+  if (value == ControlStreamId) { // ensure that we didn't wrap to zero (if ControlStreamId is ever changed)
     ++value;
   }
   assert(IsValidValue(value));
@@ -176,7 +176,7 @@ MessageId::MessageId(MessageType type, StreamId streamId)
 }
 
 MessageId MessageId::MakeForControlMessage() noexcept {
-  return MessageId(MessageType::Control, StreamId(CONTROL_STREAM_ID));
+  return MessageId(MessageType::Control, StreamId(ControlStreamId));
 }
 
 MessageProperties::MessageProperties(MessageId messageId, Flags flags)
@@ -189,22 +189,22 @@ EncodedMessageProperties MessageProperties::encode() const noexcept {
 }
 
 MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties properties) {
-  auto typeBits = properties & TYPE_BITS;
-  auto flagBits = properties & FLAG_BITS;
-  auto streamId = properties & STREAM_ID_BITS;
+  auto typeBits = properties & TypeBits;
+  auto flagBits = properties & FlagBits;
+  auto streamId = properties & StreamIdBits;
 
   MessageType::Value type = MessageType::Request;
-  if (streamId == CONTROL_STREAM_ID) {
-    if (properties != CONTROL_STREAM_ID) {
+  if (streamId == ControlStreamId) {
+    if (properties != ControlStreamId) {
       throw std::runtime_error("Message properties cannot specify a control stream ID with additional properties");
     }
     type = MessageType::Control;
   }
-  else if (typeBits & TYPE_RESPONSE) {
+  else if ((typeBits & TypeResponse) != 0) {
     type = MessageType::Response;
   }
 
-  Flags flags(flagBits & FLAG_CLOSE, flagBits & FLAG_ERROR, flagBits & FLAG_PAYLOAD);
+  Flags flags((flagBits & FlagClose) != 0, (flagBits & FlagError) != 0, (flagBits & FlagPayload) != 0);
 
   if (!StreamId::IsValidValue(streamId)) {
     throw std::runtime_error("Message properties specify an invalid stream ID");

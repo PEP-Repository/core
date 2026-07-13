@@ -76,7 +76,7 @@ CoreClient::CoreClient(const Builder& builder) :
     enrollmentSubject_.get_observable().subscribe(
       [keysFilePath = *keysFilePath_](const EnrolledPartyKeys& result){
         PEP_LOG(LogTag, Severity::Debug) << "Writing new keys to \"" << keysFilePath.string() << '"';
-        std::ofstream sf(keysFilePath.string());
+        std::ofstream sf(keysFilePath);
         boost::property_tree::ptree keysConfig;
         SerializeProperties(keysConfig, result);
         boost::property_tree::write_json(sf, keysConfig);

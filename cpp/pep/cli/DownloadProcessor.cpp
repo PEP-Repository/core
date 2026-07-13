@@ -173,7 +173,7 @@ void DownloadProcessor::prepareLocalData(
 
   auto ownProgress = pep::Progress::Create(localRecords.size(), progress->push());
   for (const auto& existing : localRecords) {
-    ownProgress->advance(destination_->getRecordFileName(existing, false)->string());
+    ownProgress->advance(destination_->getRecordFileName(existing, false)->text());
     auto position = downloads->find(existing);
     if (position == downloads->cend()) {
       // Payload is not in the server's current data set: it has either been removed from the server,
@@ -279,6 +279,6 @@ std::shared_ptr<DownloadDirectory::RecordStorageStream> DownloadProcessor::openS
   }
 
   auto result = destination_->create(std::move(descriptor), pseudonymisationRequired, archiveExtractionRequired, fileSize);
-  progress.advance(result->getRelativePath().string());
+  progress.advance(result->getRelativePath().text());
   return result;
 }

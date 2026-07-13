@@ -20,7 +20,7 @@ using namespace std::literals;
 
 namespace {
 
-const std::string OAUTH_TOKEN_JSON_KEY = "OAuthToken";
+const std::string OauthTokenJsonKey = "OAuthToken";
 
 }
 
@@ -196,7 +196,7 @@ OAuthToken::OAuthToken(const std::string& serialized)
 OAuthToken OAuthToken::ReadJson(std::istream& source) {
   boost::property_tree::ptree root;
   boost::property_tree::read_json(source, root);
-  auto serialized = root.get<std::string>(OAUTH_TOKEN_JSON_KEY);
+  auto serialized = root.get<std::string>(OauthTokenJsonKey);
   return Parse(serialized);
 }
 
@@ -208,12 +208,12 @@ OAuthToken OAuthToken::ReadJson(const std::filesystem::path& file) {
 
 void OAuthToken::writeJson(std::ostream& destination, bool pretty) const {
   boost::property_tree::ptree root;
-  root.put(OAUTH_TOKEN_JSON_KEY, this->getSerializedForm());
+  root.put(OauthTokenJsonKey, this->getSerializedForm());
   boost::property_tree::write_json(destination, root, pretty);
 }
 
 void OAuthToken::writeJson(const std::filesystem::path& file, bool pretty) const {
-  std::ofstream fs(file.string(), std::ios::out | std::ios::binary | std::ios::trunc);
+  std::ofstream fs(file, std::ios::out | std::ios::binary | std::ios::trunc);
   this->writeJson(fs, pretty);
 }
 

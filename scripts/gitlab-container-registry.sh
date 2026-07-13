@@ -10,14 +10,20 @@ set -o errexit
 set -o nounset
 
 SCRIPTSELF=$(command -v "$0")
+readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+readonly SCRIPTPATH
 
 git_dir="$1"
 api_key="$2"
 command="$3"
 
+gitlab_api() {
+  "$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" "$@"
+}
+
 list_repositories() {
-  "$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" get-multipage registry/repositories | jq --compact-output ".[]"
+  gitlab_api get-multipage registry/repositories | jq --compact-output ".[]"
 }
 
 get_repository_names() {
@@ -45,7 +51,7 @@ delete_for_branch() {
     if [ "$repo_branch" = "$branch" ]; then
       id=$(echo "$repo_json" | jq -r ".id")
       echo "$repository"
-      error=$("$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" delete "registry/repositories/$id" 2>&1)
+      error=$(gitlab_api delete "registry/repositories/$id" 2>&1)
       # A HTTP 202 "Accepted" code indicates that the API will delete the repository asynchronously:
       # see https://docs.gitlab.com/ee/api/container_registry.html#delete-registry-repository
       # Suppress this status (since it indicates success) and report all others.
@@ -56,6 +62,33 @@ delete_for_branch() {
   done
 }
 
+get_image_location() {
+  imgname="$1"
+  sha="$2"
+
+  repos=$(gitlab_api get-multipage "registry/repositories")
+  repo=$(printf '%s' "$repos" | jq ".[] | select(.name==\"$imgname\")")
+  if [ -z "$repo" ]; then
+    >&2 echo "No FOSS Docker images found with name $imgname."
+    return
+  fi
+
+  repo_id=$(printf '%s' "$repo" | jq ".id")
+  details=$(gitlab_api get "registry/repositories/$repo_id/tags/$sha" || true)
+  if [ -z "$details" ]; then
+    >&2 echo "FOSS Docker image $imgname not found for SHA $sha."
+    return
+  fi
+
+  created_at=$(printf '%s' "$details" | "$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" get-outdated-creation-timestamp)
+  if [ -n "$created_at" ]; then
+    >&2 echo "FOSS Docker image $imgname for SHA $sha is outdated (created at $created_at)."
+    return
+  fi
+
+  printf '%s' "$details" | jq --raw-output ".location"
+}
+
 # TODO: support aNyCaSeCoMmAnDs
 case $command in
   list-branches)
@@ -63,6 +96,9 @@ case $command in
     ;;
   delete-for-branch)
     delete_for_branch "$4"
+    ;;
+  get-image-location)
+    get_image_location "$4" "$5"
     ;;
   *)
     >&2 echo Unsupported command "$command"
