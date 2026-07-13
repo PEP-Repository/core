@@ -3,7 +3,7 @@
 
 namespace pep {
 
-size_t AmaQRColumnGroup::FillToProtobufSerializationCapacity(AmaQRColumnGroup& dest, const AmaQRColumnGroup& source, const size_t& cap, const size_t& offset, const size_t& padding) {
+size_t AmaQRColumnGroup::FillToProtobufSerializationCapacity(AmaQRColumnGroup& dest, const AmaQRColumnGroup& source, size_t cap, size_t offset, size_t padding) {
   assert(offset == 0 || offset < source.columns.size());
   assert(!source.name.empty());
   size_t paddedNameLength = source.name.length() + padding;

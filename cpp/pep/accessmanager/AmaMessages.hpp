@@ -135,7 +135,7 @@ struct AmaQRColumnGroup {
   * \param padding: Padding granting room for protobuf serialization.
   * \return The size of the destination AmaQRColumnGroup in bytes.
   */
-  static size_t FillToProtobufSerializationCapacity(AmaQRColumnGroup& dest, const AmaQRColumnGroup& source, const size_t& cap, const size_t& offset = 0, const size_t& padding = 2);
+  static size_t FillToProtobufSerializationCapacity(AmaQRColumnGroup& dest, const AmaQRColumnGroup& source, size_t cap, size_t offset = 0, size_t padding = 2);
 };
 
 struct AmaQRColumnGroupAccessRule {
