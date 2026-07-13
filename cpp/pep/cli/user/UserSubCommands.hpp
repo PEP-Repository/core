@@ -53,7 +53,6 @@ public:
 
 protected:
   pep::commandline::Parameters getSupportedParameters() const override;
-  void finalizeParameters() override;
   int execute() override;
 };
 
@@ -73,7 +72,6 @@ public:
 
 protected:
   pep::commandline::Parameters getSupportedParameters() const override;
-  void finalizeParameters() override;
   int execute() override;
 };
 }

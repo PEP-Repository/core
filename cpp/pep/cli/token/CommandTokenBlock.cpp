@@ -34,7 +34,7 @@ namespace cliParameterNames {
 constexpr auto subject = "subject";
 constexpr auto userGroup = "user-group";
 constexpr auto issuedBefore = "issuedBefore";
-constexpr auto blockStartYyyymmdd = "block-start-yyyymmdd";
+constexpr auto blockStart = "block-start";
 constexpr auto message = "message";
 
 } // namespace cliParameterNames
@@ -67,9 +67,9 @@ protected:
               .shorthand('b')
               .value(pep::commandline::Value<Timestamp>())
         + pep::commandline::Parameter(
-              param::blockStartYyyymmdd,
-              "date at which the blocklist entry should go into effect. Before that date, tokens will not yet be blocked.")
-              .value(pep::commandline::Value<std::string>())
+              param::blockStart,
+              "date at which the blocklist entry should go into effect. Before that date, tokens will not yet be blocked. If omitted, the blocklist entry goes into effect immediately.")
+              .value(pep::commandline::Value<Timestamp>())
         + pep::commandline::Parameter(
               param::message,
               "explanatory text stored together with the created blocklist entry")
@@ -92,13 +92,7 @@ protected:
               .issueDateTime = values.getOptional<Timestamp>(param::issuedBefore).value_or(TimeNow())
           },
           .message = values.get<std::string>(param::message),
-          .blockStartDateTime =
-            [&]()->std::optional<Timestamp> {
-              if (const auto date = values.getOptional<std::string>(param::blockStartYyyymmdd)) {
-                return TimeZone::Local().timestampFromYyyyMmDd(*date);
-              }
-              return {};
-            }()
+          .blockStartDateTime = values.getOptional<Timestamp>(param::blockStart)
       };
     }
   };

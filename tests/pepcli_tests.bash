@@ -527,38 +527,40 @@ if should_run_test user-removal-and-expiration; then
 
   test_setup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
 
-  token="$(pepcli token request test-user test-group "$(date -d "now+10 years" +%s)")"
+  token="$(pepcli token request test-user test-group "unix:$(date -d "now+10 years" +%s)")"
   pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
   pepcli --oauth-token-group "Access Administrator" user removeFrom test-user test-group
   pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid when the user is removed from the group"
 
   expiration="$(date -d "now+5 seconds" +%s)"
-  pepcli --oauth-token-group "Access Administrator" user addTo --expiration-unixtime "$expiration" test-user test-group
-  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "$(date -d "now+10 years" +%s)")"
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
+  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$(date -d "now+10 years" +%s)")"
   while [ "$(date -d "now+1 second" +%s)" -lt "$expiration" ]; do # We compare with now+1 second, so the following doesn't fail if in the meantime the current time increased to the next second
     pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
     trace sleep 1s
   done
   trace sleep 1s
   pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid after group membership expiration"
-  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration-unixtime "$(date -d "now+10 years" +%s)" test-user test-group \
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$(date -d "now+10 years" +%s)" test-user test-group \
     && fail "Shouldn't be able to update expiration for a user group membership that already expired"
   original_expiration_seconds="5"
   expiration="$(date -d "now+$original_expiration_seconds seconds" +%s)"
-  pepcli --oauth-token-group "Access Administrator" user addTo --expiration-unixtime "$expiration" test-user test-group
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
   pepcli --oauth-token "$token" query enrollment && fail "Token that was once blocked should not get unblocked by updating the expiration"
-  newToken="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "$(date -d "now+10 years" +%s)")"
+  newToken="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$(date -d "now+10 years" +%s)")"
   pepcli --oauth-token "$newToken" query enrollment || fail "New token, requested after the issueDateTime of the block entry, should be valid"
 
-  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration-unixtime "$(date -d "now+10 years" +%s)" test-user test-group
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$(date -d "now+10 years" +%s)" test-user test-group
   trace sleep "${original_expiration_seconds}s"
   pepcli --oauth-token "$newToken" query enrollment || fail "Token should still be valid after original expiration has passed, but updated expiration has not yet passed"
 
-  blocked_token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "$(date -d "now+10 years" +%s)")"
+  blocked_token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$(date -d "now+10 years" +%s)")"
   pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should be valid"
-  pepcli --oauth-token-group "Access Administrator" token block create --issuedBefore-unixtime "$(date -d "now" +%s)" --block-start-yyyymmdd --message "Manually blocked" test-user test-group
+  pepcli --oauth-token-group "Access Administrator" token block create --issuedBefore "unix:$(date -d "now" +%s)" --block-start "unix:$(date -d "now+3 seconds" +%s)" --message "Manually blocked" test-user test-group
+  pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should still be valid, before block-start timestamp"
+  sleep 3s
   pepcli --oauth-token "$blocked_token" query enrollment && fail "Blocked token should not be usable"
-  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration-unixtime "$(date -d "now+20 years" +%s)" test-user test-group
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$(date -d "now+20 years" +%s)" test-user test-group
   pepcli --oauth-token "$blocked_token" query enrollment && fail "Manually blocked token should not be unblocked by updating the expiration of the group membership"
 
   test_cleanup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
