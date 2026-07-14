@@ -339,6 +339,10 @@ private:
       : ChildCommandOf<CommandQuery>("page-paths", "Reports (relative) paths of the current data set's pages in Storage Facility's page store", parent)
     {}
 
+    std::optional<std::string> getAdditionalDescription() const override {
+      return "This command should be needed/used only for extraordinary maintenance of Storage Facility's page store, such as migration to a new storage provider.";
+    }
+
   protected:
     int execute() override {
       return this->executeEventLoopFor(true, [this](std::shared_ptr<pep::CoreClient> client) {
