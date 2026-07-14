@@ -172,7 +172,7 @@ rxcpp::observable<FakeVoid> AccessManager::Backend::updateTokenBlocking(int64_t 
   return (issueDateTime ?
       blockTokens(internalUserId, group, *issueDateTime, note, blockStartDateTime) :
       rxcpp::rxs::just(std::make_shared<std::set<int64_t>>()).as_dynamic())
-    .flat_map([this, internalUserId, group=std::move(group)](std::shared_ptr<std::set<int64_t>> ids)  {
+    .flat_map([this, internalUserId, group](std::shared_ptr<std::set<int64_t>> ids)  {
       return removeBlockEntries(internalUserId, group, std::move(*ids));
     }).last();
 }
