@@ -29,7 +29,7 @@ TEST_PARTICIPANT="$(openssl rand -base64 12)"
 if should_run_test basic; then
   # Test --loglevel
   # Need `tee || true` because of pipefail
-  if ! (execute . "$PEPCLI_COMMAND" ping --server accessmanager || true) |& (tee /dev/stderr || true) | grep -qF '<info>'; then
+  if ! (execute . "$PEPCLI_COMMAND" || true) |& (tee /dev/stderr || true) | grep -qF '<info>'; then
     fail 'Default loglevel should include info log messages'
   fi
   if (execute . "$PEPCLI_COMMAND" --loglevel warning || true) |& (tee /dev/stderr || true) | grep -qF '<info>'; then
