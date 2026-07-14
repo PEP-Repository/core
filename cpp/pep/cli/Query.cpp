@@ -336,7 +336,7 @@ private:
   class CommandQueryPagePaths : public ChildCommandOf<CommandQuery> {
   public:
     explicit CommandQueryPagePaths(CommandQuery& parent)
-      : ChildCommandOf<CommandQuery>("page-paths", "Reports (relative) paths of the latest data set's pages in Storage Facility's page store", parent)
+      : ChildCommandOf<CommandQuery>("page-paths", "Reports (relative) paths of the current data set's pages in Storage Facility's page store", parent)
     {}
 
   protected:
