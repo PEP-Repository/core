@@ -134,7 +134,8 @@ void AccessManager::Backend::removeParticipantGroupAccessRulesForRequest(const A
 
 rxcpp::observable<std::shared_ptr<std::set<int64_t>>> AccessManager::Backend::blockTokens(int64_t internalUserId, const std::string& group, Timestamp issueDateTime,
   std::string note, std::optional<Timestamp> blockStartDateTime) {
-  return RxIterate(storage_->getAllIdentifiersForUser(internalUserId)).concat_map([group, issueDateTime, note, blockStartDateTime, accessManager=this->accessManager_](const std::string& uid) {
+  return RxIterate(storage_->getAllIdentifiersForUser(internalUserId))
+    .concat_map([group, issueDateTime, note, blockStartDateTime, accessManager=this->accessManager_](const std::string& uid) {
         TokenBlockingCreateRequest tokenBlockRequest{
           .target = {
             .subject = uid,
@@ -249,7 +250,7 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     storage_->modifyUserGroup(x.userGroup);
     PEP_LOG(LogTag, Severity::Info) << "Modified user group " << Logging::Escape(x.userGroup.name);
   }
-  return rxcpp::rxs::iterate(request.addUserToGroup).concat_map([this](const AddUserToGroup& x) -> rxcpp::observable<FakeVoid> {
+  return RxIterate(request.addUserToGroup).concat_map([this](const AddUserToGroup& x) -> rxcpp::observable<FakeVoid> {
     int64_t internalUserId = storage_->getInternalUserId(x.uid);
     return updateTokenBlocking(internalUserId, x.group, x.expiration, "User added to group with expiration", x.expiration)
     .op(RxSubsequently([storage=storage_, internalUserId, x] {
@@ -257,7 +258,7 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
       PEP_LOG(LogTag, Severity::Info) << "Added user to user group " << Logging::Escape(x.group);
     }));
   })
-  .concat(rxcpp::rxs::iterate(request.removeUserFromGroup).concat_map([this](const RemoveUserFromGroup& x)-> rxcpp::observable<FakeVoid> {
+  .concat(RxIterate(request.removeUserFromGroup).concat_map([this](const RemoveUserFromGroup& x)-> rxcpp::observable<FakeVoid> {
     int64_t internalUserId = storage_->getInternalUserId(x.uid);
     return updateTokenBlocking(internalUserId, x.group, TimeNow(), "User added to group with expiration", {})
     .op(RxSubsequently([storage=storage_, internalUserId, x] {
@@ -265,7 +266,7 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     PEP_LOG(LogTag, Severity::Info) << "Removed user from user group " << Logging::Escape(x.group);
     }));
   }))
-  .concat(rxcpp::rxs::iterate(request.updateExpiration).concat_map([this](const UpdateExpiration& x)-> rxcpp::observable<FakeVoid> {
+  .concat(RxIterate(request.updateExpiration).concat_map([this](const UpdateExpiration& x)-> rxcpp::observable<FakeVoid> {
     int64_t internalUserId = storage_->getInternalUserId(x.uid);
     return updateTokenBlocking(internalUserId, x.group, x.expiration, "User added to group with expiration", x.expiration)
     .op(RxSubsequently([storage=storage_, internalUserId, x] {
