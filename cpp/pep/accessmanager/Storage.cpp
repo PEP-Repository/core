@@ -211,7 +211,8 @@ auto CreateAmDb(const std::string& path) {
       make_column("timestamp", &UserGroupUserRecord::timestamp),
       make_column("tombstone", &UserGroupUserRecord::tombstone),
       make_column("internalUserId", &UserGroupUserRecord::internalUserId),
-      make_column("userGroupId", &UserGroupUserRecord::userGroupId)),
+      make_column("userGroupId", &UserGroupUserRecord::userGroupId),
+      make_column("expirationTimestamp", &UserGroupUserRecord::expirationTimestamp)),
 
     make_index("idx_StructureMetadata",
       &StructureMetadataRecord::subjectType,
@@ -334,17 +335,17 @@ void AccessManager::Backend::Storage::ensureInitialized() {
   auto systemadminId = createUser("systemadmin@main.pep.cs.ru.nl");
   auto multihatId = createUser("multihat@main.pep.cs.ru.nl");
 
-  addUserToGroup(assessorId, UserGroup::ResearchAssessor);
-  addUserToGroup(monitorId, UserGroup::Monitor);
-  addUserToGroup(dataadminId, UserGroup::DataAdministrator);
-  addUserToGroup(accessadminId, UserGroup::AccessAdministrator);
-  addUserToGroup(systemadminId, UserGroup::SystemAdministrator);
+  addUserToGroup(assessorId, UserGroup::ResearchAssessor, {});
+  addUserToGroup(monitorId, UserGroup::Monitor, {});
+  addUserToGroup(dataadminId, UserGroup::DataAdministrator, {});
+  addUserToGroup(accessadminId, UserGroup::AccessAdministrator, {});
+  addUserToGroup(systemadminId, UserGroup::SystemAdministrator, {});
 
-  addUserToGroup(multihatId, UserGroup::ResearchAssessor);
-  addUserToGroup(multihatId, UserGroup::Monitor);
-  addUserToGroup(multihatId, UserGroup::DataAdministrator);
-  addUserToGroup(multihatId, UserGroup::AccessAdministrator);
-  addUserToGroup(multihatId, UserGroup::SystemAdministrator);
+  addUserToGroup(multihatId, UserGroup::ResearchAssessor, {});
+  addUserToGroup(multihatId, UserGroup::Monitor, {});
+  addUserToGroup(multihatId, UserGroup::DataAdministrator, {});
+  addUserToGroup(multihatId, UserGroup::AccessAdministrator, {});
+  addUserToGroup(multihatId, UserGroup::SystemAdministrator, {});
 
 #endif //ENABLE_OAUTH_TEST_USERS
 
@@ -1635,10 +1636,12 @@ std::optional<std::string> AccessManager::Backend::Storage::getUserGroupName(int
 
 std::vector<UserGroup> AccessManager::Backend::Storage::getUserGroupsForUser(int64_t internalUserId, Timestamp at) const {
   using namespace std::ranges;
+  using namespace pep::database;
   std::vector<int64_t> groupIds = RangeToCollection<std::vector>(
     implementor_->getCurrentRecords(
       c(&UserGroupUserRecord::internalUserId) == internalUserId
       && c(&UserGroupUserRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
+      having(is_null(&UserGroupUserRecord::expirationTimestamp) || c(&UserGroupUserRecord::expirationTimestamp) >= TicksSinceEpoch<milliseconds>(at)),
       &UserGroupUserRecord::userGroupId)
   );
 
@@ -1664,7 +1667,8 @@ std::optional<std::chrono::seconds> AccessManager::Backend::Storage::getMaxAuthV
   using pep::database::having;
   auto result = RangeToOptional(
     implementor_->getCurrentRecords(c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
-      having(c(&UserGroupRecord::name) == group),
+      having(c(&UserGroupRecord::name) == group
+        && (is_null(&UserGroupUserRecord::expirationTimestamp) || c(&UserGroupUserRecord::expirationTimestamp) >= TicksSinceEpoch<milliseconds>(at))),
       &UserGroupRecord::maxAuthValiditySeconds)
     | views::transform(to_optional_seconds)
   );
@@ -1687,14 +1691,19 @@ bool AccessManager::Backend::Storage::userInGroup(int64_t internalUserId, std::s
 
 bool AccessManager::Backend::Storage::userInGroup(int64_t internalUserId,
                                                   int64_t userGroupId) const {
+  using namespace pep::database;
+  Timestamp at = TimeNow();
   return implementor_->currentRecordExists<UserGroupUserRecord>(
     c(&UserGroupUserRecord::internalUserId) == internalUserId
-    && c(&UserGroupUserRecord::userGroupId) == userGroupId);
+    && c(&UserGroupUserRecord::userGroupId) == userGroupId,
+    having(is_null(&UserGroupUserRecord::expirationTimestamp) || c(&UserGroupUserRecord::expirationTimestamp) >= TicksSinceEpoch<milliseconds>(at)));
 }
 
 bool AccessManager::Backend::Storage::userGroupIsEmpty(int64_t userGroupId) const {
+  using namespace pep::database;
   return !implementor_->currentRecordExists<UserGroupUserRecord>(
-    c(&UserGroupUserRecord::userGroupId) == userGroupId);
+    c(&UserGroupUserRecord::userGroupId) == userGroupId,
+    having(is_null(&UserGroupUserRecord::expirationTimestamp) || c(&UserGroupUserRecord::expirationTimestamp) >= TicksSinceEpoch<milliseconds>(TimeNow())));
 }
 
 int64_t AccessManager::Backend::Storage::createUserGroup(UserGroup userGroup) {
@@ -1745,12 +1754,12 @@ void AccessManager::Backend::Storage::removeUserGroup(std::string name) {
   implementor_->raw.insert(UserGroupRecord(*userGroupId, name, std::nullopt, true));
 }
 
-void AccessManager::Backend::Storage::addUserToGroup(std::string_view uid, std::string group) {
+void AccessManager::Backend::Storage::addUserToGroup(std::string_view uid, std::string group, std::optional<Timestamp> expiration) {
   int64_t internalUserId = getInternalUserId(uid);
-  addUserToGroup(internalUserId, std::move(group));
+  addUserToGroup(internalUserId, std::move(group), expiration);
 }
 
-void AccessManager::Backend::Storage::addUserToGroup(int64_t internalUserId, std::string group) {
+void AccessManager::Backend::Storage::addUserToGroup(int64_t internalUserId, std::string group, std::optional<Timestamp> expiration) {
   std::ostringstream msg;
   if (userInGroup(internalUserId, group)) {
     msg << "User is already in group: " << Logging::Escape(group);
@@ -1763,7 +1772,7 @@ void AccessManager::Backend::Storage::addUserToGroup(int64_t internalUserId, std
     throw Error(msg.str());
   }
 
-  implementor_->raw.insert(UserGroupUserRecord(internalUserId, *userGroupId));
+  implementor_->raw.insert(UserGroupUserRecord(internalUserId, *userGroupId, expiration));
 }
 
 void AccessManager::Backend::Storage::removeUserFromGroup(std::string_view uid, std::string group) {
@@ -1779,11 +1788,12 @@ void AccessManager::Backend::Storage::removeUserFromGroup(int64_t internalUserId
     throw Error(msg.str());
   }
 
-  implementor_->raw.insert(UserGroupUserRecord(internalUserId, userGroupId, true));
+  implementor_->raw.insert(UserGroupUserRecord(internalUserId, userGroupId, {}, true));
 }
 
 UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQuery& query) {
   using namespace std::ranges;
+  using namespace pep::database;
 
   auto timestamp = query.at ? *query.at : TimeNow();
 
@@ -1823,11 +1833,17 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
            || in(&UserGroupUserRecord::internalUserId,
              // Avoid passing list to query when not filtered
              RangeToVector(views::keys(!query.userFilter.empty() ? usersInfo : Default<decltype(usersInfo)>)))),
+             having(is_null(&UserGroupUserRecord::expirationTimestamp) || c(&UserGroupUserRecord::expirationTimestamp) >= TicksSinceEpoch<milliseconds>(timestamp)),
          &UserGroupUserRecord::userGroupId,
-         &UserGroupUserRecord::internalUserId)) {
-    auto& [userGroupId, internalUserId] = tuple;
+         &UserGroupUserRecord::internalUserId,
+         &UserGroupUserRecord::expirationTimestamp)) {
+    auto& [userGroupId, internalUserId, expirationTimestamp] = tuple;
     assert(groups.contains(userGroupId));
-    usersInfo.at(internalUserId).groups.push_back(groups.at(userGroupId).name);
+    std::optional<Timestamp> expiration;
+    if (expirationTimestamp) {
+      expiration = Timestamp(milliseconds(*expirationTimestamp));
+    }
+    usersInfo.at(internalUserId).groups.push_back({groups.at(userGroupId).name, expiration});
     groupsWithUsers.insert(userGroupId);
   }
 
@@ -2110,4 +2126,23 @@ void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataT
       true));
 }
 
+std::optional<Timestamp> AccessManager::Backend::Storage::getExpiration(int64_t internalUserId, const std::string& group) const {
+  int64_t userGroupId = getUserGroupId(group);
+  std::optional<std::optional<database::UnixMillis>> result = RangeToOptional(implementor_->getCurrentRecords<UserGroupUserRecord>(c(&UserGroupUserRecord::internalUserId) == internalUserId
+    && c(&UserGroupUserRecord::userGroupId) == userGroupId, &UserGroupUserRecord::expirationTimestamp));
+  if (result && *result) {
+    return Timestamp(milliseconds(**result));
+  }
+  return {};
+}
+
+void AccessManager::Backend::Storage::setExpiration(int64_t internalUserId, const std::string& group, std::optional<Timestamp> expiration) {
+  int64_t userGroupId = getUserGroupId(group);
+  if (!userInGroup(internalUserId, userGroupId)) {
+    std::ostringstream msg;
+    msg << "This user is not part of group " << Logging::Escape(group);
+    throw Error(msg.str());
+  }
+  implementor_->raw.insert(UserGroupUserRecord(internalUserId, userGroupId, expiration));
+}
 }

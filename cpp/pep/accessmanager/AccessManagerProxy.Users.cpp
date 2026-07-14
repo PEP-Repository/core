@@ -70,15 +70,21 @@ rxcpp::observable<FakeVoid> AccessManagerProxy::removeUserGroup(std::string name
   return requestUserMutation(std::move(request));
 }
 
-rxcpp::observable<FakeVoid> AccessManagerProxy::addUserToGroup(std::string uid, std::string group) const {
+rxcpp::observable<FakeVoid> AccessManagerProxy::addUserToGroup(std::string uid, std::string group, std::optional<Timestamp> expiration) const {
   UserMutationRequest request;
-  request.addUserToGroup.emplace_back(std::move(uid), std::move(group));
+  request.addUserToGroup.emplace_back(std::move(uid), std::move(group), expiration);
   return requestUserMutation(std::move(request));
 }
 
 rxcpp::observable<FakeVoid> AccessManagerProxy::removeUserFromGroup(std::string uid, std::string group, bool blockTokens) const {
   UserMutationRequest request;
   request.removeUserFromGroup.emplace_back(std::move(uid), std::move(group), blockTokens);
+  return requestUserMutation(std::move(request));
+}
+
+rxcpp::observable<FakeVoid> AccessManagerProxy::updateExpiration(std::string uid, std::string group, std::optional<Timestamp> expiration) const {
+  UserMutationRequest request;
+  request.updateExpiration.emplace_back(std::move(uid), std::move(group), expiration);
   return requestUserMutation(std::move(request));
 }
 

@@ -40,6 +40,7 @@ struct RemoveUserGroup {
 struct AddUserToGroup {
   std::string uid;
   std::string group;
+  std::optional<Timestamp> expiration;
 };
 
 struct RemoveUserFromGroup {
@@ -47,6 +48,12 @@ public:
   std::string uid;
   std::string group;
   bool blockTokens = false;
+};
+
+struct UpdateExpiration {
+  std::string uid;
+  std::string group;
+  std::optional<Timestamp> expiration;
 };
 
 struct UserMutationRequest {
@@ -65,6 +72,7 @@ struct UserMutationRequest {
 
   std::vector<AddUserToGroup> addUserToGroup;
   std::vector<RemoveUserFromGroup> removeUserFromGroup;
+  std::vector<UpdateExpiration> updateExpiration;
 };
 
 struct UserMutationResponse {};
@@ -76,11 +84,18 @@ struct UserQuery {
   std::string userFilter;
 };
 
+struct QRUserGroupMembership {
+  std::string userGroup;
+  std::optional<Timestamp> expiration;
+
+  [[nodiscard]] auto operator<=>(const QRUserGroupMembership&) const = default;
+};
+
 struct QRUser {
   std::optional<std::string> displayId;
   std::optional<std::string> primaryId;
   std::vector<std::string> otherUids;
-  std::vector<std::string> groups;
+  std::vector<QRUserGroupMembership> groups;
 
   [[nodiscard]] auto operator<=>(const QRUser&) const = default;
 
@@ -99,7 +114,10 @@ struct QRUser {
     out << " groups:{";
     for (bool first = true; const auto& group : user.groups) {
       if (!std::exchange(first, false)) { out << ", "; }
-      out << group;
+      out << group.userGroup;
+      if (group.expiration) {
+        out << "(until " << TimestampToXmlDateTime(*group.expiration) << ")";
+      }
     }
     out << '}';
     out << '}';

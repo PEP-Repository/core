@@ -55,7 +55,15 @@ Tree TreeFrom(const pep::UserQueryResponse& res, const QueryDisplayConfig<UserQu
       item.emplace(GetKeyName(queryKeys::otherIdentifiers, useDescriptive), user.otherUids);
 
       if (printUserGroupsForUsers) {
-        item.emplace(GetKeyName(queryKeys::userGroups, useDescriptive), user.groups);
+        json groups = json::object();
+        for (const auto& group : user.groups) {
+          json groupItem = json::object();
+          if (group.expiration) {
+            groupItem.emplace(GetKeyName(queryKeys::expiration, useDescriptive), TimestampToXmlDateTime(*group.expiration));
+          }
+          groups.emplace(group.userGroup, std::move(groupItem));
+        }
+        item.emplace(GetKeyName(queryKeys::userGroups, useDescriptive), std::move(groups));
       }
       users.push_back(std::move(item));
     }

@@ -27,6 +27,7 @@ struct TokenBlockingListResponse final {
 struct TokenBlockingCreateRequest final {
   tokenBlocking::TokenIdentifier target;
   std::string note;
+  std::optional<Timestamp> blockStartDateTime{};
 };
 
 using SignedTokenBlockingCreateRequest = Signed<TokenBlockingCreateRequest>;
