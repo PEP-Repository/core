@@ -130,4 +130,17 @@ TEST(MiscUtilsFillToCapacity, OffsetLimited) {
   ASSERT_EQ(length, 2);
 }
 
+TEST(MiscUtil, InsertNonDuplicates) {
+  std::vector<std::string> source{ "A", "B", "C", "D" };
+  std::set<std::string> dest;
+
+  EXPECT_EQ(source.size(), pep::InsertNonDuplicates(dest, source).second);
+  EXPECT_EQ(source.size(), dest.size());
+
+  EXPECT_ANY_THROW(pep::InsertNonDuplicates(dest, source));
+  EXPECT_EQ(source.size(), dest.size());
+
+  EXPECT_ANY_THROW(pep::InsertNonDuplicates(dest, std::vector<std::string>{ "A" }));
+}
+
 }

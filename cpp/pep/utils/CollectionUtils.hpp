@@ -11,6 +11,7 @@
 #include <optional>
 #include <vector>
 #include <ranges>
+#include <set>
 #include <span>
 #include <stdexcept>
 #include <string_view>
@@ -240,5 +241,27 @@ requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<de
 
 template <typename T>
 concept AnyMap = DerivedFromSpecialization<T, std::map> || DerivedFromSpecialization<T, std::unordered_map>;
+
+/// @brief Adds items from a range to an \ref std::set, throwing an exception if an item could not be inserted because it's a duplicate
+/// @tparam T the type of item in the \ref std::set
+/// @tparam TSrc the type of the input range
+/// @param dst the destination \ref std::set
+/// @param src the source range
+/// @return a pair of (1) an iterator at the last insertion position and (2) the number of items inserted into the set
+template <typename T, std::ranges::input_range TSrc>
+auto InsertNonDuplicates(std::set<T>& dst, const TSrc& src)
+  requires (std::same_as<T, std::remove_cvref_t<std::ranges::range_value_t<TSrc>>>) {
+  auto i = dst.end();
+  size_t count = 0U;
+  for (const auto& item : src) {
+    bool inserted;
+    std::tie(i, inserted) = dst.insert(item);
+    if (!inserted) {
+      throw std::runtime_error("Can't insert duplicate item into set");
+    }
+    ++count;
+  }
+  return std::make_pair(i, count);
+}
 
 }
