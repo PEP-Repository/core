@@ -839,9 +839,9 @@ messaging::MessageBatches StorageFacility::handleDataStoreRequest2(
 }
 
 messaging::MessageBatches
-StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdateRequest2> lpRequest) {
+StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdateRequest2> signedRequest) {
   const auto& rootCAs = this->getRootCAs();
-  auto certified = lpRequest->open(*rootCAs);
+  auto certified = signedRequest->open(*rootCAs);
   auto request = MakeSharedCopy(std::move(certified.message));
   auto userGroup = certified.signatory.organizationalUnit();
 
@@ -973,13 +973,13 @@ std::vector<std::optional<LocalPseudonym>> StorageFacility::decryptLocalPseudony
 }
 
 messaging::MessageBatches
-StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> lpRequest) {
+StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> signedRequest) {
   // TODO: consolidate duplicate code with handleDataEnumerationRequest2
   PEP_LOG(LogTag, Severity::Debug) << "Received DataHistoryRequest2";
 
   auto start_time = std::chrono::steady_clock::now();
   const auto& rootCAs = this->getRootCAs();
-  auto certified = lpRequest->open(*rootCAs);
+  auto certified = signedRequest->open(*rootCAs);
   const auto& request = certified.message;
 
   auto accessGroup = certified.signatory.organizationalUnit();
@@ -1047,9 +1047,9 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
     rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(response))).as_dynamic());
 }
 
-messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> lpRequest) {
+messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> signedRequest) {
   const auto& rootCAs = this->getRootCAs();
-  auto certified = lpRequest->open(*rootCAs);
+  auto certified = signedRequest->open(*rootCAs);
 
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
