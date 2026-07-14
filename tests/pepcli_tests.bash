@@ -27,6 +27,15 @@ TEST_PARTICIPANT="$(openssl rand -base64 12)"
 ####################
 
 if should_run_test basic; then
+  # Test --loglevel
+  # Need `tee || true` because of pipefail
+  if ! (execute . "$PEPCLI_COMMAND" ping --server accessmanager || true) |& (tee /dev/stderr || true) | grep -qF '<info>'; then
+    fail 'Default loglevel should include info log messages'
+  fi
+  if (execute . "$PEPCLI_COMMAND" --loglevel warning || true) |& (tee /dev/stderr || true) | grep -qF '<info>'; then
+    fail 'warning loglevel should should not include info messages'
+  fi
+
   # Store a PEP ID...
   id=$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
   # ... then verify that we can read it back (see #2750)
