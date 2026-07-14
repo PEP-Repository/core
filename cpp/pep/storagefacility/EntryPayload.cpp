@@ -179,6 +179,15 @@ std::optional<uint64_t> PagedEntryPayload::pageSize() const {
   return pageSize_;
 }
 
+std::set<std::string> PagedEntryPayload::getPagePaths(const EntryName& name) const {
+  std::set<std::string> result;
+  for (const auto& hash : pages_) {
+    [[maybe_unused]] auto emplaced = result.emplace(GetPagePath(name, hash)).second;
+    assert(emplaced);
+  }
+  return result;
+}
+
 messaging::MessageSequence PagedEntryPayload::readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const {
   index = this->validatedPageIndex(index);
 
