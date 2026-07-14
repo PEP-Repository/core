@@ -4,14 +4,21 @@
 
 if((CMAKE_BUILD_TYPE STREQUAL "Release") OR
    (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
-    message("Note: log statements with severity less than Info are left out")
-    set(DEFAULT_LOGGING Info)
+    set(DEFAULT_LOGGING info)
+    message("Note: log statements with severity less than ${DEFAULT_LOGGING} are left out")
 else()
-    set(DEFAULT_LOGGING Verbose)
+    set(DEFAULT_LOGGING verbose)
 endif()
+# Supports with capitalized and lowercase names
 set(LOGGING ${DEFAULT_LOGGING} CACHE STRING
-        "Logging stataments to compile into binaries.  (Note: there are also runtime filters.)")
-add_definitions(-DPEP_COMPILED_MIN_LOG_SEVERITY=${LOGGING})
+        "Logging statements to compile into binaries.  (Note: there are also runtime filters.)")
+
+# Change first letter to uppercase for enum member
+string(SUBSTRING "${LOGGING}" 0 1 logging_first_letter)
+string(TOUPPER "${logging_first_letter}" logging_first_letter)
+string(REGEX REPLACE "^." "${logging_first_letter}" logging_enum "${LOGGING}")
+
+add_definitions(-DPEP_COMPILED_MIN_LOG_SEVERITY=${logging_enum})
 
 add_library(${PROJECT_NAME}Utilslib STATIC
     ApplicationMetrics.cpp ApplicationMetrics.hpp
