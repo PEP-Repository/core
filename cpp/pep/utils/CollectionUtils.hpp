@@ -81,7 +81,7 @@ bool ContainsUniqueValues(const std::vector<T>& vec) {
  * \return The number of bytes written to the destination.
 */
 template <std::output_iterator<std::string> TDest, std::ranges::input_range TSrc>
-  requires std::same_as<std::_Remove_cvref_t<std::ranges::range_value_t<TSrc>>, std::string>
+  requires std::same_as<std::remove_cvref_t<std::ranges::range_value_t<TSrc>>, std::string>
 size_t FillToCapacity(TDest dest, size_t cap, const TSrc& src, size_t padding = 0) {
   size_t destLength{ 0 };
   for (const auto& item: src) {
