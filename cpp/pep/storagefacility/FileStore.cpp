@@ -312,6 +312,9 @@ bool FileStore::EntryBase::isOriginalPayloadOwner() const {
 }
 
 std::set<std::string> FileStore::EntryBase::pagePaths() const {
+  if (content_ == nullptr) {
+    return {};
+  }
   auto payload = content_->payload();
   assert(payload != nullptr);
   return payload->getPagePaths(cell_.entryName());
