@@ -132,7 +132,7 @@ void AccessManager::Backend::removeParticipantGroupAccessRulesForRequest(const A
   }
 }
 
-rxcpp::observable<std::shared_ptr<std::set<int64_t>>> AccessManager::Backend::blockTokens(int64_t internalUserId, const std::string& group, Timestamp issueDateTime,
+rxcpp::observable<std::shared_ptr<std::set<int64_t>>> AccessManager::Backend::addBlockEntries(int64_t internalUserId, const std::string& group, Timestamp issueDateTime,
   std::string note, std::optional<Timestamp> blockStartDateTime) {
   return RxIterate(storage_->getAllIdentifiersForUser(internalUserId))
     .concat_map([group, issueDateTime, note, blockStartDateTime, accessManager=this->accessManager_](const std::string& uid) {
@@ -171,7 +171,7 @@ rxcpp::observable<FakeVoid> AccessManager::Backend::removeBlockEntries(int64_t i
 rxcpp::observable<FakeVoid> AccessManager::Backend::updateTokenBlocking(int64_t internalUserId, std::string group,
   std::optional<Timestamp> issueDateTime, std::string note, std::optional<Timestamp> blockStartDateTime) {
   return (issueDateTime ?
-      blockTokens(internalUserId, group, *issueDateTime, note, blockStartDateTime) :
+      addBlockEntries(internalUserId, group, *issueDateTime, note, blockStartDateTime) :
       rxcpp::rxs::just(std::make_shared<std::set<int64_t>>()).as_dynamic())
     .flat_map([this, internalUserId, group](std::shared_ptr<std::set<int64_t>> ids)  {
       return removeBlockEntries(internalUserId, group, std::move(*ids));
