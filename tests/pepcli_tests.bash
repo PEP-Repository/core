@@ -543,7 +543,7 @@ if should_run_test user-removal-and-expiration; then
   pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid after group membership expiration"
   pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$(date -d "now+10 years" +%s)" test-user test-group \
     && fail "Shouldn't be able to update expiration for a user group membership that already expired"
-  original_expiration_seconds="5"
+  original_expiration_seconds="10"
   expiration="$(date -d "now+$original_expiration_seconds seconds" +%s)"
   pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
   pepcli --oauth-token "$token" query enrollment && fail "Token that was once blocked should not get unblocked by updating the expiration"
