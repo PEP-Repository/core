@@ -262,8 +262,8 @@ public:
   void modifyUserGroup(UserGroup userGroup);
   void modifyUserGroup(std::string_view name, UserGroup userGroup);
   void removeUserGroup(std::string name);
-  void addUserToGroup(std::string_view uid, std::string group);
-  void addUserToGroup(int64_t internalUserId, std::string group);
+  void addUserToGroup(std::string_view uid, std::string group, std::optional<Timestamp> expiration);
+  void addUserToGroup(int64_t internalUserId, std::string group, std::optional<Timestamp> expiration);
   void removeUserFromGroup(std::string_view uid, std::string group);
   void removeUserFromGroup(int64_t internalUserId, std::string group);
 
@@ -282,6 +282,12 @@ public:
   void removeStructureMetadata(StructureMetadataType subjectType, std::string subject, StructureMetadataKey key);
   /// Remove a metadata entry for the specified \p internalSubjectId (which is of type \p subjectType)
   void removeStructureMetadata(StructureMetadataType subjectType, int64_t internalSubjectId, StructureMetadataKey key);
+  /// Return expiration of membership of user with specified \p internalUserId, in specified \p group, if there is one.
+  /// Note that it returns std::nullopt both when the usergroup membership doesn't have an expiration as well as when the user isn't a member of \p group at all.
+  std::optional<Timestamp> getExpiration(int64_t internalUserId, const std::string& group) const;
+  /// Set the expiration of the membership of user with specified \p internalUserId in specified \p group. Remove expiration by setting it to std::nullopt
+  /// Throws when the user is not a member of \p group
+  void setExpiration(int64_t internalUserId, const std::string& group, std::optional<Timestamp> expiration);
 };
 
 }

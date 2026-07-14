@@ -10,6 +10,13 @@
 
 - core#2488: Added command `pepcli pseudonym convert`, which converts a pseudonym of any form into a polymorphic, local, or brief-local pseudonym.
 
+- core#2928: Unified timestamp input for pepcli. The `at` parameter for `pepcli user query` and `pepcli ama query` has been renamed to `point-in-time`.
+  These, as well as the `expiration` parameter of `pepcli token request`, and `issued-before` of `pepcli token block create` now all take the same format. This can be either:
+    - `<YYYY>-<MM>-<DD>`
+    - `<YYYY>-<MM>-<DD>T<hh>:<mm>:<ss>[Z|+/-hh:mm]`
+    - `unix:<unix timestamp in seconds>`
+    - `unix-ms:<unix timestamp in milliseconds>`
+
 ---------------
 *Past changes, do not edit (except by person doing release):*
 

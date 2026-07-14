@@ -1169,6 +1169,13 @@ message RemoveUserGroup {
 message AddUserToGroup {
   string uid = 1;
   string group = 2;
+  optional Timestamp expiration = 3;
+}
+
+message UpdateExpiration {
+  string uid = 1;
+  string group = 2;
+  optional Timestamp expiration = 3;
 }
 
 message RemoveUserFromGroup {
@@ -1192,6 +1199,7 @@ message UserMutationRequest {
 
   repeated AddUserToGroup add_user_to_group = 3;
   repeated RemoveUserFromGroup remove_user_from_group = 4;
+  repeated UpdateExpiration update_expiration = 13;
 }
 
 message SignedUserMutationRequest {
@@ -1212,12 +1220,16 @@ message SignedUserQuery {
   Signature signature = 3;
   bytes data = 4;
 }
+message QRUserGroupMembership {
+  string user_group = 1;
+  optional Timestamp expiration = 2;
+}
 message QRUser {
-  reserved 1;
+  reserved 1, 2;
   optional string display_id = 3;
   optional string primary_id = 4;
   repeated string other_uids = 5;
-  repeated string groups = 2;
+  repeated QRUserGroupMembership groups = 6;
 }
 message UserQueryResponse {
   reserved 1, 2;
@@ -1411,6 +1423,7 @@ message TokenBlockingBlocklistEntry {
   string metadata_note = 3;
   string metadata_issuer = 4;
   Timestamp metadata_creation_date_time = 5;
+  optional Timestamp metadata_block_start_date_time = 6;
 }
 
 message TokenBlockingListRequest {}
@@ -1427,6 +1440,7 @@ message TokenBlockingListResponse {
 message TokenBlockingCreateRequest {
   TokenBlockingTokenIdentifier target = 1;
   string note = 2;
+  optional Timestamp block_start_date_time = 3;
 }
 
 message SignedTokenBlockingCreateRequest {

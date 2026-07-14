@@ -69,6 +69,13 @@ struct Format<std::chrono::duration<R, P>> {
 };
 
 template <>
+struct Format<Timestamp> {
+  std::string operator()(const Timestamp& v) {
+    return TimestampToXmlDateTime(v);
+  }
+};
+
+template <>
 struct Format<std::filesystem::path> {
   inline std::string operator()(const std::filesystem::path& v) {
     return v.string(); // Format without quotes
@@ -304,6 +311,17 @@ public:
     assert(result.type_ != ArgValueType::Directory && "Already marked as directory");
     result.type_ = ArgValueType::Directory;
     return result;
+  }
+};
+
+template <>
+class ValueSpecification<Timestamp> : public detail::ValueSpecificationTemplate<ValueSpecification<Timestamp>, Timestamp> {
+public:
+  ValueSpecification() : detail::ValueSpecificationTemplate<ValueSpecification, Timestamp>(ArgValueType::String) {}
+
+  void writeHelpText(std::ostream& destination) const override {
+    WriteHelpItemSupplement(destination, "Possible formats: 2016-05-30 (start of the given date, local time), 2016-05-30T13:39:17 (local time),  2016-05-30T11:39:17Z (UTC)");
+    ValueSpecificationTemplate::writeHelpText(destination);
   }
 };
 

@@ -52,6 +52,7 @@ public:
   UserAddToSubCommand(CommandUser& parent) : CommandUser::UserGroupUserSubCommand("addTo", "Add user to a group", parent) {};
 
 protected:
+  pep::commandline::Parameters getSupportedParameters() const override;
   int execute() override;
 };
 
@@ -62,6 +63,15 @@ public:
 protected:
   pep::commandline::Parameters getSupportedParameters() const override;
 
+  int execute() override;
+};
+
+class CommandUser::UserUpdateExpirationSubCommand : public CommandUser::UserGroupUserSubCommand {
+public:
+  UserUpdateExpirationSubCommand(CommandUser& parent) : CommandUser::UserGroupUserSubCommand("updateExpiration", "Update expiration of membership of a user of a group", parent) {};
+
+protected:
+  pep::commandline::Parameters getSupportedParameters() const override;
   int execute() override;
 };
 }

@@ -129,11 +129,12 @@
 //  ├── old-user                  [NO_LONGER_SUPPORTED]                                    [1-21][1-22][1-23][1-24][1-25]
 //  |
 //  ├── server                    [NORMAL]              Server management                  [3-16][X2-6b][X3-8]
-//  │   └── start                 [NORMAL]              Start the server                   [3-16][X2-6b][X3-8]
-//  │         --host              [NORMAL]              Server host address                [4-1]
-//  │         --port              [NORMAL]              Server port number                 [3-16][X2-6b][X3-8][4-1][4-2a][5-1]
-//  │         --verbose           [NORMAL]              Verbosity level (integer)          [2-6a][5-1]
-//  │         --host-port         [DEPRECATED_ALIAS]    -> splits to --host and --port     [4-1]
+//  │   ├── start                 [NORMAL]              Start the server                   [3-16][X2-6b][X3-8]
+//  │   │     --host              [NORMAL]              Server host address                [4-1]
+//  │   │     --port              [NORMAL]              Server port number                 [3-16][X2-6b][X3-8][4-1][4-2a][5-1]
+//  │   │     --verbose           [NORMAL]              Verbosity level (integer)          [2-6a][5-1]
+//  │   │     --host-port         [DEPRECATED_ALIAS]    -> splits to --host and --port     [4-1]
+//  │   └── create-deploy         [ALIAS]               -> to "app deploy"                 [3-2]
 //  │
 //  ├── db                        [ALIAS]               -> to "app database"               [X3-14]
 //  ├── database                  [NORMAL]              Database operations                [X3-14][4-5]
@@ -141,7 +142,6 @@
 //  │     --legacy-db-source      [DEPRECATED_ALIAS]    -> to "app database --source"      [4-5]
 //  │     --old-db-path           [DEPRECATED_ALIAS]    -> to "app database --source"      [4-5]
 //  │
-//  ├── create-deploy             [ALIAS]               -> to "app deploy"                 [3-2]
 //  ├── new-user                  [ALIAS]               -> to "app init-user"              [X3-3]
 //  ├── user-alias                [ALIAS]               -> to "app create-user"            [X3-4]
 //  ├── removed-alias             [ALIAS]               -> to "app old-user"               [X3-5]
@@ -335,7 +335,6 @@ std::vector<std::shared_ptr<pep::commandline::Command>> AppCmd::createChildComma
     pep::commandline::CreateDeprecatedCommand(*this, "old-init", *this, {"init-user"}, "Use 'user' instead of the deprecated init-user."),
     pep::commandline::CreateAliasCommand(*this, "new-user", *this, {"init-user"}),
     pep::commandline::CreateDeprecatedCommand(*this, "init-deploy", *this, {"deploy"}, "Use 'deploy' instead."),
-    pep::commandline::CreateAliasCommand(*this, "create-deploy", *this, {"deploy"}),
     pep::commandline::CreateDeprecatedCommand(*this, "old-db", *this, {"db"}, "Use 'database' instead."),
     pep::commandline::CreateAliasCommand(*this, "user-alias", *this, {"create-user"}),
     pep::commandline::CreateDeprecatedCommand(*this, "removed-init", *this, {"old-user"}, "This forwards to removed command."),
@@ -493,7 +492,10 @@ AppCmd& ServerCmd::getStorage() { return getParent(); }
 RecordingCommandMixin* ServerCmd::getParentMixin() { return &getParent(); }
 
 std::vector<std::shared_ptr<pep::commandline::Command>> ServerCmd::createChildCommands() {
-  return { std::make_shared<StartCmd>(*this) };
+  return {
+    std::make_shared<StartCmd>(*this),
+    pep::commandline::CreateAliasCommand(*this, "create-deploy", this->getParent(), {"deploy"}),
+  };
 }
 
 // StartCmd implementation
@@ -1094,7 +1096,7 @@ TEST(ForwardingCombinations, AliasCommandToNormalCommand) {
 // Alias, and show deprecation warning for the target command
 TEST(ForwardingCombinations, AliasCommandToDeprecatedCommand) {
   AppCmd cmd;
-  const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"create-deploy"});
+  const auto [exitCode, err] = ProcessWithCapturedStderr(cmd, {"server", "create-deploy"});
 
   ASSERT_EQ(exitCode, EXIT_SUCCESS);
   ASSERT_NE(err.find("Warning: The command 'deploy' is deprecated."), std::string::npos);

@@ -507,9 +507,25 @@ pepcli user unsetPrimaryId <uid>
 Users can be added to, and removed from user groups with the following commands:
 
 ```shell
-pepcli user addTo <uid> <group>
+pepcli user addTo [--end-date <yyyymmdd>] <uid> <group>
 pepcli user removeFrom <uid> <group>
 ```
+
+If an end-date is passed to the `pepcli user addTo` command, the user will be removed from the user group at the given date.
+Any tokens for the user will also be blocked starting from that date. 
+
+When a user is removed with `pepcli user removeFrom`, existing tokens for the user will be blocked immediately.
+
+### `user updateExpiration`
+
+The end-date of a membership of a user from a group can be updated with:
+
+```shell
+pepcli user updateExpiration [--end-date <yyyymmdd>] <uid> <group>
+```
+
+If no end-date is passed, any existing end-date is removed.
+If an end-date is passed, users will now be removed at that date, and tokens will be blocked starting from that date.
 
 ### `user group create/remove/modify`
 
@@ -620,17 +636,29 @@ so that they can no longer be used. This should only be necessary in exceptional
 The PEP servers maintain a blocklist to specify which tokens should be rejected, regardless of their validity period.
 All `pepcli token block` commands operate on this blocklist.
 
-A rejection rule has three fields, `subject`, `user-group` and `issuedBefore`. A single rule will block all tokens that
+A rejection rule has four fields, `subject`, `user-group`, `issuedBefore` and `blockStart`. A single rule will block all tokens that
 match the following criteria:
 
 - The subject of the token matches subject of the rule
 - The user-group of the token matches the user-group of the rule
 - The issue date, which tells when the token was created, is before the `issuedBefore` date
 
+The rule will go into effect at the `blockStart` date. Until that date, tokens matching the criteria will not yet be blocked.
+
+Rules are automatically added to the blocklist when:
+
+- a user is removed from a group with `pepcli user removeFrom`. The added rule has no explicit `blockStart`, so will go into effect immediately.
+- a user is added to a group with `pepcli user addTo`, and an end-date is passed. 
+- the end-date of a user group membership is updated with `pepcli user updateExpiration`
+
+In the latter two cases, the `blockStart` and `issuedBefore` dates will be equal to the end-date. So the rule will go
+into effect at the end-date. Tokens that are issued after the end-date are not blocked, since requesting new tokens for a user
+implies that they should get access again.
+
 #### token block create
 
 ```shell
-Usage: pepcli token block create [--issuedBefore-unixtime <value>] [--issuedBefore-yyyymmdd <value>] --message <value> <subject> <user-group>
+Usage: pepcli token block create [--issuedBefore-unixtime <value>] [--issuedBefore-yyyymmdd <value>] [--block-start-yyyymmdd <value>] --message <value> <subject> <user-group>
 ```
 
 The main command is `pepcli token block create`, which can block tokens by adding new rejection rules to the list.
@@ -653,9 +681,12 @@ can be altered with an `issuedBefore` switch, which comes in two flavours:
 
 Using both of these is not allowed and will be refused by the application.
 
-A reason to explicitly pass an `issuedBefore` date/time could be that you already generated a new timestamp, before
+A reason to explicitly pass an `issuedBefore` date/time could be that you already generated a new token, before
 creating the block rule. In that case, you could set `issuedBefore` to the date you created the new token or earlier,
 so that this new token is not affected.
+
+By default, the block applies immediately. This behaviour can be altered with the `--block-start-yyyymmdd`, which
+accepts a human readable 'yyyymmdd' date. The new rule will go into effect at the given date.
 
 On success, the application will print the entry that was created, with the exact values that were stored in the
 blocklist.

@@ -11,7 +11,7 @@ namespace {
 
 std::ostream& appendTable(std::ostream& stream, const std::vector<pep::tokenBlocking::BlocklistEntry>& entries) {
   auto table = pep::structuredOutput::Table::EmptyWithHeader(
-      {"id", "targetSubject", "targetUserGroup", "targetIssueDateTime", "note", "issuer", "creationDateTime"});
+      {"id", "targetSubject", "targetUserGroup", "targetIssueDateTime", "note", "issuer", "creationDateTime", "blockStartDateTime"});
   table.reserve(entries.size());
 
   for (const auto& e : entries) {
@@ -22,7 +22,8 @@ std::ostream& appendTable(std::ostream& stream, const std::vector<pep::tokenBloc
          pep::TimestampToXmlDateTime(e.target.issueDateTime),
          e.metadata.note,
          e.metadata.issuer,
-         pep::TimestampToXmlDateTime(e.metadata.creationDateTime)});
+         pep::TimestampToXmlDateTime(e.metadata.creationDateTime),
+         e.metadata.blockStartDateTime ? pep::TimestampToXmlDateTime(*e.metadata.blockStartDateTime) : ""});
   }
 
   return pep::structuredOutput::csv::append(stream, table) << std::endl;
@@ -32,8 +33,8 @@ namespace cliParameterNames {
 
 constexpr auto subject = "subject";
 constexpr auto userGroup = "user-group";
-constexpr auto issuedBeforeUnixtime = "issuedBefore-unixtime";
-constexpr auto issuedBeforeYyyymmdd = "issuedBefore-yyyymmdd";
+constexpr auto issuedBefore = "issuedBefore";
+constexpr auto blockStart = "block-start";
 constexpr auto message = "message";
 
 } // namespace cliParameterNames
@@ -60,37 +61,27 @@ protected:
               "only block tokens that were issued for the specified user-group")
               .value(pep::commandline::Value<std::string>().positional().required())
         + pep::commandline::Parameter(
-              param::issuedBeforeUnixtime,
-              "only block tokens that were issued before the specified unix timestamp")
-              .value(pep::commandline::Value<int64_t>())
-        + pep::commandline::Parameter(
-              param::issuedBeforeYyyymmdd,
+              param::issuedBefore,
               "only block tokens that were issued before the specified date")
               .alias("before")
               .shorthand('b')
-              .value(pep::commandline::Value<std::string>())
+              .value(pep::commandline::Value<Timestamp>())
+        + pep::commandline::Parameter(
+              param::blockStart,
+              "date at which the blocklist entry should go into effect. Before that date, tokens will not yet be blocked. If omitted, the blocklist entry goes into effect immediately.")
+              .value(pep::commandline::Value<Timestamp>())
         + pep::commandline::Parameter(
               param::message,
               "explanatory text stored together with the created blocklist entry")
               .shorthand('m')
-              .value(pep::commandline::Value<std::string>().required());
-  }
-
-  void finalizeParameters() override {
-    ChildCommandOf<CommandTokenBlock>::finalizeParameters();
-
-    const auto& values = this->getParameterValues();
-    namespace param = cliParameterNames;
-    if (values.has(param::issuedBeforeUnixtime) && values.has(param::issuedBeforeYyyymmdd)) {
-      throw std::runtime_error(
-          "Please specify the target issued date/time either via the --" + std::string{param::issuedBeforeYyyymmdd}
-          + " switch or the [" + std::string{param::issuedBeforeUnixtime} + "] parameter, but not both.");
-    }
+              .value(pep::commandline::Value<std::string>().required())
+        ;
   }
 
   struct Configuration final {
     pep::tokenBlocking::TokenIdentifier target;
     std::string message;
+    std::optional<Timestamp> blockStartDateTime;
 
     static Configuration From(const pep::commandline::NamedValues& values) {
       namespace param = cliParameterNames;
@@ -98,17 +89,11 @@ protected:
           .target{
               .subject = values.get<std::string>(param::subject),
               .userGroup = values.get<std::string>(param::userGroup),
-              .issueDateTime =
-                  [&] {
-                    if (const auto date = values.getOptional<std::string>(param::issuedBeforeYyyymmdd)) {
-                      return TimeZone::Local().timestampFromYyyyMmDd(*date);
-                    }
-                    if (const auto time = values.getOptional<std::chrono::seconds::rep>(param::issuedBeforeUnixtime)) {
-                      return Timestamp(std::chrono::seconds{*time});
-                    }
-                    return TimeNow(); // default to current time
-                  }()},
-          .message = values.get<std::string>(param::message)};
+              .issueDateTime = values.getOptional<Timestamp>(param::issuedBefore).value_or(TimeNow())
+          },
+          .message = values.get<std::string>(param::message),
+          .blockStartDateTime = values.getOptional<Timestamp>(param::blockStart)
+      };
     }
   };
 
@@ -121,7 +106,7 @@ protected:
 
     return executeEventLoopFor(
         [&, config = Configuration::From(this->getParameterValues())](std::shared_ptr<pep::Client> client) {
-        return client->getKeyServerProxy()->requestTokenBlockingCreate(TokenBlockingCreateRequest{ config.target, config.message }).map(printResponse);
+        return client->getKeyServerProxy()->requestTokenBlockingCreate(TokenBlockingCreateRequest{ config.target, config.message, config.blockStartDateTime }).map(printResponse);
         });
   }
 };

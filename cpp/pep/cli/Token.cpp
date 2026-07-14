@@ -17,39 +17,17 @@ public:
   explicit RequestTokenCommand(CommandToken& parent)
     : ChildCommandOf<CommandToken>("request", "Request an oauth token", parent) {}
 
-private:
-  static std::string GetRequiredExpirationSpecificationMessage() {
-    return "Please specify either an --expiration-yyyymmdd switch or an [expiration-unixtime] parameter, but not both.";
-  }
-
 protected:
-  std::optional<std::string> getAdditionalDescription() const override {
-    return GetRequiredExpirationSpecificationMessage();
-  }
-
-  void finalizeParameters() override {
-    ChildCommandOf<CommandToken>::finalizeParameters();
-
-    const auto& values = this->getParameterValues();
-    if (values.has("expiration-unixtime") == values.has("expiration-yyyymmdd")) {
-      throw std::runtime_error(GetRequiredExpirationSpecificationMessage());
-    }
-  }
-
   int execute() override {
     const auto& values = this->getParameterValues();
 
-    Timestamp expiration = values.has("expiration-unixtime")
-        ? Timestamp(std::chrono::seconds{values.get<std::chrono::seconds::rep>("expiration-unixtime")})
-        : TimeZone::Local().timestampFromYyyyMmDd(values.get<std::string>("expiration-yyyymmdd"));
-
-    return executeEventLoopFor([&values, expiration](std::shared_ptr<pep::Client> client) {
+    return executeEventLoopFor([&values](std::shared_ptr<pep::Client> client) {
       return client
           ->getAuthServerProxy()
           ->requestToken(
               values.get<std::string>("subject"),
               values.get<std::string>("user-group"),
-              expiration)
+              values.get<Timestamp>("expiration"))
           .map([json = values.has("json")](const std::string& token) {
             const auto decorate = [](const std::string& s) { return "{\n  \"OAuthToken\": \"" + s + "\"\n}"; };
             std::cout << (json ? decorate(token) : token) << std::endl;
@@ -65,11 +43,9 @@ protected:
         + pep::commandline::Parameter("user-group", "The user group to request a token for")
               .value(pep::commandline::Value<std::string>().positional().required())
         + pep::commandline::Parameter(
-              "expiration-unixtime",
-              "The expiration time for the token, expressed as a Unix epoch")
-              .value(pep::commandline::Value<int64_t>().positional())
-        + pep::commandline::Parameter("expiration-yyyymmdd", "The expiration time for the token, expressed as a date")
-              .value(pep::commandline::Value<std::string>())
+              "expiration",
+              "The expiration time for the token")
+              .value(pep::commandline::Value<Timestamp>().positional())
         + pep::commandline::Parameter("json", "Produce output in JSON format");
   }
 };

@@ -27,6 +27,7 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
        + pep::commandline::Parameter("script-print", "Prints specified type of data without pretty printing")
              .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({"all-user-group", "all-user", "groups-per-user"})))
               .noLongerSupported("Use --include and --format options instead.")
+       // NOTE: the "user group query" alias forwards into this command by injecting "include"
        + pep::commandline::Parameter("include", "Prints only specified type of data.")
              .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({userGroupsOpt,
                                                                                            usersOpt,
@@ -35,8 +36,8 @@ pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParamete
              .value(pep::commandline::Value<std::string>()
                         .allow(std::vector<std::string>({"yaml", "json", "json-compact"}))
                         .defaultsTo("yaml"))
-       + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
-             .value(pep::commandline::Value<milliseconds::rep>())
+       + pep::commandline::Parameter("point-in-time", "Query for the situation at the specified point-in-time. Defaults to now if omitted")
+             .value(pep::commandline::Value<Timestamp>())
        + pep::commandline::Parameter("group", "Match user groups containing this text").value(pep::commandline::Value<std::string>())
        + pep::commandline::Parameter("user", "Match user identifiers containing this text").value(pep::commandline::Value<std::string>());
 }
@@ -95,9 +96,7 @@ so::QueryDisplayConfig<so::UserQueryFlags> CommandUser::CommandUserQuery::extrac
 
 pep::UserQuery CommandUser::CommandUserQuery::extractQuery(const pep::commandline::NamedValues& values) {
   return {
-      .at = GetOptionalValue(values.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
-        return Timestamp(milliseconds{ms});
-      }),
+      .at = values.getOptional<Timestamp>("point-in-time"),
       .groupFilter = values.getOptional<std::string>("group").value_or(""),
       .userFilter = values.getOptional<std::string>("user").value_or(""),
   };

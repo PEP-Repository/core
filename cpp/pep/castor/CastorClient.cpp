@@ -208,7 +208,7 @@ rxcpp::observable<JsonPtr> CastorClient::handleCastorResponse(std::shared_ptr<HT
     auto xml = message.substr(CASTOR_429_RESPONSE_MESSAGE_HEADER.size());
 
     // Calculate the time to wait before retrying
-    auto retryWhen = TimestampFromXmlDataTime(xml);
+    auto retryWhen = TimeZone::Utc().timestampFromXmlDateTime(xml);
 
     // An observable that'll emit a FakeVoid when we can retry the request
     rxcpp::observable<FakeVoid> wait;

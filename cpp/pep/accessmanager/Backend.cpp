@@ -3,12 +3,14 @@
 #include <pep/keyserver/KeyServerMessages.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/async/RxInstead.hpp>
+#include <pep/async/RxIterate.hpp>
+#include <pep/async/RxSubsequently.hpp>
+#include <pep/async/RxToSet.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 
 #include <boost/algorithm/string/join.hpp>
-
 
 namespace pep {
 
@@ -130,6 +132,52 @@ void AccessManager::Backend::removeParticipantGroupAccessRulesForRequest(const A
   }
 }
 
+rxcpp::observable<std::shared_ptr<std::set<int64_t>>> AccessManager::Backend::addBlockEntries(int64_t internalUserId, const std::string& group, Timestamp issueDateTime,
+  std::string note, std::optional<Timestamp> blockStartDateTime) {
+  return RxIterate(storage_->getAllIdentifiersForUser(internalUserId))
+    .concat_map([group, issueDateTime, note, blockStartDateTime, accessManager=this->accessManager_](const std::string& uid) {
+        TokenBlockingCreateRequest tokenBlockRequest{
+          .target = {
+            .subject = uid,
+            .userGroup = group,
+            .issueDateTime = issueDateTime,
+          },
+          .note = note,
+          .blockStartDateTime = blockStartDateTime
+        };
+        return accessManager->keyServerProxy_.requestTokenBlockingCreate(std::move(tokenBlockRequest));
+      }).map([](const TokenBlockingCreateResponse& response) {
+        return response.entry.id;
+      }).op(RxToSet());
+}
+
+rxcpp::observable<FakeVoid> AccessManager::Backend::removeBlockEntries(int64_t internalUserId, std::string group, std::set<int64_t> excludeBlockEntries) {
+  auto identifiers = storage_->getAllIdentifiersForUser(internalUserId);
+  auto myCommonName=accessManager_->getSigningIdentity(true)->getCertificateChain().leaf().getCommonName().value();
+  return accessManager_->keyServerProxy_.requestTokenBlockingList().flat_map([](TokenBlockingListResponse response) {
+    return RxIterate(std::move(response.entries));
+  }).filter([identifiers, group=std::move(group), excludeBlockEntries, myCommonName=std::move(myCommonName)](const tokenBlocking::BlocklistEntry& entry) {
+    return entry.metadata.issuer == myCommonName // We don't want to remove blocklist entries that have explicitly been created by an access administrator.
+      && identifiers.contains(entry.target.subject) && entry.target.userGroup == group
+      && !excludeBlockEntries.contains(entry.id)
+      && entry.metadata.blockStartDateTime && entry.metadata.blockStartDateTime > TimeNow(); // We only remove entries that are not yet in effect. Once a token is actually blocked, it does not get unblocked again
+  }).flat_map([accessManager=accessManager_](const tokenBlocking::BlocklistEntry& entry) {
+    return accessManager->keyServerProxy_.requestTokenBlockingRemove(TokenBlockingRemoveRequest{
+      .id=entry.id
+    });
+  }).op(RxInstead(FakeVoid()));
+}
+
+rxcpp::observable<FakeVoid> AccessManager::Backend::updateTokenBlocking(int64_t internalUserId, std::string group,
+  std::optional<Timestamp> issueDateTime, std::string note, std::optional<Timestamp> blockStartDateTime) {
+  return (issueDateTime ?
+      addBlockEntries(internalUserId, group, *issueDateTime, note, blockStartDateTime) :
+      rxcpp::rxs::just(std::make_shared<std::set<int64_t>>()).as_dynamic())
+    .flat_map([this, internalUserId, group](std::shared_ptr<std::set<int64_t>> ids)  {
+      return removeBlockEntries(internalUserId, group, std::move(*ids));
+    }).last();
+}
+
 void AccessManager::Backend::performMutationsForRequest(const AmaMutationRequest& request, const std::string& userGroup) {
 
   // Check for required access groups for some operations.
@@ -202,29 +250,30 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     storage_->modifyUserGroup(x.userGroup);
     PEP_LOG(LogTag, Severity::Info) << "Modified user group " << Logging::Escape(x.userGroup.name);
   }
-  for (auto& x : request.addUserToGroup) {
-    storage_->addUserToGroup(x.uid, x.group);
-    PEP_LOG(LogTag, Severity::Info) << "Added user to user group " << Logging::Escape(x.group);
-  }
-  return rxcpp::rxs::iterate(request.removeUserFromGroup).concat_map([storage=storage_, accessManager=this->accessManager_](const RemoveUserFromGroup& x)-> rxcpp::observable<FakeVoid> {
-    int64_t internalUserId = storage->getInternalUserId(x.uid);
-    storage->removeUserFromGroup(internalUserId, x.group);
+  return RxIterate(request.addUserToGroup).concat_map([this](const AddUserToGroup& x) -> rxcpp::observable<FakeVoid> {
+    int64_t internalUserId = storage_->getInternalUserId(x.uid);
+    return updateTokenBlocking(internalUserId, x.group, x.expiration, "User added to group with expiration", x.expiration)
+    .op(RxSubsequently([storage=storage_, internalUserId, x] {
+      storage->addUserToGroup(internalUserId, x.group, x.expiration);
+      PEP_LOG(LogTag, Severity::Info) << "Added user to user group " << Logging::Escape(x.group);
+    }));
+  })
+  .concat(RxIterate(request.removeUserFromGroup).concat_map([this](const RemoveUserFromGroup& x)-> rxcpp::observable<FakeVoid> {
+    int64_t internalUserId = storage_->getInternalUserId(x.uid);
+    return updateTokenBlocking(internalUserId, x.group, TimeNow(), "User removed from group", {})
+    .op(RxSubsequently([storage=storage_, internalUserId, x] {
+      storage->removeUserFromGroup(internalUserId, x.group);
     PEP_LOG(LogTag, Severity::Info) << "Removed user from user group " << Logging::Escape(x.group);
-    if (x.blockTokens) {
-      return rxcpp::rxs::iterate(storage->getAllIdentifiersForUser(internalUserId)).concat_map([group=x.group, accessManager](const std::string& uid) {
-        TokenBlockingCreateRequest tokenBlockRequest{
-          .target = {
-            .subject = uid,
-            .userGroup = group,
-            .issueDateTime = TimeNow(),
-          },
-          .note = "User removed from user group",
-        };
-        return accessManager->keyServerProxy_.requestTokenBlockingCreate(std::move(tokenBlockRequest));
-      }).op(RxInstead(FakeVoid()));
-    }
-    return rxcpp::rxs::just(FakeVoid());
-  }).op(RxInstead(UserMutationResponse()));
+    }));
+  }))
+  .concat(RxIterate(request.updateExpiration).concat_map([this](const UpdateExpiration& x)-> rxcpp::observable<FakeVoid> {
+    int64_t internalUserId = storage_->getInternalUserId(x.uid);
+    return updateTokenBlocking(internalUserId, x.group, x.expiration, "User group membership expiration updated", x.expiration)
+    .op(RxSubsequently([storage=storage_, internalUserId, x] {
+      storage->setExpiration(internalUserId, x.group, x.expiration);
+      PEP_LOG(LogTag, Severity::Info) << "Updated expiration for user in group " << Logging::Escape(x.group);
+    }));
+  })).op(RxInstead(UserMutationResponse()));
 }
 
 MigrateUserDbToAccessManagerResponse AccessManager::Backend::migrateUserDb(const std::filesystem::path& dbPath) {

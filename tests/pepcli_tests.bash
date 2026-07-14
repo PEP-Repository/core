@@ -219,17 +219,31 @@ fi
 
 if should_run_test structure-history; then
 
-  # Create a user group, remove it later and then verify that we can query the group that was removed through the --at option
+  # Create a user group, remove it later and then verify that we can query the group that was removed through the --point-in-time option
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user group create onceUponATimeGroup
-  UTC_TIMESTAMP=$($DATE_CMD +%s%N | cut -b1-13)
+  UTC_TIMESTAMP_MS=$($DATE_CMD +%s%N | cut -b1-13)
+  sleep 1s
+  UTC_TIMESTAMP=$($DATE_CMD +%s)
+  UTC_ISO_DATETIME=$($DATE_CMD -u +%FT%TZ)
+  DIFFERENT_TZ_ISO_DATETIME=$(TZ="<-07>+7" $DATE_CMD --date="$UTC_ISO_DATETIME" +%FT%T%:z)
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user group remove onceUponATimeGroup
-  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --at "$UTC_TIMESTAMP" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "unix-ms:$UTC_TIMESTAMP_MS" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "unix:$UTC_TIMESTAMP" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "$UTC_ISO_DATETIME" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "$DIFFERENT_TZ_ISO_DATETIME" | grep 'onceUponATimeGroup'
 
-  # Create a column, remove it later and then verify that we can still query the column that was removed through the --at option
+  # Create a column, remove it later and then verify that we can still query the column that was removed through the --point-in-time option
   pepcli --oauth-token-group "Data Administrator" ama column create onceUponATimeColumn
-  UTC_TIMESTAMP=$($DATE_CMD +%s%N | cut -b1-13)
+  UTC_TIMESTAMP_MS=$($DATE_CMD +%s%N | cut -b1-13)
+  sleep 1s
+  UTC_TIMESTAMP=$($DATE_CMD +%s)
+  UTC_ISO_DATETIME=$($DATE_CMD -u +%FT%TZ)
+  DIFFERENT_TZ_ISO_DATETIME=$(TZ="<-07>+7" $DATE_CMD --date="$UTC_ISO_DATETIME" +%FT%T%:z)
   pepcli --oauth-token-group "Data Administrator" ama column remove onceUponATimeColumn
-  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --at "$UTC_TIMESTAMP" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "unix-ms:$UTC_TIMESTAMP_MS" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "unix:$UTC_TIMESTAMP" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "$UTC_ISO_DATETIME" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "$DIFFERENT_TZ_ISO_DATETIME" | grep 'onceUponATimeColumn'
 
 fi
 
@@ -367,7 +381,7 @@ if should_run_test token-block; then
   # Add a new user to integrationGroup and generate token for that user
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user create userWithFreshToken
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user addTo userWithFreshToken integrationGroup
-  TOKEN_TEST_USER_TOKEN=$(pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" token request userWithFreshToken integrationGroup "$($DATE_CMD -d '2 days' +%s)")
+  TOKEN_TEST_USER_TOKEN=$(pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" token request userWithFreshToken integrationGroup "unix:$($DATE_CMD -d '2 days' +%s)")
 
   # Attempt to do a query with the generated token
   pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access
@@ -499,6 +513,56 @@ if should_run_test user-query; then
   done
 
   pepcli --oauth-token-group "Access Administrator" user remove "$userPrimaryId"
+fi
+
+####################
+
+if should_run_test user-removal-and-expiration; then
+  USER_REMOVAL_AND_EXPIRATION_CONFIG='{
+    "userGroups": [{
+      "name": "test-group",
+      "users": ["test-user"]
+    }]
+  }'
+
+  test_setup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
+
+  token="$(pepcli token request test-user test-group "unix:$(date -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
+  pepcli --oauth-token-group "Access Administrator" user removeFrom test-user test-group
+  pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid when the user is removed from the group"
+
+  expiration="$(date -d "now+5 seconds" +%s)"
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
+  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$(date -d "now+10 years" +%s)")"
+  while [ "$(date -d "now+1 second" +%s)" -lt "$expiration" ]; do # We compare with now+1 second, so the following doesn't fail if in the meantime the current time increased to the next second
+    pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
+    trace sleep 1s
+  done
+  trace sleep 1s
+  pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid after group membership expiration"
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$(date -d "now+10 years" +%s)" test-user test-group \
+    && fail "Shouldn't be able to update expiration for a user group membership that already expired"
+  original_expiration_seconds="5"
+  expiration="$(date -d "now+$original_expiration_seconds seconds" +%s)"
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
+  pepcli --oauth-token "$token" query enrollment && fail "Token that was once blocked should not get unblocked by updating the expiration"
+  newToken="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$(date -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$newToken" query enrollment || fail "New token, requested after the issueDateTime of the block entry, should be valid"
+
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$(date -d "now+10 years" +%s)" test-user test-group
+  trace sleep "${original_expiration_seconds}s"
+  pepcli --oauth-token "$newToken" query enrollment || fail "Token should still be valid after original expiration has passed, but updated expiration has not yet passed"
+
+  blocked_token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$(date -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should be valid"
+  pepcli --oauth-token-group "Access Administrator" token block create --issuedBefore "unix:$(date -d "now" +%s)" --block-start "unix:$(date -d "now+3 seconds" +%s)" --message "Manually blocked" test-user test-group
+  pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should still be valid, before block-start timestamp"
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$(date -d "now+20 years" +%s)" test-user test-group
+  sleep 3s
+  pepcli --oauth-token "$blocked_token" query enrollment && fail "Manually blocked token should not be unblocked by updating the expiration of the group membership"
+
+  test_cleanup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
 fi
 
 ####################
