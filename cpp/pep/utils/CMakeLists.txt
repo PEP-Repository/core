@@ -16,7 +16,7 @@ set(LOGGING ${DEFAULT_LOGGING} CACHE STRING
 # Change first letter to uppercase for enum member
 string(SUBSTRING "${LOGGING}" 0 1 logging_first_letter)
 string(TOUPPER "${logging_first_letter}" logging_first_letter)
-string(REGEX REPLACE "^." "${logging_first_letter}" logging_enum "${LOGGING}")
+string(REGEX REPLACE "^.(.*)" "${logging_first_letter}\\1" logging_enum "${LOGGING}")
 
 add_definitions(-DPEP_COMPILED_MIN_LOG_SEVERITY=${logging_enum})
 
