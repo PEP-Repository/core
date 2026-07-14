@@ -345,7 +345,7 @@ private:
 
   protected:
     int execute() override {
-      return this->executeEventLoopFor(true, [this](std::shared_ptr<pep::CoreClient> client) {
+      return this->executeEventLoopFor(true, [](std::shared_ptr<pep::CoreClient> client) {
         return client->getStorageFacilityProxy()->requestPagePaths()
           .map([](const pep::PagePathResponse& response) {
               for (const auto& path : response.paths) {
