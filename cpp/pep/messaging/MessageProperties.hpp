@@ -60,15 +60,16 @@ public:
   };
 
   /// Throws std::invalid_argument if the combination of bits is not valid
-  explicit constexpr Flags(Bits bits): bits_(bits) { AssertValidCombination(bits_); };
+  explicit Flags(Bits bits): bits_(bits) { AssertValidCombination(bits_); };
 
-  [[nodiscard]] constexpr Bits bits() const noexcept { return bits_; }
-  [[nodiscard]] constexpr bool has(Bits) const noexcept;
+  [[nodiscard]] Bits bits() const noexcept { return bits_; }
+  [[nodiscard]] bool has(Bits) const noexcept;
 
-  [[nodiscard]] constexpr EncodedMessageProperties encode() const noexcept { return ToUnderlying(bits_); }
+  [[nodiscard]] EncodedMessageProperties encode() const noexcept { return ToUnderlying(bits_); }
 
-  [[nodiscard]] static constexpr Flags DecodeFrom(EncodedMessageProperties properties) noexcept {
-    return Flags(Bits(static_cast<EncodedMessageProperties>(properties & detail::encoding_layout::FlagBits))); }
+  [[nodiscard]] static Flags DecodeFrom(EncodedMessageProperties properties) noexcept {
+    return Flags(Bits(static_cast<EncodedMessageProperties>(properties & detail::encoding_layout::FlagBits)));
+  }
 
   std::strong_ordering operator <=>(const Flags&) const noexcept = default;
 
@@ -87,7 +88,7 @@ namespace pep::messaging {
 
 std::ostream& operator<<(std::ostream& out, Flags::Bits flags);
 
-inline constexpr bool Flags::has(Flags::Bits bits) const noexcept { return HasFlags(bits_, bits); }
+inline bool Flags::has(Flags::Bits bits) const noexcept { return HasFlags(bits_, bits); }
 
 // Remaining bits in EncodedMessageProperties represent a unique (serial) number for every request+response cycle
 class StreamId {
