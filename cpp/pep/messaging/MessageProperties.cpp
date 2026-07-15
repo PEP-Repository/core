@@ -54,15 +54,16 @@ EncodedMessageProperties MessageType::encode() const noexcept {
 }
 
 void Flags::AssertValidCombination(Flags::Bits flags) {
-  const auto ErrorMessage = [&](std::string_view reason) -> std::string{
-    return (std::ostringstream{} << "Invalid Flag Combiation " << flags << " - " << reason).str();
+  const auto InvalidCombination = [&](std::string_view reason) -> std::invalid_argument {
+    const auto message = (std::ostringstream{} << "Invalid Flag Combination " << flags << " - " << reason).str();
+    return std::invalid_argument{message};
   };
 
   if (HasFlags(flags, Flags::Bits::Error) && !HasFlags(flags, Flags::Bits::Close)) {
-    throw std::invalid_argument(ErrorMessage("cannot have 'error' without 'close' flag"));
+    throw InvalidCombination("cannot have 'error' without 'close' flag");
   }
   if (HasFlags(flags, Flags::Bits::Error | Flags::Bits::Payload)) {
-    throw std::invalid_argument(ErrorMessage("cannot combine 'payload' with 'close' flag"));
+    throw InvalidCombination("cannot combine 'payload' with 'close' flag");
   }
 }
 
