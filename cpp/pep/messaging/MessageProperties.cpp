@@ -16,9 +16,7 @@ using namespace detail;
 
 static_assert(std::popcount(encoding_layout::TypeBits) == 1, "There is only one type bit, indicating 'Response'");
 constexpr EncodedMessageProperties TypeResponseBit = encoding_layout::TypeBits;
-
 constexpr EncodedMessageProperties NoMessagePropertyBits = 0;
-
 constexpr StreamId::Value ControlStreamId = 0;
 
 }

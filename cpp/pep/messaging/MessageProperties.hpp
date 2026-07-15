@@ -112,7 +112,6 @@ private:
 
 inline std::ostream& operator<<(std::ostream& lhs, const StreamId& rhs) { return lhs << rhs.value(); }
 
-
 // A MessageId is the combination of the StreamId and the message type: allows us to distinguish between our request NNN, and our response to someone else's request NNN
 class MessageId {
 public:
@@ -131,7 +130,6 @@ private:
   StreamId streamId_;
 };
 
-
 class MessageProperties {
 public:
   MessageProperties(MessageId messageId, Flags flags);
@@ -148,6 +146,5 @@ private:
   MessageId messageId_;
   Flags flags_;
 };
-
 
 }
