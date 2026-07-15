@@ -84,16 +84,16 @@ bool ContainsUniqueValues(const std::vector<T>& vec) {
 template <std::output_iterator<std::string> TDest, std::ranges::input_range TSrc>
   requires std::same_as<std::remove_cvref_t<std::ranges::range_value_t<TSrc>>, std::string>
 size_t FillToCapacity(TDest dest, size_t cap, const TSrc& src, size_t padding = 0) {
-  size_t destLength{ 0 };
+  size_t bytesWritten{ 0 };
   for (const auto& item: src) {
     auto add = item.length() + padding;
-    if (destLength + add > cap) {
+    if (bytesWritten + add > cap) {
       break;
     }
     *dest++ = item;
-    destLength += add;
+    bytesWritten += add;
   }
-  return destLength;
+  return bytesWritten;
 }
 
 /*
