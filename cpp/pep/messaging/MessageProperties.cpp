@@ -50,10 +50,7 @@ std::string MessageType::describe() const {
 
 EncodedMessageProperties MessageType::encode() const noexcept {
   assert(IsValidValue(value_));
-  if (value_ == Response) {
-    return TypeResponseBit;
-  }
-  return NoMessagePropertyBits;
+  return (value_ == Response) ? TypeResponseBit : NoMessagePropertyBits;
 }
 
 void Flags::AssertValidCombination(Flags::Bits flags) {
