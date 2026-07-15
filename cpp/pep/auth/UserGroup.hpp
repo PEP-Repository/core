@@ -32,6 +32,7 @@ struct UserGroup {
   inline static const std::string
     AccessAdministrator { "Access Administrator" },
     DataAdministrator   { "Data Administrator" },
+    DataOwner           { "Data Owner"},
     Monitor             { "Monitor" },
     ResearchAssessor    { "Research Assessor" },
     SystemAdministrator { "System Administrator" },
