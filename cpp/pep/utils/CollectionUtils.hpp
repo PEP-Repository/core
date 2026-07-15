@@ -254,9 +254,9 @@ auto InsertNonDuplicates(std::set<T>& dst, const TSrc& src)
   auto last = dst.end();
   size_t count = 0U;
   for (const auto& item : src) {
-    bool inserted;
-    std::tie(last, inserted) = dst.insert(item);
-    if (!inserted) {
+    auto sizeBeforeInsertion = dst.size();
+    last = dst.insert(last, item);
+    if (dst.size() == sizeBeforeInsertion) { // https://cppreference.com/cpp/container/set/insert: "One way to check success of a hinted insert is to compare size() before and after."
       throw std::runtime_error("Can't insert duplicate item into set");
     }
     ++count;
