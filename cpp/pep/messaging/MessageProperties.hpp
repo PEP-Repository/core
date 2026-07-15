@@ -59,11 +59,14 @@ public:
     All     = 0b111 << Shift,
   };
 
-  /// Throws std::invalid_argument if the combination of bits is not valid
-  explicit Flags(Bits bits): bits_(bits) { AssertValidCombination(bits_); };
+  const static Flags None;
+  const static Flags Close;
+  const static Flags Error;
+  const static Flags Payload;
+  const static Flags ClosingPayload;
 
-  [[nodiscard]] Bits bits() const noexcept { return bits_; }
-  [[nodiscard]] bool has(Bits) const noexcept;
+  [[nodiscard]] Flags withClose() const;
+  [[nodiscard]] bool has(Flags subset) const noexcept;
 
   [[nodiscard]] EncodedMessageProperties encode() const noexcept { return ToUnderlying(bits_); }
 
@@ -74,6 +77,9 @@ public:
   std::strong_ordering operator <=>(const Flags&) const noexcept = default;
 
 private:
+  /// Throws std::invalid_argument if the combination of bits is not valid
+  explicit Flags(Bits bits): bits_(bits) { AssertValidCombination(bits_); };
+
   /// Throws std::invalid_argument if the combination of bits is not valid
   static void AssertValidCombination(Bits);
 
@@ -86,9 +92,16 @@ PEP_MARK_AS_FLAG_ENUM_TYPE(::pep::messaging::Flags::Bits)
 
 namespace pep::messaging {
 
+inline const Flags Flags::None = Flags{Flags::Bits::None};
+inline const Flags Flags::Close = Flags{Flags::Bits::Close};
+inline const Flags Flags::Error = Flags{Flags::Bits::Error | Flags::Bits::Close};
+inline const Flags Flags::Payload = Flags{Flags::Bits::Payload};
+inline const Flags Flags::ClosingPayload = Flags{Flags::Bits::Payload | Flags::Bits::Close};
+
 std::ostream& operator<<(std::ostream& out, Flags::Bits flags);
 
-inline bool Flags::has(Flags::Bits bits) const noexcept { return HasFlags(bits_, bits); }
+inline bool Flags::has(Flags subset) const noexcept{ return HasFlags(bits_, subset.bits_); }
+inline Flags Flags::withClose() const { return Flags{bits_ | Flags::Bits::Close}; }
 
 // Remaining bits in EncodedMessageProperties represent a unique (serial) number for every request+response cycle
 class StreamId {

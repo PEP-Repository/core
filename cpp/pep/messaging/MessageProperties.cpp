@@ -108,7 +108,7 @@ MessageId MessageId::MakeForControlMessage() noexcept {
 
 MessageProperties::MessageProperties(MessageId messageId, Flags flags)
   : messageId_(messageId), flags_(flags) {
-  assert(flags_.bits() == Flags::Bits::None || messageId_.type().value() != MessageType::Control);
+  assert(flags_ == Flags::None || messageId_.type().value() != MessageType::Control);
 }
 
 EncodedMessageProperties MessageProperties::encode() const noexcept {
@@ -133,7 +133,7 @@ MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties propert
 }
 
 MessageProperties MessageProperties::MakeForControlMessage() noexcept {
-  return MessageProperties(MessageId::MakeForControlMessage(), Flags{Flags::Bits::None});
+  return MessageProperties(MessageId::MakeForControlMessage(), Flags::None);
 }
 
 }
