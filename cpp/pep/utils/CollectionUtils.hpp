@@ -251,17 +251,17 @@ concept AnyMap = DerivedFromSpecialization<T, std::map> || DerivedFromSpecializa
 template <typename T, std::ranges::input_range TSrc>
 auto InsertNonDuplicates(std::set<T>& dst, const TSrc& src)
   requires (std::same_as<T, std::remove_cvref_t<std::ranges::range_value_t<TSrc>>>) {
-  auto i = dst.end();
+  auto last = dst.end();
   size_t count = 0U;
   for (const auto& item : src) {
     bool inserted;
-    std::tie(i, inserted) = dst.insert(item);
+    std::tie(last, inserted) = dst.insert(item);
     if (!inserted) {
       throw std::runtime_error("Can't insert duplicate item into set");
     }
     ++count;
   }
-  return std::make_pair(i, count);
+  return std::make_pair(last, count);
 }
 
 }
