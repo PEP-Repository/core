@@ -30,12 +30,12 @@ struct UserGroup {
 
   // Special access groups that are checked in the code
   inline static const std::string
-    AccessAdministrator{"Access Administrator"},
-    DataAdministrator{"Data Administrator"},
-    SystemAdministrator{"System Administrator"},
-    ResearchAssessor{"Research Assessor"},
-    Watchdog{"Watchdog"},
-    Monitor{"Monitor"};
+    AccessAdministrator { "Access Administrator" },
+    DataAdministrator   { "Data Administrator" },
+    Monitor             { "Monitor" },
+    ResearchAssessor    { "Research Assessor" },
+    SystemAdministrator { "System Administrator" },
+    Watchdog            { "Watchdog" };
 
   static const std::string AccessManager;
   static const std::unordered_set<std::string> Authserver;
