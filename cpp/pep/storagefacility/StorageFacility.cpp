@@ -1052,7 +1052,7 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
   auto certified = signedRequest->open(*rootCAs);
 
   auto accessGroup = certified.signatory.organizationalUnit();
-  UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
+  UserGroup::EnsureAccess({ UserGroup::DataAdministrator, UserGroup::DataOwner }, accessGroup);
 
   const auto& request = certified.message;
 
