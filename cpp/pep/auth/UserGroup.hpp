@@ -29,7 +29,8 @@ struct UserGroup {
   std::optional<std::chrono::seconds> maxAuthValidity;
 
   // Special access groups that are checked in the code
-  inline static const std::string AccessAdministrator{"Access Administrator"},
+  inline static const std::string
+    AccessAdministrator{"Access Administrator"},
     DataAdministrator{"Data Administrator"},
     SystemAdministrator{"System Administrator"},
     ResearchAssessor{"Research Assessor"},
