@@ -531,6 +531,7 @@ if should_run_test user-removal-and-expiration; then
   pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
   pepcli --oauth-token-group "Access Administrator" user removeFrom test-user test-group
   pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid when the user is removed from the group"
+  trace sleep 1s
 
   expiration="$(date -d "now+5 seconds" +%s)"
   pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
@@ -559,7 +560,7 @@ if should_run_test user-removal-and-expiration; then
   pepcli --oauth-token-group "Access Administrator" token block create --issuedBefore "unix:$(date -d "now" +%s)" --block-start "unix:$(date -d "now+5 seconds" +%s)" --message "Manually blocked" test-user test-group
   pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should still be valid, before block-start timestamp"
   pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$(date -d "now+20 years" +%s)" test-user test-group
-  sleep 5s
+  trace sleep 5s
   pepcli --oauth-token "$blocked_token" query enrollment && fail "Manually blocked token should not be unblocked by updating the expiration of the group membership"
 
   test_cleanup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
