@@ -130,7 +130,7 @@ TEST(MiscUtilsFillToCapacity, OffsetLimited) {
   ASSERT_EQ(length, 2);
 }
 
-TEST(InsertNonDuplicates, InsertsUpToFirstDuplicate) {
+TEST(InsertNonDuplicates, AllowsNonDuplicatesAndRejectsDuplicates) {
   using Vec = std::vector<std::string>;
   using Set = std::set<std::string>;
 
@@ -142,14 +142,12 @@ TEST(InsertNonDuplicates, InsertsUpToFirstDuplicate) {
   EXPECT_NO_THROW(pep::InsertNonDuplicates(dest, Vec{ "B", "C" }));
   EXPECT_EQ(dest, (Set{ "A", "B", "C" }));
 
-  EXPECT_ANY_THROW(pep::InsertNonDuplicates(dest, Vec{ "D", "E", "B" })) << "throws on duplicate";
-  EXPECT_EQ(dest, (Set{ "A", "B", "C", "D", "E" }));
-
-  EXPECT_ANY_THROW(pep::InsertNonDuplicates(dest, std::vector<std::string>{"F", "G", "F"})) << "throws on duplicate";
-  EXPECT_EQ(dest, (Set{ "A", "B", "C", "D", "E", "F", "G" }));
-
   EXPECT_NO_THROW(pep::InsertNonDuplicates(dest, std::vector<std::string>{})); // edge case
-  EXPECT_EQ(dest, (Set{ "A", "B", "C", "D", "E", "F", "G" }));
+  EXPECT_EQ(dest, (Set{ "A", "B", "C" }));
+
+  // Don't test contents of "dest" after exceptions: the function doesn't provide a strong exception guarantee
+  EXPECT_ANY_THROW(pep::InsertNonDuplicates(dest, Vec{ "D", "E", "B" })) << "throws on existing duplicate in destination set";
+  EXPECT_ANY_THROW(pep::InsertNonDuplicates(dest, std::vector<std::string>{"F", "G", "F"})) << "throws on duplicate in source set";
 }
 
 TEST(InsertNonDuplicates, ReturnsLastInsertedItem) {
