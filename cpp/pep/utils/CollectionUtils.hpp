@@ -11,6 +11,7 @@
 #include <optional>
 #include <vector>
 #include <ranges>
+#include <set>
 #include <span>
 #include <stdexcept>
 #include <string_view>
@@ -68,19 +69,32 @@ bool ContainsUniqueValues(const std::vector<T>& vec) {
 }
 
 /*!
- * \brief Given a source vector and a capacity, fill a destination vector with the items of the source until the capacity is reached. An offset can be set to start filling from that index in the source.
- * The size is calculated by iteratively adding the lengths of all items within the source vector with a optional padding added for each of those items. When this number is about to exceed the capacity, filling the destination vector will stop.
- * The resulting size of the destination vector is returned.
+ * \brief Fills a destination range with strings from a source range without exceeding the specified destination capacity.
 
- * \param dest destination vector
- * \param source source vector
- * \param cap The max capacity of the destination vector in bytes
- * \param offset The source index from which to start filling.
- * \param padding The amount added to the length of each item.
+ * \tparam TDest the type of destination iterator
+ * \tparam TSrc the type of source range
 
- * \return The size of the destination vector in bytes.
+ * \param dest destination iterator
+ * \param cap The max capacity of the destination in bytes
+ * \param src the source range
+ * \param padding bytes of overhead associated with each string. Specify a non-zero value to take destination storage overhead into account; add one to take the strings' NULterminators into account.
+
+ * \return The number of bytes written to the destination.
 */
-size_t FillVectorToCapacity(std::vector<std::string>& dest, const std::vector<std::string>& source, const size_t& cap, const size_t& offset = 0, const size_t& padding = 0);
+template <std::output_iterator<std::string> TDest, std::ranges::input_range TSrc>
+  requires std::same_as<std::remove_cvref_t<std::ranges::range_value_t<TSrc>>, std::string>
+size_t FillToCapacity(TDest dest, size_t cap, const TSrc& src, size_t padding = 0) {
+  size_t bytesWritten{ 0 };
+  for (const auto& item: src) {
+    auto add = item.length() + padding;
+    if (bytesWritten + add > cap) {
+      break;
+    }
+    *dest++ = item;
+    bytesWritten += add;
+  }
+  return bytesWritten;
+}
 
 /*
 * \brief Determines if a character sequence ends with starting character(s) of another sequence.
@@ -227,5 +241,29 @@ requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<de
 
 template <typename T>
 concept AnyMap = DerivedFromSpecialization<T, std::map> || DerivedFromSpecialization<T, std::unordered_map>;
+
+/// @brief Adds items from a range to an \ref std::set, throwing an exception if an item could not be inserted because it's a duplicate
+/// @tparam T the type of item in the \ref std::set
+/// @tparam TSrc the type of the input range
+/// @param dst the destination \ref std::set
+/// @param src the source range
+/// @return a pair of (1) an iterator at the last insertion position and (2) the number of items inserted into the set
+/// @throws whatever dst throws when an insertion fails, or an \ref std::runtime_error if one of \p src 's items is a duplicate.
+/// @remark Provides a basic (as opposed to strong) exception guarantee: if an exception is raised because of a duplicate item, \p dst may have been partially updated.
+template <typename T, std::ranges::input_range TSrc>
+auto InsertNonDuplicates(std::set<T>& dst, const TSrc& src)
+  requires (std::same_as<T, std::remove_cvref_t<std::ranges::range_value_t<TSrc>>>) {
+  auto last = dst.end();
+  size_t count = 0U;
+  for (const auto& item : src) {
+    auto sizeBeforeInsertion = dst.size();
+    last = dst.insert(last, item);
+    if (dst.size() == sizeBeforeInsertion) { // https://cppreference.com/cpp/container/set/insert: "One way to check success of a hinted insert is to compare size() before and after."
+      throw std::runtime_error("Can't insert duplicate item into set");
+    }
+    ++count;
+  }
+  return std::make_pair(last, count);
+}
 
 }
