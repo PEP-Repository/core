@@ -1,5 +1,3 @@
-#pragma once
-
 #include <pep/database/Storage.hpp>
 #include <pep/storagefacility/PurgeMessages.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
