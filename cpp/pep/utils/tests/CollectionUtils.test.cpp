@@ -130,17 +130,41 @@ TEST(MiscUtilsFillToCapacity, OffsetLimited) {
   ASSERT_EQ(length, 2);
 }
 
-TEST(MiscUtil, InsertNonDuplicates) {
-  std::vector<std::string> source{ "A", "B", "C", "D" };
+TEST(InsertNonDuplicates, AllowsNonDuplicatesAndRejectsDuplicates) {
+  using Vec = std::vector<std::string>;
+  using Set = std::set<std::string>;
+
   std::set<std::string> dest;
 
-  EXPECT_EQ(source.size(), pep::InsertNonDuplicates(dest, source).second);
-  EXPECT_EQ(source.size(), dest.size());
+  EXPECT_NO_THROW(pep::InsertNonDuplicates(dest, Vec{ "A" }));
+  EXPECT_EQ(dest, (Set{ "A" })); // extra parenthesis to help compiler parse the macro
 
-  EXPECT_ANY_THROW(pep::InsertNonDuplicates(dest, source));
-  EXPECT_EQ(source.size(), dest.size());
+  EXPECT_NO_THROW(pep::InsertNonDuplicates(dest, Vec{ "B", "C" }));
+  EXPECT_EQ(dest, (Set{ "A", "B", "C" }));
 
-  EXPECT_ANY_THROW(pep::InsertNonDuplicates(dest, std::vector<std::string>{ "A" }));
+  EXPECT_NO_THROW(pep::InsertNonDuplicates(dest, std::vector<std::string>{})); // edge case
+  EXPECT_EQ(dest, (Set{ "A", "B", "C" }));
+
+  // Don't test contents of "dest" after exceptions: the function doesn't provide a strong exception guarantee
+  EXPECT_ANY_THROW(pep::InsertNonDuplicates(dest, Vec{ "D", "E", "B" })) << "throws on existing duplicate in destination set";
+  EXPECT_ANY_THROW(pep::InsertNonDuplicates(dest, std::vector<std::string>{"F", "G", "F"})) << "throws on duplicate in source set";
+}
+
+TEST(InsertNonDuplicates, ReturnsLastInsertedItem) {
+  std::set<std::string> dest;
+
+  EXPECT_EQ(*pep::InsertNonDuplicates(dest, std::vector<std::string>{ "A", "B", "C"}).first, "C");
+  EXPECT_EQ(*pep::InsertNonDuplicates(dest, std::vector<std::string>{ "D"}).first, "D");
+  EXPECT_EQ(pep::InsertNonDuplicates(dest, std::vector<std::string>{}).first, dest.end()); // edge case
+}
+
+
+TEST(InsertNonDuplicates, ReturnsInsertedItemCount) {
+  std::set<std::string> dest;
+
+  EXPECT_EQ(pep::InsertNonDuplicates(dest, std::vector<std::string>{ "A", "B", "C"}).second, 3);
+  EXPECT_EQ(pep::InsertNonDuplicates(dest, std::vector<std::string>{ "D"}).second, 1);
+  EXPECT_EQ(pep::InsertNonDuplicates(dest, std::vector<std::string>{}).second, 0); // edge case
 }
 
 }

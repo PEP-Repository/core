@@ -84,16 +84,16 @@ bool ContainsUniqueValues(const std::vector<T>& vec) {
 template <std::output_iterator<std::string> TDest, std::ranges::input_range TSrc>
   requires std::same_as<std::remove_cvref_t<std::ranges::range_value_t<TSrc>>, std::string>
 size_t FillToCapacity(TDest dest, size_t cap, const TSrc& src, size_t padding = 0) {
-  size_t destLength{ 0 };
+  size_t bytesWritten{ 0 };
   for (const auto& item: src) {
     auto add = item.length() + padding;
-    if (destLength + add > cap) {
+    if (bytesWritten + add > cap) {
       break;
     }
     *dest++ = item;
-    destLength += add;
+    bytesWritten += add;
   }
-  return destLength;
+  return bytesWritten;
 }
 
 /*
@@ -248,20 +248,22 @@ concept AnyMap = DerivedFromSpecialization<T, std::map> || DerivedFromSpecializa
 /// @param dst the destination \ref std::set
 /// @param src the source range
 /// @return a pair of (1) an iterator at the last insertion position and (2) the number of items inserted into the set
+/// @throws whatever dst throws when an insertion fails, or an \ref std::runtime_error if one of \p src 's items is a duplicate.
+/// @remark Provides a basic (as opposed to strong) exception guarantee: if an exception is raised because of a duplicate item, \p dst may have been partially updated.
 template <typename T, std::ranges::input_range TSrc>
 auto InsertNonDuplicates(std::set<T>& dst, const TSrc& src)
   requires (std::same_as<T, std::remove_cvref_t<std::ranges::range_value_t<TSrc>>>) {
-  auto i = dst.end();
+  auto last = dst.end();
   size_t count = 0U;
   for (const auto& item : src) {
-    bool inserted;
-    std::tie(i, inserted) = dst.insert(item);
-    if (!inserted) {
+    auto sizeBeforeInsertion = dst.size();
+    last = dst.insert(last, item);
+    if (dst.size() == sizeBeforeInsertion) { // https://cppreference.com/cpp/container/set/insert: "One way to check success of a hinted insert is to compare size() before and after."
       throw std::runtime_error("Can't insert duplicate item into set");
     }
     ++count;
   }
-  return std::make_pair(i, count);
+  return std::make_pair(last, count);
 }
 
 }
