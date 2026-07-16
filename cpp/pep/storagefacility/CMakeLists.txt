@@ -1,8 +1,10 @@
 add_library(${PROJECT_NAME}StorageFacilityApilib
-  Constants.hpp
+  Constants.cpp Constants.hpp
   DataPayloadPage.cpp DataPayloadPage.hpp
   DataPayloadPageStreamOrder.cpp DataPayloadPageStreamOrder.hpp
   PageHash.cpp PageHash.hpp
+  PurgeMessages.cpp PurgeMessages.hpp
+  PurgeSerializers.cpp PurgeSerializers.hpp
   StorageFacilityMessages.hpp
   StorageFacilityProxy.cpp StorageFacilityProxy.hpp
   StorageFacilitySerializers.cpp StorageFacilitySerializers.hpp

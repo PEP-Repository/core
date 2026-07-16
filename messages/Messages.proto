@@ -787,6 +787,54 @@ message DataSizeResponse {
   uint64 rolling_blocks = 3;
 }
 
+message PurgeDefinitionRequest {
+  string name = 1;
+  bool predefined = 2;
+}
+
+message SignedPurgeDefinitionRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message PurgeDefinitionResponse {
+  uint32 id = 1;
+}
+
+message PurgeCancelRequest {
+  uint32 id = 1;
+}
+
+message SignedPurgeCancelRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message PurgeCancelResponse {}
+
+message PurgeReviewRequest {
+  uint32 id = 1;
+}
+
+message SignedPurgeReviewRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message PurgeReviewResponse {}
+
+message PurgeConfirmationRequest {
+  uint32 id = 1;
+  bool confirmed = 2;
+}
+
+message SignedPurgeConfirmationRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message PurgeConfirmationResponse {}
+
 // Protocol buffer definition behind the opaque identifiers used by the
 // storage facility.
 message EncryptedSFId {
