@@ -54,7 +54,7 @@ EncodedMessageProperties MessageType::encode() const noexcept {
 }
 
 Flags::Bits Flags::EnsureValid(Flags::Bits bits) {
-  const auto invalidCombination = [&](std::string_view reason) -> std::invalid_argument {
+  const auto invalidCombination = [bits](std::string_view reason) -> std::invalid_argument {
     const auto message = (std::ostringstream{} << "Invalid Flag Combination " << bits << " - " << reason).str();
     return std::invalid_argument{message};
   };
