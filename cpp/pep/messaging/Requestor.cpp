@@ -88,7 +88,7 @@ void Requestor::processResponse(const std::string& recipient, const StreamId& st
     entries_.erase(it);
   }
   PEP_DEFER(
-    if (flags.has(Flags::Close)) {
+    if (flags.has(Flags::Error) || flags.has(Flags::Close)) {
       PEP_LOG(LogTag, Severity::Verbose)
         << "Closed stream " << streamId
         << " (to " << recipient << ")";
