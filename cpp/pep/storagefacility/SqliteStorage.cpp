@@ -68,10 +68,10 @@ StorageFacility::SqliteStorage::SqliteStorage(std::filesystem::path file)
 
 StorageFacility::SqliteStorage::~SqliteStorage() noexcept = default;
 
-PurgeCycleId StorageFacility::SqliteStorage::startPurgeCycle(std::string name) {
+PurgeCycleId StorageFacility::SqliteStorage::startPurgeCycle(PurgeCycleDefinition definition) {
   // TODO: validate against existing DB
   return implementor_->raw.insert(PurgeCycleRecord{
-    .name = std::move(name),
+    .name = std::move(definition).name(),
     });
   // TODO: implementor_->raw.insert(PurgeEntryRecord...)
 }

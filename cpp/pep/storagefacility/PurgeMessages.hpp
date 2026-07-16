@@ -6,15 +6,8 @@
 namespace pep {
 
 // Begin (defining) a new purge cycle
-class PurgeCycleRequest {
-private:
-  std::string name_;
-
-public:
-  explicit PurgeCycleRequest(std::string name);
-
-  const std::string& name() const& noexcept { return name_; }
-  std::string&& name() && noexcept { return std::move(name_); }
+struct PurgeCycleRequest {
+  PurgeCycleDefinition definition;
 };
 
 struct PurgeCycleResponse {

@@ -13,7 +13,7 @@ public:
   explicit SqliteStorage(std::filesystem::path file);
   ~SqliteStorage() noexcept; // Can't be defined here because the destructor for Implementor is unknown
 
-  PurgeCycleId startPurgeCycle(std::string name);
+  PurgeCycleId startPurgeCycle(PurgeCycleDefinition definition);
   void cancelPurge(PurgeCycleId id);
 };
 
