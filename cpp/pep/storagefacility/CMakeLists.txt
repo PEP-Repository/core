@@ -31,11 +31,13 @@ if (WITH_SERVERS)
       S3Credentials.PropertySerializer.cpp S3Credentials.PropertySerializer.hpp
       SFId.hpp
       SFIdSerializer.cpp SFIdSerializer.hpp
+      SqliteStorage.cpp SqliteStorage.hpp # Named this way to contrast with other "Store/Storage" code in this project
       StorageFacility.cpp StorageFacility.hpp
   )
   target_link_libraries(${PROJECT_NAME}StorageFacilitylib
     ${PROJECT_NAME}StorageFacilityApilib
     ${PROJECT_NAME}Serverlib
+    ${PROJECT_NAME}Databaselib
   )
   verify_headers_standalone(${PROJECT_NAME}StorageFacilitylib)
 

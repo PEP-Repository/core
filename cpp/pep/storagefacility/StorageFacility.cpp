@@ -10,6 +10,7 @@
 #include <pep/async/RxParallelConcat.hpp>
 #include <pep/utils/ApplicationMetrics.hpp>
 #include <pep/auth/EnrolledParty.hpp>
+#include <pep/storagefacility/SqliteStorage.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/storagefacility/SFIdSerializer.hpp>
 #include <pep/messaging/MessageHeader.hpp>
@@ -189,6 +190,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
 
     encIdKeyFile = config.get<std::filesystem::path>("EncIdKeyFile");
     storagePath_ = config.get<std::filesystem::path>("StoragePath");
+    storageFile_ = config.get<std::filesystem::path>("StorageFile");
     pageStoreConfig_ = std::make_shared<Configuration>(config.get_child("PageStore"));
   }
   catch (std::exception& e) {
@@ -1138,6 +1140,9 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   timer_(*parameters->getIoContext()),
   parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()) {
+
+  sqlite_ = std::make_unique<SqliteStorage>(parameters->getStorageFile());
+
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
                           &StorageFacility::handleDataReadRequest2,
@@ -1151,6 +1156,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   this->updateFileStoreMetrics();
   statsTimer({});
 }
+
+StorageFacility::~StorageFacility() noexcept = default;
 
 void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns) {
   uint64_t total{}, rolling{};

@@ -22,6 +22,10 @@
     - `pepcli user query`
     - `pepcli query data-size`
 
+**MANUAL CHANGES REQUIRED**:
+
+- core#2313: Add a `"StorageFile": "StorageFacility.sqlite"` configuration setting to `StorageFacility.json`.
+
 ---------------
 *Past changes, do not edit (except by person doing release):*
 
