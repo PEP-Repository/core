@@ -76,7 +76,8 @@ public:
 
   std::strong_ordering operator <=>(const Flags&) const noexcept = default;
 
-  static void EnsureValid(Flags f) { EnsureValid(f.bits_); }
+  /// Exposes the private constructor for unit testing purposes
+  static Flags TestPrivateConstructor(Bits bits) { return Flags{bits}; }
 
 private:
   /// Throws std::invalid_argument if the combination of bits is not valid

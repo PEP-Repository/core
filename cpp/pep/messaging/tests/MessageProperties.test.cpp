@@ -3,10 +3,38 @@
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
+#include <sstream>
+#include <stdexcept>
+
 namespace pep::messaging {
 namespace {
 
-TEST(MessagingFlags, Relations) {
+std::string ToString(Flags::Bits flags) { return (std::ostringstream{} << flags).str(); }
+
+using ::testing::HasSubstr;
+using ::testing::Property;
+using ::testing::Throws;
+
+TEST(MessagingFlags, constructor_rejects_error_without_close) {
+  EXPECT_THAT(
+      [] { Flags::TestPrivateConstructor(Flags::Bits::Error); },
+      Throws<std::invalid_argument>(
+          Property(&std::invalid_argument::what, HasSubstr(ToString(Flags::Bits::Error)))));
+}
+
+TEST(MessagingFlags, constructor_rejects_error_with_payload) {
+  EXPECT_THAT(
+      [] { Flags::TestPrivateConstructor(Flags::Bits::Error | Flags::Bits::Payload); },
+      Throws<std::invalid_argument>(
+          Property(&std::invalid_argument::what, HasSubstr(ToString(Flags::Bits::Error | Flags::Bits::Payload)))));
+
+  EXPECT_THAT(
+      [] { Flags::TestPrivateConstructor(Flags::Bits::Error | Flags::Bits::Payload | Flags::Bits::Close); },
+      Throws<std::invalid_argument>(
+          Property(&std::invalid_argument::what, HasSubstr(ToString(Flags::Bits::Error | Flags::Bits::Payload | Flags::Bits::Close)))));
+}
+
+TEST(MessagingFlags, relations) {
   EXPECT_TRUE(Flags::None.has(Flags::None));
   EXPECT_FALSE(Flags::None.has(Flags::Close));
   EXPECT_FALSE(Flags::None.has(Flags::Error));
@@ -38,7 +66,7 @@ TEST(MessagingFlags, Relations) {
   EXPECT_TRUE(Flags::ClosingPayload.has(Flags::ClosingPayload));
 }
 
-TEST(MessagingFlags, Transformations) {
+TEST(MessagingFlags, transformations) {
   EXPECT_EQ(Flags::None.withClose(), Flags::Close);
   EXPECT_EQ(Flags::Close.withClose(), Flags::Close);
   EXPECT_EQ(Flags::Error.withClose(), Flags::Error);
