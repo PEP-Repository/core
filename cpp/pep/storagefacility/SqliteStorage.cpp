@@ -1,6 +1,7 @@
 #include <pep/database/Storage.hpp>
 #include <pep/storagefacility/PurgeMessages.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
+#include <boost/numeric/conversion/cast.hpp>
 #include <sqlite_orm/sqlite_orm.h>
 
 namespace pep {
@@ -68,10 +69,20 @@ StorageFacility::SqliteStorage::~SqliteStorage() noexcept = default;
 
 PurgeCycleId StorageFacility::SqliteStorage::startPurgeCycle(PurgeCycleDefinition definition) {
   // TODO: validate against existing DB
-  return implementor_->raw.insert(PurgeCycleRecord{
+  auto id = implementor_->raw.insert(PurgeCycleRecord{
     .name = std::move(definition).name(),
     });
+
+  PurgeCycleId result;
+  try {
+    result = boost::numeric_cast<PurgeCycleId>(id);
+  }
+  catch (...) {
+    throw std::runtime_error("ID overflow in PurgeCycle table");
+  }
+
   // TODO: implementor_->raw.insert(PurgeEntryRecord...)
+  return result;
 }
 
 void StorageFacility::SqliteStorage::cancelPurge(PurgeCycleId id) {
