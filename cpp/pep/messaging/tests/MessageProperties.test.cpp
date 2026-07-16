@@ -34,7 +34,7 @@ TEST(MessagingFlags, constructor_rejects_error_with_payload) {
           Property(&std::invalid_argument::what, HasSubstr(ToString(Flags::Bits::Error | Flags::Bits::Payload | Flags::Bits::Close)))));
 }
 
-TEST(MessagingFlags, relations) {
+TEST(MessagingFlags, has) {
   EXPECT_TRUE(Flags::None.has(Flags::None));
   EXPECT_FALSE(Flags::None.has(Flags::Close));
   EXPECT_FALSE(Flags::None.has(Flags::Error));
@@ -66,7 +66,7 @@ TEST(MessagingFlags, relations) {
   EXPECT_TRUE(Flags::ClosingPayload.has(Flags::ClosingPayload));
 }
 
-TEST(MessagingFlags, transformations) {
+TEST(MessagingFlags, withClose) {
   EXPECT_EQ(Flags::None.withClose(), Flags::Close);
   EXPECT_EQ(Flags::Close.withClose(), Flags::Close);
   EXPECT_EQ(Flags::Error.withClose(), Flags::Error);
