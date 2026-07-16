@@ -53,18 +53,20 @@ EncodedMessageProperties MessageType::encode() const noexcept {
   return (value_ == Response) ? TypeResponseBit : NoMessagePropertyBits;
 }
 
-void Flags::AssertValidCombination(Flags::Bits flags) {
+Flags::Bits Flags::EnsureValid(Flags::Bits bits) {
   const auto InvalidCombination = [&](std::string_view reason) -> std::invalid_argument {
-    const auto message = (std::ostringstream{} << "Invalid Flag Combination " << flags << " - " << reason).str();
+    const auto message = (std::ostringstream{} << "Invalid Flag Combination " << bits << " - " << reason).str();
     return std::invalid_argument{message};
   };
 
-  if (HasFlags(flags, Flags::Bits::Error) && !HasFlags(flags, Flags::Bits::Close)) {
+  if (HasFlags(bits, Flags::Bits::Error) && !HasFlags(bits, Flags::Bits::Close)) {
     throw InvalidCombination("cannot have 'error' without 'close' flag");
   }
-  if (HasFlags(flags, Flags::Bits::Error | Flags::Bits::Payload)) {
+  if (HasFlags(bits, Flags::Bits::Error | Flags::Bits::Payload)) {
     throw InvalidCombination("cannot combine 'payload' with 'close' flag");
   }
+
+  return bits;
 }
 
 std::ostream& operator<<(std::ostream& out, Flags::Bits flags) {

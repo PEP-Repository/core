@@ -76,12 +76,14 @@ public:
 
   std::strong_ordering operator <=>(const Flags&) const noexcept = default;
 
+  static void EnsureValid(Flags f) { EnsureValid(f.bits_); }
+
 private:
   /// Throws std::invalid_argument if the combination of bits is not valid
-  explicit Flags(Bits bits): bits_(bits) { AssertValidCombination(bits_); };
+  explicit Flags(Bits bits): bits_(EnsureValid(bits)) {};
 
-  /// Throws std::invalid_argument if the combination of bits is not valid
-  static void AssertValidCombination(Bits);
+  /// Identity function that throws std::invalid_argument if the combination of bits is not valid
+  static Bits EnsureValid(Bits);
 
   Bits bits_;
 };
