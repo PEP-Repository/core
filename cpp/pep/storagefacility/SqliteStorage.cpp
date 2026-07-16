@@ -9,18 +9,18 @@ namespace {
 
 // Normalized storage for row pseudonyms to reduce storage space use
 struct RowRecord {
-  int64_t seqno;
+  int64_t seqno{};
   std::string pseudonym; // text representation of the row's local pseudonym for SF
 };
 
 // Normalized storage for column names to reduce storage space use
 struct ColumnRecord {
-  int64_t seqno;
+  int64_t seqno{};
   std::string name;
 };
 
 struct PurgeCycleRecord {
-  PurgeCycleId id;
+  PurgeCycleId id{};
   std::string name;
 };
 
