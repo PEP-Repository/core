@@ -17,8 +17,8 @@ using EncodedMessageProperties = uint32_t;
 
 namespace detail::encoding_layout {
 
-constexpr EncodedMessageProperties TypeBits = 0x8000'0000; // single high bit to indicate message type
-constexpr EncodedMessageProperties FlagBits = 0x7000'0000; // (the next-highest) three bits for state-related flags
+constexpr EncodedMessageProperties TypeBits = 0b1000U << (32 - 4); // single high bit to indicate message type
+constexpr EncodedMessageProperties FlagBits = 0b0111U << (32 - 4); // (the next-highest) three bits for state-related flags
 constexpr EncodedMessageProperties StreamIdBits = ~(TypeBits | FlagBits); // remaining bits for a unique (serial) number for every request+response cycle
 
 } // namespace detail::encoding_layout
