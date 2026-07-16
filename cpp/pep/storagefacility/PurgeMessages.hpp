@@ -1,10 +1,9 @@
 #pragma once
 
 #include <pep/auth/Signed.hpp>
+#include <pep/storagefacility/PurgeTypes.hpp>
 
 namespace pep {
-
-using PurgeId = uint32_t; // An unsigned integer that (fits Sqlite's int64_t integer API and) uniquely refers to a purge (definition)
 
 // Begin (defining) a new purge
 class PurgeDefinitionRequest {
