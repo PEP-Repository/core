@@ -22,9 +22,9 @@ if (WITH_SERVERS)
       EntryContent.cpp EntryContent.hpp
       EntryName.cpp EntryName.hpp
       EntryPayload.cpp EntryPayload.hpp
-      PersistedEntryProperties.cpp PersistedEntryProperties.hpp
       FileStore.cpp FileStore.hpp
       PageStore.cpp PageStore.hpp
+      PersistedEntryProperties.cpp PersistedEntryProperties.hpp
       S3.cpp S3.hpp
       S3Client.cpp S3Client.hpp
       S3Credentials.hpp
