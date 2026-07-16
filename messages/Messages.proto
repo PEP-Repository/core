@@ -789,7 +789,6 @@ message DataSizeResponse {
 
 message PurgeCycleRequest {
   string name = 1;
-  bool predefined = 2;
 }
 
 message SignedPurgeCycleRequest {

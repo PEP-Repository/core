@@ -24,7 +24,6 @@ struct ColumnRecord {
 struct PurgeCycleRecord {
   PurgeCycleId id;
   std::string name;
-  bool predefined;
 };
 
 struct PurgeEntryRecord {
@@ -48,8 +47,7 @@ auto MakeRawStorage(std::string path) {
     make_table("PurgeCycle",
       make_column("id", &PurgeCycleRecord::id,
         primary_key().autoincrement()),
-      make_column("name", &PurgeCycleRecord::name),
-      make_column("predefined", &PurgeCycleRecord::predefined)),
+      make_column("name", &PurgeCycleRecord::name)),
     make_table("PurgeEntry",
       make_column("cycle", &PurgeEntryRecord::cycle),
       make_column("row", &PurgeEntryRecord::row),
@@ -70,11 +68,10 @@ StorageFacility::SqliteStorage::SqliteStorage(std::filesystem::path file)
 
 StorageFacility::SqliteStorage::~SqliteStorage() noexcept = default;
 
-PurgeCycleId StorageFacility::SqliteStorage::definePurge(std::string name, bool predefined) {
+PurgeCycleId StorageFacility::SqliteStorage::startPurgeCycle(std::string name) {
   // TODO: validate against existing DB
   return implementor_->raw.insert(PurgeCycleRecord{
     .name = std::move(name),
-    .predefined = predefined,
     });
   // TODO: implementor_->raw.insert(PurgeEntryRecord...)
 }

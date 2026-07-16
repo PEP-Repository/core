@@ -3,10 +3,10 @@
 
 namespace pep {
 
-PurgeCycleRequest::PurgeCycleRequest(std::string name, bool predefined)
-  : name_(std::move(name)), predefined_(predefined) {
-  if (predefined_ != PredefinedPurgeFilters.contains(name_)) {
-    throw std::runtime_error("\"" + name_ + "\" is " + (predefined_ ? "not " : "") + " a predefined purge filter");
+PurgeCycleRequest::PurgeCycleRequest(std::string name)
+  : name_(std::move(name)) {
+  if (!PredefinedPurgeFilters.contains(name_)) {
+    throw std::runtime_error("\"" + name_ + "\" is not a predefined purge filter");
   }
 }
 

@@ -3,12 +3,11 @@
 namespace pep {
 
 PurgeCycleRequest Serializer<PurgeCycleRequest>::fromProtocolBuffer(proto::PurgeCycleRequest&& source) const {
-  return PurgeCycleRequest(std::move(*source.mutable_name()), source.predefined()); // Throws if parameter values are mismatched
+  return PurgeCycleRequest(std::move(*source.mutable_name()));
 }
 
 void Serializer<PurgeCycleRequest>::moveIntoProtocolBuffer(proto::PurgeCycleRequest& dest, PurgeCycleRequest value) const {
   dest.set_name(value.name());
-  dest.set_predefined(value.predefined());
 }
 
 PurgeCycleResponse Serializer<PurgeCycleResponse>::fromProtocolBuffer(proto::PurgeCycleResponse&& source) const {

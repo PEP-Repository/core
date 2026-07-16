@@ -9,14 +9,12 @@ namespace pep {
 class PurgeCycleRequest {
 private:
   std::string name_;
-  bool predefined_{};
 
 public:
-  explicit PurgeCycleRequest(std::string name, bool predefined = true);
+  explicit PurgeCycleRequest(std::string name);
 
   const std::string& name() const& noexcept { return name_; }
   std::string&& name() && noexcept { return std::move(name_); }
-  bool predefined() const noexcept { return predefined_; }
 };
 
 struct PurgeCycleResponse {
