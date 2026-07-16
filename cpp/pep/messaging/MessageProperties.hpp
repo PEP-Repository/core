@@ -21,7 +21,7 @@ constexpr EncodedMessageProperties TypeBits = 0x8000'0000; // single high bit to
 constexpr EncodedMessageProperties FlagBits = 0x7000'0000; // (the next-highest) three bits for state-related flags
 constexpr EncodedMessageProperties StreamIdBits = ~(TypeBits | FlagBits); // remaining bits for a unique (serial) number for every request+response cycle
 
-} // namespace encoding
+} // namespace detail::encoding_layout
 
 // The (single) high bit in EncodedMessageProperties indicates message type
 class MessageType {
