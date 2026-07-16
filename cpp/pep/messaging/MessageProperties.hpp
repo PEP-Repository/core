@@ -65,8 +65,8 @@ public:
   const static Flags Payload;
   const static Flags ClosingPayload;
 
-  [[nodiscard]] Flags withClose() const;
-  [[nodiscard]] bool has(Flags subset) const noexcept;
+  [[nodiscard]] Flags withClose() const; ///< Returns the closing variant of these Flags
+  [[nodiscard]] bool has(Flags) const noexcept; ///< Checks if the passed Flags are a subset of these Flags
 
   [[nodiscard]] EncodedMessageProperties encode() const noexcept { return ToUnderlying(bits_); }
 
