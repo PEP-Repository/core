@@ -787,17 +787,17 @@ message DataSizeResponse {
   uint64 rolling_blocks = 3;
 }
 
-message PurgeDefinitionRequest {
+message PurgeCycleRequest {
   string name = 1;
   bool predefined = 2;
 }
 
-message SignedPurgeDefinitionRequest {
+message SignedPurgeCycleRequest {
   Signature signature = 1;
   bytes data = 2;
 }
 
-message PurgeDefinitionResponse {
+message PurgeCycleResponse {
   uint32 id = 1;
 }
 

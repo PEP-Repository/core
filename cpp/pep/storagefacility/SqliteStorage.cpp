@@ -21,16 +21,16 @@ struct ColumnRecord {
   std::string name;
 };
 
-struct PurgeRecord {
-  PurgeId id;
+struct PurgeCycleRecord {
+  PurgeCycleId id;
   std::string name;
   bool predefined;
 };
 
 struct PurgeEntryRecord {
-  PurgeId purge;  // FK to Purge::id
-  int64_t row;    // FK to RowAndPseudonym::seqno
-  int64_t column; // FK to ColumnAndName::seqno
+  PurgeCycleId cycle; // FK to PurgeCycleRecord::id
+  int64_t row;        // FK to RowRecord::seqno
+  int64_t column;     // FK to ColumnRecord::seqno
   database::UnixMillis timestamp;
 };
 
@@ -45,13 +45,13 @@ auto MakeRawStorage(std::string path) {
       make_column("seqno", &ColumnRecord::seqno,
         primary_key().autoincrement()),
       make_column("name", &ColumnRecord::name)),
-    make_table("Purge",
-      make_column("id", &PurgeRecord::id,
+    make_table("PurgeCycle",
+      make_column("id", &PurgeCycleRecord::id,
         primary_key().autoincrement()),
-      make_column("name", &PurgeRecord::name),
-      make_column("predefined", &PurgeRecord::predefined)),
+      make_column("name", &PurgeCycleRecord::name),
+      make_column("predefined", &PurgeCycleRecord::predefined)),
     make_table("PurgeEntry",
-      make_column("purge", &PurgeEntryRecord::purge),
+      make_column("cycle", &PurgeEntryRecord::cycle),
       make_column("row", &PurgeEntryRecord::row),
       make_column("column", &PurgeEntryRecord::column),
       make_column("timestamp", &PurgeEntryRecord::timestamp))
@@ -70,17 +70,17 @@ StorageFacility::SqliteStorage::SqliteStorage(std::filesystem::path file)
 
 StorageFacility::SqliteStorage::~SqliteStorage() noexcept = default;
 
-PurgeId StorageFacility::SqliteStorage::definePurge(std::string name, bool predefined) {
+PurgeCycleId StorageFacility::SqliteStorage::definePurge(std::string name, bool predefined) {
   // TODO: validate against existing DB
-  return implementor_->raw.insert(PurgeRecord{
+  return implementor_->raw.insert(PurgeCycleRecord{
     .name = std::move(name),
     .predefined = predefined,
     });
   // TODO: implementor_->raw.insert(PurgeEntryRecord...)
 }
 
-void StorageFacility::SqliteStorage::cancelPurge(PurgeId id) {
-  implementor_->raw.remove<PurgeRecord>(id);
+void StorageFacility::SqliteStorage::cancelPurge(PurgeCycleId id) {
+  implementor_->raw.remove<PurgeCycleRecord>(id);
   // TODO: implementor_->raw.remove(PurgeEntryRecord...)
 }
 

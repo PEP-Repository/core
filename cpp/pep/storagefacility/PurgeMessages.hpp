@@ -5,47 +5,47 @@
 
 namespace pep {
 
-// Begin (defining) a new purge
-class PurgeDefinitionRequest {
+// Begin (defining) a new purge cycle
+class PurgeCycleRequest {
 private:
   std::string name_;
   bool predefined_{};
 
 public:
-  explicit PurgeDefinitionRequest(std::string name, bool predefined = true);
+  explicit PurgeCycleRequest(std::string name, bool predefined = true);
 
   const std::string& name() const& noexcept { return name_; }
   std::string&& name() && noexcept { return std::move(name_); }
   bool predefined() const noexcept { return predefined_; }
 };
 
-struct PurgeDefinitionResponse {
-  PurgeId id;
+struct PurgeCycleResponse {
+  PurgeCycleId id;
 };
 
-// Cancel an (unconfirmed) purge
+// Cancel an (unconfirmed) purge cycle
 struct PurgeCancelRequest {
-  PurgeId id;
+  PurgeCycleId id;
 };
 
 struct PurgeCancelResponse {};
 
-// Request confirmation for a purge
+// Request confirmation for a purge cycle
 struct PurgeReviewRequest {
-  PurgeId id;
+  PurgeCycleId id;
 };
 
 struct PurgeReviewResponse {}; // Only indicates that SF has stored the request as "reviewable". A later (asynchronous) "PurgeConfirmationRequest" specifies the review's outcome
 
-// Confirm or deny a purge
+// Confirm or deny a purge cycle
 struct PurgeConfirmationRequest {
-  PurgeId id;
+  PurgeCycleId id;
   bool confirmed{}; // If true, SF (immediately) starts purging. If false, the request is no longer marked as "reviewable"
 };
 
 struct PurgeConfirmationResponse {};
 
-using SignedPurgeDefinitionRequest = Signed<PurgeDefinitionRequest>;
+using SignedPurgeCycleRequest = Signed<PurgeCycleRequest>;
 using SignedPurgeCancelRequest = Signed< PurgeCancelRequest>;
 using SignedPurgeReviewRequest = Signed<PurgeReviewRequest>;
 using SignedPurgeConfirmationRequest = Signed<PurgeConfirmationRequest>;
