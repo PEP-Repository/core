@@ -9,7 +9,6 @@
 #include <optional>
 #include <vector>
 #include <ranges>
-#include <set>
 #include <span>
 #include <stdexcept>
 #include <string_view>
@@ -187,30 +186,6 @@ requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<de
     throw std::out_of_range("range contains multiple elements");
   }
   return result;
-}
-
-/// @brief Adds items from a range to an \ref std::set, throwing an exception if an item could not be inserted because it's a duplicate
-/// @tparam T the type of item in the \ref std::set
-/// @tparam TSrc the type of the input range
-/// @param dst the destination \ref std::set
-/// @param src the source range
-/// @return a pair of (1) an iterator at the last insertion position and (2) the number of items inserted into the set
-/// @throws whatever dst throws when an insertion fails, or an \ref std::runtime_error if one of \p src 's items is a duplicate.
-/// @remark Provides a basic (as opposed to strong) exception guarantee: if an exception is raised because of a duplicate item, \p dst may have been partially updated.
-template <typename T, std::ranges::input_range TSrc>
-auto InsertNonDuplicates(std::set<T>& dst, const TSrc& src)
-  requires (std::same_as<T, std::remove_cvref_t<std::ranges::range_value_t<TSrc>>>) {
-  auto last = dst.end();
-  size_t count = 0U;
-  for (const auto& item : src) {
-    auto sizeBeforeInsertion = dst.size();
-    last = dst.insert(last, item);
-    if (dst.size() == sizeBeforeInsertion) { // https://cppreference.com/cpp/container/set/insert: "One way to check success of a hinted insert is to compare size() before and after."
-      throw std::runtime_error("Can't insert duplicate item into set");
-    }
-    ++count;
-  }
-  return std::make_pair(last, count);
 }
 
 }
