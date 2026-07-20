@@ -67,7 +67,7 @@ StorageFacility::SqliteStorage::SqliteStorage(std::filesystem::path file)
 
 StorageFacility::SqliteStorage::~SqliteStorage() noexcept = default;
 
-PurgeCycleId StorageFacility::SqliteStorage::startPurgeCycle(PurgeCycleDefinition definition) {
+PurgeCycleId StorageFacility::SqliteStorage::createPurgeCycle(PurgeCycleDefinition definition) {
   // TODO: validate against existing DB
   auto id = implementor_->raw.insert(PurgeCycleRecord{
     .name = std::move(definition).name(),
@@ -85,7 +85,7 @@ PurgeCycleId StorageFacility::SqliteStorage::startPurgeCycle(PurgeCycleDefinitio
   return result;
 }
 
-void StorageFacility::SqliteStorage::cancelPurge(PurgeCycleId id) {
+void StorageFacility::SqliteStorage::deletePurgeCycle(PurgeCycleId id) {
   implementor_->raw.remove<PurgeCycleRecord>(id);
   // TODO: implementor_->raw.remove(PurgeEntryRecord...)
 }
