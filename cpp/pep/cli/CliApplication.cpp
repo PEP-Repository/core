@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <ranges>
+#include <stdexcept>
 #include <string>
 #include <vector>
 

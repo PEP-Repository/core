@@ -5,6 +5,7 @@
 #include <pep/auth/OAuthToken.hpp>
 
 #include <iostream>
+#include <stdexcept>
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>

@@ -3,6 +3,8 @@
 #include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Random.hpp>
 
+#include <stdexcept>
+
 using namespace std::string_literals;
 
 namespace pep {
