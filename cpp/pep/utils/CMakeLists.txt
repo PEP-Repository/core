@@ -14,7 +14,7 @@ set(LOGGING ${DEFAULT_LOGGING} CACHE STRING
         "Logging statements to compile into binaries.  (Note: there are also runtime filters.)")
 
 # Change first letter to uppercase for enum member
-capitalize_first_letter("${LOGGING}" logging_enum)
+capitalize_only_first_letter("${LOGGING}" logging_enum)
 
 add_definitions(-DPEP_COMPILED_MIN_LOG_SEVERITY=${logging_enum})
 
