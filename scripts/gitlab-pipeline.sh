@@ -55,7 +55,8 @@ trigger_and_wait() {
   pipeline_id=$(get_pipeline_id "$branchname") || return 1
 
   # GitLab can only run pipelines for branches (or tags): see https://stackoverflow.com/a/63460457
-  gitlab_api post "repository/branches?branch=$branchname&ref=$ref_sha" > /dev/null
+  >&2 echo "Creating branch by posting to Gitlab API at repository/branches?branch=$branchname&ref=$ref_sha"
+  gitlab_api post "repository/branches?branch=$branchname&ref=$ref_sha"
 
   if [ -n "$pipeline_name" ]; then
     gitlab_api put "pipelines/$pipeline_id/metadata" --data "name=$pipeline_name" > /dev/null || true
