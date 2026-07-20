@@ -5,9 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <functional>
 #include <iterator>
-#include <map>
 #include <optional>
 #include <vector>
 #include <ranges>
@@ -15,57 +13,9 @@
 #include <stdexcept>
 #include <string_view>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
 
 namespace pep {
-
-/*!
- * \brief Returns whether a is a subset of b.
- */
-template<typename T>
-bool IsSubset(std::vector<T> a, std::vector<T> b) {
-  std::sort(a.begin(), a.end());
-  std::sort(b.begin(), b.end());
-  return std::includes(b.begin(), b.end(), a.begin(), a.end());
-}
-
-/*!
- * \brief Returns a value that's included multiple times in the vector, or std::nullopt if it contains unique values. Uniqueness is determined by the specified Compare object.
- */
-template <typename T, typename TCompare>
-std::optional<T> TryFindDuplicateValue(std::vector<T> vec, const TCompare& comp) {
-  std::sort(vec.begin(), vec.end(), comp);
-  auto position = std::adjacent_find(vec.cbegin(), vec.cend());
-  if (position != vec.cend()) {
-    return *position;
-  }
-  return std::nullopt;
-}
-
-/*!
- * \brief Returns a value that's included multiple times in the vector, or std::nullopt if it contains unique values. Uniqueness is determined by (a default-constructed instance of) the specified Compare type.
- */
-template <typename T, typename TCompare = std::less<T>>
-std::optional<T> TryFindDuplicateValue(std::vector<T> vec) {
-  return TryFindDuplicateValue(vec, TCompare());
-}
-
-/*!
- * \brief Returns whether a vector contains unique values, with uniqueness determined by the specified Compare object.
- */
-template <typename T, typename TCompare>
-bool ContainsUniqueValues(std::vector<T> vec, const TCompare& comp) {
-  return TryFindDuplicateValue(vec, comp) == std::nullopt;
-}
-
-/*!
- * \brief Returns whether a vector contains unique values, with uniqueness determined by (a default-constructed instance of) the specified Compare type.
- */
-template <typename T, typename TCompare = std::less<T>>
-bool ContainsUniqueValues(const std::vector<T>& vec) {
-  return TryFindDuplicateValue(vec) == std::nullopt;
-}
 
 /*!
  * \brief Given a source vector and a capacity, fill a destination vector with the items of the source until the capacity is reached. An offset can be set to start filling from that index in the source.
@@ -224,8 +174,5 @@ requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<de
   }
   return result;
 }
-
-template <typename T>
-concept AnyMap = DerivedFromSpecialization<T, std::map> || DerivedFromSpecialization<T, std::unordered_map>;
 
 }

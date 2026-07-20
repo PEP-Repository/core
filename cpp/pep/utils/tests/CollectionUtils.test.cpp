@@ -8,43 +8,7 @@ void TestFindLongestPrefixAtEnd(const std::string& haystack, const std::string& 
   EXPECT_EQ(found, expected) << "Found " << found << " starting character(s) of \"" << needle << "\" at the end of \"" << haystack << "\", but expected " << expected;
 }
 
-TEST(MiscUtil, IsSubset) {
-  // empty set is subset of every other set
-  ASSERT_TRUE(pep::IsSubset(std::vector<int>{}, {}));
-  ASSERT_TRUE(pep::IsSubset(std::vector<int>{}, {1}));
-
-  ASSERT_TRUE(pep::IsSubset(std::vector<int>{1}, {1}));
-  ASSERT_TRUE(pep::IsSubset(std::vector<int>{1}, {1, 2}));
-  ASSERT_TRUE(pep::IsSubset(std::vector<int>{1, 2}, {1, 2, 3}));
-
-  // unsorted
-  ASSERT_TRUE(pep::IsSubset(std::vector<int>{2, 1}, { 2, 3, 1}));
-
-  // not a subset
-  ASSERT_FALSE(pep::IsSubset(std::vector<int>{1}, {2}));
-  ASSERT_FALSE(pep::IsSubset(std::vector<int>{1, 2}, {2}));
-}
-
-TEST(MiscUtil, TryFindDuplicateValue) {
-  ASSERT_EQ(pep::TryFindDuplicateValue(std::vector<int>{}), std::nullopt);
-  ASSERT_EQ(pep::TryFindDuplicateValue(std::vector<int>{1 }), std::nullopt);
-  ASSERT_EQ(pep::TryFindDuplicateValue(std::vector<int>{1, 1}), 1);
-  ASSERT_EQ(pep::TryFindDuplicateValue(std::vector<int>{1, 2, 1}), 1);
-  ASSERT_EQ(pep::TryFindDuplicateValue(std::vector<int>{1, 2, 2,1}), 1);
-}
-
-TEST(MiscUtil, ContainsUniqueValues) {
-  ASSERT_EQ(pep::ContainsUniqueValues(std::vector<int>{}), true);
-  ASSERT_EQ(pep::ContainsUniqueValues(std::vector<int>{1 }), true);
-  ASSERT_EQ(pep::ContainsUniqueValues(std::vector<int>{1, 2}), true);
-
-  ASSERT_EQ(pep::ContainsUniqueValues(std::vector<int>{1, 1}), false);
-  ASSERT_EQ(pep::ContainsUniqueValues(std::vector<int>{1, 1, 2}), false);
-  ASSERT_EQ(pep::ContainsUniqueValues(std::vector<int>{1, 2, 1}), false);
-  ASSERT_EQ(pep::ContainsUniqueValues(std::vector<int>{1, 2, 2,1}), false);
-}
-
-TEST(MiscUtilTest, StartingChars) {
+TEST(CollectionUtils, FindLongestPrefixAtEnd) {
   TestFindLongestPrefixAtEnd("", "1234", 0U);
 
   TestFindLongestPrefixAtEnd("1234567890", "1234", 0U);
@@ -68,7 +32,7 @@ TEST(MiscUtilTest, StartingChars) {
   TestFindLongestPrefixAtEnd("11111111111", "1011", 1U);
 }
 
-TEST(MiscUtilsFillVectorToCapacity, simple) {
+TEST(CollectionUtils_FillVectorToCapacity, simple) {
   // Arrange
   std::vector<std::string> source{ "A", "B", "C", "D" };
   std::vector<std::string> dest{};
@@ -83,7 +47,7 @@ TEST(MiscUtilsFillVectorToCapacity, simple) {
   ASSERT_EQ(length, 4);
 }
 
-TEST(MiscUtilsFillVectorToCapacity, capacityZero) {
+TEST(CollectionUtils_FillVectorToCapacity, capacityZero) {
   // Arrange
   std::vector<std::string> source{ "A", "B", "C", "D" };
   std::vector<std::string> dest{};
@@ -99,7 +63,7 @@ TEST(MiscUtilsFillVectorToCapacity, capacityZero) {
 }
 
 
-TEST(MiscUtilsFillVectorToCapacity, CapacityLimited) {
+TEST(CollectionUtils_FillVectorToCapacity, CapacityLimited) {
   // Arrange
   std::vector<std::string> source{ "A", "B", "C", "D" };
   std::vector<std::string> dest{};
@@ -114,7 +78,7 @@ TEST(MiscUtilsFillVectorToCapacity, CapacityLimited) {
   ASSERT_EQ(length, 2);
 }
 
-TEST(MiscUtilsFillVectorToCapacity, OffsetLimited) {
+TEST(CollectionUtils_FillVectorToCapacity, OffsetLimited) {
   // Arrange
   std::vector<std::string> source{ "A", "B", "C", "D" };
   std::vector<std::string> dest{};

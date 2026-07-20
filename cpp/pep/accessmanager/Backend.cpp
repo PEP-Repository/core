@@ -5,7 +5,7 @@
 #include <pep/async/RxInstead.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/utils/CollectionUtils.hpp>
+#include <pep/utils/MapUtils.hpp>
 
 #include <boost/algorithm/string/join.hpp>
 
