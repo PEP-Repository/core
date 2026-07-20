@@ -795,7 +795,7 @@ std::vector<AmaQueryResponse> AccessManager::ExtractPartialColumnGroupQueryRespo
     size_t sizeLeft = limitedMessageSize > responseSize ? limitedMessageSize - responseSize : 0; // guard against underflowing
 
     auto destinationColumnGroup = AmaQRColumnGroup();
-    auto entrySize = AmaQRColumnGroup::FillToProtobufSerializationCapacity(destinationColumnGroup, *sourceColumnGroup, sizeLeft, firstColumn);
+    auto entrySize = AmaQRColumnGroup::FillToProtobufSerializationCapacity(destinationColumnGroup, sizeLeft, *sourceColumnGroup, firstColumn);
 
     // Only if columns were added to the entry OR the source columngroup is empty itself, add it to the response. Otherwise, put it in the next.
     if (entrySize != 0 && (destinationColumnGroup.columns.size() != 0 || sourceColumnGroup->columns.size() == 0)) {

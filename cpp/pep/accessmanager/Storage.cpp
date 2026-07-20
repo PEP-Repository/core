@@ -325,14 +325,14 @@ void AccessManager::Backend::Storage::ensureInitialized() {
   createUserGroup(UserGroup(UserGroup::ResearchAssessor, std::nullopt));
   createUserGroup(UserGroup(UserGroup::Monitor, std::nullopt));
   createUserGroup(UserGroup(UserGroup::DataAdministrator, std::chrono::days{1}));
-  createUserGroup(UserGroup(UserGroup::DataOwner, std::nullopt));
+  createUserGroup(UserGroup(UserGroup::RepositoryManager, std::nullopt));
   createUserGroup(UserGroup(UserGroup::AccessAdministrator, std::nullopt));
   createUserGroup(UserGroup(UserGroup::SystemAdministrator, std::nullopt));
 
   auto assessorId = createUser("assessor@main.pep.cs.ru.nl");
   auto monitorId = createUser("monitor@main.pep.cs.ru.nl");
   auto dataadminId = createUser("dataadmin@main.pep.cs.ru.nl");
-  auto dataownerId = createUser("dataowner@main.pep.cs.ru.nl");
+  auto repomanagerId = createUser("repomanager@main.pep.cs.ru.nl");
   auto accessadminId = createUser("accessadmin@main.pep.cs.ru.nl");
   auto systemadminId = createUser("systemadmin@main.pep.cs.ru.nl");
   auto multihatId = createUser("multihat@main.pep.cs.ru.nl");
@@ -340,14 +340,14 @@ void AccessManager::Backend::Storage::ensureInitialized() {
   addUserToGroup(assessorId, UserGroup::ResearchAssessor, {});
   addUserToGroup(monitorId, UserGroup::Monitor, {});
   addUserToGroup(dataadminId, UserGroup::DataAdministrator, {});
-  addUserToGroup(dataownerId, UserGroup::DataOwner, {});
+  addUserToGroup(repomanagerId, UserGroup::RepositoryManager, {});
   addUserToGroup(accessadminId, UserGroup::AccessAdministrator, {});
   addUserToGroup(systemadminId, UserGroup::SystemAdministrator, {});
 
   addUserToGroup(multihatId, UserGroup::ResearchAssessor, {});
   addUserToGroup(multihatId, UserGroup::Monitor, {});
   addUserToGroup(multihatId, UserGroup::DataAdministrator, {});
-  addUserToGroup(multihatId, UserGroup::DataOwner, {});
+  addUserToGroup(multihatId, UserGroup::RepositoryManager, {});
   addUserToGroup(multihatId, UserGroup::AccessAdministrator, {});
   addUserToGroup(multihatId, UserGroup::SystemAdministrator, {});
 

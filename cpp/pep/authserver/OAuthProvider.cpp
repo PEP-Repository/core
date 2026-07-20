@@ -283,7 +283,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
       {"assessor@main.pep.cs.ru.nl", UserGroup::ResearchAssessor},
       {"monitor@main.pep.cs.ru.nl", UserGroup::Monitor},
       {"dataadmin@main.pep.cs.ru.nl", UserGroup::DataAdministrator},
-      {"dataowner@main.pep.cs.ru.nl", UserGroup::DataOwner},
+      {"repomanager@main.pep.cs.ru.nl", UserGroup::RepositoryManager},
       {"accessadmin@main.pep.cs.ru.nl", UserGroup::AccessAdministrator},
       {"systemadmin@main.pep.cs.ru.nl", UserGroup::SystemAdministrator},
       {"multihat@main.pep.cs.ru.nl", "Someone with all roles"},

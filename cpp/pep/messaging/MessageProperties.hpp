@@ -1,5 +1,10 @@
 #pragma once
 
+#include <pep/utils/Attributes.hpp>
+#include <pep/utils/EnumUtils.hpp>
+#include <pep/utils/TypeTraits.hpp>
+
+#include <bit>
 #include <cassert>
 #include <compare>
 #include <cstdint>
@@ -10,6 +15,13 @@ namespace pep::messaging {
 // Every message is sent and received with some properties encoded into a single integral value
 using EncodedMessageProperties = uint32_t;
 
+namespace detail::encoding_layout {
+
+constexpr EncodedMessageProperties TypeBits = 0b1000U << (32 - 4); // single high bit to indicate message type
+constexpr EncodedMessageProperties FlagBits = 0b0111U << (32 - 4); // (the next-highest) three bits for state-related flags
+constexpr EncodedMessageProperties StreamIdBits = ~(TypeBits | FlagBits); // remaining bits for a unique (serial) number for every request+response cycle
+
+} // namespace detail::encoding_layout
 
 // The (single) high bit in EncodedMessageProperties indicates message type
 class MessageType {
@@ -34,38 +46,65 @@ private:
   Value value_;
 };
 
-
 // (The next-highest) three bits in EncodedMessageProperties are used for state-related flags
-class Flags {
+class Flags final {
+  constexpr static auto Shift = std::countr_zero(detail::encoding_layout::FlagBits);
+
 public:
-  Flags(bool close, bool error, bool payload);
-  std::strong_ordering operator<=>(const Flags& other) const = default;
+  enum class PEP_ATTRIBUTE_FLAG_ENUM Bits : EncodedMessageProperties {
+    None    = 0,
+    Close   = 0b100 << Shift, ///< This is the last piece of the (possibly multi-part) message
+    Error   = 0b010 << Shift, ///< The sending party encountered an error. Implies Close.
+    Payload = 0b001 << Shift, ///< The message includes content
+    All     = 0b111 << Shift,
+  };
 
-  static Flags MakeEmpty() noexcept;
-  static Flags MakeError() noexcept;
-  static Flags MakePayload(bool close = false) noexcept;
-  static Flags MakeClose(bool payload = false) noexcept;
+  const static Flags None;
+  const static Flags Close;
+  const static Flags Error;
+  const static Flags Payload;
+  const static Flags ClosingPayload;
 
-  bool empty() const noexcept; // Is any flag set?
+  [[nodiscard]] Flags withClose() const; ///< Returns the closing variant of these Flags
+  [[nodiscard]] bool has(Flags) const noexcept; ///< Checks if the passed Flags are a subset of these Flags
 
-  bool close() const noexcept { return close_; } // This is the last piece of the (possibly multi-part) message
-  bool error() const noexcept { return error_; } // The sending party encountered an error constructing or sending the (possibly multi-part) message. Implies Flags::close()
-  bool payload() const noexcept { return payload_; } // The message includes content
+  [[nodiscard]] EncodedMessageProperties encode() const noexcept { return ToUnderlying(bits_); }
 
-  Flags operator|(const Flags& other) const;
+  [[nodiscard]] static Flags DecodeFrom(EncodedMessageProperties properties) noexcept {
+    return Flags(Bits(static_cast<EncodedMessageProperties>(properties & detail::encoding_layout::FlagBits)));
+  }
 
-  EncodedMessageProperties encode() const noexcept;
+  std::strong_ordering operator <=>(const Flags&) const noexcept = default;
 
-  friend std::ostream& operator<<(std::ostream& out, Flags flags);
+  /// Exposes the private constructor for unit testing purposes
+  static Flags TestPrivateConstructor(Bits bits) { return Flags{bits}; }
 
 private:
-  [[nodiscard]] bool areValid() const noexcept;
+  /// Throws std::invalid_argument if the combination of bits is not valid
+  explicit Flags(Bits bits): bits_(EnsureValid(bits)) {};
 
-  bool close_;
-  bool error_;
-  bool payload_;
+  /// Identity function that throws std::invalid_argument if the combination of bits is not valid
+  static Bits EnsureValid(Bits);
+
+  Bits bits_;
 };
 
+} // namespace pep::messaging
+
+PEP_MARK_AS_FLAG_ENUM_TYPE(::pep::messaging::Flags::Bits)
+
+namespace pep::messaging {
+
+inline const Flags Flags::None = Flags{Flags::Bits::None};
+inline const Flags Flags::Close = Flags{Flags::Bits::Close};
+inline const Flags Flags::Error = Flags{Flags::Bits::Error | Flags::Bits::Close};
+inline const Flags Flags::Payload = Flags{Flags::Bits::Payload};
+inline const Flags Flags::ClosingPayload = Flags{Flags::Bits::Payload | Flags::Bits::Close};
+
+std::ostream& operator<<(std::ostream& out, Flags::Bits flags);
+
+inline bool Flags::has(Flags subset) const noexcept{ return HasFlags(bits_, subset.bits_); }
+inline Flags Flags::withClose() const { return Flags{bits_ | Flags::Bits::Close}; }
 
 // Remaining bits in EncodedMessageProperties represent a unique (serial) number for every request+response cycle
 class StreamId {
@@ -89,7 +128,6 @@ private:
 
 inline std::ostream& operator<<(std::ostream& lhs, const StreamId& rhs) { return lhs << rhs.value(); }
 
-
 // A MessageId is the combination of the StreamId and the message type: allows us to distinguish between our request NNN, and our response to someone else's request NNN
 class MessageId {
 public:
@@ -108,7 +146,6 @@ private:
   StreamId streamId_;
 };
 
-
 class MessageProperties {
 public:
   MessageProperties(MessageId messageId, Flags flags);
@@ -125,6 +162,5 @@ private:
   MessageId messageId_;
   Flags flags_;
 };
-
 
 }
