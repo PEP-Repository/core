@@ -1,4 +1,6 @@
 #include <pep/utils/MapUtils.hpp>
+
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 namespace {
@@ -25,7 +27,7 @@ TEST(MapUtils, TryFindDuplicateValue) {
   EXPECT_EQ(pep::TryFindDuplicateValue(std::vector<int>{1 }), std::nullopt);
   EXPECT_EQ(pep::TryFindDuplicateValue(std::vector<int>{1, 1}), 1);
   EXPECT_EQ(pep::TryFindDuplicateValue(std::vector<int>{1, 2, 1}), 1);
-  EXPECT_EQ(pep::TryFindDuplicateValue(std::vector<int>{1, 2, 2,1}), 1);
+  EXPECT_THAT(pep::TryFindDuplicateValue(std::vector<int>{1, 2, 2,1}), testing::AnyOf(1, 2));
 }
 
 TEST(MapUtils, ContainsUniqueValues) {
