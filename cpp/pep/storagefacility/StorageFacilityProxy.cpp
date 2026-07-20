@@ -1,6 +1,7 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
 #include <pep/storagefacility/PageHash.hpp>
+#include <pep/storagefacility/PurgeSerializers.hpp>
 #include <pep/storagefacility/StorageFacilityProxy.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/utils/XxHasher.hpp>
@@ -72,6 +73,22 @@ rxcpp::observable<DataHistoryResponse2> StorageFacilityProxy::requestDataHistory
 rxcpp::observable<DataSizeResponse> StorageFacilityProxy::requestDataSize(DataSizeRequest request) const {
   return this->sendRequest<DataSizeResponse>(this->sign(std::move(request)))
     .op(RxGetOne());
+}
+
+rxcpp::observable<PurgeCycleId> StorageFacilityProxy::createPurgeCycle(PurgeCycleDefinition definition) const {
+  return this->sendRequest<PurgeCycleResponse>(this->sign(PurgeCycleRequest{
+      .definition = std::move(definition),
+    }))
+    .op(RxGetOne())
+    .map([](PurgeCycleResponse response) { return response.id; });
+}
+
+rxcpp::observable<FakeVoid> StorageFacilityProxy::cancelPurgeCycle(PurgeCycleId id) const {
+  return this->sendRequest<PurgeCancelResponse>(this->sign(PurgeCancelRequest{
+      .id = id,
+    }))
+    .op(RxGetOne())
+    .map([](PurgeCancelResponse) {return FakeVoid{}; });
 }
 
 }

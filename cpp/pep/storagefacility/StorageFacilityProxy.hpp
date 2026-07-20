@@ -2,6 +2,7 @@
 
 #include <pep/server/SigningServerProxy.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/PurgeMessages.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>
 
 namespace pep {
@@ -18,6 +19,9 @@ public:
   rxcpp::observable<DataEnumerationResponse2> requestDataEnumeration(DataEnumerationRequest2 request) const;
   rxcpp::observable<DataHistoryResponse2> requestDataHistory(DataHistoryRequest2 request) const;
   rxcpp::observable<DataSizeResponse> requestDataSize(DataSizeRequest request) const;
+
+  rxcpp::observable<PurgeCycleId> createPurgeCycle(PurgeCycleDefinition definition) const;
+  rxcpp::observable<FakeVoid> cancelPurgeCycle(PurgeCycleId id) const;
 };
 
 }
