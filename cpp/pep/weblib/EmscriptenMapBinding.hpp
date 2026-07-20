@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/utils/CollectionUtils.hpp>
+#include <pep/utils/MapUtils.hpp>
 
 #include <emscripten/bind.h>
 
