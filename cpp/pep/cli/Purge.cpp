@@ -1,0 +1,60 @@
+#include <pep/cli/CliApplication.hpp>
+#include <pep/cli/Commands.hpp>
+
+namespace pep::cli {
+
+namespace {
+
+class CommandPurge : public ChildCommandOf<CliApplication> {
+public:
+  explicit CommandPurge(CliApplication& parent);
+
+protected:
+  class Define;
+  class Cancel;
+
+  std::vector<std::shared_ptr<pep::commandline::Command>> createChildCommands() override;
+};
+
+class CommandPurge::Define : public ChildCommandOf<CommandPurge> {
+public:
+  explicit Define(CommandPurge& parent);
+
+protected:
+  int execute() override { throw std::runtime_error("This command has not been implemented yet"); }
+};
+
+class CommandPurge::Cancel : public ChildCommandOf<CommandPurge> {
+public:
+  explicit Cancel(CommandPurge& parent);
+
+protected:
+  int execute() override { throw std::runtime_error("This command has not been implemented yet"); }
+};
+
+CommandPurge::CommandPurge(CliApplication& parent)
+  : ChildCommandOf<CliApplication>("purge", "Remove entries from the repository history", parent) {
+}
+
+std::vector<std::shared_ptr<pep::commandline::Command>> CommandPurge::createChildCommands() {
+  std::vector<std::shared_ptr<pep::commandline::Command>> result;
+  result.emplace_back(std::make_shared<Define>(*this));
+  result.emplace_back(std::make_shared<Cancel>(*this));
+  return result;
+}
+
+CommandPurge::Define::Define(CommandPurge& parent)
+  : ChildCommandOf<CommandPurge>("define", "Start a new purge cycle", parent) {
+}
+
+CommandPurge::Cancel::Cancel(CommandPurge& parent)
+  : ChildCommandOf<CommandPurge>("cancel", "Cancel a purge cycle", parent) {
+}
+
+} // End anonymous namespace
+
+std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandPurge(CliApplication& parent) {
+  return std::make_shared<CommandPurge>(parent);
+}
+
+}
