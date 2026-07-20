@@ -96,7 +96,7 @@ void Serializer<TokenBlockingCreateRequest>::moveIntoProtocolBuffer(
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_target(), std::move(value.target));
   dest.set_note(std::move(value.note));
   if (value.blockStartDateTime) {
-    Serialization::MoveIntoProtocolBuffer(*dest.mutable_block_start_date_time(), std::move(*value.blockStartDateTime));
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_block_start_date_time(), *value.blockStartDateTime);
   }
 }
 

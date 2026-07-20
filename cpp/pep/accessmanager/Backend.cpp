@@ -585,7 +585,7 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   };
 
 
-  UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::DataAdministrator}, userGroup, "AmaQuery");
+  UserGroup::EnsureAccess({ UserGroup::AccessAdministrator, UserGroup::DataAdministrator, UserGroup::RepositoryManager }, userGroup, "AmaQuery");
   AmaQueryResponse result;
 
   ColumnGroupColumnFilter cgcFilter;
@@ -687,7 +687,7 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
 }
 
 UserQueryResponse AccessManager::Backend::performUserQuery(const UserQuery& query, const std::string& userGroup) {
-  UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, userGroup, "Querying users");
+  UserGroup::EnsureAccess({ UserGroup::AccessAdministrator, UserGroup::RepositoryManager }, userGroup, "Querying users");
 
   return storage_->executeUserQuery(query);
 }

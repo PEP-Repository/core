@@ -279,10 +279,11 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
   auto primaryUidIt = params.find("primary_uid"),
       humanReadableUidIt = params.find("human_readable_uid");
   if(primaryUidIt == params.end() || humanReadableUidIt == params.end()) {
-    std::array<std::pair<std::string, std::string>, 7> testUsers{{
+    std::array<std::pair<std::string, std::string>, 8> testUsers{{
       {"assessor@main.pep.cs.ru.nl", UserGroup::ResearchAssessor},
       {"monitor@main.pep.cs.ru.nl", UserGroup::Monitor},
       {"dataadmin@main.pep.cs.ru.nl", UserGroup::DataAdministrator},
+      {"repomanager@main.pep.cs.ru.nl", UserGroup::RepositoryManager},
       {"accessadmin@main.pep.cs.ru.nl", UserGroup::AccessAdministrator},
       {"systemadmin@main.pep.cs.ru.nl", UserGroup::SystemAdministrator},
       {"multihat@main.pep.cs.ru.nl", "Someone with all roles"},

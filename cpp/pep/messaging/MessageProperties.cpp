@@ -1,32 +1,22 @@
 #include <pep/messaging/MessageProperties.hpp>
 
-#include <boost/format.hpp>
-
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <utility>
+#include <vector>
+
+#include <boost/algorithm/string/join.hpp>
 
 namespace pep::messaging {
 
 namespace {
 
-// MessageProperties uses the (single) high bit to indicate message type
-constexpr EncodedMessageProperties TypeRequest = 0x00000000;
-constexpr EncodedMessageProperties TypeResponse = 0x80000000;
-constexpr EncodedMessageProperties TypeBits = TypeRequest | TypeResponse;
+using namespace detail;
 
-// MessageProperties uses (the next-highest) three bits for state-related flags
-constexpr EncodedMessageProperties FlagClose = 0x40000000; // This is the last piece of the (possibly multi-part) message
-constexpr EncodedMessageProperties FlagError = 0x20000000; // The sending party encountered an error constructing or sending the (possibly multi-part) message. Implies FlagClose.
-constexpr EncodedMessageProperties FlagPayload = 0x10000000; // The message includes content
-constexpr EncodedMessageProperties FlagBits = FlagClose | FlagError | FlagPayload;
-
-// MessageProperties uses remaining bits for a unique (serial) number for every request+response cycle
-constexpr EncodedMessageProperties StreamIdBits = ~(TypeBits | FlagBits);
-
+static_assert(std::popcount(encoding_layout::TypeBits) == 1, "There is only one type bit, indicating 'Response'");
+constexpr EncodedMessageProperties TypeResponseBit = encoding_layout::TypeBits;
 constexpr EncodedMessageProperties NoMessagePropertyBits = 0;
-
 constexpr StreamId::Value ControlStreamId = 0;
 
 }
@@ -60,84 +50,31 @@ std::string MessageType::describe() const {
 
 EncodedMessageProperties MessageType::encode() const noexcept {
   assert(IsValidValue(value_));
-  if (value_ == Response) {
-    static_assert(TypeResponse != NoMessagePropertyBits);
-    return TypeResponse;
-  }
-  return NoMessagePropertyBits;
+  return (value_ == Response) ? TypeResponseBit : NoMessagePropertyBits;
 }
 
-EncodedMessageProperties Flags::encode() const noexcept {
-  EncodedMessageProperties result = NoMessagePropertyBits;
-
-  if (close_) {
-    result |= FlagClose;
-  }
-  if (error_) {
-    result |= FlagError;
-  }
-  if (payload_) {
-    result |= FlagPayload;
-  }
-
-  return result;
-}
-
-Flags Flags::MakeEmpty() noexcept {
-  return Flags(false, false, false);
-}
-
-Flags Flags::MakeError() noexcept {
-  return Flags(true, true, false);
-}
-
-Flags Flags::MakePayload(bool close) noexcept {
-  return Flags(close, false, true);
-}
-
-Flags Flags::MakeClose(bool payload) noexcept {
-  return Flags(true, false, payload);
-}
-
-bool Flags::areValid() const noexcept {
-  if (error_) {
-    if (payload_) { // Error messages cannot have payload (and vice versa)
-      return false;
-    }
-    if (!close_) { // Error implies close (and that bit must be set)
-      return false;
-    }
-  }
-  return true;
-}
-
-bool Flags::empty() const noexcept {
-  return !close_ && !error_ && !payload_;
-}
-
-Flags::Flags(bool close, bool error, bool payload)
-  : close_(close), error_(error), payload_(payload) {
-  if (!areValid()) {
-    throw std::invalid_argument((boost::format("Inconsistent set of message flags: %s") % *this).str());
-  }
-}
-
-Flags Flags::operator|(const Flags& other) const {
-  return Flags(this->close() || other.close(), this->error() || other.error(), this->payload() || other.payload());
-}
-
-std::ostream& operator<<(std::ostream& out, Flags flags) {
-  bool first = true;
-  out << '{';
-  auto printFlag = [&](std::string_view flag) {
-    if (!std::exchange(first, false)) { out << ", "; }
-    out << flag;
+Flags::Bits Flags::EnsureValid(Flags::Bits bits) {
+  const auto invalidCombination = [bits](std::string_view reason) -> std::invalid_argument {
+    const auto message = (std::ostringstream{} << "Invalid Flag Combination " << bits << " - " << reason).str();
+    return std::invalid_argument{message};
   };
-  if (flags.close()) { printFlag("close"); }
-  if (flags.error()) { printFlag("error"); }
-  if (flags.payload()) { printFlag("payload"); }
-  out << '}';
-  return out;
+
+  if (HasFlags(bits, Flags::Bits::Error) && !HasFlags(bits, Flags::Bits::Close)) {
+    throw invalidCombination("cannot have 'error' without 'close' flag");
+  }
+  if (HasFlags(bits, Flags::Bits::Error | Flags::Bits::Payload)) {
+    throw invalidCombination("cannot combine 'payload' with 'close' flag");
+  }
+
+  return bits;
+}
+
+std::ostream& operator<<(std::ostream& out, Flags::Bits flags) {
+  std::vector<std::string> flagNames;
+  if (HasFlags(flags, Flags::Bits::Close)) { flagNames.push_back("close"); }
+  if (HasFlags(flags, Flags::Bits::Error)) { flagNames.push_back("error"); }
+  if (HasFlags(flags, Flags::Bits::Payload)) { flagNames.push_back("payload"); }
+  return out << '{' << boost::algorithm::join(flagNames, ", ") << '}';
 }
 
 EncodedMessageProperties MessageId::encode() const noexcept {
@@ -145,7 +82,7 @@ EncodedMessageProperties MessageId::encode() const noexcept {
 }
 
 bool StreamId::IsValidValue(Value value) noexcept {
-  return (value & ~StreamIdBits) == NoMessagePropertyBits;
+  return (value & ~encoding_layout::StreamIdBits) == NoMessagePropertyBits;
 }
 
 StreamId::StreamId(Value value)
@@ -158,17 +95,9 @@ StreamId StreamId::BeforeFirst() noexcept {
 }
 
 StreamId StreamId::MakeNext(const StreamId& previous) noexcept {
-  auto value = previous.value() + 1U;
-
-  if (!IsValidValue(value)) { // ensure that our increment didn't spill into the (high) bits reserved for stuff other than the stream ID
-    value = 1U;
-  }
-  if (value == ControlStreamId) { // ensure that we didn't wrap to zero (if ControlStreamId is ever changed)
-    ++value;
-  }
-  assert(IsValidValue(value));
-
-  return StreamId(value);
+  static_assert(ControlStreamId == 0U, "We roll over to 1, so that we skip over the control stream id");
+  constexpr auto maxStreamId = encoding_layout::StreamIdBits;
+  return StreamId((previous.value() != maxStreamId) ? previous.value() + 1U : 1U);
 }
 
 MessageId::MessageId(MessageType type, StreamId streamId)
@@ -181,7 +110,7 @@ MessageId MessageId::MakeForControlMessage() noexcept {
 
 MessageProperties::MessageProperties(MessageId messageId, Flags flags)
   : messageId_(messageId), flags_(flags) {
-  assert(flags_.empty() || messageId_.type().value() != MessageType::Control);
+  assert(flags_ == Flags::None || messageId_.type().value() != MessageType::Control);
 }
 
 EncodedMessageProperties MessageProperties::encode() const noexcept {
@@ -189,32 +118,24 @@ EncodedMessageProperties MessageProperties::encode() const noexcept {
 }
 
 MessageProperties MessageProperties::DecodeFrom(EncodedMessageProperties properties) {
-  auto typeBits = properties & TypeBits;
-  auto flagBits = properties & FlagBits;
-  auto streamId = properties & StreamIdBits;
-
-  MessageType::Value type = MessageType::Request;
-  if (streamId == ControlStreamId) {
-    if (properties != ControlStreamId) {
-      throw std::runtime_error("Message properties cannot specify a control stream ID with additional properties");
-    }
-    type = MessageType::Control;
+  const auto streamId = properties & encoding_layout::StreamIdBits;
+  if (streamId == ControlStreamId && properties != ControlStreamId) {
+    throw std::runtime_error("Message properties cannot specify a control stream ID with additional properties");
   }
-  else if ((typeBits & TypeResponse) != 0) {
-    type = MessageType::Response;
-  }
-
-  Flags flags((flagBits & FlagClose) != 0, (flagBits & FlagError) != 0, (flagBits & FlagPayload) != 0);
-
   if (!StreamId::IsValidValue(streamId)) {
     throw std::runtime_error("Message properties specify an invalid stream ID");
   }
 
-  return MessageProperties(MessageId(MessageType(type), StreamId(streamId)), flags);
+  const auto type =
+      (streamId == ControlStreamId) ? MessageType::Control :
+      (properties & TypeResponseBit) ? MessageType::Response :
+      MessageType::Request;
+
+  return MessageProperties(MessageId(MessageType(type), StreamId(streamId)), Flags::DecodeFrom(properties));
 }
 
 MessageProperties MessageProperties::MakeForControlMessage() noexcept {
-  return MessageProperties(MessageId::MakeForControlMessage(), Flags::MakeEmpty());
+  return MessageProperties(MessageId::MakeForControlMessage(), Flags::None);
 }
 
 }

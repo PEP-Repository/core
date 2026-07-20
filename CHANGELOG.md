@@ -17,6 +17,11 @@
     - `unix:<unix timestamp in seconds>`
     - `unix-ms:<unix timestamp in milliseconds>`
 
+- core#1984: Added predefined user group `Repository Manager`, members of which can
+    - `pepcli ama query`
+    - `pepcli user query`
+    - `pepcli query data-size`
+
 - core#2945: Added command `pepcli query page-paths`, which lists the paths of the current data set's pages in Storage Facility's backing storage.
 
 ---------------
