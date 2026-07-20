@@ -22,6 +22,8 @@
     - `pepcli user query`
     - `pepcli query data-size`
 
+- #2954: Fixed `pepLogon` failure in sandbox image.
+
 ---------------
 *Past changes, do not edit (except by person doing release):*
 
