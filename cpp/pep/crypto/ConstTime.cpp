@@ -26,7 +26,7 @@ char NibbleToHex(const std::uint8_t nibble) {
 /// \returns 4-bit nibble.
 /// \throws std::invalid_argument for invalid hex character. For invalid characters, the execution time may depend on the value.
 std::uint8_t NibbleFromHex(char hex) {
-  // Make uppercase by setting bit 5 unless hex < 'a'
+  // Make uppercase by clearing bit 5 unless hex < 'a'
   hex = static_cast<char>(hex & (~(1 << 5) | MaskGt('a', hex)));
   // Determine if character is invalid without leaking in which half (0-9 vs A-Z) it lies.
   // Leaking why it is out-of-range is fine.
