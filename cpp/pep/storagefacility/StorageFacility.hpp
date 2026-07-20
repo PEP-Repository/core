@@ -114,6 +114,9 @@ private:
   messaging::MessageBatches handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> signedRequest);
   messaging::MessageBatches handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> signedRequest);
 
+  messaging::MessageBatches handlePurgeCycleRequest(std::shared_ptr<SignedPurgeCycleRequest> signedRequest);
+  messaging::MessageBatches handlePurgeCancelRequest(std::shared_ptr<SignedPurgeCancelRequest> signedRequest);
+
   std::string encryptId(std::string path, Timestamp time);
   SFId decryptId(std::string_view encId);
   std::vector<std::optional<LocalPseudonym>> decryptLocalPseudonyms(const std::vector<LocalPseudonyms>& source, std::vector<uint32_t> const *indices) const;

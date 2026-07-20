@@ -10,6 +10,7 @@
 #include <pep/async/RxParallelConcat.hpp>
 #include <pep/utils/ApplicationMetrics.hpp>
 #include <pep/auth/EnrolledParty.hpp>
+#include <pep/storagefacility/PurgeSerializers.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/storagefacility/SFIdSerializer.hpp>
@@ -1074,6 +1075,31 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
     });
 }
 
+messaging::MessageBatches StorageFacility::handlePurgeCycleRequest(std::shared_ptr<SignedPurgeCycleRequest> signedRequest) {
+  const auto& rootCAs = this->getRootCAs();
+  auto certified = signedRequest->open(*rootCAs);
+
+  auto accessGroup = certified.signatory.organizationalUnit();
+  UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
+
+  auto id = sqlite_->createPurgeCycle(certified.message.definition);
+  // TODO: add entries according to definition
+  return messaging::BatchSingleMessage(PurgeCycleResponse{
+    .id = id,
+    });
+}
+
+messaging::MessageBatches StorageFacility::handlePurgeCancelRequest(std::shared_ptr<SignedPurgeCancelRequest> signedRequest) {
+  const auto& rootCAs = this->getRootCAs();
+  auto certified = signedRequest->open(*rootCAs);
+
+  auto accessGroup = certified.signatory.organizationalUnit();
+  UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
+
+  sqlite_->deletePurgeCycle(certified.message.id);
+  return messaging::BatchSingleMessage(PurgeCancelResponse{});
+}
+
 std::string StorageFacility::encryptId(std::string path, Timestamp time) {
   return Serialization::ToString(
     EncryptedSFId(
@@ -1151,7 +1177,9 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
                           &StorageFacility::handleMetadataStoreRequest2,
                           &StorageFacility::handleDataEnumerationRequest2,
                           &StorageFacility::handleDataHistoryRequest2,
-                          &StorageFacility::handleDataSizeRequest);
+                          &StorageFacility::handleDataSizeRequest,
+                          &StorageFacility::handlePurgeCycleRequest,
+                          &StorageFacility::handlePurgeCancelRequest);
 
   this->updateFileStoreMetrics();
   statsTimer({});
