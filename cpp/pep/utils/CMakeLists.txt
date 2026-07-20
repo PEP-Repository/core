@@ -18,7 +18,6 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Attributes.hpp
     Base64.cpp Base64.hpp
     Bitpacking.cpp Bitpacking.hpp
-    BoostHexUtil.hpp
     BuildFlavor.hpp
     ChronoUtil.hpp
     CollectionUtils.hpp CollectionUtils.cpp

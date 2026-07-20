@@ -1,7 +1,6 @@
 #include <pep/authserver/Authserver.hpp>
 #include <pep/authserver/AuthserverSerializers.hpp>
 
-#include <boost/algorithm/hex.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/utils/Bitpacking.hpp>

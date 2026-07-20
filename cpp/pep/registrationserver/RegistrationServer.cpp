@@ -17,7 +17,6 @@
 #include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>

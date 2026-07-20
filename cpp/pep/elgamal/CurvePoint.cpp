@@ -1,13 +1,9 @@
 #include <pep/elgamal/CurvePoint.hpp>
 
-#include <cassert>
 #include <stdexcept>
 
 #include <pep/crypto/ConstTime.hpp>
-#include <pep/utils/BoostHexUtil.hpp>
 #include <pep/utils/Random.hpp>
-
-#include <boost/algorithm/hex.hpp>
 
 using namespace std::string_literals;
 
@@ -163,20 +159,18 @@ bool CurvePoint::isZero() const {
 }
 
 size_t CurvePoint::TextLength() {
-  return BoostHexLength(CurvePoint::PackedBytes);
+  return PackedBytes * 2;
 }
 
 std::string CurvePoint::text() const {
-  std::string result = boost::algorithm::hex(std::string(pack()));
-  assert(result.size() == TextLength());
-  return result;
+  return const_time::ToHex(pack());
 }
 
-CurvePoint CurvePoint::FromText(const std::string& text) {
+CurvePoint CurvePoint::FromText(std::string_view text) {
   try {
-    return CurvePoint(boost::algorithm::unhex(text));
-  } catch (const boost::algorithm::hex_decode_error& ex) {
-    throw std::invalid_argument("CurvePoint text representation is not valid hexadecimal\n"s + ex.what());
+    return CurvePoint(const_time::FromHex(text));
+  } catch (const std::invalid_argument& ex) {
+    throw std::invalid_argument("Error parsing CurvePoint: "s + ex.what());
   }
 }
 

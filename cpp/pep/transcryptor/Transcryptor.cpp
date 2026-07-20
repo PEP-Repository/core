@@ -14,7 +14,6 @@
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Shared.hpp>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 #include <prometheus/gauge.h>

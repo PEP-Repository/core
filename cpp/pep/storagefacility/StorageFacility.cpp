@@ -1,5 +1,6 @@
 #include <pep/storagefacility/StorageFacility.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
@@ -16,7 +17,6 @@
 #include <pep/utils/Defer.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -217,7 +217,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     boost::property_tree::ptree root;
     root.add<std::string>(
       "Key",
-      boost::algorithm::hex(encIdKey)
+      const_time::ToHex(encIdKey)
     );
     std::ofstream os(encIdKeyFile);
     std::filesystem::permissions(encIdKeyFile, std::filesystem::perms::owner_read);
@@ -225,7 +225,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   }
   else {
     Configuration encIdKeyConfig = Configuration::FromFile(encIdKeyFile);
-    encIdKey = boost::algorithm::unhex(encIdKeyConfig.get<std::string>("Key"));
+    encIdKey = const_time::FromHex(encIdKeyConfig.get<std::string>("Key"));
   }
 
   setEncIdKey(encIdKey);

@@ -1,13 +1,13 @@
 #include <pep/authserver/AuthserverBackend.hpp>
 
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 
-#include <boost/algorithm/hex.hpp>
 #include <fstream>
 #include <pep/messaging/MessageSequence.hpp>
 
@@ -40,7 +40,7 @@ AuthserverBackend::Parameters::Parameters(const Configuration& config) {
     Configuration secretFile = Configuration::FromFile(oauthTokenSecretFile);
 
     std::string secretHex = secretFile.get<std::string>("OAuthTokenSecret");
-    oauthTokenSecret_ = boost::algorithm::unhex(secretHex);
+    oauthTokenSecret_ = const_time::FromHex(secretHex);
   }
   catch (std::exception& e) {
     PEP_LOG(LogTag, Severity::Critical) << "Error with oauth file: " << e.what();

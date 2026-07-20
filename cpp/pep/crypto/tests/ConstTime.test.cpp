@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 
+using namespace std::literals;
 using namespace std::ranges;
 
 namespace {
@@ -43,6 +44,33 @@ TEST(ConstTime, IsEqual) {
   EXPECT_THROW((void) pep::const_time::IsEqual(LazyThrowingIota, views::iota(10, 20)), pep::TestError);
   // STL for comparison
   EXPECT_NO_THROW((void) equal(LazyThrowingIota, views::iota(10, 20)));
+}
+
+TEST(ConstTime, ToHex) {
+  EXPECT_EQ(pep::const_time::ToHex("abc"), "616263");
+  EXPECT_EQ(pep::const_time::ToHex("\x00\x01\x02\x89\xaa\xab\xff"sv), "00010289AAABFF");
+  EXPECT_EQ(pep::const_time::ToHex(""), "");
+}
+
+TEST(ConstTime, FromHex) {
+  EXPECT_EQ(pep::const_time::FromHex("616263"), "abc");
+  EXPECT_EQ(pep::const_time::FromHex("00010289AAABFF"), "\x00\x01\x02\x89\xaa\xab\xff"sv);
+  EXPECT_EQ(pep::const_time::FromHex("aa"), "\xaa") << "FromHex should support lowercase";
+  EXPECT_EQ(pep::const_time::FromHex(""), "");
+
+  EXPECT_THROW(pep::const_time::FromHex("A"), std::invalid_argument)
+    << "FromHex should reject strings with a length that is not a multiple of 2";
+
+  EXPECT_THROW(pep::const_time::FromHex("\0\0"sv), std::invalid_argument);
+  EXPECT_THROW(pep::const_time::FromHex("//"), std::invalid_argument); // Before '0'
+  EXPECT_THROW(pep::const_time::FromHex("::"), std::invalid_argument); // After '9'
+  EXPECT_THROW(pep::const_time::FromHex("@@"), std::invalid_argument); // Before 'A'
+  EXPECT_THROW(pep::const_time::FromHex("GG"), std::invalid_argument);
+  EXPECT_THROW(pep::const_time::FromHex("[["), std::invalid_argument); // After 'Z'
+  EXPECT_THROW(pep::const_time::FromHex("``"), std::invalid_argument); // Before 'a'
+  EXPECT_THROW(pep::const_time::FromHex("gg"), std::invalid_argument);
+  EXPECT_THROW(pep::const_time::FromHex("{{"), std::invalid_argument); // After 'z'
+  EXPECT_THROW(pep::const_time::FromHex("\xff\xff"), std::invalid_argument);
 }
 
 }

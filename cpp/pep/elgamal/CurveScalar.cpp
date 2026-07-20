@@ -1,13 +1,7 @@
 #include <pep/elgamal/CurveScalar.hpp>
 
-#include <cassert>
-#include <cstring>
-#include <cstdlib>
-
-#include <pep/utils/BoostHexUtil.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Random.hpp>
-
-#include <boost/algorithm/hex.hpp>
 
 using namespace std::string_literals;
 
@@ -20,20 +14,18 @@ std::string CurveScalar::pack() const {
 }
 
 size_t CurveScalar::TextLength() {
-  return BoostHexLength(CurveScalar::PackedBytes);
+  return PackedBytes * 2;
 }
 
 std::string CurveScalar::text() const {
-  std::string result = boost::algorithm::hex(pack());
-  assert(result.size() == TextLength());
-  return result;
+  return const_time::ToHex(pack());
 }
 
-CurveScalar CurveScalar::FromText(const std::string& text) {
+CurveScalar CurveScalar::FromText(std::string_view text) {
   try {
-    return CurveScalar(boost::algorithm::unhex(text));
-  } catch (const boost::algorithm::hex_decode_error& ex) {
-    throw std::invalid_argument("CurveScalar text representation is not valid hexadecimal\n"s + ex.what());
+    return CurveScalar(const_time::FromHex(text));
+  } catch (const std::invalid_argument& ex) {
+    throw std::invalid_argument("Error parsing CurveScalar: "s + ex.what());
   }
 }
 

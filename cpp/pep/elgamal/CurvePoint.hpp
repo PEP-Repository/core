@@ -72,7 +72,7 @@ class CurvePoint {
 
   static size_t TextLength();
   std::string text() const;
-  static CurvePoint FromText(const std::string& text);
+  static CurvePoint FromText(std::string_view text);
 
   [[nodiscard]] CurvePoint operator+(const CurvePoint& p) const;
   [[nodiscard]] CurvePoint operator-(const CurvePoint& p) const;

@@ -3,6 +3,7 @@
 #include <functional>
 #include <numeric>
 #include <ranges>
+#include <string>
 
 namespace pep::const_time {
 
@@ -31,5 +32,15 @@ requires (std::same_as<std::ranges::range_value_t<decltype(lhs)>, std::ranges::r
   }
   return inequalBits == Type{};
 }
+
+/// Convert \p bytes to hexadecimal in constant time.
+/// \returns Hexadecimal string. Length is always a multiple of 2.
+std::string ToHex(std::string_view bytes);
+
+/// Convert \p hex to bytes from hexadecimal in constant time.
+/// \throws std::invalid_argument for length not divisible by 2.
+/// \throws std::invalid_argument for invalid hex character. For invalid characters, the execution time may depend on the value.
+/// \returns String of bytes.
+std::string FromHex(std::string_view hex);
 
 } // namespace pep::const_time
