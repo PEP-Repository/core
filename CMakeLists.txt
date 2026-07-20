@@ -179,6 +179,14 @@ function(add_supported_compile_options language)
     endforeach()
 endfunction()
 
+function(capitalize_only_first_letter str out_var)
+  string(TOLOWER "${str}" str)
+  string(SUBSTRING "${str}" 0 1 first_letter)
+  string(SUBSTRING "${str}" 1 -1 remaining_letters)
+  string(TOUPPER "${first_letter}" first_letter)
+  set("${out_var}" "${first_letter}${remaining_letters}" PARENT_SCOPE)
+endfunction()
+
 # Add a dependency on the version.json file so when the file changes, cmake will reconfigure.
 # see: https://www.reddit.com/r/cmake/comments/iokem9/comment/g4gewpo/
 set_property(
