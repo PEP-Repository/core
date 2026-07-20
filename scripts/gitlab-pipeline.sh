@@ -53,8 +53,7 @@ trigger_and_wait() {
   project_path=$("$SCRIPTPATH"/gitdir.sh origin-path "$git_dir")
 
   # GitLab can only run pipelines for branches (or tags): see https://stackoverflow.com/a/63460457
-  >&2 echo "Creating branch by posting to Gitlab API at repository/branches?branch=$branchname&ref=$ref_sha"
-  gitlab_api post "repository/branches?branch=$branchname&ref=$ref_sha"
+  gitlab_api post "repository/branches?branch=$branchname&ref=$ref_sha" > /dev/null
 
   pipeline_id=$(get_pipeline_id "$branchname") || return 1
 
