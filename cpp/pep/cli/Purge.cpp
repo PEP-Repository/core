@@ -9,6 +9,8 @@ namespace pep::cli {
 
 namespace {
 
+constexpr const char* DestructiveWarning = "Falsifies repository history, making it impossible to re-download exact copies of data sets that include purged items.";
+
 class CommandPurge : public ChildCommandOf<CliApplication> {
 public:
   explicit CommandPurge(CliApplication& parent);
@@ -18,17 +20,17 @@ protected:
   std::optional<std::string> getAdditionalDescription() const override;
 
 private:
-  class Define;
+  class BackCatalog;
   class Cancel;
 };
 
-class CommandPurge::Define : public ChildCommandOf<CommandPurge> {
+class CommandPurge::BackCatalog : public ChildCommandOf<CommandPurge> {
 public:
-  explicit Define(CommandPurge& parent);
+  explicit BackCatalog(CommandPurge& parent);
+  std::optional<std::string> getAdditionalDescription() const override;
 
 protected:
   int execute() override;
-  commandline::Parameters getSupportedParameters() const override;
 };
 
 class CommandPurge::Cancel : public ChildCommandOf<CommandPurge> {
@@ -45,34 +47,31 @@ CommandPurge::CommandPurge(CliApplication& parent)
 
 std::vector<std::shared_ptr<commandline::Command>> CommandPurge::createChildCommands() {
   std::vector<std::shared_ptr<commandline::Command>> result;
-  result.emplace_back(std::make_shared<Define>(*this));
+  result.emplace_back(std::make_shared<BackCatalog>(*this));
   result.emplace_back(std::make_shared<Cancel>(*this));
   return result;
 }
 
 std::optional<std::string> CommandPurge::getAdditionalDescription() const {
-  return "Falsifies repository history, making it impossible to re-download exact copies of (some) older data sets.";
+  return DestructiveWarning;
 }
 
-CommandPurge::Define::Define(CommandPurge& parent)
-  : ChildCommandOf<CommandPurge>("define", "Start a new purge cycle", parent) {
+CommandPurge::BackCatalog::BackCatalog(CommandPurge& parent)
+  : ChildCommandOf<CommandPurge>("back-catalog", "Start a purge cycle that discards the repository's cell histories: only the current (rolling) data set will remain", parent) {
 }
 
-int CommandPurge::Define::execute() {
-  auto name = this->getParameterValues().get<std::string>("name");
-  return this->executeEventLoopForClient(true, [name](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
-    return client->getStorageFacilityProxy()->createPurgeCycle(PurgeCycleDefinition(name))
+std::optional<std::string> CommandPurge::BackCatalog::getAdditionalDescription() const {
+  return DestructiveWarning;
+}
+
+int CommandPurge::BackCatalog::execute() {
+  return this->executeEventLoopForClient(true, [](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
+    return client->getStorageFacilityProxy()->createPurgeCycle(PurgeCycleDefinition(BackCatalogPurgeFilter))
       .map([](PurgeCycleId id) {
           std::cout << "Purge cycle ID " << id;
           return FakeVoid();
         });
     });
-}
-
-commandline::Parameters CommandPurge::Define::getSupportedParameters() const {
-  return ChildCommandOf<CommandPurge>::getSupportedParameters()
-    + commandline::Parameter("name", "The name of (a predefined filter for) the purge cycle").value(commandline::Value<std::string>().positional().required()
-      .allow(PredefinedPurgeFilters)); // remove if/when custom purge filters become supported
 }
 
 CommandPurge::Cancel::Cancel(CommandPurge& parent)

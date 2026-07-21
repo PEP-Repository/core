@@ -8,6 +8,7 @@ namespace pep {
 
 constexpr uint64_t InlinePageThreshold = 4*1024;
 
+extern const std::string BackCatalogPurgeFilter;
 extern const std::set<std::string> PredefinedPurgeFilters;
 
 }
