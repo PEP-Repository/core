@@ -1158,8 +1158,28 @@ PurgeCycleId StorageFacility::createPurgeCycle(PurgeCycleDefinition definition) 
   if (definition.name() != BackCatalogPurgeFilter) {
     throw Error("Unsupported purge cycle name \"" + definition.name() + '"');
   }
+
   auto result = sqlite_->createPurgeCycle(std::move(definition));
-  // TODO: add entries according to definition, validating against existing DB
+
+  try {
+    for (const FileStore::Participant* participant : fileStore_->participants()) {
+      for (const FileStore::Cell* cell : participant->cells()) {
+        const FileStore::CellVersions& versions = cell->versions();
+        auto end = versions.end();
+        if (!versions.empty()) { // Don't purge the last (current) cell version
+          --end;
+        }
+        for (auto i = versions.begin(); i != end; ++i) {
+          sqlite_->addToPurgeCycle(result, participant->name(), cell->columnName(), i->validFrom);
+        }
+      }
+    }
+  }
+  catch (...) {
+    sqlite_->deletePurgeCycle(result);
+    throw;
+  }
+
   return result;
 }
 

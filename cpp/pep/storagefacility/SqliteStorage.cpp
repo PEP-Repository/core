@@ -61,6 +61,34 @@ struct StorageFacility::SqliteStorage::Implementor : public pep::database::Stora
   using pep::database::Storage<MakeRawStorage>::Storage;
 };
 
+int64_t StorageFacility::SqliteStorage::getRowId(const std::string& name) {
+  using namespace sqlite_orm;
+  auto result = RangeToOptional(
+    implementor_->raw.select(&RowRecord::seqno,
+      where(c(&RowRecord::pseudonym) == name),
+      limit(1)));
+  if (!result.has_value()) {
+    result = implementor_->raw.insert(RowRecord{
+      .pseudonym = name,
+      });
+  }
+  return *result;
+}
+
+int64_t StorageFacility::SqliteStorage::getColumnId(const std::string& name) {
+  using namespace sqlite_orm;
+  auto result = RangeToOptional(
+    implementor_->raw.select(&ColumnRecord::seqno,
+      where(c(&ColumnRecord::name) == name),
+      limit(1)));
+  if (!result.has_value()) {
+    result = implementor_->raw.insert(ColumnRecord{
+      .name = name,
+      });
+  }
+  return *result;
+}
+
 void StorageFacility::SqliteStorage::deletePurgeCycleRecord(int64_t id) {
   implementor_->raw.remove<PurgeCycleRecord>(id);
 }
@@ -89,8 +117,18 @@ PurgeCycleId StorageFacility::SqliteStorage::createPurgeCycle(PurgeCycleDefiniti
 }
 
 void StorageFacility::SqliteStorage::deletePurgeCycle(PurgeCycleId id) {
-  // TODO: implementor_->raw.remove(PurgeEntryRecord...)
+  using namespace sqlite_orm;
+  implementor_->raw.remove_all<PurgeEntryRecord>(where(c(&PurgeEntryRecord::cycle) == id));
   this->deletePurgeCycleRecord(id);
+}
+
+void StorageFacility::SqliteStorage::addToPurgeCycle(PurgeCycleId id, const std::string& row, const std::string& column, Timestamp timestamp) {
+  implementor_->raw.insert(PurgeEntryRecord{
+    .cycle = id,
+    .row = this->getRowId(row),
+    .column = this->getColumnId(column),
+    .timestamp = TicksSinceEpoch<std::chrono::milliseconds>(timestamp),
+    });
 }
 
 }
