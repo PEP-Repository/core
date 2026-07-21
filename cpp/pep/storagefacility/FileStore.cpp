@@ -155,6 +155,15 @@ FileStore::Participant::Participant(FileStore& store, std::string name, bool loa
   }
 }
 
+FileStore::EntryHeader FileStore::EntryHeader::FromEntry(const Entry& entry) {
+  return EntryHeader{
+    .validFrom = entry.getValidFrom(),
+    .checksumSubstitute = entry.getChecksumSubstitute(),
+    .payloadSize = entry.payloadSize(),
+    .isOriginalPayloadOwner = entry.isOriginalPayloadOwner(),
+  };
+}
+
 FileStore::Cell::Cell(Participant& participant, const std::string& columnName, bool load)
   : participant_(participant), columnName_(participant.getFileStore().getColumnString(columnName)) {
   if (load) {
@@ -298,15 +307,6 @@ bool FileStore::EntryBase::isOriginalPayloadOwner() const {
     return false;
   }
   return !content_->getOriginalPayloadEntryTimestamp().has_value();
-}
-
-FileStore::EntryHeader FileStore::Entry::header() const {
-  return EntryHeader{
-    .validFrom = this->getValidFrom(),
-    .checksumSubstitute = this->getChecksumSubstitute(),
-    .payloadSize = this->payloadSize(),
-    .isOriginalPayloadOwner = this->isOriginalPayloadOwner(),
-  };
 }
 
 messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
@@ -529,7 +529,7 @@ void FileStore::Cell::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes
 }
 
 void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
-  auto emplaced = entryHeaders_.emplace(entry->header()).second;
+  auto emplaced = entryHeaders_.emplace(EntryHeader::FromEntry(*entry)).second;
   if (!emplaced) {
     auto msg = "Couldn't overwrite existing entry with name " + entry->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(entry->getValidFrom()));

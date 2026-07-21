@@ -25,14 +25,6 @@ public:
   class Cell;
   class Entry;
 
-  struct EntryHeader {
-    Timestamp validFrom;
-    uint64_t checksumSubstitute{};
-    uint64_t payloadSize{};
-    bool isOriginalPayloadOwner{};
-  };
-  using EntryHeaders = typename PropertyBasedContainer<EntryHeader, &EntryHeader::validFrom>::set;
-
   /*!
    * \brief Utility base class for Entry and EntryChange classes (defined below).
    * \remark Ensures that appropriate values are copied when we
@@ -124,7 +116,6 @@ public:
     std::unique_ptr<EntryContent> cloneContent() const;
 
     Timestamp getValidFrom() const noexcept { return validFrom_; }
-    EntryHeader header() const;
     messaging::MessageSequence readPage(size_t index);
 
     void save() const;
@@ -133,6 +124,16 @@ public:
   };
 
   using EntrySet = typename PropertyBasedContainer<std::shared_ptr<Entry>, &Entry::getValidFrom>::set;
+
+  struct EntryHeader {
+    Timestamp validFrom;
+    uint64_t checksumSubstitute{};
+    uint64_t payloadSize{};
+    bool isOriginalPayloadOwner{};
+
+    static EntryHeader FromEntry(const Entry& entry);
+  };
+  using EntryHeaders = typename PropertyBasedContainer<EntryHeader, &EntryHeader::validFrom>::set;
 
   class Cell {
   private:
