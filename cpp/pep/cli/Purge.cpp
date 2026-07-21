@@ -1,5 +1,9 @@
 #include <pep/cli/CliApplication.hpp>
 #include <pep/cli/Commands.hpp>
+#include <pep/client/Client.hpp>
+#include <pep/storagefacility/Constants.hpp>
+
+#include <rxcpp/operators/rx-tap.hpp>
 
 namespace pep::cli {
 
@@ -23,7 +27,8 @@ public:
   explicit Define(CommandPurge& parent);
 
 protected:
-  int execute() override { throw std::runtime_error("This command has not been implemented yet"); }
+  int execute() override;
+  commandline::Parameters getSupportedParameters() const override;
 };
 
 class CommandPurge::Cancel : public ChildCommandOf<CommandPurge> {
@@ -38,8 +43,8 @@ CommandPurge::CommandPurge(CliApplication& parent)
   : ChildCommandOf<CliApplication>("purge", "Remove entries from the repository history", parent) {
 }
 
-std::vector<std::shared_ptr<pep::commandline::Command>> CommandPurge::createChildCommands() {
-  std::vector<std::shared_ptr<pep::commandline::Command>> result;
+std::vector<std::shared_ptr<commandline::Command>> CommandPurge::createChildCommands() {
+  std::vector<std::shared_ptr<commandline::Command>> result;
   result.emplace_back(std::make_shared<Define>(*this));
   result.emplace_back(std::make_shared<Cancel>(*this));
   return result;
@@ -51,6 +56,22 @@ std::optional<std::string> CommandPurge::getAdditionalDescription() const {
 
 CommandPurge::Define::Define(CommandPurge& parent)
   : ChildCommandOf<CommandPurge>("define", "Start a new purge cycle", parent) {
+}
+
+int CommandPurge::Define::execute() {
+  auto name = this->getParameterValues().get<std::string>("name");
+  return this->executeEventLoopForClient(true, [name](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
+    return client->getStorageFacilityProxy()->createPurgeCycle(PurgeCycleDefinition(name))
+      .map([](PurgeCycleId id) {
+          std::cout << "Purge cycle ID " << id;
+          return FakeVoid();
+        });
+    });
+}
+
+commandline::Parameters CommandPurge::Define::getSupportedParameters() const {
+  return ChildCommandOf<CommandPurge>::getSupportedParameters()
+    + commandline::Parameter("name", "The name of (a predefined filter for) the purge cycle").value(commandline::Value<std::string>().required().allow(PredefinedPurgeFilters));
 }
 
 CommandPurge::Cancel::Cancel(CommandPurge& parent)
