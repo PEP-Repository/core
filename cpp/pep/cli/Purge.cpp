@@ -10,10 +10,11 @@ public:
   explicit CommandPurge(CliApplication& parent);
 
 protected:
+  std::vector<std::shared_ptr<commandline::Command>> createChildCommands() override;
+
+private:
   class Define;
   class Cancel;
-
-  std::vector<std::shared_ptr<pep::commandline::Command>> createChildCommands() override;
 };
 
 class CommandPurge::Define : public ChildCommandOf<CommandPurge> {
