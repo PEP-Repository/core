@@ -161,6 +161,7 @@ FileStore::CellVersion FileStore::CellVersion::FromEntry(const Entry& entry) {
     .checksumSubstitute = entry.getChecksumSubstitute(),
     .payloadSize = entry.payloadSize(),
     .isOriginalPayloadOwner = entry.isOriginalPayloadOwner(),
+    .isTombstone = entry.isTombstone(),
   };
 }
 
@@ -206,14 +207,6 @@ PropertyBasedContainer<const FileStore::Participant*, &FileStore::Participant::n
     assert(++emplaced.first == result.end()); // Should have been inserted at the back of the result set
   }
   return result;
-}
-
-FileStore::EntrySet FileStore::lookupWithHistory(const EntryName& name) const {
-  auto participant = this->getParticipant(name.participant());
-  if (participant == nullptr) {
-    return FileStore::EntrySet();
-  }
-  return participant->lookupWithHistory(name.column());
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::lookup(const EntryName& name, Timestamp validAt) {
@@ -584,19 +577,6 @@ void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPaylo
       rollingPayloadBytes += subRollingPayloadBytes;
     }
   }
-}
-
-FileStore::EntrySet FileStore::Participant::lookupWithHistory(const std::string& column) {
-  FileStore::EntrySet result;
-  auto cell = this->getCell(column);
-  if (cell != nullptr) {
-    for (const auto& version : cell->versions()) {
-      auto entry = Entry::Load(*cell, version.validFrom);
-      [[maybe_unused]] auto emplaced = result.emplace(entry).second;
-      assert(emplaced);
-    }
-  }
-  return result;
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Participant::lookup(const std::string& column, Timestamp validAt) {

@@ -1023,31 +1023,37 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, request.pseudonyms.has_value() ? &request.pseudonyms->indices : nullptr);
 
   std::vector<uint64_t> ids; // used to lookup id from responseEntry index_
+  auto participants = fileStore_->participants();
   for (size_t pseud_index = 0; pseud_index < localPseudonyms.size(); pseud_index++) {
     if (!localPseudonyms[pseud_index].has_value()) {
       continue;
     }
+    const auto& localPseudonym = localPseudonyms[pseud_index]->text();
+    auto iParticipant = participants.find(localPseudonym);
+    if (iParticipant == participants.end()) {
+      continue;
+    }
+
+    const FileStore::Participant& participant = **iParticipant;
+    auto cells = participant.cells();
     for (const auto& col : includeColumn) {
       auto colIndexIt = columnIndex.find(col);
       if (colIndexIt == columnIndex.end()) {
         continue;
       }
+      auto iCell = cells.find(col);
+      if (iCell == cells.end()) {
+        continue;
+      }
 
-      const auto& localPseudonym = *localPseudonyms[pseud_index];
-      // enumerateData returns an error if there are no entries, which
-      // we will ignore. Other errors are already logged.
-      EntryName key(localPseudonym, col);
-      auto history = fileStore_->lookupWithHistory(key);
-      for (const auto& entry : history) {
-        assert(entry != nullptr);
-
-        Timestamp validFrom = entry->getValidFrom();
+      const FileStore::Cell& cell = **iCell;
+      for (const auto& version : cell.versions()) {
         response.entries.push_back({
           .columnIndex = colIndexIt->second,
           .pseudonymIndex = static_cast<uint32_t>(pseud_index),
-          .timestamp = validFrom,
-          .id = !entry->isTombstone() ? encryptId(entry->getName().string(), validFrom) : "",
-        });
+          .timestamp = version.validFrom,
+          .id = !version.isTombstone ? encryptId(EntryName(participant.name(), col).string(), version.validFrom) : "",
+          });
       }
     }
   }

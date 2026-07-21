@@ -123,13 +123,12 @@ public:
     static std::shared_ptr<Entry> Load(Cell& cell, Timestamp timestamp);
   };
 
-  using EntrySet = typename PropertyBasedContainer<std::shared_ptr<Entry>, &Entry::getValidFrom>::set;
-
   struct CellVersion {
     Timestamp validFrom;
     uint64_t checksumSubstitute{};
     uint64_t payloadSize{};
     bool isOriginalPayloadOwner{};
+    bool isTombstone{};
 
     static CellVersion FromEntry(const Entry& entry);
   };
@@ -180,7 +179,6 @@ public:
     std::shared_ptr<EntryChange> createEntry(const std::string& columnName) { return EntryChange::Create(this->provideCell(columnName)); }
 
     void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const;
-    EntrySet lookupWithHistory(const std::string& column);
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
   };
 
@@ -210,7 +208,6 @@ private:
 public:
   PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;
 
-  EntrySet lookupWithHistory(const EntryName& name) const;
   std::shared_ptr<Entry> lookup(const EntryName& name, Timestamp validAt = Timestamp::max());
   std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool createIfNeeded = false);
 
