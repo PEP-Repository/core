@@ -165,7 +165,7 @@ FileStore::CellVersion FileStore::CellVersion::FromEntry(const Entry& entry) {
 }
 
 FileStore::Cell::Cell(Participant& participant, const std::string& columnName, bool load)
-  : participant_(participant), columnName_(participant.getFileStore().getColumnString(columnName)) {
+  : participant_(participant), columnName_(participant.fileStore().getColumnString(columnName)) {
   if (load) {
     for (const auto& p : std::filesystem::directory_iterator(this->path())) {
       auto entry = Entry::TryLoad(*this, CheckedPath::FromTrusted(p.path()));
@@ -285,8 +285,8 @@ std::unique_ptr<EntryContent> FileStore::Entry::cloneContent() const {
   return std::make_unique<EntryContent>(*content, validFrom_);
 }
 
-FileStore& FileStore::EntryBase::getFileStore() const noexcept {
-  return this->getCell().getParticipant().getFileStore();
+FileStore& FileStore::EntryBase::getFileStore() noexcept {
+  return cell_.participant().fileStore();
 }
 
 EntryName FileStore::EntryBase::getName() const {
@@ -317,7 +317,7 @@ messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
   auto payload = content->payload();
   assert(payload != nullptr);
   const auto& cell = this->getCell();
-  return payload->readPage(cell.getParticipant().getFileStore().pagestore_, cell.entryName(), index);
+  return payload->readPage(cell.participant().fileStore().pagestore_, cell.entryName(), index);
 }
 
 void FileStore::Entry::save() const {
@@ -451,7 +451,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
   auto properties = ReadBinary(infile, PersistedEntryProperties());
 
   auto checksumSubstitute = ExtractPersistedEntryProperty<uint64_t>(properties, CHECKSUM_SUBSTITUTE_KEY);
-  auto entryContent = EntryContent::Load(cell.getParticipant().getFileStore(), properties, pages);
+  auto entryContent = EntryContent::Load(cell.participant().fileStore(), properties, pages);
 
   // Read content hash from (end of) file
   uint64_t expectedHash = 0;
@@ -508,11 +508,11 @@ rxcpp::observable<std::string> FileStore::EntryChange::appendPage(std::shared_pt
 }
 
 EntryName FileStore::Cell::entryName() const {
-  return EntryName(this->getParticipant().name(), columnName_);
+  return EntryName(this->participant().name(), columnName_);
 }
 
 CheckedPath FileStore::Cell::path() const {
-  return this->getParticipant().path() / CheckedFileName(columnName_);
+  return this->participant().path() / CheckedFileName(columnName_);
 }
 
 void FileStore::Cell::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const {
@@ -558,7 +558,7 @@ FileStore::Cell& FileStore::Participant::provideCell(const std::string& columnNa
 }
 
 CheckedPath FileStore::Participant::path() const {
-  return this->getFileStore().metaDir() / CheckedFileName(name_);
+  return this->fileStore().metaDir() / CheckedFileName(name_);
 }
 
 void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {
@@ -586,7 +586,7 @@ void FileStore::Participant::forEachCellVersion(const std::function<void(const C
   }
 }
 
-FileStore::EntrySet FileStore::Participant::lookupWithHistory(const std::string& column) const {
+FileStore::EntrySet FileStore::Participant::lookupWithHistory(const std::string& column) {
   FileStore::EntrySet result;
   auto cell = this->getCell(column);
   if (cell != nullptr) {

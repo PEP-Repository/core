@@ -54,7 +54,7 @@ public:
 
     Cell& getCell() const noexcept { return cell_; }
     uint64_t getChecksumSubstitute() const { return checksumSubstitute_; }
-    FileStore& getFileStore() const noexcept;
+    FileStore& getFileStore() noexcept;
 
     const std::unique_ptr<EntryContent>& content() const { return content_; }
     EntryName getName() const;
@@ -145,7 +145,8 @@ public:
   public:
     Cell(Participant& participant, const std::string& columnName, bool load = false);
 
-    Participant& getParticipant() const { return participant_; }
+    Participant& participant() { return participant_; }
+    const Participant& participant() const { return participant_; }
     const std::string& columnName() const noexcept { return columnName_; }
 
     EntryName entryName() const;
@@ -169,7 +170,8 @@ public:
   public:
     Participant(FileStore& store, std::string name, bool load = false);
 
-    FileStore& getFileStore() const noexcept { return store_; }
+    FileStore& fileStore() noexcept { return store_; }
+    const FileStore& fileStore() const noexcept { return store_; }
     const std::string& name() const noexcept { return name_; }
 
     CheckedPath path() const;
@@ -178,7 +180,7 @@ public:
 
     void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const;
     void forEachCellVersion(const std::function<void(const CellVersion&)>& callback) const;
-    EntrySet lookupWithHistory(const std::string& column) const;
+    EntrySet lookupWithHistory(const std::string& column);
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
   };
 
