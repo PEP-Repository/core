@@ -181,21 +181,6 @@ public:
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
   };
 
-
-  EntrySet lookupWithHistory(const EntryName& name) const;
-  std::shared_ptr<Entry> lookup(const EntryName& name, Timestamp validAt = Timestamp::max());
-  std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool createIfNeeded = false);
-
-  EntryContent::Metadata makeMetadataMap(const std::map<std::string, MetadataXEntry>& xentries);
-  std::map<std::string, MetadataXEntry> extractMetadataMap(const EntryContent::Metadata& metadata);
-
-  void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns = {}) const;
-  void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
-
-  const CheckedPath& metaDir() const {
-    return path_;
-  }
-
 private:
   FileStore(
     const std::filesystem::path& metadatapath,
@@ -218,6 +203,21 @@ private:
 
   Participant* getParticipant(const std::string& name) const;
   Participant& provideParticipant(const std::string& name);
+
+public:
+  EntrySet lookupWithHistory(const EntryName& name) const;
+  std::shared_ptr<Entry> lookup(const EntryName& name, Timestamp validAt = Timestamp::max());
+  std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool createIfNeeded = false);
+
+  EntryContent::Metadata makeMetadataMap(const std::map<std::string, MetadataXEntry>& xentries);
+  std::map<std::string, MetadataXEntry> extractMetadataMap(const EntryContent::Metadata& metadata);
+
+  void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns = {}) const;
+  void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
+
+  const CheckedPath& metaDir() const {
+    return path_;
+  }
 };
 
 }
