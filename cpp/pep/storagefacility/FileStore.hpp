@@ -173,13 +173,13 @@ public:
     FileStore& fileStore() noexcept { return store_; }
     const FileStore& fileStore() const noexcept { return store_; }
     const std::string& name() const noexcept { return name_; }
+    PropertyBasedContainer<const Cell*, &Cell::columnName>::set cells() const;
 
     CheckedPath path() const;
 
     std::shared_ptr<EntryChange> createEntry(const std::string& columnName) { return EntryChange::Create(this->provideCell(columnName)); }
 
     void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const;
-    void forEachCellVersion(const std::function<void(const CellVersion&)>& callback) const;
     EntrySet lookupWithHistory(const std::string& column);
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
   };
@@ -208,6 +208,8 @@ private:
   Participant& provideParticipant(const std::string& name);
 
 public:
+  PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;
+
   EntrySet lookupWithHistory(const EntryName& name) const;
   std::shared_ptr<Entry> lookup(const EntryName& name, Timestamp validAt = Timestamp::max());
   std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool createIfNeeded = false);
@@ -216,7 +218,6 @@ public:
   std::map<std::string, MetadataXEntry> extractMetadataMap(const EntryContent::Metadata& metadata);
 
   void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns = {}) const;
-  void forEachCellVersion(const std::function<void(const CellVersion&)>& callback) const;
 
   const CheckedPath& metaDir() const {
     return path_;

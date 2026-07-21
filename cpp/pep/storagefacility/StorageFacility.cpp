@@ -299,13 +299,24 @@ void StorageFacility::computeChecksumChainChecksum(
     maxCheckpoint = TicksSinceEpoch<std::chrono::milliseconds>(TimeNow() - 1min);
   }
 
-  fileStore_->forEachCellVersion([add, &checkpoint, max = *maxCheckpoint](const FileStore::CellVersion& version) {
-    std::uint64_t validFromMs{static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(version.validFrom))};
-    if (validFromMs <= max) {
-      checkpoint = std::max(checkpoint, validFromMs);
-      add(version);
+  /* Checksums over cell versions must be calculated in (backward compatible) lexicographic order, e.g.
+   * 1. participant-a/column-x/timestamp-1
+   * 2. participant-a/column-x/timestamp-2
+   * 3. participant-a/column-y/timestamp-1
+   * 4. participant-b/column-x/timestamp-1
+   */
+  for (const auto& participant : fileStore_->participants()) {
+    for (const auto& cell : participant->cells()) {
+      for (const auto& version : cell->versions()) {
+        std::uint64_t validFromMs{ static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(version.validFrom)) };
+        if (validFromMs <= *maxCheckpoint) {
+          checkpoint = std::max(checkpoint, validFromMs);
+          add(version);
+        }
+
+      }
     }
-    });
+  }
 }
 
 messaging::MessageBatches

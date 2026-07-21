@@ -197,18 +197,16 @@ void FileStore::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint
   }
 }
 
-void FileStore::forEachCellVersion(const std::function<void(const CellVersion&)>& callback) const {
-  /* This method must provide its entries to the callback in (backward compatible) lexicographic order, e.g.
-   * 1. participant-a/column-x/timestamp-1
-   * 2. participant-a/column-x/timestamp-2
-   * 3. participant-a/column-y/timestamp-1
-   * 4. participant-b/column-x/timestamp-1
-   */
-  for (const auto& participant : participants_) {
-    participant->forEachCellVersion(callback);
-  }
-}
 
+PropertyBasedContainer<const FileStore::Participant*, &FileStore::Participant::name>::set FileStore::participants() const {
+  PropertyBasedContainer<const FileStore::Participant*, &FileStore::Participant::name>::set result;
+  for (const auto& participant : participants_) {
+    auto emplaced = result.emplace(participant.get());
+    assert(emplaced.second);
+    assert(++emplaced.first == result.end()); // Should have been inserted at the back of the result set
+  }
+  return result;
+}
 
 FileStore::EntrySet FileStore::lookupWithHistory(const EntryName& name) const {
   auto participant = this->getParticipant(name.participant());
@@ -557,6 +555,16 @@ FileStore::Cell& FileStore::Participant::provideCell(const std::string& columnNa
   return **cells_.emplace(std::make_unique<Cell>(*this, columnName)).first;
 }
 
+PropertyBasedContainer<const FileStore::Cell*, &FileStore::Cell::columnName>::set FileStore::Participant::cells() const {
+  PropertyBasedContainer<const FileStore::Cell*, &FileStore::Cell::columnName>::set result;
+  for (const auto& cell : cells_) {
+    auto emplaced = result.emplace(cell.get());
+    assert(emplaced.second);
+    assert(++emplaced.first == result.end()); // Should have been inserted at the back of the result set
+  }
+  return result;
+}
+
 CheckedPath FileStore::Participant::path() const {
   return this->fileStore().metaDir() / CheckedFileName(name_);
 }
@@ -574,14 +582,6 @@ void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPaylo
       entryCount += subEntryCount;
       totalPayloadBytes += subTotalPayloadBytes;
       rollingPayloadBytes += subRollingPayloadBytes;
-    }
-  }
-}
-
-void FileStore::Participant::forEachCellVersion(const std::function<void(const CellVersion&)>& callback) const {
-  for (const auto& cell : cells_) {
-    for (const auto& version : cell->versions()) {
-      callback(version);
     }
   }
 }
