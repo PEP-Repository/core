@@ -11,6 +11,7 @@ public:
 
 protected:
   std::vector<std::shared_ptr<commandline::Command>> createChildCommands() override;
+  std::optional<std::string> getAdditionalDescription() const override;
 
 private:
   class Define;
@@ -42,6 +43,10 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CommandPurge::createChil
   result.emplace_back(std::make_shared<Define>(*this));
   result.emplace_back(std::make_shared<Cancel>(*this));
   return result;
+}
+
+std::optional<std::string> CommandPurge::getAdditionalDescription() const {
+  return "Falsifies repository history, making it impossible to re-download exact copies of (some) older data sets.";
 }
 
 CommandPurge::Define::Define(CommandPurge& parent)
