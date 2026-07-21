@@ -71,7 +71,8 @@ int CommandPurge::Define::execute() {
 
 commandline::Parameters CommandPurge::Define::getSupportedParameters() const {
   return ChildCommandOf<CommandPurge>::getSupportedParameters()
-    + commandline::Parameter("name", "The name of (a predefined filter for) the purge cycle").value(commandline::Value<std::string>().required().allow(PredefinedPurgeFilters));
+    + commandline::Parameter("name", "The name of (a predefined filter for) the purge cycle").value(commandline::Value<std::string>().positional().required()
+      .allow(PredefinedPurgeFilters)); // remove if/when custom purge filters become supported
 }
 
 CommandPurge::Cancel::Cancel(CommandPurge& parent)
