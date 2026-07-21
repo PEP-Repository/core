@@ -148,11 +148,11 @@ public:
     Participant& participant() { return participant_; }
     const Participant& participant() const { return participant_; }
     const std::string& columnName() const noexcept { return columnName_; }
+    const CellVersions& versions() const noexcept { return versions_; }
 
     EntryName entryName() const;
     CheckedPath path() const;
 
-    const CellVersions& versions() const noexcept { return versions_; }
     void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const;
     void addEntry(std::shared_ptr<Entry> entry);
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
