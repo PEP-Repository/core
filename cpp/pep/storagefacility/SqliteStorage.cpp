@@ -67,6 +67,7 @@ void StorageFacility::SqliteStorage::deletePurgeCycleRecord(int64_t id) {
 
 StorageFacility::SqliteStorage::SqliteStorage(std::filesystem::path file)
   : implementor_(std::make_unique<Implementor>(file.string())) {
+  implementor_->syncSchema();
 }
 
 StorageFacility::SqliteStorage::~SqliteStorage() noexcept = default;
