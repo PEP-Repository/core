@@ -68,7 +68,6 @@ StorageFacility::SqliteStorage::SqliteStorage(std::filesystem::path file)
 StorageFacility::SqliteStorage::~SqliteStorage() noexcept = default;
 
 PurgeCycleId StorageFacility::SqliteStorage::createPurgeCycle(PurgeCycleDefinition definition) {
-  // TODO: validate against existing DB
   auto id = implementor_->raw.insert(PurgeCycleRecord{
     .name = std::move(definition).name(),
     });
@@ -78,10 +77,9 @@ PurgeCycleId StorageFacility::SqliteStorage::createPurgeCycle(PurgeCycleDefiniti
     result = boost::numeric_cast<PurgeCycleId>(id);
   }
   catch (...) {
+    // TODO: implementor_->raw.remove(...)
     throw std::runtime_error("ID overflow in PurgeCycle table");
   }
-
-  // TODO: implementor_->raw.insert(PurgeEntryRecord...)
   return result;
 }
 

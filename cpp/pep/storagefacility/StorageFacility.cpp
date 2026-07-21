@@ -10,6 +10,7 @@
 #include <pep/async/RxParallelConcat.hpp>
 #include <pep/utils/ApplicationMetrics.hpp>
 #include <pep/auth/EnrolledParty.hpp>
+#include <pep/storagefacility/Constants.hpp>
 #include <pep/storagefacility/PurgeSerializers.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
@@ -1082,8 +1083,7 @@ messaging::MessageBatches StorageFacility::handlePurgeCycleRequest(std::shared_p
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
 
-  auto id = sqlite_->createPurgeCycle(certified.message.definition);
-  // TODO: add entries according to definition
+  auto id = this->createPurgeCycle(std::move(certified.message.definition));
   return messaging::BatchSingleMessage(PurgeCycleResponse{
     .id = id,
     });
@@ -1133,6 +1133,15 @@ Metadata StorageFacility::compileMetadata(
   //  the file store entry's metadata - those entries that start with 'x-'.
   result.extra() = fileStore_->extractMetadataMap(content->metadata());
 
+  return result;
+}
+
+PurgeCycleId StorageFacility::createPurgeCycle(PurgeCycleDefinition definition) {
+  if (definition.name() != BackCatalogPurgeFilter) {
+    throw Error("Unsupported purge cycle name \"" + definition.name() + '"');
+  }
+  auto result = sqlite_->createPurgeCycle(std::move(definition));
+  // TODO: add entries according to definition, validating against existing DB
   return result;
 }
 
