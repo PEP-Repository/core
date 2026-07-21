@@ -1,36 +1,36 @@
 #pragma once
 
 #include <pep/auth/Signed.hpp>
-#include <pep/storagefacility/PurgeTypes.hpp>
+#include <pep/storagefacility/PurgeCycle.hpp>
 
 namespace pep {
 
 // Begin (defining) a new purge cycle
 struct PurgeCycleRequest {
-  PurgeCycleDefinition definition;
+  PurgeCycle::Definition definition;
 };
 
 struct PurgeCycleResponse {
-  PurgeCycleId id;
+  PurgeCycle::Id id;
 };
 
 // Cancel an (unconfirmed) purge cycle
 struct PurgeCancelRequest {
-  PurgeCycleId id;
+  PurgeCycle::Id id;
 };
 
 struct PurgeCancelResponse {};
 
 // Request confirmation for a purge cycle
 struct PurgeReviewRequest {
-  PurgeCycleId id;
+  PurgeCycle::Id id;
 };
 
 struct PurgeReviewResponse {}; // Only indicates that SF has stored the request as "reviewable". A later (asynchronous) "PurgeConfirmationRequest" specifies the review's outcome
 
 // Confirm or deny a purge cycle
 struct PurgeConfirmationRequest {
-  PurgeCycleId id;
+  PurgeCycle::Id id;
   bool confirmed{}; // If true, SF (immediately) starts purging. If false, the request is no longer marked as "reviewable"
 };
 

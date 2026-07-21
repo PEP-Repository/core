@@ -122,7 +122,7 @@ private:
   std::vector<std::optional<LocalPseudonym>> decryptLocalPseudonyms(const std::vector<LocalPseudonyms>& source, std::vector<uint32_t> const *indices) const;
 
   Metadata compileMetadata(std::string column, const FileStore::Entry& entry);
-  PurgeCycleId createPurgeCycle(PurgeCycleDefinition definition);
+  PurgeCycle::Id createPurgeCycle(PurgeCycle::Definition definition);
 
   template <typename TEntry>
   using GetEntryContent = std::function<std::unique_ptr<EntryContent>(const TEntry&)>;

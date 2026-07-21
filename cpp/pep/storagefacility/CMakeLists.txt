@@ -5,7 +5,7 @@ add_library(${PROJECT_NAME}StorageFacilityApilib
   PageHash.cpp PageHash.hpp
   PurgeMessages.hpp
   PurgeSerializers.cpp PurgeSerializers.hpp
-  PurgeTypes.cpp PurgeTypes.hpp
+  PurgeCycle.cpp PurgeCycle.hpp
   StorageFacilityMessages.hpp
   StorageFacilityProxy.cpp StorageFacilityProxy.hpp
   StorageFacilitySerializers.cpp StorageFacilitySerializers.hpp

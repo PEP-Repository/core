@@ -21,12 +21,13 @@ struct ColumnRecord {
 };
 
 struct PurgeCycleRecord {
-  PurgeCycleId id{};
+  PurgeCycle::Id id{};
   std::string name;
+  database::UnixMillis createdAt;
 };
 
 struct PurgeEntryRecord {
-  PurgeCycleId cycle; // FK to PurgeCycleRecord::id
+  PurgeCycle::Id cycle; // FK to PurgeCycleRecord::id
   int64_t row;        // FK to RowRecord::seqno
   int64_t column;     // FK to ColumnRecord::seqno
   database::UnixMillis timestamp;
@@ -46,7 +47,8 @@ auto MakeRawStorage(std::string path) {
     make_table("PurgeCycle",
       make_column("id", &PurgeCycleRecord::id,
         primary_key().autoincrement()),
-      make_column("name", &PurgeCycleRecord::name)),
+      make_column("name", &PurgeCycleRecord::name),
+      make_column("createdAt", &PurgeCycleRecord::createdAt)),
     make_table("PurgeEntry",
       make_column("cycle", &PurgeEntryRecord::cycle),
       make_column("row", &PurgeEntryRecord::row),
@@ -100,14 +102,15 @@ StorageFacility::SqliteStorage::SqliteStorage(std::filesystem::path file)
 
 StorageFacility::SqliteStorage::~SqliteStorage() noexcept = default;
 
-PurgeCycleId StorageFacility::SqliteStorage::createPurgeCycle(PurgeCycleDefinition definition) {
+PurgeCycle::Id StorageFacility::SqliteStorage::createPurgeCycle(PurgeCycle::Definition definition) {
   auto id = implementor_->raw.insert(PurgeCycleRecord{
     .name = std::move(definition).name(),
+    .createdAt = TicksSinceEpoch<std::chrono::milliseconds>(TimeNow()),
     });
 
-  PurgeCycleId result;
+  PurgeCycle::Id result;
   try {
-    result = boost::numeric_cast<PurgeCycleId>(id);
+    result = boost::numeric_cast<PurgeCycle::Id>(id);
   }
   catch (...) {
     this->deletePurgeCycleRecord(id);
@@ -116,13 +119,13 @@ PurgeCycleId StorageFacility::SqliteStorage::createPurgeCycle(PurgeCycleDefiniti
   return result;
 }
 
-void StorageFacility::SqliteStorage::deletePurgeCycle(PurgeCycleId id) {
+void StorageFacility::SqliteStorage::deletePurgeCycle(PurgeCycle::Id id) {
   using namespace sqlite_orm;
   implementor_->raw.remove_all<PurgeEntryRecord>(where(c(&PurgeEntryRecord::cycle) == id));
   this->deletePurgeCycleRecord(id);
 }
 
-void StorageFacility::SqliteStorage::addToPurgeCycle(PurgeCycleId id, const std::string& row, const std::string& column, Timestamp timestamp) {
+void StorageFacility::SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const std::string& row, const std::string& column, Timestamp timestamp) {
   implementor_->raw.insert(PurgeEntryRecord{
     .cycle = id,
     .row = this->getRowId(row),

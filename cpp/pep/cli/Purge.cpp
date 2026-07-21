@@ -67,8 +67,8 @@ std::optional<std::string> CommandPurge::BackCatalog::getAdditionalDescription()
 
 int CommandPurge::BackCatalog::execute() {
   return this->executeEventLoopForClient(true, [](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
-    return client->getStorageFacilityProxy()->createPurgeCycle(PurgeCycleDefinition(BackCatalogPurgeFilter))
-      .map([](PurgeCycleId id) {
+    return client->getStorageFacilityProxy()->createPurgeCycle(PurgeCycle::Definition(BackCatalogPurgeFilter))
+      .map([](PurgeCycle::Id id) {
           std::cout << "Purge cycle ID " << id;
           return FakeVoid();
         });
@@ -81,11 +81,11 @@ CommandPurge::Cancel::Cancel(CommandPurge& parent)
 
 commandline::Parameters CommandPurge::Cancel::getSupportedParameters() const {
   return ChildCommandOf<CommandPurge>::getSupportedParameters()
-    + commandline::Parameter("id", "Purge cycle identifier").value(commandline::Value<PurgeCycleId>().positional().required());
+    + commandline::Parameter("id", "Purge cycle identifier").value(commandline::Value<PurgeCycle::Id>().positional().required());
 }
 
 int CommandPurge::Cancel::execute() {
-  auto id = this->getParameterValues().get<PurgeCycleId>("id");
+  auto id = this->getParameterValues().get<PurgeCycle::Id>("id");
   return this->executeEventLoopForClient(true, [id](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
     return client->getStorageFacilityProxy()->cancelPurgeCycle(id);
     });

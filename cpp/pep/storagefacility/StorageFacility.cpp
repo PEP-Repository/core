@@ -1154,7 +1154,7 @@ Metadata StorageFacility::compileMetadata(
   return result;
 }
 
-PurgeCycleId StorageFacility::createPurgeCycle(PurgeCycleDefinition definition) {
+PurgeCycle::Id StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) {
   if (definition.name() != BackCatalogPurgeFilter) {
     throw Error("Unsupported purge cycle name \"" + definition.name() + '"');
   }
