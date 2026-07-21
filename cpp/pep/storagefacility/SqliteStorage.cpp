@@ -61,6 +61,10 @@ struct StorageFacility::SqliteStorage::Implementor : public pep::database::Stora
   using pep::database::Storage<MakeRawStorage>::Storage;
 };
 
+void StorageFacility::SqliteStorage::deletePurgeCycleRecord(int64_t id) {
+  implementor_->raw.remove<PurgeCycleRecord>(id);
+}
+
 StorageFacility::SqliteStorage::SqliteStorage(std::filesystem::path file)
   : implementor_(std::make_unique<Implementor>(file.string())) {
 }
@@ -77,15 +81,15 @@ PurgeCycleId StorageFacility::SqliteStorage::createPurgeCycle(PurgeCycleDefiniti
     result = boost::numeric_cast<PurgeCycleId>(id);
   }
   catch (...) {
-    // TODO: implementor_->raw.remove(...)
+    this->deletePurgeCycleRecord(id);
     throw std::runtime_error("ID overflow in PurgeCycle table");
   }
   return result;
 }
 
 void StorageFacility::SqliteStorage::deletePurgeCycle(PurgeCycleId id) {
-  implementor_->raw.remove<PurgeCycleRecord>(id);
   // TODO: implementor_->raw.remove(PurgeEntryRecord...)
+  this->deletePurgeCycleRecord(id);
 }
 
 }

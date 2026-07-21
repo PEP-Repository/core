@@ -36,9 +36,10 @@ protected:
 class CommandPurge::Cancel : public ChildCommandOf<CommandPurge> {
 public:
   explicit Cancel(CommandPurge& parent);
+  commandline::Parameters getSupportedParameters() const override;
 
 protected:
-  int execute() override { throw std::runtime_error("This command has not been implemented yet"); }
+  int execute() override;
 };
 
 CommandPurge::CommandPurge(CliApplication& parent)
@@ -76,6 +77,18 @@ int CommandPurge::BackCatalog::execute() {
 
 CommandPurge::Cancel::Cancel(CommandPurge& parent)
   : ChildCommandOf<CommandPurge>("cancel", "Cancel a purge cycle", parent) {
+}
+
+commandline::Parameters CommandPurge::Cancel::getSupportedParameters() const {
+  return ChildCommandOf<CommandPurge>::getSupportedParameters()
+    + commandline::Parameter("id", "Purge cycle identifier").value(commandline::Value<PurgeCycleId>().positional().required());
+}
+
+int CommandPurge::Cancel::execute() {
+  auto id = this->getParameterValues().get<PurgeCycleId>("id");
+  return this->executeEventLoopForClient(true, [id](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
+    return client->getStorageFacilityProxy()->cancelPurgeCycle(id);
+    });
 }
 
 } // End anonymous namespace
