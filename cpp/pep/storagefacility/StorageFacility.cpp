@@ -1046,13 +1046,14 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
         continue;
       }
 
+      auto entryName = EntryName(participant.name(), col).string();
       const FileStore::Cell& cell = **iCell;
       for (const auto& version : cell.versions()) {
         response.entries.push_back({
           .columnIndex = colIndexIt->second,
           .pseudonymIndex = static_cast<uint32_t>(pseud_index),
           .timestamp = version.validFrom,
-          .id = !version.isTombstone ? encryptId(EntryName(participant.name(), col).string(), version.validFrom) : "",
+          .id = !version.isTombstone ? encryptId(entryName, version.validFrom) : "",
           });
       }
     }
