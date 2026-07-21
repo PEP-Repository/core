@@ -6,11 +6,11 @@
 namespace pep {
 
 // Begin (defining) a new purge cycle
-struct PurgeCycleRequest {
+struct PurgeCycleBeginRequest {
   PurgeCycle::Definition definition;
 };
 
-struct PurgeCycleResponse {
+struct PurgeCycleBeginResponse {
   PurgeCycle::Id id;
 };
 
@@ -36,7 +36,7 @@ struct PurgeConfirmationRequest {
 
 struct PurgeConfirmationResponse {};
 
-using SignedPurgeCycleRequest = Signed<PurgeCycleRequest>;
+using SignedPurgeCycleBeginRequest = Signed<PurgeCycleBeginRequest>;
 using SignedPurgeCancelRequest = Signed< PurgeCancelRequest>;
 using SignedPurgeReviewRequest = Signed<PurgeReviewRequest>;
 using SignedPurgeConfirmationRequest = Signed<PurgeConfirmationRequest>;

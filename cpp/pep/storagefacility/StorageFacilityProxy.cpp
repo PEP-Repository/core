@@ -76,11 +76,11 @@ rxcpp::observable<DataSizeResponse> StorageFacilityProxy::requestDataSize(DataSi
 }
 
 rxcpp::observable<PurgeCycle::Id> StorageFacilityProxy::createPurgeCycle(PurgeCycle::Definition definition) const {
-  return this->sendRequest<PurgeCycleResponse>(this->sign(PurgeCycleRequest{
+  return this->sendRequest<PurgeCycleBeginResponse>(this->sign(PurgeCycleBeginRequest{
       .definition = std::move(definition),
     }))
     .op(RxGetOne())
-    .map([](PurgeCycleResponse response) { return response.id; });
+    .map([](PurgeCycleBeginResponse response) { return response.id; });
 }
 
 rxcpp::observable<FakeVoid> StorageFacilityProxy::cancelPurgeCycle(PurgeCycle::Id id) const {
