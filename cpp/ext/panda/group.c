@@ -317,7 +317,7 @@ void group_ge_add(group_ge *r, const group_ge *x, const group_ge *y)
 void group_ge_double(group_ge *r, const group_ge *x)
 {
   ge25519_p1p1 t;
-  dbl_p1p1(&t, (ge25519_p2 *)x);
+  dbl_p1p1(&t, (const ge25519_p2 *)x);
   p1p1_to_p3(r,&t);
 }
 
@@ -541,7 +541,7 @@ static void group_ge_from_jacobi_quartic(group_ge *x, const fe25519 *s, const fe
 
 // Compute the point corresponding to the scalar r0 in the
 // Elligator2 encoding adapted to Ristretto.
-void group_ge_elligator(group_ge *x, const fe25519 *r0)
+static void group_ge_elligator(group_ge *x, const fe25519 *r0)
 {
     fe25519 r, rPlusD, rPlusOne, ecd2, D, N, ND, sqrt, twiddle, sgn;
     fe25519 s, t, dMinusOneSquared, rSubOne, r0i, sNeg;

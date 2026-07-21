@@ -22,6 +22,8 @@
     - `pepcli user query`
     - `pepcli query data-size`
 
+- #2954: Fixed `pepLogon` failure in sandbox image.
+
 **MANUAL CHANGES REQUIRED**:
 
 - core#2313: Add a `"StorageFile": "StorageFacility.sqlite"` configuration setting to `StorageFacility.json`.
