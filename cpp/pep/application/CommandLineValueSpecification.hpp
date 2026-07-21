@@ -276,7 +276,15 @@ void ValueSpecificationTemplate<Derived, T>::writeHelpText(std::ostream& destina
       values << delimiter << Format<T>()(entry);
       delimiter = ", ";
     }
-    WriteHelpItemSupplement(destination, "Value must be one of: " + std::move(values).str());
+    auto text = std::move(values).str();
+    if (allowed_->size() == 1U) {
+      text = '"' + text + '"';
+    }
+    else {
+      assert(!allowed_->empty());
+      text = "one of: " + text;
+    }
+    WriteHelpItemSupplement(destination, "Value must be " + text);
   }
   if (default_.has_value()) {
     std::ostringstream text;
