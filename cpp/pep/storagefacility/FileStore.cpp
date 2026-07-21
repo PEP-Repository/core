@@ -202,7 +202,7 @@ void FileStore::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint
 PropertyBasedContainer<const FileStore::Participant*, &FileStore::Participant::name>::set FileStore::participants() const {
   PropertyBasedContainer<const FileStore::Participant*, &FileStore::Participant::name>::set result;
   for (const auto& participant : participants_) {
-    auto emplaced = result.emplace(participant.get());
+    [[maybe_unused]] auto emplaced = result.emplace(participant.get());
     assert(emplaced.second);
     assert(++emplaced.first == result.end()); // Should have been inserted at the back of the result set
   }
@@ -551,7 +551,7 @@ FileStore::Cell& FileStore::Participant::provideCell(const std::string& columnNa
 PropertyBasedContainer<const FileStore::Cell*, &FileStore::Cell::columnName>::set FileStore::Participant::cells() const {
   PropertyBasedContainer<const FileStore::Cell*, &FileStore::Cell::columnName>::set result;
   for (const auto& cell : cells_) {
-    auto emplaced = result.emplace(cell.get());
+    [[maybe_unused]] auto emplaced = result.emplace(cell.get());
     assert(emplaced.second);
     assert(++emplaced.first == result.end()); // Should have been inserted at the back of the result set
   }
