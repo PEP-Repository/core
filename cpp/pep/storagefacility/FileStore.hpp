@@ -125,21 +125,21 @@ public:
 
   using EntrySet = typename PropertyBasedContainer<std::shared_ptr<Entry>, &Entry::getValidFrom>::set;
 
-  struct EntryHeader {
+  struct CellVersion {
     Timestamp validFrom;
     uint64_t checksumSubstitute{};
     uint64_t payloadSize{};
     bool isOriginalPayloadOwner{};
 
-    static EntryHeader FromEntry(const Entry& entry);
+    static CellVersion FromEntry(const Entry& entry);
   };
-  using EntryHeaders = typename PropertyBasedContainer<EntryHeader, &EntryHeader::validFrom>::set;
+  using CellVersions = typename PropertyBasedContainer<CellVersion, &CellVersion::validFrom>::set;
 
   class Cell {
   private:
     Participant& participant_;
     const std::string& columnName_; // reference to unique string in FileStore::columnNames_
-    EntryHeaders entryHeaders_;
+    CellVersions versions_;
     std::shared_ptr<Entry> latest_;
 
   public:
@@ -151,7 +151,7 @@ public:
     EntryName entryName() const;
     CheckedPath path() const;
 
-    const EntryHeaders& entryHeaders() const noexcept { return entryHeaders_; }
+    const CellVersions& versions() const noexcept { return versions_; }
     void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const;
     void addEntry(std::shared_ptr<Entry> entry);
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
@@ -177,7 +177,7 @@ public:
     std::shared_ptr<EntryChange> createEntry(const std::string& columnName) { return EntryChange::Create(this->provideCell(columnName)); }
 
     void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const;
-    void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
+    void forEachCellVersion(const std::function<void(const CellVersion&)>& callback) const;
     EntrySet lookupWithHistory(const std::string& column) const;
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
   };
@@ -214,7 +214,7 @@ public:
   std::map<std::string, MetadataXEntry> extractMetadataMap(const EntryContent::Metadata& metadata);
 
   void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns = {}) const;
-  void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
+  void forEachCellVersion(const std::function<void(const CellVersion&)>& callback) const;
 
   const CheckedPath& metaDir() const {
     return path_;

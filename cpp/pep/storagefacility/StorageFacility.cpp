@@ -274,16 +274,16 @@ void StorageFacility::computeChecksumChainChecksum(
 
   // both "files" and "entry-count" checksums are computed by adding
   // one entry at a time, via:
-  std::function<void(const FileStore::EntryHeader&)> add;
+  std::function<void(const FileStore::CellVersion&)> add;
 
   if (chain == "files") {
-    add = [&checksum](const FileStore::EntryHeader& header) {
-      auto checksumSubstitute = header.checksumSubstitute;
+    add = [&checksum](const FileStore::CellVersion& version) {
+      auto checksumSubstitute = version.checksumSubstitute;
       checksum ^= checksumSubstitute;
     };
   }
   else if (chain == "entry-count") {
-    add = [&checksum](const FileStore::EntryHeader& header) {
+    add = [&checksum](const FileStore::CellVersion& version) {
       checksum++;
     };
   }
@@ -299,11 +299,11 @@ void StorageFacility::computeChecksumChainChecksum(
     maxCheckpoint = TicksSinceEpoch<std::chrono::milliseconds>(TimeNow() - 1min);
   }
 
-  fileStore_->forEachEntryHeader([add, &checkpoint, max = *maxCheckpoint](const FileStore::EntryHeader& header) {
-    std::uint64_t validFromMs{static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(header.validFrom))};
+  fileStore_->forEachCellVersion([add, &checkpoint, max = *maxCheckpoint](const FileStore::CellVersion& version) {
+    std::uint64_t validFromMs{static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(version.validFrom))};
     if (validFromMs <= max) {
       checkpoint = std::max(checkpoint, validFromMs);
-      add(header);
+      add(version);
     }
     });
 }
