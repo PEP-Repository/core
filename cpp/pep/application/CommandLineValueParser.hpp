@@ -3,7 +3,7 @@
 #include <string>
 #include <type_traits>
 #include <pep/utils/ChronoUtil.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <boost/lexical_cast.hpp>
 

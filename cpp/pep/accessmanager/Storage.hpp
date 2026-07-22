@@ -9,7 +9,7 @@
 #include <pep/accessmanager/Backend.hpp>
 #include <pep/structure/ColumnName.hpp>
 #include <pep/accessmanager/Records.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
 #include <pep/accessmanager/UserIdFlags.hpp>

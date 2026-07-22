@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <string>
 

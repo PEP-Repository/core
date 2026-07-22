@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/elgamal/ElgamalEncryption.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <pep/utils/XxHasher.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/morphing/Metadata.hpp>

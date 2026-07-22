@@ -2,7 +2,7 @@
 
 #include <pep/versioning/Version.hpp>
 #include <pep/auth/Signed.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 namespace pep {
 

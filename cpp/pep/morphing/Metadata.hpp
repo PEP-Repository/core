@@ -7,7 +7,7 @@
 #include <utility>
 
 #include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 namespace pep {
 

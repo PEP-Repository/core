@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/crypto/Encrypted.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <pep/crypto/X509Certificate.hpp>
 #include <Messages.pb.h>
 
