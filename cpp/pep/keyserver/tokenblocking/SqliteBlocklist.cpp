@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <pep/keyserver/tokenblocking/SqliteBlocklist.hpp>
 #include <pep/database/Storage.hpp>
+#include <pep/database/UnixMillis.hpp>
 #include <type_traits>
 
 using namespace std::chrono;

@@ -6,6 +6,7 @@
 #include <pep/crypto/Timestamp.hpp>
 #include <pep/accessmanager/UserIdFlags.hpp>
 #include <pep/database/Record.hpp>
+#include <pep/database/UnixMillis.hpp>
 
 namespace pep {
 

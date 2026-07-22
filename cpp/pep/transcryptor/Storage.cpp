@@ -11,6 +11,7 @@
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/database/Storage.hpp>
+#include <pep/database/UnixMillis.hpp>
 
 #include <sqlite_orm/sqlite_orm.h>
 
