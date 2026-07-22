@@ -884,22 +884,28 @@ if should_run_test page-paths; then
   }'
   
   test_setup "$PAGE_PATHS_CONFIG"
-  readonly PAGED_RANDOM_DATA_FILE=$(make_large_random_data_file "paged-random-data.bin")
-  ls -la "${PAGED_RANDOM_DATA_FILE}"
-
+  
   pepcli --oauth-token-group "Research Assessor" query page-paths &&
       fail "Research Assessor should not be able to query page paths"
 
+  # Count number of pages before storing
   before=$(pepcli --oauth-token-group "System Administrator" query page-paths)
   before=$(echo "$before" | wc -l)
   
+  # Store a large (i.e. stored in S3) file
+  readonly PAGED_RANDOM_DATA_FILE=$(make_large_random_data_file "paged-random-data.bin")
+  ls -la "${PAGED_RANDOM_DATA_FILE}"
   pepcli --oauth-token-group "Research Assessor" store -p "some-participant" -c PagedColumn -i "$PAGED_RANDOM_DATA_FILE"
+  
+  # Count number of pages after storing
   after=$(pepcli --oauth-token-group "System Administrator" query page-paths)
   after=$(echo "$after" | wc -l)
   if [ ! "$after" -gt "$before" ]; then
     fail "Page path count should increase after storage (before = $before; after = $after)"
   fi
 
+  # Remove paged entry from current data set, then count number of pages once again
+  # (This also clears the stored data for a followup invocation of the test.)
   pepcli --oauth-token-group "Research Assessor" delete -p "some-participant" -c PagedColumn
   after=$(pepcli --oauth-token-group "System Administrator" query page-paths)
   after=$(echo "$after" | wc -l)
