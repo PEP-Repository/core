@@ -299,11 +299,7 @@ void Serializer<DataSizeResponse>::moveIntoProtocolBuffer(proto::DataSizeRespons
 
 PagePathResponse Serializer<PagePathResponse>::fromProtocolBuffer(proto::PagePathResponse&& source) const {
   PagePathResponse result;
-  for (const auto& path : source.paths()) {
-    if (!result.paths.emplace(path).second) {
-      throw std::runtime_error("Can't insert duplicate path '" + path + "' into page path response");
-    }
-  }
+  InsertNonDuplicates(result.paths, source.paths());
   return result;
 }
 
