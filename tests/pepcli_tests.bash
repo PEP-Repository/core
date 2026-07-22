@@ -894,7 +894,7 @@ if should_run_test page-paths; then
   after=$(pepcli --oauth-token-group "System Administrator" query page-paths | wc -l)
   
   if [ ! "$after" -gt "$before" ]; then
-    fail "Storing paged content should increase the number of reported page paths"
+    fail "Storing paged content should increase the number of reported page paths (before = $before; after = $after)"
   fi
 
   # Clean up
