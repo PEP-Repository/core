@@ -114,6 +114,27 @@ struct PropertyBasedContainer<TItem*, GetPropertyFunction> {
 };
 
 /*!
+  * \brief Provides container types keyed on pointers to items with unique property values. This specialization requires a const method that produces the item property.
+  * \tparam TItem The type of item stored in the container
+  * \tparam TProperty The property type used as the container's key.
+  * \tparam GetPropertyMethod A const method producing an item's property value.
+  * \remark E.g. to keep a set of pointers to User instances with unique IDs:
+  *     struct User { int getId() const; }
+  *     PropertyBasedContainer<User*, &User::getId>::set myUsers;
+  */
+template <typename TItem, typename TProperty, TProperty(std::remove_const_t<TItem>::*GetPropertyMethod)() const>
+struct PropertyBasedContainer<TItem*, GetPropertyMethod> {
+  using Compare = detail::PropertyBasedCompare<TItem*, TProperty, TItem,
+    &detail::PropertyOwner<TItem>::Dereference,
+    &detail::PropertyOwner<TItem>::template GetMethodProperty<TProperty, GetPropertyMethod>>;
+
+  using set = std::set<TItem*, Compare>;
+
+  template <typename TValue>
+  using map = std::map<TItem*, TValue, Compare>;
+};
+
+/*!
   * \brief Provides container types keyed on items with unique property values. This specialization requires a const method that produces the item property.
   * \tparam TItem The type of item stored in the container
   * \tparam TProperty The property type used as the container's key.

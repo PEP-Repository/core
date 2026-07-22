@@ -155,8 +155,18 @@ FileStore::Participant::Participant(FileStore& store, std::string name, bool loa
   }
 }
 
+FileStore::CellVersion FileStore::CellVersion::FromEntry(const Entry& entry) {
+  return CellVersion{
+    .validFrom = entry.getValidFrom(),
+    .checksumSubstitute = entry.getChecksumSubstitute(),
+    .payloadSize = entry.payloadSize(),
+    .isOriginalPayloadOwner = entry.isOriginalPayloadOwner(),
+    .isTombstone = entry.isTombstone(),
+  };
+}
+
 FileStore::Cell::Cell(Participant& participant, const std::string& columnName, bool load)
-  : participant_(participant), columnName_(participant.getFileStore().getColumnString(columnName)) {
+  : participant_(participant), columnName_(participant.fileStore().getColumnString(columnName)) {
   if (load) {
     for (const auto& p : std::filesystem::directory_iterator(this->path())) {
       auto entry = Entry::TryLoad(*this, CheckedPath::FromTrusted(p.path()));
@@ -188,16 +198,15 @@ void FileStore::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint
   }
 }
 
-void FileStore::forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const {
-  /* This method must provide its entries to the callback in (backward compatible) lexicographic order, e.g.
-   * 1. participant-a/column-x/timestamp-1
-   * 2. participant-a/column-x/timestamp-2
-   * 3. participant-a/column-y/timestamp-1
-   * 4. participant-b/column-x/timestamp-1
-   */
+
+PropertyBasedContainer<const FileStore::Participant*, &FileStore::Participant::name>::set FileStore::participants() const {
+  PropertyBasedContainer<const FileStore::Participant*, &FileStore::Participant::name>::set result;
   for (const auto& participant : participants_) {
-    participant->forEachEntryHeader(callback);
+    [[maybe_unused]] auto emplaced = result.emplace(participant.get());
+    assert(emplaced.second);
+    assert(++emplaced.first == result.end()); // Should have been inserted at the back of the result set
   }
+  return result;
 }
 
 std::set<std::string> FileStore::pagePaths() const {
@@ -206,14 +215,6 @@ std::set<std::string> FileStore::pagePaths() const {
     InsertNonDuplicates(result, participant->pagePaths());
   }
   return result;
-}
-
-FileStore::EntrySet FileStore::lookupWithHistory(const EntryName& name) const {
-  auto participant = this->getParticipant(name.participant());
-  if (participant == nullptr) {
-    return FileStore::EntrySet();
-  }
-  return participant->lookupWithHistory(name.column());
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::lookup(const EntryName& name, Timestamp validAt) {
@@ -228,10 +229,10 @@ std::shared_ptr<FileStore::Entry> FileStore::Cell::lookup(Timestamp validAt) {
   // The std::map<>::lower_bound function will find the entry _after_ the one we need when validAt == Timestamp::max().
   // So to make the function produce consistent results, we search for "validAt+1" to ensure that we _always_ find the entry after the one we need.
   auto find = validAt == Timestamp::max() ? Timestamp::max() : validAt + 1ms;
-  auto it = entryHeaders_.lower_bound(find);
+  auto it = versions_.lower_bound(find);
 
   // If we're positioned on the first item, the request was for a "validAt" before the first entry was stored.
-  if (it == entryHeaders_.begin())
+  if (it == versions_.begin())
     return nullptr;
 
   // Since we're positioned after the item we're interested in, we skip back.
@@ -287,8 +288,8 @@ std::unique_ptr<EntryContent> FileStore::Entry::cloneContent() const {
   return std::make_unique<EntryContent>(*content, validFrom_);
 }
 
-FileStore& FileStore::EntryBase::getFileStore() const noexcept {
-  return this->getCell().getParticipant().getFileStore();
+FileStore& FileStore::EntryBase::getFileStore() noexcept {
+  return cell_.participant().fileStore();
 }
 
 EntryName FileStore::EntryBase::getName() const {
@@ -320,15 +321,6 @@ std::set<std::string> FileStore::EntryBase::pagePaths() const {
   return payload->getPagePaths(cell_.entryName());
 }
 
-FileStore::EntryHeader FileStore::Entry::header() const {
-  return EntryHeader{
-    .validFrom = this->getValidFrom(),
-    .checksumSubstitute = this->getChecksumSubstitute(),
-    .payloadSize = this->payloadSize(),
-    .isOriginalPayloadOwner = this->isOriginalPayloadOwner(),
-  };
-}
-
 messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
   const auto& content = this->content();
   if (content == nullptr) {
@@ -337,7 +329,7 @@ messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
   auto payload = content->payload();
   assert(payload != nullptr);
   const auto& cell = this->getCell();
-  return payload->readPage(cell.getParticipant().getFileStore().pagestore_, cell.entryName(), index);
+  return payload->readPage(cell.participant().fileStore().pagestore_, cell.entryName(), index);
 }
 
 void FileStore::Entry::save() const {
@@ -387,7 +379,7 @@ void FileStore::EntryChange::commit(Timestamp availableFrom) && {
   // this should not happen due to combination of above conditions:
   // - check that the availableFrom > last item (on time of modify() method)
   // - check that last item on time of modify() is still the last item at time of commit()
-  if (this->getCell().entryHeaders().find(availableFrom) != this->getCell().entryHeaders().cend()) {
+  if (this->getCell().versions().find(availableFrom) != this->getCell().versions().cend()) {
     auto msg = "Cannot store duplicate entry with name " + this->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(availableFrom));
     PEP_LOG(LogTag, Severity::Error) << msg;
@@ -471,7 +463,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
   auto properties = ReadBinary(infile, PersistedEntryProperties());
 
   auto checksumSubstitute = ExtractPersistedEntryProperty<uint64_t>(properties, CHECKSUM_SUBSTITUTE_KEY);
-  auto entryContent = EntryContent::Load(cell.getParticipant().getFileStore(), properties, pages);
+  auto entryContent = EntryContent::Load(cell.participant().fileStore(), properties, pages);
 
   // Read content hash from (end of) file
   uint64_t expectedHash = 0;
@@ -528,20 +520,20 @@ rxcpp::observable<std::string> FileStore::EntryChange::appendPage(std::shared_pt
 }
 
 EntryName FileStore::Cell::entryName() const {
-  return EntryName(this->getParticipant().name(), columnName_);
+  return EntryName(this->participant().name(), columnName_);
 }
 
 CheckedPath FileStore::Cell::path() const {
-  return this->getParticipant().path() / CheckedFileName(columnName_);
+  return this->participant().path() / CheckedFileName(columnName_);
 }
 
 void FileStore::Cell::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const {
-  entryCount = entryHeaders_.size();
+  entryCount = versions_.size();
 
   totalPayloadBytes = 0U;
-  for (const auto& header : entryHeaders_) {
-    if (header.isOriginalPayloadOwner) {
-      totalPayloadBytes += header.payloadSize;
+  for (const auto& version : versions_) {
+    if (version.isOriginalPayloadOwner) {
+      totalPayloadBytes += version.payloadSize;
     }
   }
 
@@ -549,7 +541,7 @@ void FileStore::Cell::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes
 }
 
 void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
-  auto emplaced = entryHeaders_.emplace(entry->header()).second;
+  auto emplaced = versions_.emplace(CellVersion::FromEntry(*entry)).second;
   if (!emplaced) {
     auto msg = "Couldn't overwrite existing entry with name " + entry->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(entry->getValidFrom()));
@@ -577,8 +569,18 @@ FileStore::Cell& FileStore::Participant::provideCell(const std::string& columnNa
   return **cells_.emplace(std::make_unique<Cell>(*this, columnName)).first;
 }
 
+PropertyBasedContainer<const FileStore::Cell*, &FileStore::Cell::columnName>::set FileStore::Participant::cells() const {
+  PropertyBasedContainer<const FileStore::Cell*, &FileStore::Cell::columnName>::set result;
+  for (const auto& cell : cells_) {
+    [[maybe_unused]] auto emplaced = result.emplace(cell.get());
+    assert(emplaced.second);
+    assert(++emplaced.first == result.end()); // Should have been inserted at the back of the result set
+  }
+  return result;
+}
+
 CheckedPath FileStore::Participant::path() const {
-  return this->getFileStore().metaDir() / CheckedFileName(name_);
+  return this->fileStore().metaDir() / CheckedFileName(name_);
 }
 
 void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {
@@ -596,27 +598,6 @@ void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPaylo
       rollingPayloadBytes += subRollingPayloadBytes;
     }
   }
-}
-
-void FileStore::Participant::forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const {
-  for (const auto& cell : cells_) {
-    for (const auto& header : cell->entryHeaders()) {
-      callback(header);
-    }
-  }
-}
-
-FileStore::EntrySet FileStore::Participant::lookupWithHistory(const std::string& column) const {
-  FileStore::EntrySet result;
-  auto cell = this->getCell(column);
-  if (cell != nullptr) {
-    for (const auto& header : cell->entryHeaders()) {
-      auto entry = Entry::Load(*cell, header.validFrom);
-      [[maybe_unused]] auto emplaced = result.emplace(entry).second;
-      assert(emplaced);
-    }
-  }
-  return result;
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Participant::lookup(const std::string& column, Timestamp validAt) {
