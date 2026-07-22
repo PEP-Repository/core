@@ -786,7 +786,7 @@ std::vector<AmaQueryResponse> AccessManager::ExtractPartialColumnGroupQueryRespo
     responses.emplace_back();
   }
   size_t responseSize{0U};
-  const size_t limitedMessageSize = static_cast<size_t>(0.9 * static_cast<double>(maxSize)); // allow for some padding by serialisation.
+  const size_t limitedMessageSize = static_cast<size_t>(messaging::NetMessageCapacityFactor * static_cast<double>(maxSize)); // allow for some padding by serialisation.
 
   auto sourceColumnGroup = columnGroups.cbegin();
   size_t firstColumn = 0U;

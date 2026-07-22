@@ -113,6 +113,7 @@ private:
   messaging::MessageBatches handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteRequest2> signedRequest);
   messaging::MessageBatches handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> signedRequest);
   messaging::MessageBatches handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> signedRequest);
+  messaging::MessageBatches handlePagePathRequest(std::shared_ptr<SignedPagePathRequest> signedRequest);
 
   messaging::MessageBatches handlePurgeCycleRequest(std::shared_ptr<SignedPurgeCycleBeginRequest> signedRequest);
   messaging::MessageBatches handlePurgeCancelRequest(std::shared_ptr<SignedPurgeCancelRequest> signedRequest);

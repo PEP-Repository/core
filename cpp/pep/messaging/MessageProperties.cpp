@@ -62,8 +62,8 @@ Flags::Bits Flags::EnsureValid(Flags::Bits bits) {
   if (HasFlags(bits, Flags::Bits::Error) && !HasFlags(bits, Flags::Bits::Close)) {
     throw invalidCombination("cannot have 'error' without 'close' flag");
   }
-  if (HasFlags(bits, Flags::Bits::Error | Flags::Bits::Payload)) {
-    throw invalidCombination("cannot combine 'payload' with 'close' flag");
+  if (HasFlags(bits, Flags::Bits::Payload | Flags::Bits::Error)) {
+    throw invalidCombination("cannot combine 'payload' with 'error' flag");
   }
 
   return bits;

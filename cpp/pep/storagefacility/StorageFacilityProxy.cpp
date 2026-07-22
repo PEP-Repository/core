@@ -1,10 +1,12 @@
 #include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxToSet.hpp>
 #include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/storagefacility/PurgeSerializers.hpp>
 #include <pep/storagefacility/StorageFacilityProxy.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/utils/XxHasher.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
 
 namespace pep {
 
@@ -73,6 +75,15 @@ rxcpp::observable<DataHistoryResponse2> StorageFacilityProxy::requestDataHistory
 rxcpp::observable<DataSizeResponse> StorageFacilityProxy::requestDataSize(DataSizeRequest request) const {
   return this->sendRequest<DataSizeResponse>(this->sign(std::move(request)))
     .op(RxGetOne());
+}
+
+rxcpp::observable<PagePathResponse> StorageFacilityProxy::requestPagePaths() const {
+  return this->sendRequest<PagePathResponse>(this->sign(PagePathRequest{}))
+    .flat_map([](PagePathResponse chunk) {return rxcpp::observable<>::iterate(chunk.paths); })
+    .op(RxToSet())
+    .map([](std::shared_ptr<std::set<std::string>> paths) {
+        return PagePathResponse{ .paths = std::move(*paths) };
+      });
 }
 
 rxcpp::observable<PurgeCycle::Id> StorageFacilityProxy::createPurgeCycle(PurgeCycle::Definition definition) const {

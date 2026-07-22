@@ -183,6 +183,17 @@ message DataPayloadPage {
   uint32 index = 7;
 }
 
+message PagePathRequest {}
+
+message SignedPagePathRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message PagePathResponse {
+  repeated string paths = 1;
+}
+
 message EncryptionKeyRequest {
   reserved 1, 4;
 

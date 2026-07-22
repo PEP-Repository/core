@@ -19,6 +19,7 @@ public:
   rxcpp::observable<DataEnumerationResponse2> requestDataEnumeration(DataEnumerationRequest2 request) const;
   rxcpp::observable<DataHistoryResponse2> requestDataHistory(DataHistoryRequest2 request) const;
   rxcpp::observable<DataSizeResponse> requestDataSize(DataSizeRequest request) const;
+  rxcpp::observable<PagePathResponse> requestPagePaths() const;
 
   rxcpp::observable<PurgeCycle::Id> createPurgeCycle(PurgeCycle::Definition definition) const;
   rxcpp::observable<FakeVoid> cancelPurgeCycle(PurgeCycle::Id id) const;

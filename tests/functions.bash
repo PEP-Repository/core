@@ -250,3 +250,10 @@ write_registration_server_cell() {
   pepcli --oauth-token-group "Research Assessor" "$@" -c "${column}"
   pepcli --oauth-token-group "Data Administrator" ama column removeFrom "${column}" ParticipantInfo
 }
+
+make_large_random_data_file() {
+  path="$DEST_DIR/$1"
+  # 10 blocks @ 1048576 bytes each = 10MiB
+  execute . dd if=/dev/urandom of="$path" bs=1048576 count=10
+  echo "$path"
+}
