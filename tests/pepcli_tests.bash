@@ -884,7 +884,7 @@ if should_run_test page-paths; then
   }'
   
   test_setup "$PAGE_PATHS_CONFIG"
-  readonly PAGED_RANDOM_DATA_FILE=$(make_large_random_data_file "large-random-data.bin")
+  readonly PAGED_RANDOM_DATA_FILE=$(make_large_random_data_file "paged-random-data.bin")
 
   pepcli --oauth-token-group "Research Assessor" query page-paths &&
       fail "Research Assessor should not be able to query page paths"
