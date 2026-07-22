@@ -63,6 +63,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     StringStream.cpp StringStream.hpp
     TaggedValue.hpp
     ThreadUtil.cpp ThreadUtil.hpp
+    Timestamp.cpp Timestamp.hpp
     TypeTraits.hpp
     VariantUtils.hpp
     VectorOfVectors.hpp

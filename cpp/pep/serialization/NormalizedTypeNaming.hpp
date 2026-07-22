@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/utils/PlainTypeName.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <memory>
 
 namespace pep {
@@ -19,6 +20,12 @@ private:
 template <typename T>
 struct NormalizedTypeNamer : public BasicNormalizedTypeNamer {
   static inline std::string GetTypeName() { return BasicNormalizedTypeNamer::GetTypeName(GetPlainTypeName<T>()); }
+};
+
+// Make sure serialization remains backward-compatible with the class we used to have, for stored messages
+template <>
+struct NormalizedTypeNamer<Timestamp> : BasicNormalizedTypeNamer {
+  static std::string GetTypeName() { return "Timestamp"; }
 };
 
 template <typename T>

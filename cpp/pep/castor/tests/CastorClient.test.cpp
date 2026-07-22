@@ -15,7 +15,7 @@
 #include <pep/castor/Study.hpp>
 #include <pep/castor/tests/FakeCastorApi.hpp>
 #include <pep/castor/tests/Responses.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 using namespace std::literals;
 

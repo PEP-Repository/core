@@ -7,7 +7,7 @@
 #include <pep/async/FakeVoid.hpp>
 #include <pep/async/WorkerPool.hpp>
 #include <pep/auth/ServerTraits.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/messaging/ConnectionStatus.hpp>
 #include <pep/messaging/MessageSequence.hpp>
