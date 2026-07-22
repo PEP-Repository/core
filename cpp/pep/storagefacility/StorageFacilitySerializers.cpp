@@ -308,10 +308,7 @@ PagePathResponse Serializer<PagePathResponse>::fromProtocolBuffer(proto::PagePat
 }
 
 void Serializer<PagePathResponse>::moveIntoProtocolBuffer(proto::PagePathResponse& dest, PagePathResponse value) const {
-  dest.mutable_paths()->Reserve(static_cast<int>(value.paths.size()));
-  for (auto& path : value.paths) {
-    dest.add_paths(path);
-  }
+  dest.mutable_paths()->Assign(value.paths.begin(), value.paths.end());
 }
 
 }
