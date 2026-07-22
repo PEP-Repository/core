@@ -894,7 +894,6 @@ if should_run_test page-paths; then
   
   # Store a large (i.e. stored in S3) file
   readonly PAGED_RANDOM_DATA_FILE=$(make_large_random_data_file "paged-random-data.bin")
-  ls -la "${PAGED_RANDOM_DATA_FILE}"
   pepcli --oauth-token-group "Research Assessor" store -p "some-participant" -c PagedColumn -i "$PAGED_RANDOM_DATA_FILE"
   
   # Count number of pages after storing
