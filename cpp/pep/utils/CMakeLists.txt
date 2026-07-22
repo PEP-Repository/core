@@ -103,7 +103,6 @@ if (WITH_TESTS)
     OnFatalTestFailure.hpp
     RegisteredTestEnvironment.cpp RegisteredTestEnvironment.hpp
     TestApplicationMainFunction.cpp
-    VerifyBackwardCompatibleSerialization.hpp
     TestError.hpp
     TestTiming.hpp
   )

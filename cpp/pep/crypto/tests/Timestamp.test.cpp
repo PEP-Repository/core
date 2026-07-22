@@ -1,5 +1,5 @@
 #include <pep/crypto/Timestamp.hpp>
-#include <pep/utils/VerifyBackwardCompatibleSerialization.hpp>
+#include <pep/serialization/tests/VerifyBackwardCompatible.hpp>
 
 #include <boost/date_time/posix_time/conversion.hpp>
 #include <gtest/gtest.h>
