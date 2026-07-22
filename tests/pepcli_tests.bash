@@ -847,9 +847,7 @@ if should_run_test s3-roundtrip; then
   test_setup "$S3_ROUNDTRIP_CONFIG"
 
   # Store a large (i.e. stored in S3) file with some participants
-  readonly LARGE_RANDOM_DATA_FILE="$DEST_DIR/large-random-data.bin"
-  # 10 blocks @ 1048576 bytes each = 10MiB
-  execute . dd if=/dev/urandom of="$LARGE_RANDOM_DATA_FILE" bs=1048576 count=10
+  readonly LARGE_RANDOM_DATA_FILE=$(make_large_random_data_file "large-random-data.bin")
   for i in {1..50}; do
     pepcli --oauth-token-group "Research Assessor" store -p "participant$i" -c LargeColumn -i "$LARGE_RANDOM_DATA_FILE"
   done
@@ -872,6 +870,36 @@ if should_run_test s3-roundtrip; then
   done
 
   test_cleanup "$S3_ROUNDTRIP_CONFIG"
+fi
+
+####################
+
+if should_run_test page-paths; then
+  PAGE_PATHS_CONFIG='{
+    "columnGroups": [{
+      "name": "PagedColumns",
+      "columns": [ "PagedColumn" ],
+      "cgars": {  "Research Assessor": [ "read", "write" ] }
+    }]
+  }'
+  
+  test_setup "$PAGE_PATHS_CONFIG"
+  readonly LARGE_RANDOM_DATA_FILE=$(make_large_random_data_file "large-random-data.bin")
+
+  pepcli --oauth-token-group "Research Assessor" query page-paths &&
+      fail "Research Assessor should not be able to query page paths"
+  before=$(pepcli --oauth-token-group "System Administrator" query page-paths | wc -l)
+  
+  pepcli --oauth-token-group "Research Assessor" store -p "some-participant" -c PagedColumn -i "$LARGE_RANDOM_DATA_FILE"
+  after=$(pepcli --oauth-token-group "System Administrator" query page-paths | wc -l)
+  
+  if [ ! "$after" -gt "$before" ]; then
+    fail "Storing paged content should increase the number of reported page paths"
+  fi
+
+  # Clean up
+  execute . rm "$LARGE_RANDOM_DATA_FILE"
+  test_cleanup "$PAGE_PATHS_CONFIG"
 fi
 
 ####################
