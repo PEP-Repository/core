@@ -889,19 +889,22 @@ if should_run_test page-paths; then
 
   pepcli --oauth-token-group "Research Assessor" query page-paths &&
       fail "Research Assessor should not be able to query page paths"
+
   before=$(pepcli --oauth-token-group "System Administrator" query page-paths)
-  >&2 echo "Received the following from 'before' pepcli query page-paths: $before"
   before=$(echo "$before" | wc -l)
-  >&2 echo "That's $before lines"
   
   pepcli --oauth-token-group "Research Assessor" store -p "some-participant" -c PagedColumn -i "$PAGED_RANDOM_DATA_FILE"
   after=$(pepcli --oauth-token-group "System Administrator" query page-paths)
-  >&2 echo "Received the following from 'after' pepcli query page-paths: $after"
   after=$(echo "$after" | wc -l)
-  >&2 echo "That's $after lines"
-  
   if [ ! "$after" -gt "$before" ]; then
-    fail "Storing paged content should increase the number of reported page paths (before = $before; after = $after)"
+    fail "Page path count should increase after storage (before = $before; after = $after)"
+  fi
+
+  pepcli --oauth-token-group "Research Assessor" delete -p "some-participant" -c PagedColumn
+  after=$(pepcli --oauth-token-group "System Administrator" query page-paths)
+  after=$(echo "$after" | wc -l)
+  if [ "$after" -ne "$before" ]; then
+    fail "Page path count should revert to previous after deletion (before = $before; after = $after)"
   fi
 
   # Clean up
