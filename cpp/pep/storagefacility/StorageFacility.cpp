@@ -1077,7 +1077,7 @@ messaging::MessageBatches StorageFacility::handlePagePathRequest(std::shared_ptr
   auto certified = signedRequest->open(*rootCAs);
 
   auto accessGroup = certified.signatory.organizationalUnit();
-  UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
+  UserGroup::EnsureAccess({ UserGroup::SystemAdministrator }, accessGroup);
 
   return CreateObservable<messaging::MessageSequence>([fileStore = fileStore_](rxcpp::subscriber<messaging::MessageSequence> subscriber) {
     auto all = fileStore->pagePaths();
