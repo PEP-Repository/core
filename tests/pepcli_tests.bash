@@ -884,13 +884,13 @@ if should_run_test page-paths; then
   }'
   
   test_setup "$PAGE_PATHS_CONFIG"
-  readonly LARGE_RANDOM_DATA_FILE=$(make_large_random_data_file "large-random-data.bin")
+  readonly PAGED_RANDOM_DATA_FILE=$(make_large_random_data_file "large-random-data.bin")
 
   pepcli --oauth-token-group "Research Assessor" query page-paths &&
       fail "Research Assessor should not be able to query page paths"
   before=$(pepcli --oauth-token-group "System Administrator" query page-paths | wc -l)
   
-  pepcli --oauth-token-group "Research Assessor" store -p "some-participant" -c PagedColumn -i "$LARGE_RANDOM_DATA_FILE"
+  pepcli --oauth-token-group "Research Assessor" store -p "some-participant" -c PagedColumn -i "$PAGED_RANDOM_DATA_FILE"
   after=$(pepcli --oauth-token-group "System Administrator" query page-paths | wc -l)
   
   if [ ! "$after" -gt "$before" ]; then
@@ -898,7 +898,7 @@ if should_run_test page-paths; then
   fi
 
   # Clean up
-  execute . rm "$LARGE_RANDOM_DATA_FILE"
+  execute . rm "$PAGED_RANDOM_DATA_FILE"
   test_cleanup "$PAGE_PATHS_CONFIG"
 fi
 
