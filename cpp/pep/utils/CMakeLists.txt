@@ -25,6 +25,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Bitpacking.cpp Bitpacking.hpp
     BoostHexUtil.hpp
     BuildFlavor.hpp
+    CheckedPath.cpp CheckedPath.hpp
     ChronoUtil.hpp
     CollectionUtils.hpp CollectionUtils.cpp
     Compare.hpp
@@ -55,7 +56,6 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     PropertySerializer.hpp
     Random.cpp Random.hpp
     Raw.cpp Raw.hpp
-        CheckedPath.cpp CheckedPath.hpp
     SelfRegistering.hpp
     Shared.hpp
     Singleton.hpp
