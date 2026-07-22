@@ -274,16 +274,16 @@ void StorageFacility::computeChecksumChainChecksum(
 
   // both "files" and "entry-count" checksums are computed by adding
   // one entry at a time, via:
-  std::function<void(const FileStore::EntryHeader&)> add;
+  std::function<void(const FileStore::CellVersion&)> add;
 
   if (chain == "files") {
-    add = [&checksum](const FileStore::EntryHeader& header) {
-      auto checksumSubstitute = header.checksumSubstitute;
+    add = [&checksum](const FileStore::CellVersion& version) {
+      auto checksumSubstitute = version.checksumSubstitute;
       checksum ^= checksumSubstitute;
     };
   }
   else if (chain == "entry-count") {
-    add = [&checksum](const FileStore::EntryHeader& header) {
+    add = [&checksum](const FileStore::CellVersion& version) {
       checksum++;
     };
   }
@@ -299,13 +299,24 @@ void StorageFacility::computeChecksumChainChecksum(
     maxCheckpoint = TicksSinceEpoch<std::chrono::milliseconds>(TimeNow() - 1min);
   }
 
-  fileStore_->forEachEntryHeader([add, &checkpoint, max = *maxCheckpoint](const FileStore::EntryHeader& header) {
-    std::uint64_t validFromMs{static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(header.validFrom))};
-    if (validFromMs <= max) {
-      checkpoint = std::max(checkpoint, validFromMs);
-      add(header);
+  /* Checksums over cell versions must be calculated in (backward compatible) lexicographic order, e.g.
+   * 1. participant-a/column-x/timestamp-1
+   * 2. participant-a/column-x/timestamp-2
+   * 3. participant-a/column-y/timestamp-1
+   * 4. participant-b/column-x/timestamp-1
+   */
+  for (const auto& participant : fileStore_->participants()) {
+    for (const auto& cell : participant->cells()) {
+      for (const auto& version : cell->versions()) {
+        std::uint64_t validFromMs{ static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(version.validFrom)) };
+        if (validFromMs <= *maxCheckpoint) {
+          checkpoint = std::max(checkpoint, validFromMs);
+          add(version);
+        }
+
+      }
     }
-    });
+  }
 }
 
 messaging::MessageBatches
@@ -1012,31 +1023,38 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, request.pseudonyms.has_value() ? &request.pseudonyms->indices : nullptr);
 
   std::vector<uint64_t> ids; // used to lookup id from responseEntry index_
+  auto participants = fileStore_->participants();
   for (size_t pseud_index = 0; pseud_index < localPseudonyms.size(); pseud_index++) {
     if (!localPseudonyms[pseud_index].has_value()) {
       continue;
     }
+    const auto& localPseudonym = localPseudonyms[pseud_index]->text();
+    auto iParticipant = participants.find(localPseudonym);
+    if (iParticipant == participants.end()) {
+      continue;
+    }
+
+    const FileStore::Participant& participant = **iParticipant;
+    auto cells = participant.cells();
     for (const auto& col : includeColumn) {
       auto colIndexIt = columnIndex.find(col);
       if (colIndexIt == columnIndex.end()) {
         continue;
       }
+      auto iCell = cells.find(col);
+      if (iCell == cells.end()) {
+        continue;
+      }
 
-      const auto& localPseudonym = *localPseudonyms[pseud_index];
-      // enumerateData returns an error if there are no entries, which
-      // we will ignore. Other errors are already logged.
-      EntryName key(localPseudonym, col);
-      auto history = fileStore_->lookupWithHistory(key);
-      for (const auto& entry : history) {
-        assert(entry != nullptr);
-
-        Timestamp validFrom = entry->getValidFrom();
+      auto entryName = EntryName(participant.name(), col).string();
+      const FileStore::Cell& cell = **iCell;
+      for (const auto& version : cell.versions()) {
         response.entries.push_back({
           .columnIndex = colIndexIt->second,
           .pseudonymIndex = static_cast<uint32_t>(pseud_index),
-          .timestamp = validFrom,
-          .id = !entry->isTombstone() ? encryptId(entry->getName().string(), validFrom) : "",
-        });
+          .timestamp = version.validFrom,
+          .id = !version.isTombstone ? encryptId(entryName, version.validFrom) : "",
+          });
       }
     }
   }
