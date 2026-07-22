@@ -1072,6 +1072,34 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
     });
 }
 
+messaging::MessageBatches StorageFacility::handlePagePathRequest(std::shared_ptr<SignedPagePathRequest> signedRequest) {
+  const auto& rootCAs = this->getRootCAs();
+  auto certified = signedRequest->open(*rootCAs);
+
+  auto accessGroup = certified.signatory.organizationalUnit();
+  UserGroup::EnsureAccess({ UserGroup::SystemAdministrator }, accessGroup);
+
+  return CreateObservable<messaging::MessageSequence>([fileStore = fileStore_](rxcpp::subscriber<messaging::MessageSequence> subscriber) {
+    auto all = fileStore->pagePaths();
+    auto i = all.cbegin(), end = all.cend();
+
+    while (i != end) {
+      PagePathResponse chunk;
+      FillToCapacity(std::inserter(chunk.paths, chunk.paths.end()), messaging::NetMessageCapacity, std::ranges::subrange{ i, end });
+      if (chunk.paths.size() == 0U) {
+        throw std::runtime_error("Could not create network-portable set of page paths");
+      }
+
+      // Update the source iterator (the position in "all" page paths) so we skip processed items in the next iteration
+      // Unfortunately we can't "i += ..." because std::set does not provide random access iteration
+      std::advance(i, chunk.paths.size());
+
+      subscriber.on_next(rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(std::move(chunk)))));
+    }
+    subscriber.on_completed();
+    });
+}
+
 std::string StorageFacility::encryptId(std::string path, Timestamp time) {
   return Serialization::ToString(
     EncryptedSFId(
@@ -1146,7 +1174,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
                           &StorageFacility::handleMetadataStoreRequest2,
                           &StorageFacility::handleDataEnumerationRequest2,
                           &StorageFacility::handleDataHistoryRequest2,
-                          &StorageFacility::handleDataSizeRequest);
+                          &StorageFacility::handleDataSizeRequest,
+                          &StorageFacility::handlePagePathRequest);
 
   this->updateFileStoreMetrics();
   statsTimer({});

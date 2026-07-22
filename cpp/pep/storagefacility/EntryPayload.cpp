@@ -179,6 +179,14 @@ std::optional<uint64_t> PagedEntryPayload::pageSize() const {
   return pageSize_;
 }
 
+std::set<std::string> PagedEntryPayload::getPagePaths(const EntryName& name) const {
+  std::set<std::string> result;
+  InsertNonDuplicates(result, pages_ | std::ranges::views::transform([&name](PageId hash) {
+    return GetPagePath(name, hash);
+    }));
+  return result;
+}
+
 messaging::MessageSequence PagedEntryPayload::readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const {
   index = this->validatedPageIndex(index);
 

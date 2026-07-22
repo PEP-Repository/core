@@ -297,5 +297,14 @@ void Serializer<DataSizeResponse>::moveIntoProtocolBuffer(proto::DataSizeRespons
   dest.set_rolling_blocks(value.rollingBlocks);
 }
 
+PagePathResponse Serializer<PagePathResponse>::fromProtocolBuffer(proto::PagePathResponse&& source) const {
+  PagePathResponse result;
+  InsertNonDuplicates(result.paths, source.paths());
+  return result;
+}
+
+void Serializer<PagePathResponse>::moveIntoProtocolBuffer(proto::PagePathResponse& dest, PagePathResponse value) const {
+  dest.mutable_paths()->Assign(value.paths.begin(), value.paths.end());
+}
 
 }

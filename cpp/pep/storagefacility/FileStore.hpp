@@ -70,6 +70,8 @@ public:
     bool isTombstone() const { return content_ == nullptr; }
     uint64_t payloadSize() const;
     bool isOriginalPayloadOwner() const;
+
+    std::set<std::string> pagePaths() const;
   };
 
   /*!
@@ -154,6 +156,8 @@ public:
     void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const;
     void addEntry(std::shared_ptr<Entry> entry);
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
+
+    std::set<std::string> pagePaths() const; // for latest version
   };
 
   class Participant {
@@ -179,6 +183,8 @@ public:
     void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
     EntrySet lookupWithHistory(const std::string& column) const;
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
+
+    std::set<std::string> pagePaths() const; // for latest version
   };
 
 
@@ -195,6 +201,8 @@ public:
   const CheckedPath& metaDir() const {
     return path_;
   }
+
+  std::set<std::string> pagePaths() const; // for latest version
 
 private:
   FileStore(

@@ -200,6 +200,13 @@ void FileStore::forEachEntryHeader(const std::function<void(const EntryHeader&)>
   }
 }
 
+std::set<std::string> FileStore::pagePaths() const {
+  std::set<std::string> result;
+  for (const auto& participant : participants_) {
+    InsertNonDuplicates(result, participant->pagePaths());
+  }
+  return result;
+}
 
 FileStore::EntrySet FileStore::lookupWithHistory(const EntryName& name) const {
   auto participant = this->getParticipant(name.participant());
@@ -235,6 +242,10 @@ std::shared_ptr<FileStore::Entry> FileStore::Cell::lookup(Timestamp validAt) {
     return latest_;
   }
   return Entry::Load(*this, it->validFrom);
+}
+
+std::set<std::string> FileStore::Cell::pagePaths() const {
+  return latest_->pagePaths();
 }
 
 std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool createIfNeeded) {
@@ -298,6 +309,15 @@ bool FileStore::EntryBase::isOriginalPayloadOwner() const {
     return false;
   }
   return !content_->getOriginalPayloadEntryTimestamp().has_value();
+}
+
+std::set<std::string> FileStore::EntryBase::pagePaths() const {
+  if (content_ == nullptr) {
+    return {};
+  }
+  auto payload = content_->payload();
+  assert(payload != nullptr);
+  return payload->getPagePaths(cell_.entryName());
 }
 
 FileStore::EntryHeader FileStore::Entry::header() const {
@@ -605,6 +625,14 @@ std::shared_ptr<FileStore::Entry> FileStore::Participant::lookup(const std::stri
     return nullptr;
   }
   return cell->lookup(validAt);
+}
+
+std::set<std::string> FileStore::Participant::pagePaths() const {
+  std::set<std::string> result;
+  for (const auto& cell : cells_) {
+    InsertNonDuplicates(result, cell->pagePaths());
+  }
+  return result;
 }
 
 }
