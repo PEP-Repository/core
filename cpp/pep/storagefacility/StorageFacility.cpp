@@ -1085,7 +1085,7 @@ messaging::MessageBatches StorageFacility::handlePagePathRequest(std::shared_ptr
 
     while (i != end) {
       PagePathResponse chunk;
-      FillToCapacity(std::inserter(chunk.paths, chunk.paths.end()), messaging::MaxSizeOfMessage, std::ranges::subrange{ i, end });
+      FillToCapacity(std::inserter(chunk.paths, chunk.paths.end()), messaging::NetMessageCapacity, std::ranges::subrange{ i, end });
       if (chunk.paths.size() == 0U) {
         throw std::runtime_error("Could not create network-portable set of page paths");
       }
