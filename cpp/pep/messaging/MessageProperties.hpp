@@ -70,7 +70,7 @@ public:
 
   [[nodiscard]] EncodedMessageProperties encode() const noexcept { return ToUnderlying(bits_); }
 
-  [[nodiscard]] static Flags DecodeFrom(EncodedMessageProperties properties) noexcept {
+  [[nodiscard]] static Flags DecodeFrom(EncodedMessageProperties properties) {
     return Flags(Bits(static_cast<EncodedMessageProperties>(properties & detail::encoding_layout::FlagBits)));
   }
 

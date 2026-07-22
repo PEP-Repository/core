@@ -333,6 +333,31 @@ private:
     }
   };
 
+  class CommandQueryPagePaths : public ChildCommandOf<CommandQuery> {
+  public:
+    explicit CommandQueryPagePaths(CommandQuery& parent)
+      : ChildCommandOf<CommandQuery>("page-paths", "Reports (relative) paths of the current data set's pages in Storage Facility's page store", parent)
+    {}
+
+    std::optional<std::string> getAdditionalDescription() const override {
+      return "This command should be needed/used only for extraordinary maintenance of Storage Facility's page store, such as migration to a new storage provider.";
+    }
+
+  protected:
+    int execute() override {
+      return this->executeEventLoopFor(true, [](std::shared_ptr<pep::CoreClient> client) {
+        return client->getStorageFacilityProxy()->requestPagePaths()
+          .map([](const pep::PagePathResponse& response) {
+              for (const auto& path : response.paths) {
+                std::cout << path << '\n';
+              }
+              std::cout.flush();
+              return pep::FakeVoid();
+            });
+        });
+    }
+  };
+
 protected:
   inline std::optional<std::string> getRelativeDocumentationUrl() const override {
     return "using-pepcli#query";
@@ -345,6 +370,7 @@ protected:
     result.push_back(std::make_shared<CommandQueryEnrollment>(*this));
     result.push_back(std::make_shared<CommandQueryToken>(*this));
     result.push_back(std::make_shared<CommandQueryDataSize>(*this));
+    result.push_back(std::make_shared<CommandQueryPagePaths>(*this));
     return result;
   }
 };

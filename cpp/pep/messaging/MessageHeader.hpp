@@ -8,6 +8,15 @@ using MessageLength = uint32_t;
 
 extern const size_t MaxSizeOfMessage;
 
+/// @brief Aggressive guesstimate of the net message capacity for serialization
+/// @remark Fraction of capacity available for unserialized payload/business objects.
+///         E.g. if this value is 0.9, unserialized object size should not exceed 90% of capacity available for serialization.
+extern const double NetMessageCapacityFactor;
+
+/// @brief Guesstimate of the maximum size of a business object so its serialized form does not exceed MaxSizeOfMessage.
+/// @remark Intended for use with the "FillToCapacity" function.
+extern const size_t NetMessageCapacity;
+
 // Helper struct to send and receive message headers across the network
 #pragma pack(push, 1)
 struct EncodedMessageHeader {
