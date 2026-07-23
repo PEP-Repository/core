@@ -12,7 +12,6 @@ add_library(${PROJECT_NAME}Cryptolib STATIC
     CryptoSerializers.cpp CryptoSerializers.hpp
     Encrypted.cpp Encrypted.hpp
     GcmContext.hpp
-    Timestamp.cpp Timestamp.hpp
     X509Certificate.cpp X509Certificate.hpp
 )
 

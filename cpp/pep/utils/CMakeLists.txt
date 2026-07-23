@@ -25,6 +25,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Bitpacking.cpp Bitpacking.hpp
     BoostHexUtil.hpp
     BuildFlavor.hpp
+    CheckedPath.cpp CheckedPath.hpp
     ChronoUtil.hpp
     CollectionUtils.hpp CollectionUtils.cpp
     Compare.hpp
@@ -44,6 +45,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Math.hpp
     MiscUtil.cpp MiscUtil.hpp
     Mod97.cpp Mod97.hpp
+    NormalizedTypeNaming.cpp NormalizedTypeNaming.hpp
     OpenSSLHasher.hpp OpenSSLHasher.cpp
     OpensslUtils.hpp OpensslUtils.cpp
     OperationResult.hpp
@@ -55,7 +57,6 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     PropertySerializer.hpp
     Random.cpp Random.hpp
     Raw.cpp Raw.hpp
-        CheckedPath.cpp CheckedPath.hpp
     SelfRegistering.hpp
     Shared.hpp
     Singleton.hpp
@@ -63,6 +64,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     StringStream.cpp StringStream.hpp
     TaggedValue.hpp
     ThreadUtil.cpp ThreadUtil.hpp
+    Timestamp.cpp Timestamp.hpp
     TypeTraits.hpp
     VariantUtils.hpp
     VectorOfVectors.hpp
@@ -103,7 +105,6 @@ if (WITH_TESTS)
     OnFatalTestFailure.hpp
     RegisteredTestEnvironment.cpp RegisteredTestEnvironment.hpp
     TestApplicationMainFunction.cpp
-    VerifyBackwardCompatibleSerialization.hpp
     TestError.hpp
     TestTiming.hpp
   )

@@ -1,7 +1,7 @@
 #include <pep/auth/OAuthToken.hpp>
 
 #include <pep/crypto/ConstTime.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Base64.hpp>
 #include <pep/utils/Hmac.hpp>

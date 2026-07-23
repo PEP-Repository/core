@@ -1,7 +1,7 @@
 #include <pep/cli/token/CommandTokenBlock.hpp>
 
 #include <pep/client/Client.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <pep/structuredoutput/Csv.hpp>
 #include <pep/structuredoutput/Table.hpp>
 

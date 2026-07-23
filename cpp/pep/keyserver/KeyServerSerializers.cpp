@@ -1,5 +1,6 @@
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/keyserver/KeyServerSerializers.hpp>
+#include <pep/serialization/TimestampSerializer.hpp>
 
 namespace pep {
 
