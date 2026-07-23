@@ -30,26 +30,14 @@ void Serializer<PurgeCancelRequest>::moveIntoProtocolBuffer(proto::PurgeCancelRe
   dest.set_id(value.id);
 }
 
-PurgeReviewRequest Serializer<PurgeReviewRequest>::fromProtocolBuffer(proto::PurgeReviewRequest&& source) const {
-  return PurgeReviewRequest{
-    .id = source.id(),
-  };
-}
-
-void Serializer<PurgeReviewRequest>::moveIntoProtocolBuffer(proto::PurgeReviewRequest& dest, PurgeReviewRequest value) const {
-  dest.set_id(value.id);
-}
-
 PurgeConfirmationRequest Serializer<PurgeConfirmationRequest>::fromProtocolBuffer(proto::PurgeConfirmationRequest&& source) const {
   return PurgeConfirmationRequest{
     .id = source.id(),
-    .confirmed = source.confirmed(),
   };
 }
 
 void Serializer<PurgeConfirmationRequest>::moveIntoProtocolBuffer(proto::PurgeConfirmationRequest& dest, PurgeConfirmationRequest value) const {
   dest.set_id(value.id);
-  dest.set_confirmed(value.confirmed);
 }
 
 }
