@@ -2,14 +2,6 @@
 
 namespace pep {
 
-void Serializer<Timestamp>::moveIntoProtocolBuffer(proto::Timestamp& dest, Timestamp value) const {
-  dest.set_epoch_millis(TicksSinceEpoch<std::chrono::milliseconds>(value));
-}
-
-Timestamp Serializer<Timestamp>::fromProtocolBuffer(proto::Timestamp&& source) const {
-  return Timestamp(std::chrono::milliseconds{source.epoch_millis()});
-}
-
 X509Certificate Serializer<X509Certificate>::fromProtocolBuffer(proto::X509Certificate&& source) const {
   return X509Certificate::FromDer(source.data());
 }

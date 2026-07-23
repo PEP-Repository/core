@@ -11,6 +11,7 @@ add_library(${PROJECT_NAME}Serializationlib STATIC
     Serialization.hpp
     SerializeException.hpp
     Serializer.hpp
+    TimestampSerializer.cpp TimestampSerializer.hpp
 )
 
 target_link_libraries(${PROJECT_NAME}Serializationlib
