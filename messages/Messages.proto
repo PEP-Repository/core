@@ -798,16 +798,16 @@ message DataSizeResponse {
   uint64 rolling_blocks = 3;
 }
 
-message PurgeCycleBeginRequest {
+message PurgeAnnounceRequest {
   string name = 1;
 }
 
-message SignedPurgeCycleBeginRequest {
+message SignedPurgeAnnounceRequest {
   Signature signature = 1;
   bytes data = 2;
 }
 
-message PurgeCycleBeginResponse {
+message PurgeAnnounceResponse {
   uint32 id = 1;
 }
 

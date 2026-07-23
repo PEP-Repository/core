@@ -115,7 +115,7 @@ private:
   messaging::MessageBatches handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> signedRequest);
   messaging::MessageBatches handlePagePathRequest(std::shared_ptr<SignedPagePathRequest> signedRequest);
 
-  messaging::MessageBatches handlePurgeCycleRequest(std::shared_ptr<SignedPurgeCycleBeginRequest> signedRequest);
+  messaging::MessageBatches handlePurgeCycleRequest(std::shared_ptr<SignedPurgeAnnounceRequest> signedRequest);
   messaging::MessageBatches handlePurgeCancelRequest(std::shared_ptr<SignedPurgeCancelRequest> signedRequest);
 
   std::string encryptId(std::string path, Timestamp time);

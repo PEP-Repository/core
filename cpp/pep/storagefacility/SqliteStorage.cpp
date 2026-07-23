@@ -24,7 +24,7 @@ struct ColumnRecord {
 struct PurgeCycleRecord {
   PurgeCycle::Id id{};
   std::string name;
-  database::UnixMillis createdAt;
+  database::UnixMillis announced;
 };
 
 struct PurgeEntryRecord {
@@ -49,7 +49,7 @@ auto MakeRawStorage(std::string path) {
       make_column("id", &PurgeCycleRecord::id,
         primary_key().autoincrement()),
       make_column("name", &PurgeCycleRecord::name),
-      make_column("createdAt", &PurgeCycleRecord::createdAt)),
+      make_column("announced", &PurgeCycleRecord::announced)),
     make_table("PurgeEntry",
       make_column("cycle", &PurgeEntryRecord::cycle),
       make_column("row", &PurgeEntryRecord::row),
@@ -106,7 +106,7 @@ StorageFacility::SqliteStorage::~SqliteStorage() noexcept = default;
 PurgeCycle::Id StorageFacility::SqliteStorage::createPurgeCycle(PurgeCycle::Definition definition) {
   auto id = implementor_->raw.insert(PurgeCycleRecord{
     .name = std::move(definition).name(),
-    .createdAt = database::TimestampToUnixMillis(TimeNow()),
+    .announced = database::TimestampToUnixMillis(TimeNow()),
     });
 
   PurgeCycle::Id result;

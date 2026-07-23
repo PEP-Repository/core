@@ -87,11 +87,11 @@ rxcpp::observable<PagePathResponse> StorageFacilityProxy::requestPagePaths() con
 }
 
 rxcpp::observable<PurgeCycle::Id> StorageFacilityProxy::createPurgeCycle(PurgeCycle::Definition definition) const {
-  return this->sendRequest<PurgeCycleBeginResponse>(this->sign(PurgeCycleBeginRequest{
+  return this->sendRequest<PurgeAnnounceResponse>(this->sign(PurgeAnnounceRequest{
       .definition = std::move(definition),
     }))
     .op(RxGetOne())
-    .map([](PurgeCycleBeginResponse response) { return response.id; });
+    .map([](PurgeAnnounceResponse response) { return response.id; });
 }
 
 rxcpp::observable<FakeVoid> StorageFacilityProxy::cancelPurgeCycle(PurgeCycle::Id id) const {

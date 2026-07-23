@@ -1122,7 +1122,7 @@ messaging::MessageBatches StorageFacility::handlePagePathRequest(std::shared_ptr
     });
 }
 
-messaging::MessageBatches StorageFacility::handlePurgeCycleRequest(std::shared_ptr<SignedPurgeCycleBeginRequest> signedRequest) {
+messaging::MessageBatches StorageFacility::handlePurgeCycleRequest(std::shared_ptr<SignedPurgeAnnounceRequest> signedRequest) {
   const auto& rootCAs = this->getRootCAs();
   auto certified = signedRequest->open(*rootCAs);
 
@@ -1130,7 +1130,7 @@ messaging::MessageBatches StorageFacility::handlePurgeCycleRequest(std::shared_p
   UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
 
   auto id = this->createPurgeCycle(std::move(certified.message.definition));
-  return messaging::BatchSingleMessage(PurgeCycleBeginResponse{
+  return messaging::BatchSingleMessage(PurgeAnnounceResponse{
     .id = id,
     });
 }

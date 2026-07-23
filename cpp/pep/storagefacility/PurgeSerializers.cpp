@@ -2,21 +2,21 @@
 
 namespace pep {
 
-PurgeCycleBeginRequest Serializer<PurgeCycleBeginRequest>::fromProtocolBuffer(proto::PurgeCycleBeginRequest&& source) const {
-  return PurgeCycleBeginRequest(PurgeCycle::Definition(std::move(*source.mutable_name())));
+PurgeAnnounceRequest Serializer<PurgeAnnounceRequest>::fromProtocolBuffer(proto::PurgeAnnounceRequest&& source) const {
+  return PurgeAnnounceRequest(PurgeCycle::Definition(std::move(*source.mutable_name())));
 }
 
-void Serializer<PurgeCycleBeginRequest>::moveIntoProtocolBuffer(proto::PurgeCycleBeginRequest& dest, PurgeCycleBeginRequest value) const {
+void Serializer<PurgeAnnounceRequest>::moveIntoProtocolBuffer(proto::PurgeAnnounceRequest& dest, PurgeAnnounceRequest value) const {
   dest.set_name(std::move(value.definition).name());
 }
 
-PurgeCycleBeginResponse Serializer<PurgeCycleBeginResponse>::fromProtocolBuffer(proto::PurgeCycleBeginResponse&& source) const {
-  return PurgeCycleBeginResponse{
+PurgeAnnounceResponse Serializer<PurgeAnnounceResponse>::fromProtocolBuffer(proto::PurgeAnnounceResponse&& source) const {
+  return PurgeAnnounceResponse{
     .id = source.id(),
   };
 }
 
-void Serializer<PurgeCycleBeginResponse>::moveIntoProtocolBuffer(proto::PurgeCycleBeginResponse& dest, PurgeCycleBeginResponse value) const {
+void Serializer<PurgeAnnounceResponse>::moveIntoProtocolBuffer(proto::PurgeAnnounceResponse& dest, PurgeAnnounceResponse value) const {
   dest.set_id(value.id);
 }
 
