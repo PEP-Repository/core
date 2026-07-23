@@ -1197,6 +1197,7 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
           --end;
         }
         for (auto i = versions.begin(); i != end; ++i) {
+          // TODO: throw if this version is already included in a pending purge request
           sqlite_->addToPurgeCycle(id, participant->name(), cell->columnName(), i->validFrom);
         }
       }
