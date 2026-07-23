@@ -2,6 +2,7 @@
 #include <pep/database/UnixMillis.hpp>
 #include <pep/storagefacility/PurgeMessages.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
+#include <boost/numeric/conversion/cast.hpp>
 #include <sqlite_orm/sqlite_orm.h>
 
 namespace pep {
