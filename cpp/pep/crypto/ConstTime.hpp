@@ -43,11 +43,11 @@ requires (std::same_as<std::ranges::range_value_t<decltype(lhs)>, std::ranges::r
   return inequalBits == Type{};
 }
 
-/// Convert \p bytes to hexadecimal in constant time.
+/// Convert \p bytes to hexadecimal in constant time (only depending on the length).
 /// \returns Hexadecimal string. Length is always a multiple of 2.
 std::string ToHex(std::string_view bytes);
 
-/// Convert \p hex to bytes from hexadecimal in constant time.
+/// Convert \p hex to bytes from hexadecimal in constant time (only depending on the length).
 /// \throws std::invalid_argument for length not divisible by 2.
 /// \throws std::invalid_argument for invalid hex character. For invalid characters, the execution time may depend on the value.
 /// \returns String of bytes.
