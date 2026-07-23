@@ -29,6 +29,7 @@
 **MANUAL CHANGES REQUIRED**:
 
 - core#2313: Add a `"StorageFile": "StorageFacility.sqlite"` configuration setting to `StorageFacility.json`.
+- core#2313: Ensure that `StorageFacility.sqlite` is included in backups.
 
 ---------------
 *Past changes, do not edit (except by person doing release):*
