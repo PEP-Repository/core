@@ -21,6 +21,7 @@ public:
   rxcpp::observable<DataSizeResponse> requestDataSize(DataSizeRequest request) const;
   rxcpp::observable<PagePathResponse> requestPagePaths() const;
 
+  rxcpp::observable<PurgeCycle> listPurgeCycles() const;
   rxcpp::observable<PurgeCycle> createPurgeCycle(PurgeCycle::Definition definition) const;
   rxcpp::observable<PurgeCycle> cancelPurgeCycle(PurgeCycle::Id id) const;
 };

@@ -1122,7 +1122,21 @@ messaging::MessageBatches StorageFacility::handlePagePathRequest(std::shared_ptr
     });
 }
 
-messaging::MessageBatches StorageFacility::handlePurgeCycleRequest(std::shared_ptr<SignedPurgeAnnounceRequest> signedRequest) {
+messaging::MessageBatches StorageFacility::handlePurgeListRequest(std::shared_ptr<SignedPurgeListRequest> signedRequest) {
+  const auto& rootCAs = this->getRootCAs();
+  auto certified = signedRequest->open(*rootCAs);
+
+  auto accessGroup = certified.signatory.organizationalUnit();
+  UserGroup::EnsureAccess({ UserGroup::DataAdministrator, UserGroup::RepositoryManager }, accessGroup);
+
+  auto cycles = sqlite_->getPurgeCycles();
+  return rxcpp::observable<>::iterate(cycles)
+    .map([](PurgeCycle cycle) -> messaging::MessageSequence {
+        return rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(cycle)));
+      });
+}
+
+messaging::MessageBatches StorageFacility::handlePurgeAnnounceRequest(std::shared_ptr<SignedPurgeAnnounceRequest> signedRequest) {
   const auto& rootCAs = this->getRootCAs();
   auto certified = signedRequest->open(*rootCAs);
 
@@ -1254,7 +1268,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
                           &StorageFacility::handleDataHistoryRequest2,
                           &StorageFacility::handleDataSizeRequest,
                           &StorageFacility::handlePagePathRequest,
-                          &StorageFacility::handlePurgeCycleRequest,
+                          &StorageFacility::handlePurgeListRequest,
+                          &StorageFacility::handlePurgeAnnounceRequest,
                           &StorageFacility::handlePurgeCancelRequest);
 
   this->updateFileStoreMetrics();

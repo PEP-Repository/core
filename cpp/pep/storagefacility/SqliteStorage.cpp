@@ -58,6 +58,14 @@ auto MakeRawStorage(std::string path) {
   );
 }
 
+PurgeCycle RecordToPurgeCycle(PurgeCycleRecord record) {
+  return PurgeCycle{
+    .id = record.id,
+    .definition = PurgeCycle::Definition(std::move(record.name)),
+    .announced = database::TimestampFromUnixMillis(record.announced),
+  };
+}
+
 } // End anonymous namespace
 
 struct StorageFacility::SqliteStorage::Implementor : public pep::database::Storage<MakeRawStorage> {
@@ -103,6 +111,15 @@ StorageFacility::SqliteStorage::SqliteStorage(std::filesystem::path file)
 
 StorageFacility::SqliteStorage::~SqliteStorage() noexcept = default;
 
+std::vector<PurgeCycle> StorageFacility::SqliteStorage::getPurgeCycles() const {
+  return RangeToVector(implementor_->raw.get_all<PurgeCycleRecord>()
+    | std::ranges::views::transform(&RecordToPurgeCycle));
+}
+
+PurgeCycle StorageFacility::SqliteStorage::getPurgeCycle(PurgeCycle::Id id) const {
+  return RecordToPurgeCycle(implementor_->raw.get<PurgeCycleRecord>(id));
+}
+
 PurgeCycle::Id StorageFacility::SqliteStorage::createPurgeCycle(PurgeCycle::Definition definition) {
   auto id = implementor_->raw.insert(PurgeCycleRecord{
     .name = std::move(definition).name(),
@@ -124,15 +141,6 @@ void StorageFacility::SqliteStorage::deletePurgeCycle(PurgeCycle::Id id) {
   using namespace sqlite_orm;
   implementor_->raw.remove_all<PurgeEntryRecord>(where(c(&PurgeEntryRecord::cycle) == id));
   this->deletePurgeCycleRecord(id);
-}
-
-PurgeCycle StorageFacility::SqliteStorage::getPurgeCycle(PurgeCycle::Id id) {
-  auto record = implementor_->raw.get<PurgeCycleRecord>(id);
-  return PurgeCycle{
-    .id = id,
-    .definition = PurgeCycle::Definition(std::move(record.name)),
-    .announced = database::TimestampFromUnixMillis(record.announced),
-  };
 }
 
 void StorageFacility::SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const std::string& row, const std::string& column, Timestamp timestamp) {

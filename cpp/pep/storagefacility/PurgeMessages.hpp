@@ -5,7 +5,10 @@
 
 namespace pep {
 
-// No separate PurgeXyzResponse types: we return a PurgeCycle instead
+// No separate PurgeXyzResponse types: we return PurgeCycle instances instead
+
+// List existing purge cycles
+struct PurgeListRequest {};
 
 // Begin (defining) a new purge cycle
 struct PurgeAnnounceRequest {
@@ -22,6 +25,7 @@ struct PurgeConfirmationRequest {
   PurgeCycle::Id id;
 };
 
+using SignedPurgeListRequest = Signed<PurgeListRequest>;
 using SignedPurgeAnnounceRequest = Signed<PurgeAnnounceRequest>;
 using SignedPurgeCancelRequest = Signed<PurgeCancelRequest>;
 using SignedPurgeConfirmationRequest = Signed<PurgeConfirmationRequest>;

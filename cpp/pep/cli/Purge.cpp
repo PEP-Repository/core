@@ -11,6 +11,14 @@ namespace {
 
 constexpr const char* DestructiveWarning = "Falsifies repository history, making it impossible to re-download exact copies of data sets that include purged items.";
 
+void OutputPurgeCycle(const PurgeCycle& cycle) {
+  std::cout
+    << "Purge cycle " << cycle.id
+    << " for " << cycle.definition.name()
+    << " announced at " << TimestampToXmlDateTime(cycle.announced)
+    << '\n';
+}
+
 class CommandPurge : public ChildCommandOf<CliApplication> {
 public:
   explicit CommandPurge(CliApplication& parent);
@@ -20,8 +28,17 @@ protected:
   std::optional<std::string> getAdditionalDescription() const override;
 
 private:
+  class List;
   class BackCatalog;
   class Cancel;
+};
+
+class CommandPurge::List : public ChildCommandOf<CommandPurge> {
+public:
+  explicit List(CommandPurge& parent);
+
+protected:
+  int execute() override;
 };
 
 class CommandPurge::BackCatalog : public ChildCommandOf<CommandPurge> {
@@ -48,9 +65,23 @@ CommandPurge::CommandPurge(CliApplication& parent)
 
 std::vector<std::shared_ptr<commandline::Command>> CommandPurge::createChildCommands() {
   std::vector<std::shared_ptr<commandline::Command>> result;
+  result.emplace_back(std::make_shared<List>(*this));
   result.emplace_back(std::make_shared<BackCatalog>(*this));
   result.emplace_back(std::make_shared<Cancel>(*this));
   return result;
+}
+
+CommandPurge::List::List(CommandPurge& parent)
+  : ChildCommandOf<CommandPurge>("list", "List purge cycles", parent) {}
+
+int CommandPurge::List::execute() {
+  return this->executeEventLoopForClient(true, [](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
+    return client->getStorageFacilityProxy()->listPurgeCycles()
+      .map([](PurgeCycle cycle) {
+      OutputPurgeCycle(cycle);
+      return FakeVoid();
+        });
+    });
 }
 
 std::optional<std::string> CommandPurge::getAdditionalDescription() const {
@@ -69,10 +100,7 @@ int CommandPurge::BackCatalog::execute() {
   return this->executeEventLoopForClient(true, [](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
     return client->getStorageFacilityProxy()->createPurgeCycle(PurgeCycle::Definition(BackCatalogPurgeFilter))
       .map([](PurgeCycle cycle) {
-          std::cout
-            << "Purge cycle " << cycle.id
-            << " for " << cycle.definition.name()
-            << " announced at " << TimestampToXmlDateTime(cycle.announced);
+          OutputPurgeCycle(cycle);
           return FakeVoid();
         });
     });

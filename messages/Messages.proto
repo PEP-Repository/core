@@ -804,6 +804,13 @@ message PurgeCycle {
   Timestamp announced = 3;
 }
 
+message PurgeListRequest {}
+
+message SignedPurgeListRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
 message PurgeAnnounceRequest {
   string name = 1;
 }
