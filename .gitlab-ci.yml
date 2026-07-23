@@ -393,7 +393,7 @@ cleanup:
 .ccache-configuration: &ccache-configuration
   cache:
     paths:
-      - ccache/
+      - temp/ccache/
     key: "ccache"
 
   before_script:
@@ -401,7 +401,7 @@ cleanup:
     - export CCACHE_BASEDIR="$PWD"
 
     # Instruct Ccache to use our cache directory (shared between jobs)
-    - export CCACHE_DIR="$PWD/ccache"
+    - export CCACHE_DIR="$PWD/temp/ccache"
 
     # Remove old(ish) cache entries, as the cache upload was taking longer than the job itself
     - ccache --evict-older-than "$CCACHE_EXPIRATION_TIME" || true
@@ -414,7 +414,7 @@ cleanup:
 # Print Ccache stats after each job, refer to this in after_script
 # We need to specify CCACHE_DIR explicitly because somehow CCACHE_DIR is wiped at this point
 .ccache-print: &ccache-print |
-  CCACHE_DIR="$PWD/ccache" ccache --show-stats --verbose 2> /dev/null || true
+  CCACHE_DIR="$PWD/temp/ccache" ccache --show-stats --verbose 2> /dev/null || true
 
 .stage-artifacts: &stage-artifacts
   - |
@@ -679,7 +679,7 @@ ubuntu-lts-debug-without-castor:
   cache:
     - key: "ccache"
       paths:
-        - ccache/
+        - temp/ccache/
     - key: "infer-state"
       paths:
         - infer_state/
