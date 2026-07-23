@@ -2,7 +2,6 @@
 #include <pep/database/UnixMillis.hpp>
 #include <pep/storagefacility/PurgeMessages.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
-#include <boost/numeric/conversion/cast.hpp>
 #include <sqlite_orm/sqlite_orm.h>
 
 namespace pep {
@@ -106,7 +105,7 @@ StorageFacility::SqliteStorage::~SqliteStorage() noexcept = default;
 PurgeCycle::Id StorageFacility::SqliteStorage::createPurgeCycle(PurgeCycle::Definition definition) {
   auto id = implementor_->raw.insert(PurgeCycleRecord{
     .name = std::move(definition).name(),
-    .createdAt = TicksSinceEpoch<std::chrono::milliseconds>(TimeNow()),
+    .createdAt = database::TimestampToUnixMillis(TimeNow()),
     });
 
   PurgeCycle::Id result;
