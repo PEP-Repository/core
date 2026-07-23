@@ -50,14 +50,14 @@ TEST(ConstTime, IsEqual) {
 TEST(ConstTime, ToHex) {
   EXPECT_EQ(pep::const_time::ToHex("abc"), "616263");
   EXPECT_EQ(pep::const_time::ToHex("\x00\x01\x02\x89\xaa\xab\xff"sv), "00010289AAABFF");
-  EXPECT_EQ(pep::const_time::ToHex(""), "");
+  EXPECT_EQ(pep::const_time::ToHex(""), "");  // edge case
 }
 
 TEST(ConstTime, FromHex) {
   EXPECT_EQ(pep::const_time::FromHex("616263"), "abc");
   EXPECT_EQ(pep::const_time::FromHex("00010289AAABFF"), "\x00\x01\x02\x89\xaa\xab\xff"sv);
   EXPECT_EQ(pep::const_time::FromHex("aa"), "\xaa") << "FromHex should support lowercase";
-  EXPECT_EQ(pep::const_time::FromHex(""), "");
+  EXPECT_EQ(pep::const_time::FromHex(""), "");  // edge case
 
   EXPECT_THROW(pep::const_time::FromHex("A"), std::invalid_argument)
     << "FromHex should reject strings with a length that is not a multiple of 2";
