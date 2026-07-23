@@ -45,6 +45,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Math.hpp
     MiscUtil.cpp MiscUtil.hpp
     Mod97.cpp Mod97.hpp
+    NormalizedTypeNaming.cpp NormalizedTypeNaming.hpp
     OpenSSLHasher.hpp OpenSSLHasher.cpp
     OpensslUtils.hpp OpensslUtils.cpp
     OperationResult.hpp
