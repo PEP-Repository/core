@@ -13,7 +13,7 @@ PurgeCycle Serializer<PurgeCycle>::fromProtocolBuffer(proto::PurgeCycle&& source
 
 void Serializer<PurgeCycle>::moveIntoProtocolBuffer(proto::PurgeCycle& dest, PurgeCycle value) const {
   dest.set_id(value.id);
-  dest.set_name(std::move(value.definition).name()); // TODO: std::move
+  dest.set_name(std::move(value.definition).name());
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_announced(), value.announced);
 }
 
