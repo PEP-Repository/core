@@ -3,6 +3,7 @@
 #include <pep/serialization/MessageMagic.hpp>
 #include <pep/serialization/Error.hpp>
 #include <pep/serialization/tests/VerifyBackwardCompatible.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 namespace {
 

@@ -52,10 +52,10 @@ trigger_and_wait() {
   gitlab_host=$("$SCRIPTPATH"/gitdir.sh origin-host "$git_dir")
   project_path=$("$SCRIPTPATH"/gitdir.sh origin-path "$git_dir")
 
-  pipeline_id=$(get_pipeline_id "$branchname") || return 1
-
   # GitLab can only run pipelines for branches (or tags): see https://stackoverflow.com/a/63460457
   gitlab_api post "repository/branches?branch=$branchname&ref=$ref_sha" > /dev/null
+
+  pipeline_id=$(get_pipeline_id "$branchname") || return 1
 
   if [ -n "$pipeline_name" ]; then
     gitlab_api put "pipelines/$pipeline_id/metadata" --data "name=$pipeline_name" > /dev/null || true

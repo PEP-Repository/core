@@ -1,7 +1,6 @@
 #pragma once
 
 #include <pep/crypto/Encrypted.hpp>
-#include <pep/utils/Timestamp.hpp>
 #include <pep/crypto/X509Certificate.hpp>
 #include <Messages.pb.h>
 
@@ -9,8 +8,6 @@
   PEP_DEFINE_PROTOCOL_BUFFER_SERIALIZATION(Encrypted<t>, proto::BOOST_PP_CAT(Encrypted, t))
 
 namespace pep {
-
-PEP_DEFINE_CODED_SERIALIZER(Timestamp);
 
 PEP_DEFINE_CODED_SERIALIZER(X509Certificate);
 PEP_DEFINE_CODED_SERIALIZER(X509CertificateChain);

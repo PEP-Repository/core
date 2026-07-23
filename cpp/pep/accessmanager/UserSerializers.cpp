@@ -1,6 +1,6 @@
 #include <pep/accessmanager/UserSerializers.hpp>
 #include <pep/auth/UserGroupSerializers.hpp>
-#include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/serialization/TimestampSerializer.hpp>
 
 namespace pep {
 

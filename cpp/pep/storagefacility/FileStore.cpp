@@ -204,7 +204,7 @@ PropertyBasedContainer<const FileStore::Participant*, &FileStore::Participant::n
   for (const auto& participant : participants_) {
     [[maybe_unused]] auto emplaced = result.emplace(participant.get());
     assert(emplaced.second);
-    assert(++emplaced.first == result.end()); // Should have been inserted at the back of the result set
+    assert(std::next(emplaced.first) == result.end()); // Should have been inserted at the back of the result set
   }
   return result;
 }
@@ -574,7 +574,7 @@ PropertyBasedContainer<const FileStore::Cell*, &FileStore::Cell::columnName>::se
   for (const auto& cell : cells_) {
     [[maybe_unused]] auto emplaced = result.emplace(cell.get());
     assert(emplaced.second);
-    assert(++emplaced.first == result.end()); // Should have been inserted at the back of the result set
+    assert(std::next(emplaced.first) == result.end()); // Should have been inserted at the back of the result set
   }
   return result;
 }

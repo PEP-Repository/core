@@ -1,5 +1,6 @@
 #include <pep/auth/SigningSerializers.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/serialization/TimestampSerializer.hpp>
 
 namespace pep {
 
