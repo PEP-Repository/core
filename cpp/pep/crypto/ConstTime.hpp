@@ -5,6 +5,16 @@
 #include <ranges>
 #include <string>
 
+// For implementors:
+// Constant-time functions cannot use branching (if, ternary, short-circuit logic, ...) on secrets.
+// They can also not index memory depending on secrets (lookup tables),
+// because of caching (reads accessing memory that wasn't cached take more time).
+// They can also not use operations that may not be constant time, like division.
+
+/// Constant-time functions for operations on secrets.
+///
+/// The running time of these functions does not depend on the value of a secret input.
+/// This protects against timing attacks.
 namespace pep::const_time {
 
 /// Check if all elements are zero in constant time (only depending on the length)
