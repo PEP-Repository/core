@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/utils/Timestamp.hpp>
 #include <cstdint>
 #include <string>
 
@@ -18,6 +19,10 @@ struct PurgeCycle {
     const std::string& name() const& noexcept { return name_; }
     std::string&& name() && noexcept { return std::move(name_); }
   };
+
+  Id id;
+  Definition definition;
+  Timestamp announced;
 };
 
 }

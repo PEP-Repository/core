@@ -126,6 +126,15 @@ void StorageFacility::SqliteStorage::deletePurgeCycle(PurgeCycle::Id id) {
   this->deletePurgeCycleRecord(id);
 }
 
+PurgeCycle StorageFacility::SqliteStorage::getPurgeCycle(PurgeCycle::Id id) {
+  auto record = implementor_->raw.get<PurgeCycleRecord>(id);
+  return PurgeCycle{
+    .id = id,
+    .definition = PurgeCycle::Definition(std::move(record.name)),
+    .announced = database::TimestampFromUnixMillis(record.announced),
+  };
+}
+
 void StorageFacility::SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const std::string& row, const std::string& column, Timestamp timestamp) {
   implementor_->raw.insert(PurgeEntryRecord{
     .cycle = id,

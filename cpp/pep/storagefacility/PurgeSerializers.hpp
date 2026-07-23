@@ -5,16 +5,15 @@
 
 namespace pep {
 
+PEP_DEFINE_CODED_SERIALIZER(PurgeCycle);
+
 PEP_DEFINE_CODED_SERIALIZER(PurgeAnnounceRequest);
 PEP_DEFINE_SIGNED_SERIALIZATION(PurgeAnnounceRequest);
-PEP_DEFINE_CODED_SERIALIZER(PurgeAnnounceResponse);
 
 PEP_DEFINE_CODED_SERIALIZER(PurgeCancelRequest);
 PEP_DEFINE_SIGNED_SERIALIZATION(PurgeCancelRequest);
-PEP_DEFINE_EMPTY_SERIALIZER(PurgeCancelResponse);
 
 PEP_DEFINE_CODED_SERIALIZER(PurgeConfirmationRequest);
 PEP_DEFINE_SIGNED_SERIALIZATION(PurgeConfirmationRequest);
-PEP_DEFINE_EMPTY_SERIALIZER(PurgeConfirmationResponse);
 
 }

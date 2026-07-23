@@ -19,6 +19,7 @@ public:
 
   PurgeCycle::Id createPurgeCycle(PurgeCycle::Definition definition);
   void deletePurgeCycle(PurgeCycle::Id id);
+  PurgeCycle getPurgeCycle(PurgeCycle::Id id);
 
   void addToPurgeCycle(PurgeCycle::Id id, const std::string& row, const std::string& column, Timestamp timestamp);
 };

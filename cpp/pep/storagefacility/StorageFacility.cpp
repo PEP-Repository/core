@@ -1129,10 +1129,8 @@ messaging::MessageBatches StorageFacility::handlePurgeCycleRequest(std::shared_p
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
 
-  auto id = this->createPurgeCycle(std::move(certified.message.definition));
-  return messaging::BatchSingleMessage(PurgeAnnounceResponse{
-    .id = id,
-    });
+  auto result = this->createPurgeCycle(std::move(certified.message.definition));
+  return messaging::BatchSingleMessage(std::move(result));
 }
 
 messaging::MessageBatches StorageFacility::handlePurgeCancelRequest(std::shared_ptr<SignedPurgeCancelRequest> signedRequest) {
@@ -1142,8 +1140,9 @@ messaging::MessageBatches StorageFacility::handlePurgeCancelRequest(std::shared_
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
 
+  auto result = sqlite_->getPurgeCycle(certified.message.id);
   sqlite_->deletePurgeCycle(certified.message.id);
-  return messaging::BatchSingleMessage(PurgeCancelResponse{});
+  return messaging::BatchSingleMessage(std::move(result));
 }
 
 std::string StorageFacility::encryptId(std::string path, Timestamp time) {
@@ -1182,12 +1181,12 @@ Metadata StorageFacility::compileMetadata(
   return result;
 }
 
-PurgeCycle::Id StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) {
+PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) {
   if (definition.name() != BackCatalogPurgeFilter) {
     throw Error("Unsupported purge cycle name \"" + definition.name() + '"');
   }
 
-  auto result = sqlite_->createPurgeCycle(std::move(definition));
+  auto id = sqlite_->createPurgeCycle(std::move(definition));
 
   try {
     for (const FileStore::Participant* participant : fileStore_->participants()) {
@@ -1198,17 +1197,17 @@ PurgeCycle::Id StorageFacility::createPurgeCycle(PurgeCycle::Definition definiti
           --end;
         }
         for (auto i = versions.begin(); i != end; ++i) {
-          sqlite_->addToPurgeCycle(result, participant->name(), cell->columnName(), i->validFrom);
+          sqlite_->addToPurgeCycle(id, participant->name(), cell->columnName(), i->validFrom);
         }
       }
     }
   }
   catch (...) {
-    sqlite_->deletePurgeCycle(result);
+    sqlite_->deletePurgeCycle(id);
     throw;
   }
 
-  return result;
+  return sqlite_->getPurgeCycle(id);
 }
 
 std::optional<std::filesystem::path> StorageFacility::getStoragePath() {

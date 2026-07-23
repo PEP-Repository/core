@@ -5,13 +5,11 @@
 
 namespace pep {
 
+// No separate PurgeXyzResponse types: we return a PurgeCycle instead
+
 // Begin (defining) a new purge cycle
 struct PurgeAnnounceRequest {
   PurgeCycle::Definition definition;
-};
-
-struct PurgeAnnounceResponse {
-  PurgeCycle::Id id;
 };
 
 // Cancel an (unconfirmed) purge cycle
@@ -19,14 +17,10 @@ struct PurgeCancelRequest {
   PurgeCycle::Id id;
 };
 
-struct PurgeCancelResponse {};
-
 // Confirm or deny a purge cycle
 struct PurgeConfirmationRequest {
   PurgeCycle::Id id;
 };
-
-struct PurgeConfirmationResponse {};
 
 using SignedPurgeAnnounceRequest = Signed<PurgeAnnounceRequest>;
 using SignedPurgeCancelRequest = Signed<PurgeCancelRequest>;

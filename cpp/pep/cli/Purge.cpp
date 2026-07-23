@@ -68,8 +68,11 @@ std::optional<std::string> CommandPurge::BackCatalog::getAdditionalDescription()
 int CommandPurge::BackCatalog::execute() {
   return this->executeEventLoopForClient(true, [](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
     return client->getStorageFacilityProxy()->createPurgeCycle(PurgeCycle::Definition(BackCatalogPurgeFilter))
-      .map([](PurgeCycle::Id id) {
-          std::cout << "Purge cycle ID " << id;
+      .map([](PurgeCycle cycle) {
+          std::cout
+            << "Purge cycle " << cycle.id
+            << " for " << cycle.definition.name()
+            << " announced at " << TimestampToXmlDateTime(cycle.announced);
           return FakeVoid();
         });
     });
@@ -87,7 +90,8 @@ commandline::Parameters CommandPurge::Cancel::getSupportedParameters() const {
 int CommandPurge::Cancel::execute() {
   auto id = this->getParameterValues().get<PurgeCycle::Id>("id");
   return this->executeEventLoopForClient(true, [id](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
-    return client->getStorageFacilityProxy()->cancelPurgeCycle(id);
+    return client->getStorageFacilityProxy()->cancelPurgeCycle(id)
+      .map([](PurgeCycle) {return FakeVoid(); });
     });
 }
 

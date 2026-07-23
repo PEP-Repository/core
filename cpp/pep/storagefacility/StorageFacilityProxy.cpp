@@ -86,20 +86,18 @@ rxcpp::observable<PagePathResponse> StorageFacilityProxy::requestPagePaths() con
       });
 }
 
-rxcpp::observable<PurgeCycle::Id> StorageFacilityProxy::createPurgeCycle(PurgeCycle::Definition definition) const {
-  return this->sendRequest<PurgeAnnounceResponse>(this->sign(PurgeAnnounceRequest{
+rxcpp::observable<PurgeCycle> StorageFacilityProxy::createPurgeCycle(PurgeCycle::Definition definition) const {
+  return this->sendRequest<PurgeCycle>(this->sign(PurgeAnnounceRequest{
       .definition = std::move(definition),
     }))
-    .op(RxGetOne())
-    .map([](PurgeAnnounceResponse response) { return response.id; });
+    .op(RxGetOne());
 }
 
-rxcpp::observable<FakeVoid> StorageFacilityProxy::cancelPurgeCycle(PurgeCycle::Id id) const {
-  return this->sendRequest<PurgeCancelResponse>(this->sign(PurgeCancelRequest{
+rxcpp::observable<PurgeCycle> StorageFacilityProxy::cancelPurgeCycle(PurgeCycle::Id id) const {
+  return this->sendRequest<PurgeCycle>(this->sign(PurgeCancelRequest{
       .id = id,
     }))
-    .op(RxGetOne())
-    .map([](PurgeCancelResponse) {return FakeVoid{}; });
+    .op(RxGetOne());
 }
 
 }
