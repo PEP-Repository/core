@@ -4,7 +4,6 @@
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Platform.hpp>
 #include <pep/storagefacility/PageHash.hpp>
-#include <pep/utils/Configuration.hpp>
 
 #include <sstream>
 

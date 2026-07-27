@@ -178,7 +178,6 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   : SigningServer::Parameters(io_context, config) {
   std::filesystem::path keysFile;
   std::filesystem::path encIdKeyFile;
-  auto pageStoreConfig = std::make_shared<Configuration>();
 
   try {
     keysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");

@@ -5,7 +5,7 @@
 #include <boost/type_traits/is_base_of.hpp>
 
 #include <pep/application/CommandLineCommand.hpp>
-#include <pep/utils/Configuration.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
 #include <pep/utils/Log.hpp>
 
 #define PEP_DEFINE_C_MAIN_FUNCTION(applicationType) \

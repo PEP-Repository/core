@@ -2,7 +2,6 @@
 #include <pep/castor/CastorClient.hpp>
 #include <pep/castor/Ptree.hpp>
 #include <pep/castor/Study.hpp>
-#include <pep/utils/Configuration.hpp>
 
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
