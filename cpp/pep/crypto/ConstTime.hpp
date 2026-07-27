@@ -10,6 +10,9 @@
 // They can also not index memory depending on secrets (lookup tables),
 // because of caching (reads accessing memory that wasn't cached take more time).
 // They can also not use operations that may not be constant time, like division.
+// See https://github.com/veorq/cryptocoding.
+// Smart compilers may still mess with this, however:
+// see https://discourse.llvm.org/t/rfc-constant-time-coding-support/87781 and https://eprint.iacr.org/2025/435.
 
 /// Constant-time functions for operations on secrets.
 ///

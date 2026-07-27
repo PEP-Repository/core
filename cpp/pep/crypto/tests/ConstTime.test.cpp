@@ -26,7 +26,8 @@ TEST(ConstTime, IsZero) {
   EXPECT_TRUE(pep::const_time::IsZero(std::array{0, 0, 0}));
   EXPECT_FALSE(pep::const_time::IsZero(std::array{0, 0b11, 0}));
 
-  // Make sure IsZero does not use short-circuit logic
+  // Make sure IsZero does not use short-circuit logic.
+  // Note: This is itself doesn't guarantee it's fully constant-time, but testing timing is infeasible.
   EXPECT_THROW((void) pep::const_time::IsZero(LazyThrowingIota), pep::TestError);
   // STL for comparison
   EXPECT_NO_THROW((void) all_of(LazyThrowingIota, std::bind_front(std::equal_to{}, 0)));
@@ -41,18 +42,21 @@ TEST(ConstTime, IsEqual) {
   EXPECT_FALSE(pep::const_time::IsEqual(std::array{0, 1, 2}, std::array{0, 1}));
   EXPECT_FALSE(pep::const_time::IsEqual(std::array{0, 1}, std::array{0, 1, 2}));
 
-  // Make sure IsEqual does not use short-circuit logic
+  // Make sure IsEqual does not use short-circuit logic.
+  // Note: This is itself doesn't guarantee it's fully constant-time, but testing timing is infeasible.
   EXPECT_THROW((void) pep::const_time::IsEqual(LazyThrowingIota, views::iota(10, 20)), pep::TestError);
   // STL for comparison
   EXPECT_NO_THROW((void) equal(LazyThrowingIota, views::iota(10, 20)));
 }
 
+// Note: We can only do functional tests. Testing timing is infeasible.
 TEST(ConstTime, ToHex) {
   EXPECT_EQ(pep::const_time::ToHex("abc"), "616263");
   EXPECT_EQ(pep::const_time::ToHex("\x00\x01\x02\x89\xaa\xab\xff"sv), "00010289AAABFF");
   EXPECT_EQ(pep::const_time::ToHex(""), "");  // edge case
 }
 
+// Note: We can only do functional tests. Testing timing is infeasible.
 TEST(ConstTime, FromHex) {
   EXPECT_EQ(pep::const_time::FromHex("616263"), "abc");
   EXPECT_EQ(pep::const_time::FromHex("00010289AAABFF"), "\x00\x01\x02\x89\xaa\xab\xff"sv);
