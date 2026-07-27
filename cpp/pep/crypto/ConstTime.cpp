@@ -10,9 +10,9 @@ namespace pep::const_time {
 namespace {
 /// Get mask in constant time that returns all 1s when \p lhs > \p rhs and all 0s otherwise.
 ///
-/// Assumes <tt>rhs - lhs</tt> does not overflow.
+/// Assumes <tt>rhs - lhs</tt> fits in 8 bits.
 int MaskGt(int lhs, int rhs) {
-  return (rhs - lhs) >> 7;
+  return (rhs - lhs) >> 8;
 }
 
 /// Convert \p nibble to hex in constant time.
