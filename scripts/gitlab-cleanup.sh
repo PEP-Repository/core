@@ -372,7 +372,8 @@ delete_container_repository() {
 # https://docs.gitlab.com/ee/api/packages.html#for-a-project
 list_project_package_versions() {
   local dir="$1"
-  gitlab_dir_api "$dir" get-multipage 'packages?package_type=generic'
+  local package_type="$2"
+  gitlab_dir_api "$dir" get-multipage "packages?package_type=$package_type"
 }
 
 delete_package_version() {
@@ -521,7 +522,7 @@ list_used_foss_package_versions() {
 list_foss_package_versions() {
   >&2 echo "Listing package versions..."
   local versions
-  versions="$(set_opts && list_project_package_versions "$foss_dir")"
+  versions="$(set_opts && list_project_package_versions "$foss_dir" generic)"
   # Split from assignment because we don't have pipefail
   raw_echo "$versions" | jq --compact-output '.[]'
 }
@@ -558,14 +559,16 @@ list_used_foss_npm_package_versions() {
   dist_tags=$(raw_echo "$dist_tags_raw" | jq '."dist-tags" // {}')
   list_protected_commits "$foss_dir" | while read -r sha; do
     version=$(raw_echo "$dist_tags" | jq -r --arg sha "$sha" '.[$sha] // empty')
-    [ -n "$version" ] && raw_echo "$version"
+    if [ -n "$version" ]; then
+      raw_echo "$version"
+    fi
   done
 }
 
 list_foss_npm_package_versions() {
   >&2 echo "Listing npm package versions..."
   local versions
-  versions="$(set_opts && gitlab_dir_api "$foss_dir" get-multipage 'packages?package_type=npm')"
+  versions="$(set_opts && list_project_package_versions "$foss_dir" npm)"
   raw_echo "$versions" | jq --compact-output '.[]'
 }
 
