@@ -319,8 +319,7 @@ export default class Pep {
           }
         });
 
-        const fullLandUrl = new URL(landingPage);
-        oauthClient = this.#client.authenticate(fullLandUrl.href,
+        oauthClient = this.#client.authenticate(landingPage.href,
             authChan.name,
             (authUrl: string) => {
               open(authUrl, '_blank', 'popup,top=100,left=100,width=600,height=900');
