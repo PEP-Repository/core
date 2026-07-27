@@ -63,10 +63,13 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     -sEXIT_RUNTIME # Support running global destructors etc. We prevent exiting in main() via emscripten_exit_with_live_runtime()
 
     -sNO_PROXY_TO_PTHREAD # Default: We handle spawning a new thread ourselves, to make sure initialization has happened
-    # Preallocate threads we need
-    "-sPTHREAD_POOL_SIZE=Math.min(navigator.hardwareConcurrency, 8 /*WorkerPool*/ + 1 /*io_context*/ + 1 /*Boost async_resolve*/)"
+    # Preallocate threads we need.
+    # Under Emscripten, creating threads outside the pool is asynchronous and needs to go through the main browser thread.
+    # This means that threads cannot be joined on this thread, as this would block their creation, resulting in a deadlock.
+    # This is not really a problem for us, as we do most work on a background io_context thread,
+    # so this is mostly for optimization.
+    "-sPTHREAD_POOL_SIZE=Math.min(navigator.hardwareConcurrency, 8 /*WorkerPool*/) + 1 /*io_context*/ + 1 /*Boost async_resolve*/"
     -sPTHREAD_POOL_DELAY_LOAD # Allow spinning up thread pool in the background, improving startup time
-    -sNO_PTHREAD_POOL_SIZE_STRICT # We disable this such that we can spawn more threads, but we cannot synchronously join them
 
     # 30 MiB should usually be good to prevent going OOM, but let's leave some room,
     #  since the memory use depends on e.g. the number of CellEntry objects alive and cell metadata size.
