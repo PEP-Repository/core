@@ -232,10 +232,8 @@ void Application::initializeLoggingOnce() {
   { // initialize logging sinks
     std::vector<std::shared_ptr<Logging>> logging;
 
-    if (auto console_level = values.has("logLevel")
-        ? values.getOptional<Severity>("logLevel")
-        : consoleLogMinimumSeverityLevel()) {
-      logging.push_back(std::make_shared<ConsoleLogging>(*console_level));
+    if (auto consoleLevelStr = values.getOptional<std::string>("loglevel")) {
+      logging.push_back(std::make_shared<ConsoleLogging>(Logging::ParseSeverity(*consoleLevelStr)));
       usingConsoleLog = true;
     }
 

@@ -1,5 +1,5 @@
 #include <pep/authserver/AuthserverSerializers.hpp>
-#include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/serialization/TimestampSerializer.hpp>
 
 namespace pep {
 

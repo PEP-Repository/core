@@ -6,6 +6,13 @@
 
 namespace pep::messaging {
 
+namespace {
+
+/// @brief Aggressive guesstimate of the overhead capacity needed when serializing a business object
+constexpr double SerializationCapacityOverheadFactor = 0.1;
+
+}
+
 const size_t MaxSizeOfMessage =
 // #1156: use larger message size in release builds so things will fail in debug builds (on dev boxes) before they bring prod down
 #if PEP_BUILD_HAS_RELEASE_FLAVOR()
@@ -14,6 +21,9 @@ const size_t MaxSizeOfMessage =
   // TODO: reduce (back) to 1 Mb (i.e. remove multiplier by 2).
   // Value was increased as a temporary fix for (production) problems: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2238#note_30480
   2 * 1024 * 1024 - 4;
+
+const double NetMessageCapacityFactor = 1 - SerializationCapacityOverheadFactor;
+const size_t NetMessageCapacity = static_cast<size_t>(NetMessageCapacityFactor * MaxSizeOfMessage);
 
 
 MessageHeader::MessageHeader(MessageLength length, MessageProperties properties)

@@ -5,7 +5,7 @@
  * This allows the "CastorConnection" class to be used without be(com)ing dependent on our networking code.
  */
 
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <pep/networking/EndPoint.hpp>
 #include <pep/networking/HTTPMessage.hpp>
 #include <pep/utils/Event.hpp>

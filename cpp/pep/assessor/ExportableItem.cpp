@@ -1,6 +1,6 @@
 #include <pep/assessor/ExportableItem.hpp>
 #include <pep/content/ParticipantDeviceHistory.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <cassert>
 

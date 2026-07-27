@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/serialization/NormalizedTypeNaming.hpp>
+#include <pep/utils/NormalizedTypeNaming.hpp>
 #include <pep/utils/SelfRegistering.hpp>
 
 #include <optional>

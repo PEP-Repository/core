@@ -7,11 +7,11 @@ add_library(${PROJECT_NAME}Serializationlib STATIC
     IndexListSerializer.cpp IndexListSerializer.hpp
     MessageMagic.cpp MessageMagic.hpp
     MessageSerializer.hpp
-    NormalizedTypeNaming.cpp NormalizedTypeNaming.hpp
     ProtocolBufferedSerializer.hpp
     Serialization.hpp
     SerializeException.hpp
     Serializer.hpp
+    TimestampSerializer.cpp TimestampSerializer.hpp
 )
 
 target_link_libraries(${PROJECT_NAME}Serializationlib
