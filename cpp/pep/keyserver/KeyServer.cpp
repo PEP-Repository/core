@@ -2,12 +2,12 @@
 #include <pep/keyserver/KeyServerSerializers.hpp>
 #include <pep/keyserver/tokenblocking/SqliteBlocklist.hpp>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <chrono>
 #include <pep/auth/ServerTraits.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/utils/Configuration.hpp>
 
@@ -52,7 +52,7 @@ KeyServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_co
     Configuration oauthProperties = Configuration::FromFile(oauthTokenSecretFile);
 
     std::string secretHex = oauthProperties.get<std::string>("OAuthTokenSecret");
-    setOauthTokenSecret(boost::algorithm::unhex(secretHex));
+    setOauthTokenSecret(const_time::FromHex(secretHex));
   }
   catch (std::exception& e) {
     PEP_LOG(LogTag, Severity::Critical) << "Error with oauth file: " << e.what();

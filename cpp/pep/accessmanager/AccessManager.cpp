@@ -29,7 +29,6 @@
 #include <sstream>
 #include <chrono>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/json_parser.hpp>

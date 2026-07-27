@@ -23,7 +23,6 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Attributes.hpp
     Base64.cpp Base64.hpp
     Bitpacking.cpp Bitpacking.hpp
-    BoostHexUtil.hpp
     BuildFlavor.hpp
     CheckedPath.cpp CheckedPath.hpp
     ChronoUtil.hpp

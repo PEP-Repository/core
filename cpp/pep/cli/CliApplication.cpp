@@ -1,22 +1,24 @@
 #include <pep/application/CommandLineCommandWrappers.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/utils/Exceptions.hpp>
 
 #include <iostream>
 #include <ranges>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/asio/io_context.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 
 using namespace std::chrono;
+using namespace std::literals;
 
 namespace pep::cli {
 
@@ -263,16 +265,16 @@ std::optional<std::string> CliApplication::getTokenSecret() const {
   auto tokenSecret = parameterValues.get<std::string>("oauth-token-secret");
   try {
     // Try to interpret the command line parameter as a hex value
-    return boost::algorithm::unhex(tokenSecret);
-  } catch (const boost::algorithm::non_hex_input&) {
+    return const_time::FromHex(tokenSecret);
+  } catch (const std::invalid_argument& ex) {
     // Try to interpret the command line parameter as a path (to a .JSON file)
     if (!std::filesystem::exists(tokenSecret)) {
-      throw std::runtime_error("Unusable OAuth token secret provided: it was not in a hex format and did not specify an existing file");
+      throw std::runtime_error("Unusable OAuth token secret provided: it was not in a hex format ("s + ex.what() + ") and did not specify an existing file");
     }
   }
 
   pep::Configuration root = pep::Configuration::FromFile(tokenSecret);
-  std::string secret = boost::algorithm::unhex(root.get<std::string>("OAuthTokenSecret"));
+  std::string secret = const_time::FromHex(root.get<std::string>("OAuthTokenSecret"));
 
   PEP_LOG(LogTag, Severity::Info)
     << " found oauth token secret in "

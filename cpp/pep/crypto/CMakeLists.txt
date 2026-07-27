@@ -8,7 +8,7 @@ add_library(${PROJECT_NAME}Cryptolib STATIC
     AsymmetricKey.cpp AsymmetricKey.hpp
     Bytes.hpp
     BytesSerializer.cpp BytesSerializer.hpp
-    ConstTime.hpp
+    ConstTime.cpp ConstTime.hpp
     CryptoSerializers.cpp CryptoSerializers.hpp
     Encrypted.cpp Encrypted.hpp
     GcmContext.hpp
