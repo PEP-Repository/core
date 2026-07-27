@@ -10,7 +10,7 @@ namespace pep::const_time {
 namespace {
 /// Get mask in constant time that returns all 1s when \p lhs > \p rhs and all 0s otherwise.
 ///
-/// Assumes <tt>rhs - lhs</tt> fits in 8 bits.
+/// Assumes <tt>rhs - lhs</tt> fits in a signed 9-bit representation.
 int MaskGt(int lhs, int rhs) {
   return (rhs - lhs) >> 8;
 }
