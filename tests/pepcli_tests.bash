@@ -29,12 +29,12 @@ TEST_PARTICIPANT="$(openssl rand -base64 12)"
 if should_run_test basic; then
   # Test --loglevel
   # `|&` redirects both stdout & stderr
-  # Need `tee || true` because of SIGPIPE
+  # `tee /dev/stderr` is to print message to console as well as grepping. We need `|| true` because of SIGPIPE.
   if ! execute . "$PEPCLI_COMMAND" query --help |& (tee /dev/stderr || true) | grep -qF '<info>'; then
     # pepcli prints info message with version
     fail 'Default loglevel should include info log messages'
   fi
-  if execute . "$PEPCLI_COMMAND" --loglevel warning query --help |& (tee /dev/stderr || true) | grep -qF '<info>'; then
+  if execute . "$PEPCLI_COMMAND" --loglevel warning query --help |& grep -qF '<info>'; then
     fail 'warning loglevel should should not include info messages'
   fi
 

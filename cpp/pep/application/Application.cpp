@@ -1,6 +1,7 @@
 #include <pep/application/Application.hpp>
 #include <pep/application/Unwinder.hpp>
 #include <pep/versioning/Version.hpp>
+#include <pep/utils/Configuration.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Paths.hpp>

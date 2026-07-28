@@ -4,6 +4,7 @@
 #include <pep/crypto/ConstTime.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/client/Client.hpp>
+#include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
 
 #include <iostream>
