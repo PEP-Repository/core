@@ -34,7 +34,7 @@ if should_run_test basic; then
     # pepcli prints info message with version
     fail 'Default loglevel should include info log messages'
   fi
-  if execute . "$PEPCLI_COMMAND" --loglevel warning query --help |& (tee /dev/stderr || true) | grep -qF '<info>'; then
+  if execute . "$PEPCLI_COMMAND" --loglevel warning query --help |& grep -qF '<info>'; then
     fail 'warning loglevel should should not include info messages'
   fi
 
