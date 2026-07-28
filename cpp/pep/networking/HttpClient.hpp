@@ -78,6 +78,7 @@ public:
 
   /**
    * @brief Stops the HttpClient, preventing further requests from being sent.
+   * @details Calling this multiple times has no effect.
    */
   void shutdown();
 

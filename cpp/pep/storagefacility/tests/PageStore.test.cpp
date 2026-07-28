@@ -31,16 +31,25 @@ TEST(PageStore, basic) {
 
   sftest::Envs envs; // filled by constructor
 
-  boost::property_tree::ptree s3Conf;
-  SerializeProperties(s3Conf, "EndPoint", EndPoint(envs.host, envs.port, envs.expectCommonName));
-  SerializeProperties(s3Conf, "Credentials", s3::Credentials{
+  boost::property_tree::ptree hostConf;
+  SerializeProperties(hostConf, "EndPoint", EndPoint(envs.host, envs.port, envs.expectCommonName));
+  SerializeProperties(hostConf, "Credentials", s3::Credentials{
     .accessKey = envs.s3AccessKey,
     .secret = envs.s3SecretKey,
     .service = envs.s3ServiceName,
   });
-  s3Conf.put("CaCertificateFile", envs.GetCaCertFilepath().string());
-  s3Conf.put("WriteToBucket", envs.s3TestBucket);
-  SerializeProperties(s3Conf, "ReadFromBuckets", std::vector{envs.s3TestBucket, envs.s3TestBucket2});
+  hostConf.put("CaCertificateFile", envs.GetCaCertFilepath().string());
+
+  boost::property_tree::ptree s3Conf;
+  s3Conf.put_child("Hosts.s3test", hostConf);
+
+  s3Conf.put("WriteToBucket.Name", envs.s3TestBucket);
+  s3Conf.put("WriteToBucket.HostId", "s3test");
+
+  SerializeProperties(s3Conf, "ReadFromBuckets", std::vector<std::unordered_map<std::string, std::string>>{
+    {{"Name", envs.s3TestBucket}, {"HostId", "s3test"}},
+    {{"Name", envs.s3TestBucket2}, {"HostId", "s3test"}},
+  });
 
   boost::property_tree::ptree pageStoreConf;
   pageStoreConf.put_child("S3", s3Conf);

@@ -26,6 +26,53 @@
 
 - core#2945: Added command `pepcli query page-paths`, which lists the paths of the current data set's pages in Storage Facility's backing storage.
 
+- core#2961: Added support for buckets on different S3 hosts for the StorageFacility. In the config file, hosts are given an ID (JSON key) which buckets reference:
+  <details><summary>Config example</summary>
+
+  ```json
+  {"S3": {
+    "Hosts": {
+      "my-host-1": {
+        "EndPoint": {
+          "Address": "foo.pep.cs.ru.nl",
+          "Port": 9000
+        },
+        "Credentials": {
+          "Include": "/data/storagefacility/secrets/S3Credentials1.json"
+        }
+      },
+      "my-host-2": {
+        "EndPoint": {
+          "Address": "bar.pep.cs.ru.nl",
+          "Port": 9000
+        },
+        "Credentials": {
+          "Include": "/data/storagefacility/secrets/S3Credentials2.json"
+        }
+      }
+    },
+    "WriteToBucket": {
+      "Name": "myBucket",
+      "HostId": "my-host-1"
+    },
+    "ReadFromBuckets": [
+      {
+        "Name": "myBucket",
+        "HostId": "my-host-1"
+      },
+      {
+        "Name": "myBucket",
+        "HostId": "my-host-2"
+      }
+    ]
+  }}
+  ```
+  </details>
+
+**MANUAL CHANGES REQUIRED**:
+
+- core#2961: The `StorageFacility.json` config needs to be changed to the new format (see changes above). Extract `EndPoint`, `Credentials`, `CaCertificateFile`, `UseHttps`, and `Connections` (or the subset that is used) into an object under a new `Hosts` key and give it an ID. Then change all buckets into objects with `Name` and `HostId` properties, the latter of which references the host ID.
+
 ---------------
 *Past changes, do not edit (except by person doing release):*
 
