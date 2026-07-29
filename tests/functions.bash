@@ -225,7 +225,7 @@ restart_servers() {
   trace sleep 10
 }
 
-readonly PEPCLI_TIMEOUT=60s
+PEPCLI_TIMEOUT=60s
 # Executes the given pepcli command. It should always be possible to simply copy a used pepcli command (e.g. during Access Administration) and execute it here.
 pepcli() {
   if [ "$LOCAL" = true ]; then

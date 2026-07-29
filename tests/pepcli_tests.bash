@@ -853,7 +853,8 @@ if should_run_test s3-roundtrip; then
   done
 
   # Download the (large) files that we stored
-  pepcli --oauth-token-group "Research Assessor" pull -P \* -c LargeColumn -o "$DEST_DIR/s3-backed-files"
+  # Increase timeout because this may take long, especially when using Podman for some reason
+  PEPCLI_TIMEOUT=200s pepcli --oauth-token-group "Research Assessor" pull -P \* -c LargeColumn -o "$DEST_DIR/s3-backed-files"
   # We'd like to diff/compare the downloaded files to the original LARGE_RANDOM_DATA_FILE, but
   # that's not easily done because "find" doesn't propagate exit codes and we can't pipe within the
   # container. So we just count the downloaded files instead of (also) inspecting their contents.
