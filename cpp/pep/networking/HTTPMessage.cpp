@@ -158,9 +158,9 @@ HTTPRequest::HTTPRequest(
     std::map<std::string, std::string, CaseInsensitiveCompare> headers,
     bool completeHeaders)
   : HTTPRequest(
-      uri.host_name(),
+      std::string(uri.encoded_host_and_port()),
       method,
-      uri, // Do not move: uri.host_name() is called above (and writing another overload isn't worth the effort)
+      uri, // Do not move: uri.encoded_host_and_port() is called above (and writing another overload isn't worth the effort)
       std::move(body),
       std::move(headers),
       completeHeaders) {}
@@ -177,7 +177,7 @@ HTTPRequest::HTTPRequest(
     method_(method),
     uri_(std::move(uri)) {
 
-  assert(uri_.host_name().empty() || uri_.host_name() == host_);
+  assert(!uri_.has_authority() || uri_.encoded_host_and_port() == host_);
   if(completeHeaders) {
     HTTPRequest::completeHeaders();
   }
