@@ -1387,9 +1387,8 @@ upload-weblib-npm:
     - npm version --no-git-tag-version "${PACKAGE_VERSION}"
     - npm install
     - npm pack
-    - npm publish ./pep-repo-client-lib-*.tgz --registry "${PEP_NPM_REGISTRY}"
     # Tag with commit SHA so provide-binaries.sh can find this version by SHA
-    - npm dist-tag add pep-repo-client-lib@${PACKAGE_VERSION} ${CI_COMMIT_SHA} --registry "${PEP_NPM_REGISTRY}"
+    - npm publish ./pep-repo-client-lib-*.tgz --tag "${CI_COMMIT_SHA}" --registry "${PEP_NPM_REGISTRY}"
 
 retag-pep-docker-images:
   extends:
