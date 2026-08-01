@@ -6,8 +6,12 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <string>
 
 namespace {
+
+// Escaped because support for non ascii characters depends on compiler
+const std::string eAcute = "\xC3\xA9"; // U+00E9 (e with acute accent) in utf8
 
 TEST(ColumnNameTest, ConstructorStoresValueVerbatim) {
   pep::ColumnNameSection section("Raw value!");
@@ -23,7 +27,7 @@ TEST(ColumnNameTest, FromRawStringReplacesWhitespaceWithUnderscores) {
 TEST(ColumnNameTest, FromRawStringStripsSpecialCharacters) {
   EXPECT_EQ(pep::ColumnNameSection::FromRawString("Foo-Bar").getValue(), "FooBar");
   EXPECT_EQ(pep::ColumnNameSection::FromRawString("weird!@#$%^&*()chars").getValue(), "weirdchars");
-  EXPECT_EQ(pep::ColumnNameSection::FromRawString("dots.and.détails").getValue(), "dotsanddtails");
+  EXPECT_EQ(pep::ColumnNameSection::FromRawString("dots.and.d" + eAcute + "tails").getValue(), "dotsanddtails");
   // A special character between spaces leaves a double underscore
   EXPECT_EQ(
       pep::ColumnNameSection::FromRawString("Baseline & Followup Measurements Extended Study").getValue(),
@@ -55,11 +59,12 @@ TEST(ColumnNameMappingsTest, ShortensMangledOriginalToReadableName) {
 }
 
 TEST(ColumnNameMappingsTest, ManglesRawCastorNameBeforeMatching) {
+  const std::string rawCastorName = "Daily survey (4 opeenvolgende dagen in " + eAcute + eAcute + "n week)";
   pep::ColumnNameMappings mappings({
-    {pep::ColumnNameSection::FromRawString("Daily survey (4 opeenvolgende dagen in één week)"), pep::ColumnNameSection("SurvDail4")},
+    {pep::ColumnNameSection::FromRawString(rawCastorName), pep::ColumnNameSection("SurvDail4")},
     {pep::ColumnNameSection("Baseline__Followup_Measurements_Extended_Study"), pep::ColumnNameSection("BaseFU")},
   });
-  EXPECT_EQ(mappings.getColumnNameSectionFor("Daily survey (4 opeenvolgende dagen in één week)"), "SurvDail4");
+  EXPECT_EQ(mappings.getColumnNameSectionFor(rawCastorName), "SurvDail4");
   // The " & " in the raw name mangles to the double underscore in the configured original
   EXPECT_EQ(mappings.getColumnNameSectionFor("Baseline & Followup Measurements Extended Study"), "BaseFU");
 }
@@ -78,7 +83,7 @@ TEST(ColumnNameMappingsTest, GetEntriesReturnsAllMappings) {
   });
 
   auto entries = mappings.getEntries();
-  ASSERT_EQ(entries.size(), 2U);
+  EXPECT_EQ(entries.size(), 2U);
   auto findOriginal = [&entries](const std::string& original) {
     return std::find_if(entries.cbegin(), entries.cend(), [&original](const pep::ColumnNameMapping& entry) {
       return entry.original.getValue() == original;
