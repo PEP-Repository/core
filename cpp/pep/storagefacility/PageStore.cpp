@@ -90,6 +90,7 @@ namespace {
         return *min_element(connections, {}, &Connection::openRequestsCounts);
       }
     };
+    // No entries added/removed after constructor.
     std::unordered_map<std::string, Host> hosts_;
 
     std::vector<Bucket> readBuckets_;
