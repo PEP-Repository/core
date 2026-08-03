@@ -1,6 +1,6 @@
 # Functionality for applications. Only executable targets should need to link this library.
 
-add_library(${PROJECT_NAME}Applicationlib STATIC
+add_library(${PROJECT_NAME}Applicationlib
     Application.cpp Application.hpp
     CommandLineAutocomplete.hpp
     CommandLineCommand.cpp CommandLineCommand.hpp

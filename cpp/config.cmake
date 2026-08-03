@@ -16,7 +16,11 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+if(NOT BUILD_SHARED_LIBS)
+  # Prevent symbols from ending up in final executable.
+  # Do not enable when using shared libraries, as in that case we would need to export specific symbols in code.
+  set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+endif()
 
 cmake_policy(SET CMP0135 NEW) # Ignore timestamps of files in downloaded archives to make sure content changes are picked up: https://cmake.org/cmake/help/latest/policy/CMP0135.html
 
