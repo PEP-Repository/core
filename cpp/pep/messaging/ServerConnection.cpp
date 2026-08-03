@@ -128,16 +128,20 @@ rxcpp::observable<std::string> ServerConnection::sendRequest(std::shared_ptr<std
     return connection_->sendRequest(message, tail);
   }
 
-  PEP_LOG(LogTag, Severity::Debug) << (node_ ? node_->describe() + ": " : "") << "Adding request to pending requests list while waiting for connection";
-  return CreateObservable<std::string>([weak = WeakFrom(*this), message, tail](rxcpp::subscriber<std::string> subscriber) {
+  auto logPrefix = node_ ? node_->describe() + ": " : "";
+  PEP_LOG(LogTag, Severity::Debug) << logPrefix << "Waiting for connection before sending request";
+  return CreateObservable<std::string>([weak = WeakFrom(*this), message, tail, logPrefix](rxcpp::subscriber<std::string> subscriber) {
       auto self = weak.lock();
       if (self == nullptr) {
+        PEP_LOG(LogTag, Severity::Debug) << logPrefix << "Discarding pending request: server connection was destroyed";
         subscriber.on_error(std::make_exception_ptr(std::runtime_error("Server connection was destroyed")));
       }
       else if (self->connection_ != nullptr) { // Connection has been established before caller subscribed
+        PEP_LOG(LogTag, Severity::Debug) << logPrefix << "Connection established, sending request bypassing pending requests list";
         self->connection_->sendRequest(message, tail).subscribe(subscriber);
       }
       else { // Connection has not been established yet
+        PEP_LOG(LogTag, Severity::Debug) << logPrefix << "Adding request to pending requests list while waiting for connection";
         self->pendingRequests_.emplace_back(PendingRequest{ // Store the request so it can be sent when the connection is established later
           .message = message,
           .tail = tail,
