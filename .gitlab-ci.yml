@@ -1383,6 +1383,10 @@ upload-weblib-npm:
     # npm tries to fetch public (transitive) dependencies from it too and they 404.
     - PEP_NPM_AUTH_REGISTRY="${PEP_NPM_REGISTRY#https://}"
     - npm config set "//${PEP_NPM_AUTH_REGISTRY}:_authToken=${CI_JOB_TOKEN}"
+    # The package version is derived from the pipeline ID, so a job rerun publishes the same
+    # version again, which GitLab rejects with "Package already exists" (leaving an "error" package in the Gitlab gui).
+    # Delete any package published by a previous run of this job first so that the rerun overwrites it.
+    - ./scripts/gitlab-packages.sh --git-dir . --api-key "${PEP_GROUP_API_MAINTAINER_TOKEN}" delete npm pep-repo-client-lib "${PACKAGE_VERSION}"
     - cd weblib/pep-repo-client-lib
     - npm version --no-git-tag-version "${PACKAGE_VERSION}"
     - npm install
