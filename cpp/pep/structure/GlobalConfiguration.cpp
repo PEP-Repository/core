@@ -72,7 +72,7 @@ PseudonymFormat::PseudonymFormat(std::string prefix, size_t digits)
 }
 
 PseudonymFormat::PseudonymFormat(std::string regexPattern)
-  : prefix_(), digits_(0U), regexPattern_(std::move(regexPattern)) {
+  : regexPattern_(std::move(regexPattern)) {
   if (regexPattern_.empty()) {
     throw std::runtime_error("No pattern specified for pseudonym format");
   }
