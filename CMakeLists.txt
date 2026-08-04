@@ -32,6 +32,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Build shared libraries instead of static libraries. Generally improves link performance.
 # See https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html
+# This should be set via our Conan `shared_libs=all` option.
 option(BUILD_SHARED_LIBS "Build using shared libraries")
 
 if(DEFINED EMSCRIPTEN)
