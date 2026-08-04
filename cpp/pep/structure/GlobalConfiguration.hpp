@@ -55,7 +55,7 @@ public:
 class PseudonymFormat {
 private:
   std::string prefix_;
-  size_t digits_;
+  size_t digits_{};
   std::string regexPattern_;
 
 public:

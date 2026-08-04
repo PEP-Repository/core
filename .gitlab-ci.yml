@@ -715,9 +715,16 @@ ubuntu-lts-debug-without-castor:
       cat infer-out/report.sarif | jq '
         .runs[0].results |= map(
           select(
-            all(
-              .codeFlows[]?.threadFlows[]?.locations[]?.location.physicalLocation.artifactLocation.uri;
+            [.codeFlows[]?.threadFlows[]?.locations[]?.location.physicalLocation.artifactLocation.uri] as $uris
+            # Filter out issues containing an RxCpp header
+            | all(
+              $uris[];
               test("rxcpp") | not
+            )
+            # Filter out issues pertaining only STL headers
+            and any (
+              $uris[];
+              test("include/c++") | not
             )
           )
         )
