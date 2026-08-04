@@ -32,7 +32,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Build shared libraries instead of static libraries. Generally improves link performance.
 # See https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html
-option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+option(BUILD_SHARED_LIBS "Build using shared libraries")
 
 if(DEFINED EMSCRIPTEN)
   message(STATUS "Emscripten version: ${EMSCRIPTEN_VERSION}")
