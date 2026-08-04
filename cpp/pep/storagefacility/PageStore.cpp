@@ -174,11 +174,11 @@ namespace {
                                : std::nullopt)
   {
     if (readBuckets_.empty()) {
-      throw std::runtime_error("S3PageStore configuration error: "
+      throw std::invalid_argument("S3PageStore configuration error: "
           "no buckets to read from!");
     }
     if (find(readBuckets_, writeBucket_) == readBuckets_.end()) {
-      throw std::runtime_error("S3PageStore configuration error: "
+      throw std::invalid_argument("S3PageStore configuration error: "
           "writing to a bucket we're not reading from!");
     }
 
@@ -187,12 +187,12 @@ namespace {
       if (emplaced) {
         const auto hostParamsIt = hostsParams.find(id);
         if (hostParamsIt == hostsParams.end()) {
-          throw std::runtime_error("S3PageStore configuration error: "
+          throw std::invalid_argument("S3PageStore configuration error: "
               "referenced host \"" + id + "\" not found in configuration");
         }
         const HostParameters& hostParams = hostParamsIt->second;
         if (hostParams.connections == 0) {
-          throw std::runtime_error("S3PageStore configuration error: "
+          throw std::invalid_argument("S3PageStore configuration error: "
               "number of connections for a host must be nonzero");
         }
         hostIt->second = Host{
