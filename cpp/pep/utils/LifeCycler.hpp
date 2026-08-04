@@ -2,6 +2,8 @@
 
 #include <pep/utils/Event.hpp>
 
+#include <string_view>
+
 namespace pep {
 
 /*!
@@ -25,14 +27,14 @@ public:
     Finalized
   };
 
-  static std::string_view StatusToString(Status status);
+  [[nodiscard]] static std::string_view StatusToString(Status status);
 
   /// \brief Parameter for the onStatusChange event
   struct StatusChange {
     Status previous;
     Status updated;
 
-    std::string toString() const;
+    [[nodiscard]] std::string toString() const;
   };
 
 private:

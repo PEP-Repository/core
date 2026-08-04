@@ -52,7 +52,7 @@ std::string_view LifeCycler::StatusToString(Status status) {
     case Status::Finalizing: return "finalizing";
     case Status::Finalized: return "finalized";
   }
-  assert(false && "Invalid status");
+  throw std::invalid_argument("Invalid LifeCycler::Status: " + std::to_string(ToUnderlying(status)));
 }
 
 std::string LifeCycler::StatusChange::toString() const {
