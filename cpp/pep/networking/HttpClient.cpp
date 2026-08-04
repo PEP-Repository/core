@@ -168,6 +168,7 @@ std::string HttpClient::pathFromUrl(const boost::urls::url& full) {
 }
 
 rxcpp::observable<HTTPResponse> HttpClient::sendRequest(HTTPRequest request) {
+  PEP_LOG(LogTag, Severity::Debug) << "Sending HTTP request for " << request.uri();
   if (!this->isRunning()) {
     throw std::runtime_error("HttpClient must be running to send a request");
   }

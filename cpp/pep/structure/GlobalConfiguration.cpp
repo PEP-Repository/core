@@ -68,11 +68,11 @@ PseudonymFormat::PseudonymFormat(std::string prefix, size_t digits)
   }
 
   // Require as many digits as configured, plus those for the checksum
-  regexPattern_ += "[0-9]{" + std::to_string(*getTotalNumberOfDigits()) + "}";
+  regexPattern_ += "[0-9]{" + std::to_string(*getTotalNumberOfDigits()) + "}"; //NOLINT(clang-analyzer-core.CallAndMessage) False positive (Clang-Tidy 21)
 }
 
 PseudonymFormat::PseudonymFormat(std::string regexPattern)
-  : prefix_(), digits_(0U), regexPattern_(std::move(regexPattern)) {
+  : regexPattern_(std::move(regexPattern)) {
   if (regexPattern_.empty()) {
     throw std::runtime_error("No pattern specified for pseudonym format");
   }
