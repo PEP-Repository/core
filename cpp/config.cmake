@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.20...4.2)
 
 enable_language(C CXX)
 
+#TODO This info is outdated
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
     message(FATAL_ERROR "Require at least gcc 7.0 (or different compiler)")
 endif()
@@ -16,7 +17,20 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+if(BUILD_SHARED_LIBS)
+  if(MSVC)
+    # MSVC doesn't export any symbols from a DLL unless explicitly annotated with __declspec(dllexport).
+    # For functions, there is CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS, but this does not work for global/static variables.
+    # See https://cmake.org/cmake/help/latest/prop_tgt/WINDOWS_EXPORT_ALL_SYMBOLS.html
+    message(FATAL_ERROR "BUILD_SHARED_LIBS is currently not supported with MSVC")
+  endif()
+  message(STATUS "BUILD_SHARED_LIBS is ON. This requires dependencies to be shared as well, to prevent ODR-violations.")
+else()
+  # Prevent symbols from ending up in final executable.
+  # Do not enable when using shared libraries, as in that case we would need to export specific symbols in code.
+  set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+  set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+endif()
 
 cmake_policy(SET CMP0135 NEW) # Ignore timestamps of files in downloaded archives to make sure content changes are picked up: https://cmake.org/cmake/help/latest/policy/CMP0135.html
 
@@ -65,13 +79,6 @@ endif()
 option(WITH_TESTS "Build tests" ON)
 if(NOT WITH_TESTS)
   message(STATUS "WITH_TESTS=${WITH_TESTS}")
-endif()
-
-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  # To build on Apple x86_64
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
-  # set(CMAKE_OSX_ARCHITECTURES "x86_64")
-  # set(CMAKE_OSX_DEPLOYMENT_TARGET 12.0)
 endif()
 
 option(HTTPSERVER_WITH_TLS "Build HTTPServer with support for TLS" On)

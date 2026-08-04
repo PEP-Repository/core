@@ -27,6 +27,14 @@ endif()
 
 project(pep)
 
+# Always use position-independent code for security and consistency. Do not depend on defaults.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# Build shared libraries instead of static libraries. Generally improves link performance.
+# See https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html
+# This should be set via our Conan `shared_libs=all` option.
+option(BUILD_SHARED_LIBS "Build using shared libraries")
+
 if(DEFINED EMSCRIPTEN)
   message(STATUS "Emscripten version: ${EMSCRIPTEN_VERSION}")
   # Using empty suffix instead of .js automatically adds a Node.js shebang (like -sEXECUTABLE) since Emscripten 5.0.0
