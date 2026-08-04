@@ -2,6 +2,7 @@
 
 #include <pep/utils/Event.hpp>
 
+#include <string>
 #include <string_view>
 
 namespace pep {
