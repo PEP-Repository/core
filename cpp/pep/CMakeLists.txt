@@ -602,3 +602,13 @@ foreach(target IN LISTS all_targets)
     endif()
   endforeach()
 endforeach()
+
+find_package(Doxygen QUIET)
+if(Doxygen_FOUND)
+  set(DOXYGEN_EXTRACT_ALL YES)
+  set(DOXYGEN_WARN_IF_UNDOCUMENTED NO)
+  set(WARN_IF_INCOMPLETE_DOC NO)
+  doxygen_add_docs(pep-doxygen
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+  )
+endif()
