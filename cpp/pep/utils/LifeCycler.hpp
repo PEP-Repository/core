@@ -25,10 +25,14 @@ public:
     Finalized
   };
 
+  static std::string_view StatusToString(Status status);
+
   /// \brief Parameter for the onStatusChange event
   struct StatusChange {
     Status previous;
     Status updated;
+
+    std::string toString() const;
   };
 
 private:
