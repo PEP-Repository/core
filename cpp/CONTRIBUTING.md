@@ -6,19 +6,17 @@ This document provides guidelines for the use of C++ when coding for the PEP pro
 
 ## Cpp Core Guidelines
 
-In principle, we follow all [Cpp Core Guideline](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#main).
+In principle, we follow all [Cpp Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#main).
 These are widely accepted guidelines that cover many topics and are generally uncontroversial.
 It is very good baseline to start with for writing high quality code.
 We recommend to read through it in full at least once.
 
-Consider the contribution guide that you are reading right now to be an extension to the [core_guidelines].
-In case there happen to be conflicts between our own guidelines
-We recommend that you read through these at least once so that you at least have a vague idea of the contents.
-
+Consider the contribution guide that you are reading right now to be an extension to the Core Guidelines.
 In the rare case that there are conflicts between this document and the core guidelines, then this document is leading.
 It should always be explicitly mentioned when this is the case.
 
-**Note on code reviews**
+## Note on code reviews
+
 We encourage using links to related core guidelines sections in code reviews. This helps keeping review comments concise and saves you from having to explain the same thing in multiple reviews.
 
 - **Example, bad**
@@ -105,7 +103,7 @@ This section lists our own coding guidelines, which we apply on top of the more 
   ```
   </details>
 - use `final` to indicate a class or method can not be extended;
-- always refer to the source object, also when it's `this`, with the exception of m-prefixed member attributes.
+- always make inheritance visibility explicit (usually `public`), e.g. `class Derived : public Base { ... }`.
 - introduce functions/methods that reveal the intentions of operations and may structure elaborated or cluttered code...
 - ... but when creating new methods/functions while refacturing classes:
   - consider the readability of code: static methods tells the calling method 'where it belongs to', but they require header changes whereas anonymous namespaces don't.
@@ -199,8 +197,6 @@ This section lists our own coding guidelines, which we apply on top of the more 
 
 ### Style
 
-- Use spaces for indentation instead of tabs.
-- Use two spaces per indentation level.
 - Prefer using compiled code over defining (and using) macros.
 - Macro names are written in `SCREAMING_SNAKE_CASE` to make them stand out like the sore thumb that they are.
 - The names of macros defined in the PEP code base start with a `PEP_` prefix to prevent naming collisions (e.g. with other libraries).
@@ -216,9 +212,31 @@ This section lists our own coding guidelines, which we apply on top of the more 
 - Properly encapsulating user-defined (non-alias) types are defined using the `class` keyword.
     - Non-const fields of such types are all `private`.
     - Private field names are written in `camelCase_`, starting with a `l`owerase `l`etter, and ending with an underscore `_` character. (The suffix prevents naming collisions with similarly named instance methods, such as getter methods.)
+    - Access a private field by its plain name (e.g. `memberVariable_`), not `this->memberVariable_`.
 - Property bags (i.e. user-defined aggregate types with public fields) are defined using the `struct` keyword.
     - Such types do not contain instance methods, putting state management responsibilities firmly into the caller's hands.
     - Field names are written in `camelCase`, starting with a `l`owerase `l`etter. Note that these names lack the trailing underscore `_` character that's used for non-public fields.
+    - Access a public field by its plain name (e.g. `memberVariable`); use `this->memberVariable` only when the plain name would be ambiguous or less clear (developer discretion).
+- Call methods by their plain name (e.g. `name()`); use `this->name()` only when the plain name would be ambiguous or less clear (developer discretion), and `Class::name()` only when actually necessary (e.g. to call a base class implementation).
+- Use explicit comparison instead of implicit conversion for integers.
+- Implement functions inside the namespace block rather than qualifying the definition, e.g.:
+
+  ```c++
+  namespace pep {
+  void Fun() {
+    ...
+  }
+  }
+  ```
+
+  not
+
+  ```c++
+  void pep::Fun() {
+    ...
+  }
+  ```
+- Mark future work with `TODO`, use `TODO(workaround)` for temporary workarounds, e.g. waiting for an upstream fix.
 
 - Names of Protobuf `message` and `enum` types are written in `PascalCase`, starting with an `U`ppercase `L`etter.
 - Names of Protobuf fields are written in `snake_case`, i.e. fully lowercase with underscores between words.
@@ -240,7 +258,7 @@ else {
 
 - do use tested design patterns and principles;
 - do **not** use any pointer magic;
-- do **not** use global variables;
+- do **not** use mutable global variables, including non-`const` `static` variables. If you really need this, keep it local to a single translation unit (e.g. in an anonymous namespace) if possible.
 - do **not** use magic numbers, *better:*  
   - `sizeof(MessageHeader)` instead of `4`;  
   - or `static const int NUMBER_OF_ATTEMPTS = 4` (because of scoping, no #define);
@@ -289,3 +307,10 @@ PEP provides a [logging system](https://gitlab.pep.cs.ru.nl/pep/core/blob/main/c
   - use `Severity::Critical` for end of world events. In most cases the software will need to be terminated after such failures.
 
 </details>
+
+### Doc comments
+
+- Preferred block-comment style is `///`, e.g. `/// This function does stuff`.
+- For a member documented after its declaration, use `///<`.
+- Use backslash commands (`\brief`, `\param`, `\return`, ...), not the `@`-prefixed equivalents.
+- If a doc comment only has a single-line brief description (no `\param`/`\return` etc.), the `\brief` command may be omitted. Otherwise, use an explicit `\brief` command and `\details` when necessary.
