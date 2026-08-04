@@ -485,17 +485,13 @@ clean_foss_packages() {
 # We keep versions whose dist-tag matches a protected branch/tag commit SHA,
 # but in theory all missing versions can be rebuilt automatically.
 
+# Keep the versions whose dist-tag matches a protected branch/tag commit SHA, for any npm package
 list_used_foss_npm_package_versions() {
-  local dist_tags
-  dist_tags=$(gitlab_foss_packages npm-dist-tags pep-repo-client-lib)
-  if [ -z "$dist_tags" ]; then
-    return
-  fi
+  local all_dist_tags
+  all_dist_tags=$(gitlab_foss_packages npm-dist-tags)
+
   list_protected_commits "$foss_dir" | while read -r sha; do
-    version=$(raw_echo "$dist_tags" | jq -r --arg sha "$sha" '.[$sha] // empty')
-    if [ -n "$version" ]; then
-      echo "$version"
-    fi
+    raw_echo "$all_dist_tags" | jq --raw-output --arg sha "$sha" '.[] | .[$sha] // empty'
   done
 }
 

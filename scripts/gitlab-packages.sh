@@ -18,7 +18,7 @@ usage() {
   echo "  download <package-type> <package-name> <sha> [<file-name>]"
   echo "  delete <package-type> <package-name> <version (the sha for generic packages)>"
   echo "  list <package-type> [<package-name> [<version>]]"
-  echo "  npm-dist-tags <package-name>"
+  echo "  npm-dist-tags [<package-name>]"
 }
 
 git_dir=''
@@ -108,22 +108,53 @@ download_generic() {
   echo "Downloaded FOSS package file $file_id from packages/generic/$package_name/$sha/$file_name."
 }
 
-# Print the dist-tags of an npm package as a JSON object, or nothing if the package does not exist
-get_npm_dist_tags() {
+# Print the dist-tags of one npm package as json, or nothing if the package does not exist
+get_package_npm_dist_tags() {
   package_name="${1:?Expected package name}"
 
   metadata=$(gitlab_api get "packages/npm/$package_name" 2>/dev/null) || true
+  # A missing package yields an empty response, since curl --fail suppresses the error body
   if [ -z "$metadata" ]; then
     return
   fi
-  raw_echo "$metadata" | jq '."dist-tags" // {}'
+  # gitlab answers requests for unknown packages with a redirect notice pointing to registry.npmjs.org instead of a 404, also treat that as missing
+  if raw_echo "$metadata" | jq --exit-status 'type == "string" and test("registry\\.npmjs\\.org")' >/dev/null 2>&1; then
+    return
+  fi
+  dist_tags=$(raw_echo "$metadata" | jq --raw-input --slurp 'fromjson? | select(type == "object") | ."dist-tags" // {}')
+  if [ -z "$dist_tags" ]; then
+    fail "Invalid response for npm package '$package_name': $metadata"
+  fi
+  raw_echo_trailing_newline "$dist_tags"
+}
+
+get_all_npm_dist_tags() {
+  names=$(list_packages npm | jq --raw-output '.[].name' | sort -u)
+  all_dist_tags='{}'
+  for name in $names; do
+    dist_tags=$(get_package_npm_dist_tags "$name")
+    if [ -n "$dist_tags" ]; then
+      all_dist_tags=$(raw_echo "$all_dist_tags" \
+        | jq --arg name "$name" --argjson dist_tags "$dist_tags" '. + { ($name): $dist_tags }')
+    fi
+  done
+  raw_echo_trailing_newline "$all_dist_tags"
+}
+
+# Dist-tags of the given npm package, or of all npm packages if no package name is given
+get_npm_dist_tags() {
+  if [ -z "${1-}" ]; then
+    get_all_npm_dist_tags
+  else
+    get_package_npm_dist_tags "$1"
+  fi
 }
 
 get_npm_package_version() {
   package_name="$1"
   sha="$2"
 
-  dist_tags=$(get_npm_dist_tags "$package_name")
+  dist_tags=$(get_package_npm_dist_tags "$package_name")
   if [ -z "$dist_tags" ]; then
     >&2 echo "FOSS npm package '$package_name' not found for SHA $sha."
     return
