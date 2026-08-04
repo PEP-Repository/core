@@ -722,7 +722,7 @@ ubuntu-lts-debug-without-castor:
               test("rxcpp") | not
             )
             # Filter out issues pertaining only STL headers
-            or any (
+            and any (
               $uris[];
               test("include/c++") | not
             )
