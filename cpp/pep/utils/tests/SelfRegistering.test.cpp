@@ -14,7 +14,7 @@ TEST(SelfRegistering, Works) {
   ASSERT_TRUE(TestRegistrar::KnowsType("InheritsFromRegistrar")) << "Self registration doesn't work for (multiple) inheritance from registrar type";
   ASSERT_TRUE(TestRegistrar::KnowsType("RegisteredFromScope")) << "Self registration doesn't work for types in (sub)scopes";
 
-  auto external = std::find_if(registered.cbegin(), registered.cend(), [ownFile = std::string(__FILE__)](const TestRegistrar::RegisteredTraits& candidate) {
+  auto external = std::ranges::find_if(registered, [ownFile = std::string(__FILE__)](const TestRegistrar::RegisteredTraits& candidate) {
     return candidate.constructorFile != ownFile;
     });
   ASSERT_NE(external, registered.cend()) << "Class from a different translation unit wasn't registered";

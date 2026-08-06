@@ -24,7 +24,7 @@ std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<Loc
 
 bool Ticket2::hasMode(const std::string& mode) const {
   // Check if the ticket explicitly includes the specified mode
-  if (std::find(modes.begin(), modes.end(), mode) != modes.end()) {
+  if (std::ranges::find(modes, mode) != modes.end()) {
     return true;
   }
   // The "read-meta" mode is implicitly covered if the ticket includes "read" access

@@ -1489,7 +1489,7 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const
     const auto vector = to<std::vector>(std::forward<decltype(range)>(range));
     if (vector.empty()) { return std::nullopt; }
 
-    const auto allEqual = std::equal(++vector.begin(), vector.end(), vector.begin()); // compares adjacent elements
+    const auto allEqual = std::ranges::equal(++vector.begin(), vector.end(), vector.begin(), vector.end() - 1); // compares adjacent elements
     if (!allEqual) { throw Error{"Failed to resolve to a unique internal user id: found multiple matching users"}; }
 
     return vector.front();

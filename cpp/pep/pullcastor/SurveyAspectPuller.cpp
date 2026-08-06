@@ -168,7 +168,7 @@ rxcpp::observable<std::shared_ptr<SdpsBySpi>> SurveyAspectPuller::getDataPoints(
 
   assert(!spis->empty());
   auto participant = spis->front()->getParticipant();
-  assert(std::all_of(spis->cbegin(), spis->cend(), [participant](std::shared_ptr<SurveyPackageInstance> spi) {return spi->getParticipant() == participant; }));
+  assert(std::ranges::all_of(spis->cbegin(), spis->cend(), [participant](std::shared_ptr<SurveyPackageInstance> spi) {return spi->getParticipant() == participant; }));
   return SurveyDataPoint::BulkRetrieve(participant, RxIterate(*spis))
     .op(RxGroupToVectors([](std::shared_ptr<SurveyDataPoint> sdp) {return sdp->getSurveyPackageInstance(); }));
 }
@@ -233,7 +233,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::Al
 
   // Sort by date-sent-out (oldest-to-newest) so that indices will be consistent over import runs
   auto tspis = TimestampedSpi::AddTimestamps(*spis, [](std::shared_ptr<SurveyPackageInstance> spi) { return spi->getSentOn(); });
-  std::sort(tspis->begin(), tspis->end(), [](const TimestampedSpi& lhs, const TimestampedSpi& rhs) {
+  std::ranges::sort(tspis->begin(), tspis->end(), [](const TimestampedSpi& lhs, const TimestampedSpi& rhs) {
     return lhs.getTimestamp() < rhs.getTimestamp();
   });
 
@@ -269,7 +269,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::La
   if (spis->size() > 1U) {
     // Reverse sort by date-finished: highest "finished" SPI will be first in the sorted vector
     auto tspis = TimestampedSpi::AddTimestamps(*spis, [](std::shared_ptr<SurveyPackageInstance> spi) { return spi->getFinishedOn(); });
-    std::sort(tspis->begin(), tspis->end(), [](const TimestampedSpi& lhs, const TimestampedSpi& rhs) {
+    std::ranges::sort(tspis->begin(), tspis->end(), [](const TimestampedSpi& lhs, const TimestampedSpi& rhs) {
       return lhs.getTimestamp() > rhs.getTimestamp();
     });
 

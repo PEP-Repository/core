@@ -417,7 +417,7 @@ void Connection::dispatchRequest(
       this->handleError(std::make_exception_ptr(std::runtime_error("No request handler present")));
     }
     else if (!versionValidated_) {
-      if (std::any_of(prematureRequests_.begin(), prematureRequests_.end(), [&streamId](const PrematureRequest& candidate) {
+      if (std::ranges::any_of(prematureRequests_, [&streamId](const PrematureRequest& candidate) {
         return candidate.streamId == streamId;
         })) {
         throw std::runtime_error("Received multiple premature requests with stream ID " + std::to_string(streamId.value()));

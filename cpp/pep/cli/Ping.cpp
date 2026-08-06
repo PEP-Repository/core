@@ -56,10 +56,9 @@ protected:
 
     std::vector<std::string> serverIds;
     serverIds.reserve(traits.size());
-    std::transform(traits.cbegin(), traits.cend(), std::back_inserter(serverIds),
-      [](const pep::ServerTraits& single) {return single.commandLineId(); });
+    std::ranges::transform(traits, std::back_inserter(serverIds), [](const pep::ServerTraits& single) {return single.commandLineId(); });
     // Sort by command line ID: produces nicely sorted child commands
-    std::sort(serverIds.begin(), serverIds.end());
+    std::ranges::sort(serverIds);
 
     return ChildCommandOf<CliApplication>::getSupportedParameters()
       + pep::commandline::Parameter("server", "Server to ping").value(pep::commandline::Value<std::string>().required().allow(serverIds))

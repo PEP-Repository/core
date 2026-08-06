@@ -28,7 +28,7 @@ std::vector<std::shared_ptr<boost::property_tree::ptree>> CreateSharedChildTrees
   const auto& children = GetFromPtree<boost::property_tree::ptree>(*parent, "_embedded." + embeddedItemsNodeName);
   std::vector<std::shared_ptr<boost::property_tree::ptree>> result;
   result.reserve(children.size());
-  std::transform(children.begin(), children.end(), std::back_inserter(result), [](const auto& item) {return std::make_shared<boost::property_tree::ptree>(item.second); });
+  std::ranges::transform(children, std::back_inserter(result), [](const auto& item) {return std::make_shared<boost::property_tree::ptree>(item.second); });
   return result;
 }
 

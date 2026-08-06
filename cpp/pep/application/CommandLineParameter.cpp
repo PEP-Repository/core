@@ -133,7 +133,7 @@ Values Parameter::parse(const ProvidedValues& lexed) const {
 
 bool Parameter::isLackingValue(const ProvidedValues& lexed) const noexcept {
   if (this->getValueSpecification()) {
-    return std::any_of(lexed.cbegin(), lexed.cend(), [](const ProvidedValue &val) {
+    return std::ranges::any_of(lexed, [](const ProvidedValue &val) {
       return !val.has_value();
     });
   }
@@ -274,7 +274,7 @@ void Parameters::writeHelpText(std::ostream& destination) const {
       return std::less<std::string>()(left, right);
     }
   };
-  std::sort(entries.begin(), entries.end(), CompareAliasText());
+  std::ranges::sort(entries, CompareAliasText());
 
   bool announce = true;
   for (const auto& entry : entries) {
@@ -301,7 +301,7 @@ Parameters Parameters::operator +(const std::vector<Parameter>& parameters) cons
 }
 
 const Parameter* Parameters::find(const std::string& name) const {
-  auto pos = std::find_if(entries_.cbegin(), entries_.cend(), [&name](const Parameter& candidate) {return candidate.getName() == name; });
+  auto pos = std::ranges::find_if(entries_, [&name](const Parameter& candidate) {return candidate.getName() == name; });
   if (pos == entries_.cend()) {
     return nullptr;
   }
@@ -313,7 +313,7 @@ void Parameters::writeHelpText(std::ostream& destination, const std::string& hea
     const std::vector<Parameter>& parameters;
     bool operator()(Index lhs, Index rhs) const { return std::less<std::string>()(parameters[lhs].getName(), parameters[rhs].getName()); }
   };
-  std::sort(indices.begin(), indices.end(), CompareParameterNamesByIndex{ entries_ });
+  std::ranges::sort(indices, CompareParameterNamesByIndex{ entries_ });
 
   auto announce = true;
   for (auto index : indices) {
@@ -469,11 +469,11 @@ std::vector<const Parameter*> Parameters::getSwitchesToAutocomplete(const LexedV
 }
 
 bool Parameters::hasRequired() const {
-  return std::any_of(entries_.cbegin(), entries_.cend(), [](const Parameter& s) {return s.isRequired(); });
+  return std::ranges::any_of(entries_, [](const Parameter& s) {return s.isRequired(); });
 }
 
 bool Parameters::hasInfinitePositional() const noexcept {
-  return std::any_of(entries_.cbegin(), entries_.cend(), [](const Parameter& s) {return s.allowsMultiple(); });
+  return std::ranges::any_of(entries_, [](const Parameter& s) {return s.allowsMultiple(); });
 }
 
 std::vector<std::string> Parameters::getInvocationSummary() const {
@@ -481,14 +481,14 @@ std::vector<std::string> Parameters::getInvocationSummary() const {
   optionals.reserve(entries_.size());
 
   auto position = std::back_inserter(optionals);
-  position = std::transform(named_.cbegin(), named_.cend(), position, [this](Index index) {return entries_[index].getInvocationSummary(true); });
-  std::transform(positional_.cbegin(), positional_.cend(), position, [this](Index index) {return entries_[index].getInvocationSummary(true); });
+  position = std::ranges::transform(named_, position, [this](Index index) {return entries_[index].getInvocationSummary(true); }).out;
+  std::ranges::transform(positional_, position, [this](Index index) {return entries_[index].getInvocationSummary(true); });
 
-  optionals.erase(std::remove(optionals.begin(), optionals.end(), std::nullopt), optionals.end());
+  std::erase(optionals, std::nullopt);
 
   std::vector<std::string> result;
   result.reserve(optionals.size());
-  std::transform(optionals.cbegin(), optionals.cend(), std::back_inserter(result), [](const std::optional<std::string> entry) {return *entry; });
+  std::ranges::transform(optionals, std::back_inserter(result), [](const std::optional<std::string> entry) {return *entry; });
   return result;
 }
 

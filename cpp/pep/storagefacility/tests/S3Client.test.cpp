@@ -31,7 +31,7 @@ namespace {
     PEP_DEFER(client->shutdown(); io_context->run(););
 
     std::string data(10, '\0');
-    std::iota(data.begin(), data.end(), '\0');
+    std::ranges::iota(data, '\0');
 
     {
       auto results = testutils::exhaust<std::string>(*io_context,

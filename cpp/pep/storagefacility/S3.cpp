@@ -206,7 +206,7 @@ namespace authorization_header {
       for (auto query : encodedQueries)
         keys.push_back(std::string(query.key));
 
-      std::sort(keys.begin(), keys.end());
+      std::ranges::sort(keys);
 
       std::ostringstream ss;
 
@@ -232,7 +232,7 @@ namespace authorization_header {
       } else
         keys = c.signHeaders;
 
-      std::sort(keys.begin(), keys.end());
+      std::ranges::sort(keys);
 
       std::ostringstream ss_result;
       std::ostringstream ss_signed_headers;

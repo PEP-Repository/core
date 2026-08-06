@@ -165,8 +165,7 @@ private:
       entries.reserve(data_.size());
       for (const auto& pair : data_)
         entries.emplace_back(pair.second.getLastUse(), pair.first);
-      std::sort(entries.begin(), entries.end(),
-          [](auto& a, auto& b) { return a.first < b.first; });
+      std::ranges::sort(entries, [](auto& a, auto& b) { return a.first < b.first; });
       for (size_t i = 0; i < toEvict; i++) {
         data_.erase(entries[i].second);
       }

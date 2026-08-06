@@ -22,9 +22,9 @@ protected:
 
     std::vector<std::string> ids;
     ids.reserve(traits.size());
-    std::transform(traits.begin(), traits.end(), std::back_inserter(ids), [](const pep::ServerTraits& traits) {return traits.commandLineId(); });
+    std::ranges::transform(traits, std::back_inserter(ids), [](const pep::ServerTraits& traits) {return traits.commandLineId(); });
     // Sort by command line ID: produces nicely sorted child commands
-    std::sort(ids.begin(), ids.end());
+    std::ranges::sort(ids);
 
     return ChildCommandOf<CliApplication>::getSupportedParameters()
       + pep::commandline::Parameter("server", "Restrict to specified server(s)").value(pep::commandline::Value<std::string>().positional().multiple()

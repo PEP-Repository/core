@@ -230,10 +230,10 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     enumRequest.ticket = *signedTicket;
     enumRequest.columns = IndexList();
     enumRequest.columns->indices.reserve(ctx->columns.size());
-    std::transform(ctx->columns.cbegin(), ctx->columns.cend(), std::back_inserter(enumRequest.columns->indices), [](const std::pair<const std::string, uint32_t>& pair) {return pair.second; });
+    std::ranges::transform(ctx->columns, std::back_inserter(enumRequest.columns->indices), [](const std::pair<const std::string, uint32_t>& pair) {return pair.second; });
     enumRequest.pseudonyms = IndexList();
     enumRequest.pseudonyms->indices.reserve(ctx->pps.size());
-    std::transform(ctx->pps.cbegin(), ctx->pps.cend(), std::back_inserter(enumRequest.pseudonyms->indices), [](const std::pair<const PolymorphicPseudonym, uint32_t>& pair) {return pair.second; });
+    std::ranges::transform(ctx->pps, std::back_inserter(enumRequest.pseudonyms->indices), [](const std::pair<const PolymorphicPseudonym, uint32_t>& pair) {return pair.second; });
 
     return this->getStorageFacilityProxy(true)->requestDataEnumeration(std::move(enumRequest))
       .map([ctx](const DataEnumerationResponse2& response) { return response.entries; })
@@ -335,7 +335,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
               return result;
             })
           .map([](std::shared_ptr<DataStorageResult2> result) {
-            assert(std::all_of(result->ids.cbegin(), result->ids.cend(), [](const std::string& id) {return !id.empty(); }));
+            assert(std::ranges::all_of(result->ids, [](const std::string& id) {return !id.empty(); }));
             return *result;
             }).as_dynamic();
           }).as_dynamic(); // Reduce compiler memory usage

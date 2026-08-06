@@ -48,7 +48,7 @@ StudyPuller::StudyPuller(std::shared_ptr<EnvironmentPuller> environment, std::sh
       if (!allowed.has_value()) {
         return true;
       }
-      return std::find(allowed->cbegin(), allowed->cend(), participant->getId()) != allowed->cend();
+      return std::ranges::find(allowed->cbegin(), allowed->cend(), participant->getId()) != allowed->cend();
         });
     });
 

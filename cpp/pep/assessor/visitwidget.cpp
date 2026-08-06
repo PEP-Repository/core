@@ -90,8 +90,7 @@ QPushButton& VisitWidget::getPrintOneButton() {
 void VisitWidget::setCurrentAssessor(const std::optional<unsigned>& id) {
   currentAssessorId_ = id;
   if(id.has_value()) {
-    auto position = std::find_if(assessors_.cbegin(), assessors_.cend(),
-                                               [&id](const pep::AssessorDefinition &candidate) { return candidate.id == id; });
+    auto position = std::ranges::find_if(assessors_, [&id](const pep::AssessorDefinition &candidate) { return candidate.id == id; });
     if (position == assessors_.cend()) {
       ui_->currentAssessorLabel->setText(tr("<assessor %1>").arg(QString::number(*id)));
     }

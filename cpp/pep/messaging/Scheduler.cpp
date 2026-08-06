@@ -134,7 +134,7 @@ void Scheduler::activateGenerator(const MessageId& messageId, MessageBatches bat
 
 void Scheduler::queueNextBatch(const MessageId& messageId) {
   // if there are messages queued for this message id, wait with requesting the next batch
-  if (std::any_of(outgoing_.begin(), outgoing_.end(), [&messageId](const OutgoingMessage& entry) { return entry.properties.messageId() == messageId; }))
+  if (std::ranges::any_of(outgoing_, [&messageId](const OutgoingMessage& entry) { return entry.properties.messageId() == messageId; }))
     return;
   auto it = generators_.find(messageId);
   // if not found, do nothing
@@ -226,7 +226,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
 
 void Scheduler::finalizeBatches(const MessageId& messageId, const std::optional<MessageSequence>& last) {
   auto& queue = generators_[messageId].batches;
-  assert(std::none_of(queue.cbegin(), queue.cend(), [](const Batch& existing) { return existing.final; }));
+  assert(std::ranges::none_of(queue, [](const Batch& existing) { return existing.final; }));
 
   // only change inline if we are not processing the stream already
   if (last || queue.empty() || queue.back().active) {
@@ -237,7 +237,7 @@ void Scheduler::finalizeBatches(const MessageId& messageId, const std::optional<
 }
 
 bool Scheduler::isScheduledMessageId(const MessageId& messageId) const {
-  return std::any_of(outgoing_.cbegin(), outgoing_.cend(), [&messageId](const OutgoingMessage& candidate) { return candidate.properties.messageId() == messageId; })
+  return std::ranges::any_of(outgoing_, [&messageId](const OutgoingMessage& candidate) { return candidate.properties.messageId() == messageId; })
     || generators_.contains(messageId);
 }
 

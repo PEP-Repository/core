@@ -58,8 +58,8 @@ public:
   }
 
   size_t count() const noexcept { return std::accumulate(streams_.cbegin(), streams_.cend(), size_t{}, [](size_t total, const auto& pair) {return total + pair.second.items; }); }
-  bool closed() const noexcept { return std::all_of(streams_.cbegin(), streams_.cend(), [](const auto& pair) { return pair.second.closed; }); }
-  bool error() const noexcept { return std::any_of(streams_.cbegin(), streams_.cend(), [](const auto& pair) { return pair.second.exception != nullptr; }); }
+  bool closed() const noexcept { return std::ranges::all_of(streams_, [](const auto& pair) { return pair.second.closed; }); }
+  bool error() const noexcept { return std::ranges::any_of(streams_, [](const auto& pair) { return pair.second.exception != nullptr; }); }
 };
 
 

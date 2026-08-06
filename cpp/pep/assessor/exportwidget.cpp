@@ -30,7 +30,7 @@ const QString AllFilesWildcard =
 ;
 
 void SortAndInsert(std::vector<std::shared_ptr<ExportableItem>>& dest, std::vector<std::shared_ptr<ExportableShortPseudonymItem>>& source) {
-  std::sort(source.begin(), source.end(), [](const std::shared_ptr<ExportableItem>& lhs, const std::shared_ptr<ExportableItem>& rhs) { // Sort SPs to make them easier to find in the UI
+  std::ranges::sort(source, [](const std::shared_ptr<ExportableItem>& lhs, const std::shared_ptr<ExportableItem>& rhs) { // Sort SPs to make them easier to find in the UI
     return lhs->getDescription() < rhs->getDescription();
             });
   dest.insert(dest.end(), source.cbegin(), source.cend());
@@ -56,7 +56,7 @@ void ExportWidget::WriteParticipantData(const QList<std::shared_ptr<ExportableIt
     if (expandDetails && expander) {
       (*expander)(table, cellContent);
       assert(!table.empty());
-      assert(std::find_if(table.cbegin(), table.cend(), [](const ExportDataRow& row) {return row.empty(); }) == table.cend());
+      assert(std::ranges::find_if(table, [](const ExportDataRow& row) {return row.empty(); }) == table.cend());
     }
     else {
       auto& row = table.emplace_back();
@@ -99,7 +99,7 @@ void ExportWidget::WriteCartesianToDestination(std::ostream& destination, const 
         const auto& cellContent = *cell;
 
         // Escape value if needed
-        auto escape = std::find_if(cellContent.begin(), cellContent.end(), [](char c) {
+        auto escape = std::ranges::find_if(cellContent, [](char c) {
           return (c == '"') || (c == ',');
                                    });
         if (escape != cellContent.end()) {
@@ -246,7 +246,7 @@ void ExportWidget::onItemChanged(QListWidgetItem* item) {
 void ExportWidget::updateSelectionState() {
   auto selected = getSelectedItems();
   ui_->exportButton->setEnabled(!selected.empty());
-  ui_->expandDetailsCheckBox->setEnabled(std::find_if(selected.cbegin(), selected.cend(), [](const std::shared_ptr<ExportableItem>& item) {return item->getDetailExpander(); }) != selected.cend());
+  ui_->expandDetailsCheckBox->setEnabled(std::ranges::find_if(selected, [](const std::shared_ptr<ExportableItem>& item) {return item->getDetailExpander(); }) != selected.cend());
 }
 
 QList<std::shared_ptr<ExportableItem>> ExportWidget::getSelectedItems() const {

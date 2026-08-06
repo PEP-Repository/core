@@ -52,7 +52,7 @@ void CreateFile(const Path& path, const std::string& contents) {
 void CreateFilePair(const Path& inputPath, const Path& expectedPath, const std::string& oldPseudonym, const std::string& newPseudonym, size_t fileSize) {
   std::vector<size_t> positions = GeneratePositions(fileSize, oldPseudonym.length());
   std::string binaryContent(fileSize, '\0');
-  std::iota(binaryContent.begin(), binaryContent.end(), '\0');
+  std::ranges::iota(binaryContent, '\0');
   InsertPseudonym(binaryContent, oldPseudonym, positions);
   CreateFile(inputPath, binaryContent);
   InsertPseudonym(binaryContent, newPseudonym, positions);

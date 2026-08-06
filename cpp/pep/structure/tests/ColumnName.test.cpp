@@ -85,7 +85,7 @@ TEST(ColumnNameMappingsTest, GetEntriesReturnsAllMappings) {
   auto entries = mappings.getEntries();
   EXPECT_EQ(entries.size(), 2U);
   auto findOriginal = [&entries](const std::string& original) {
-    return std::find_if(entries.cbegin(), entries.cend(), [&original](const pep::ColumnNameMapping& entry) {
+    return std::ranges::find_if(entries, [&original](const pep::ColumnNameMapping& entry) {
       return entry.original.getValue() == original;
     });
   };

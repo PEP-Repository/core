@@ -23,7 +23,7 @@ bool StudyContext::matches(const std::string& contexts) const {
     return isDefault();
   }
   auto ids = ContextStringToIds(contexts);
-  return std::find(ids.cbegin(), ids.cend(), getId()) != ids.cend();
+  return std::ranges::find(ids, getId()) != ids.cend();
 }
 
 bool StudyContext::matchesShortPseudonym(const pep::ShortPseudonymDefinition& sp) const {
@@ -45,7 +45,7 @@ bool StudyContext::operator ==(const StudyContext& other) const {
 }
 
 std::vector<StudyContext>::const_iterator StudyContexts::getPositionOf(const StudyContext& context) const {
-  return std::find(items_.cbegin(), items_.cend(), context);
+  return std::ranges::find(items_, context);
 }
 
 StudyContexts::StudyContexts(std::vector<StudyContext> items)
@@ -85,7 +85,7 @@ void StudyContexts::remove(const StudyContext& context) {
 
 const StudyContext& StudyContexts::getById(const std::string& id) const {
   auto end = items_.cend();
-  auto position = std::find_if(items_.cbegin(), end, [id](const StudyContext& candidate) { return candidate.getId() == id; });
+  auto position = std::ranges::find_if(items_.cbegin(), end, [id](const StudyContext& candidate) { return candidate.getId() == id; });
   if (position == end) {
     throw std::runtime_error("Study context " + id + " not found");
   }
@@ -94,7 +94,7 @@ const StudyContext& StudyContexts::getById(const std::string& id) const {
 
 const StudyContext* StudyContexts::getDefault() const noexcept {
   auto end = items_.cend();
-  auto position = std::find_if(items_.cbegin(), end, [](const StudyContext& candidate) { return candidate.isDefault(); });
+  auto position = std::ranges::find_if(items_.cbegin(), end, [](const StudyContext& candidate) { return candidate.isDefault(); });
   if (position == end) {
     return nullptr;
   }

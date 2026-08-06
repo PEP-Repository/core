@@ -864,7 +864,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   // Fill a vector with indices of pseudonyms that we want/need decrypted
   std::vector<uint32_t> pseudIndices;
   pseudIndices.reserve(request->entries.size());
-  std::transform(request->entries.cbegin(), request->entries.cend(), std::back_inserter(pseudIndices), [](const DataStoreEntry2& entry) {return entry.pseudonymIndex; });
+  std::ranges::transform(request->entries, std::back_inserter(pseudIndices), [](const DataStoreEntry2& entry) {return entry.pseudonymIndex; });
 
   // Decrypt pseudonyms.
   auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, &pseudIndices);

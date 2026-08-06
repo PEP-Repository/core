@@ -277,7 +277,7 @@ protected:
               std::move(ticket));
           if (ctx->parameterValues.has("show-dataless")) {
             auto pseuds = ctx->earOpts.ticket->openTicketWithoutCheckingSignature()->accessSubjects;
-            std::transform(pseuds.begin(), pseuds.end(), std::inserter(ctx->pseudsToReport, ctx->pseudsToReport.begin()), [](const pep::LocalPseudonyms& lps) {
+            std::ranges::transform(pseuds, std::inserter(ctx->pseudsToReport, ctx->pseudsToReport.begin()), [](const pep::LocalPseudonyms& lps) {
               return std::make_pair(lps.polymorphic, lps.accessGroup);
               });
           }

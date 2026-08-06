@@ -340,7 +340,7 @@ ParticipantGroup::AutoAssignContext::AutoAssignContext(std::shared_ptr<pep::Core
 }
 
 void ParticipantGroup::AutoAssignContext::ToLower(std::string& value) {
-  std::transform(value.begin(), value.end(), value.begin(), [](char c) {return std::tolower(c); });
+  std::ranges::transform(value, value.begin(), [](char c) {return std::tolower(c); });
 }
 
 std::string ParticipantGroup::AutoAssignContext::getGroupNameForStudyContext(const std::optional<pep::StudyContext>& context) const {
@@ -822,7 +822,7 @@ private:
             auto ticket = indexed.openTicketWithoutCheckingSignature();
             std::vector<pep::PolymorphicPseudonym> pps;
             pps.reserve(ticket->accessSubjects.size());
-            std::transform(ticket->accessSubjects.begin(), ticket->accessSubjects.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.polymorphic; });
+            std::ranges::transform(ticket->accessSubjects, std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.polymorphic; });
             return client->getAccessManagerProxy()->amaRemoveParticipantsFromGroup(group, pps);
               });
           });

@@ -130,7 +130,7 @@ namespace {
       throw std::runtime_error("S3PageStore configuration error: "
           "no buckets_ to read from!");
 
-    if (std::find(buckets.begin(), buckets.end(), writeBucket)
+    if (std::ranges::find(buckets, writeBucket)
           == buckets.end()) {
       throw std::runtime_error("S3PageStore configuration error: "
           "writing to a bucket we're not reading from!");

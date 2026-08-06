@@ -371,7 +371,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
   auto previous = participantData_.participantDeviceHistory.find(columnName.toStdString());
   if (previous != participantData_.participantDeviceHistory.cend()) {
     current = previous->second.getCurrent();
-    std::copy(previous->second.begin(), previous->second.end(), std::back_inserter(records));
+    std::ranges::copy(previous->second, std::back_inserter(records));
   }
   if (current) {
     assert(current->serial == serial);
@@ -382,7 +382,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
     type = "stop";
   }
   else {
-    std::transform(serial.begin(), serial.end(), serial.begin(), ::toupper);
+    std::ranges::transform(serial, serial.begin(), ::toupper);
     type = "start";
   }
 
@@ -413,7 +413,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
 std::vector<pep::ShortPseudonymDefinition> ParticipantWidget::getPrintableShortPseudonyms(const std::optional<unsigned int>& visit) const {
   auto all = globalConfig_.getShortPseudonyms(studyContext_.getIdIfNonDefault(), visit);
   std::vector<pep::ShortPseudonymDefinition> retval;
-  std::copy_if(all.cbegin(), all.cend(), std::back_inserter(retval), [](const pep::ShortPseudonymDefinition& entry) {
+  std::ranges::copy_if(all, std::back_inserter(retval), [](const pep::ShortPseudonymDefinition& entry) {
     return entry.getStickers() > 0;
   });
   return retval;
@@ -865,7 +865,7 @@ void ParticipantWidget::processData() {
     auto current = history.getCurrent();
     widget->setDeviceId(current ? QString::fromStdString(current->serial) : QString());
 
-    auto historyWidget = std::find_if(deviceHistoryWidgets_.begin(), deviceHistoryWidgets_.end(), [&columnName](DeviceHistoryWidget *candidate) {return candidate->getColumnName() == columnName; });
+    auto historyWidget = std::ranges::find_if(deviceHistoryWidgets_, [&columnName](DeviceHistoryWidget *candidate) {return candidate->getColumnName() == columnName; });
     (*historyWidget)->setHistory(history);
 
     if (studyContext_.matches(globalConfig_.getDevices()[i].studyContext)) {
@@ -1314,8 +1314,7 @@ ParticipantWidget::~ParticipantWidget() {
 
 const pep::ShortPseudonymDefinition *ParticipantDataAggregator::getShortPseudonymDefinition(const std::string& shortPseudonymTag) const {
   const auto& spDefinitions = globalConfig_.getShortPseudonyms();
-  auto position = std::find_if(std::begin(spDefinitions), std::end(spDefinitions),
-    [shortPseudonymTag](pep::ShortPseudonymDefinition definition) {
+  auto position = std::ranges::find_if(std::begin(spDefinitions), std::end(spDefinitions), [shortPseudonymTag](pep::ShortPseudonymDefinition definition) {
     return definition.getColumn().getFullName() == shortPseudonymTag;
   });
   if (position == std::end(spDefinitions)) {
@@ -1348,12 +1347,11 @@ void ParticipantDataAggregator::processShortPseudonym(const pep::EnumerateAndRet
   auto definition = getShortPseudonymDefinition(shortPseudonymTag);
   if (definition != nullptr) {
     shortPseudonyms_[shortPseudonymTag] = result.data;
-    auto removed = std::remove(unfilledShortPseudonyms_.begin(), unfilledShortPseudonyms_.end(), definition);
     /* Since we're receiving SP data matching a known definition, that definition must have been added to our
      * "unfilledShortPseudonyms_" field at construction time.
      */
-    assert(removed != unfilledShortPseudonyms_.end());
-    unfilledShortPseudonyms_.erase(removed, unfilledShortPseudonyms_.end());
+    [[maybe_unused]] auto removedCount = std::erase(unfilledShortPseudonyms_, definition);
+    assert(removedCount > 0);
   }
 }
 
@@ -1398,13 +1396,13 @@ bool ParticipantDataAggregator::isVisitAssessorColumn(const std::string& columnN
 bool ParticipantDataAggregator::isDeviceHistoryColumn(const std::string& columnName) const {
   const auto& devices = globalConfig_.getDevices();
   auto end = devices.cend();
-  return std::find_if(devices.cbegin(), end, [&columnName](const pep::DeviceRegistrationDefinition& definition) {return definition.columnName == columnName; }) != end;
+  return std::ranges::find_if(devices.cbegin(), end, [&columnName](const pep::DeviceRegistrationDefinition& definition) {return definition.columnName == columnName; }) != end;
 }
 
 ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept
   : globalConfig_(globalConfig), participantIdentifierIsSet_(false) {
   auto inserter = std::back_inserter(unfilledShortPseudonyms_);
-  std::transform(globalConfig_.getShortPseudonyms().begin(), globalConfig_.getShortPseudonyms().end(), inserter, [](const pep::ShortPseudonymDefinition& definition) {return &definition; });
+  std::ranges::transform(globalConfig_.getShortPseudonyms(), inserter, [](const pep::ShortPseudonymDefinition& definition) {return &definition; });
 }
 
 void ParticipantDataAggregator::process(const pep::EnumerateAndRetrieveResult& result) {

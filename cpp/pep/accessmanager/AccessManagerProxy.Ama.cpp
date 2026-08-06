@@ -14,7 +14,7 @@ void AppendVector(std::vector<T>& destination, const std::vector<T>& source) {
 
 void AppendAndSquashVector(std::vector<AmaQRColumnGroup>& destination, const std::vector<AmaQRColumnGroup>& source) {
   for (auto& sourceGroup : source) {
-    auto found = std::find_if(destination.begin(), destination.end(), [sourceGroup](const AmaQRColumnGroup& destGroup) {return destGroup.name == sourceGroup.name; });
+    auto found = std::ranges::find_if(destination, [sourceGroup](const AmaQRColumnGroup& destGroup) {return destGroup.name == sourceGroup.name; });
     if (found != destination.end()) {
       // The group already exists in the destination. Add the columns_ of the sourceGroup to this destinationGroup.
       AppendVector<std::string>(found->columns, sourceGroup.columns);
@@ -101,7 +101,7 @@ rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaRemoveParticipantsFromGroup(const std::string& group, const std::vector<PolymorphicPseudonym>& participants) const {
   AmaMutationRequest request;
   request.removeParticipantFromGroup.reserve(participants.size());
-  std::transform(participants.begin(), participants.end(), std::back_inserter(request.removeParticipantFromGroup), [&group](const PolymorphicPseudonym& pp) {
+  std::ranges::transform(participants, std::back_inserter(request.removeParticipantFromGroup), [&group](const PolymorphicPseudonym& pp) {
     return AmaRemoveParticipantFromGroup(group, pp);
     });
   return requestAmaMutation(std::move(request));

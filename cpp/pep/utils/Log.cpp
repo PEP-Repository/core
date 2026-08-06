@@ -98,7 +98,7 @@ std::string FormatThreadName() {
 Severity Logging::ParseSeverity(const std::string& level) {
   auto names = GetSeverityLevelNames();
   auto end = names.cend();
-  auto position = std::find_if(names.cbegin(), end, [&level](const std::pair<const Severity, std::string>& candidate) {return candidate.second == level; });
+  auto position = std::ranges::find_if(names.cbegin(), end, [&level](const std::pair<const Severity, std::string>& candidate) {return candidate.second == level; });
   if (position == end) {
     throw std::runtime_error("Invalid severity level " + level);
   }
@@ -118,7 +118,7 @@ std::vector<std::string> Logging::SeverityNames() {
   auto pairs = GetSeverityLevelNames();
   std::vector<std::string> result;
   result.reserve(pairs.size());
-  std::transform(pairs.cbegin(), pairs.cend(), std::back_inserter(result), [](const std::pair<const Severity, std::string>& pair) {return pair.second; });
+  std::ranges::transform(pairs, std::back_inserter(result), [](const std::pair<const Severity, std::string>& pair) {return pair.second; });
   return result;
 }
 

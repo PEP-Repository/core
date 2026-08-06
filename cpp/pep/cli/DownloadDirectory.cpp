@@ -215,7 +215,7 @@ std::vector<DownloadDirectory::NonPristineEntry> DownloadDirectory::getNonPristi
   // TODO: report Progress for this?
   auto unknown = this->getUnknownContents(dirs, files);
   result.reserve(result.size() + unknown.size());
-  std::transform(unknown.begin(), unknown.end(), std::back_inserter(result), [](const std::filesystem::path& path) {
+  std::ranges::transform(unknown, std::back_inserter(result), [](const std::filesystem::path& path) {
     return NonPristineEntry{ std::nullopt, path };
     });
 
@@ -274,9 +274,8 @@ std::vector<RecordDescriptor> DownloadDirectory::getRecords(const std::function<
   std::vector<RecordDescriptor> result;
 
   auto pristine = metadata_.getRecords(); // TODO: don't rely on pristine data here
-  std::transform(pristine.cbegin(), pristine.cend(), std::back_inserter(result), [](const RecordState& state) {return state.descriptor; });
-  auto removed = std::remove_if(result.begin(), result.end(), [&match](const RecordDescriptor& candidate) {return !match(candidate); });
-  result.erase(removed, result.cend());
+  std::ranges::transform(pristine, std::back_inserter(result), [](const RecordState& state) {return state.descriptor; });
+  std::erase_if(result, [&match](const RecordDescriptor& candidate) {return !match(candidate); });
 
   return result;
 }

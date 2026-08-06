@@ -184,8 +184,8 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_happy) {
   EXPECT_EQ(columnGroupMap, expectedColumnGroupMap);
 
   // Sort calculated and expected values the same way to prevent failure due to ordering differences
-  std::sort(columns.begin(), columns.end());
-  std::sort(expectedColumns.begin(), expectedColumns.end());
+  std::ranges::sort(columns);
+  std::ranges::sort(expectedColumns);
 
   EXPECT_EQ(columns, expectedColumns);
 }

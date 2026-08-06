@@ -96,8 +96,8 @@ protected:
           std::set<std::string> result;
           for (const auto& group : access.participantGroups) {
             const auto& modes = group.second;
-            if (std::find(modes.cbegin(), modes.cend(), "access") != modes.cend()
-              && std::find(modes.cbegin(), modes.cend(), "enumerate") != modes.cend()) {
+            if (std::ranges::find(modes, "access") != modes.cend()
+              && std::ranges::find(modes, "enumerate") != modes.cend()) {
               result.emplace(group.first);
             }
           }
@@ -410,7 +410,7 @@ protected:
           ticketRequest.pps = *pps;
 
           ticketRequest.columns.reserve(columnExtensions->size());
-          std::transform(columnExtensions->cbegin(), columnExtensions->cend(), std::back_inserter(ticketRequest.columns), [](const auto& pair) {return pair.first; });
+          std::ranges::transform(columnExtensions->cbegin(), columnExtensions->cend(), std::back_inserter(ticketRequest.columns), [](const auto& pair) {return pair.first; });
 
           return client->requestTicket2(ticketRequest)
             .flat_map([client](const pep::IndexedTicket2& ticket) {return client->enumerateData(ticket.getTicket()); })
@@ -505,7 +505,7 @@ protected:
 
     std::vector<pep::StoreMetadata2Entry> storeEntries;
     storeEntries.reserve(updates.size());
-    std::transform(updates.cbegin(), updates.cend(), std::back_inserter(storeEntries), [verbose = this->getParameterValues().has("verbose")](const Update& update) {
+    std::ranges::transform(updates, std::back_inserter(storeEntries), [verbose = this->getParameterValues().has("verbose")](const Update& update) {
       if (verbose) {
         const auto& previous = update.getPreviousExtension();
         if (previous.has_value()) {
@@ -739,7 +739,7 @@ protected:
         opts.columns = MultiCellQuery::GetColumns(vm);
 
         opts.pps.reserve(specs->size());
-        std::transform(specs->cbegin(), specs->cend(), std::back_inserter(opts.pps), [](const auto& pair) {return pair.first; });
+        std::ranges::transform(specs->cbegin(), specs->cend(), std::back_inserter(opts.pps), [](const auto& pair) {return pair.first; });
 
         return client->requestTicket2(opts)
           .flat_map([client](pep::IndexedTicket2 indexed) {

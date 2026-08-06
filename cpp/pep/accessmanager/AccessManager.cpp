@@ -132,7 +132,7 @@ std::vector<AmaQueryResponse> ExtractPartialQueryResponse(const AmaQueryResponse
   }
 
   // Reclaim reserved-but-unused space
-  std::for_each(responses.begin(), responses.end(), [member](AmaQueryResponse& response) {(response.*member).shrink_to_fit(); });
+  std::ranges::for_each(responses, [member](AmaQueryResponse& response) {(response.*member).shrink_to_fit(); });
 
   return responses;
 }
@@ -209,7 +209,7 @@ void AccessManager::Parameters::setGlobalConfiguration(std::shared_ptr<GlobalCon
   auto end = gc->getShortPseudonyms().cend();
   for (auto i = gc->getShortPseudonyms().cbegin(); i != end; ++i) {
     if (!contexts.empty()) {
-      if (contexts_end == std::find_if(contexts.cbegin(), contexts_end, [&i](const StudyContext& candidate) {return candidate.matchesShortPseudonym(*i); })) {
+      if (contexts_end == std::ranges::find_if(contexts.cbegin(), contexts_end, [&i](const StudyContext& candidate) {return candidate.matchesShortPseudonym(*i); })) {
         throw std::runtime_error("Short pseudonym " + i->getColumn().getFullName() + " defined for unknown study context " + i->getStudyContext());
       }
     }
@@ -461,7 +461,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                       // so we let it process indices to work around this.  If we need this
                       // more often, it's better to change batched_map()
                       std::vector<size_t> is(request->entries.size());
-                      std::iota(is.begin(), is.end(), 0);
+                      std::ranges::iota(is, 0);
                       return server->workerPool_->batched_map<8>(is,
                             ObserveOnAsio(*server->getIoContext()),
                             [server, request, lpResponse, transResp, rkIndices, localPseudonyms, recipient

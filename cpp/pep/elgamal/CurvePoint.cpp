@@ -49,10 +49,7 @@ CurvePoint::CurvePoint(std::string_view packed, bool unpack) {
   if (packed.size() != packed_.size()) {
     throw std::invalid_argument("Trying to construct CurvePoint with incorrect number of packed bytes");
   }
-  std::copy(
-    packed.begin(),
-    packed.begin() + static_cast<ptrdiff_t>(packed_.size()),
-    packed_.begin());
+  std::ranges::copy(packed.begin(), packed.begin() + static_cast<ptrdiff_t>(packed_.size()), packed_.begin());
   state_ = State::GotPacked;
 
   if (unpack) {

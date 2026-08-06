@@ -37,7 +37,7 @@ void FillHistoryRequestIndices(const SignedTicket2& ticket,
     std::vector<TTicketItem>& ticketItems = (*unsignedTicket).*ticketItemsMember;
     indexList = IndexList();
     for (const auto& specifiedItem : *specified) {
-      auto position = std::find_if(ticketItems.cbegin(), ticketItems.cend(), [&specifiedItem, &itemsMatch](const TTicketItem& ticketItem) {
+      auto position = std::ranges::find_if(ticketItems, [&specifiedItem, &itemsMatch](const TTicketItem& ticketItem) {
         return itemsMatch(ticketItem, specifiedItem);
         });
       if (position >= ticketItems.cend()) {
@@ -276,7 +276,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
       results.reserve(entries->size());
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonyms>> localPseuds;
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonym>> agPseuds;
-      std::transform(entries->cbegin(), entries->cend(), std::back_inserter(results), [this, &ticket, localPseuds, agPseuds](const DataHistoryEntry2& entry) mutable {
+      std::ranges::transform(entries->cbegin(), entries->cend(), std::back_inserter(results), [this, &ticket, localPseuds, agPseuds](const DataHistoryEntry2& entry) mutable {
         auto ilp = localPseuds.find(entry.pseudonymIndex);
         if (ilp == localPseuds.cend()) {
           auto emplaced = localPseuds.emplace(std::make_pair(entry.pseudonymIndex, MakeSharedCopy(ticket.accessSubjects[entry.pseudonymIndex])));

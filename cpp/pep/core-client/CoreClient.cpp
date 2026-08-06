@@ -39,7 +39,7 @@ const std::string LogTag ("CoreClient");
 bool ModesInclude(const std::vector<std::string>& required, std::vector<std::string> provided) {
   auto begin = provided.cbegin(), end = provided.cend();
   // If a "read" privilege is held, ensure that the corresponding (implicitly included) "read-meta" privilege is in the array as well
-  if (std::find(begin, end, "read") != end && std::find(begin, end, "read-meta") == end) {
+  if (std::ranges::find(begin, end, "read") != end && std::ranges::find(begin, end, "read-meta") == end) {
     provided.push_back("read-meta");
 
     // Ensure that iterators are valid after vector update
@@ -47,7 +47,7 @@ bool ModesInclude(const std::vector<std::string>& required, std::vector<std::str
     end = provided.cend();
   }
   // If a "write-meta" privilege is held, ensure that the corresponding (implicitly included) "write" privilege is in the array as well
-  if (std::find(begin, end, "write-meta") != end && std::find(begin, end, "write") == end) {
+  if (std::ranges::find(begin, end, "write-meta") != end && std::ranges::find(begin, end, "write") == end) {
     provided.push_back("write");
   }
   return IsSubset(required, provided);
@@ -139,7 +139,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
             auto pseudonymStart = userPseudFormat.stripPrefix(participantIdOrPP);
             return ppsByLp->observe()
               .map([i, participantIdOrPP, pseudonymStart](std::shared_ptr<std::unordered_map<std::string, PolymorphicPseudonym>> ppsByLp) {
-              auto position = std::find_if(ppsByLp->cbegin(), ppsByLp->cend(), [pseudonymStart](const auto& pair) {return boost::starts_with(pair.first, pseudonymStart); });
+              auto position = std::ranges::find_if(ppsByLp->cbegin(), ppsByLp->cend(), [pseudonymStart](const auto& pair) {return boost::starts_with(pair.first, pseudonymStart); });
               if (position == ppsByLp->cend()) {
                 throw std::runtime_error("Can't find local pseudonym matching " + participantIdOrPP);
               }
@@ -351,15 +351,15 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
       .flat_map([this, allSps, columns](const ParticipantGroupAccess& access) {
       pep::EnumerateAndRetrieveData2Opts opts;
       for (const auto& [pg, modes] : access.participantGroups) {
-        if (std::find(modes.begin(), modes.end(), "access") != modes.end()
-          && std::find(modes.begin(), modes.end(), "enumerate") != modes.end()) {
+        if (std::ranges::find(modes, "access") != modes.end()
+          && std::ranges::find(modes, "enumerate") != modes.end()) {
           opts.groups.push_back(pg);
         }
       }
       if (opts.groups.empty()) {
         throw std::runtime_error("Cannot do shortpseudonym lookup. User does not have the appropriate access to any participant group");
       }
-      std::copy(columns->cbegin(), columns->cend(), std::back_inserter(opts.columns));
+      std::ranges::copy(columns->cbegin(), columns->cend(), std::back_inserter(opts.columns));
 
       return this->enumerateAndRetrieveData2(opts);
         });
@@ -396,8 +396,8 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
     tOpts.modes = { "read" };
     tOpts.includeAccessGroupPseudonyms = true;
     for (auto& [participantGroup, modes] : participantGroupAccess.participantGroups) {
-      if (std::find(modes.begin(), modes.end(), "access") != modes.end()
-          && std::find(modes.begin(), modes.end(), "enumerate") != modes.end()) {
+      if (std::ranges::find(modes, "access") != modes.end()
+          && std::ranges::find(modes, "enumerate") != modes.end()) {
         tOpts.participantGroups.push_back(participantGroup);
       }
     }

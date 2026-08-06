@@ -254,7 +254,7 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
       .map([ctx](const auto &access) {
       const pep::ParticipantGroupAccess &pga = std::get<0>(access);
       for (const auto& pg : pga.participantGroups) {
-        if (std::find(pg.second.begin(), pg.second.end(), "access") != pg.second.end())
+        if (std::ranges::find(pg.second, "access") != pg.second.end())
         {
           ctx->content.groups.push_back(pg.first);
         }
@@ -262,7 +262,7 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
       const pep::ColumnAccess &ca = std::get<1>(access);
       ctx->content.columnGroups.reserve(ca.columnGroups.size());
       for (const auto& cg : ca.columnGroups) {
-        assert(std::find(cg.second.modes.begin(), cg.second.modes.end(), "read") != cg.second.modes.end());
+        assert(std::ranges::find(cg.second.modes, "read") != cg.second.modes.end());
         ctx->content.columnGroups.push_back(cg.first);
       }
       if (ctx->content.groups.empty()) {
@@ -330,7 +330,7 @@ std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr
         lines.reserve(nonpristine.size() + 1);
         lines.emplace_back("Data in output directory " + ctx->outputDirectory + " has changed since last download. Specify --force to discard local changes and update to server version.");
 
-        std::transform(nonpristine.begin(), nonpristine.end(), std::back_inserter(lines), [](const pep::cli::DownloadDirectory::NonPristineEntry& entry) {
+        std::ranges::transform(nonpristine, std::back_inserter(lines), [](const pep::cli::DownloadDirectory::NonPristineEntry& entry) {
           if (!entry.path.has_value()) {
             assert(entry.record.has_value());
             return "Absent file for participant " + entry.record->getParticipant().getLocalPseudonym().text() + ", column " + entry.record->getColumn();

@@ -180,7 +180,7 @@ void DownloadProcessor::prepareLocalData(
       // or the payload will be updated to a newer version (i.e. same participant and column, but different timestamp)
       if (!destination_->remove(existing)) {
         if (assumePristine) {
-          auto update = std::find_if(downloads->cbegin(), downloads->cend(), [&existing](const std::pair<const RecordDescriptor, std::shared_ptr<EnumerateResult>>& enumerated) {
+          auto update = std::ranges::find_if(downloads->cbegin(), downloads->cend(), [&existing](const std::pair<const RecordDescriptor, std::shared_ptr<EnumerateResult>>& enumerated) {
             return *enumerated.second->accessGroupPseudonym == existing.getParticipant().getLocalPseudonym()
               && enumerated.second->column == existing.getColumn();
             });

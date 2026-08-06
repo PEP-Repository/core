@@ -17,7 +17,7 @@ QRegularExpression GetPseudonymsRegex(const std::vector<pep::PseudonymFormat>& f
   }
   std::vector<std::string> entries;
   entries.reserve(formats.size());
-  std::transform(formats.cbegin(), formats.cend(), std::back_inserter(entries), [](const pep::PseudonymFormat& format) {return format.getRegexPattern(); });
+  std::ranges::transform(formats, std::back_inserter(entries), [](const pep::PseudonymFormat& format) {return format.getRegexPattern(); });
   auto pattern = "^(" + boost::algorithm::join(entries, "|") + ")$";
   return QRegularExpression(QString::fromStdString(pattern));
 }
@@ -52,7 +52,7 @@ ParticipantSelector::ParticipantSelector(QWidget* parent, const pep::GlobalConfi
   const auto& sps = config.getShortPseudonyms();
   std::vector<pep::PseudonymFormat> spFormats;
   spFormats.reserve(sps.size());
-  std::transform(sps.cbegin(), sps.cend(), std::back_inserter(spFormats), [](const pep::ShortPseudonymDefinition& definition) {return pep::PseudonymFormat(definition.getPrefix(), definition.getLength()); });
+  std::ranges::transform(sps, std::back_inserter(spFormats), [](const pep::ShortPseudonymDefinition& definition) {return pep::PseudonymFormat(definition.getPrefix(), definition.getLength()); });
 
   ui_->sidInput->setValidator(new QRegularExpressionValidator(GetPseudonymsRegex(config.getParticipantIdentifierFormats()), ui_->sidInput));
   SetInputValidationTooltip(ui_->sidInput, tr("participant-id-tooltip"));

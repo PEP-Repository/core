@@ -84,8 +84,8 @@ void TestIterativeCountDown(ProduceNextInnerIfAvailable produce, bool recurs, co
 
   // Validate the "produce" function's results
   std::vector<unsigned> expected(count);
-  std::iota(expected.begin(), expected.end(), 1U);
-  std::reverse(expected.begin(), expected.end());
+  std::ranges::iota(expected, 1U);
+  std::ranges::reverse(expected);
   EXPECT_EQ(produced, expected);
 
   // Verify that this approach doesn't leak callback instances as reported/suspected by linter: see #2862

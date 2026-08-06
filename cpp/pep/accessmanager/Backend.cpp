@@ -338,7 +338,7 @@ void AccessManager::Backend::checkParticipantAccess(const std::string& userGroup
   auto pgps = storage_->getParticipantGroupParticipants(at, {.localPseudonyms = std::vector<LocalPseudonym>{localPseudonym}});
   std::vector<std::string> participantGroups{"*"}; // All participants are implicitly added to "*"
   participantGroups.reserve(participantGroups.size() + pgps.size());
-  std::transform(pgps.cbegin(), pgps.cend(), std::back_inserter(participantGroups), [](auto& entry) {
+  std::ranges::transform(pgps, std::back_inserter(participantGroups), [](auto& entry) {
     return entry.participantGroup;
   });
 
@@ -486,7 +486,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
     else {
       auto availableModes = iterator->second.modes;
       for (auto& mode : modes) {
-        if (std::find(availableModes.cbegin(), availableModes.cend(), mode) == availableModes.cend()) {
+        if (std::ranges::find(availableModes, mode) == availableModes.cend()) {
           errorMessageParts.push_back("Access denied to " + Logging::Escape(userGroup) + " for mode "
                                       + Logging::Escape(mode) + " to column-group " + Logging::Escape(cg));
         }
@@ -500,7 +500,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
     auto cgcs = storage_->getColumnGroupColumns(at, {.columns = std::vector<std::string>{column}});
     std::vector<std::string> associatedColumnGroups{};
     associatedColumnGroups.reserve(cgcs.size());
-    std::transform(cgcs.cbegin(), cgcs.cend(), std::back_inserter(associatedColumnGroups), [](auto& entry) {
+    std::ranges::transform(cgcs, std::back_inserter(associatedColumnGroups), [](auto& entry) {
       return entry.columnGroup;
     });
     for (auto& requiredMode : modes) {
@@ -510,7 +510,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
         auto iterator = columnAccess.columnGroups.find(cg);
         if (iterator != columnAccess.columnGroups.cend()) {
           auto& availableModes = iterator->second.modes;
-          if (std::find(availableModes.cbegin(), availableModes.cend(), requiredMode) != availableModes.cend()) {
+          if (std::ranges::find(availableModes, requiredMode) != availableModes.cend()) {
             accessGranted = true;
             break;
           }
@@ -535,7 +535,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
     cgcs = storage_->getColumnGroupColumns(at, {.columnGroups = {columnGroups}});
     for (auto& cgc : cgcs) {
       // Add the column to the columns vector if it is not already there.
-      auto pos = std::find(columns.cbegin(), columns.cend(), cgc.column);
+      auto pos = std::ranges::find(columns, cgc.column);
       uint32_t index = static_cast<uint32_t>(pos - columns.cbegin());
       if (pos == columns.end()) {
         columns.push_back(cgc.column);
@@ -543,7 +543,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
 
       // Add the columnGroup and column to the map
       auto& entry = columnGroupMap[cgc.columnGroup];
-      if (std::find(entry.indices.cbegin(), entry.indices.cend(), index) == entry.indices.cend()) {
+      if (std::ranges::find(entry.indices, index) == entry.indices.cend()) {
         entry.indices.push_back(index);
       }
     }
@@ -581,7 +581,7 @@ void AccessManager::Backend::checkTicketForEncryptionKeyRequest(std::shared_ptr<
 
 AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, const std::string& userGroup) {
   const auto transform = [](const auto& inRange, auto& outRange, const auto& unary) {
-    std::transform(inRange.cbegin(), inRange.cend(), std::inserter(outRange, outRange.end()), unary);
+    std::ranges::transform(inRange, std::inserter(outRange, outRange.end()), unary);
   };
 
 
@@ -643,7 +643,7 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   std::set<std::string> columns{};
   for (auto& [cg, cols] : columnsByColumnGroup){
     result.columnGroups.push_back(AmaQRColumnGroup(cg, cols));
-    std::copy(cols.begin(), cols.end(), std::inserter(columns, columns.end())); // Add the found values to the columns vector.
+    std::ranges::copy(cols, std::inserter(columns, columns.end())); // Add the found values to the columns vector.
   }
   transform(columns, result.columns, [](const auto& col) { return AmaQRColumn(col);});
 
@@ -704,7 +704,7 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
     for (const auto& cg : allCgs) {
       auto& modes = result.columnGroups[cg.name].modes;
       auto end = modes.cend();
-      if (std::find(modes.cbegin(), end, "read-meta") == end) {
+      if (std::ranges::find(modes.cbegin(), end, "read-meta") == end) {
         modes.push_back("read-meta");
       }
     }
@@ -716,11 +716,11 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
     allowedModes.push_back(cgar.mode);
     if (request.includeImplicitlyGranted) {
       // All users have implicit "read-meta" access if they have "read" access
-      if (cgar.mode == "read" && std::find(allowedModes.cbegin(), allowedModes.cend(), "read-meta") == allowedModes.cend()) {
+      if (cgar.mode == "read" && std::ranges::find(allowedModes, "read-meta") == allowedModes.cend()) {
         allowedModes.push_back("read-meta");
       }
       // All users have implicit "write" access if they have "write-meta" access
-      else if (cgar.mode == "write-meta" && std::find(allowedModes.cbegin(), allowedModes.cend(), "write") == allowedModes.cend()) {
+      else if (cgar.mode == "write-meta" && std::ranges::find(allowedModes, "write") == allowedModes.cend()) {
         allowedModes.push_back("write");
       }
     }
@@ -732,7 +732,7 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
     auto i = result.columnGroups.begin();
     while (i != result.columnGroups.end()) {
       const auto& availableModes = i->second.modes;
-      if (std::find(availableModes.cbegin(), availableModes.cend(), requireMode) == availableModes.cend()) {
+      if (std::ranges::find(availableModes, requireMode) == availableModes.cend()) {
         i = result.columnGroups.erase(i);
       }
       else {
@@ -743,15 +743,12 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
 
   std::vector<std::string> columnGroupsInMap;
   columnGroupsInMap.reserve(result.columnGroups.size());
-  std::transform(result.columnGroups.begin(),
-                 result.columnGroups.end(),
-                 std::back_inserter(columnGroupsInMap),
-                 [](auto& entry) { return entry.first; });
+  std::ranges::transform(result.columnGroups, std::back_inserter(columnGroupsInMap), [](auto& entry) { return entry.first; });
   // For each columnGroup in the result, look up all associated columns and add them to both the "columns" vector, and
   // the groupProperties in the map.
   for (auto& cgc : storage_->getColumnGroupColumns(now, {.columnGroups = columnGroupsInMap})) {
     auto begin = result.columns.begin(), end = result.columns.end();
-    auto pos = std::find(begin, end, cgc.column);
+    auto pos = std::ranges::find(begin, end, cgc.column);
     uint32_t index = static_cast<uint32_t>(pos - begin);
     if (pos == end) {
       result.columns.push_back(cgc.column);

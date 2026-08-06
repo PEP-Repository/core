@@ -1,6 +1,7 @@
 #include <pep/content/ParticipantDeviceHistory.hpp>
 
 #include <algorithm>
+#include <functional>
 
 #include <boost/property_tree/json_parser.hpp>
 
@@ -53,7 +54,7 @@ bool ParticipantDeviceHistory::isValid(std::string* invalidReason) const {
 
 ParticipantDeviceHistory::ParticipantDeviceHistory(const std::vector<ParticipantDeviceRecord>& records, bool throwIfInvalid)
   : records_(records) {
-  std::sort(records_.begin(), records_.end());
+  std::ranges::sort(records_);
   const ParticipantDeviceRecord *active = nullptr;
   std::optional<Timestamp> lastTimestamp;
   for (auto i = begin(); i != end(); ++i) {

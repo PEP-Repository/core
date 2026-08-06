@@ -26,9 +26,9 @@ namespace pep {
  */
 template<typename T>
 bool IsSubset(std::vector<T> a, std::vector<T> b) {
-  std::sort(a.begin(), a.end());
-  std::sort(b.begin(), b.end());
-  return std::includes(b.begin(), b.end(), a.begin(), a.end());
+  std::ranges::sort(a);
+  std::ranges::sort(b);
+  return std::ranges::includes(b, a);
 }
 
 /*!
@@ -36,8 +36,8 @@ bool IsSubset(std::vector<T> a, std::vector<T> b) {
  */
 template <typename T, typename TCompare>
 std::optional<T> TryFindDuplicateValue(std::vector<T> vec, const TCompare& comp) {
-  std::sort(vec.begin(), vec.end(), comp);
-  auto position = std::adjacent_find(vec.cbegin(), vec.cend());
+  std::ranges::sort(vec, comp);
+  auto position = std::ranges::adjacent_find(vec);
   if (position != vec.cend()) {
     return *position;
   }

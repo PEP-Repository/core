@@ -207,7 +207,7 @@ public:
     }
     else {
       auto end = source.end();
-      auto named = std::find_if(source.begin(), end, [](const boost::property_tree::ptree::value_type& entry) {return !entry.first.empty(); });
+      auto named = std::ranges::find_if(source.begin(), end, [](const boost::property_tree::ptree::value_type& entry) {return !entry.first.empty(); });
       if (named != end) {
         throw std::runtime_error("Vector can only be read from node with unnamed entries");
       }

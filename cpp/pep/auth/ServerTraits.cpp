@@ -157,7 +157,7 @@ std::optional<ServerTraits> ServerTraits::Find(const std::function<bool(const Se
     return *filtered.begin();
   default:
     std::vector<std::string> descriptions;
-    std::transform(filtered.begin(), filtered.end(), std::back_inserter(descriptions), [](const ServerTraits& traits) {return traits.description(); });
+    std::ranges::transform(filtered, std::back_inserter(descriptions), [](const ServerTraits& traits) {return traits.description(); });
     throw std::runtime_error("Multiple server traits match the predicate: " + boost::join(descriptions, " and "));
   }
 }

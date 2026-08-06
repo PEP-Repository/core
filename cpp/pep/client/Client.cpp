@@ -34,7 +34,7 @@ rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string&
     // For every column group...
     for (const auto& cg : access.columnGroups) {
       const auto& cgAccess = cg.second;
-      if (std::find(cgAccess.modes.cbegin(), cgAccess.modes.cend(), mode) != cgAccess.modes.cend()) { // ...if we have the requested access mode to that group...
+      if (std::ranges::find(cgAccess.modes, mode) != cgAccess.modes.cend()) { // ...if we have the requested access mode to that group...
         for (auto index : cgAccess.columns.indices) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
           remaining->erase(access.columns[index]);
         }
@@ -90,10 +90,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
         // Create StoreData2Entry instances for the data-to-store
         std::vector<StoreData2Entry> entries;
         entries.reserve(values->size());
-        std::transform(values->cbegin(),
-                       values->cend(),
-                       std::back_inserter(entries),
-                       [polymorphicPseudonym](const auto& pair) {
+        std::ranges::transform(values->cbegin(), values->cend(), std::back_inserter(entries), [polymorphicPseudonym](const auto& pair) {
                          const std::string& column = pair.first;
                          const CellProperties& props = pair.second;
                          StoreData2Entry result(polymorphicPseudonym, column, props.value);

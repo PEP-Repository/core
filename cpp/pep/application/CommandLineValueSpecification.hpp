@@ -149,14 +149,14 @@ std::vector<std::string> ValueSpecificationTemplate<Derived, T>::getSuggested() 
   }
   for (const auto& v : suggested_) {
     std::string s = detail::Format<T>()(v);
-    if (std::find(result.cbegin(), result.cend(), s) == result.end()) {
+    if (std::ranges::find(result, s) == result.end()) {
       result.emplace_back(s);
     }
   }
   if (allowed_) {
     for (const auto& v : *allowed_) {
       std::string s = detail::Format<T>()(v);
-      if (std::find(result.cbegin(), result.cend(), s) == result.end()) {
+      if (std::ranges::find(result, s) == result.end()) {
         result.emplace_back(s);
       }
     }
@@ -203,7 +203,7 @@ bool ValueSpecificationTemplate<Derived, T>::allows(const T& value) const {
     return true;
   }
   auto end = allowed_->cend();
-  return std::find(allowed_->cbegin(), end, value) != end;
+  return std::ranges::find(allowed_->cbegin(), end, value) != end;
 }
 
 template <typename Derived, typename T>

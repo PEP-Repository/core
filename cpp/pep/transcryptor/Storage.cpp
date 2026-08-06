@@ -796,7 +796,7 @@ std::vector<std::string> TranscryptorStorage::getChecksumChainNames() {
 
 int64_t TranscryptorStorage::getOrCreateModeSet(
     std::vector<std::string> modes) {
-  std::sort(modes.begin(), modes.end());
+  std::ranges::sort(modes);
   Sha256 hash;
   for (const auto& mode : modes) {
     hash.update(PackUint64BE(mode.size()));
@@ -823,7 +823,7 @@ int64_t TranscryptorStorage::getOrCreateModeSet(
 
 int64_t TranscryptorStorage::getOrCreateColumnSet(
     std::vector<std::string> cols) {
-  std::sort(cols.begin(), cols.end());
+  std::ranges::sort(cols);
   Sha256 hash;
   for (const auto& col : cols) {
     hash.update(PackUint64BE(col.size()));
@@ -855,7 +855,7 @@ int64_t TranscryptorStorage::getOrCreatePseudonymSet(const std::vector<LocalPseu
   for (auto& p : ps) {
     pps.push_back(std::string(p.pack()));
   }
-  std::sort(pps.begin(), pps.end());
+  std::ranges::sort(pps);
   auto key = Sha256().digest(
       std::accumulate(pps.begin(), pps.end(), std::string()));
 

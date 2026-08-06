@@ -249,7 +249,7 @@ private:
       return this->executeEventLoopFor(true, [this](std::shared_ptr<pep::CoreClient> client) {
           auto request = std::make_shared<pep::DataSizeRequest>();
           auto addColumns = [request](const std::vector<std::string>& columns) {
-            std::copy(columns.begin(), columns.end(), std::inserter(request->columns, request->columns.begin()));
+            std::ranges::copy(columns, std::inserter(request->columns, request->columns.begin()));
             };
           addColumns(ColumnQuery::GetColumns(this->getParameterValues()));
 
@@ -262,7 +262,7 @@ private:
             obs = client->getAccessManagerProxy()->amaQuery(pep::AmaQuery{})
               .tap([addColumns, columnGroups](const pep::AmaQueryResponse& response) {
                   for (const auto& name : columnGroups) {
-                    auto existing = std::find_if(response.columnGroups.begin(), response.columnGroups.end(), [&name](const pep::AmaQRColumnGroup& group) { return group.name == name; });
+                    auto existing = std::ranges::find_if(response.columnGroups, [&name](const pep::AmaQRColumnGroup& group) { return group.name == name; });
                     if (existing != response.columnGroups.end()) {
                       addColumns(existing->columns);
                     }

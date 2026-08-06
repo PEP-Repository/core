@@ -146,7 +146,7 @@ rxcpp::observable<std::string> PagedEntryPayload::appendPage(PageStore& pageStor
   auto xxhashstr = XxHashToString(xxhash);
 
   // Throw an exception when a duplicate hash is found
-  if (std::find(pages_.begin(), pages_.end(), xxhash) != pages_.end()) {
+  if (std::ranges::find(pages_, xxhash) != pages_.end()) {
     throw std::runtime_error("FileStore error, duplicate data hash found in Entry Change: " + name.string() + ", a hashing collision has (likely) occurred.");
   }
 

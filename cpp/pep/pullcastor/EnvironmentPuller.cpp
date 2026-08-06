@@ -47,8 +47,8 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
     std::set<std::string> result;
     for (const auto& group : access.columnGroups) {
       const ColumnAccess::GroupProperties& properties = group.second;
-      if (std::find(properties.modes.cbegin(), properties.modes.cend(), "read") != properties.modes.cend()
-        && std::find(properties.modes.cbegin(), properties.modes.cend(), "write") != properties.modes.cend()) {
+      if (std::ranges::find(properties.modes, "read") != properties.modes.cend()
+        && std::ranges::find(properties.modes, "write") != properties.modes.cend()) {
         for (const auto index : properties.columns.indices) {
           const auto& column = access.columns[index];
           result.emplace(column);
@@ -135,7 +135,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
         // If SP column names have been specified, limit to those
         if (spColumns.has_value()) {
           allowedSps = allowedSps.filter([spColumns](const ShortPseudonymDefinition& sp) {
-            return std::find(spColumns->cbegin(), spColumns->cend(), sp.getColumn().getFullName()) != spColumns->cend();
+            return std::ranges::find(spColumns->cbegin(), spColumns->cend(), sp.getColumn().getFullName()) != spColumns->cend();
           });
         }
 
@@ -346,7 +346,7 @@ rxcpp::observable<std::shared_ptr<StoredData>> EnvironmentPuller::getStoredData(
     std::shared_ptr<std::vector<PolymorphicPseudonym>> pps = std::get<4>(context);
 
     auto nonSpColumns = MakeSharedCopy(*dhColumns);
-    std::copy(dataColumns->cbegin(), dataColumns->cend(), std::back_inserter(*nonSpColumns));
+    std::ranges::copy(dataColumns->cbegin(), dataColumns->cend(), std::back_inserter(*nonSpColumns));
 
     return StoredData::Load(client, pps, spColumns, nonSpColumns)
       .flat_map([self](std::shared_ptr<StoredData> stored) {

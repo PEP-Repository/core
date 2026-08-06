@@ -51,9 +51,7 @@ rxcpp::observable<TResponse> BatchedRetrieve(
     size_t batchSize = std::min(CoreClient::DataRetrievalBatchSize, ids.size() - offset);
     auto& batch = batches->emplace_back();
     batch.reserve(batchSize);
-    std::copy(ids.cbegin() + static_cast<ptrdiff_t>(offset),
-              ids.cbegin() + static_cast<ptrdiff_t>(offset + batchSize),
-              std::back_inserter(batch));
+    std::ranges::copy(ids.cbegin() + static_cast<ptrdiff_t>(offset), ids.cbegin() + static_cast<ptrdiff_t>(offset + batchSize), std::back_inserter(batch));
   }
 
   /* Documentation on e.g. http://reactivex.io/documentation/operators/range.html says
@@ -215,8 +213,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                   }
                   assert(ctx->keys.empty());
                   ctx->keys.reserve(keys.size());
-                  std::transform(keys.cbegin(), keys.cend(), std::back_inserter(ctx->keys),
-                                 [](const AESKey& key) { return key.bytes; });
+                  std::ranges::transform(keys, std::back_inserter(ctx->keys), [](const AESKey& key) { return key.bytes; });
                   return FakeVoid();
                 });
 

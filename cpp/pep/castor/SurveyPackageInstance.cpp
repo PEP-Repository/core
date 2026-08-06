@@ -36,7 +36,7 @@ SurveyPackageInstance::SurveyPackageInstance(std::shared_ptr<Participant> partic
     const auto& siPtrees = GetFromPtree<boost::optional<boost::property_tree::ptree>>(*embedded, "survey_instances");
     if (siPtrees) {
       surveyInstanceIds_.reserve(siPtrees->size());
-      std::transform(siPtrees->begin(), siPtrees->end(), std::back_inserter(surveyInstanceIds_), [](const auto& keyValuePair) {
+      std::ranges::transform(siPtrees->begin(), siPtrees->end(), std::back_inserter(surveyInstanceIds_), [](const auto& keyValuePair) {
         const auto& siPtree = keyValuePair.second;
         return GetFromPtree<std::string>(siPtree, "id");
         });

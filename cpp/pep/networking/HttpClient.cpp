@@ -34,7 +34,7 @@ void TrimOutsideWhitespace(std::string& str) {
 }
 
 std::string FormatHttpUrl(bool tls, const EndPoint& endPoint) {
-  auto protocol = std::find_if(SUPPORTED_PROTOCOLS.begin(), SUPPORTED_PROTOCOLS.end(), [tls](const ProtocolProperties& candidate) { return candidate.tls == tls; });
+  auto protocol = std::ranges::find_if(SUPPORTED_PROTOCOLS, [tls](const ProtocolProperties& candidate) { return candidate.tls == tls; });
   assert(protocol != SUPPORTED_PROTOCOLS.end());
 
   auto result = protocol->scheme + "://" + endPoint.hostname;
@@ -63,7 +63,7 @@ HttpClient::Parameters::Parameters(boost::asio::io_context& ioContext, boost::ur
   : ioContext_(ioContext), tls_(false), baseUri_(std::move(absoluteBase)) {
   this->validateBaseUri();
 
-  auto protocol = std::find_if(SUPPORTED_PROTOCOLS.begin(), SUPPORTED_PROTOCOLS.end(), [scheme = baseUri_.scheme()](const ProtocolProperties& candidate) { return candidate.scheme == scheme; });
+  auto protocol = std::ranges::find_if(SUPPORTED_PROTOCOLS, [scheme = baseUri_.scheme()](const ProtocolProperties& candidate) { return candidate.scheme == scheme; });
   if (protocol == SUPPORTED_PROTOCOLS.end()) {
     throw std::runtime_error("Unsupported protocol " + std::string(baseUri_.scheme()));
   }

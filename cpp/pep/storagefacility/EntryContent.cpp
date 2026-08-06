@@ -61,7 +61,7 @@ void EntryContent::Save(const std::unique_ptr<EntryContent>& content, PersistedE
       SetPersistedEntryProperty(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY, *original);
     }
 
-    std::transform(content->metadata_.cbegin(), content->metadata_.cend(), std::inserter(properties, properties.end()), [](const auto& entry) {
+    std::ranges::transform(content->metadata_, std::inserter(properties, properties.end()), [](const auto& entry) {
       auto key = X_ENTRY_PREFIX + *entry.first;
       return std::make_pair(key, *entry.second);
       });
@@ -89,7 +89,7 @@ std::unique_ptr<EntryContent> EntryContent::Load(FileStore& fileStore, Persisted
   assert(pages.empty());
 
   Metadata storableMetadata;
-  std::transform(properties.cbegin(), properties.cend(), std::inserter(storableMetadata, storableMetadata.begin()), [&fileStore](const auto& entry) {
+  std::ranges::transform(properties, std::inserter(storableMetadata, storableMetadata.begin()), [&fileStore](const auto& entry) {
     assert(entry.first.starts_with(X_ENTRY_PREFIX));
     return fileStore.makeMetadataEntry(entry.first.substr(X_ENTRY_PREFIX.size()), entry.second);
     });

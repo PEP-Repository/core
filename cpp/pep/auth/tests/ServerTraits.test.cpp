@@ -72,7 +72,7 @@ void VerifyServersHaveUniqueProperties(const std::unordered_set<pep::ServerTrait
   // Aggregate the properties for all servers
   using Plain = std::remove_const_t<std::remove_reference_t<T>>;
   ServerProperties<Plain> properties;
-  std::transform(servers.begin(), servers.end(), std::inserter(properties, properties.begin()), [getProperty](const pep::ServerTraits& server) {
+  std::ranges::transform(servers, std::inserter(properties, properties.begin()), [getProperty](const pep::ServerTraits& server) {
     return std::make_pair(server, getProperty(server));
     });
 

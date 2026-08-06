@@ -44,7 +44,7 @@ int Command::issueCommandLineHelp(const std::optional<std::string>& error) {
     fullSelf = parent.command + ' ' + fullSelf;
   }
 
-  std::reverse(parents.begin(), parents.end());
+  std::ranges::reverse(parents);
 
   auto parameters = this->getSupportedParameters();
   auto children = this->createChildCommands();
@@ -66,7 +66,7 @@ int Command::issueCommandLineHelp(const std::optional<std::string>& error) {
   auto arguments = parameters.getInvocationSummary();
   if (!children.empty()) {
     char pre = '[', post = ']';
-    if (std::all_of(children.cbegin(), children.cend(), [](std::shared_ptr<Command> child) {
+    if (std::ranges::all_of(children, [](std::shared_ptr<Command> child) {
       assert(!child->getSupportedParameters().empty()); // Should have at least the --help switch
       return child->hasRequiredArgument(); })) {
       pre = '<';
@@ -249,7 +249,7 @@ int Command::routeToDescendant(CommandPath childPath, NamedValues leafValues, st
   if (childPath.segments.size() > 1U) {
     remaining.segments.assign(childPath.segments.begin() + 1, childPath.segments.end());
   }
-  auto child = std::find_if(children.cbegin(), children.cend(), [&childName](const std::shared_ptr<Command>& c) {
+  auto child = std::ranges::find_if(children, [&childName](const std::shared_ptr<Command>& c) {
     return c->getName() == childName;
   });
 
@@ -359,14 +359,14 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
   }
 
   // Step 12: Optionally dispatch to child command
-  assert(std::all_of(children.cbegin(), children.cend(), [this](const std::shared_ptr<Command>& child) { return child->getParentCommand() == this; }));
+  assert(std::ranges::all_of(children, [this](const std::shared_ptr<Command>& child) { return child->getParentCommand() == this; }));
   if (!children.empty()) {
     if (arguments.empty()) {
       return this->issueCommandLineHelp("No command specified.");
     }
     std::string command = arguments.front();
     arguments.pop();
-    auto child = std::find_if(children.cbegin(), children.cend(), [&command](const std::shared_ptr<Command>& child) {
+    auto child = std::ranges::find_if(children, [&command](const std::shared_ptr<Command>& child) {
       return child->getName() == command;
     });
     if (child == children.cend()) {

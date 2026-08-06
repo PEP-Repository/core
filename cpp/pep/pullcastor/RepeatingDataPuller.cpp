@@ -27,7 +27,7 @@ RepeatingDataPuller::RepeatingDataPuller(std::shared_ptr<RepeatingData> repeatin
       return RxIterate(*allFields)
         .filter([formIds](std::shared_ptr<Field> field) {
         auto end = formIds->cend();
-        return std::find(formIds->cbegin(), end, field->getParentId()) != end;
+        return std::ranges::find(formIds->cbegin(), end, field->getParentId()) != end;
         });
       });
   });
@@ -64,7 +64,7 @@ rxcpp::observable<FakeVoid> RepeatingDataPuller::addMatchingInstancesTo(std::sha
     }
 
     // Add repeating data instances in deterministic order so that ptrees from different runs can be compared
-    std::sort(instances->begin(), instances->end(), [](std::shared_ptr<RepeatingDataInstance> lhs, std::shared_ptr<RepeatingDataInstance> rhs) {
+    std::ranges::sort(instances->begin(), instances->end(), [](std::shared_ptr<RepeatingDataInstance> lhs, std::shared_ptr<RepeatingDataInstance> rhs) {
       return lhs->getId().compare(rhs->getId()) < 0;
     });
 

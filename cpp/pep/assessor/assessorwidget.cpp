@@ -31,8 +31,8 @@ void AssessorWidget::setAssessors(const std::vector<pep::AssessorDefinition>& as
   if (!assessors_.empty()) {
     throw std::runtime_error("Can only set assessors once");
   }
-  std::copy_if(assessors.cbegin(), assessors.cend(), std::back_inserter(assessors_), [&studyContext](const pep::AssessorDefinition& candidate) {return candidate.matchesStudyContext(studyContext); });
-  std::sort(assessors_.begin(), assessors_.end(), [](const pep::AssessorDefinition& lhs, const pep::AssessorDefinition& rhs) {return strcmp(lhs.name.c_str(), rhs.name.c_str()) < 0; });
+  std::ranges::copy_if(assessors, std::back_inserter(assessors_), [&studyContext](const pep::AssessorDefinition& candidate) {return candidate.matchesStudyContext(studyContext); });
+  std::ranges::sort(assessors_, [](const pep::AssessorDefinition& lhs, const pep::AssessorDefinition& rhs) {return strcmp(lhs.name.c_str(), rhs.name.c_str()) < 0; });
 
   auto enable = !assessors_.empty();
   ui_->assessorComboBox->setEnabled(enable);
@@ -55,7 +55,7 @@ void AssessorWidget::setCurrentAssessor(const std::optional<unsigned int>& id) {
   int index = 0; // Select the <none/unspecified> entry by default
 
   if (id.has_value()) {
-    auto position = std::find_if(assessors_.cbegin(), assessors_.cend(), [&id](const pep::AssessorDefinition& candidate) {return candidate.id == id; });
+    auto position = std::ranges::find_if(assessors_, [&id](const pep::AssessorDefinition& candidate) {return candidate.id == id; });
     if (position == assessors_.cend()) {
       /* Assessor was previously selected and stored but
        * - either removed from GlobalConfiguration,
