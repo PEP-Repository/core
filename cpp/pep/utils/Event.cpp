@@ -1,5 +1,4 @@
 #include <pep/utils/Event.hpp>
-#include <cassert>
 
 namespace pep {
 
