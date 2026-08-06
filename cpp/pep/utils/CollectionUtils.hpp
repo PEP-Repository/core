@@ -22,8 +22,8 @@ namespace pep {
 template <std::ranges::range R>
 using QualifiedRangeValue = std::remove_reference_t<std::ranges::range_reference_t<R>>;
 
-/// Returns a value that's included in both vectors, or std::nullopt if no such value exists.
-/// Equality is determined by the specified Compare object.
+/// \brief Returns a value that's included in both vectors, or std::nullopt if no such value exists.
+/// \details Equality is determined by the specified Compare object.
 template <typename T, typename TCompare>
 std::optional<T> TryFindCommonValue(std::vector<T> vecA, std::vector<T> vecB, const TCompare& comp) {
   std::sort(vecA.begin(), vecA.end(), comp);
@@ -34,8 +34,8 @@ std::optional<T> TryFindCommonValue(std::vector<T> vecA, std::vector<T> vecB, co
   return intersect.front();
 }
 
-/// Returns a value that's included in both vectors, or std::nullopt if no such value exists.
-/// Equality is determined by a default-constructed instance of the specified Compare type.
+/// \brief Returns a value that's included in both vectors, or std::nullopt if no such value exists.
+/// \details Equality is determined by a default-constructed instance of the specified Compare type.
 template <typename T, typename TCompare = std::less<T>>
 std::optional<T> TryFindCommonValue(std::vector<T> vecA, std::vector<T> vecB) {
   return TryFindCommonValue(vecA, vecB, TCompare());
