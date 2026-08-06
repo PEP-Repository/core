@@ -35,7 +35,7 @@ std::optional<T> TryFindIntersect(std::vector<T> vecA, std::vector<T> vecB, cons
 }
 
 /// Returns a value that's included in both vectors, or std::nullopt if no such value exists.
-/// Equality is determined by a default-constructed instance of) the specified Compare type.
+/// Equality is determined by a default-constructed instance of the specified Compare type.
 template <typename T, typename TCompare = std::less<T>>
 std::optional<T> TryFindIntersect(std::vector<T> vecA, std::vector<T> vecB) {
   return TryFindIntersect(vecA, vecB, TCompare());
