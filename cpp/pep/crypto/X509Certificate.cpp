@@ -545,7 +545,7 @@ X509RootCertificates X509RootCertificates::FromFile(const std::filesystem::path&
 }
 
 bool X509CertificateChain::isCurrentTimeInValidityPeriod() const {
-  return std::all_of(certificates_.begin(), certificates_.end(), std::mem_fn(&X509Certificate::isCurrentTimeInValidityPeriod));
+  return std::ranges::all_of(certificates_, &X509Certificate::isCurrentTimeInValidityPeriod);
 }
 
 bool X509CertificateChain::certifiesPrivateKey(const AsymmetricKey& privateKey) const {

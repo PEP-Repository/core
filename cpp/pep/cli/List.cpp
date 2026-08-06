@@ -83,7 +83,7 @@ protected:
       }
 
       SubjectData(pep::PolymorphicPseudonym pp, const std::optional<pep::LocalPseudonym> lp, std::shared_ptr<pep::GlobalConfiguration> globalConfig)
-        : pp_(pp), collectMetadata_(false), lp_(lp.transform(std::mem_fn(&pep::LocalPseudonym::text))) {
+        : pp_(pp), collectMetadata_(false), lp_(lp.transform(&pep::LocalPseudonym::text)) {
         if (lp.has_value() && globalConfig) {
           blp_ = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*lp);
         }
