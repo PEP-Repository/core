@@ -37,6 +37,19 @@ TEST(MapUtils, TryFindDuplicateValue) {
   EXPECT_EQ(CopyPointerToOptional(pep::TryFindDuplicateValue(constVec)), 1);
 }
 
+TEST(MiscUtil, TryFindCommonValue) {
+  EXPECT_EQ(pep::TryFindCommonValue(std::vector{3, 2, 1}, std::vector{4, 6, 5}), std::nullopt);
+  EXPECT_EQ(pep::TryFindCommonValue(std::vector{1, 1}, std::vector{2, 2}), std::nullopt);
+  EXPECT_EQ(pep::TryFindCommonValue(std::vector{3, 4, 5}, std::vector{4, 6, 7}), 4);
+  EXPECT_EQ(pep::TryFindCommonValue(std::vector{1, 1 ,3, 2}, std::vector{2, 4, 4, 5}), 2);
+  EXPECT_EQ(pep::TryFindCommonValue(std::vector{2, 3, 1}, std::vector{2, 4, 3}), 2); // expect the smallest common value
+
+  // edge cases: passing an empty list as argument
+  EXPECT_EQ(pep::TryFindCommonValue(std::vector{1, 1}, std::vector<int>{}), std::nullopt);
+  EXPECT_EQ(pep::TryFindCommonValue(std::vector<int>{}, std::vector<int>{2, 2}), std::nullopt);
+  EXPECT_EQ(pep::TryFindCommonValue(std::vector<int>{}, std::vector<int>{}), std::nullopt);
+}
+
 TEST(MapUtils, ContainsUniqueValues) {
   EXPECT_EQ(pep::ContainsUniqueValues(std::vector<int>{}), true);
   EXPECT_EQ(pep::ContainsUniqueValues(std::vector<int>{1 }), true);
