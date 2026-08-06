@@ -51,7 +51,7 @@ if(ENABLE_CLANG_TIDY)
 endif()
 
 # Always enable certain compiler warnings if using either GCC or Clang
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   function(warn_no_error language)
     include(CheckCompilerFlag)
     # Speedup: skip linking
@@ -199,50 +199,50 @@ endif()
 
 # For MSVC, bump up the warning level from level 1 (default) to 3
 # TODO: See if we can bump this to /W4 or /Wall ?
-if (MSVC)
+if(MSVC)
   # Ref: https://learn.microsoft.com/en-us/cpp/build/reference/compiler-option-warning-level?view=msvc-170
   add_compile_options("/W3")
 endif()
 
 # Treat warnings as errors
-if (WARNINGS_AS_ERROR)
-    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
-    endif()
+if(WARNINGS_AS_ERROR)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+  endif()
 
-    if (MSVC)
-        add_compile_options("/WX")
-        if(NOT DEPRECATED_WARNINGS_AS_ERROR)
-          # We're disabling this warning completely since I don't think it's possible to exclude specific warnings from /WX
-          add_compile_options("/wd4996")  # Your code uses a function, class member, variable, or typedef that's marked deprecated.
-        endif()
+  if(MSVC)
+    add_compile_options("/WX")
+    if(NOT DEPRECATED_WARNINGS_AS_ERROR)
+      # We're disabling this warning completely since I don't think it's possible to exclude specific warnings from /WX
+      add_compile_options("/wd4996")  # Your code uses a function, class member, variable, or typedef that's marked deprecated.
+    endif()
+  else()
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+      # AppleClang warns about libraries passed twice to the linker, for example:
+      # pepcorelib uses OpenSSL, Qt uses OpenSSL, pepLogon uses both of these, so will get OpenSSL twice.
+      # This is not a problem, but AppleClang complains, so we silence that with -no_warn_duplicate_libraries.
+      # To deduplicate them, there is https://cmake.org/cmake/help/latest/policy/CMP0156.html,
+      # but for some reason enabling that doesn't work for our project, at least with Conan,
+      # even though it does work for a minimal test project.
+      set(FATAL_WARNING_OPTION "-Wl,-fatal_warnings,-no_warn_duplicate_libraries")
     else()
-      if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
-        # AppleClang warns about libraries passed twice to the linker, for example:
-        # pepcorelib uses OpenSSL, Qt uses OpenSSL, pepLogon uses both of these, so will get OpenSSL twice.
-        # This is not a problem, but AppleClang complains, so we silence that with -no_warn_duplicate_libraries.
-        # To deduplicate them, there is https://cmake.org/cmake/help/latest/policy/CMP0156.html,
-        # but for some reason enabling that doesn't work for our project, at least with Conan,
-        # even though it does work for a minimal test project.
-        set(FATAL_WARNING_OPTION "-Wl,-fatal_warnings,-no_warn_duplicate_libraries")
-      else()
-        set(FATAL_WARNING_OPTION "-Wl,--fatal-warnings")
-      endif()
-
-      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FATAL_WARNING_OPTION}")
-      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${FATAL_WARNING_OPTION}")
+      set(FATAL_WARNING_OPTION "-Wl,--fatal-warnings")
     endif()
+
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FATAL_WARNING_OPTION}")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${FATAL_WARNING_OPTION}")
+  endif()
 endif()
 
 option(ENABLE_SANITIZERS "Enable Address Sanitizer and UB Sanitizer" OFF)
-if (ENABLE_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+if(ENABLE_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   message(STATUS "ENABLE_SANITIZERS=${ENABLE_SANITIZERS}, compiling with ASan and UBSan enabled")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
 endif()
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   option(ENABLE_COVERAGE "Enable code coverage instrumentation" OFF)
-  if (ENABLE_COVERAGE)
+  if(ENABLE_COVERAGE)
     message(STATUS "ENABLE_COVERAGE=${ENABLE_COVERAGE}, compiling with coverage instrumentation enabled")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
@@ -250,7 +250,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # TODO: Why do we disable this optimization when using GCC?
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-reorder-blocks -fno-reorder-blocks-and-partition")
 endif()
 
@@ -372,7 +372,7 @@ endfunction()
 function(verify_headers_standalone target)
   # Only create the additional target if the option is enabled
   if(VERIFY_HEADERS_STANDALONE)
-  # Only create the additional target if there are headers to verify
+    # Only create the additional target if there are headers to verify
     get_target_headers(headers "${target}")
     if(headers)
       add_library("${target}_StandaloneHeaders")
@@ -403,9 +403,9 @@ endfunction()
 # Given a service (base) name, prepares the build system for debugging of that service,
 # adding target dependencies and copying files.
 function(configure_service_debugging service_name)
-    string(TOLOWER ${service_name} service_name_lowercase)
-    add_dependencies(${PROJECT_NAME}${service_name} ${service_name_lowercase}_pki)
-    configure_debug_command_line_parameter(${PROJECT_NAME}${service_name} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${service_name}.json)
+  string(TOLOWER ${service_name} service_name_lowercase)
+  add_dependencies(${PROJECT_NAME}${service_name} ${service_name_lowercase}_pki)
+  configure_debug_command_line_parameter(${PROJECT_NAME}${service_name} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${service_name}.json)
 endfunction()
 
 set(CMAKE_LINK_LIBRARIES_ONLY_TARGETS ON)  # Check dependencies in target_link_libraries exist at config time
@@ -446,21 +446,21 @@ if(NOT WITH_BENCHMARK)
 endif()
 
 # Sets directory for CastorAPIKey.json if it is found inside the projects repository
-if (NOT CASTOR_API_KEY_DIR AND "${CMAKE_CURRENT_LIST_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}/cpp/pep")
+if(NOT CASTOR_API_KEY_DIR AND "${CMAKE_CURRENT_LIST_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}/cpp/pep")
   get_filename_component(CORE_PARENT_DIR ${CMAKE_SOURCE_DIR} DIRECTORY)
-  if (EXISTS "${CORE_PARENT_DIR}/ops/keys/CastorAPIKey.json")
-    SET(CASTOR_API_KEY_DIR "${CORE_PARENT_DIR}/ops/keys")
+  if(EXISTS "${CORE_PARENT_DIR}/ops/keys/CastorAPIKey.json")
+    set(CASTOR_API_KEY_DIR "${CORE_PARENT_DIR}/ops/keys")
     message(STATUS "Directory for CastorAPIKey.json is automatically defaulted to: ${CASTOR_API_KEY_DIR}")
   endif()
 endif()
-if (CASTOR_API_KEY_DIR)
+if(CASTOR_API_KEY_DIR)
   # Interpret (possibly relative) Castor API key dir spec in relation to where CMake was invoked
   get_filename_component(CASTOR_API_KEY_DIR ${CASTOR_API_KEY_DIR} ABSOLUTE BASE_DIR ${CMAKE_BINARY_DIR})
 endif()
 
 option(ENABLE_OAUTH_TEST_USERS "Show a list of test users for OAuth when opening the authorization endpoint in your browser." ON)
 if(ENABLE_OAUTH_TEST_USERS)
-    add_compile_definitions(ENABLE_OAUTH_TEST_USERS)
+  add_compile_definitions(ENABLE_OAUTH_TEST_USERS)
 endif()
 
 ## Unconditional components

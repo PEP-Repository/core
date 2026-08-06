@@ -14,7 +14,7 @@ target_link_libraries(${PROJECT_NAME}ServerApilib
 verify_headers_standalone(${PROJECT_NAME}ServerApilib)
 
 
-if (WITH_SERVERS)
+if(WITH_SERVERS)
   add_library(${PROJECT_NAME}Serverlib STATIC
     NetworkedServer.cpp NetworkedServer.hpp
     Server.cpp Server.hpp
