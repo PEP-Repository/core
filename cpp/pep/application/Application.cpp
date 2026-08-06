@@ -12,6 +12,7 @@
 
 #include <filesystem>
 #include <utility>
+#include <pep/utils/CollectionUtils.hpp>
 
 #ifdef _WIN32
 #include <sstream>
@@ -186,24 +187,14 @@ Application::~Application() {
 }
 
 std::string Application::getName() const {
-  if (argc_ > 0) {
-    return std::filesystem::path(this->getArgv()[0]).filename().string();
+  if (!args_.empty()) {
+    return std::filesystem::path(args_.front()).filename().string();
   }
   return "[this program]";
 }
 
-int Application::getArgc() const {
-  if (argc_ < 0) {
-    throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
-  }
-  return argc_;
-}
-
-char** Application::getArgv() const {
-  if (argv_ == nullptr) {
-    throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
-  }
-  return argv_;
+std::vector<std::string> Application::ConvertArguments(std::span<const char* const> args) {
+  return RangeToVector(args | std::views::transform([](const char* arg) { return std::string(arg); }));
 }
 
 int Application::RunWithoutError(std::function<int()> implementor) noexcept {
@@ -265,17 +256,16 @@ void Application::initializeLoggingOnce() {
   }
 }
 
-int Application::run(int argc, char* argv[]) { //NOLINT(modernize-avoid-c-arrays)
+int Application::run(std::vector<std::string> args) {
   if (useUnwinder()) {
     InitializeUnwinder();
   }
 
-  std::queue<std::string> args;
-  std::for_each(argv + 1, argv + argc, [&args](const char* arg) {args.push(arg); });
+  args_ = std::move(args);
 
-  argc_ = argc;
-  argv_ = argv;
-  return this->process(args);
+  std::queue<std::string> argsQueue;
+  for (const auto& arg : args_ | std::views::drop(1)) { argsQueue.push(arg); }
+  return this->process(argsQueue);
 }
 
 std::filesystem::path Application::rawConfigDirectory() const {
@@ -344,38 +334,7 @@ bool Application::ReportTermination(std::exception_ptr exception) noexcept {
 
 #ifdef _WIN32
 
-// Helper class to convert a number of wide strings to the char *argv[] expected by Application.execute()
-class MainFunctionArguments {
-  std::vector<std::string> argStrings_;
-  std::vector<char*> argv_;
-
- public:
-   MainFunctionArguments(int argc, LPWSTR* wideArgv) {
-     assert(argc >= 0);
-     assert(wideArgv != nullptr);
-
-     for (int i = 0; i < argc; i++) {
-       auto wide = wideArgv[i];
-       assert(wide != nullptr);
-       argStrings_.emplace_back(win32api::WideStringToUtf8(wide));
-     }
-
-     argv_.reserve(argStrings_.size());
-     std::transform(argStrings_.begin(), argStrings_.end(), std::back_inserter(argv_), [](std::string& argString) {return argString.data(); });
-
-     argv_.emplace_back(nullptr); // C++ standard requires that "The value of argv[argc] shall be 0": see https://timsong-cpp.github.io/cppwp/basic.start.main
-   }
-
-  int argc() const noexcept {
-    return static_cast<int>(argStrings_.size());
-  }
-
-  char** argv() noexcept {
-    return argv_.data();
-  }
-};
-
-int Application::InvokeWithArgcArgv(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd, std::function<int(int, char**)> invoke) {
+int Application::InvokeWithArgs(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd, std::function<int(std::vector<std::string> args)> invoke) {
   runningOnWindowsSubsystem = true;
 
   int argc;
@@ -385,10 +344,10 @@ int Application::InvokeWithArgcArgv(HINSTANCE hInstance, HINSTANCE hPrevInstance
   }
   PEP_DEFER(::LocalFree(wideArgv));
 
-  MainFunctionArguments arguments(argc, wideArgv);
-  assert(argc == arguments.argc());
-
-  return invoke(argc, arguments.argv());
+  std::span<const LPCWSTR> wideArgs(wideArgv, static_cast<std::size_t>(argc));
+  return invoke(RangeToVector(wideArgs | std::views::transform([](LPCWSTR wstr) {
+    return std::string(win32api::WideStringToUtf8(wstr));
+  })));
 }
 
 #endif
