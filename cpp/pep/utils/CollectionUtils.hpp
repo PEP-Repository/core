@@ -84,12 +84,10 @@ size_t FillToCapacity(TDest dest, size_t cap, const TSrc& src, size_t padding = 
   return bytesWritten;
 }
 
-/*
-* \brief Determines if a character sequence ends with starting character(s) of another sequence.
-* \param haystack The content that may end with (starting characters of) the sought-after sequence.
-* \param needle The character sequence to find at the end of the haystack.
-* \return The number of starting characters from the needle that occur at the end of the haystack.
-*/
+/// \brief Determines if a character sequence ends with starting character(s) of another sequence.
+/// \param haystack The content that may end with (starting characters of) the sought-after sequence.
+/// \param needle The character sequence to find at the end of the haystack.
+/// \return The number of starting characters from the needle that occur at the end of the haystack.
 size_t FindLongestPrefixAtEnd(std::string_view haystack, std::string_view needle);
 
 template<typename R>

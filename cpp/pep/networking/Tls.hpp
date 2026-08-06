@@ -59,32 +59,27 @@ private:
   bool skipPeerVerification_ = false;
 
 public:
-  /* \brief Constructor.
-   * \param ioContext The I/O context associated with the client.
-   * \param endPoint The endpoint to which the client will connect.
-   */
+  /// \brief Constructor.
+  /// \param ioContext The I/O context associated with the client.
+  /// \param endPoint The endpoint to which the client will connect.
   ClientParameters(boost::asio::io_context& ioContext, EndPoint endPoint);
 
-  /* \brief Gets the path to the file containing the (PEM-encoded) CA certificate (if available).
-   * \return (A reference to) this instance's path to the (PEM-encoded) CA certificate, or std::nullopt if no certificate file has been configured.
-   */
+  /// \brief Gets the path to the file containing the (PEM-encoded) CA certificate (if available).
+  /// \return (A reference to) this instance's path to the (PEM-encoded) CA certificate, or std::nullopt if no certificate file has been configured.
   const std::optional<std::filesystem::path>& caCertFilePath() const noexcept { return caCertFilePath_; }
 
-  /* \brief Sets the path to the file containing the (PEM-encoded) CA certificate (if available).
-   * \param assign The path to the (PEM-encoded) CA certificate, or std::nullopt to configure the parameters without a CA certificate file path.
-   * \return (A reference to) this instance's path to the (PEM-encoded) CA certificate, or std::nullopt if no certificate file has been configured.
-   */
+  /// \brief Sets the path to the file containing the (PEM-encoded) CA certificate (if available).
+  /// \param assign The path to the (PEM-encoded) CA certificate, or std::nullopt to configure the parameters without a CA certificate file path.
+  /// \return (A reference to) this instance's path to the (PEM-encoded) CA certificate, or std::nullopt if no certificate file has been configured.
   const std::optional<std::filesystem::path>& caCertFilePath(const std::optional<std::filesystem::path>& assign) { return caCertFilePath_ = assign; }
 
-  /* \brief Gets whether the client will skip verification of its peer's certificate.
-   * \return TRUE if the client will skip peer certificate verification; FALSE if it will perform said verification.
-   */
+  /// \brief Gets whether the client will skip verification of its peer's certificate.
+  /// \return TRUE if the client will skip peer certificate verification; FALSE if it will perform said verification.
   bool skipPeerVerification() const noexcept { return skipPeerVerification_; }
 
-  /* \brief Sets whether the client will skip verification of its peer's certificate.
-   * \param assign TRUE to have the client skip peer certificate verification; FALSE to have it perform said verification.
-   * \return TRUE if the client will skip peer certificate verification; FALSE if it will perform said verification.
-   */
+  /// \brief Sets whether the client will skip verification of its peer's certificate.
+  /// \param assign TRUE to have the client skip peer certificate verification; FALSE to have it perform said verification.
+  /// \return TRUE if the client will skip peer certificate verification; FALSE if it will perform said verification.
   bool skipPeerVerification(bool assign) noexcept { return skipPeerVerification_ = assign; }
 };
 
@@ -96,27 +91,23 @@ private:
   bool skipCertificateSecurityLevelCheck_ = false;
 
 public:
-  /* \brief Constructor.
-   * \param ioContext The I/O context associated with the server.
-   * \param endPoint The port on which the server will be exposed. May be a sentinel value such as TcpBasedProtocol::ServerParameters::RandomPort.
-   * \param identity Configuration specifying the server's TLS identity.
-   */
+  /// \brief Constructor.
+  /// \param ioContext The I/O context associated with the server.
+  /// \param port The port on which the server will be exposed. May be a sentinel value such as TcpBasedProtocol::ServerParameters::RandomPort.
+  /// \param identity Configuration specifying the server's TLS identity.
   ServerParameters(boost::asio::io_context& ioContext, uint16_t port, X509IdentityFiles identity);
 
-  /* \brief Gets the configuration containing the server's TLS identity.
-   * \return (A reference to) this instance's TLS identity configuration.
-   */
+  /// \brief Gets the configuration containing the server's TLS identity.
+  /// \return (A reference to) this instance's TLS identity configuration.
   const X509IdentityFiles& identity() const noexcept { return identity_; }
 
-  /* \brief Gets whether the server will skip the security check of its certificate.
-   * \return TRUE if the server will skip its certificate security level check; FALSE if it will perform said check.
-   */
+  /// \brief Gets whether the server will skip the security check of its certificate.
+  /// \return TRUE if the server will skip its certificate security level check; FALSE if it will perform said check.
   bool skipCertificateSecurityLevelCheck() const noexcept { return skipCertificateSecurityLevelCheck_; }
 
-  /* \brief Sets whether the server will skip the security check of its certificate.
-   * \param assign TRUE to have the server skip its certificate security level check; FALSE to have it perform said check.
-   * \return TRUE if the server will skip its certificate security level check; FALSE if it will perform said check.
-   */
+  /// \brief Sets whether the server will skip the security check of its certificate.
+  /// \param assign TRUE to have the server skip its certificate security level check; FALSE to have it perform said check.
+  /// \return TRUE if the server will skip its certificate security level check; FALSE if it will perform said check.
   bool skipCertificateSecurityLevelCheck(bool assign) noexcept { return skipCertificateSecurityLevelCheck_ = assign; }
 };
 
@@ -124,9 +115,8 @@ public:
 /// Protocol specific state needed by a TLS client
 class Tls::ClientComponent : public TcpBasedProtocolImplementor<Tls>::ClientComponent, public NodeComponent {
 public:
-  /* \brief Constructor.
-   * \param parameters Parameters for this client component.
-   */
+  /// \brief Constructor.
+  /// \param parameters Parameters for this client component.
   explicit ClientComponent(const ClientParameters& parameters);
 };
 
@@ -134,9 +124,8 @@ public:
 /// Protocol specific state needed by a TLS server
 class Tls::ServerComponent : public TcpBasedProtocolImplementor<Tls>::ServerComponent, public NodeComponent {
 public:
-  /* \brief Constructor.
-   * \param parameters Parameters for this server component.
-   */
+  /// \brief Constructor.
+  /// \param parameters Parameters for this server component.
   explicit ServerComponent(const ServerParameters& parameters);
 };
 

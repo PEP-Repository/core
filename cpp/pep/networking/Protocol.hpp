@@ -8,23 +8,24 @@
 
 namespace pep::networking {
 
-/* \brief (Abstract) base class for specific network protocol types. Inherit through the ProtocolImplementor<> helper (defined below).
- * \remark If/since your implementation requires specific state for sockets and/or clients and/or servers, inherit the nested classes
- *         as well, naming the nested derived classes the same as their base class. E.g. you'd create
- *         class MyProtocol: public Protocol {
- *         public:
- *           class ClientParameters : public Protocol::ClientParameters {
- *             // ...implementation...
- *           }
- *         
- *           class ClientComponent : public Protocol::ClientComponent {
- *           public:
- *             explicit ClientComponent(const ClientParameters& parameters) { // receives _derived_ type parameter
- *               // ...implementation...
- *             }
- *           };
- *         };
- */
+/// \brief (Abstract) base class for specific network protocol types. Inherit through the ProtocolImplementor<> helper (defined below).
+/// \remark If/since your implementation requires specific state for sockets and/or clients and/or servers, inherit the nested classes
+///         as well, naming the nested derived classes the same as their base class. E.g. you'd create
+///         \code
+///         class MyProtocol: public Protocol {
+///         public:
+///           class ClientParameters : public Protocol::ClientParameters {
+///             // ...implementation...
+///           }
+///
+///           class ClientComponent : public Protocol::ClientComponent {
+///           public:
+///             explicit ClientComponent(const ClientParameters& parameters) { // receives _derived_ type parameter
+///               // ...implementation...
+///             }
+///           };
+///         };
+///         \endcode
 class Protocol : boost::noncopyable {
 public:
   /// Common ancestor for all nested types, binding them to a Protocol instance (allowing type safe downcasting) and an I/O context
@@ -60,9 +61,8 @@ protected:
 };
 
 
-/* \brief Base class for (all) of the Protocol type's nested classes, allowing type safe downcasting.
- * \remark See the InstanceBound<> class documentation for rationale.
- */
+/// \brief Base class for (all) of the Protocol type's nested classes, allowing type safe downcasting.
+/// \remark See the InstanceBound<> class documentation for rationale.
 class Protocol::Bound : private InstanceBound<Protocol> { // Note private inheritance: use the "Protocol::Bound::protocol" method instead of "InstanceBound<>::boundInstance"
 
   friend class InstanceBound<Protocol>; // Allow base class to static_cast<> to derived despite private inheritance
@@ -76,14 +76,12 @@ protected:
   using InstanceBound<Protocol>::downcastIfBoundTo; // Provide access to privately inherited method
 
 public:
-  /* \brief Produces the Protocol (instance/type) to which this object is bound.
-   * \return (A reference to) a Protocol instance.
-   */
+  /// \brief Produces the Protocol (instance/type) to which this object is bound.
+  /// \return (A reference to) a Protocol instance.
   const Protocol& protocol() const noexcept { return this->boundInstance(); }
 
-  /* \brief Produces the I/O context associated with this object.
-   * \return (A reference to) a Boost io_context.
-   */
+  /// \brief Produces the I/O context associated with this object.
+  /// \return (A reference to) a Boost io_context.
   boost::asio::io_context& ioContext() const noexcept { return ioContext_; }
 };
 
@@ -110,9 +108,8 @@ protected:
   virtual std::string addressSummary() const = 0;
 
 public:
-  /* \brief Produces a (human-readable) string representation of the address associated with the node.
-   * \return A string representing the address of (the server associated with) the node.
-   */
+  /// \brief Produces a (human-readable) string representation of the address associated with the node.
+  /// \return A string representing the address of (the server associated with) the node.
   std::string address() const { return this->protocol().name() + "://" + this->addressSummary(); }
 };
 
