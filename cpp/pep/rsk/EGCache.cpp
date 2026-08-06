@@ -180,7 +180,7 @@ private:
     std::optional<iterator> cacheUnderUniqueLock(
         EGCacheImp* egcache, const Key& key) {
 
-      assert(data_.find(key) == data_.end());
+      assert(!data_.contains(key));
       assert(enabled_);
 
       if (data_.size() >= Options::MaxSize) {

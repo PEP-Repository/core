@@ -1326,7 +1326,7 @@ const pep::ShortPseudonymDefinition *ParticipantDataAggregator::getShortPseudony
 }
 
 void ParticipantDataAggregator::processDeviceHistory(const pep::EnumerateAndRetrieveResult& result) {
-  assert(deviceHistory_.find(result.column) == deviceHistory_.cend());
+  assert(!deviceHistory_.contains(result.column));
   deviceHistory_[result.column] = result;
 }
 

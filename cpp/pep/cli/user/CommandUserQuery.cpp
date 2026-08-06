@@ -72,7 +72,7 @@ so::QueryDisplayConfig<so::UserQueryFlags> CommandUser::CommandUserQuery::extrac
   using Flags = so::UserQueryFlags;
 
   const auto isIncluded = [includedTypes = values.getOptionalMultiple<std::string>("include")](const auto key) {
-    return includedTypes.empty() || std::ranges::find(includedTypes, key.simple) != includedTypes.end();
+    return includedTypes.empty() || std::ranges::contains(includedTypes, key.simple);
   };
   const auto format = values.get<std::string>("format");
 

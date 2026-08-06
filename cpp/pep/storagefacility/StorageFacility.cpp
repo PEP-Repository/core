@@ -701,7 +701,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
       const auto& entry = request->entries[i];
 
       // Decrypt local pseudonym
-      if (pseudonymLut.count(entry.pseudonymIndex) == 0) {
+      if (!pseudonymLut.contains(entry.pseudonymIndex)) {
         pseudonymLut[entry.pseudonymIndex] = MakeSharedCopy(
           ticket.accessSubjects.at(entry.pseudonymIndex)
           .storageFacility.decrypt(pseudonymKey_));

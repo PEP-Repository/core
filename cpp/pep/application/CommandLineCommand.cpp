@@ -138,7 +138,7 @@ bool Command::hasRequiredArgument() {
 
 std::optional<int> Command::processLexedParameters(const LexedValues& lexed) {
   assert(!parametersLexed_);
-  if (lexed.find("help") != lexed.cend()) {
+  if (lexed.contains("help")) {
     return this->issueCommandLineHelp(std::nullopt);
   }
   parametersLexed_ = true;
@@ -190,7 +190,7 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
 
     // Merge parameters, ensure no conflicting parameter additions (i.e., same parameter added by multiple transformations)
     for (const auto& [key, vals] : transformResult.toAdd) {
-      assert((mergedToAdd.find(key) == mergedToAdd.end())
+      assert(!mergedToAdd.has(key)
              && "Programmer error: Multiple transformed parameters specified conflicting parameter additions.");
       mergedToAdd.set(key, vals);
     }
@@ -292,7 +292,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
       auto lexed = parameters.lex(arguments);
 
       // Step 3: Handle autocomplete requests
-      if (!isLeafDispatch && lexed.find("autocomplete") != lexed.end()) {
+      if (!isLeafDispatch && lexed.contains("autocomplete")) {
         return this->printAutocompleteInfo(argumentsCopy);
       }
 

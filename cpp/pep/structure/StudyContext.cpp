@@ -23,7 +23,7 @@ bool StudyContext::matches(const std::string& contexts) const {
     return isDefault();
   }
   auto ids = ContextStringToIds(contexts);
-  return std::ranges::find(ids, getId()) != ids.cend();
+  return std::ranges::contains(ids, getId());
 }
 
 bool StudyContext::matchesShortPseudonym(const pep::ShortPseudonymDefinition& sp) const {

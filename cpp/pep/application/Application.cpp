@@ -435,7 +435,7 @@ commandline::Parameters Application::getSupportedParameters() const {
 std::optional<int> Application::processLexedParameters(const commandline::LexedValues& lexed) {
 #ifdef _WIN32
   if (runningOnWindowsSubsystem) {
-    if (lexed.find("bind-to-console") != lexed.cend()) {
+    if (lexed.contains("bind-to-console")) {
       winConsole.parentConsoleBinding = win32api::ParentConsoleBinding::TryCreate();
       if (winConsole.parentConsoleBinding != nullptr) {
         std::cerr << '\n' // Don't write on the line containing the next user prompt
@@ -454,7 +454,7 @@ std::optional<int> Application::processLexedParameters(const commandline::LexedV
 
 #endif
 
-  if (lexed.find("version") != lexed.end()){
+  if (lexed.contains("version")){
     return printVersionInfo(lexed);
   }
 

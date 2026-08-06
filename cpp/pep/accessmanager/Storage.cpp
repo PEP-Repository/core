@@ -365,7 +365,7 @@ std::set<std::string> AccessManager::Backend::Storage::ensureSynced() {
     allColumns.insert(col.name);
   }
   auto ensureColumnExists = [implementor = implementor_, &allColumns](const std::string& column) {
-    if (allColumns.count(column) == 0) {
+    if (!allColumns.contains(column)) {
       PEP_LOG(LogTag, Severity::Warning) << "  adding column " << column;
       allColumns.insert(column);
       implementor->raw.insert(ColumnRecord(column));
@@ -413,7 +413,7 @@ std::set<std::string> AccessManager::Backend::Storage::ensureSynced() {
 void AccessManager::Backend::Storage::checkConfig(const std::set<std::string>& allColumns) const {
   for (const auto &colSpec : globalConf_->getColumnSpecifications()) {
     const std::string &name = colSpec.getColumn();
-    if (allColumns.find(name) == allColumns.end()) {
+    if (!allColumns.contains(name)) {
       // Just warn, the column may be created later
       PEP_LOG(LogTag, Severity::Warning) << "Column " << Logging::Escape(name) << " mentioned in column_specifications does not exist";
     }
@@ -687,7 +687,7 @@ std::vector<std::string> AccessManager::Backend::Storage::getChecksumChainNames(
 void AccessManager::Backend::Storage::computeChecksum(const std::string& chain,
       std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
       uint64_t& checkpoint) {
-  if (computeChecksumImpls.count(chain) == 0)
+  if (!computeChecksumImpls.contains(chain))
     throw Error("No such checksum chain");
   computeChecksumImpls.at(chain)(implementor_, maxCheckpoint, checksum, checkpoint);
 }
@@ -702,7 +702,7 @@ std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*parti
   std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> ppsAndGroups;
 
   // Insert all participants for "*" if it was requested
-  if (find(participantGroups, "*") != participantGroups.end()) {
+  if (contains(participantGroups, "*")) {
     for (const auto& pp : views::values(lpToPpMap_)) {
       ppsAndGroups[pp].insert("*");
     }
@@ -2085,7 +2085,7 @@ void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataT
   }
 
   const auto keys = getStructureMetadataKeys(TimeNow(), subjectType, subject);
-  if (std::ranges::find(keys, key) == keys.end()) {
+  if (!std::ranges::contains(keys, key)) {
     std::ostringstream msg;
     msg << Logging::Escape(subject) << " does not exist or does not contain metadata key "
         << Logging::Escape(key.toString());
@@ -2104,7 +2104,7 @@ void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataT
   assert(HasInternalId(subjectType));
   const auto keys = getStructureMetadataKeys(TimeNow(), subjectType, internalSubjectId);
 
-  if (std::ranges::find(keys, key) == keys.end()) {
+  if (!std::ranges::contains(keys, key)) {
     std::ostringstream msg;
     msg << "subject does not exist or does not contain metadata key "
         << Logging::Escape(key.toString());

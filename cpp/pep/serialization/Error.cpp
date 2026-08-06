@@ -27,7 +27,7 @@ bool Error::isDeserializable() const {
     return true;
   }
   auto registered = Factories();
-  return registered.find(originalTypeName_) != registered.cend();
+  return registered.contains(originalTypeName_);
 }
 
 bool Error::IsSerializable(std::exception_ptr exception) noexcept {

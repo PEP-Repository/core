@@ -73,12 +73,12 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
   ticketRequest.forceTicket = opts.forceTicket;
   ticketRequest.modes = {"write"};
   for (const auto& entry : entries) {
-    if (ctx->columns.count(entry.column) == 0) {
+    if (!ctx->columns.contains(entry.column)) {
       ctx->columns[entry.column] = static_cast<uint32_t>(
           ticketRequest.columns.size());
       ticketRequest.columns.push_back(entry.column);
     }
-    if (ctx->pps.count(*entry.polymorphicPseudonym) == 0) {
+    if (!ctx->pps.contains(*entry.polymorphicPseudonym)) {
       ctx->pps[*entry.polymorphicPseudonym] = static_cast<uint32_t>(
           ticketRequest.pps.size());
       ticketRequest.pps.push_back(*entry.polymorphicPseudonym);
@@ -190,12 +190,12 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     // specifies the column(name)s and PPs , allowing us to easily/speedily find
     // the associated indices when we construct the DataStoreEntry2 (below).
 
-    if (ctx->columns.count(entry.column) == 0) {
+    if (!ctx->columns.contains(entry.column)) {
       ctx->columns[entry.column] = static_cast<uint32_t>(
         ticketRequest.columns.size()); // Associate the column(name) with the index it'll get in the ticket
       ticketRequest.columns.push_back(entry.column);
     }
-    if (ctx->pps.count(*entry.polymorphicPseudonym) == 0) {
+    if (!ctx->pps.contains(*entry.polymorphicPseudonym)) {
       ctx->pps[*entry.polymorphicPseudonym] = static_cast<uint32_t>(
         ticketRequest.pps.size()); // Associate the PP with the index it'll get in the ticket
       ticketRequest.pps.push_back(*entry.polymorphicPseudonym);
@@ -379,12 +379,12 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   ticketRequest.forceTicket = opts.forceTicket;
   ticketRequest.modes = { "write" };
   for (const auto& entry : entries) {
-    if (ctx->columns.count(entry.column) == 0) {
+    if (!ctx->columns.contains(entry.column)) {
       ctx->columns[entry.column] = static_cast<uint32_t>(
         ticketRequest.columns.size());
       ticketRequest.columns.push_back(entry.column);
     }
-    if (ctx->pps.count(*entry.polymorphicPseudonym) == 0) {
+    if (!ctx->pps.contains(*entry.polymorphicPseudonym)) {
       ctx->pps[*entry.polymorphicPseudonym] = static_cast<uint32_t>(
         ticketRequest.pps.size());
       ticketRequest.pps.push_back(*entry.polymorphicPseudonym);

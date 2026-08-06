@@ -68,7 +68,7 @@ Scheduler::OutgoingMessage Scheduler::pop() {
       });
     // check if the stream is closed in a later packet in the queue
     // or that there is an observable
-    assert(closeLater || generators_.find(messageId) != generators_.end());
+    assert(closeLater || generators_.contains(messageId));
   }
 #endif
 

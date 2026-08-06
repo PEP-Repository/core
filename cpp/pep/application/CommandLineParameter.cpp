@@ -21,7 +21,7 @@ Parameter::Parameter(const std::string& name, const std::optional<std::string>& 
 
 Parameter Parameter::alias(const SwitchAnnouncement& alias) const {
   auto announcements = this->getAnnouncements();
-  if (announcements.find(alias) != announcements.cend()) {
+  if (announcements.contains(alias)) {
     throw std::runtime_error("Switch " + name_ + " already has announcement " + alias.string());
   }
 

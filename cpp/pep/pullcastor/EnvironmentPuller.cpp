@@ -149,7 +149,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
             }
           }
           allowedSps = allowedSps.filter([colNames](const ShortPseudonymDefinition& sp) {
-            return colNames.find(sp.getColumn().getFullName()) != colNames.cend();
+            return colNames.contains(sp.getColumn().getFullName());
             });
         }
 

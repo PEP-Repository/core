@@ -149,14 +149,14 @@ std::vector<std::string> ValueSpecificationTemplate<Derived, T>::getSuggested() 
   }
   for (const auto& v : suggested_) {
     std::string s = detail::Format<T>()(v);
-    if (std::ranges::find(result, s) == result.end()) {
+    if (!std::ranges::contains(result, s)) {
       result.emplace_back(s);
     }
   }
   if (allowed_) {
     for (const auto& v : *allowed_) {
       std::string s = detail::Format<T>()(v);
-      if (std::ranges::find(result, s) == result.end()) {
+      if (!std::ranges::contains(result, s)) {
         result.emplace_back(s);
       }
     }

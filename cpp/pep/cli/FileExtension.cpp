@@ -98,8 +98,8 @@ protected:
           std::set<std::string> result;
           for (const auto& group : access.participantGroups) {
             const auto& modes = group.second;
-            if (std::ranges::find(modes, "access") != modes.cend()
-              && std::ranges::find(modes, "enumerate") != modes.cend()) {
+            if (std::ranges::contains(modes, "access")
+              && std::ranges::contains(modes, "enumerate")) {
               result.emplace(group.first);
             }
           }

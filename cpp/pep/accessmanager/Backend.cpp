@@ -409,7 +409,7 @@ void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::st
                                                        std::vector<std::string>& modes,
                                                        const Timestamp& timestamp) {
   using namespace std::ranges;
-  if (!participantGroups.empty() && find(modes, "enumerate") == modes.cend()) {
+  if (!participantGroups.empty() && !contains(modes, "enumerate")) {
     modes.push_back("enumerate");
   }
 
@@ -487,7 +487,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
     else {
       auto availableModes = iterator->second.modes;
       for (auto& mode : modes) {
-        if (std::ranges::find(availableModes, mode) == availableModes.cend()) {
+        if (!std::ranges::contains(availableModes, mode)) {
           errorMessageParts.push_back("Access denied to " + Logging::Escape(userGroup) + " for mode "
                                       + Logging::Escape(mode) + " to column-group " + Logging::Escape(cg));
         }
@@ -511,7 +511,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
         auto iterator = columnAccess.columnGroups.find(cg);
         if (iterator != columnAccess.columnGroups.cend()) {
           auto& availableModes = iterator->second.modes;
-          if (std::ranges::find(availableModes, requiredMode) != availableModes.cend()) {
+          if (std::ranges::contains(availableModes, requiredMode)) {
             accessGranted = true;
             break;
           }
@@ -572,7 +572,7 @@ void AccessManager::Backend::checkTicketForEncryptionKeyRequest(std::shared_ptr<
     }
 
     auto col = entry.metadata.getTag();
-    if (ticketCols.count(col) == 0) {
+    if (!ticketCols.contains(col)) {
       std::ostringstream msg;
       msg << "Access denied: ticket does not grant access to column " << Logging::Escape(col);
       throw Error(msg.str());
@@ -722,11 +722,11 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
     allowedModes.push_back(cgar.mode);
     if (request.includeImplicitlyGranted) {
       // All users have implicit "read-meta" access if they have "read" access
-      if (cgar.mode == "read" && std::ranges::find(allowedModes, "read-meta") == allowedModes.cend()) {
+      if (cgar.mode == "read" && !std::ranges::contains(allowedModes, "read-meta")) {
         allowedModes.push_back("read-meta");
       }
       // All users have implicit "write" access if they have "write-meta" access
-      else if (cgar.mode == "write-meta" && std::ranges::find(allowedModes, "write") == allowedModes.cend()) {
+      else if (cgar.mode == "write-meta" && !std::ranges::contains(allowedModes, "write")) {
         allowedModes.push_back("write");
       }
     }
@@ -738,7 +738,7 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
     auto i = result.columnGroups.begin();
     while (i != result.columnGroups.end()) {
       const auto& availableModes = i->second.modes;
-      if (std::ranges::find(availableModes, requireMode) == availableModes.cend()) {
+      if (!std::ranges::contains(availableModes, requireMode)) {
         i = result.columnGroups.erase(i);
       }
       else {

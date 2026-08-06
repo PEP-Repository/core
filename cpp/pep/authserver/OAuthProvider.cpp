@@ -481,7 +481,7 @@ HTTPResponse OAuthProvider::handleTokenRequest(HTTPRequest request, std::string 
   try {
     auto formData = request.getBodyAsFormData();
     for(auto& p : {"client_id", "redirect_uri", "grant_type", "code", "code_verifier"}) {
-      if(formData.find(p) == formData.end()) {
+      if(!formData.contains(p)) {
         std::ostringstream oss;
         oss << p << " required";
         return MakeErrorJsonHttpResponse(ErrorInvalidRequest, std::move(oss).str());

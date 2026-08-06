@@ -34,8 +34,8 @@ void EntryPayload::Save(std::shared_ptr<EntryPayload> payload, PersistedEntryPro
   }
   else {
     payload->save(properties, pages);
-    assert(properties.count(FILE_SIZE_KEY) != 0U);
-    // Don't assert(properties.count(PAGE_SIZE_KEY) != 0U) since it doesn't hold for an empty PagedEntryPayload
+    assert(properties.contains(FILE_SIZE_KEY));
+    // Don't assert(properties.contains(PAGE_SIZE_KEY)) since it doesn't hold for an empty PagedEntryPayload
   }
 }
 
@@ -146,7 +146,7 @@ rxcpp::observable<std::string> PagedEntryPayload::appendPage(PageStore& pageStor
   auto xxhashstr = XxHashToString(xxhash);
 
   // Throw an exception when a duplicate hash is found
-  if (std::ranges::find(pages_, xxhash) != pages_.end()) {
+  if (std::ranges::contains(pages_, xxhash)) {
     throw std::runtime_error("FileStore error, duplicate data hash found in Entry Change: " + name.string() + ", a hashing collision has (likely) occurred.");
   }
 

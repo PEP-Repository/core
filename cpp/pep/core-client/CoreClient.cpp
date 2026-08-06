@@ -353,8 +353,8 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
       .flat_map([this, allSps, columns](const ParticipantGroupAccess& access) {
       pep::EnumerateAndRetrieveData2Opts opts;
       for (const auto& [pg, modes] : access.participantGroups) {
-        if (std::ranges::find(modes, "access") != modes.end()
-          && std::ranges::find(modes, "enumerate") != modes.end()) {
+        if (std::ranges::contains(modes, "access")
+          && std::ranges::contains(modes, "enumerate")) {
           opts.groups.push_back(pg);
         }
       }
@@ -398,8 +398,8 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
     tOpts.modes = { "read" };
     tOpts.includeAccessGroupPseudonyms = true;
     for (auto& [participantGroup, modes] : participantGroupAccess.participantGroups) {
-      if (std::ranges::find(modes, "access") != modes.end()
-          && std::ranges::find(modes, "enumerate") != modes.end()) {
+      if (std::ranges::contains(modes, "access")
+          && std::ranges::contains(modes, "enumerate")) {
         tOpts.participantGroups.push_back(participantGroup);
       }
     }

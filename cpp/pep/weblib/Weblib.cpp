@@ -276,7 +276,7 @@ public:
           return std::move(access).participantGroups
             | views::filter([](const auto& entry) {
               const auto& [name, modes] = entry;
-              return find(modes, "access") != modes.end();
+              return contains(modes, "access");
             })
             | views::keys
             | views::transform([](const std::string& name) {

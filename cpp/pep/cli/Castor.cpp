@@ -131,7 +131,7 @@ private:
       columns.reserve(ptree.size());
       size_t startSize = columns.size();
       for (const auto& entry : ptree) {
-        if (std::ranges::find(columns, entry.first) == columns.end()) {
+        if (!std::ranges::contains(columns, entry.first)) {
           columns.push_back(entry.first);
         }
       }
