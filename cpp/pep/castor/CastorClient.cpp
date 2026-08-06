@@ -29,7 +29,7 @@ namespace castor {
 namespace {
 
 const std::string LogTag("CastorClient");
-const std::string CASTOR_429_RESPONSE_MESSAGE_HEADER = "Too many requests, retry after: ";
+const std::string Castor429ResponseMessageHeader = "Too many requests, retry after: ";
 
 std::shared_ptr<networking::HttpClient> CreateHttpClient(boost::asio::io_context& ioContext, const EndPoint& endPoint, std::optional<std::filesystem::path> caCertFilepath) {
   networking::HttpClient::Parameters parameters(ioContext, true, endPoint);
@@ -198,10 +198,10 @@ rxcpp::observable<JsonPtr> CastorClient::handleCastorResponse(std::shared_ptr<HT
     }
     // TODO: don't parse human-readable "message" to extract timestamp
     auto message = errors.front().second.get<std::string>("message"); // E.g. "Too many requests, retry after: 2023-01-31T00:32:32+00:00"
-    if (!message.starts_with(CASTOR_429_RESPONSE_MESSAGE_HEADER)) {
+    if (!message.starts_with(Castor429ResponseMessageHeader)) {
       throw CastorException::FromErrorResponse(response, "Castor 429 response contains unparseable retry time message");
     }
-    auto xml = message.substr(CASTOR_429_RESPONSE_MESSAGE_HEADER.size());
+    auto xml = message.substr(Castor429ResponseMessageHeader.size());
 
     // Calculate the time to wait before retrying
     auto retryWhen = TimeZone::Utc().timestampFromXmlDateTime(xml);
