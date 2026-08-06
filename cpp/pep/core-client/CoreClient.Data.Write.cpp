@@ -232,11 +232,11 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     enumRequest.ticket = *signedTicket;
     enumRequest.columns = IndexList();
     enumRequest.columns->indices = ctx->columns
-      | std::views::transform([](const std::pair<const std::string, uint32_t>& pair) {return pair.second; })
+      | std::views::values
       | std::ranges::to<std::vector>();
     enumRequest.pseudonyms = IndexList();
     enumRequest.pseudonyms->indices = ctx->pps
-      | std::views::transform([](const std::pair<const PolymorphicPseudonym, uint32_t>& pair) {return pair.second; })
+      | std::views::values
       | std::ranges::to<std::vector>();
 
     return this->getStorageFacilityProxy(true)->requestDataEnumeration(std::move(enumRequest))

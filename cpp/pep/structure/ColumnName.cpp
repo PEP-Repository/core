@@ -50,7 +50,7 @@ std::string ColumnNameMappings::getColumnNameSectionFor(const std::string& rawOr
 
 std::vector<ColumnNameMapping> ColumnNameMappings::getEntries() const {
   return entries_
-    | std::views::transform([](const std::pair<const std::string, ColumnNameMapping>& entry) {return entry.second; })
+    | std::views::values
     | std::ranges::to<std::vector>();
 }
 

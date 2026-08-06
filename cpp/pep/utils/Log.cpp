@@ -117,7 +117,7 @@ std::string Logging::FormatSeverity(Severity level) {
 
 std::vector<std::string> Logging::SeverityNames() {
   return GetSeverityLevelNames()
-    | std::views::transform([](const std::pair<const Severity, std::string>& pair) {return pair.second; })
+    | std::views::values
     | std::ranges::to<std::vector>();
 }
 
