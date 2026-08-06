@@ -11,11 +11,9 @@
 
 namespace pep {
 
-/**
- * directory structure:
- * - .1, .2, .3 are pages
- * - name.mtime.entry is a snapshot of all the metadata and pages that are used
- */
+/// directory structure:
+/// - .1, .2, .3 are pages
+/// - name.mtime.entry is a snapshot of all the metadata and pages that are used
 class FileStore : public SharedConstructor<FileStore> {
   friend class SharedConstructor<FileStore>;
   friend class EntryContent;
@@ -25,12 +23,10 @@ public:
   class Cell;
   class Entry;
 
-  /*!
-   * \brief Utility base class for Entry and EntryChange classes (defined below).
-   * \remark Ensures that appropriate values are copied when we
-   *         - create an EntryChange on the basis of an existing Entry, i.e. when preparing a cell update.
-   *         - create an Entry on the basis of an EntryChange, i.e. when committing the EntryChange.
-   */
+  /// \brief Utility base class for Entry and EntryChange classes (defined below).
+  /// \remark Ensures that appropriate values are copied when we
+  ///         - create an EntryChange on the basis of an existing Entry, i.e. when preparing a cell update.
+  ///         - create an Entry on the basis of an EntryChange, i.e. when committing the EntryChange.
   class EntryBase {
   private:
     Cell& cell_;
@@ -66,9 +62,7 @@ public:
     std::set<std::string> pagePaths() const;
   };
 
-  /*!
-   * \brief Represents a pending update to a cell. A new Entry will be created when an EntryChange is commit()ted.
-   */
+  /// \brief Represents a pending update to a cell. A new Entry will be created when an EntryChange is commit()ted.
   class EntryChange : public EntryBase, public std::enable_shared_from_this<EntryChange>, private SharedConstructor<EntryChange> {
     // Allow SharedConstructor<EntryChange>::Create to access our private constructor(s)
     friend class SharedConstructor<EntryChange>;
@@ -94,9 +88,7 @@ public:
     void cancel() &&;
   };
 
-  /*!
-   * \brief Represents a cell version ("data card").
-   */
+  /// \brief Represents a cell version ("data card").
   class Entry : public EntryBase, public std::enable_shared_from_this<Entry>, private SharedConstructor<Entry>
   {
     // Allow SharedConstructor<Entry>::Create to access our private constructor(s)

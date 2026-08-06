@@ -53,18 +53,14 @@ struct Context {
   so::FormatFlags exportFormats = so::FormatFlags::None;
 };
 
-/*!
-* \brief Will a saved configuration file be used for this command?
-*/
+/// \brief Will a saved configuration file be used for this command?
 bool UsesSavedConfig(const std::shared_ptr<Context> &ctx) {
   return ctx->update || ctx->updateFormat || ctx->resume;
 }
 
-/*!
-* \brief Create a working copy of the source in which changes can safely be made without losing the original data.
-* \param source Path to the original file or directory
-* \param dest Path to the directory in which to place the copies
-*/
+/// \brief Create a working copy of the source in which changes can safely be made without losing the original data.
+/// \param source Path to the original file or directory
+/// \param dest Path to the directory in which to place the copies
 void HardlinkFolders(fs::path source, fs::path dest) {
   for (const auto& entry : fs::directory_iterator(source)) {
     if (!fs::is_directory(entry)) {
@@ -81,11 +77,9 @@ void HardlinkFolders(fs::path source, fs::path dest) {
   }
 }
 
-/*!
-* \brief Changes the names of the participant- and metadata directories from the long User Pseudonyms to the shorter Participant Alias.
-* \param directory Path to the output directory
-* \param globalConfig Shared pointer to the GlobalConfiguration
-*/
+/// \brief Changes the names of the participant- and metadata directories from the long User Pseudonyms to the shorter Participant Alias.
+/// \param directory Path to the output directory
+/// \param globalConfig Shared pointer to the GlobalConfiguration
 void UpdateFormat(fs::path directory, std::shared_ptr<pep::GlobalConfiguration> globalConfig) {
   auto metadataDir = directory / DownloadMetadata::GetDirectoryName();
   for (const fs::directory_entry& entry : fs::directory_iterator(directory)) {
@@ -104,10 +98,8 @@ void UpdateFormat(fs::path directory, std::shared_ptr<pep::GlobalConfiguration> 
   }
 }
 
-/*!
-* \brief Print the current stage of the download process to std::cout
-* \param progress The Progress object containing the current state
-*/
+/// \brief Print the current stage of the download process to std::cout
+/// \param progress The Progress object containing the current state
 void ReportProgress(const pep::Progress& progress) {
   auto state = progress.getState();
   assert(!state.empty());
@@ -120,10 +112,8 @@ void ReportProgress(const pep::Progress& progress) {
   }
 }
 
-/*!
-* \brief Assure that the temp directory exists and if needed, is reset to match the outputDirectory.
-* \param ctx Shared pointer to the Context
-*/
+/// \brief Assure that the temp directory exists and if needed, is reset to match the outputDirectory.
+/// \param ctx Shared pointer to the Context
 void prepareTempDirectory(const std::shared_ptr<Context> &ctx) {
   // Existing temp directory should be left intact only if --resume is specified
   if (fs::exists(ctx->tempDirectory) && !ctx->resume) {
@@ -137,10 +127,8 @@ void prepareTempDirectory(const std::shared_ptr<Context> &ctx) {
   }
 }
 
-/*!
-* \brief Many flags and switches can not be simultaneously set. This function guards against all incompatible combinations.
-* \param ctx Shared pointer to the Context
-*/
+/// \brief Many flags and switches can not be simultaneously set. This function guards against all incompatible combinations.
+/// \param ctx Shared pointer to the Context
 void checkContextSettings(const std::shared_ptr<Context> &ctx) {
   if (ctx->force && ctx->options.assumePristine) {
     throw std::runtime_error("Options --force and --assume-pristine cannot be used together - specify either one or the other");
@@ -206,11 +194,9 @@ so::FormatFlags ParseExportFormats(const std::vector<std::string>& formatNames) 
   return flags;
 }
 
-/*!
-* \brief Based on the values given by the user, create a Context object that contains all required data to perform the download.
-* \param client Shared pointer to the pepClient.
-* \param values The cli flag and switch values given by the user
-*/
+/// \brief Based on the values given by the user, create a Context object that contains all required data to perform the download.
+/// \param client Shared pointer to the pepClient.
+/// \param values The cli flag and switch values given by the user
 rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<pep::CoreClient> client, const pep::commandline::NamedValues& values) {
   auto ctx = std::make_shared<Context>();
   if (values.has("report-progress")) {
@@ -302,12 +288,10 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
           });
   }
 }
-/*!
-* \brief Based on the settings in the Context, create a DownloadDirectory that will handle all further data downloading and file creation.
-* \param ctx shared pointer to the Context
-* \param client shared pointer to the pepClient
-* \param globalConfig Shared pointer to the GlobalConfiguration
-*/
+/// \brief Based on the settings in the Context, create a DownloadDirectory that will handle all further data downloading and file creation.
+/// \param ctx shared pointer to the Context
+/// \param client shared pointer to the pepClient
+/// \param globalConfig Shared pointer to the GlobalConfiguration
 std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr<Context> ctx, const std::shared_ptr<pep::CoreClient> client, const std::shared_ptr<pep::GlobalConfiguration> globalConfig, bool applyFileExtensions) {
   std::shared_ptr<DownloadDirectory> directory;
   if (ctx->update) {

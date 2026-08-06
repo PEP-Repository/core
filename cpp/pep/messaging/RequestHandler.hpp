@@ -6,32 +6,26 @@
 
 namespace pep::messaging {
 
-/**
- * @brief Base class that allows derived classes to register methods that handle a specific request type.
- *        The "handleRequest" method can then dispatch serialized requests to the appropriate registered method.
- */
+/// \brief Base class that allows derived classes to register methods that handle a specific request type.
+///        The "handleRequest" method can then dispatch serialized requests to the appropriate registered method.
 class RequestHandler {
 public:
-  /**
-   * @brief Handles a serialized request, producing a sequence-of-sequence-of serialized responses.
-   * @param magic the message magic indicating the request's type. An exception is raised if no method has been registered that handles this type.
-   * @param message the serialized request.
-   * @param tail followup messages associated with the primary request. Pass an empty MessageSequence if the request has no followup messages.
-   * @return a sequence of sequence of serialized response messages.
-   */
+  /// \brief Handles a serialized request, producing a sequence-of-sequence-of serialized responses.
+  /// \param magic the message magic indicating the request's type. An exception is raised if no method has been registered that handles this type.
+  /// \param message the serialized request.
+  /// \param tail followup messages associated with the primary request. Pass an empty MessageSequence if the request has no followup messages.
+  /// \return a sequence of sequence of serialized response messages.
   MessageBatches handleRequest(MessageMagic magic, std::shared_ptr<std::string> message, MessageSequence tail);
 
 protected:
-  /**
-   * @brief Registers one or more member functions as request handlers.
-   * @param instance Caller must pass `this` here, so that ThisT resolves to the specific (derived) type of the caller.
-   * @param methods pointers to the member functions of ThisT that will be registered as handlers.
-   * @tparam ThisT The (derived) type of the RequestHandler instance on which the methods are registered.
-   * @remark All MethodPtrTs must be pointers to methods with one of the following signatures:
-   *         - MessageBatches (ThisT::*)(std::shared_ptr<SomeRequestType>)
-   *         - MessageBatches (ThisT::*)(std::shared_ptr<SomeRequestType>, MessageSequence)
-   * @remark Overwrites any previously registered handler(s) for the same request type(s).
-   */
+  /// \brief Registers one or more member functions as request handlers.
+  /// \param instance Caller must pass `this` here, so that ThisT resolves to the specific (derived) type of the caller.
+  /// \param methods pointers to the member functions of ThisT that will be registered as handlers.
+  /// \tparam ThisT The (derived) type of the RequestHandler instance on which the methods are registered.
+  /// \remark All MethodPtrTs must be pointers to methods with one of the following signatures:
+  ///         - MessageBatches (ThisT::*)(std::shared_ptr<SomeRequestType>)
+  ///         - MessageBatches (ThisT::*)(std::shared_ptr<SomeRequestType>, MessageSequence)
+  /// \remark Overwrites any previously registered handler(s) for the same request type(s).
   template <typename ThisT, typename... MethodPtrTs>
   static void RegisterRequestHandlers(ThisT& instance, MethodPtrTs... methods) {
     static_assert(std::is_base_of_v<RequestHandler, ThisT>, "Template parameter type must inherit from this class");

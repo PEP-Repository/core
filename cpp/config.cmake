@@ -5,11 +5,11 @@ enable_language(C CXX)
 
 #TODO This info is outdated
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
-    message(FATAL_ERROR "Require at least gcc 7.0 (or different compiler)")
+  message(FATAL_ERROR "Require at least gcc 7.0 (or different compiler)")
 endif()
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
-    message(FATAL_ERROR "Require at least clang 6.0 (or different compiler)")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
+  message(FATAL_ERROR "Require at least clang 6.0 (or different compiler)")
 endif()
 
 set(CMAKE_C_STANDARD 11)
@@ -35,9 +35,9 @@ endif()
 cmake_policy(SET CMP0135 NEW) # Ignore timestamps of files in downloaded archives to make sure content changes are picked up: https://cmake.org/cmake/help/latest/policy/CMP0135.html
 
 # Deal with issues specific to the Microsoft compiler. Compiler sniffing code was copied from CMake's FindBoost module.
-if (MSVC)
+if(MSVC)
   option(SHOW_COMPILE_TIME "Include compilation time in output")
-  if (SHOW_COMPILE_TIME)
+  if(SHOW_COMPILE_TIME)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Bt+")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /time")
     set(CMAKE_EXE_MODULE_FLAGS "${CMAKE_EXE_MODULE_FLAGS} /time")
@@ -55,7 +55,7 @@ if (MSVC)
 
   # Allow multi-processor compilation: see https://blogs.msdn.microsoft.com/visualstudio/2010/03/07/tuning-c-build-parallelism-in-vs2010/
   option(COMPILE_SEQUENTIALLY "Compile one source at a time")
-  if (COMPILE_SEQUENTIALLY)
+  if(COMPILE_SEQUENTIALLY)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP1")
   else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
@@ -83,5 +83,5 @@ endif()
 
 option(HTTPSERVER_WITH_TLS "Build HTTPServer with support for TLS" On)
 if(HTTPSERVER_WITH_TLS)
-    add_definitions(-DHTTPSERVER_WITH_TLS)
+  add_definitions(-DHTTPSERVER_WITH_TLS)
 endif()

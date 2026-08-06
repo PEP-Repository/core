@@ -6,11 +6,11 @@ namespace pep {
 
 namespace {
 
-const std::string X_ENTRY_PREFIX = "x-";
-const std::string POLYMORPHIC_KEY_KEY = "polymorphic-key";
-const std::string BLINDING_TIMESTAMP_KEY = "blinding-timestamp";
-const std::string ENCRYPTION_SCHEME_KEY = "encryption-scheme";
-const std::string ORIGINAL_PAYLOAD_TIMESTAMP_KEY = "original-payload-timestamp";
+const std::string XEntryPrefix = "x-";
+const std::string PolymorphicKeyKey = "polymorphic-key";
+const std::string BlindingTimestampKey = "blinding-timestamp";
+const std::string EncryptionSchemeKey = "encryption-scheme";
+const std::string OriginalPayloadTimestampKey = "original-payload-timestamp";
 
 } // anonymous namespace
 
@@ -53,16 +53,16 @@ void EntryContent::Save(const std::unique_ptr<EntryContent>& content, PersistedE
   std::shared_ptr<EntryPayload> payload;
 
   if (content != nullptr) {
-    SetPersistedEntryProperty(properties, POLYMORPHIC_KEY_KEY, content->getPolymorphicKey());
-    SetPersistedEntryProperty(properties, BLINDING_TIMESTAMP_KEY, content->getBlindingTimestamp());
-    SetPersistedEntryProperty(properties, ENCRYPTION_SCHEME_KEY, content->getEncryptionScheme());
+    SetPersistedEntryProperty(properties, PolymorphicKeyKey, content->getPolymorphicKey());
+    SetPersistedEntryProperty(properties, BlindingTimestampKey, content->getBlindingTimestamp());
+    SetPersistedEntryProperty(properties, EncryptionSchemeKey, content->getEncryptionScheme());
     auto original = content->getOriginalPayloadEntryTimestamp();
     if (original.has_value()) {
-      SetPersistedEntryProperty(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY, *original);
+      SetPersistedEntryProperty(properties, OriginalPayloadTimestampKey, *original);
     }
 
     std::transform(content->metadata_.cbegin(), content->metadata_.cend(), std::inserter(properties, properties.end()), [](const auto& entry) {
-      auto key = X_ENTRY_PREFIX + *entry.first;
+      auto key = XEntryPrefix + *entry.first;
       return std::make_pair(key, *entry.second);
       });
     payload = content->payload_.ptr;
@@ -73,9 +73,9 @@ void EntryContent::Save(const std::unique_ptr<EntryContent>& content, PersistedE
 }
 
 std::unique_ptr<EntryContent> EntryContent::Load(FileStore& fileStore, PersistedEntryProperties& properties, std::vector<PageId>& pages) {
-  auto polymorphicKey = TryExtractPersistedEntryProperty<EncryptedKey>(properties, POLYMORPHIC_KEY_KEY);
-  auto blindingTimestamp = TryExtractPersistedEntryProperty<Timestamp>(properties, BLINDING_TIMESTAMP_KEY);
-  auto encryptionScheme = TryExtractPersistedEntryProperty<EncryptionScheme>(properties, ENCRYPTION_SCHEME_KEY);
+  auto polymorphicKey = TryExtractPersistedEntryProperty<EncryptedKey>(properties, PolymorphicKeyKey);
+  auto blindingTimestamp = TryExtractPersistedEntryProperty<Timestamp>(properties, BlindingTimestampKey);
+  auto encryptionScheme = TryExtractPersistedEntryProperty<EncryptionScheme>(properties, EncryptionSchemeKey);
 
   assert(polymorphicKey.has_value() == blindingTimestamp.has_value());
   assert(polymorphicKey.has_value() == encryptionScheme.has_value());
@@ -84,14 +84,14 @@ std::unique_ptr<EntryContent> EntryContent::Load(FileStore& fileStore, Persisted
     return nullptr;
   }
 
-  auto originalPayloadTimestamp = TryExtractPersistedEntryProperty<Timestamp>(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY);
+  auto originalPayloadTimestamp = TryExtractPersistedEntryProperty<Timestamp>(properties, OriginalPayloadTimestampKey);
   auto payload = EntryPayload::Load(properties, pages);
   assert(pages.empty());
 
   Metadata storableMetadata;
   std::transform(properties.cbegin(), properties.cend(), std::inserter(storableMetadata, storableMetadata.begin()), [&fileStore](const auto& entry) {
-    assert(entry.first.starts_with(X_ENTRY_PREFIX));
-    return fileStore.makeMetadataEntry(entry.first.substr(X_ENTRY_PREFIX.size()), entry.second);
+    assert(entry.first.starts_with(XEntryPrefix));
+    return fileStore.makeMetadataEntry(entry.first.substr(XEntryPrefix.size()), entry.second);
     });
 
   return std::make_unique<EntryContent>(

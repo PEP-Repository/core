@@ -33,8 +33,7 @@ enum class AuthenticationState { Unauthenticated, Error, Authenticating, Authent
 //! Describes the status of the authentication
 struct AuthenticationStatus {
   //! The state the authentication is in.
-  /*! If the token is expired, the state will remain "Authenticated"
-   */
+  /// If the token is expired, the state will remain "Authenticated"
   AuthenticationState state;
 
   static const std::chrono::seconds ExpiryMargin;
@@ -43,53 +42,40 @@ struct AuthenticationStatus {
   std::string token;
 
   //! The calculated time of expiration of the token.
-  /*! There is no margin used in the calculation. When checking the expiration, using a margin may be desirable
-   */
+  /// There is no margin used in the calculation. When checking the expiration, using a margin may be desirable
   std::optional<Timestamp> expires;
 
   //! The exception, if an error occured
   std::exception_ptr exceptionPtr;
 
-  /*!
-   * \brief Construct an "Authenticated" AuthenticationStatus
-   * \param token The received token
-   * \param expiresIn The number of seconds until expiration of the token
-   */
+  /// \brief Construct an "Authenticated" AuthenticationStatus
+  /// \param token The received token
+  /// \param expiresIn The number of seconds until expiration of the token
   AuthenticationStatus(const std::string& token, std::chrono::seconds expiresIn)
     : state(AuthenticationState::Authenticated), token(token), expires(TimeNow() + expiresIn) {}
 
-  /*!
-   * \brief Construct an "AuthenticationError" AuthenticationStatus
-   * \param exception_ptr The exception that occured causing the authentication error
-   */
+  /// \brief Construct an "AuthenticationError" AuthenticationStatus
+  /// \param exception_ptr The exception that occured causing the authentication error
   AuthenticationStatus(const std::exception_ptr& exception_ptr)
     : state(AuthenticationState::Error), exceptionPtr(exception_ptr) {}
 
-  /*!
-   * \brief Construct an AuthenticationStatus with the given state
-   * \param state The state of the AuthenticationStatus
-   */
+  /// \brief Construct an AuthenticationStatus with the given state
+  /// \param state The state of the AuthenticationStatus
   AuthenticationStatus(const AuthenticationState& state = AuthenticationState::Unauthenticated) : state(state) {}
 
-  /*!
-   * \return true if the state is "Authenticated", and the token has not expired, taking ExpiryMarginSeconds into account. false otherwise
-   */
+  /// \return true if the state is "Authenticated", and the token has not expired, taking ExpiryMarginSeconds into account. false otherwise
   bool authenticated() const;
 };
 
-/*!
- * \brief Thrown when the Castor API responds with an error
- *
- * This excludes things like network errors while using the Castor API, or server problems at Castor preventing the API from responding
- */
+/// \brief Thrown when the Castor API responds with an error
+///
+/// This excludes things like network errors while using the Castor API, or server problems at Castor preventing the API from responding
 class CastorException : public std::runtime_error {
 private:
-  /*!
-   * \brief Construct a CastorException from a HTTP status code, title and detail
-   * \param status The HTTP status code returned by the API
-   * \param title The title of the error
-   * \param detail The description of the error
-   */
+  /// \brief Construct a CastorException from a HTTP status code, title and detail
+  /// \param status The HTTP status code returned by the API
+  /// \param title The title of the error
+  /// \param detail The description of the error
   CastorException(const unsigned status, const std::string& title, const std::string& detail)
     : std::runtime_error("Castor returned status " + std::to_string(status) + " (" + title + "): " + detail), status(status), title(title), detail(detail) {}
 
@@ -118,9 +104,7 @@ public:
 
   ~CastorConnection() noexcept;
 
-  /*!
-   * \brief Event that's notified when an HTTPRequest is (about to be) sent.
-   */
+  /// \brief Event that's notified when an HTTPRequest is (about to be) sent.
   const Event<CastorConnection, std::shared_ptr<const HTTPRequest>> onRequest;
 
   // TODO: abstract entire interface away from HTTP
@@ -130,23 +114,17 @@ public:
 
   rxcpp::observable<JsonPtr> getJsonEntries(const std::string& apiPath, const std::string& embeddedItemsNodeName);
 
-  /*!
-    * \brief Get the status of the authentication to castor
-    * \return Observable that immediately emits the current AuthenticationStatus and will emit updates to the status
-    */
+  /// \brief Get the status of the authentication to castor
+  /// \return Observable that immediately emits the current AuthenticationStatus and will emit updates to the status
   rxcpp::observable<AuthenticationStatus> authenticationStatus();
 
   //! Request a new authentication token from Castor
   void reauthenticate();
 
-  /*!
-   * \return Observable that, if no error occurs, emits a Study for all studies the authenticated user has access to
-   */
+  /// \return Observable that, if no error occurs, emits a Study for all studies the authenticated user has access to
   rxcpp::observable<std::shared_ptr<Study>> getStudies();
-  /*!
-   * \param slug The slug of the study to get. In the study settings in Castor this is called Study ID
-   * \return Observable that, if no error occurs, emits a Study for the first study the authenticated user has access to, with the given slug.
-   */
+  /// \param slug The slug of the study to get. In the study settings in Castor this is called Study ID
+  /// \return Observable that, if no error occurs, emits a Study for the first study the authenticated user has access to, with the given slug.
   rxcpp::observable<std::shared_ptr<Study>> getStudyBySlug(const std::string& slug);
 };
 

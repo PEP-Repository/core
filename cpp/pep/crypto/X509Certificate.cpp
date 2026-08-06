@@ -233,11 +233,9 @@ bool X509Certificate::hasBasicConstraints() const {
   return HasExtensionFlag(this->raw(), EXFLAG_BCONS);
 }
 
-/**
- * @brief Check whether the certificate has the digital signature key usage.
- * @note The key usage extension must be present in the certificate. This method
- *      returns false for unrestricted keys.
- */
+/// \brief Check whether the certificate has the digital signature key usage.
+/// \note The key usage extension must be present in the certificate. This method
+///      returns false for unrestricted keys.
 bool X509Certificate::hasDigitalSignatureKeyUsage() const {
   auto& internal = this->raw();
 
@@ -251,11 +249,9 @@ bool X509Certificate::hasDigitalSignatureKeyUsage() const {
   return (keyUsage & KU_DIGITAL_SIGNATURE) != 0;
 }
 
-/**
- * @brief Check whether the certificate has the TLS server extended key usage (EKU).
- * @note The extended key usage extension must be present in the certificate. This method
- *      returns false for unrestricted keys.
- */
+/// \brief Check whether the certificate has the TLS server extended key usage (EKU).
+/// \note The extended key usage extension must be present in the certificate. This method
+///      returns false for unrestricted keys.
 bool X509Certificate::hasTLSServerEKU() const {
   auto& internal = this->raw();
 
@@ -284,10 +280,8 @@ bool X509Certificate::isSelfSigned() const {
   }
 }
 
-/**
- * @brief Check the path lengths constraint of the X509Certificate.
- * @return The path length constraint, or std::nullopt if not present.
- */
+/// \brief Check the path lengths constraint of the X509Certificate.
+/// \return The path length constraint, or std::nullopt if not present.
 //NOLINTBEGIN(google-runtime-int)
 std::optional<unsigned long> X509Certificate::pathLengthConstraint() const {
   long pathLength = X509_get_pathlen(&this->raw());
@@ -472,10 +466,8 @@ std::strong_ordering X509Certificate::operator<=>(const X509Certificate& other) 
   throw std::runtime_error("Unexpected return code from X509_cmp");
 }
 
-/**
- * @brief Factory method for X509Certificates that takes a PEM-encoded list of certificates.
- * @param in The PEM-encoded certificate chain.
- */
+/// \brief Factory method for X509Certificates that takes a PEM-encoded list of certificates.
+/// \param in The PEM-encoded certificate chain.
 X509Certificates X509CertificatesFromPem(const std::string& in) {
   if (in.empty()) {
     throw std::runtime_error("Certificates input is empty in X509Certificates PEM reader.");
@@ -509,10 +501,8 @@ X509Certificates X509CertificatesFromPem(const std::string& in) {
   return result;
 }
 
-/**
- * @brief Convert the X509Certificates to PEM format.
- * @return The PEM-encoded certificate chain.
- */
+/// \brief Convert the X509Certificates to PEM format.
+/// \return The PEM-encoded certificate chain.
 std::string X509CertificatesToPem(const X509Certificates& certificates) {
   std::string out;
 
@@ -643,12 +633,10 @@ bool X509CertificateChain::verify(const X509RootCertificates& rootCAs) const { /
   return true;
 }
 
-/**
- * @brief Constructor for X509CertificateSigningRequest that generates a new CSR.
- * @param keyPair The key pair to use for the CSR.
- * @param commonName The common name for the CSR.
- * @param organizationalUnit The organizational unit for the CSR.
- */
+/// \brief Constructor for X509CertificateSigningRequest that generates a new CSR.
+/// \param keyPair The key pair to use for the CSR.
+/// \param commonName The common name for the CSR.
+/// \param organizationalUnit The organizational unit for the CSR.
 X509CertificateSigningRequest::X509CertificateSigningRequest(AsymmetricKeyPair& keyPair, const std::string& commonName, const std::string& organizationalUnit) : X509CertificateSigningRequest(MakeStub(keyPair)) {
   // Obtain the subject name of the X509 request, pointer must not be freed
   X509_NAME* name = X509_REQ_get_subject_name(csr_);
@@ -937,13 +925,11 @@ void X509Certificate::sign(const AsymmetricKey& caPrivateKey, const X509_NAME& c
   }
 }
 
-/**
- * @brief Sign a certificate based on the X509CertificateSigningRequest.
- * @param caCert The issuer's certificate.
- * @param caPrivateKey The private key of the CA used to sign the certificate.
- * @param validityPeriod seconds that the certificate should be valid.
- * @return The newly generated certificate.
- */
+/// \brief Sign a certificate based on the X509CertificateSigningRequest.
+/// \param caCert The issuer's certificate.
+/// \param caPrivateKey The private key of the CA used to sign the certificate.
+/// \param validityPeriod seconds that the certificate should be valid.
+/// \return The newly generated certificate.
 X509Certificate X509CertificateSigningRequest::signCertificate(const X509Certificate& caCert, const AsymmetricKey& caPrivateKey, const std::chrono::seconds validityPeriod) const {
   assert(csr_);
   if (!caPrivateKey.isSet()) {

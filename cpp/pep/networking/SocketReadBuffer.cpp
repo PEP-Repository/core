@@ -142,14 +142,14 @@ void SocketReadBuffer::asyncRead(StreamSocket& source, void* destination, size_t
 
 void SocketReadBuffer::asyncAppendRemaining(std::shared_ptr<std::string> buffer, StreamSocket& source, const DelimitedReadHandler& handle) {
   // Increase the buffer's capacity...
-  constexpr size_t CHUNK_SIZE = 4096U;
+  constexpr size_t ChunkSize = 4096U;
   auto offset = buffer->size();
-  buffer->resize(offset + CHUNK_SIZE);
+  buffer->resize(offset + ChunkSize);
   // ... then read the next chunk into the buffer section that we just added
-  this->asyncRead(source, buffer->data() + offset, CHUNK_SIZE, [buffer, &source, handle, self = SharedFrom(*this)](const boost::system::error_code& error, std::size_t bytes) {
+  this->asyncRead(source, buffer->data() + offset, ChunkSize, [buffer, &source, handle, self = SharedFrom(*this)](const boost::system::error_code& error, std::size_t bytes) {
     // Drop buffer capacity that the read action didn't fill
-    if (bytes != CHUNK_SIZE) {
-      buffer->resize(buffer->size() - CHUNK_SIZE + bytes);
+    if (bytes != ChunkSize) {
+      buffer->resize(buffer->size() - ChunkSize + bytes);
     }
 
     if (error == make_error_code(boost::asio::error::eof)) { // Finished reading
