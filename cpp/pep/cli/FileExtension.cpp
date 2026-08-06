@@ -412,7 +412,7 @@ protected:
           ticketRequest.pps = *pps;
 
           ticketRequest.columns = *columnExtensions
-            | std::views::transform([](const auto& pair) {return pair.first; })
+            | std::views::keys
             | std::ranges::to<std::vector>();
 
           return client->requestTicket2(ticketRequest)
@@ -741,7 +741,7 @@ protected:
         opts.columns = MultiCellQuery::GetColumns(vm);
 
         opts.pps = *specs
-          | std::views::transform([](const auto& pair) {return pair.first; })
+          | std::views::keys
           | std::ranges::to<std::vector>();
 
         return client->requestTicket2(opts)

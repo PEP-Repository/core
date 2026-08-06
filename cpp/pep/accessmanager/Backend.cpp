@@ -630,7 +630,7 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
     // If there were additional cgar filters in place, we need to go back on the found columngroups and columns and apply another narrowing filter, showing only those
     // columngroups that appear in the cgars.
     auto cgsInCgars = cgars
-      | std::views::transform([] (const auto& cgar){return cgar.columnGroup;})
+      | std::views::transform(&ColumnGroupAccessRule::columnGroup)
       | std::ranges::to<std::set>();
     std::erase_if(columnsByColumnGroup,
                   [&cgsInCgars](const auto& entry){ return !cgsInCgars.contains(entry.first);});
@@ -671,13 +671,13 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   if(!query.participantGroupModeFilter.empty() || !query.userGroupFilter.empty()){
     // The pgar filters are narrowing the found participants as well, only show pgs with pgars
     foundParticipantGroups = pgars
-      | std::views::transform([](const auto& pgar) { return pgar.participantGroup;})
+      | std::views::transform(&ParticipantGroupAccessRule::participantGroup)
       | std::ranges::to<std::set>();
   } else{
     // Get the participantgroups as normal.
     auto pgs = storage_->getParticipantGroups(timestamp, pgFilter);
     foundParticipantGroups = pgs
-      | std::views::transform([](const auto& pg) { return pg.name;})
+      | std::views::transform(&ParticipantGroup::name)
       | std::ranges::to<std::set>();
   }
 
@@ -748,7 +748,7 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
   }
 
   auto columnGroupsInMap = result.columnGroups
-    | std::views::transform([](auto& entry) { return entry.first; })
+    | std::views::keys
     | std::ranges::to<std::vector>();
   // For each columnGroup in the result, look up all associated columns and add them to both the "columns" vector, and
   // the groupProperties in the map.

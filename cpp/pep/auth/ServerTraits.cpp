@@ -158,7 +158,7 @@ std::optional<ServerTraits> ServerTraits::Find(const std::function<bool(const Se
     return *filtered.begin();
   default:
     auto descriptions = filtered
-      | std::views::transform([](const ServerTraits& traits) {return traits.description(); })
+      | std::views::transform(&ServerTraits::description)
       | std::ranges::to<std::vector>();
     throw std::runtime_error("Multiple server traits match the predicate: " + boost::join(descriptions, " and "));
   }

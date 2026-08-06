@@ -864,7 +864,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
 
   // Fill a vector with indices of pseudonyms that we want/need decrypted
   auto pseudIndices = request->entries
-    | std::views::transform([](const DataStoreEntry2& entry) {return entry.pseudonymIndex; })
+    | std::views::transform(&DataStoreEntry2::pseudonymIndex)
     | std::ranges::to<std::vector>();
 
   // Decrypt pseudonyms.

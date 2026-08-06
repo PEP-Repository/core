@@ -212,7 +212,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                     throw std::runtime_error("Received unexpected number of plaintext keys");
                   }
                   assert(ctx->keys.empty());
-                  ctx->keys.append_range(keys | views::transform([](const AESKey& key) { return key.bytes; }));
+                  ctx->keys.append_range(keys | views::transform(&AESKey::bytes));
                   return FakeVoid();
                 });
 

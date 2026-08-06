@@ -126,7 +126,7 @@ AuthserverBackend::AuthserverBackend(const Parameters &params)
 
 std::vector<std::string> AuthserverBackend::getChecksumChainNames() const {
   return checksumNameMappings
-    | std::views::transform([](const auto& pair) { return pair.first; })
+    | std::views::keys
     | std::ranges::to<std::vector>();
 }
 

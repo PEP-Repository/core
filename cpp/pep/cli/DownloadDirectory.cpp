@@ -273,7 +273,7 @@ filesystem::SetOfExistingPaths DownloadDirectory::getUnknownContents(const files
 std::vector<RecordDescriptor> DownloadDirectory::getRecords(const std::function<bool(const RecordDescriptor&)>& match) const {
   auto pristine = metadata_.getRecords(); // TODO: don't rely on pristine data here
   auto result = pristine
-    | std::views::transform([](const RecordState& state) {return state.descriptor; })
+    | std::views::transform(&RecordState::descriptor)
     | std::ranges::to<std::vector>();
   std::erase_if(result, [&match](const RecordDescriptor& candidate) {return !match(candidate); });
 
