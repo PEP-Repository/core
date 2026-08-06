@@ -547,6 +547,7 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
         .timestamp = TimeNow(),
         .modes = request.modes,
         .accessSubjects = {},
+        .referenceSubjects = {},
         .columns = request.columns,
         .userGroup = certified.signatory.organizationalUnit()},
     .pps = request.accessSubjects
@@ -584,13 +585,14 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
 }
 
 rxcpp::observable<TranscryptorResponse> AccessManager::transcryptTicketRequest(std::shared_ptr<TicketRequestContext> ctx) {
-  ctx->tsReqEntries.entries.resize(ctx->pps.size());
+  size_t totalSubjects = ctx->pps.size() + ctx->request.referenceSubjects.size();
+  ctx->tsReqEntries.entries.resize(totalSubjects);
 
   // workerPool_->batched_map() does not tell us which index we're handling,
   // so we let it process indices to work around this.
   // If we need this more often, it's better to change batched_map()
   return ctx->server->workerPool_->batched_map<8>(
-      std::vector(std::from_range, views::iota(std::size_t{}, ctx->pps.size())),
+      std::vector(std::from_range, views::iota(std::size_t{}, totalSubjects)),
       ObserveOnAsio(*ctx->server->getIoContext()),
       [ctx](size_t i) {
         const Backend::Pp& pp = ctx->pps[i];
@@ -628,11 +630,18 @@ rxcpp::observable<TranscryptorResponse> AccessManager::transcryptTicketRequest(s
 std::string AccessManager::identifyTicketRequestSubjects(TicketRequestContext& ctx, TranscryptorResponse resp) {
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx.requestNumber << " received transcryptor response";
   // Now we have local pseudonyms for the original PPs.
-  if (resp.entries.size() != ctx.pps.size()) {
+  size_t totalSubjects = ctx.pps.size() + ctx.request.referenceSubjects.size();
+  if (resp.entries.size() != totalSubjects) {
     throw std::runtime_error("Transcryptor returned wrong number of entries");
   }
 
-  ctx.ticket.accessSubjects = std::move(resp.entries);
+  { // Split the response: first part for access subjects, second part for reference subjects
+    const auto refSubsBegin = resp.entries.begin() + static_cast<std::ptrdiff_t>(ctx.pps.size());
+    ctx.ticket.accessSubjects = std::vector<LocalPseudonyms>(resp.entries.begin(), refSubsBegin);
+    ctx.ticket.referenceSubjects = std::vector<LocalPseudonyms>(refSubsBegin, resp.entries.end());
+  }
+
+  // Perform access checks only for access subjects
   if (ctx.ticket.userGroup == UserGroup::DataAdministrator && !ctx.ticket.accessSubjects.empty()) {
     PEP_LOG(LogTag, Severity::Info) << "Granting " << ctx.ticket.userGroup << " unchecked access to " << ctx.ticket.accessSubjects.size() << " subject(s)";
   }

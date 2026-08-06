@@ -23,6 +23,7 @@ struct Ticket2 {
   Timestamp timestamp{/*zero*/};
   std::vector<std::string> modes;
   std::vector<LocalPseudonyms> accessSubjects;  ///< identifiers for subjects that will be accessed
+  std::vector<LocalPseudonyms> referenceSubjects;  ///< identifiers for subjects that will **not** be accessed
   std::vector<std::string> columns;
   std::string userGroup;
 
@@ -66,6 +67,7 @@ struct ClientSideTicketRequest2 {
   std::vector<std::string> modes;
   std::vector<std::string> participantGroups;
   std::vector<PolymorphicPseudonym> accessSubjects;
+  std::vector<PolymorphicPseudonym> referenceSubjects;
   std::vector<std::string> columnGroups;
   std::vector<std::string> columns;
   bool includeUserGroupPseudonyms = false;

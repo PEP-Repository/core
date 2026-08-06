@@ -442,6 +442,7 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(
       .modes = opts.modes,
       .participantGroups = opts.participantGroups,
       .accessSubjects = opts.pps,
+      .referenceSubjects = {},
       .columnGroups = opts.columnGroups,
       .columns = opts.columns,
       .includeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});

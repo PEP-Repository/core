@@ -55,6 +55,18 @@ void EnsureStructureMetadataAccess(AccessMode mode, StructureMetadataType subjec
   }
 }
 
+void CheckForDuplicatePseudonyms(const TicketRequest2& ticket) {
+  constexpr auto reportAndThrow = [](PolymorphicPseudonym duplicate) {
+    PEP_LOG(LogTag, Severity::Error) << "Failing ticket request due to duplicate PP " << duplicate.text();
+    throw Error("Ticket request failed due to duplicate polymorphic pseudonym. "
+                "Please request access to unique polymorphic pseudonyms");
+  };
+
+  if (auto found = TryFindDuplicateValue(ticket.accessSubjects)) { reportAndThrow(*found); }
+  if (auto found = TryFindDuplicateValue(ticket.referenceSubjects)) { reportAndThrow(*found); }
+  if (auto found = TryFindCommonValue(ticket.accessSubjects, ticket.referenceSubjects)) { reportAndThrow(*found); }
+}
+
 }
 
 AccessManager::Backend::Backend(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf)
@@ -393,12 +405,7 @@ void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
                 "supported. Use either groups or specific participants.");
   }
 
-  auto duplicate = TryFindDuplicateValue(request.accessSubjects);
-  if (duplicate) {
-    PEP_LOG(LogTag, Severity::Error) << "Failing ticket request due to duplicate PP " << duplicate->text();
-    throw Error("Ticket request failed due to duplicate polymorphic pseudonym. Please request access to unique "
-                "polymorphic pseudonyms");
-  }
+  CheckForDuplicatePseudonyms(request);
 
   // Check all participantgroups and columngroups for existence
   std::vector<std::string> errorMessageParts;
