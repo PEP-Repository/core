@@ -43,7 +43,7 @@ This section lists our own coding guidelines, which we apply on top of the more 
 
 ### Use of C++ basics
 
-- use C++20
+- use C++23
 - keep the use of templating low
 - Use STL containers like `std::vector`, `std::map` instead of rolling your own
 - Use `auto` to avoid redundant repetition of type names, ie use `auto` instead of `std::map<RequestType,int>::iterator` [ES.11](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#es11-use-auto-to-avoid-redundant-repetition-of-type-names)
