@@ -29,7 +29,7 @@ void CurvePoint::ensurePacked() const {
 
 std::string_view CurvePoint::pack() const {
   ensurePacked();
-  return SpanToString(packed_);
+  return std::string_view(packed_);
 }
 
 group_ge* CurvePoint::unpack() const {

@@ -11,6 +11,8 @@
 
 namespace pep {
 
+using namespace std::ranges;
+
 IndexedTicket2 Serializer<IndexedTicket2>::fromProtocolBuffer(proto::IndexedTicket2&& source) const {
   std::unordered_map<std::string, IndexList> groups;
   std::unordered_map<std::string, IndexList> columnGroups;
@@ -297,7 +299,7 @@ StructureMetadataEntry Serializer<StructureMetadataEntry>::fromProtocolBuffer(
 void Serializer<StructureMetadataRequest>::moveIntoProtocolBuffer(
     proto::StructureMetadataRequest& dest, StructureMetadataRequest value) const {
   dest.set_subject_type(Serialization::ToProtocolBuffer(value.subjectType));
-  auto moveSubjects = MoveElements(value.subjects);
+  auto moveSubjects = views::as_rvalue(value.subjects);
   dest.mutable_subjects()->Assign(moveSubjects.begin(), moveSubjects.end());
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_keys(), std::move(value.keys));
 }
@@ -306,7 +308,7 @@ StructureMetadataRequest Serializer<StructureMetadataRequest>::fromProtocolBuffe
     proto::StructureMetadataRequest&& source) const {
   StructureMetadataRequest result;
   result.subjectType = Serialization::FromProtocolBuffer(source.subject_type());
-  result.subjects = RangeToVector(MoveElements(*source.mutable_subjects()));
+  result.subjects = *source.mutable_subjects() | views::as_rvalue | to<std::vector>();
   Serialization::AssignFromRepeatedProtocolBuffer(result.keys, std::move(*source.mutable_keys()));
   return result;
 }

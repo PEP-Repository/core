@@ -17,6 +17,7 @@
 #include <mutex>
 #include <string_view>
 #include <stdexcept>
+#include <utility>
 
 namespace pep {
 
@@ -286,7 +287,7 @@ std::string AsymmetricKey::toDer() const {
       throw std::invalid_argument("Failure to write key to DER in AsymmetricKey::toDer. Asymmetric key type not set.");
   }
   if (!bio) {
-    throw std::invalid_argument("Failure to write key to DER in AsymmetricKey::toDer. Unsupported key type " + std::to_string(ToUnderlying(keyType)));
+    throw std::invalid_argument("Failure to write key to DER in AsymmetricKey::toDer. Unsupported key type " + std::to_string(std::to_underlying(keyType)));
   }
 
   return OpenSSLBIOToString(bio);

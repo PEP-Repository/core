@@ -421,15 +421,15 @@ void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::st
   else {
     std::vector<std::string> errorMessageParts;
     ParticipantGroupAccessRuleFilter filter{
-      .participantGroups = RangeToVector(participantGroups),
+      .participantGroups = {{std::from_range, participantGroups}},
       .userGroups = {{userGroup}},
       .modes = {{}},
     };
     for (auto& mode : modes) {
       filter.modes->assign({mode});
-      auto allowedParticipantGroups = RangeToCollection<std::unordered_set>(
-        storage_->getParticipantGroupAccessRules(timestamp, filter)
-        | views::transform(std::mem_fn(&ParticipantGroupAccessRule::participantGroup)));
+      auto allowedParticipantGroups = storage_->getParticipantGroupAccessRules(timestamp, filter)
+        | views::transform(&ParticipantGroupAccessRule::participantGroup)
+        | to<std::unordered_set>();
       for (auto& pg : participantGroups) {
         if (!allowedParticipantGroups.contains(pg)) {
           errorMessageParts.push_back("Access denied to " + Logging::Escape(userGroup) + " for mode "
@@ -447,7 +447,7 @@ std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillPart
     std::span<const std::string> participantGroups,
     std::vector<Pp>& pps) {
   // ParticipantGroups by Polymorph Pseudonym
-  auto groupedPps = RangeToCollection<std::vector<std::pair<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/>>>(
+  auto groupedPps = std::ranges::to<std::vector<std::pair<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/>>>(
     storage_->getPpGroups(participantGroups));
   std::ranges::shuffle(groupedPps, CryptoUrbg());
 
@@ -626,7 +626,7 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
     cgarFilter.modes = std::vector<std::string>{query.columnGroupModeFilter};
   }
   if(!query.columnFilter.empty() || !query.columnGroupFilter.empty()){
-    cgarFilter.columnGroups = RangeToVector(std::views::keys(columnsByColumnGroup));
+    cgarFilter.columnGroups = {{std::from_range, std::views::keys(columnsByColumnGroup)}};
   }
   auto cgars = storage_->getColumnGroupAccessRules(timestamp, cgarFilter);
 

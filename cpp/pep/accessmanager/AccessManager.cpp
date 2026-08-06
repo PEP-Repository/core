@@ -28,6 +28,7 @@
 #include <ranges>
 #include <sstream>
 #include <chrono>
+#include <utility>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -409,7 +410,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                     // do nothing --- we need the transcryptor to help out
                   } else {
                     std::ostringstream msg;
-                    msg << "Received unknown blinding mode: " << ToUnderlying(entry.keyBlindMode);
+                    msg << "Received unknown blinding mode: " << std::to_underlying(entry.keyBlindMode);
                     throw Error(msg.str());
                   }
                   return key;
@@ -536,8 +537,9 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
   auto timestamp = TimeNow();
 
-  auto pps = RangeToVector(request.accessSubjects
-    | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; }));
+  auto pps = request.accessSubjects
+    | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; })
+    | to<std::vector>();
 
   std::vector<std::string> modes{"access"};
   std::unordered_map<std::string, IndexList> participantGroupMap;
@@ -608,7 +610,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   // workerPool_->batched_map() does not tell us which index we're handling,
   // so we let it process indices to work around this.  If we need this
   // more often, it's better to change batched_map()
-  auto indexes = RangeToVector(views::iota(std::size_t{}, ctx->pps.size()));
+  std::vector indexes(std::from_range, views::iota(std::size_t{}, ctx->pps.size()));
   messaging::MessageBatches result =
     ctx->server->workerPool_->batched_map<8>(std::move(indexes),
         ObserveOnAsio(*ctx->server->getIoContext()),

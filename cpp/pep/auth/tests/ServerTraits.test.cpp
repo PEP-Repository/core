@@ -4,6 +4,8 @@
 #include <boost/algorithm/string/join.hpp>
 #include <gtest/gtest.h>
 
+#include <utility>
+
 namespace {
 
 template <typename T> using ServerProperties = std::unordered_map<pep::ServerTraits, T>;
@@ -30,7 +32,7 @@ struct ServerPropertyValue<std::string> : public BasicServerPropertyValue<std::s
 
 template <typename T>
 struct ServerPropertyValue<T, std::enable_if_t<std::is_enum_v<T>>> : public BasicServerPropertyValue<T> {
-  static std::string ToString(const T& value) { return std::to_string(pep::ToUnderlying(value)); }
+  static std::string ToString(const T& value) { return std::to_string(std::to_underlying(value)); }
 };
 
 template <typename T>

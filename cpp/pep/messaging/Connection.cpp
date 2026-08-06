@@ -12,6 +12,8 @@
 #include <boost/asio/placeholders.hpp>
 #include <boost/asio/ssl/error.hpp>
 
+#include <utility>
+
 namespace pep::messaging {
 
 namespace {
@@ -138,7 +140,7 @@ void Connection::handleSchedulerError(const MessageId& id, std::exception_ptr er
     break;
 
   default:
-    throw std::runtime_error("Unsupported message type " + std::to_string(ToUnderlying(id.type().value())));
+    throw std::runtime_error("Unsupported message type " + std::to_string(std::to_underlying(id.type().value())));
   }
 
   PEP_LOG(LogTag, severity) << caption << " (" << action << " " << this->describe() << "): " << description;
@@ -435,7 +437,7 @@ void Connection::dispatchRequest(
     }
     catch (...) {
       PEP_LOG(LogTag, Severity::Error) << "Error scheduling response(s) for received " << DescribeMessageMagic(magic) << " request: " << GetExceptionMessage(std::current_exception())
-        << '\n' << "    Connection status is " << ToUnderlying(this->status()) << "; scheduler.available is " << std::boolalpha << scheduler_->available();
+        << '\n' << "    Connection status is " << std::to_underlying(this->status()) << "; scheduler.available is " << std::boolalpha << scheduler_->available();
       throw;
     }
   }
@@ -667,7 +669,7 @@ void Connection::handleBinaryConnectivityChange(const networking::Connection::Co
     return;
   }
 
-  throw std::runtime_error("Unsupported binary connection status " + std::to_string(ToUnderlying(change.updated)));
+  throw std::runtime_error("Unsupported binary connection status " + std::to_string(std::to_underlying(change.updated)));
 }
 
 std::string Connection::describe() const {

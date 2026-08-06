@@ -36,14 +36,13 @@ public:
   /// Deserialize
   static Map fromWireType(WireType value) {
     using namespace std::ranges;
-    return pep::RangeToCollection<Map>(
-        ValBinding::fromWireType(value)
+    return ValBinding::fromWireType(value)
         | views::transform([](const val& entry) {
           return std::pair{
             entry[0].as<typename Map::key_type>(),
             entry[1].as<typename Map::mapped_type>(allow_raw_pointers{})};
         })
-    );
+        | to<Map>();
   }
 };
 

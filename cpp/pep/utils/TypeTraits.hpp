@@ -36,9 +36,6 @@ concept FlagEnum = FlagEnumCandidate<T> && detail::MarkedAsFlagEnumType<T>;
 template<typename T, typename Ref>
 using CopyConstness = std::conditional_t<std::is_const_v<Ref>, const T, T>;
 
-//XXX Replace by auto(v) in C++23
-[[nodiscard]] auto decay_copy(auto v) { return v; }
-
 // See https://stackoverflow.com/a/70130881
 namespace detail {
 template<template<typename...> typename Template, typename... Args>

@@ -15,7 +15,7 @@ commandline::Parameters EnrollmentApplication::getSupportedParameters() const {
 }
 
 std::vector<std::shared_ptr<commandline::Command>> EnrollmentApplication::createChildCommands() {
-  auto servers = RangeToVector(ServerTraits::Where([](const ServerTraits& server) { return server.isEnrollable(); }));
+  auto servers = std::ranges::to<std::vector>(ServerTraits::Where([](const ServerTraits& server) { return server.isEnrollable(); }));
   // Sort by EnrolledParty value: produces nicely sorted child commands
   std::sort(servers.begin(), servers.end(), [](const ServerTraits& lhs, const ServerTraits& rhs) {
     return *lhs.enrollsAsParty(true) < *rhs.enrollsAsParty(true);

@@ -30,6 +30,7 @@
 #include <pep/utils/ChronoUtil.hpp>
 
 using namespace std::literals;
+using namespace std::ranges;
 using boost::urls::url;
 
 #ifdef ErrorAccessDenied
@@ -150,10 +151,11 @@ OAuthProvider::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     activeGrantExpiration_ = std::chrono::seconds(config.get<unsigned int>("ActiveGrantExpirationSeconds"));
     spoofKeyFile = config.get<std::optional<std::filesystem::path>>("SpoofKeyFile");
     httpsCertificateFile_ = config.get<std::optional<std::filesystem::path>>("HttpsCertificateFile");
-    extraRedirectUris_ = RangeToVector(
+    extraRedirectUris_ =
       config.get<std::optional<std::vector<std::string>>>("ExtraRedirectUris")
         .value_or(std::vector<std::string>{})
-      | std::views::transform([](std::string_view str) { return url{str}; }));
+      | views::transform([](std::string_view str) { return url{str}; })
+      | to<std::vector>();
   }
   catch (std::exception& e) {
     PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
@@ -222,8 +224,8 @@ OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<Authserve
   httpServer_->registerHandler("/code", true, std::bind_front(&OAuthProvider::handleCodeRequest, this), "");
 
   allowedRedirectUris_.reserve(DefaultRedirectUris.size() + params.getExtraRedirectUris().size());
-  std::ranges::copy(DefaultRedirectUris, std::back_inserter(allowedRedirectUris_));
-  std::ranges::copy(params.getExtraRedirectUris(), std::back_inserter(allowedRedirectUris_));
+  copy(DefaultRedirectUris, std::back_inserter(allowedRedirectUris_));
+  copy(params.getExtraRedirectUris(), std::back_inserter(allowedRedirectUris_));
 
   activeGrantsCleanupSubscription_ = rxcpp::rxs::interval(std::chrono::minutes(1))
               .subscribe_on(rxcpp::observe_on_new_thread()) //We want to run the interval on a different thread, otherwise it blocks the main thread
@@ -351,7 +353,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
   if(registeredUris.empty()) {
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("403 Forbidden", "client_id not registered"));
   }
-  if (std::ranges::find_if(registeredUris, std::bind_front(CompareRedirectUris, redirectUriString)) == registeredUris.end()) {
+  if (find_if(registeredUris, std::bind_front(CompareRedirectUris, redirectUriString)) == registeredUris.end()) {
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("403 Forbidden", "Specified redirect_uri is not registered"));
   }
 
@@ -410,7 +412,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
       auto groupQuery = formData.find("user_group");
       if(groupQuery != formData.end()) {
         const auto& selectedGroup = groupQuery->second;
-        auto foundGroup = std::ranges::find_if(*groups, [&selectedGroup](const UserGroup& group){ return group.name == selectedGroup; });
+        auto foundGroup = find_if(*groups, [&selectedGroup](const UserGroup& group){ return group.name == selectedGroup; });
         if(foundGroup == groups->end()) {
           PEP_LOG(LogTag, Severity::Warning) << "Trying to login with group '" << selectedGroup << "', but user is not a member of that group.";
           return MakeErrorRedirect(redirectUri, ErrorAccessDenied, "User is not a member of selected group");
@@ -421,7 +423,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
         std::ostringstream body;
         body << BeginGroupSelectionTemplate;
         std::set<std::string> sortedGroups;
-        std::ranges::transform(*groups, std::inserter(sortedGroups, sortedGroups.begin()), [](const auto& g) {return g.name;});
+        transform(*groups, std::inserter(sortedGroups, sortedGroups.begin()), [](const auto& g) {return g.name;});
         for(auto& g : sortedGroups) {
           body << "<option>" << g << "</option>";
         }

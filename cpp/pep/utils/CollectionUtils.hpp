@@ -107,7 +107,8 @@ size_t FindLongestPrefixAtEnd(std::string_view haystack, std::string_view needle
 template<typename R>
 concept Slice = std::ranges::contiguous_range<R> && std::ranges::sized_range<R>;
 
-//XXX This may be removed when we move to C++23, where one can construct a string_view with a range
+/// Convert span of bytes to \c string_view .
+/// \note For plain chars, you cah just use \c string_view(span) .
 [[nodiscard]] std::string_view SpanToString(const Slice auto& span)
 requires(ByteLike<std::ranges::range_value_t<decltype(span)>>) {
   return {reinterpret_cast<const char*>(std::ranges::data(span)), std::ranges::size(span)};
@@ -146,47 +147,6 @@ template<typename Elem, size_t Extent> requires(Extent != std::dynamic_extent)
   std::ranges::copy(span, array.begin());
   return array;
 }
-
-namespace detail {
-
-template <typename C>
-concept CanReserve = requires(C c, std::size_t size) {
-    c.reserve({size});
-};
-
-}
-
-//XXX This should be removed in C++23 with std::ranges::to, std::from_range, assign/insert_range
-template <typename ResultCollection, std::ranges::input_range Range>
-//NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward) We just want to bind to anything
-[[nodiscard]] auto RangeToCollection(Range&& range) {
-  using namespace std::ranges;
-  if constexpr (std::constructible_from<ResultCollection, iterator_t<Range>, sentinel_t<Range>>) {
-    return ResultCollection(begin(range), end(range));
-  } else { // Construction with begin/end may not work if iterator_t<Range> != sentinel_t<Range>
-    ResultCollection result;
-    if constexpr (sized_range<Range> && detail::CanReserve<ResultCollection>) {
-      result.reserve(size(range));
-    }
-    copy(range, std::inserter(result, end(result)));
-    return result;
-  }
-}
-template <template <typename...> class ResultCollection>
-[[nodiscard]] auto RangeToCollection(std::ranges::input_range auto&& range) {
-  return RangeToCollection<ResultCollection<std::ranges::range_value_t<decltype(range)>>>(range);
-}
-[[nodiscard]] auto RangeToVector(std::ranges::input_range auto&& range) {
-  return RangeToCollection<std::vector>(range);
-}
-
-//XXX This should be removed in C++23 with std::views::as_rvalue
-/// Range adapter to make all elements in a range rvalue references.
-/// \details Example usage:
-/// \code
-///   CollectVec(range | MoveElements)
-/// \endcode
-constexpr auto MoveElements = std::views::transform([](auto& elem) { return std::move(elem); });
 
 /// Copy elements from src to dst, stopping when either range reaches the end
 constexpr auto CopyToRange(

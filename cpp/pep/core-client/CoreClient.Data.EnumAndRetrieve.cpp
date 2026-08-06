@@ -27,6 +27,7 @@
 #include <rxcpp/operators/rx-reduce.hpp>
 
 using namespace pep;
+using namespace std::ranges;
 
 namespace {
 
@@ -200,8 +201,9 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
               }
 
               auto entryCount = entries->size();
-              auto ids = RangeToVector(*entries
-                | std::ranges::views::transform(std::mem_fn(&DataEnumerationEntry2::id)));
+              auto ids = *entries
+                | views::transform(&DataEnumerationEntry2::id)
+                | to<std::vector>();
               // Convert each of SF's DataEnumerationEntry2 to (a shared_ptr to) an EnumerateResult
               auto enumResults = MakeSharedCopy(ConvertDataEnumerationEntries(std::move(*entries), *ctx->pseudonyms));
 

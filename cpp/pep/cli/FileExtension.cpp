@@ -22,6 +22,8 @@
 
 #include <boost/algorithm/string/split.hpp>
 
+#include <utility>
+
 using namespace pep::cli;
 
 namespace {
@@ -641,7 +643,7 @@ private:
       case Kind::Participant: return "Participant";
       case Kind::ShortPseudonym: return "Short pseudonym";
       }
-      throw std::runtime_error("Unsupported participant specification kind: " + std::to_string(pep::ToUnderlying(kind)));
+      throw std::runtime_error("Unsupported participant specification kind: " + std::to_string(std::to_underlying(kind)));
     }
 
     Kind kind;

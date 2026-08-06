@@ -6,6 +6,8 @@
 
 namespace pep {
 
+using namespace std::ranges;
+
 LocalPseudonyms Serializer<LocalPseudonyms>::fromProtocolBuffer(proto::LocalPseudonyms&& source) const {
   LocalPseudonyms result{
     .accessManager = EncryptedLocalPseudonym(Serialization::FromProtocolBuffer(std::move(*source.mutable_access_manager()))),
@@ -105,11 +107,11 @@ TicketRequest2 Serializer<TicketRequest2>::fromProtocolBuffer(proto::TicketReque
   result.requestIndexedTicket = source.request_indexed_ticket();
   result.includeUserGroupPseudonyms = source.include_user_group_pseudonyms();
 
-  const auto transformToPolymorphicPseudonym = std::views::transform([](proto::ElgamalEncryption& pp) {
+  const auto transformToPolymorphicPseudonym = views::transform([](proto::ElgamalEncryption& pp) {
     return PolymorphicPseudonym(Serialization::FromProtocolBuffer(std::move(pp)));
   });
-  result.accessSubjects = RangeToVector(
-    *source.mutable_access_subjects() | transformToPolymorphicPseudonym);
+  result.accessSubjects =
+    *source.mutable_access_subjects() | transformToPolymorphicPseudonym | to<std::vector>();
   return result;
 }
 
@@ -132,7 +134,7 @@ void Serializer<TicketRequest2>::moveIntoProtocolBuffer(proto::TicketRequest2& d
   Serialization::AssignToRepeatedProtocolBuffer(
     *dest.mutable_access_subjects(),
     value.accessSubjects
-    | std::views::transform(&PolymorphicPseudonym::getValidElgamalEncryption));
+    | views::transform(&PolymorphicPseudonym::getValidElgamalEncryption));
 }
 
 SignedTicketRequest2 Serializer<SignedTicketRequest2>::fromProtocolBuffer(proto::SignedTicketRequest2&& source) const {

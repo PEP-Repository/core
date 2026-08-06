@@ -205,7 +205,7 @@ std::vector<DownloadDirectory::NonPristineEntry> DownloadDirectory::getNonPristi
     this->trackExistingPaths(dirs, files, entry.descriptor);
     auto current = getCurrentDataHash(entry.descriptor);
     auto filename = getRecordFileName(entry.descriptor);
-    progress->advance(1U, GetOptionalValue(this->getRecordFileName(entry.descriptor, false), [](const std::filesystem::path& path) {return path.string(); }));
+    progress->advance(1U, this->getRecordFileName(entry.descriptor, false).transform([](const std::filesystem::path& path) {return path.string(); }));
     if (entry.hash != current) {
       result.emplace_back(entry.descriptor, filename);
     }

@@ -49,21 +49,6 @@ std::string BoolToString(bool value);
 */
 bool StringToBool(std::string_view value);
 
-//XXX This may be removed in favor of optional::transform when we move to C++23
-/* \brief Gets an optional<Value> from an optional<Owner>.
- * \param owner The (possibly nullopt) value from which to retrieve a value.
- * \param getValue A function that returns a value when invoked with an Owner instance.
- * \return std::nullopt if owner is nullopt; otherwise the result of invoking the the getValue function on the owner.
- */
-template <DerivedFromSpecialization<std::optional> TOptional>
-auto GetOptionalValue(TOptional&& owner, auto&& getValue)
-    -> std::optional<std::decay_t<decltype(std::forward<decltype(getValue)>(getValue)(*owner))>> {
-  if (!owner) {
-    return std::nullopt;
-  }
-  return std::forward<decltype(getValue)>(getValue)(*std::forward<decltype(owner)>(owner));
-}
-
 template<typename T>
 [[nodiscard]] std::optional<T> ConvertOptional(boost::optional<T> opt) {
   if (opt) {

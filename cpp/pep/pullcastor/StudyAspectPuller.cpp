@@ -7,6 +7,8 @@
 
 #include <rxcpp/operators/rx-map.hpp>
 
+#include <utility>
+
 namespace pep {
 namespace castor {
 
@@ -26,7 +28,7 @@ rxcpp::observable<std::shared_ptr<StudyAspectPuller>> StudyAspectPuller::CreateC
     auto type = aspect.getStorage()->getStudyType();
     auto position = creators.find(type);
     if (position == creators.cend()) {
-      auto msg = "Unsupported study type " + std::to_string(ToUnderlying(type));
+      auto msg = "Unsupported study type " + std::to_string(std::to_underlying(type));
       PEP_PULLCASTOR_LOG(Severity::Debug) << msg;
       throw std::runtime_error(msg);
     }

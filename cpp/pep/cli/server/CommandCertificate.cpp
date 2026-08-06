@@ -7,14 +7,16 @@
 #include <rxcpp/operators/rx-concat_map.hpp>
 
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 pep::commandline::Parameters MakeCommonSupportedParameters(bool isInput, std::string_view what, std::string_view extension) {
   auto traits = pep::ServerTraits::Where([](const pep::ServerTraits& traits){ return traits.hasSigningIdentity(); });
 
-  auto ids = pep::RangeToVector(traits
-    | std::views::transform(&pep::ServerTraits::commandLineId));
-  std::ranges::sort(ids);
+  auto ids = traits
+    | views::transform(&pep::ServerTraits::commandLineId)
+    | to<std::vector>();
+  sort(ids);
 
   return pep::commandline::Parameters()
     + pep::commandline::Parameter("server", "Restrict to specified server(s)").value(pep::commandline::Value<std::string>().multiple()
@@ -61,7 +63,7 @@ auto EventLoopCallBack(const CommonParams& params, std::string_view extension, s
       traits = pep::ServerTraits::Where([](const pep::ServerTraits& traits){ return traits.hasSigningIdentity(); });
     }
     else {
-      traits = pep::ServerTraits::Where([params](const pep::ServerTraits& traits){ return std::ranges::find(params.servers, traits.commandLineId()) != params.servers.end(); });
+      traits = pep::ServerTraits::Where([params](const pep::ServerTraits& traits){ return find(params.servers, traits.commandLineId()) != params.servers.end(); });
     }
 
     //NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks) See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2781#note_55944
@@ -77,7 +79,7 @@ auto EventLoopCallBack(const CommonParams& params, std::string_view extension, s
           targetFilePath = *params.targetFile;
         }
         else {
-          if (std::ranges::any_of(proxy->getExpectedCommonName(), boost::is_any_of(R"("*/:<>?\|)") || boost::is_from_range('\0', '\x1F'))) {
+          if (any_of(proxy->getExpectedCommonName(), boost::is_any_of(R"("*/:<>?\|)") || boost::is_from_range('\0', '\x1F'))) {
             throw std::runtime_error("Expected common name contains characters that are not allowed in filenames on some systems. Can't autodeduce target filename");
           }
           targetFilePath = params.targetDirectory.value_or(".") / std::format("PEP{}.{}", proxy->getExpectedCommonName(), extension);

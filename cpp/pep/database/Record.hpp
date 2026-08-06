@@ -24,10 +24,10 @@ concept RecordIdentifier = IsRecordIdentifier<Record, Ids>;
 
 template <typename T>
 concept Record = requires(T rec) {
-  { decay_copy(rec.seqno) } -> std::integral;
-  { decay_copy(rec.timestamp) } -> std::integral;
-  { decay_copy(rec.tombstone) } -> std::same_as<bool>;
-  { decay_copy(T::RecordIdentifier) } -> detail::RecordIdentifier<T>;
+  { auto(rec.seqno) } -> std::integral;
+  { auto(rec.timestamp) } -> std::integral;
+  { auto(rec.tombstone) } -> std::same_as<bool>;
+  { auto(T::RecordIdentifier) } -> detail::RecordIdentifier<T>;
 };
 
 /// Timestamp as milliseconds since Unix epoch, used for in database

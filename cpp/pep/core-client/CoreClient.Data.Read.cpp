@@ -168,14 +168,18 @@ CoreClient::retrieveData(
               };
 
               auto ctx = std::make_shared<BatchContext>();
-              ctx->files = RangeToCollection<std::vector<FileContext>>(std::move(*batch));
+              ctx->files = std::move(*batch)
+                  | views::as_rvalue
+                  | views::transform([](FileKey&& fileKey) { return FileContext{.fileKey = std::move(fileKey)}; })
+                  | to<std::vector>();
 
               // Request the file contents from the storage facility
               auto pagesFromServer =
                   getStorageFacilityProxy(true)->requestDataRead(DataReadRequest2{
                     .ticket = *ticket,
-                    .ids = RangeToVector(ctx->files
-                        | views::transform([](const FileContext& file) { return file.fileKey.entry->id; })),
+                    .ids = ctx->files
+                        | views::transform([](const FileContext& file) { return file.fileKey.entry->id; })
+                        | to<std::vector>(),
                   })
                   .map([](DataPayloadPage page) {
                     return std::optional{std::move(page)};
@@ -237,7 +241,7 @@ CoreClient::retrieveData(
                     };
                   });
 
-              return RxIterate(RangeToVector(emptyFiles))
+              return RxIterate(to<std::vector>(emptyFiles))
                   .concat(std::move(pagesFromServer));
             });
       });

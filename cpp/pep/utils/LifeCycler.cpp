@@ -4,6 +4,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace pep {
 
@@ -21,7 +22,7 @@ const std::map<LifeCycler::Status, std::set<LifeCycler::Status>> LIFECYCLE_STATU
 const std::set<LifeCycler::Status>& GetAllowedLifeCycleTransitions(LifeCycler::Status from) {
   auto result = LIFECYCLE_STATUS_CHANGES.find(from);
   if (result == LIFECYCLE_STATUS_CHANGES.cend()) {
-    throw std::runtime_error("Unsupported life cycle status " + std::to_string(ToUnderlying(from)));
+    throw std::runtime_error("Unsupported life cycle status " + std::to_string(std::to_underlying(from)));
   }
   return result->second;
 }
@@ -52,7 +53,7 @@ LifeCycler::Status LifeCycler::setStatus(Status status) {
       assert(GetAllowedLifeCycleTransitions(status_).contains(status));
     }
     else if (!GetAllowedLifeCycleTransitions(result).contains(status)) {
-      throw std::runtime_error("Can't transition from life cycle status " + std::to_string(ToUnderlying(result)) + " to " + std::to_string(ToUnderlying(status)));
+      throw std::runtime_error("Can't transition from life cycle status " + std::to_string(std::to_underlying(result)) + " to " + std::to_string(std::to_underlying(status)));
     }
 
     auto previous = status_;

@@ -4,6 +4,8 @@
 
 #include <boost/algorithm/string/join.hpp>
 
+#include <utility>
+
 namespace pep {
 namespace castor {
 
@@ -97,7 +99,7 @@ rxcpp::observable<std::string> ImportColumnNamer::getImportableColumnNames(std::
         return rxcpp::observable<>::just(storage->getDataColumn());
       }
 
-      throw std::runtime_error("Column " + spName + " has unsupported study type " + std::to_string(ToUnderlying(type)));
+      throw std::runtime_error("Column " + spName + " has unsupported study type " + std::to_string(std::to_underlying(type)));
     });
   });
 

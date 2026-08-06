@@ -17,6 +17,8 @@
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
+using namespace std::ranges;
+
 namespace {
 void SetBytesProcessed(benchmark::State& state, size_t bytesPerIteration)
 {
@@ -201,7 +203,9 @@ static void BM_GenerateKeyFactor(benchmark::State& state) {
     .reshuffle{},
     .rekey = pep::KeyFactorSecret(pep::RandomArray<64>()),
   });
-  auto fakeDerCertificate = pep::RangeToCollection<std::string>(std::views::iota(0, 970));
+  auto fakeDerCertificate = views::iota(0, 970)
+    | views::transform([](int i) { return static_cast<char>(i); })
+    | to<std::string>();
   const pep::RekeyRecipient recipient(1, std::move(fakeDerCertificate));
   for (auto _ : state)
     benchmark::DoNotOptimize(rsk.generateKeyFactor(recipient));
@@ -410,7 +414,7 @@ static void BM_RNG_URBG(benchmark::State& state) {
     NumRandomBytes / sizeof(typename TUrbg::result_type)
   > buffer{};
   for (auto _ : state) {
-    std::ranges::generate(buffer, std::ref(gen));
+    generate(buffer, std::ref(gen));
     benchmark::DoNotOptimize(buffer);
   }
   SetBytesProcessed(state, std::span(buffer).size_bytes());
