@@ -23,7 +23,7 @@ void TestClientServerBasics(TestServerFactory& factory) {
 
   auto sent = std::make_shared<std::string>(MESSAGE_SIZE, '\0'),
     received = std::make_shared<std::string>(MESSAGE_SIZE, '\0');
-  std::ranges::iota(*sent, '\0');
+  std::iota(sent->begin(), sent->end(), '\0');
 
   auto protocol = factory.protocol().name();
 

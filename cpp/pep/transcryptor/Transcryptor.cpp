@@ -201,7 +201,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     .concat_map([server, ctx](std::shared_ptr<Batch> batch) {
     std::vector<size_t> is(batch->requestEntries.size());
     PEP_LOG(LogTag, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << ctx->requestNumber << " processing " << batch->requestEntries.size() << "-entry batch";
-    std::ranges::iota(is, 0);
+    std::iota(is.begin(), is.end(), 0);
     return server->workerPool_->batched_map<8>(std::move(is),
       ObserveOnAsio(*server->getIoContext()),
       [server, ctx, batch](size_t i) {

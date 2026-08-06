@@ -84,7 +84,7 @@ void TestIterativeCountDown(ProduceNextInnerIfAvailable produce, bool recurs, co
 
   // Validate the "produce" function's results
   std::vector<unsigned> expected(count);
-  std::ranges::iota(expected, 1U);
+  std::iota(expected.begin(), expected.end(), 1U);
   std::ranges::reverse(expected);
   EXPECT_EQ(produced, expected);
 

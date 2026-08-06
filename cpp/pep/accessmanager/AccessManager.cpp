@@ -461,7 +461,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                       // so we let it process indices to work around this.  If we need this
                       // more often, it's better to change batched_map()
                       std::vector<size_t> is(request->entries.size());
-                      std::ranges::iota(is, 0);
+                      std::iota(is.begin(), is.end(), std::size_t{});
                       return server->workerPool_->batched_map<8>(is,
                             ObserveOnAsio(*server->getIoContext()),
                             [server, request, lpResponse, transResp, rkIndices, localPseudonyms, recipient
