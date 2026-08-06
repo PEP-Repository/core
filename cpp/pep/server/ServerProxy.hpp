@@ -53,10 +53,10 @@ protected:
   }
 
 public:
-  /// @brief Constructor
-  /// @param untyped The ServerConnection that can exchange messages with the proxied server
-  /// @param clientMessageSigner The instance that will sign messages sent to the server.
-  /// @remark Caller must ensure that the MessageSigner outlives the ServerProxy
+  /// \brief Constructor
+  /// \param untyped The ServerConnection that can exchange messages with the proxied server
+  /// \param clientMessageSigner The instance that will sign messages sent to the server.
+  /// \remark Caller must ensure that the MessageSigner outlives the ServerProxy
   ServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& clientMessageSigner);
   virtual ~ServerProxy() noexcept = default;
   ServerProxy(const ServerProxy&) = delete;

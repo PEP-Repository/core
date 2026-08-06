@@ -109,25 +109,21 @@ rxcpp::observable<HTTPResponse> CastorClient::sendPreAuthorizedRequest(std::shar
   return http_->sendRequest(*request);
 }
 
-/*!
- * \brief Make a GET Request
- *
- * \param path Path to the resource to get
- * \param useBasePath Whether \p path should be relative to the \ref setBasePath "base path" or not
- * \return The created Request
- */
+/// \brief Make a GET Request
+///
+/// \param path Path to the resource to get
+/// \param useBasePath Whether \p path should be relative to the \ref setBasePath "base path" or not
+/// \return The created Request
 std::shared_ptr<HTTPRequest> CastorClient::makeGet(const std::string& path, const bool& useBasePath) {
   return MakeSharedCopy(http_->makeRequest(networking::HttpMethod::Get, (useBasePath ? BasePath : "") + path));
 };
 
-/*!
- * \brief Make a POST Request
- *
- * \param path Path to the resource to post
- * \param body Body of the Request
- * \param useBasePath Whether \p path should be relative to the \ref setBasePath "base path" or not
- * \return The created Request
- */
+/// \brief Make a POST Request
+///
+/// \param path Path to the resource to post
+/// \param body Body of the Request
+/// \param useBasePath Whether \p path should be relative to the \ref setBasePath "base path" or not
+/// \return The created Request
 std::shared_ptr<HTTPRequest> CastorClient::makePost(const std::string& path,
   const std::string& body,
   const bool& useBasePath) {

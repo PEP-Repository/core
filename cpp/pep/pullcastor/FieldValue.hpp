@@ -6,9 +6,7 @@
 namespace pep {
 namespace castor {
 
-/*!
-  * \brief Combination of a DataPointBase and the Field that produced the data.
-  */
+/// \brief Combination of a DataPointBase and the Field that produced the data.
 class FieldValue {
 private:
   std::shared_ptr<Field> field_;
@@ -21,11 +19,9 @@ public:
 
   inline std::shared_ptr<const Field> getField() const noexcept { return field_; }
 
-  /*!
-  * \brief Writes the specified FieldValue instances to a Ptree.
-  * \param values The values to collect into the Ptree.
-  * \return (An observable emitting) a Ptree containing (serialized forms of) the specified field values.
-  */
+  /// \brief Writes the specified FieldValue instances to a Ptree.
+  /// \param values The values to collect into the Ptree.
+  /// \return (An observable emitting) a Ptree containing (serialized forms of) the specified field values.
   static rxcpp::observable<std::shared_ptr<boost::property_tree::ptree>> Aggregate(rxcpp::observable<std::shared_ptr<FieldValue>> values);
 };
 

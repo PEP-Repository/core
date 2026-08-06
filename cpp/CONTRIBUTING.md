@@ -297,7 +297,7 @@ PEP provides a [logging system](https://gitlab.pep.cs.ru.nl/pep/core/blob/main/c
   PEP_LOG(LogTag, Severity::Error) << "Received an error! (stream id " << dwStreamId << ")";
   ```
   
-  The 2nd parameter to the `LOG` macro specifies the severity level associated with the log entry. Supported levels are defined in enumeration `Severity`:
+  The 2nd parameter to the `PEP_LOG` macro specifies the severity level associated with the log entry. Supported levels are defined in enumeration `Severity`:
 
   - use `Severity::Verbose` for log entries providing rich detail.
   - use `Severity::Debug` for log entries intended to help debugging.

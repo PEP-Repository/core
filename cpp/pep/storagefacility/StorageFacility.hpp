@@ -46,13 +46,9 @@ public:
   public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 
-    /*!
-    * \return The pseudonym key
-    */
+    /// \return The pseudonym key
     const ElgamalPrivateKey& getPseudonymKey() const;
-    /*!
-    * \param pseudonymKey The pseudonym key
-    */
+    /// \param pseudonymKey The pseudonym key
     void setPseudonymKey(const ElgamalPrivateKey& pseudonymKey);
 
     const std::string& getEncIdKey() const;

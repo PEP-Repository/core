@@ -255,16 +255,12 @@ std::shared_ptr<GlobalConfiguration> AccessManager::Parameters::getGlobalConfigu
   return globalConf_;
 }
 
-/*!
-  * \return The pseudonym key
-  */
+/// \return The pseudonym key
 const ElgamalPrivateKey& AccessManager::Parameters::getPseudonymKey() const {
   return pseudonymKey_.value();
 }
 
-/*!
-  * \param pseudonymKey The pseudonym key
-  */
+/// \param pseudonymKey The pseudonym key
 void AccessManager::Parameters::setPseudonymKey(const ElgamalPrivateKey& pseudonymKey) {
   pseudonymKey_ = pseudonymKey;
 }

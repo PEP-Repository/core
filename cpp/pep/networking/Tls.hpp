@@ -8,9 +8,7 @@
 
 namespace pep::networking {
 
-/*!
-* \brief TLS-enabled TCP networking.
-*/
+/// TLS-enabled TCP networking.
 class Tls : public TcpBasedProtocolImplementor<Tls> {
 private:
   class NodeParameters;
@@ -21,12 +19,12 @@ public:
   /// \copydoc TcpBasedProtocolImplementor<Tls>::ServerParameters
   class ServerParameters;
   
-  /// @brief Protocol specific state needed by a TLS node: (abstract) common ancestor for Tls::ClientComponent and Tls::ServerComponent
+  /// Protocol specific state needed by a TLS node: (abstract) common ancestor for Tls::ClientComponent and Tls::ServerComponent
   class NodeComponent;
 
-  /// @brief Protocol specific state needed by a TLS client
+  /// Protocol specific state needed by a TLS client
   class ClientComponent;
-  /// @brief Protocol specific state needed by a TLS server
+  /// Protocol specific state needed by a TLS server
   class ServerComponent;
 
   /// \copydoc Protocol::name
@@ -39,7 +37,7 @@ protected:
 };
 
 
-/// @brief Protocol specific state needed by a TLS node: (abstract) common ancestor for Tls::ClientComponent and Tls::ServerComponent
+/// Protocol specific state needed by a TLS node: (abstract) common ancestor for Tls::ClientComponent and Tls::ServerComponent
 class Tls::NodeComponent : boost::noncopyable {
   friend class Tls;
 
@@ -123,7 +121,7 @@ public:
 };
 
 
-/// @brief Protocol specific state needed by a TLS client
+/// Protocol specific state needed by a TLS client
 class Tls::ClientComponent : public TcpBasedProtocolImplementor<Tls>::ClientComponent, public NodeComponent {
 public:
   /* \brief Constructor.
@@ -133,7 +131,7 @@ public:
 };
 
 
-/// @brief Protocol specific state needed by a TLS server
+/// Protocol specific state needed by a TLS server
 class Tls::ServerComponent : public TcpBasedProtocolImplementor<Tls>::ServerComponent, public NodeComponent {
 public:
   /* \brief Constructor.

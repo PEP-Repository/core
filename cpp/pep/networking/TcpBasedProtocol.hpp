@@ -9,12 +9,10 @@
 
 namespace pep::networking {
 
-/*!
-* \brief Base class for networking protocols based on (Boost's implementation of) TCP. Inherit through the TcpBasedProtocolImplementor<> helper (defined below).
-*/
+/// Base class for networking protocols based on (Boost's implementation of) TCP. Inherit through the TcpBasedProtocolImplementor<> helper (defined below).
 class TcpBasedProtocol : public Protocol {
 public:
-  /// @brief Common ancestor for all nested types, binding them to a TcpBasedProtocol instance (allowing type safe downcasting)
+  /// Common ancestor for all nested types, binding them to a TcpBasedProtocol instance (allowing type safe downcasting)
   class TcpBound;
 
   /// \copydoc Protocol::Socket
@@ -57,11 +55,9 @@ public:
 };
 
 
-/*!
- * \brief Wrapper for a networking socket. Abstracts over protocol details (TCP, TLS, ...).
- * \remark (Derived class) instances must be created using std::make_shared (or equivalent) so that instances of this
- *         class can keep themselves alive to perform asynchronous cleanup after their "close()" method has been called.
- */
+/// \brief Wrapper for a networking socket. Abstracts over protocol details (TCP, TLS, ...).
+/// \remark (Derived class) instances must be created using std::make_shared (or equivalent) so that instances of this
+///         class can keep themselves alive to perform asynchronous cleanup after their "close()" method has been called.
 class TcpBasedProtocol::Socket : public Protocol::Socket, public TcpBound {
   friend class ClientComponent;
   friend class ServerComponent;
@@ -199,9 +195,7 @@ public:
 };
 
 
-/*!
- * \brief Helper class for TcpBasedProtocol: implementors should inherit from this one instead of directly from TcpBasedProtocol.
- */
+/// Helper class for TcpBasedProtocol: implementors should inherit from this one instead of directly from TcpBasedProtocol.
 template <typename TDerived>
 class TcpBasedProtocolImplementor : public ProtocolImplementor<TDerived, TcpBasedProtocol> {
 public:

@@ -28,7 +28,7 @@ namespace detail {
 
 /// `std:true_type` if `T` is one of the alternatives of `Variant` and `std::false_type` otherwise
 ///
-/// @note Requires _partial_ specialization, so this needs to be a class template
+/// \note Requires _partial_ specialization, so this needs to be a class template
 template <typename T, VariantType V>
 struct IsAlternativeOf;
 
@@ -55,7 +55,7 @@ static_assert(!AlternativeOf<int, std::variant<>>); // edge case
 /// Generates a struct from a list of lambda functions, which can be used as std::variant visitor.
 ///
 /// It works by defining a struct that inherits and exposes `operator()` from each template argument.
-/// @see https://en.cppreference.com/w/cpp/utility/variant/visit2
+/// \see https://en.cppreference.com/w/cpp/utility/variant/visit2
 template <class... Ts>
 struct Overloaded : Ts... {
   using Ts::operator()...;

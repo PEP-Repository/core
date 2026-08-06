@@ -48,10 +48,9 @@ ParticipantEditor::ParticipantEditor(QWidget* parent)
   QObject::connect(ui_->confirmButton, &QPushButton::clicked, this, &ParticipantEditor::confirmed);
 }
 
-/*! \brief Destructor
- *
- * Clears out the UI object.
- */
+/// \brief Destructor
+///
+/// Clears out the UI object.
 ParticipantEditor::~ParticipantEditor() {
   delete ui_;
 }

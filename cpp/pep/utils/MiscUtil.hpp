@@ -103,10 +103,10 @@ boost::property_tree::path RawPtreePath(const std::string& path);
 // U+00B5 (micro symbol) encoded in UTF-8, plus NULterminator
 const inline std::string MicroSymbol = "\xc2\xb5";
 
-/// @brief Returns the SI prefix for the specified power
-/// @tparam T The (integral) type used to express the power
-/// @param power The power to express as a unit prefix
-/// @return The unit prefix for the specified power, or nullopt if no prefix applies to it
+/// \brief Returns the SI prefix for the specified power
+/// \tparam T The (integral) type used to express the power
+/// \param power The power to express as a unit prefix
+/// \return The unit prefix for the specified power, or nullopt if no prefix applies to it
 template <std::integral T>
 std::optional<std::string> SiPrefix(T power) {
   if constexpr (std::is_signed_v<T>) {
@@ -144,11 +144,11 @@ std::optional<std::string> SiPrefix(T power) {
   }
 }
 
-/// @brief Returns the binary prefix for the specified power
-/// @tparam T The (unsigned integral) type used to express the power
-/// @param power The power to express as a unit prefix
-/// @return The unit prefix for the specified power, or nullopt if no prefix applies to it
-/// @remark Return values (that are not nullopt) include the 'i' indicator that it's a binary (as opposed to SI) prefix.
+/// \brief Returns the binary prefix for the specified power
+/// \tparam T The (unsigned integral) type used to express the power
+/// \param power The power to express as a unit prefix
+/// \return The unit prefix for the specified power, or nullopt if no prefix applies to it
+/// \remark Return values (that are not nullopt) include the 'i' indicator that it's a binary (as opposed to SI) prefix.
 template <std::unsigned_integral T>
 std::optional<std::string> BinaryPrefix(T power) {
   // Binary prefixes are (only) defined for powers that are multiples of 1024 (i.e. 2^10): see https://en.wikipedia.org/wiki/Binary_prefix .

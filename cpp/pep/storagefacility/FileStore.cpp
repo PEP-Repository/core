@@ -32,23 +32,19 @@ const std::string LogTag("StorageFacility");
 
 }
 
-/**
- * Design:
- * - metadata is stored on local file system
- * - pages is stored on 'data' volume (which can be migrated to the cloud later on rather easy)
- * - every stored item is xxhashed so it can be verified that no error occured
- * - on start all the metadata is loaded into memory (4 KiB per entry x 256k entries = 1 GiB of RAM)
- * - I/O model: all reads are from memory; writes will synchronous write to disk for consistency
- * - retrieving 40k items out of 360k items (no historical items) cost 92ms
- * - retrieving 2 latest items out of 40k historical items of a total of 360k items cost 99ms
- */
+// Design:
+// - metadata is stored on local file system
+// - pages is stored on 'data' volume (which can be migrated to the cloud later on rather easy)
+// - every stored item is xxhashed so it can be verified that no error occured
+// - on start all the metadata is loaded into memory (4 KiB per entry x 256k entries = 1 GiB of RAM)
+// - I/O model: all reads are from memory; writes will synchronous write to disk for consistency
+// - retrieving 40k items out of 360k items (no historical items) cost 92ms
+// - retrieving 2 latest items out of 40k historical items of a total of 360k items cost 99ms
 
- /**
-  * Challenges:
-  * - correctly (with all error condition) retrieve data from S3 interface
-  * - if there are many entries; starting will take longer (possible migrate to mmap()ed data structure)
-  * - partitioning (within a host; but also mutliple storage facilities)
-  */
+ // Challenges:
+ // - correctly (with all error condition) retrieve data from S3 interface
+ // - if there are many entries; starting will take longer (possible migrate to mmap()ed data structure)
+ // - partitioning (within a host; but also mutliple storage facilities)
 
 const std::string FileStore::Entry::FileExtension = ".entry";
 

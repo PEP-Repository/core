@@ -24,12 +24,11 @@ QRegularExpression GetPseudonymsRegex(const std::vector<pep::PseudonymFormat>& f
 
 }
 
-/*! \brief Select participant
- *
- * This function manages the validation of input from the user and emits the validated SID or short pseudonym
- *
- * \param parent The parent object of this one. Needed by the Qt framework.
- */
+/// \brief Select participant
+///
+/// This function manages the validation of input from the user and emits the validated SID or short pseudonym
+///
+/// \param parent The parent object of this one. Needed by the Qt framework.
 ParticipantSelector::ParticipantSelector(QWidget* parent, const pep::GlobalConfiguration& config) :
   QWidget(parent),
   ui_(new Ui::ParticipantSelector) {
@@ -91,16 +90,14 @@ ParticipantSelector::ParticipantSelector(QWidget* parent, const pep::GlobalConfi
   QObject::connect(ui_->shortPseudonymInput, &QLineEdit::returnPressed, ui_->findShortPseudonymButton, &QPushButton::click);
 }
 
-/*! \brief Destructor
- *
- * Clears out the UI object.
- */
+/// \brief Destructor
+///
+/// Clears out the UI object.
 ParticipantSelector::~ParticipantSelector() {
   delete ui_;
 }
 
-/*! \brief Set UI focus to the SID input
- */
+/// \brief Set UI focus to the SID input
 void ParticipantSelector::doFocus() {
   ui_->sidInput->setFocus();
 }

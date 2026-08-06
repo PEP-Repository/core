@@ -21,9 +21,7 @@
 
 namespace pep {
 
-/*!
- * \brief Returns whether a is a subset of b.
- */
+/// Returns whether a is a subset of b.
 template<typename T>
 bool IsSubset(std::vector<T> a, std::vector<T> b) {
   std::sort(a.begin(), a.end());
@@ -31,9 +29,7 @@ bool IsSubset(std::vector<T> a, std::vector<T> b) {
   return std::includes(b.begin(), b.end(), a.begin(), a.end());
 }
 
-/*!
- * \brief Returns a value that's included multiple times in the vector, or std::nullopt if it contains unique values. Uniqueness is determined by the specified Compare object.
- */
+/// Returns a value that's included multiple times in the vector, or std::nullopt if it contains unique values. Uniqueness is determined by the specified Compare object.
 template <typename T, typename TCompare>
 std::optional<T> TryFindDuplicateValue(std::vector<T> vec, const TCompare& comp) {
   std::sort(vec.begin(), vec.end(), comp);
@@ -44,43 +40,35 @@ std::optional<T> TryFindDuplicateValue(std::vector<T> vec, const TCompare& comp)
   return std::nullopt;
 }
 
-/*!
- * \brief Returns a value that's included multiple times in the vector, or std::nullopt if it contains unique values. Uniqueness is determined by (a default-constructed instance of) the specified Compare type.
- */
+/// Returns a value that's included multiple times in the vector, or std::nullopt if it contains unique values. Uniqueness is determined by (a default-constructed instance of) the specified Compare type.
 template <typename T, typename TCompare = std::less<T>>
 std::optional<T> TryFindDuplicateValue(std::vector<T> vec) {
   return TryFindDuplicateValue(vec, TCompare());
 }
 
-/*!
- * \brief Returns whether a vector contains unique values, with uniqueness determined by the specified Compare object.
- */
+/// Returns whether a vector contains unique values, with uniqueness determined by the specified Compare object.
 template <typename T, typename TCompare>
 bool ContainsUniqueValues(std::vector<T> vec, const TCompare& comp) {
   return TryFindDuplicateValue(vec, comp) == std::nullopt;
 }
 
-/*!
- * \brief Returns whether a vector contains unique values, with uniqueness determined by (a default-constructed instance of) the specified Compare type.
- */
+/// Returns whether a vector contains unique values, with uniqueness determined by (a default-constructed instance of) the specified Compare type.
 template <typename T, typename TCompare = std::less<T>>
 bool ContainsUniqueValues(const std::vector<T>& vec) {
   return TryFindDuplicateValue(vec) == std::nullopt;
 }
 
-/*!
- * \brief Fills a destination range with strings from a source range without exceeding the specified destination capacity.
-
- * \tparam TDest the type of destination iterator
- * \tparam TSrc the type of source range
-
- * \param dest destination iterator
- * \param cap The max capacity of the destination in bytes
- * \param src the source range
- * \param padding bytes of overhead associated with each string. Specify a non-zero value to take destination storage overhead into account; add one to take the strings' NULterminators into account.
-
- * \return The number of bytes written to the destination.
-*/
+/// \brief Fills a destination range with strings from a source range without exceeding the specified destination capacity.
+///
+/// \tparam TDest the type of destination iterator
+/// \tparam TSrc the type of source range
+///
+/// \param dest destination iterator
+/// \param cap The max capacity of the destination in bytes
+/// \param src the source range
+/// \param padding bytes of overhead associated with each string. Specify a non-zero value to take destination storage overhead into account; add one to take the strings' NULterminators into account.
+///
+/// \return The number of bytes written to the destination.
 template <std::output_iterator<std::string> TDest, std::ranges::input_range TSrc>
   requires std::same_as<std::remove_cvref_t<std::ranges::range_value_t<TSrc>>, std::string>
 size_t FillToCapacity(TDest dest, size_t cap, const TSrc& src, size_t padding = 0) {
@@ -242,14 +230,14 @@ requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<de
 template <typename T>
 concept AnyMap = DerivedFromSpecialization<T, std::map> || DerivedFromSpecialization<T, std::unordered_map>;
 
-/// @brief Adds items from a range to an \ref std::set, throwing an exception if an item could not be inserted because it's a duplicate
-/// @tparam T the type of item in the \ref std::set
-/// @tparam TSrc the type of the input range
-/// @param dst the destination \ref std::set
-/// @param src the source range
-/// @return a pair of (1) an iterator at the last insertion position and (2) the number of items inserted into the set
-/// @throws whatever dst throws when an insertion fails, or an \ref std::runtime_error if one of \p src 's items is a duplicate.
-/// @remark Provides a basic (as opposed to strong) exception guarantee: if an exception is raised because of a duplicate item, \p dst may have been partially updated.
+/// \brief Adds items from a range to an \ref std::set, throwing an exception if an item could not be inserted because it's a duplicate
+/// \tparam T the type of item in the \ref std::set
+/// \tparam TSrc the type of the input range
+/// \param dst the destination \ref std::set
+/// \param src the source range
+/// \return a pair of (1) an iterator at the last insertion position and (2) the number of items inserted into the set
+/// \throws whatever dst throws when an insertion fails, or an \ref std::runtime_error if one of \p src 's items is a duplicate.
+/// \remark Provides a basic (as opposed to strong) exception guarantee: if an exception is raised because of a duplicate item, \p dst may have been partially updated.
 template <typename T, std::ranges::input_range TSrc>
 auto InsertNonDuplicates(std::set<T>& dst, const TSrc& src)
   requires (std::same_as<T, std::remove_cvref_t<std::ranges::range_value_t<TSrc>>>) {

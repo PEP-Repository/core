@@ -374,36 +374,28 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
     EndPoint transcryptorEndPoint_;
   };
 
-  /*!
-   * \brief Generate a polymorphic pseudonym for a registered participant.
-   */
+  /// Generate a polymorphic pseudonym for a registered participant.
   PolymorphicPseudonym generateParticipantPolymorphicPseudonym(const std::string& participantSID);
 
   LocalPseudonym decryptLocalPseudonym(const EncryptedLocalPseudonym& encrypted) const;
 
-  /*!
-   * \brief Interpret each string as a textually represented polymorphic pseudonym, or a participant identifier,
-   * or a local pseudonym, or a participant alias (aka user pseudonym, i.e. a shortened local pseudonym).
-   * Convert to polymorphic pseudonym in all cases.
-   * \param idsAndOrPps (User-provided) participant specification
-   * \return ((An observable emitting) a shared_ptr to) a vector of PolymorphicPseudonym corresponding with the vector of input strings.
-   */
+  /// \brief Interpret each string as a textually represented polymorphic pseudonym, or a participant identifier,
+  /// or a local pseudonym, or a participant alias (aka user pseudonym, i.e. a shortened local pseudonym).
+  /// Convert to polymorphic pseudonym in all cases.
+  /// \param idsAndOrPps (User-provided) participant specification
+  /// \return ((An observable emitting) a shared_ptr to) a vector of PolymorphicPseudonym corresponding with the vector of input strings.
   rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> parsePpsOrIdentities(const std::vector<std::string>& idsAndOrPps);
 
   auto openVerifiers(const auto& verifiersResponse) const {
     return verifiersResponse.open(systemPublicKeys_.globalPseudonymEncryptionKey);
   }
 
-  /*!
-   * \brief Interpret a string as a textually represented polymorphic pseudonym, or a participant identifier,
-   * or a local pseudonym, or a participant alias (aka user pseudonym, i.e. a shortened local pseudonym).
-   * Convert to a polymorphic pseudonym in all cases.
-   */
+  /// \brief Interpret a string as a textually represented polymorphic pseudonym, or a participant identifier,
+  /// or a local pseudonym, or a participant alias (aka user pseudonym, i.e. a shortened local pseudonym).
+  /// Convert to a polymorphic pseudonym in all cases.
   rxcpp::observable<PolymorphicPseudonym> parsePPorIdentity(const std::string& participantIdOrPP);
 
-  /*!
-   * \brief Check whether the client is enrolled.
-   */
+  /// Check whether the client is enrolled.
   bool getEnrolled();
 
 
@@ -413,18 +405,14 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   // Returns the name of the user for which the client is enrolled.
   std::string getEnrolledUser() const;
 
-  /*!
-   * \brief Enroll a server. The type of server is inferred from this CoreClient's certificate chain.
-   *
-   * \return rxcpp::observable< EnrolledPartyKeys >
-   */
+  /// \brief Enroll a server. The type of server is inferred from this CoreClient's certificate chain.
+  ///
+  /// \return rxcpp::observable< EnrolledPartyKeys >
   rxcpp::observable<EnrolledPartyKeys> enrollServer();
 
   void unenroll();
 
-  /*!
-   * \brief Store data in PEP using the new API
-   */
+  /// Store data in PEP using the new API
   rxcpp::observable<DataStorageResult2> storeData2(
     const PolymorphicPseudonym& pp,
     const std::string& column,
@@ -447,26 +435,22 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
     const std::vector<Storage2Entry>& entries,
     const StoreData2Opts& opts = {});
 
-  /*!
-   * \brief Enuremate and retrieve using new API.
-   *
-   * This function loads the full contents of the files into memory and
-   * should thus only be used for small files.
-   *
-   * If dataSizeLimit is non-zero, then only data of files will be retrieved
-   * that are smaller than the specified limit.
-   */
+  /// \brief Enuremate and retrieve using new API.
+  ///
+  /// This function loads the full contents of the files into memory and
+  /// should thus only be used for small files.
+  ///
+  /// If dataSizeLimit is non-zero, then only data of files will be retrieved
+  /// that are smaller than the specified limit.
   rxcpp::observable<EnumerateAndRetrieveResult>
   enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts);
 
-  /*!
-   * \brief Requests (or reuses) a new-style Ticket.
-   *
-   * If opts.ticket is set, the function will check whether that ticket
-   * has at least as much scope as the requested ticket.  If it does,
-   * then it will simply return opts.ticket.  Otherwise, it will request
-   * a new ticket.
-   */
+  /// \brief Requests (or reuses) a new-style Ticket.
+  ///
+  /// If opts.ticket is set, the function will check whether that ticket
+  /// has at least as much scope as the requested ticket.  If it does,
+  /// then it will simply return opts.ticket.  Otherwise, it will request
+  /// a new ticket.
   rxcpp::observable<IndexedTicket2>
   requestTicket2(const RequestTicket2Opts& opts);
 
@@ -474,10 +458,8 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>>
   enumerateData(std::shared_ptr<SignedTicket2> ticket);
 
-  /*!
-   * \brief Enumerate cells after requesting a new ticket.
-   * \remark Results won't include (local) pseudonyms for the access group.
-   */
+  /// \brief Enumerate cells after requesting a new ticket.
+  /// \remark Results won't include (local) pseudonyms for the access group.
   rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>>
   enumerateData(
     const std::vector<std::string>& groups=std::vector<std::string>(),
@@ -514,9 +496,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
     const rxcpp::observable<rxcpp::observable<FileKey>>& batchedSubjects,
     std::shared_ptr<SignedTicket2> ticket);
 
-  /*!
- * \brief Retrieve history using a pre-requested ticket.
- */
+  /// Retrieve history using a pre-requested ticket.
   rxcpp::observable<std::vector<HistoryResult>>
     getHistory2(SignedTicket2 ticket,
       const std::optional<std::vector<PolymorphicPseudonym>>& pps = std::nullopt,
@@ -534,10 +514,9 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
   using ServerProxies = std::unordered_map<ServerTraits, std::shared_ptr<const ServerProxy>>;
 
 protected:
-  /*! \brief constructor for CoreClient
-   *
-   * \param builder A builder that builds a CoreClient
-   */
+  /// \brief constructor for CoreClient
+  ///
+  /// \param builder A builder that builds a CoreClient
   CoreClient(const Builder& builder);
 
   template <std::derived_from<SigningServerProxy> TProxy>

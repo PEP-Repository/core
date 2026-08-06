@@ -16,14 +16,12 @@ namespace pep::castor {
 
 namespace {
 
-/*!
-  * \brief Creates (heap-allocated) child ptrees from nodes in a parent ptree.
-  * \param parent The parent ptree containing the (list of) child ptrees.
-  * \param embeddedItemsNodeName The name of the node containing the child ptrees to return. Function will locate the children under "_embedded.theSpecifiedEmbeddedItemsNodeName".
-  * \return A heap-allocated child ptree for every node the parent has at the specified location.
-  * \remark Helper function to convert a multi-item JSON response page ("here's a ptree for a full page of items") to individual items ("here's a single ptree per item").
-  *         The returned ptrees are heap-allocated (as opposed to stack-allocated) so they can be efficiently passed through RX pipelines.
-  */
+/// \brief Creates (heap-allocated) child ptrees from nodes in a parent ptree.
+/// \param parent The parent ptree containing the (list of) child ptrees.
+/// \param embeddedItemsNodeName The name of the node containing the child ptrees to return. Function will locate the children under "_embedded.theSpecifiedEmbeddedItemsNodeName".
+/// \return A heap-allocated child ptree for every node the parent has at the specified location.
+/// \remark Helper function to convert a multi-item JSON response page ("here's a ptree for a full page of items") to individual items ("here's a single ptree per item").
+///         The returned ptrees are heap-allocated (as opposed to stack-allocated) so they can be efficiently passed through RX pipelines.
 std::vector<std::shared_ptr<boost::property_tree::ptree>> CreateSharedChildTrees(JsonPtr parent, const std::string& embeddedItemsNodeName) {
   const auto& children = GetFromPtree<boost::property_tree::ptree>(*parent, "_embedded." + embeddedItemsNodeName);
   std::vector<std::shared_ptr<boost::property_tree::ptree>> result;
@@ -34,10 +32,8 @@ std::vector<std::shared_ptr<boost::property_tree::ptree>> CreateSharedChildTrees
 
 }
 
-/*!
-  * \brief Network connectivity implementation for the "CastorConnection" class.
-  * \remark A level of indirection (i.e. a separate struct) is needed because CastorConnection.hpp can't forward declare the nested CastorClient::Connection class: see https://stackoverflow.com/a/1021809
-  */
+/// \brief Network connectivity implementation for the "CastorConnection" class.
+/// \remark A level of indirection (i.e. a separate struct) is needed because CastorConnection.hpp can't forward declare the nested CastorClient::Connection class: see https://stackoverflow.com/a/1021809
 struct CastorConnection::Implementor {
   std::shared_ptr<CastorClient> client;
 };

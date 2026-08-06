@@ -4,12 +4,10 @@
 #include <stdexcept>
 
 namespace pep {
-/*!
- * \brief Mixin to help object creation as a shared_ptr. Especially helpful for classes that (directly or indirectly) inherit std::enable_shared_from_this<>.
- *
- * For a class `Foo`, inherit SharedConstructor<Foo> to have it provide factory method `Foo::Create(<normal constructor arguments>)` .
- * To enforce instantiation using the factory method, also make Foo's constructor(s) private and be-friend class SharedConstructor<Foo>.
- */
+/// \brief Mixin to help object creation as a shared_ptr. Especially helpful for classes that (directly or indirectly) inherit std::enable_shared_from_this<>.
+///
+/// For a class `Foo`, inherit SharedConstructor<Foo> to have it provide factory method `Foo::Create(<normal constructor arguments>)` .
+/// To enforce instantiation using the factory method, also make Foo's constructor(s) private and be-friend class SharedConstructor<Foo>.
 template <typename T>
 class SharedConstructor {
   friend T;

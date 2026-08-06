@@ -65,7 +65,7 @@ constexpr const FieldType Class::* FieldAsConst(FieldType Class::* field) {
 ///
 /// Requires `FlagEnumCandidate<T>`
 ///
-/// @warning This macro must be invoked from the `::pep` namespace or global namespace;
+/// \warning This macro must be invoked from the `::pep` namespace or global namespace;
 ///          it does not work from nested namespaces within `::pep`.
 #define PEP_MARK_AS_FLAG_ENUM_TYPE(T) \
   static_assert(::pep::FlagEnumCandidate<T>); \

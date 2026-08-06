@@ -356,11 +356,10 @@ void ParticipantWidget::setReadOnly(bool readOnly) {
   ui_->scrollArea->horizontalScrollBar()->setValue(horizontal);
 }
 
-/*! \brief Update device in pep infrastructure
- *
- * Once a user has changed the participant device through the ParticipantWidget::manageDevices() function the change needs to be sent to the pep infrastructure.
- * This function mangages changing the device ID in the infrastructure. This function is tied to a ui_ button defined in participantwidget.ui_
- */
+/// \brief Update device in pep infrastructure
+///
+/// Once a user has changed the participant device through the ParticipantWidget::manageDevices() function the change needs to be sent to the pep infrastructure.
+/// This function mangages changing the device ID in the infrastructure. This function is tied to a ui_ button defined in participantwidget.ui_
 void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
   std::string serial = deviceId.toStdString();
   std::string type;
@@ -435,10 +434,9 @@ void ParticipantWidget::updateVisitAssessor(QString id) {
   });
 }
 
-/*! \brief Prints visit stickers via the bartender application
- *
- * This function requires the external bartender application. Prints all stickers for the current participant visit based on a template loaded from the client application directory.
- */
+/// \brief Prints visit stickers via the bartender application
+///
+/// This function requires the external bartender application. Prints all stickers for the current participant visit based on a template loaded from the client application directory.
 void ParticipantWidget::printAllVisitStickers() {
   this->invokeBartender(getPrintableShortPseudonyms(currentVisitNumber_));
 }
@@ -550,10 +548,9 @@ QString ParticipantWidget::describeShortPseudonymDefinition(const pep::ShortPseu
   return description + " " + this->getVisitCaption(*visit);
 }
 
-/*! \brief Print a single sticker via the bartender application
- *
- * This function requires the external bartender application. Prints a test sticker for the current participant based on a template loaded from the client application directory.
- */
+/// \brief Print a single sticker via the bartender application
+///
+/// This function requires the external bartender application. Prints a test sticker for the current participant based on a template loaded from the client application directory.
 void ParticipantWidget::printSingleVisitSticker() {
   this->printSingleSticker(currentVisitNumber_);
 }
@@ -651,10 +648,9 @@ bool ParticipantWidget::provideBartenderPath() {
   return getConfiguredPathError() == nullptr;
 }
 
-/*! \brief Print summary of current participant information
- *
- * Used to aid the assessors.
- */
+/// \brief Print summary of current participant information
+///
+/// Used to aid the assessors.
 void ParticipantWidget::printSummary() {
 #ifdef _WIN32
   if(!currentPepRole_.canPrintSummary()) {
@@ -806,10 +802,9 @@ void ParticipantWidget::locateBartender() {
   }
 }
 
-/*! \brief Close current participant
- *
- * Sets current object to be deleted.
- */
+/// \brief Close current participant
+///
+/// Sets current object to be deleted.
 void ParticipantWidget::closeParticipant() {
   //Should also clear out current patient data
   mainWindow_->changeActiveTab(0);
@@ -818,20 +813,18 @@ void ParticipantWidget::closeParticipant() {
   parent()->deleteLater();
 }
 
-/*! \brief Function called when translation button is pressed
- *
- * When a translation signal hits this object this code block will be executed.
- * At time of writing (1-16-2018) only one translation call is made and this happens on construction.
- */
+/// \brief Function called when translation button is pressed
+///
+/// When a translation signal hits this object this code block will be executed.
+/// At time of writing (1-16-2018) only one translation call is made and this happens on construction.
 void ParticipantWidget::onTranslation() {
   ui_->retranslateUi(this);
   this->processData();
 }
 
-/*! \brief Process current information
- *
- * This code block does a lot. All of the current UI is configured in this function. No arguments are taken, but many class variables are used.
- */
+/// \brief Process current information
+///
+/// This code block does a lot. All of the current UI is configured in this function. No arguments are taken, but many class variables are used.
 void ParticipantWidget::processData() {
   ui_->participant->setText(tr("participant '%1'").arg(participantId_));
 
@@ -1290,23 +1283,21 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
   dialog->show();
 }
 
-/*! \brief Helper function to make the visit number visible class wide.
- *
- * This function takes a zero based visit number (0, 1, 2 at time of writing and hopefully forever) and sets the current visit number to a one based number (1, 2, 3).
- * In case it's not clear the mapping should be {0->1, 1->2, 2->3}
- *
- * \param visitNumber The zero based visit number.
- */
+/// \brief Helper function to make the visit number visible class wide.
+///
+/// This function takes a zero based visit number (0, 1, 2 at time of writing and hopefully forever) and sets the current visit number to a one based number (1, 2, 3).
+/// In case it's not clear the mapping should be {0->1, 1->2, 2->3}
+///
+/// \param visitNumber The zero based visit number.
 
 void ParticipantWidget::setCurrentVisitNumber(int visitNumber) {
   ////std::cout << "Visit number changed to " << visitNumber << std::endl;
   currentVisitNumber_ = visitNumber +1; //Input in 0 indexed and labels are 1 indexed.
 }
 
-/*! \brief Destructor
- *
- * Unsubscribes from shared resources and deletes Qt UI.
- */
+/// \brief Destructor
+///
+/// Unsubscribes from shared resources and deletes Qt UI.
 
 ParticipantWidget::~ParticipantWidget() {
   delete ui_;
