@@ -63,7 +63,7 @@ auto EventLoopCallBack(const CommonParams& params, std::string_view extension, s
       traits = pep::ServerTraits::Where([](const pep::ServerTraits& traits){ return traits.hasSigningIdentity(); });
     }
     else {
-      traits = pep::ServerTraits::Where([params](const pep::ServerTraits& traits){ return find(params.servers, traits.commandLineId()) != params.servers.end(); });
+      traits = pep::ServerTraits::Where([params](const pep::ServerTraits& traits){ return contains(params.servers, traits.commandLineId()); });
     }
 
     //NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks) See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2781#note_55944

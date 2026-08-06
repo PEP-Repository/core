@@ -379,7 +379,7 @@ void FileStore::EntryChange::commit(Timestamp availableFrom) && {
   // this should not happen due to combination of above conditions:
   // - check that the availableFrom > last item (on time of modify() method)
   // - check that last item on time of modify() is still the last item at time of commit()
-  if (this->getCell().versions().find(availableFrom) != this->getCell().versions().cend()) {
+  if (this->getCell().versions().contains(availableFrom)) {
     auto msg = "Cannot store duplicate entry with name " + this->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(availableFrom));
     PEP_LOG(LogTag, Severity::Error) << msg;

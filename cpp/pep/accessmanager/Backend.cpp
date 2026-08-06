@@ -540,7 +540,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
 
       // Add the columnGroup and column to the map
       auto& entry = columnGroupMap[cgc.columnGroup];
-      if (std::ranges::find(entry.indices, index) == entry.indices.cend()) {
+      if (!std::ranges::contains(entry.indices, index)) {
         entry.indices.push_back(index);
       }
     }

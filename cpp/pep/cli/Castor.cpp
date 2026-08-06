@@ -306,8 +306,8 @@ private:
             .concat_map([required](std::shared_ptr<CurrentConfig> config) {
               return required
                 .map([config](ColumnStatus column) {
-                column.exists = (config->existing.find(column.name) != config->existing.cend());
-                column.grouped = (config->grouped.find(column.name) != config->grouped.cend());
+                column.exists = config->existing.contains(column.name);
+                column.grouped = config->grouped.contains(column.name);
                 return column;
                   });
               })

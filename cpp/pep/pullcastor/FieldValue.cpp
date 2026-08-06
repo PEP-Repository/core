@@ -16,13 +16,12 @@ void AddCheckBox(boost::property_tree::ptree& destination, const std::string& na
 
   std::set<std::string> selectedValues;
   boost::split(selectedValues, value, std::bind_front(std::equal_to{}, ';'));
-  auto unfound = selectedValues.cend();
 
   using ptree_path = boost::property_tree::ptree::path_type;
   ptree_path root(name);
 
   for (const auto& option : optionGroup->getOptions()) {
-    auto selected = (selectedValues.find(option.first) != unfound);
+    auto selected = selectedValues.contains(option.first);
     destination.put(root / ptree_path(option.first), selected);
   }
 }

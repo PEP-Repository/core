@@ -255,7 +255,7 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
       .map([ctx](const auto &access) {
       const pep::ParticipantGroupAccess &pga = std::get<0>(access);
       for (const auto& pg : pga.participantGroups) {
-        if (std::ranges::find(pg.second, "access") != pg.second.end())
+        if (std::ranges::contains(pg.second, "access"))
         {
           ctx->content.groups.push_back(pg.first);
         }
@@ -263,7 +263,7 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
       const pep::ColumnAccess &ca = std::get<1>(access);
       ctx->content.columnGroups.reserve(ca.columnGroups.size());
       for (const auto& cg : ca.columnGroups) {
-        assert(std::ranges::find(cg.second.modes, "read") != cg.second.modes.end());
+        assert(std::ranges::contains(cg.second.modes, "read"));
         ctx->content.columnGroups.push_back(cg.first);
       }
       if (ctx->content.groups.empty()) {
