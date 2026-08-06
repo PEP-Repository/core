@@ -22,6 +22,25 @@ namespace pep {
 template <std::ranges::range R>
 using QualifiedRangeValue = std::remove_reference_t<std::ranges::range_reference_t<R>>;
 
+/// Returns a value that's included in both vectors, or std::nullopt if no such value exists.
+/// Equality is determined by the specified Compare object.
+template <typename T, typename TCompare>
+std::optional<T> TryFindIntersect(std::vector<T> vecA, std::vector<T> vecB, const TCompare& comp) {
+  std::sort(vecA.begin(), vecA.end(), comp);
+  std::sort(vecB.begin(), vecB.end(), comp);
+  std::vector<T> intersect;
+  std::ranges::set_intersection(vecA, vecB, std::back_inserter(intersect), comp);
+  if (intersect.empty()) { return std::nullopt; }
+  return intersect.front();
+}
+
+/// Returns a value that's included in both vectors, or std::nullopt if no such value exists.
+/// Equality is determined by a default-constructed instance of) the specified Compare type.
+template <typename T, typename TCompare = std::less<T>>
+std::optional<T> TryFindIntersect(std::vector<T> vecA, std::vector<T> vecB) {
+  return TryFindIntersect(vecA, vecB, TCompare());
+}
+
 /// \brief Fills a destination range with strings from a source range without exceeding the specified destination capacity.
 ///
 /// \tparam TDest the type of destination iterator
