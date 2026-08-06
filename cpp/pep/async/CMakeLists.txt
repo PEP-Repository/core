@@ -1,7 +1,7 @@
 # Async library: provides support for asynchronous programming
 # using Boost ASIO and RX(CPP).
 
-add_library(${PROJECT_NAME}Asynclib STATIC
+add_library(${PROJECT_NAME}Asynclib
     ActivityMonitor.cpp ActivityMonitor.hpp
     CallbackCoroutine.hpp
     CreateObservable.hpp

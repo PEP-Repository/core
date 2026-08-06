@@ -18,7 +18,7 @@ capitalize_only_first_letter("${LOGGING}" logging_enum)
 
 add_definitions(-DPEP_COMPILED_MIN_LOG_SEVERITY=${logging_enum})
 
-add_library(${PROJECT_NAME}Utilslib STATIC
+add_library(${PROJECT_NAME}Utilslib
     ApplicationMetrics.cpp ApplicationMetrics.hpp
     Attributes.hpp
     Base64.cpp Base64.hpp
@@ -100,7 +100,7 @@ verify_headers_standalone(${PROJECT_NAME}Utilslib)
 if(WITH_TESTS)
   # Testing library: provides support for (unit) test executables
 
-  add_library(${PROJECT_NAME}Testinglib STATIC
+  add_library(${PROJECT_NAME}Testinglib
     OnFatalTestFailure.hpp
     RegisteredTestEnvironment.cpp RegisteredTestEnvironment.hpp
     TestApplicationMainFunction.cpp

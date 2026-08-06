@@ -6,7 +6,7 @@ if(UNENCRYPTED_MESSAGING)
   add_definitions(-DNO_TLS)
 endif()
 
-add_library(${PROJECT_NAME}Messaginglib STATIC
+add_library(${PROJECT_NAME}Messaginglib
     BinaryProtocol.cpp BinaryProtocol.hpp
     Connection.cpp Connection.hpp
     ConnectionFailureException.hpp
