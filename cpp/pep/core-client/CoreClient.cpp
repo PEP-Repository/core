@@ -141,7 +141,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
             auto pseudonymStart = userPseudFormat.stripPrefix(participantIdOrPP);
             return ppsByLp->observe()
               .map([i, participantIdOrPP, pseudonymStart](std::shared_ptr<std::unordered_map<std::string, PolymorphicPseudonym>> ppsByLp) {
-              auto position = std::ranges::find_if(ppsByLp->cbegin(), ppsByLp->cend(), [pseudonymStart](const auto& pair) {return boost::starts_with(pair.first, pseudonymStart); });
+              auto position = std::ranges::find_if(*ppsByLp, [pseudonymStart](const auto& pair) {return boost::starts_with(pair.first, pseudonymStart); });
               if (position == ppsByLp->cend()) {
                 throw std::runtime_error("Can't find local pseudonym matching " + participantIdOrPP);
               }

@@ -180,11 +180,11 @@ void DownloadProcessor::prepareLocalData(
       // or the payload will be updated to a newer version (i.e. same participant and column, but different timestamp)
       if (!destination_->remove(existing)) {
         if (assumePristine) {
-          auto update = std::ranges::find_if(downloads->cbegin(), downloads->cend(), [&existing](const std::pair<const RecordDescriptor, std::shared_ptr<EnumerateResult>>& enumerated) {
-            return *enumerated.second->accessGroupPseudonym == existing.getParticipant().getLocalPseudonym()
-              && enumerated.second->column == existing.getColumn();
+          bool update = std::ranges::any_of(*downloads | std::views::values, [&existing](const std::shared_ptr<EnumerateResult>& enumerated) {
+            return *enumerated->accessGroupPseudonym == existing.getParticipant().getLocalPseudonym()
+              && enumerated->column == existing.getColumn();
             });
-          if (update == downloads->cend()) {
+          if (!update) {
             // Data should have been removed from the local copy, but it wasn't there
             PEP_LOG(LogTag + ":update", Severity::Warning) << "Could not remove data that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
               << "; column " << existing.getColumn()
