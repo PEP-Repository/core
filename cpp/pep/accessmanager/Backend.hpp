@@ -45,9 +45,6 @@ public:
   /// \brief For each column in columns, look up the associated columngroups. Then check whether or not the userGroup has the required access to ANY of those columnGroups. If not, throw an error.
   /// For each columnGroup in columnGroups, assert whether or not the userGroup has the required access modes. If so, for each columnGroup, look up all columns that are in it and add them
   ///         to the columns vector. Add an entry to the columnmGroupMap containing all indexes of the columns that are in the columnGroup.
-  ///  \param userGroup
-  ///  \param columnGroups
-  ///  \param modes
   ///  \param at timestamp of moment in time for when to assert access and columnGroup membership.
   ///  \param columns Both an in and out parameter. Vector containing the loose requested columns. This vector is appended with the columns found in the requested columnGroups.
   ///  \returns Map of IndexList (indexes of columns in columnGroup) by string (name of columnGroup).
