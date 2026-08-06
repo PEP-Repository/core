@@ -261,7 +261,7 @@ else {
 - do **not** use mutable global variables, including non-`const` `static` variables. If you really need this, keep it local to a single translation unit (e.g. in an anonymous namespace) if possible.
 - do **not** use magic numbers, *better:*  
   - `sizeof(MessageHeader)` instead of `4`;  
-  - or `static const int NUMBER_OF_ATTEMPTS = 4` (because of scoping, no #define);
+  - or `static const int NumberOfAttempts = 4` (because of scoping, no #define);
 - do not use `exit(n)` or `abort()` in your code directly;
 - always use a catch all in your `main` function (or even better, use the infrastructure provided by the `pep::Application` class);
 - use the macros in [the `BuildFlavor.hpp`](https://gitlab.pep.cs.ru.nl/pep/core/-/blob/main/core/BuildFlavor.hpp) header to differentiate between (debug and release) build types, instead of the canonical but [difficult-to-interpret](https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1317) `#ifndef NDEBUG`.
@@ -275,9 +275,9 @@ else {
   
   ```c++
   // variable type
-  std::shared_ptr<PEPStuff> variable = ...;
+  std::shared_ptr<PepStuff> variable = ...;
   // construct new object
-  ... = std::make_shared<PEPStuff>(...)
+  ... = std::make_shared<PepStuff>(...)
   ```
   
   **Note** avoid circular references.
@@ -294,7 +294,7 @@ PEP provides a [logging system](https://gitlab.pep.cs.ru.nl/pep/core/blob/main/c
   <summary>Example:</summary>
 
   ```c++
-  PEP_LOG(LOG_TAG, Severity::Error) << "Received an error! (stream id " << dwStreamId << ")";
+  PEP_LOG(LogTag, Severity::Error) << "Received an error! (stream id " << dwStreamId << ")";
   ```
   
   The 2nd parameter to the `LOG` macro specifies the severity level associated with the log entry. Supported levels are defined in enumeration `Severity`:
