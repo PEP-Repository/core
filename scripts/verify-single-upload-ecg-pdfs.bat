@@ -13,18 +13,18 @@ SET ExitCode=0
 
 rem Iterate over subdirectories of %RootDir%.
 FOR /D %%d IN ("%RootDir%\*") DO (
-	SET EcgSp=%%~nxd
-	SET PdfFile=
-	
-	rem Iterate over *.pdf files in participant directory.
-	FOR %%f IN ("%%d\*.pdf") DO (
-		rem Check if previous iteration uploaded a file from this directory
-		if not !PdfFile!.==. (
-			@echo Directory "!EcgSp!" has multiple PDF files: "!PdfFile!" and "%%f"
-			SET ExitCode=1
-		)
-		SET PdfFile=%%f
-	)
+  SET EcgSp=%%~nxd
+  SET PdfFile=
+  
+  rem Iterate over *.pdf files in participant directory.
+  FOR %%f IN ("%%d\*.pdf") DO (
+    rem Check if previous iteration uploaded a file from this directory
+    if not !PdfFile!.==. (
+      @echo Directory "!EcgSp!" has multiple PDF files: "!PdfFile!" and "%%f"
+      SET ExitCode=1
+    )
+    SET PdfFile=%%f
+  )
 )
 
 goto :End
