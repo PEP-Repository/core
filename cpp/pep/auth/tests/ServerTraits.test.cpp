@@ -4,6 +4,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <gtest/gtest.h>
 
+#include <ranges>
 #include <utility>
 
 namespace {
@@ -71,10 +72,11 @@ void VerifyServersHaveUniqueProperties(const std::unordered_set<pep::ServerTrait
 
   // Aggregate the properties for all servers
   using Plain = std::remove_const_t<std::remove_reference_t<T>>;
-  ServerProperties<Plain> properties;
-  std::ranges::transform(servers, std::inserter(properties, properties.begin()), [getProperty](const pep::ServerTraits& server) {
-    return std::make_pair(server, getProperty(server));
-    });
+  auto properties = servers
+    | std::views::transform([getProperty](const pep::ServerTraits& server) {
+      return std::make_pair(server, getProperty(server));
+      })
+    | std::ranges::to<ServerProperties>();
 
   // Compare each server('s property) against each other server('s property)
   using Value = ServerPropertyValue<Plain>;

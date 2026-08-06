@@ -2,6 +2,8 @@
 
 #include <pep/assessor/ui_assessorwidget.h>
 
+#include <ranges>
+
 AssessorWidget::AssessorWidget(QWidget *parent) :
   QWidget(parent),
   ui_(new Ui::AssessorWidget)
@@ -31,7 +33,9 @@ void AssessorWidget::setAssessors(const std::vector<pep::AssessorDefinition>& as
   if (!assessors_.empty()) {
     throw std::runtime_error("Can only set assessors once");
   }
-  std::ranges::copy_if(assessors, std::back_inserter(assessors_), [&studyContext](const pep::AssessorDefinition& candidate) {return candidate.matchesStudyContext(studyContext); });
+  assessors_ = assessors
+    | std::views::filter([&studyContext](const pep::AssessorDefinition& candidate) {return candidate.matchesStudyContext(studyContext); })
+    | std::ranges::to<std::vector>();
   std::ranges::sort(assessors_, [](const pep::AssessorDefinition& lhs, const pep::AssessorDefinition& rhs) {return strcmp(lhs.name.c_str(), rhs.name.c_str()) < 0; });
 
   auto enable = !assessors_.empty();

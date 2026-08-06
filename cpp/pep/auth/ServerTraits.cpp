@@ -3,6 +3,7 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <cassert>
+#include <ranges>
 
 namespace pep {
 
@@ -156,8 +157,9 @@ std::optional<ServerTraits> ServerTraits::Find(const std::function<bool(const Se
   case 1U:
     return *filtered.begin();
   default:
-    std::vector<std::string> descriptions;
-    std::ranges::transform(filtered, std::back_inserter(descriptions), [](const ServerTraits& traits) {return traits.description(); });
+    auto descriptions = filtered
+      | std::views::transform([](const ServerTraits& traits) {return traits.description(); })
+      | std::ranges::to<std::vector>();
     throw std::runtime_error("Multiple server traits match the predicate: " + boost::join(descriptions, " and "));
   }
 }

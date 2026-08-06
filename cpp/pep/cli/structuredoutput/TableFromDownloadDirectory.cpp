@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <optional>
+#include <ranges>
 #include <pep/structuredoutput/IndexedStringPool.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/VariantUtils.hpp>
@@ -42,13 +43,12 @@ TableTripletsAndPools triplets(
       .participants = IndexedStringPool<ParticipantIdentifier>{participantProjection},
       .columns = IndexedStringPool<std::string>{identity}};
 
-  out.triplets.reserve(descs.size());
-  std::ranges::transform(descs, std::back_inserter(out.triplets), [&out, &valueProjection](const RecordDescriptor& d) {
+  out.triplets.append_range(descs | std::views::transform([&out, &valueProjection](const RecordDescriptor& d) {
     return TableTriplet{
         .participant = out.participants.map(d.getParticipant()),
         .column = out.columns.map(d.getColumn()),
         .value = valueProjection(d)};
-  });
+  }));
 
   return out;
 }

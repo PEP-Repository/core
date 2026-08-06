@@ -1,6 +1,7 @@
 #include <pep/application/CommandLineParameter.hpp>
 
 #include <numeric>
+#include <ranges>
 #include <utility>
 #include <iostream>
 
@@ -479,17 +480,14 @@ bool Parameters::hasInfinitePositional() const noexcept {
 std::vector<std::string> Parameters::getInvocationSummary() const {
   std::vector<std::optional<std::string>> optionals;
   optionals.reserve(entries_.size());
-
-  auto position = std::back_inserter(optionals);
-  position = std::ranges::transform(named_, position, [this](Index index) {return entries_[index].getInvocationSummary(true); }).out;
-  std::ranges::transform(positional_, position, [this](Index index) {return entries_[index].getInvocationSummary(true); });
+  optionals.append_range(named_ | std::views::transform([this](Index index) {return entries_[index].getInvocationSummary(true); }));
+  optionals.append_range(positional_ | std::views::transform([this](Index index) {return entries_[index].getInvocationSummary(true); }));
 
   std::erase(optionals, std::nullopt);
 
-  std::vector<std::string> result;
-  result.reserve(optionals.size());
-  std::ranges::transform(optionals, std::back_inserter(result), [](const std::optional<std::string> entry) {return *entry; });
-  return result;
+  return optionals
+    | std::views::transform([](const std::optional<std::string>& entry) {return *entry; })
+    | std::ranges::to<std::vector>();
 }
 
 }

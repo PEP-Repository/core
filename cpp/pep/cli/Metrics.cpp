@@ -3,6 +3,8 @@
 #include <pep/client/Client.hpp>
 #include <pep/application/Application.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 
@@ -20,9 +22,9 @@ protected:
   pep::commandline::Parameters getSupportedParameters() const override {
     auto traits = pep::ServerTraits::All();
 
-    std::vector<std::string> ids;
-    ids.reserve(traits.size());
-    std::ranges::transform(traits, std::back_inserter(ids), [](const pep::ServerTraits& traits) {return traits.commandLineId(); });
+    auto ids = traits
+      | std::views::transform([](const pep::ServerTraits& traits) {return traits.commandLineId(); })
+      | std::ranges::to<std::vector>();
     // Sort by command line ID: produces nicely sorted child commands
     std::ranges::sort(ids);
 

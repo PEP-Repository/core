@@ -54,7 +54,7 @@ int CommandUser::CommandUserQuery::execute() {
       }
 
       // Warn for users without displayId
-      auto usersWithoutDisplayId = res.users | std::ranges::views::filter([](QRUser user){ return !user.displayId; });
+      auto usersWithoutDisplayId = res.users | std::views::filter([](QRUser user){ return !user.displayId; });
       for (auto& user : usersWithoutDisplayId) {
         auto uids = std::move(user.otherUids);
         if (user.primaryId) {

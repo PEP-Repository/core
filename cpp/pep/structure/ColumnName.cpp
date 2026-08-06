@@ -3,6 +3,7 @@
 #include <cassert>
 #include <algorithm>
 #include <iterator>
+#include <ranges>
 #include <regex>
 #include <stdexcept>
 #include <utility>
@@ -48,10 +49,9 @@ std::string ColumnNameMappings::getColumnNameSectionFor(const std::string& rawOr
 }
 
 std::vector<ColumnNameMapping> ColumnNameMappings::getEntries() const {
-  std::vector<ColumnNameMapping> result;
-  result.reserve(entries_.size());
-  std::ranges::transform(entries_, std::back_inserter(result), [](const std::pair<const std::string, ColumnNameMapping>& entry) {return entry.second; });
-  return result;
+  return entries_
+    | std::views::transform([](const std::pair<const std::string, ColumnNameMapping>& entry) {return entry.second; })
+    | std::ranges::to<std::vector>();
 }
 
 }

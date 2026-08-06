@@ -12,6 +12,8 @@
 #include <pep/utils/File.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-distinct.hpp>
@@ -409,8 +411,9 @@ protected:
           ticketRequest.participantGroups = *pgs;
           ticketRequest.pps = *pps;
 
-          ticketRequest.columns.reserve(columnExtensions->size());
-          std::ranges::transform(columnExtensions->cbegin(), columnExtensions->cend(), std::back_inserter(ticketRequest.columns), [](const auto& pair) {return pair.first; });
+          ticketRequest.columns = *columnExtensions
+            | std::views::transform([](const auto& pair) {return pair.first; })
+            | std::ranges::to<std::vector>();
 
           return client->requestTicket2(ticketRequest)
             .flat_map([client](const pep::IndexedTicket2& ticket) {return client->enumerateData(ticket.getTicket()); })
@@ -503,9 +506,7 @@ protected:
       return rxcpp::observable<>::just(true);
     }
 
-    std::vector<pep::StoreMetadata2Entry> storeEntries;
-    storeEntries.reserve(updates.size());
-    std::ranges::transform(updates, std::back_inserter(storeEntries), [verbose = this->getParameterValues().has("verbose")](const Update& update) {
+    auto storeEntries = updates | std::views::transform([verbose = this->getParameterValues().has("verbose")](const Update& update) {
       if (verbose) {
         const auto& previous = update.getPreviousExtension();
         if (previous.has_value()) {
@@ -519,7 +520,8 @@ protected:
         std::cout << '\n';
       }
       return update.getStoreEntry();
-      });
+      })
+      | std::ranges::to<std::vector>();
     std::cout.flush();
 
     return client->updateMetadata2(storeEntries)
@@ -738,8 +740,9 @@ protected:
         opts.columnGroups = MultiCellQuery::GetColumnGroups(vm);
         opts.columns = MultiCellQuery::GetColumns(vm);
 
-        opts.pps.reserve(specs->size());
-        std::ranges::transform(specs->cbegin(), specs->cend(), std::back_inserter(opts.pps), [](const auto& pair) {return pair.first; });
+        opts.pps = *specs
+          | std::views::transform([](const auto& pair) {return pair.first; })
+          | std::ranges::to<std::vector>();
 
         return client->requestTicket2(opts)
           .flat_map([client](pep::IndexedTicket2 indexed) {

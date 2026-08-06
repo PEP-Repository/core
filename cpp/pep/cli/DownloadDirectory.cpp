@@ -13,6 +13,7 @@
 #include <pep/core-client/CoreClient.hpp>
 
 #include <fstream>
+#include <ranges>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -214,10 +215,9 @@ std::vector<DownloadDirectory::NonPristineEntry> DownloadDirectory::getNonPristi
   // Check entries that shouldn't be there
   // TODO: report Progress for this?
   auto unknown = this->getUnknownContents(dirs, files);
-  result.reserve(result.size() + unknown.size());
-  std::ranges::transform(unknown, std::back_inserter(result), [](const std::filesystem::path& path) {
+  result.append_range(unknown | std::views::transform([](const std::filesystem::path& path) {
     return NonPristineEntry{ std::nullopt, path };
-    });
+    }));
 
   progress->advanceToCompletion();
   return result;
@@ -271,10 +271,10 @@ filesystem::SetOfExistingPaths DownloadDirectory::getUnknownContents(const files
 }
 
 std::vector<RecordDescriptor> DownloadDirectory::getRecords(const std::function<bool(const RecordDescriptor&)>& match) const {
-  std::vector<RecordDescriptor> result;
-
   auto pristine = metadata_.getRecords(); // TODO: don't rely on pristine data here
-  std::ranges::transform(pristine, std::back_inserter(result), [](const RecordState& state) {return state.descriptor; });
+  auto result = pristine
+    | std::views::transform([](const RecordState& state) {return state.descriptor; })
+    | std::ranges::to<std::vector>();
   std::erase_if(result, [&match](const RecordDescriptor& candidate) {return !match(candidate); });
 
   return result;

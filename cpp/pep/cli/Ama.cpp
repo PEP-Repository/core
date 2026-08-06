@@ -12,6 +12,8 @@
 #include <pep/structuredoutput/Tree.hpp>
 #include <pep/cli/structuredoutput/TreeFromAmaQueryResponse.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -820,9 +822,9 @@ private:
           return client->requestTicket2(requestTicketOpts)
             .flat_map([group, client](const pep::IndexedTicket2& indexed) {
             auto ticket = indexed.openTicketWithoutCheckingSignature();
-            std::vector<pep::PolymorphicPseudonym> pps;
-            pps.reserve(ticket->accessSubjects.size());
-            std::ranges::transform(ticket->accessSubjects, std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.polymorphic; });
+            auto pps = ticket->accessSubjects
+              | std::views::transform([](const pep::LocalPseudonyms& local) {return local.polymorphic; })
+              | std::ranges::to<std::vector>();
             return client->getAccessManagerProxy()->amaRemoveParticipantsFromGroup(group, pps);
               });
           });

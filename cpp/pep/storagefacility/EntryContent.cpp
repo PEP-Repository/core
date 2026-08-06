@@ -2,6 +2,8 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 
+#include <ranges>
+
 namespace pep {
 
 namespace {
@@ -61,10 +63,10 @@ void EntryContent::Save(const std::unique_ptr<EntryContent>& content, PersistedE
       SetPersistedEntryProperty(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY, *original);
     }
 
-    std::ranges::transform(content->metadata_, std::inserter(properties, properties.end()), [](const auto& entry) {
+    properties.insert_range(content->metadata_ | std::views::transform([](const auto& entry) {
       auto key = X_ENTRY_PREFIX + *entry.first;
       return std::make_pair(key, *entry.second);
-      });
+      }));
     payload = content->payload_.ptr;
   }
 
@@ -88,11 +90,12 @@ std::unique_ptr<EntryContent> EntryContent::Load(FileStore& fileStore, Persisted
   auto payload = EntryPayload::Load(properties, pages);
   assert(pages.empty());
 
-  Metadata storableMetadata;
-  std::ranges::transform(properties, std::inserter(storableMetadata, storableMetadata.begin()), [&fileStore](const auto& entry) {
-    assert(entry.first.starts_with(X_ENTRY_PREFIX));
-    return fileStore.makeMetadataEntry(entry.first.substr(X_ENTRY_PREFIX.size()), entry.second);
-    });
+  auto storableMetadata = properties
+    | std::views::transform([&fileStore](const auto& entry) {
+      assert(entry.first.starts_with(X_ENTRY_PREFIX));
+      return fileStore.makeMetadataEntry(entry.first.substr(X_ENTRY_PREFIX.size()), entry.second);
+      })
+    | std::ranges::to<Metadata>();
 
   return std::make_unique<EntryContent>(
     storableMetadata,

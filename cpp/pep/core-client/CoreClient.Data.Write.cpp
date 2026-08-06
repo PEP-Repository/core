@@ -5,6 +5,8 @@
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-flat_map.hpp>
 
 namespace pep {
@@ -229,11 +231,13 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     DataEnumerationRequest2 enumRequest;
     enumRequest.ticket = *signedTicket;
     enumRequest.columns = IndexList();
-    enumRequest.columns->indices.reserve(ctx->columns.size());
-    std::ranges::transform(ctx->columns, std::back_inserter(enumRequest.columns->indices), [](const std::pair<const std::string, uint32_t>& pair) {return pair.second; });
+    enumRequest.columns->indices = ctx->columns
+      | std::views::transform([](const std::pair<const std::string, uint32_t>& pair) {return pair.second; })
+      | std::ranges::to<std::vector>();
     enumRequest.pseudonyms = IndexList();
-    enumRequest.pseudonyms->indices.reserve(ctx->pps.size());
-    std::ranges::transform(ctx->pps, std::back_inserter(enumRequest.pseudonyms->indices), [](const std::pair<const PolymorphicPseudonym, uint32_t>& pair) {return pair.second; });
+    enumRequest.pseudonyms->indices = ctx->pps
+      | std::views::transform([](const std::pair<const PolymorphicPseudonym, uint32_t>& pair) {return pair.second; })
+      | std::ranges::to<std::vector>();
 
     return this->getStorageFacilityProxy(true)->requestDataEnumeration(std::move(enumRequest))
       .map([ctx](const DataEnumerationResponse2& response) { return response.entries; })

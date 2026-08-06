@@ -181,7 +181,7 @@ std::optional<uint64_t> PagedEntryPayload::pageSize() const {
 
 std::set<std::string> PagedEntryPayload::getPagePaths(const EntryName& name) const {
   std::set<std::string> result;
-  InsertNonDuplicates(result, pages_ | std::ranges::views::transform([&name](PageId hash) {
+  InsertNonDuplicates(result, pages_ | std::views::transform([&name](PageId hash) {
     return GetPagePath(name, hash);
     }));
   return result;

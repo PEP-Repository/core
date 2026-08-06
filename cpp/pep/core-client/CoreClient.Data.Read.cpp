@@ -9,6 +9,8 @@
 #include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-buffer_count.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -272,11 +274,9 @@ CoreClient::getHistory2(SignedTicket2 ticket,
     })
     .op(RxConcatenateVectors())
     .flat_map([this, ticket = std::move(openedTicket)](std::shared_ptr<std::vector<DataHistoryEntry2>> entries) {
-      std::vector<HistoryResult> results;
-      results.reserve(entries->size());
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonyms>> localPseuds;
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonym>> agPseuds;
-      std::ranges::transform(entries->cbegin(), entries->cend(), std::back_inserter(results), [this, &ticket, localPseuds, agPseuds](const DataHistoryEntry2& entry) mutable {
+      auto results = *entries | std::views::transform([this, &ticket, localPseuds, agPseuds](const DataHistoryEntry2& entry) mutable {
         auto ilp = localPseuds.find(entry.pseudonymIndex);
         if (ilp == localPseuds.cend()) {
           auto emplaced = localPseuds.emplace(std::make_pair(entry.pseudonymIndex, MakeSharedCopy(ticket.accessSubjects[entry.pseudonymIndex])));
@@ -307,7 +307,8 @@ CoreClient::getHistory2(SignedTicket2 ticket,
           entry.timestamp,
           !entry.id.empty() ? std::optional{entry.id} : std::nullopt,
         };
-        });
+        })
+        | std::ranges::to<std::vector>();
       return rxcpp::observable<>::just(results);
     });
 }

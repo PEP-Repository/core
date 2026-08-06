@@ -15,6 +15,8 @@
 #include <pep/utils/Log.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 
+#include <ranges>
+
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -359,7 +361,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
       if (opts.groups.empty()) {
         throw std::runtime_error("Cannot do shortpseudonym lookup. User does not have the appropriate access to any participant group");
       }
-      std::ranges::copy(columns->cbegin(), columns->cend(), std::back_inserter(opts.columns));
+      opts.columns = *columns | std::ranges::to<std::vector>();
 
       return this->enumerateAndRetrieveData2(opts);
         });

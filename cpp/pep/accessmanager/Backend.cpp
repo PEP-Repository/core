@@ -10,6 +10,8 @@
 #include <pep/utils/Log.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 
+#include <ranges>
+
 #include <boost/algorithm/string/join.hpp>
 
 namespace pep {
@@ -337,10 +339,9 @@ void AccessManager::Backend::checkParticipantAccess(const std::string& userGroup
   // What ParticipantGroups is this localPseudonym in?
   auto pgps = storage_->getParticipantGroupParticipants(at, {.localPseudonyms = std::vector<LocalPseudonym>{localPseudonym}});
   std::vector<std::string> participantGroups{"*"}; // All participants are implicitly added to "*"
-  participantGroups.reserve(participantGroups.size() + pgps.size());
-  std::ranges::transform(pgps, std::back_inserter(participantGroups), [](auto& entry) {
+  participantGroups.append_range(pgps | std::views::transform([](auto& entry) {
     return entry.participantGroup;
-  });
+  }));
 
   std::vector<std::string> errorMessageParts;
   for (auto& mode : modes) {
@@ -498,11 +499,11 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
   for (auto& column : columns) {
     // What columnGroups is this column in?
     auto cgcs = storage_->getColumnGroupColumns(at, {.columns = std::vector<std::string>{column}});
-    std::vector<std::string> associatedColumnGroups{};
-    associatedColumnGroups.reserve(cgcs.size());
-    std::ranges::transform(cgcs, std::back_inserter(associatedColumnGroups), [](auto& entry) {
-      return entry.columnGroup;
-    });
+    auto associatedColumnGroups = cgcs
+      | std::views::transform([](auto& entry) {
+        return entry.columnGroup;
+      })
+      | std::ranges::to<std::vector>();
     for (auto& requiredMode : modes) {
       bool accessGranted = false;
       for (auto& cg : associatedColumnGroups) {
@@ -580,11 +581,6 @@ void AccessManager::Backend::checkTicketForEncryptionKeyRequest(std::shared_ptr<
 }
 
 AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, const std::string& userGroup) {
-  const auto transform = [](const auto& inRange, auto& outRange, const auto& unary) {
-    std::ranges::transform(inRange, std::inserter(outRange, outRange.end()), unary);
-  };
-
-
   UserGroup::EnsureAccess({ UserGroup::AccessAdministrator, UserGroup::DataAdministrator, UserGroup::RepositoryManager }, userGroup, "AmaQuery");
   AmaQueryResponse result;
 
@@ -633,8 +629,9 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   if(!query.userGroupFilter.empty() || !query.columnGroupModeFilter.empty()) {
     // If there were additional cgar filters in place, we need to go back on the found columngroups and columns and apply another narrowing filter, showing only those
     // columngroups that appear in the cgars.
-    std::set<std::string> cgsInCgars{};
-    transform(cgars, cgsInCgars, [] (const auto& cgar){return cgar.columnGroup;});
+    auto cgsInCgars = cgars
+      | std::views::transform([] (const auto& cgar){return cgar.columnGroup;})
+      | std::ranges::to<std::set>();
     std::erase_if(columnsByColumnGroup,
                   [&cgsInCgars](const auto& entry){ return !cgsInCgars.contains(entry.first);});
   }
@@ -643,12 +640,15 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
   std::set<std::string> columns{};
   for (auto& [cg, cols] : columnsByColumnGroup){
     result.columnGroups.push_back(AmaQRColumnGroup(cg, cols));
-    std::ranges::copy(cols, std::inserter(columns, columns.end())); // Add the found values to the columns vector.
+    columns.insert_range(cols); // Add the found values to the columns vector.
   }
-  transform(columns, result.columns, [](const auto& col) { return AmaQRColumn(col);});
+  result.columns = columns
+    | std::views::transform([](const auto& col) { return AmaQRColumn(col);})
+    | std::ranges::to<std::vector>();
 
-  result.columnGroupAccessRules.reserve(cgars.size());
-  transform(cgars, result.columnGroupAccessRules, [](const auto& cgar){ return AmaQRColumnGroupAccessRule(cgar.columnGroup, cgar.userGroup, cgar.mode);});
+  result.columnGroupAccessRules = cgars
+    | std::views::transform([](const auto& cgar){ return AmaQRColumnGroupAccessRule(cgar.columnGroup, cgar.userGroup, cgar.mode);})
+    | std::ranges::to<std::vector>();
 
   // Participantgroups and pgars
   ParticipantGroupFilter pgFilter;
@@ -665,23 +665,29 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
     pgarFilter.userGroups = std::vector<std::string>{query.userGroupFilter};
   }
 
-  std::set<std::string> foundParticipantGroups{};
   auto pgars = storage_->getParticipantGroupAccessRules(timestamp, pgarFilter);
 
+  std::set<std::string> foundParticipantGroups;
   if(!query.participantGroupModeFilter.empty() || !query.userGroupFilter.empty()){
     // The pgar filters are narrowing the found participants as well, only show pgs with pgars
-    transform(pgars, foundParticipantGroups, [](const auto& pgar) { return pgar.participantGroup;});
+    foundParticipantGroups = pgars
+      | std::views::transform([](const auto& pgar) { return pgar.participantGroup;})
+      | std::ranges::to<std::set>();
   } else{
     // Get the participantgroups as normal.
     auto pgs = storage_->getParticipantGroups(timestamp, pgFilter);
-    transform(pgs, foundParticipantGroups,[](const auto& pg) { return pg.name;});
+    foundParticipantGroups = pgs
+      | std::views::transform([](const auto& pg) { return pg.name;})
+      | std::ranges::to<std::set>();
   }
 
   // Fill the result
-  result.participantGroupAccessRules.reserve(pgars.size());
-  transform(pgars, result.participantGroupAccessRules, [](const auto& pgar){return AmaQRParticipantGroupAccessRule(pgar.participantGroup, pgar.userGroup, pgar.mode);});
-  result.participantGroups.reserve(foundParticipantGroups.size());
-  transform(foundParticipantGroups, result.participantGroups, [](const std::string& name) { return AmaQRParticipantGroup{ .name = name }; });
+  result.participantGroupAccessRules = pgars
+    | std::views::transform([](const auto& pgar){return AmaQRParticipantGroupAccessRule(pgar.participantGroup, pgar.userGroup, pgar.mode);})
+    | std::ranges::to<std::vector>();
+  result.participantGroups = foundParticipantGroups
+    | std::views::transform([](const std::string& name) { return AmaQRParticipantGroup{ .name = name }; })
+    | std::ranges::to<std::vector>();
 
   return result;
 }
@@ -741,9 +747,9 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
     }
   }
 
-  std::vector<std::string> columnGroupsInMap;
-  columnGroupsInMap.reserve(result.columnGroups.size());
-  std::ranges::transform(result.columnGroups, std::back_inserter(columnGroupsInMap), [](auto& entry) { return entry.first; });
+  auto columnGroupsInMap = result.columnGroups
+    | std::views::transform([](auto& entry) { return entry.first; })
+    | std::ranges::to<std::vector>();
   // For each columnGroup in the result, look up all associated columns and add them to both the "columns" vector, and
   // the groupProperties in the map.
   for (auto& cgc : storage_->getColumnGroupColumns(now, {.columnGroups = columnGroupsInMap})) {

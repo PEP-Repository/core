@@ -1,6 +1,7 @@
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
+#include <ranges>
 #include <utility>
 
 namespace pep {
@@ -100,10 +101,11 @@ AccessManagerProxy::amaAddParticipantToGroup(std::string group, const Polymorphi
 rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaRemoveParticipantsFromGroup(const std::string& group, const std::vector<PolymorphicPseudonym>& participants) const {
   AmaMutationRequest request;
-  request.removeParticipantFromGroup.reserve(participants.size());
-  std::ranges::transform(participants, std::back_inserter(request.removeParticipantFromGroup), [&group](const PolymorphicPseudonym& pp) {
-    return AmaRemoveParticipantFromGroup(group, pp);
-    });
+  request.removeParticipantFromGroup = participants
+    | std::views::transform([&group](const PolymorphicPseudonym& pp) {
+      return AmaRemoveParticipantFromGroup(group, pp);
+      })
+    | std::ranges::to<std::vector>();
   return requestAmaMutation(std::move(request));
 }
 

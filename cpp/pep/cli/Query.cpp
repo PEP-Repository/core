@@ -7,6 +7,8 @@
 #include <pep/utils/Math.hpp>
 #include <pep/utils/MiscUtil.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
@@ -249,7 +251,7 @@ private:
       return this->executeEventLoopFor(true, [this](std::shared_ptr<pep::CoreClient> client) {
           auto request = std::make_shared<pep::DataSizeRequest>();
           auto addColumns = [request](const std::vector<std::string>& columns) {
-            std::ranges::copy(columns, std::inserter(request->columns, request->columns.begin()));
+            request->columns.insert_range(columns);
             };
           addColumns(ColumnQuery::GetColumns(this->getParameterValues()));
 

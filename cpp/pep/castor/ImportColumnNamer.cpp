@@ -4,6 +4,7 @@
 
 #include <boost/algorithm/string/join.hpp>
 
+#include <ranges>
 #include <utility>
 
 namespace pep {
@@ -15,10 +16,9 @@ ImportColumnNamer::ImportColumnNamer(ColumnNameMappings mappings)
 
 std::string ImportColumnNamer::joinColumnNameSections(const std::string& configuredPrefix, const std::vector<std::string>& sections) const {
   std::vector<std::string> parts = { configuredPrefix };
-  parts.reserve(parts.size() + sections.size());
-  std::ranges::transform(sections, std::back_inserter(parts), [&mappings = mappings_](const std::string& section) {
+  parts.append_range(sections | std::views::transform([&mappings = mappings_](const std::string& section) {
     return mappings.getColumnNameSectionFor(section);
-    });
+    }));
   return boost::algorithm::join(parts, ".");
 }
 

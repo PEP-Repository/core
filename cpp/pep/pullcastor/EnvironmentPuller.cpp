@@ -346,7 +346,7 @@ rxcpp::observable<std::shared_ptr<StoredData>> EnvironmentPuller::getStoredData(
     std::shared_ptr<std::vector<PolymorphicPseudonym>> pps = std::get<4>(context);
 
     auto nonSpColumns = MakeSharedCopy(*dhColumns);
-    std::ranges::copy(dataColumns->cbegin(), dataColumns->cend(), std::back_inserter(*nonSpColumns));
+    nonSpColumns->append_range(*dataColumns);
 
     return StoredData::Load(client, pps, spColumns, nonSpColumns)
       .flat_map([self](std::shared_ptr<StoredData> stored) {

@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <ranges>
 #include <thread>
 
 #include <pep/cli/DownloadDirectory.hpp>
@@ -330,7 +331,7 @@ std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr
         lines.reserve(nonpristine.size() + 1);
         lines.emplace_back("Data in output directory " + ctx->outputDirectory + " has changed since last download. Specify --force to discard local changes and update to server version.");
 
-        std::ranges::transform(nonpristine, std::back_inserter(lines), [](const pep::cli::DownloadDirectory::NonPristineEntry& entry) {
+        lines.append_range(nonpristine | std::views::transform([](const pep::cli::DownloadDirectory::NonPristineEntry& entry) {
           if (!entry.path.has_value()) {
             assert(entry.record.has_value());
             return "Absent file for participant " + entry.record->getParticipant().getLocalPseudonym().text() + ", column " + entry.record->getColumn();
@@ -341,7 +342,7 @@ std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr
           }
           assert(!is_directory(*entry.path));
           return "File " + entry.path->string() + " has local changes";
-          });
+          }));
         throw std::runtime_error(boost::join(lines, "\n- "));
       }
     }

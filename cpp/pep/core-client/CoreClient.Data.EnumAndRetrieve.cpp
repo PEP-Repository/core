@@ -15,6 +15,7 @@
 #include <exception>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -50,8 +51,7 @@ rxcpp::observable<TResponse> BatchedRetrieve(
   for (size_t offset = 0U; offset < ids.size(); offset += CoreClient::DataRetrievalBatchSize) {
     size_t batchSize = std::min(CoreClient::DataRetrievalBatchSize, ids.size() - offset);
     auto& batch = batches->emplace_back();
-    batch.reserve(batchSize);
-    std::ranges::copy(ids.cbegin() + static_cast<ptrdiff_t>(offset), ids.cbegin() + static_cast<ptrdiff_t>(offset + batchSize), std::back_inserter(batch));
+    batch.append_range(subrange{ids.cbegin() + static_cast<ptrdiff_t>(offset), ids.cbegin() + static_cast<ptrdiff_t>(offset + batchSize)});
   }
 
   /* Documentation on e.g. http://reactivex.io/documentation/operators/range.html says
@@ -212,8 +212,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                     throw std::runtime_error("Received unexpected number of plaintext keys");
                   }
                   assert(ctx->keys.empty());
-                  ctx->keys.reserve(keys.size());
-                  std::ranges::transform(keys, std::back_inserter(ctx->keys), [](const AESKey& key) { return key.bytes; });
+                  ctx->keys.append_range(keys | views::transform([](const AESKey& key) { return key.bytes; }));
                   return FakeVoid();
                 });
 

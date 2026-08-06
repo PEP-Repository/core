@@ -36,6 +36,8 @@
 #include <QString>
 #include <QScrollBar>
 
+#include <ranges>
+
 #ifdef _WIN32
 #include <fstream>
 #include <Windows.h>
@@ -371,7 +373,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
   auto previous = participantData_.participantDeviceHistory.find(columnName.toStdString());
   if (previous != participantData_.participantDeviceHistory.cend()) {
     current = previous->second.getCurrent();
-    std::ranges::copy(previous->second, std::back_inserter(records));
+    records.append_range(previous->second);
   }
   if (current) {
     assert(current->serial == serial);
@@ -412,11 +414,11 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
 
 std::vector<pep::ShortPseudonymDefinition> ParticipantWidget::getPrintableShortPseudonyms(const std::optional<unsigned int>& visit) const {
   auto all = globalConfig_.getShortPseudonyms(studyContext_.getIdIfNonDefault(), visit);
-  std::vector<pep::ShortPseudonymDefinition> retval;
-  std::ranges::copy_if(all, std::back_inserter(retval), [](const pep::ShortPseudonymDefinition& entry) {
-    return entry.getStickers() > 0;
-  });
-  return retval;
+  return all
+    | std::views::filter([](const pep::ShortPseudonymDefinition& entry) {
+      return entry.getStickers() > 0;
+    })
+    | std::ranges::to<std::vector>();
 }
 
 void ParticipantWidget::updateVisitAssessor(QString id) {
@@ -1401,8 +1403,7 @@ bool ParticipantDataAggregator::isDeviceHistoryColumn(const std::string& columnN
 
 ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept
   : globalConfig_(globalConfig), participantIdentifierIsSet_(false) {
-  auto inserter = std::back_inserter(unfilledShortPseudonyms_);
-  std::ranges::transform(globalConfig_.getShortPseudonyms(), inserter, [](const pep::ShortPseudonymDefinition& definition) {return &definition; });
+  unfilledShortPseudonyms_.append_range(globalConfig_.getShortPseudonyms() | std::views::transform([](const pep::ShortPseudonymDefinition& definition) {return &definition; }));
 }
 
 void ParticipantDataAggregator::process(const pep::EnumerateAndRetrieveResult& result) {

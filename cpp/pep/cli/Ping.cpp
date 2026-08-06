@@ -4,6 +4,8 @@
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-map.hpp>
 
 using namespace pep::cli;
@@ -54,9 +56,9 @@ protected:
   pep::commandline::Parameters getSupportedParameters() const override {
     auto traits = pep::ServerTraits::All();
 
-    std::vector<std::string> serverIds;
-    serverIds.reserve(traits.size());
-    std::ranges::transform(traits, std::back_inserter(serverIds), [](const pep::ServerTraits& single) {return single.commandLineId(); });
+    auto serverIds = traits
+      | std::views::transform([](const pep::ServerTraits& single) {return single.commandLineId(); })
+      | std::ranges::to<std::vector>();
     // Sort by command line ID: produces nicely sorted child commands
     std::ranges::sort(serverIds);
 

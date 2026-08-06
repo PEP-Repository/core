@@ -11,6 +11,7 @@
 #include <memory>
 
 #include <filesystem>
+#include <ranges>
 #include <utility>
 
 #ifdef _WIN32
@@ -360,8 +361,9 @@ class MainFunctionArguments {
        argStrings_.emplace_back(win32api::WideStringToUtf8(wide));
      }
 
-     argv_.reserve(argStrings_.size());
-     std::ranges::transform(argStrings_, std::back_inserter(argv_), [](std::string& argString) {return argString.data(); });
+     argv_ = argStrings_
+       | std::views::transform([](std::string& argString) {return argString.data(); })
+       | std::ranges::to<std::vector>();
 
      argv_.emplace_back(nullptr); // C++ standard requires that "The value of argv[argc] shall be 0": see https://timsong-cpp.github.io/cppwp/basic.start.main
    }

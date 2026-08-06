@@ -29,6 +29,7 @@
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
 
+#include <ranges>
 #include <unordered_map>
 #include <sstream>
 
@@ -862,9 +863,9 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   }
 
   // Fill a vector with indices of pseudonyms that we want/need decrypted
-  std::vector<uint32_t> pseudIndices;
-  pseudIndices.reserve(request->entries.size());
-  std::ranges::transform(request->entries, std::back_inserter(pseudIndices), [](const DataStoreEntry2& entry) {return entry.pseudonymIndex; });
+  auto pseudIndices = request->entries
+    | std::views::transform([](const DataStoreEntry2& entry) {return entry.pseudonymIndex; })
+    | std::ranges::to<std::vector>();
 
   // Decrypt pseudonyms.
   auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, &pseudIndices);

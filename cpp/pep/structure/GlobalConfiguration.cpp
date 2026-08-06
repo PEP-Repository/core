@@ -1,6 +1,8 @@
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/utils/Log.hpp>
 
+#include <ranges>
+
 #include <boost/algorithm/string/predicate.hpp>
 
 namespace pep {
@@ -216,9 +218,9 @@ GlobalConfiguration::GlobalConfiguration(
 }
 
 std::vector<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonyms(const std::string& studyContext, const std::optional<uint32_t>& visitNumber) const {
-  std::vector<ShortPseudonymDefinition> result;
-  auto inserter = std::back_inserter(result);
-  std::ranges::copy_if(shortPseudonyms_, inserter, [studyContext, visitNumber](const ShortPseudonymDefinition& candidate) {return candidate.getStudyContext() == studyContext && candidate.getColumn().getVisitNumber() == visitNumber; });
+  auto result = shortPseudonyms_
+    | std::views::filter([studyContext, visitNumber](const ShortPseudonymDefinition& candidate) {return candidate.getStudyContext() == studyContext && candidate.getColumn().getVisitNumber() == visitNumber; })
+    | std::ranges::to<std::vector>();
 
   for (const auto& entry : additionalStickers_) {
     if (entry.studyContext == studyContext && entry.visit == visitNumber) {

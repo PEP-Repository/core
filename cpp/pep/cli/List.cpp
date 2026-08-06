@@ -13,6 +13,7 @@
 #include <pep/cli/TicketFile.hpp>
 
 #include <iostream>
+#include <ranges>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -277,9 +278,9 @@ protected:
               std::move(ticket));
           if (ctx->parameterValues.has("show-dataless")) {
             auto pseuds = ctx->earOpts.ticket->openTicketWithoutCheckingSignature()->accessSubjects;
-            std::ranges::transform(pseuds, std::inserter(ctx->pseudsToReport, ctx->pseudsToReport.begin()), [](const pep::LocalPseudonyms& lps) {
+            ctx->pseudsToReport.insert_range(pseuds | std::views::transform([](const pep::LocalPseudonyms& lps) {
               return std::make_pair(lps.polymorphic, lps.accessGroup);
-              });
+              }));
           }
           return client->enumerateAndRetrieveData2(ctx->earOpts);
         });

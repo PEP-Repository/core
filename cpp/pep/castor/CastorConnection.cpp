@@ -3,6 +3,8 @@
 #include <pep/castor/Ptree.hpp>
 #include <pep/castor/Study.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
@@ -26,10 +28,9 @@ namespace {
   */
 std::vector<std::shared_ptr<boost::property_tree::ptree>> CreateSharedChildTrees(JsonPtr parent, const std::string& embeddedItemsNodeName) {
   const auto& children = GetFromPtree<boost::property_tree::ptree>(*parent, "_embedded." + embeddedItemsNodeName);
-  std::vector<std::shared_ptr<boost::property_tree::ptree>> result;
-  result.reserve(children.size());
-  std::ranges::transform(children, std::back_inserter(result), [](const auto& item) {return std::make_shared<boost::property_tree::ptree>(item.second); });
-  return result;
+  return children
+    | std::views::transform([](const auto& item) {return std::make_shared<boost::property_tree::ptree>(item.second); })
+    | std::ranges::to<std::vector>();
 }
 
 }

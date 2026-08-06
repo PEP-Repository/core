@@ -1,6 +1,7 @@
 #include <pep/authserver/OAuthProvider.hpp>
 
 #include <algorithm>
+#include <ranges>
 #include <sstream>
 
 #include <boost/algorithm/string/split.hpp>
@@ -224,8 +225,8 @@ OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<Authserve
   httpServer_->registerHandler("/code", true, std::bind_front(&OAuthProvider::handleCodeRequest, this), "");
 
   allowedRedirectUris_.reserve(DefaultRedirectUris.size() + params.getExtraRedirectUris().size());
-  copy(DefaultRedirectUris, std::back_inserter(allowedRedirectUris_));
-  copy(params.getExtraRedirectUris(), std::back_inserter(allowedRedirectUris_));
+  allowedRedirectUris_.append_range(DefaultRedirectUris);
+  allowedRedirectUris_.append_range(params.getExtraRedirectUris());
 
   activeGrantsCleanupSubscription_ = rxcpp::rxs::interval(std::chrono::minutes(1))
               .subscribe_on(rxcpp::observe_on_new_thread()) //We want to run the interval on a different thread, otherwise it blocks the main thread
@@ -422,8 +423,9 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
       else {
         std::ostringstream body;
         body << BeginGroupSelectionTemplate;
-        std::set<std::string> sortedGroups;
-        transform(*groups, std::inserter(sortedGroups, sortedGroups.begin()), [](const auto& g) {return g.name;});
+        auto sortedGroups = *groups
+          | std::views::transform([](const auto& g) {return g.name;})
+          | std::ranges::to<std::set>();
         for(auto& g : sortedGroups) {
           body << "<option>" << g << "</option>";
         }

@@ -7,6 +7,7 @@
 #include <sstream>
 #include <cctype>
 #include <cstdint>
+#include <ranges>
 #include <unordered_map>
 #include <utility>
 
@@ -115,11 +116,9 @@ std::string Logging::FormatSeverity(Severity level) {
 }
 
 std::vector<std::string> Logging::SeverityNames() {
-  auto pairs = GetSeverityLevelNames();
-  std::vector<std::string> result;
-  result.reserve(pairs.size());
-  std::ranges::transform(pairs, std::back_inserter(result), [](const std::pair<const Severity, std::string>& pair) {return pair.second; });
-  return result;
+  return GetSeverityLevelNames()
+    | std::views::transform([](const std::pair<const Severity, std::string>& pair) {return pair.second; })
+    | std::ranges::to<std::vector>();
 }
 
 Logging::pep_severity_channel_logger& Logging::GetLogger() {
