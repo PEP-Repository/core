@@ -23,7 +23,7 @@ protected:
     auto traits = pep::ServerTraits::All();
 
     auto ids = traits
-      | std::views::transform([](const pep::ServerTraits& traits) {return traits.commandLineId(); })
+      | std::views::transform(&pep::ServerTraits::commandLineId)
       | std::ranges::to<std::vector>();
     // Sort by command line ID: produces nicely sorted child commands
     std::ranges::sort(ids);

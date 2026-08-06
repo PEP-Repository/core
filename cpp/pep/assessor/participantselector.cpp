@@ -17,7 +17,7 @@ QRegularExpression GetPseudonymsRegex(const std::vector<pep::PseudonymFormat>& f
     throw std::runtime_error("Input validation not possible: no pseudonym format specified");
   }
   auto entries = formats
-    | std::views::transform([](const pep::PseudonymFormat& format) {return format.getRegexPattern(); })
+    | std::views::transform(&pep::PseudonymFormat::getRegexPattern)
     | std::ranges::to<std::vector>();
   auto pattern = "^(" + boost::algorithm::join(entries, "|") + ")$";
   return QRegularExpression(QString::fromStdString(pattern));

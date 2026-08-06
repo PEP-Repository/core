@@ -823,7 +823,7 @@ private:
             .flat_map([group, client](const pep::IndexedTicket2& indexed) {
             auto ticket = indexed.openTicketWithoutCheckingSignature();
             auto pps = ticket->accessSubjects
-              | std::views::transform([](const pep::LocalPseudonyms& local) {return local.polymorphic; })
+              | std::views::transform(&pep::LocalPseudonyms::polymorphic)
               | std::ranges::to<std::vector>();
             return client->getAccessManagerProxy()->amaRemoveParticipantsFromGroup(group, pps);
               });

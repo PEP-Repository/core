@@ -362,7 +362,7 @@ class MainFunctionArguments {
      }
 
      argv_ = argStrings_
-       | std::views::transform([](std::string& argString) {return argString.data(); })
+       | std::views::transform(&std::string::data)
        | std::ranges::to<std::vector>();
 
      argv_.emplace_back(nullptr); // C++ standard requires that "The value of argv[argc] shall be 0": see https://timsong-cpp.github.io/cppwp/basic.start.main

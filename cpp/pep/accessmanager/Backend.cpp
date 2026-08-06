@@ -339,9 +339,7 @@ void AccessManager::Backend::checkParticipantAccess(const std::string& userGroup
   // What ParticipantGroups is this localPseudonym in?
   auto pgps = storage_->getParticipantGroupParticipants(at, {.localPseudonyms = std::vector<LocalPseudonym>{localPseudonym}});
   std::vector<std::string> participantGroups{"*"}; // All participants are implicitly added to "*"
-  participantGroups.append_range(pgps | std::views::transform([](auto& entry) {
-    return entry.participantGroup;
-  }));
+  participantGroups.append_range(pgps | std::views::transform(&ParticipantGroupParticipant::participantGroup));
 
   std::vector<std::string> errorMessageParts;
   for (auto& mode : modes) {
@@ -500,9 +498,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
     // What columnGroups is this column in?
     auto cgcs = storage_->getColumnGroupColumns(at, {.columns = std::vector<std::string>{column}});
     auto associatedColumnGroups = cgcs
-      | std::views::transform([](auto& entry) {
-        return entry.columnGroup;
-      })
+      | std::views::transform(&ColumnGroupColumn::columnGroup)
       | std::ranges::to<std::vector>();
     for (auto& requiredMode : modes) {
       bool accessGranted = false;
