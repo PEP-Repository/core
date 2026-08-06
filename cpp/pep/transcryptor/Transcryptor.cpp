@@ -30,10 +30,12 @@
 
 namespace pep {
 
+namespace {
 const std::string LogTag ("Transcryptor");
 const Severity TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY = Severity::Debug;
 const Severity LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY = Severity::Debug;
 const Severity CHECKSUM_CHAIN_CALCULATION_LOGGING_SEVERITY = Severity::Debug;
+}
 
 Transcryptor::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   RegisteredMetrics(registry),
