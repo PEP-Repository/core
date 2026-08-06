@@ -103,8 +103,8 @@ private:
 
 public:
   /// \brief Splits up the given columnGroups over multiple responses to make sure the response message lengths do not exceed their max size.
-  /// \param columnGroups: The column groups that need to be devided into multiple response messages.
-  /// \param maxSize: The size at which to cut up responses. For testing purposes, this can be set to a lower number. For most purposes it should be left at the default.
+  /// \param columnGroups The column groups that need to be devided into multiple response messages.
+  /// \param maxSize The size at which to cut up responses. For testing purposes, this can be set to a lower number. For most purposes it should be left at the default.
   /// \return An observable emitting iterated AmaQueryResponses
   static std::vector<AmaQueryResponse> ExtractPartialColumnGroupQueryResponse(const std::vector<AmaQRColumnGroup>& columnGroups, const size_t maxSize = messaging::MaxSizeOfMessage); // TODO: move out of AM's (public even!) interface
 

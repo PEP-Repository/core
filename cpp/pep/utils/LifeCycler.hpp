@@ -36,7 +36,7 @@ protected:
   LifeCycler() noexcept = default;
 
   /// \brief Assigns the specified status to this instance.
-  /// \param status: The status to assign.
+  /// \param status The status to assign.
   /// \return The previous status.
   /// \remark Setting an initialized instance to "initializing" will emit two notifications: (1) from "initialized" to "reinitializing" and (2) from "reinitializing" to "initializing".
   Status setStatus(Status status);
