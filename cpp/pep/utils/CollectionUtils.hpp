@@ -26,8 +26,8 @@ using QualifiedRangeValue = std::remove_reference_t<std::ranges::range_reference
 /// \details Equality is determined by the specified Compare object.
 template <typename T, typename TCompare>
 std::optional<T> TryFindCommonValue(std::vector<T> vecA, std::vector<T> vecB, const TCompare& comp) {
-  std::sort(vecA.begin(), vecA.end(), comp);
-  std::sort(vecB.begin(), vecB.end(), comp);
+  std::ranges::sort(vecA, comp);
+  std::ranges::sort(vecB, comp);
   std::vector<T> intersect;
   std::ranges::set_intersection(vecA, vecB, std::back_inserter(intersect), comp);
   if (intersect.empty()) { return std::nullopt; }
