@@ -177,7 +177,7 @@ struct PropertyBasedContainer<std::unique_ptr<TOwner>, GetPropertyMethod> {
   using map = std::map<std::unique_ptr<TOwner>, TValue, Compare>;
 };
 
-//XXX GCC bug: noexcept function should be converted to non-noexcept
+//TODO(workaround) GCC bug: noexcept function should be converted to non-noexcept
 #if defined(__GNUC__) && !defined(__clang__)
 template <typename TItem, typename TProperty, TProperty(TItem::*GetPropertyMethod)() const noexcept>
 struct PropertyBasedContainer<TItem, GetPropertyMethod>

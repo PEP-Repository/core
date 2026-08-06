@@ -49,7 +49,7 @@ std::string BoolToString(bool value);
 */
 bool StringToBool(std::string_view value);
 
-//XXX This may be removed in favor of optional::transform when we move to C++23
+//TODO(workaround) This may be removed in favor of optional::transform when we move to C++23
 /* \brief Gets an optional<Value> from an optional<Owner>.
  * \param owner The (possibly nullopt) value from which to retrieve a value.
  * \param getValue A function that returns a value when invoked with an Owner instance.

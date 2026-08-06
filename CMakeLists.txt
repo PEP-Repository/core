@@ -293,7 +293,7 @@ if(DEFINED EMSCRIPTEN)
 endif()
 
 # Add shebang to JS file, if target is such a file
-#XXX Remove for version 5.0.0+ (which has -sEXECUTABLE; implicit for targets without extension)
+#TODO(workaround) Remove for version 5.0.0+ (which has -sEXECUTABLE; implicit for targets without extension)
 function(make_js_file_executable target)
   if (DEFINED EMSCRIPTEN AND NOT PEP_EMSCRIPTEN_BROWSER AND EMSCRIPTEN_VERSION VERSION_LESS "5.0.0")
     get_target_property(skip ${target} PEP_SKIP_DEFAULT_EMSCRIPTEN_CLI_CONFIG)

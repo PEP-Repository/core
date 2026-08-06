@@ -128,7 +128,7 @@ struct Storage2Entry {
   std::string column;
 
   // Request to overwrite timestamp.
-  // XXX This is a temporary field and will be removed.
+  // TODO This is a temporary field and will be removed.
   std::optional<Timestamp> timestamp;
 };
 
