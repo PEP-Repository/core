@@ -31,6 +31,7 @@ namespace {
     PEP_DEFER(client->shutdown(); io_context->run(););
 
     std::string data(10, '\0');
+    //NOLINTNEXTLINE(modernize-use-ranges) std::ranges::iota needs libc++ 23; unavailable on our Emscripten/Apple Clang floor
     std::iota(data.begin(), data.end(), '\0');
 
     {
