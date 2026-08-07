@@ -1,6 +1,8 @@
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/serialization/Serialization.hpp>
 
+#include <ranges>
+
 namespace pep {
 
 void Serializer<std::shared_ptr<CastorStorageDefinition>>::moveIntoProtocolBuffer(proto::CastorStorageDefinition& dest, std::shared_ptr<CastorStorageDefinition> value) const {
@@ -152,9 +154,7 @@ AssessorDefinition Serializer<AssessorDefinition>::fromProtocolBuffer(proto::Ass
   AssessorDefinition result;
   result.id = source.id();
   result.name = std::move(*source.mutable_name());
-  result.studyContexts.reserve(static_cast<size_t>(source.study_contexts().size()));
-  for (auto& x : *source.mutable_study_contexts())
-    result.studyContexts.push_back(std::move(x));
+  result.studyContexts = *source.mutable_study_contexts() | std::views::as_rvalue | std::ranges::to<std::vector>();
   return result;
 }
 

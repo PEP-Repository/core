@@ -17,8 +17,7 @@
 #include <boost/algorithm/hex.hpp>
 #include <boost/range/algorithm/set_algorithm.hpp>
 
-#include <cctype>
-#include <numeric>
+#include <ranges>
 #include <utility>
 
 // The schema of the database is defined in the TsCreateDb() function.
@@ -786,12 +785,9 @@ void TranscryptorStorage::computeChecksum(const std::string& chain,
 }
 
 std::vector<std::string> TranscryptorStorage::getChecksumChainNames() {
-  std::vector<std::string> ret;
-  ret.reserve(checksumChains_.size());
-  for (const auto& pair : checksumChains_) {
-    ret.push_back(pair->name());
-  }
-  return  ret;
+  return checksumChains_
+    | views::transform([](const auto& chain) { return chain->name(); })
+    | to<std::vector>();
 }
 
 int64_t TranscryptorStorage::getOrCreateModeSet(
@@ -850,14 +846,18 @@ int64_t TranscryptorStorage::getOrCreateColumnSet(
 
 int64_t TranscryptorStorage::getOrCreatePseudonymSet(const std::vector<LocalPseudonym>& ps) {
   // Compute key to lookup pseudonymset
-  std::vector<std::string> pps;
-  pps.reserve(ps.size());
-  for (auto& p : ps) {
-    pps.push_back(std::string(p.pack()));
+  auto pps = ps
+    | views::transform([](const LocalPseudonym& p) { return std::string(p.pack()); })
+    | to<std::vector>();
+  sort(pps);
+  std::string key;
+  {
+    Sha256 hasher;
+    for (const auto& pp : pps) {
+      hasher.update(pp);
+    }
+    key = hasher.digest();
   }
-  std::ranges::sort(pps);
-  auto key = Sha256().digest(
-      std::accumulate(pps.begin(), pps.end(), std::string()));
 
   // Work around https://github.com/fnc12/sqlite_orm/issues/245
   key = boost::algorithm::hex(key.substr(0, 16));

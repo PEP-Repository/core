@@ -338,19 +338,11 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   std::vector<ResponseEntry> responseEntries;
 
   // Look-up table to check whether to include column
-  std::vector<std::string> includeColumn;
-  if (request.columns) {
-    includeColumn.reserve(request.columns->indices.size());
-    for (uint32_t idx : request.columns->indices) {
-      includeColumn.push_back(ticket.columns.at(idx));
-    }
-  }
-  else {
-    includeColumn.reserve(ticket.columns.size());
-    for (const auto& column : ticket.columns) {
-      includeColumn.push_back(column);
-    }
-  }
+  auto includeColumn = request.columns
+    ? request.columns->indices
+        | std::views::transform([&ticket](uint32_t idx) { return ticket.columns.at(idx); })
+        | std::ranges::to<std::vector>()
+    : ticket.columns;
 
   // Create column-to-ticket-column-index look-up-table
   std::unordered_map<std::string, uint32_t> columnIndex;
@@ -1001,17 +993,11 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   DataHistoryResponse2 response;
 
   // Look-up table to check whether to include column
-  std::vector<std::string> includeColumn;
-  if (request.columns) {
-    includeColumn.reserve(request.columns->indices.size());
-    for (uint32_t idx : request.columns->indices)
-      includeColumn.push_back(ticket.columns.at(idx));
-  }
-  else {
-    includeColumn.reserve(ticket.columns.size());
-    for (const auto& column : ticket.columns)
-      includeColumn.push_back(column);
-  }
+  auto includeColumn = request.columns
+    ? request.columns->indices
+        | std::views::transform([&ticket](uint32_t idx) { return ticket.columns.at(idx); })
+        | std::ranges::to<std::vector>()
+    : ticket.columns;
 
   // Create column-to-ticket-column-index look-up-table
   std::unordered_map<std::string, uint32_t> columnIndex;

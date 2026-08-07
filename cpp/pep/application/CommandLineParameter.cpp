@@ -268,21 +268,12 @@ void Parameters::writeHelpText(std::ostream& destination) const {
       entries.push_back(std::make_tuple(alias.first, alias.second, *canonical));
     }
   }
-  struct CompareAliasText {
-    inline bool operator()(const Entry& lhs, const Entry& rhs) const {
-      const auto& left = std::get<0>(lhs).getText();
-      const auto& right = std::get<0>(rhs).getText();
-      return std::less<std::string>()(left, right);
-    }
-  };
-  std::ranges::sort(entries, CompareAliasText());
+  std::ranges::sort(entries, {}, [](const Entry& entry) -> decltype(auto) { return std::get<0>(entry).getText(); });
 
-  bool announce = true;
+  if (!entries.empty()) {
+    destination << "\nSwitch aliases: \n";
+  }
   for (const auto& entry : entries) {
-    if (announce) {
-      destination << "\nSwitch aliases: \n";
-      announce = false;
-    }
     WriteHelpItem(destination, std::get<1>(entry), "Alias for " + std::get<2>(entry)); // TODO: indent so that text for --proper-aliases and -shorthands is aligned
   }
 }

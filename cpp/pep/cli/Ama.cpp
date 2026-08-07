@@ -90,9 +90,7 @@ rxcpp::observable<std::shared_ptr<ParticipantState>> ParticipantState::Get(std::
 
   pep::EnumerateAndRetrieveData2Opts opts;
   opts.groups.push_back("*");
-  for (const auto& entry : GetFieldReadMethods()) { // Read all columns that we can process
-    opts.columns.push_back(entry.first);
-  }
+  opts.columns = {std::from_range, std::views::keys(GetFieldReadMethods())}; // Read all columns that we can process
 
   return client->enumerateAndRetrieveData2(opts) // Get salient data for every row
     .reduce(

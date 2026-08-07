@@ -235,14 +235,10 @@ std::vector<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonyms(co
 }
 
 std::vector<std::string> GlobalConfiguration::getVisitAssessorColumns(const pep::StudyContext& context) const {
-  std::vector<std::string> result{};
   auto visits = getNumberOfVisits(context.getIdIfNonDefault());
-  result.reserve(visits);
-  for (unsigned i = 1; i <= visits; ++i) {
-    auto column = context.getAdministeringAssessorColumnName(i);
-    result.push_back(std::move(column));
-  }
-  return result;
+  return std::views::iota(1U, visits + 1U)
+    | std::views::transform([&context](uint32_t visit) { return context.getAdministeringAssessorColumnName(visit); })
+    | std::ranges::to<std::vector>();
 }
 
 

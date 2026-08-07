@@ -254,18 +254,15 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
       .zip(am.getAccessibleColumns(true, { "read" }))
       .map([ctx](const auto &access) {
       const pep::ParticipantGroupAccess &pga = std::get<0>(access);
-      for (const auto& pg : pga.participantGroups) {
-        if (std::ranges::contains(pg.second, "access"))
-        {
-          ctx->content.groups.push_back(pg.first);
-        }
-      }
+      ctx->content.groups.append_range(pga.participantGroups
+        | std::views::filter([](const auto& pgWithModes) { return std::ranges::contains(pgWithModes.second, "access"); })
+        | std::views::keys);
+
       const pep::ColumnAccess &ca = std::get<1>(access);
-      ctx->content.columnGroups.reserve(ca.columnGroups.size());
-      for (const auto& cg : ca.columnGroups) {
-        assert(std::ranges::contains(cg.second.modes, "read"));
-        ctx->content.columnGroups.push_back(cg.first);
-      }
+      assert(std::ranges::all_of(std::views::values(ca.columnGroups), [](const auto& cgProps) {
+        return std::ranges::contains(cgProps.modes, "read");
+      }));
+      ctx->content.columnGroups.append_range(std::views::keys(ca.columnGroups));
       if (ctx->content.groups.empty()) {
         PEP_LOG(LogTag, pep::Severity::Warning) << "No accessible participants - download will contain no data";
       }

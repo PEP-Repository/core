@@ -127,14 +127,10 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
             std::unordered_set<uint32_t> pseudIdxs;
             std::unordered_set<uint32_t> colIdxs;
             for (const auto& cg: ctx->requestTicketOpts->columnGroups) {
-              for (uint32_t i: indexedTicket.getColumnGroupMapping().at(cg).indices) {
-                colIdxs.insert(i);
-              }
+              colIdxs.insert_range(indexedTicket.getColumnGroupMapping().at(cg).indices);
             }
             for (const auto& g: ctx->requestTicketOpts->participantGroups) {
-              for (uint32_t i: indexedTicket.getParticipantGroupMapping().at(g).indices) {
-                pseudIdxs.insert(i);
-              }
+              pseudIdxs.insert_range(indexedTicket.getParticipantGroupMapping().at(g).indices);
             }
             if (!ctx->requestTicketOpts->pps.empty()) {
               auto accessSubjects = indexedTicket.getAccessSubjects();
@@ -144,10 +140,8 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                 lut[accessSubjects[i]] = static_cast<uint32_t>(i);
               }
 
-              pseudIdxs.reserve(pseudIdxs.size() + ctx->requestTicketOpts->pps.size());
-              for (const auto& pp: ctx->requestTicketOpts->pps) {
-                pseudIdxs.insert(lut.at(pp));
-              }
+              pseudIdxs.insert_range(ctx->requestTicketOpts->pps
+                | std::views::transform([&lut](const PolymorphicPseudonym& pp) { return lut.at(pp); }));
             }
             if (!ctx->requestTicketOpts->columns.empty()) {
               auto ticketCols = indexedTicket.getColumns();
@@ -157,15 +151,11 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                 lut[ticketCols[i]] = static_cast<uint32_t>(i);
               }
 
-              colIdxs.reserve(colIdxs.size() + ctx->requestTicketOpts->columns.size());
-              for (const auto& col: ctx->requestTicketOpts->columns) {
-                colIdxs.insert(lut.at(col));
-              }
+              colIdxs.insert_range(ctx->requestTicketOpts->columns
+                | std::views::transform([&lut](const std::string& col) { return lut.at(col); }));
             }
-            enumRequest.pseudonyms = IndexList(std::vector<uint32_t>(
-              pseudIdxs.begin(), pseudIdxs.end()));
-            enumRequest.columns = IndexList(std::vector<uint32_t>(
-              colIdxs.begin(), colIdxs.end()));
+            enumRequest.pseudonyms = IndexList(pseudIdxs | std::ranges::to<std::vector>());
+            enumRequest.columns = IndexList(colIdxs | std::ranges::to<std::vector>());
           }
 
           return getStorageFacilityProxy(true)->requestDataEnumeration(std::move(enumRequest))

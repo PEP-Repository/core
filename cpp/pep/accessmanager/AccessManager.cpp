@@ -329,7 +329,7 @@ std::optional<std::filesystem::path> AccessManager::getStoragePath() {
 
 std::unordered_set<std::string> AccessManager::getAllowedChecksumChainRequesters() {
   auto result = Server::getAllowedChecksumChainRequesters();
-  for (auto& authserver : UserGroup::Authserver) result.insert(authserver);
+  result.insert_range(UserGroup::Authserver);
   return result;
 }
 

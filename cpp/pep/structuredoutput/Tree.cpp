@@ -51,15 +51,7 @@ json PtreeToJson(const boost::property_tree::ptree& pt) {
   }
   
   // if all keys are empty, it's an array
-  bool isArray = true;
-  for (const auto& [key, value] : pt) {
-    if (!key.empty()) {
-      isArray = false;
-      break;
-    }
-  }
-
-  if (isArray) {
+  if (std::ranges::all_of(std::views::keys(pt), &std::string::empty)) {
     json array = json::array();
     for (const auto& [key, value] : pt) {
       array.push_back(PtreeToJson(value));

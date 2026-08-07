@@ -4,6 +4,8 @@
 #include <pep/serialization/TimestampSerializer.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 
+#include <ranges>
+
 namespace pep {
 
 using namespace std::ranges;
@@ -37,12 +39,8 @@ Ticket2 Serializer<Ticket2>::fromProtocolBuffer(proto::Ticket2&& source) const {
     std::move(*source.mutable_timestamp()));
   result.userGroup = std::move(*source.mutable_user_group());
 
-  result.modes.reserve(static_cast<size_t>(source.modes().size()));
-  for (auto& x : *source.mutable_modes())
-    result.modes.push_back(std::move(x));
-  result.columns.reserve(static_cast<size_t>(source.columns().size()));
-  for (auto& x : *source.mutable_columns())
-    result.columns.push_back(std::move(x));
+  result.modes = *source.mutable_modes() | views::as_rvalue | to<std::vector>();
+  result.columns = *source.mutable_columns() | views::as_rvalue | to<std::vector>();
 
   Serialization::AssignFromRepeatedProtocolBuffer(result.accessSubjects,
     std::move(*source.mutable_access_subjects()));
@@ -92,18 +90,10 @@ void Serializer<SignedTicket2>::moveIntoProtocolBuffer(proto::SignedTicket2& des
 
 TicketRequest2 Serializer<TicketRequest2>::fromProtocolBuffer(proto::TicketRequest2&& source) const {
   TicketRequest2 result;
-  result.modes.reserve(static_cast<size_t>(source.modes().size()));
-  for (auto& x : *source.mutable_modes())
-    result.modes.push_back(std::move(x));
-  result.participantGroups.reserve(static_cast<size_t>(source.participant_groups().size()));
-  for (auto& x : *source.mutable_participant_groups())
-    result.participantGroups.push_back(std::move(x));
-  result.columnGroups.reserve(static_cast<size_t>(source.column_groups().size()));
-  for (auto& x : *source.mutable_column_groups())
-    result.columnGroups.push_back(std::move(x));
-  result.columns.reserve(static_cast<size_t>(source.columns().size()));
-  for (auto& x : *source.mutable_columns())
-    result.columns.push_back(std::move(x));
+  result.modes = *source.mutable_modes() | views::as_rvalue | to<std::vector>();
+  result.participantGroups = *source.mutable_participant_groups() | views::as_rvalue | to<std::vector>();
+  result.columnGroups = *source.mutable_column_groups() | views::as_rvalue | to<std::vector>();
+  result.columns = *source.mutable_columns() | views::as_rvalue | to<std::vector>();
   result.requestIndexedTicket = source.request_indexed_ticket();
   result.includeUserGroupPseudonyms = source.include_user_group_pseudonyms();
 

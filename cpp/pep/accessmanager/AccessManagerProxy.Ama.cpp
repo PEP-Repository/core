@@ -8,17 +8,12 @@ namespace pep {
 
 namespace {
 
-template <typename T>
-void AppendVector(std::vector<T>& destination, const std::vector<T>& source) {
-  destination.insert(destination.end(), source.begin(), source.end());
-}
-
 void AppendAndSquashVector(std::vector<AmaQRColumnGroup>& destination, const std::vector<AmaQRColumnGroup>& source) {
   for (auto& sourceGroup : source) {
-    auto found = std::ranges::find_if(destination, [sourceGroup](const AmaQRColumnGroup& destGroup) {return destGroup.name == sourceGroup.name; });
+    auto found = std::ranges::find(destination, sourceGroup.name, &AmaQRColumnGroup::name);
     if (found != destination.end()) {
       // The group already exists in the destination. Add the columns_ of the sourceGroup to this destinationGroup.
-      AppendVector<std::string>(found->columns, sourceGroup.columns);
+      found->columns.append_range(sourceGroup.columns);
     }
     else {
       destination.push_back(sourceGroup);
@@ -156,11 +151,11 @@ AccessManagerProxy::amaQuery(AmaQuery query) const {
     .reduce( // Concatenate all parts into a single AmaQueryResponse instance, which will remain empty if we didn't receive (a partial) one from AM
       std::make_shared<AmaQueryResponse>(),
       [](std::shared_ptr<AmaQueryResponse> all, const AmaQueryResponse& part) {
-        AppendVector(all->columns, part.columns);
+        all->columns.append_range(part.columns);
         AppendAndSquashVector(all->columnGroups, part.columnGroups);
-        AppendVector(all->columnGroupAccessRules, part.columnGroupAccessRules);
-        AppendVector(all->participantGroups, part.participantGroups);
-        AppendVector(all->participantGroupAccessRules, part.participantGroupAccessRules);
+        all->columnGroupAccessRules.append_range(part.columnGroupAccessRules);
+        all->participantGroups.append_range(part.participantGroups);
+        all->participantGroupAccessRules.append_range(part.participantGroupAccessRules);
         return all;
       }
     )

@@ -1,5 +1,8 @@
 #include <pep/structure/StudyContext.hpp>
 
+#include <ranges>
+
+#include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/split.hpp>
 
 namespace pep {
@@ -84,18 +87,16 @@ void StudyContexts::remove(const StudyContext& context) {
 }
 
 const StudyContext& StudyContexts::getById(const std::string& id) const {
-  auto end = items_.cend();
-  auto position = std::ranges::find_if(items_.cbegin(), end, [id](const StudyContext& candidate) { return candidate.getId() == id; });
-  if (position == end) {
+  auto position = std::ranges::find(items_, id, &StudyContext::getId);
+  if (position == items_.cend()) {
     throw std::runtime_error("Study context " + id + " not found");
   }
   return *position;
 }
 
 const StudyContext* StudyContexts::getDefault() const noexcept {
-  auto end = items_.cend();
-  auto position = std::ranges::find_if(items_.cbegin(), end, [](const StudyContext& candidate) { return candidate.isDefault(); });
-  if (position == end) {
+  auto position = std::ranges::find_if(items_, &StudyContext::isDefault);
+  if (position == items_.cend()) {
     return nullptr;
   }
   return &*position;
@@ -119,14 +120,8 @@ StudyContexts StudyContexts::parse(const std::string& value) const {
 }
 
 std::string StudyContexts::toString() const {
-  std::string result;
-  for (const auto& item : items_) {
-    if (!result.empty()) {
-      result += ',';
-    }
-    result += item.getId();
-  }
-  return result;
+  // Not passing the view to boost::algorithm::join directly: it doesn't support C++20 ranges
+  return boost::algorithm::join(items_ | std::views::transform(&StudyContext::getId) | std::ranges::to<std::vector>(), ",");
 }
 
 }

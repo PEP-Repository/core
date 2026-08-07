@@ -138,11 +138,9 @@ protected:
         std::cerr << "Skipping inaccessible column group " << group << std::endl;
       }
       else {
-        const auto& indices = position->second.columns.indices;
-        columns.reserve(indices.size());
-        for (auto i : indices) {
-          columns.emplace_back(access->columns[i]);
-        }
+        columns = position->second.columns.indices
+          | std::views::transform([&access](uint32_t index) { return access->columns[index]; })
+          | std::ranges::to<std::vector>();
       }
       return pep::RxIterate(std::move(columns));
         });

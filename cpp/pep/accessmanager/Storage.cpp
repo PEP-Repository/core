@@ -676,12 +676,7 @@ const std::unordered_map<std::string, decltype(&ComputeChecksumImpl<SelectStarPs
 }
 
 std::vector<std::string> AccessManager::Backend::Storage::getChecksumChainNames() {
-  std::vector<std::string> ret;
-  ret.reserve(computeChecksumImpls.size());
-  for (const auto& pair : computeChecksumImpls) {
-    ret.push_back(pair.first);
-  }
-  return ret;
+  return std::views::keys(computeChecksumImpls) | std::ranges::to<std::vector>();
 }
 
 void AccessManager::Backend::Storage::computeChecksum(const std::string& chain,

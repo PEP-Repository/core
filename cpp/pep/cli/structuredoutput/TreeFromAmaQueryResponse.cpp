@@ -5,6 +5,8 @@
 #include <pep/utils/ChronoUtil.hpp>
 #include <pep/utils/EnumUtils.hpp>
 
+#include <ranges>
+
 namespace pep::structuredOutput {
 namespace {
 
@@ -25,13 +27,8 @@ Tree TreeFrom(const pep::AmaQueryResponse& res, const QueryDisplayConfig<AmaQuer
 
   // Build columns array
   if (printColumns) {
-    json columnsArray = json::array();
-
-    for (const auto& col : res.columns) {
-      columnsArray.push_back(col.name);
-    }
-
-    root.emplace(GetKeyName(queryKeys::columns, useDescriptive), std::move(columnsArray));
+    root.emplace(GetKeyName(queryKeys::columns, useDescriptive),
+                 res.columns | std::views::transform(&AmaQRColumn::name) | std::ranges::to<std::vector>());
   }
 
   // Build column groups array
@@ -71,13 +68,8 @@ Tree TreeFrom(const pep::AmaQueryResponse& res, const QueryDisplayConfig<AmaQuer
 
   // Build participant groups array
   if (printParticipantGroups) {
-    json groupsArray = json::array();
-
-    for (const auto& group : res.participantGroups) {
-      groupsArray.push_back(group.name);
-    }
-
-    root.emplace(GetKeyName(queryKeys::participantGroups, useDescriptive), std::move(groupsArray));
+    root.emplace(GetKeyName(queryKeys::participantGroups, useDescriptive),
+                 res.participantGroups | std::views::transform(&AmaQRParticipantGroup::name) | std::ranges::to<std::vector>());
   }
 
   // Build participant group access rules

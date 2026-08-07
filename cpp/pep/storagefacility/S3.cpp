@@ -5,6 +5,7 @@
 #include <pep/utils/Platform.hpp>
 #include <pep/storagefacility/PageHash.hpp>
 
+#include <ranges>
 #include <sstream>
 
 #include <boost/algorithm/hex.hpp>
@@ -223,14 +224,11 @@ namespace authorization_header {
 
     std::string ComputeCanonicalHeaders(Context& c) {
       const std::map<std::string, std::string, CaseInsensitiveCompare>& headers(c.request.getHeaders());
-      std::vector<std::string> keys;
-
-      if(c.signHeaders.empty()) {
+      auto keys = c.signHeaders;
+      if (keys.empty()) {
         // sign all headers
-        for (const auto& [key, value] : headers)
-          keys.push_back(key);
-      } else
-        keys = c.signHeaders;
+        keys = std::views::keys(headers) | std::ranges::to<std::vector>();
+      }
 
       std::ranges::sort(keys);
 

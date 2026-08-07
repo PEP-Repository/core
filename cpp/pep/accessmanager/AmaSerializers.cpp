@@ -3,6 +3,8 @@
 #include <pep/serialization/TimestampSerializer.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 
+#include <ranges>
+
 namespace pep {
 
 AmaCreateColumn Serializer<AmaCreateColumn>::fromProtocolBuffer(proto::AmaCreateColumn&& source) const {
@@ -302,13 +304,9 @@ void Serializer<AmaQRParticipantGroup>::moveIntoProtocolBuffer(proto::AmaQRParti
 }
 
 AmaQRColumnGroup Serializer<AmaQRColumnGroup>::fromProtocolBuffer(proto::AmaQRColumnGroup&& source) const {
-  std::vector<std::string> columns;
-  columns.reserve(static_cast<size_t>(source.columns().size()));
-  for (auto& x : *source.mutable_columns())
-    columns.push_back(std::move(x));
   return AmaQRColumnGroup(
     std::move(*source.mutable_name()),
-    std::move(columns));
+    *source.mutable_columns() | std::views::as_rvalue | std::ranges::to<std::vector>());
 }
 
 void Serializer<AmaQRColumnGroup>::moveIntoProtocolBuffer(proto::AmaQRColumnGroup& dest, AmaQRColumnGroup value) const {

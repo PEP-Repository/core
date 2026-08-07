@@ -9,6 +9,8 @@
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 
+#include <ranges>
+
 namespace pep {
 
 using namespace std::ranges;
@@ -160,10 +162,7 @@ ParticipantGroupAccessResponse Serializer<ParticipantGroupAccessResponse>::fromP
   ParticipantGroupAccessResponse result;
   result.participantGroups.reserve(static_cast<size_t>(source.participant_groups_size()));
   for (auto& entry : source.participant_groups()) {
-    std::vector<std::string> modes;
-    modes.reserve(static_cast<size_t>(entry.modes_size()));
-    modes.insert(modes.end(), entry.modes().begin(), entry.modes().end());
-    result.participantGroups.emplace(entry.name(), std::move(modes));
+    result.participantGroups.emplace(entry.name(), entry.modes() | std::ranges::to<std::vector>());
   }
   return result;
 }
@@ -218,10 +217,7 @@ ColumnNameMappingResponse Serializer<ColumnNameMappingResponse>::fromProtocolBuf
 FindUserRequest Serializer<FindUserRequest>::fromProtocolBuffer(proto::FindUserRequest&& source) const {
   FindUserRequest result;
   result.primaryId = std::move(*source.mutable_primary_id());
-  result.alternativeIds.reserve(static_cast<size_t>(source.alternative_ids_size()));
-  for (auto& alternative_id : *source.mutable_alternative_ids()) {
-    result.alternativeIds.emplace_back(std::move(alternative_id));
-  }
+  result.alternativeIds = *source.mutable_alternative_ids() | views::as_rvalue | to<std::vector>();
   return result;
 }
 

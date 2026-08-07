@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <ranges>
 
 #include <boost/property_tree/json_parser.hpp>
 
@@ -100,11 +101,9 @@ ParticipantDeviceHistory ParticipantDeviceHistory::Parse(const std::string& json
   boost::property_tree::read_json(source, root);
   const auto& entries = root.get_child("entries");
 
-  std::vector<ParticipantDeviceRecord> records;
-  records.reserve(entries.size());
-  for (const auto& node : entries) {
-    records.push_back(ParticipantDeviceRecord::Deserialize(node.second));
-  }
+  auto records = std::views::values(entries)
+    | std::views::transform(&ParticipantDeviceRecord::Deserialize)
+    | std::ranges::to<std::vector>();
 
   return ParticipantDeviceHistory(records, throwIfInvalid);
 }
