@@ -6,9 +6,9 @@
 
 #include <ranges>
 
-namespace pep {
-
 using namespace std::ranges;
+
+namespace pep {
 
 LocalPseudonyms Serializer<LocalPseudonyms>::fromProtocolBuffer(proto::LocalPseudonyms&& source) const {
   LocalPseudonyms result{

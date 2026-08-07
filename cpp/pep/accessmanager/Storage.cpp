@@ -551,8 +551,6 @@ void AccessManager::Backend::Storage::removeOrphanedRecords() {
 }
 
 void AccessManager::Backend::Storage::syncColumnGroupContents(const std::string& columnGroup, const std::set<std::string>& requiredColumns) {
-  using namespace std::ranges;
-
   std::set groupColumns(std::from_range,
     implementor_->getCurrentRecords(
       c(&ColumnGroupColumnRecord::columnGroup) == columnGroup,
@@ -693,8 +691,6 @@ std::vector<PolymorphicPseudonym> AccessManager::Backend::Storage::getPPs() {
 }
 
 std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> AccessManager::Backend::Storage::getPpGroups(std::span<const std::string> participantGroups) {
-  using namespace std::ranges;
-
   std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> ppsAndGroups;
 
   // Insert all participants for "*" if it was requested
@@ -743,7 +739,6 @@ bool AccessManager::Backend::Storage::hasParticipantGroup(const std::string& nam
 }
 
 std::set<ParticipantGroup> AccessManager::Backend::Storage::getParticipantGroups(const Timestamp& timestamp, const ParticipantGroupFilter& filter) const {
-  using namespace std::ranges;
   return implementor_->getCurrentRecords(
       c(&ParticipantGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp) &&
       (!filter.participantGroups.has_value()
@@ -825,8 +820,6 @@ bool AccessManager::Backend::Storage::hasParticipantInGroup(const LocalPseudonym
 
 std::set<ParticipantGroupParticipant> AccessManager::Backend::Storage::getParticipantGroupParticipants(
   const Timestamp& timestamp, const ParticipantGroupParticipantFilter& filter) const {
-  using namespace std::ranges;
-
   std::vector<std::vector<char>> serializedLocalPseudonyms;
   // create a serialized vector of the LocalPseudonyms for look up.
   if (filter.localPseudonyms.has_value()) {
@@ -896,7 +889,6 @@ bool AccessManager::Backend::Storage::hasParticipantGroupAccessRule(
 
 std::set<ParticipantGroupAccessRule> AccessManager::Backend::Storage::getParticipantGroupAccessRules(
   const Timestamp& timestamp, const ParticipantGroupAccessRuleFilter& filter) const {
-  using namespace std::ranges;
   return implementor_->getCurrentRecords(
       c(&ParticipantGroupAccessRuleRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.participantGroups.has_value()
@@ -974,7 +966,6 @@ std::optional<std::string> AccessManager::Backend::Storage::getColumnCaseInsensi
 }
 
 std::set<Column> AccessManager::Backend::Storage::getColumns(const Timestamp& timestamp, const ColumnFilter& filter) const {
-  using namespace std::ranges;
   return implementor_->getCurrentRecords(
       c(&ColumnRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.columns.has_value()
@@ -1038,7 +1029,6 @@ bool AccessManager::Backend::Storage::hasColumnGroup(const std::string& name) {
 }
 
 std::set<ColumnGroup> AccessManager::Backend::Storage::getColumnGroups(const Timestamp& timestamp, const ColumnGroupFilter& filter) const {
-  using namespace std::ranges;
   return implementor_->getCurrentRecords(
       c(&ColumnGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.columnGroups.has_value()
@@ -1121,7 +1111,6 @@ bool AccessManager::Backend::Storage::hasColumnInGroup(
 }
 
 std::set<ColumnGroupColumn> AccessManager::Backend::Storage::getColumnGroupColumns(const Timestamp& timestamp, const ColumnGroupColumnFilter& filter) const {
-  using namespace std::ranges;
   return implementor_->getCurrentRecords(
       c(&ColumnGroupColumnRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.columnGroups.has_value()
@@ -1179,7 +1168,6 @@ bool AccessManager::Backend::Storage::hasColumnGroupAccessRule(
 }
 
 std::set<ColumnGroupAccessRule> AccessManager::Backend::Storage::getColumnGroupAccessRules(const Timestamp& timestamp, const ColumnGroupAccessRuleFilter& filter) const {
-  using namespace std::ranges;
   return implementor_->getCurrentRecords(
       c(&ColumnGroupAccessRuleRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.columnGroups.has_value()
@@ -1479,8 +1467,6 @@ int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view iden
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const std::vector<std::string>& identifiers, CaseSensitivity caseSensitivity, Timestamp at) const {
-  using namespace std::ranges;
-
   const auto toOptional = [](auto&& range) -> std::optional<int64_t> {
     const auto vector = to<std::vector>(std::forward<decltype(range)>(range));
     if (vector.empty()) { return std::nullopt; }
@@ -1630,7 +1616,6 @@ std::optional<std::string> AccessManager::Backend::Storage::getUserGroupName(int
 }
 
 std::vector<UserGroup> AccessManager::Backend::Storage::getUserGroupsForUser(int64_t internalUserId, Timestamp at) const {
-  using namespace std::ranges;
   using namespace pep::database;
   std::vector<int64_t> groupIds = to<std::vector>(
     implementor_->getCurrentRecords(
@@ -1657,7 +1642,6 @@ bool AccessManager::Backend::Storage::hasUserGroup(std::string_view name) const 
 }
 
 std::optional<std::chrono::seconds> AccessManager::Backend::Storage::getMaxAuthValidity(const std::string& group, Timestamp at) const {
-  using namespace std::ranges;
   using pep::database::having;
   auto result = RangeToOptional(
     implementor_->getCurrentRecords(c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
@@ -1786,7 +1770,6 @@ void AccessManager::Backend::Storage::removeUserFromGroup(int64_t internalUserId
 }
 
 UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQuery& query) {
-  using namespace std::ranges;
   using namespace pep::database;
 
   auto timestamp = query.at ? *query.at : TimeNow();
@@ -1935,7 +1918,6 @@ std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureM
   if (HasInternalId(subjectType)) {
     return getStructureMetadataKeys(timestamp, subjectType, getInternalSubjectId(subjectType, subject, timestamp));
   }
-  using namespace std::ranges;
   return implementor_->getCurrentRecords(
       c(&StructureMetadataRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && c(&StructureMetadataRecord::subjectType) == std::to_underlying(subjectType)
@@ -1954,7 +1936,6 @@ std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureM
     StructureMetadataType subjectType,
     int64_t internalSubjectId) const {
   assert(HasInternalId(subjectType));
-  using namespace std::ranges;
   return implementor_->getCurrentRecords(
       c(&StructureMetadataRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && c(&StructureMetadataRecord::subjectType) == std::to_underlying(subjectType)
@@ -1969,8 +1950,6 @@ std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureM
 }
 
 std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructureMetadata(const Timestamp timestamp, StructureMetadataType subjectType, const StructureMetadataFilter& filter) const {
-  using namespace std::ranges;
-
   bool hasInternalId = HasInternalId(subjectType);
 
   std::vector<std::reference_wrapper<const std::string>> metadataGroupFilters;

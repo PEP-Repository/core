@@ -408,7 +408,6 @@ void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::st
                                                        const std::string& userGroup,
                                                        std::vector<std::string>& modes,
                                                        const Timestamp& timestamp) {
-  using namespace std::ranges;
   if (!participantGroups.empty() && !contains(modes, "enumerate")) {
     modes.push_back("enumerate");
   }

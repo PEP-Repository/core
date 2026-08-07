@@ -157,7 +157,6 @@ CoreClient::retrieveData(
   std::shared_ptr<SignedTicket2> ticket) {
   PEP_LOG(LogTag, Severity::Debug) << "retrieveData";
 
-  using namespace std::ranges;
   return batchedSubjects
       .map([this, ticket](const rxcpp::observable<FileKey>& batch) -> rxcpp::observable<RetrievePage> {
         return batch.op(RxToVector())

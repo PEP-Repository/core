@@ -11,9 +11,9 @@
 
 #include <ranges>
 
-namespace pep {
-
 using namespace std::ranges;
+
+namespace pep {
 
 IndexedTicket2 Serializer<IndexedTicket2>::fromProtocolBuffer(proto::IndexedTicket2&& source) const {
   std::unordered_map<std::string, IndexList> groups;
