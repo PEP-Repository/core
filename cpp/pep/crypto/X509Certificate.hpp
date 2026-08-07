@@ -11,6 +11,7 @@
 #include <optional>
 #include <string>
 #include <filesystem>
+#include <vector>
 
 namespace pep {
 

@@ -26,7 +26,6 @@
 #include <string>
 #include <optional>
 #include <algorithm>
-#include <limits>
 #include <stdexcept>
 #include <filesystem>
 #include <array>
