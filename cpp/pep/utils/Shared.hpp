@@ -28,10 +28,21 @@ std::shared_ptr<T> SharedFrom(T& instance){
 
 /// \brief For instances of types that inherit std::enable_shared_from_this<>, returns a strongly-typed weak_ptr to that instance.
 /// \param instance The instance for which to retrieve a weak_ptr.
+#if defined(__GNUC__) && !defined(__clang__)
+# pragma GCC diagnostic push
+// GCC (15.2, -O3) reports uninitialized use of its own scalar-replacement temporaries ("SR.<number>") in the
+// std::weak_ptr copy constructor that it inlines here. The weak_ptr produced by weak_from_this() is always
+// initialized, so these diagnostics are false positives.
+# pragma GCC diagnostic ignored "-Wuninitialized"
+# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 template <typename T>
 std::weak_ptr<T> WeakFrom(T& instance) {
   return std::static_pointer_cast<T>(instance.weak_from_this().lock());
 }
+#if defined(__GNUC__) && !defined(__clang__)
+# pragma GCC diagnostic pop
+#endif
 
 /// \brief Converts a weak_ptr<> to a shared_ptr<> to the same instance, raising an exception if the instance has been discarded.
 /// \param weak The weak_ptr<> to the instance.

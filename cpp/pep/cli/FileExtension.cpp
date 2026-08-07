@@ -394,6 +394,14 @@ protected:
 
         auto counts = std::make_shared<Counts>();
 
+#if defined(__GNUC__) && !defined(__clang__)
+# pragma GCC diagnostic push
+// GCC (15.2, -O3) reports uninitialized use of its own scalar-replacement temporaries ("SR.<number>") in the
+// std::shared_ptr copy constructors that it inlines into the lambda captures below. The captured values are
+// always initialized, so these diagnostics are false positives.
+# pragma GCC diagnostic ignored "-Wuninitialized"
+# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
         return this->getRequiredColumnExtensions(client)
           .concat_map([counts](std::shared_ptr<ColumnExtensions> columnExtensions) {
           counts->start(columnExtensions->size());
@@ -439,6 +447,9 @@ protected:
             });
           });
       });
+#if defined(__GNUC__) && !defined(__clang__)
+# pragma GCC diagnostic pop
+#endif
 
     if (connectivityResult != 0) {
       return connectivityResult;
