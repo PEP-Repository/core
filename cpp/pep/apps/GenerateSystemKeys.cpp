@@ -1,9 +1,8 @@
 #include <pep/application/Application.hpp>
 #include <pep/auth/ServerTraits.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Random.hpp>
-
-#include <boost/algorithm/hex.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -12,13 +11,13 @@ using namespace pep;
 
 namespace {
 
-const size_t HMAC_BYTES = 64;
+constexpr size_t HmacBytes = 64;
 
 class GenerateSystemKeysApplication : public pep::Application {
   class GenerateKeysFileCommand : public pep::commandline::ChildCommandOf<GenerateSystemKeysApplication> {
   private:
     static std::string GenerateHMACKey() {
-      return boost::algorithm::hex(RandomString(HMAC_BYTES));
+      return const_time::ToHex(RandomString(HmacBytes));
     }
 
   protected:
@@ -75,11 +74,11 @@ class GenerateSystemKeysApplication : public pep::Application {
     }
   };
 
-  template <bool ADD_DATA_BLINDING>
+  template <bool add_data_blinding>
   class GenerateSpecificKeysFileCommand : public GenerateKeysFileCommand {
   protected:
     bool addDataBlinding() const override {
-      return ADD_DATA_BLINDING;
+      return add_data_blinding;
     }
 
     GenerateSpecificKeysFileCommand(const pep::ServerTraits& server, GenerateSystemKeysApplication& parent)
@@ -88,7 +87,7 @@ class GenerateSystemKeysApplication : public pep::Application {
 
   public:
     static PrivateKeys GenerateKeysFile(const std::filesystem::path& outPath) {
-      return GenerateKeysFileCommand::GenerateKeysFile(outPath, ADD_DATA_BLINDING);
+      return GenerateKeysFileCommand::GenerateKeysFile(outPath, add_data_blinding);
     }
   };
 

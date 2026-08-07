@@ -16,7 +16,7 @@ std::unordered_map<CastorStudyType, StudyAspectPuller::CreateFunction>& StudyAsp
 }
 
 StudyAspectPuller::StudyAspectPuller(std::shared_ptr<StudyPuller> study, const StudyAspect& aspect)
-  : mStudy(study), mSpColumn(aspect.getShortPseudonymColumn()), mColumnNamePrefix(aspect.getStorage()->getDataColumn()) {
+  : study_(study), spColumn_(aspect.getShortPseudonymColumn()), columnNamePrefix_(aspect.getStorage()->getDataColumn()) {
 }
 
 rxcpp::observable<std::shared_ptr<StudyAspectPuller>> StudyAspectPuller::CreateChildrenFor(std::shared_ptr<StudyPuller> study) {
@@ -26,8 +26,8 @@ rxcpp::observable<std::shared_ptr<StudyAspectPuller>> StudyAspectPuller::CreateC
     auto type = aspect.getStorage()->getStudyType();
     auto position = creators.find(type);
     if (position == creators.cend()) {
-      auto msg = "Unsupported study type " + std::to_string(type);
-      PULLCASTOR_LOG(debug) << msg;
+      auto msg = "Unsupported study type " + std::to_string(ToUnderlying(type));
+      PEP_PULLCASTOR_LOG(Severity::Debug) << msg;
       throw std::runtime_error(msg);
     }
     return position->second(study, aspect);

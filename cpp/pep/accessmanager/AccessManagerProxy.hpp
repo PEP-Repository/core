@@ -4,7 +4,6 @@
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
 #include <pep/key-components/KeyComponentServerProxy.hpp>
-#include <pep/rsk/Verifiers.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 
 namespace pep {
@@ -25,6 +24,7 @@ public:
   rxcpp::observable<EncryptionKeyResponse> requestEncryptionKey(EncryptionKeyRequest request) const;
   rxcpp::observable<GlobalConfiguration> requestGlobalConfiguration() const;
   rxcpp::observable<VerifiersResponse> requestVerifiers() const;
+  rxcpp::observable<UserVerifiersResponse> requestUserVerifiers(UserVerifiersRequest request) const;
 
   rxcpp::observable<ColumnAccess> getAccessibleColumns(bool includeImplicitlyGranted, const std::vector<std::string>& requireModes = {}) const;
   rxcpp::observable<ParticipantGroupAccess> getAccessibleParticipantGroups(bool includeImplicitlyGranted) const;
@@ -56,8 +56,9 @@ public:
   rxcpp::observable<FakeVoid> createUserGroup(UserGroup userGroup) const;
   rxcpp::observable<FakeVoid> modifyUserGroup(UserGroup userGroup) const;
   rxcpp::observable<FakeVoid> removeUserGroup(std::string name) const;
-  rxcpp::observable<FakeVoid> addUserToGroup(std::string uid, std::string group) const;
+  rxcpp::observable<FakeVoid> addUserToGroup(std::string uid, std::string group, std::optional<Timestamp> expiration) const;
   rxcpp::observable<FakeVoid> removeUserFromGroup(std::string uid, std::string group, bool blockTokens) const;
+  rxcpp::observable<FakeVoid> updateExpiration(std::string uid, std::string group, std::optional<Timestamp> expiration) const;
   rxcpp::observable<UserQueryResponse> userQuery(UserQuery query) const;
 
   rxcpp::observable<ColumnNameMappings> getColumnNameMappings() const;

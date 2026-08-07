@@ -1,25 +1,25 @@
 {
-  "TLSPrivateKeyFile": "../../pki/TLSAuthserver.key",
-  "TLSCertificateFile": "../../pki/TLSAuthserver.chain",
-
-  "PEPPrivateKeyFile": "../../pki/PEPAuthserver.key",
-  "PEPCertificateFile": "../../pki/PEPAuthserver.chain",
-  
-  "CACertificateFile": "../../pki/rootCA.cert",
-
+  "CaCertificateFile": "../../pki/rootCA.cert",
+  "ListenPort": 16512,
+  "TlsIdentity": {
+    "PrivateKeyFile": "../../pki/TLSAuthserver.key",
+    "CertificateFile": "../../pki/TLSAuthserver.chain"
+  },
+  "SigningIdentity": {
+    "PrivateKeyFile": "../../pki/PEPAuthserver.key",
+    "CertificateFile": "../../pki/PEPAuthserver.chain"
+  },
+  "ServerEndPoints": {
+    "AccessManager": {
+      "Name": "AccessManager",
+      "Address": "localhost",
+      "Port": 16501
+    }
+  },
+  "HttpListenPort": 8080,
   "OAuthTokenSecretFile": "OAuthTokenSecret.json",
-  "HTTPListenPort": 8080,
   "ActiveGrantExpirationSeconds": 300,
   "TokenExpirationSeconds": 60,
-
   "SpoofKeyFile": "spoofKey",
- 
-  "ListenPort": 16512,
-
-  "StorageFile": "Authserver.sqlite",
-  "AccessManager": {
-    "Name":    "AccessManager",
-    "Address": "localhost",
-    "Port":    16501
-  }
+  "StorageFile": "Authserver.sqlite"
 }

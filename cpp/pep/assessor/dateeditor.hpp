@@ -23,5 +23,5 @@ signals:
   void valueChanged();
 
 private:
-  Ui::DateEditor *ui;
+  Ui::DateEditor *ui_;
 };

@@ -1,46 +1,38 @@
 {
-  "KeysFile": "StorageFacilityKeys.json",
-  "EncIdKeyFile": "StorageFacilityEncIdKey.json",
-  "TLSPrivateKeyFile": "../../pki/TLSStorageFacility.key",
-  "TLSCertificateFile": "../../pki/TLSStorageFacility.chain",
-  "PEPPrivateKeyFile": "../../pki/PEPStorageFacility.key",
-  "PEPCertificateFile": "../../pki/PEPStorageFacility.chain",
-  "CACertificateFile": "../../pki/rootCA.cert",
+  "CaCertificateFile": "../../pki/rootCA.cert",
   "ListenPort": 16519,
-  "StoragePath": "meta",
-  "AccessManager": {
-    "Name": "AccessManager",
-    "Address": "localhost",
-    "Port": 16501
+  "TlsIdentity": {
+    "PrivateKeyFile": "../../pki/TLSStorageFacility.key",
+    "CertificateFile": "../../pki/TLSStorageFacility.chain"
   },
-  "KeyServer": {
-    "Name": "KeyServer",
-    "Address": "localhost",
-    "Port": 16511
+  "SigningIdentity": {
+    "PrivateKeyFile": "../../pki/PEPStorageFacility.key",
+    "CertificateFile": "../../pki/PEPStorageFacility.chain"
   },
-  "Transcryptor": {
-    "Name": "Transcryptor",
-    "Address": "localhost",
-    "Port": 16516
-  },
-  "PageStore": {
-    "Type": "local",
-    "//--CONFIGURATION FOR THE": "LOCAL PAGE STORE--",
-    "EndPoint": {
+  "ServerEndPoints": {
+    "AccessManager": {
+      "Name": "AccessManager",
       "Address": "localhost",
-      "Port": "9000",
-      "Name": "S3"
+      "Port": 16501
     },
-    "Credentials": {
-      "AccessKey": "MyAccessKey",
-      "Secret": "MySecret"
+    "KeyServer": {
+      "Name": "KeyServer",
+      "Address": "localhost",
+      "Port": 16511
     },
-    "Ca-Cert-Path": "../../pki/rootCA.cert",
-    "Write-To-Bucket": "myBucket",
-    "Read-From-Buckets": [
-      "myBucket"
-    ],
-    "DataDir": "localpagestoredata",
-    "Bucket": "myBucket"
+    "Transcryptor": {
+      "Name": "Transcryptor",
+      "Address": "localhost",
+      "Port": 16516
+    }
+  },
+  "EnrolledPartyKeysFile": "StorageFacilityKeys.json",
+  "StoragePath": "meta",
+  "EncIdKeyFile": "StorageFacilityEncIdKey.json",
+  "PageStore": {
+    "Local": {
+      "DataDir": "localpagestoredata",
+      "Bucket": "myBucket"
+    }
   }
 }

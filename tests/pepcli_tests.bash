@@ -4,9 +4,6 @@
 
 # This script is meant to only be run from within integration.sh.
 
-readonly DEST_DIR="$CONFIG_DIR/test_output"
-execute . mkdir -p "$DEST_DIR"
-
 readonly ACCESS_ADMINISTRATOR_TOKEN="ewogICAgInN1YiI6ICJBY2Nlc3MgQWRtaW5pc3RyYXRvciIsCiAgICAiZ3JvdXAiOiAiQWNjZXNzIEFkbWluaXN0cmF0b3IiLAogICAgImlhdCI6ICIxNTcyMzU0MjI4IiwKICAgICJleHAiOiAiMjA3MzY1NDEyMiIKfQo.DYnQyvtpvj2OozTnC6MUMJKW7G-ckzber0q0kRnjwHQ"
 
 # MacOS doesn't support the date command with nanosecond precision, so we need to use GNU coreutils gdate instead.
@@ -30,6 +27,17 @@ TEST_PARTICIPANT="$(openssl rand -base64 12)"
 ####################
 
 if should_run_test basic; then
+  # Test --loglevel
+  # `|&` redirects both stdout & stderr
+  # `tee /dev/stderr` is to print message to console as well as grepping. We need `|| true` because of SIGPIPE.
+  if ! execute . "$PEPCLI_COMMAND" query --help |& (tee /dev/stderr || true) | grep -qF '<info>'; then
+    # pepcli prints info message with version
+    fail 'Default loglevel should include info log messages'
+  fi
+  if execute . "$PEPCLI_COMMAND" --loglevel warning query --help |& grep -qF '<info>'; then
+    fail 'warning loglevel should should not include info messages'
+  fi
+
   # Store a PEP ID...
   id=$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
   # ... then verify that we can read it back (see #2750)
@@ -122,8 +130,16 @@ if should_run_test basic; then
   # We use "find" to locate the downloaded file because it's in a subdirectory named after the participant's local pseudonym, which we don't know.
   # find always exits with 0 exit code, but it only prints the found path(s) if the -exec part succeeds. Therefore we can use grep to check
   # whether it has found the DeviceHistory directory, and the diff succeeded.
-  execute . find "$DEST_DIR/pulled" -name DeviceHistory.bin -exec diff "$RANDOM_DATA_FILE" {} -q \; -print | grep DeviceHistory
+
+  # There were some path issues on windows previously, so we first print paths
+  execute . find "$DEST_DIR/pulled" -name DeviceHistory.bin \
+    -exec echo "comparing: $RANDOM_DATA_FILE" "vs" {} \;
+  # and then diff
+  execute . find "$DEST_DIR/pulled" -name DeviceHistory.bin \
+    -exec diff "$RANDOM_DATA_FILE" {} -q \; \
+    -print | grep DeviceHistory
   execute . rm -rf "$DEST_DIR/pulled"
+  execute . rm "$RANDOM_DATA_FILE"
 
   # Deleting a nonexistent (empty) cell should fail: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2367
   pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c StudyContexts &&
@@ -214,17 +230,31 @@ fi
 
 if should_run_test structure-history; then
 
-  # Create a user group, remove it later and then verify that we can query the group that was removed through the --at option
+  # Create a user group, remove it later and then verify that we can query the group that was removed through the --point-in-time option
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user group create onceUponATimeGroup
-  UTC_TIMESTAMP=$($DATE_CMD +%s%N | cut -b1-13)
+  UTC_TIMESTAMP_MS=$($DATE_CMD +%s%N | cut -b1-13)
+  sleep 1s
+  UTC_TIMESTAMP=$($DATE_CMD +%s)
+  UTC_ISO_DATETIME=$($DATE_CMD -u +%FT%TZ)
+  DIFFERENT_TZ_ISO_DATETIME=$(TZ="<-07>+7" $DATE_CMD --date="$UTC_ISO_DATETIME" +%FT%T%:z)
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user group remove onceUponATimeGroup
-  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --at "$UTC_TIMESTAMP" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "unix-ms:$UTC_TIMESTAMP_MS" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "unix:$UTC_TIMESTAMP" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "$UTC_ISO_DATETIME" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "$DIFFERENT_TZ_ISO_DATETIME" | grep 'onceUponATimeGroup'
 
-  # Create a column, remove it later and then verify that we can still query the column that was removed through the --at option
+  # Create a column, remove it later and then verify that we can still query the column that was removed through the --point-in-time option
   pepcli --oauth-token-group "Data Administrator" ama column create onceUponATimeColumn
-  UTC_TIMESTAMP=$($DATE_CMD +%s%N | cut -b1-13)
+  UTC_TIMESTAMP_MS=$($DATE_CMD +%s%N | cut -b1-13)
+  sleep 1s
+  UTC_TIMESTAMP=$($DATE_CMD +%s)
+  UTC_ISO_DATETIME=$($DATE_CMD -u +%FT%TZ)
+  DIFFERENT_TZ_ISO_DATETIME=$(TZ="<-07>+7" $DATE_CMD --date="$UTC_ISO_DATETIME" +%FT%T%:z)
   pepcli --oauth-token-group "Data Administrator" ama column remove onceUponATimeColumn
-  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --at "$UTC_TIMESTAMP" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "unix-ms:$UTC_TIMESTAMP_MS" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "unix:$UTC_TIMESTAMP" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "$UTC_ISO_DATETIME" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "$DIFFERENT_TZ_ISO_DATETIME" | grep 'onceUponATimeColumn'
 
 fi
 
@@ -299,40 +329,40 @@ if should_run_test ama; then
 
   pepcli --oauth-token-group "Data Administrator" ama column remove blockingColumn
 
-  # Test --script-print parameter
+  # Test --include parameter
   AMA_QUERYABLE_CONFIG='{
     "columnGroups": [{
-      "name": "scriptPrintTestColumnGroup",
-      "columns": [ "scriptPrintTestColumn" ],
+      "name": "includeFlagTestColumnGroup",
+      "columns": [ "includeFlagTestColumn" ],
       "cgars": { "Research Assessor": [ "read" ] }
     }],
     "subjectGroups": [{
-      "name": "scriptPrintTestParticipantGroup",
+      "name": "includeFlagTestParticipantGroup",
       "pgars": {  "Research Assessor":  [ "access" ] }
     }]
   }'
 
   test_setup "$AMA_QUERYABLE_CONFIG"
 
-  script_print_columns=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print columns)
-  [ -n "$script_print_columns" ] || fail "--script-print columns produced no output"
-  echo "$script_print_columns" | grep -q "scriptPrintTestColumn" || fail "--script-print columns did not include test column"
+  script_print_columns=$(pepcli --oauth-token-group "Access Administrator" ama query --include columns)
+  [ -n "$script_print_columns" ] || fail "--include columns produced no output"
+  echo "$script_print_columns" | grep -q "includeFlagTestColumn" || fail "--include columns did not include test column"
 
-  script_print_column_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print column-groups)
-  [ -n "$script_print_column_groups" ] || fail "--script-print column-groups produced no output"
-  echo "$script_print_column_groups" | grep -q "scriptPrintTestColumnGroup" || fail "--script-print column-groups did not include test columngroup"
+  script_print_column_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --include column-groups)
+  [ -n "$script_print_column_groups" ] || fail "--include column-groups produced no output"
+  echo "$script_print_column_groups" | grep -q "includeFlagTestColumnGroup" || fail "--include column-groups did not include test columngroup"
 
-  script_print_cgars=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print column-group-access-rules)
-  [ -n "$script_print_cgars" ] || fail "--script-print column-group-access-rules produced no output"
-  echo "$script_print_cgars" | grep -q "scriptPrintTestColumnGroup" || fail "--script-print column-group-access-rules did not include test CGAR"
+  script_print_cgars=$(pepcli --oauth-token-group "Access Administrator" ama query --include column-group-access-rules)
+  [ -n "$script_print_cgars" ] || fail "--include column-group-access-rules produced no output"
+  echo "$script_print_cgars" | grep -q "includeFlagTestColumnGroup" || fail "--include column-group-access-rules did not include test CGAR"
 
-  script_print_participant_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print participant-groups)
-  [ -n "$script_print_participant_groups" ] || fail "--script-print participant-groups produced no output"
-  echo "$script_print_participant_groups" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-groups did not include test group"
+  script_print_participant_groups=$(pepcli --oauth-token-group "Access Administrator" ama query --include participant-groups)
+  [ -n "$script_print_participant_groups" ] || fail "--include participant-groups produced no output"
+  echo "$script_print_participant_groups" | grep -q "includeFlagTestParticipantGroup" || fail "--include participant-groups did not include test group"
 
-  script_print_pgars=$(pepcli --oauth-token-group "Access Administrator" ama query --script-print participant-group-access-rules)
-  [ -n "$script_print_pgars" ] || fail "--script-print participant-group-access-rules produced no output"
-  echo "$script_print_pgars" | grep -q "scriptPrintTestParticipantGroup" || fail "--script-print participant-group-access-rules did not include test PGAR"
+  script_print_pgars=$(pepcli --oauth-token-group "Access Administrator" ama query --include participant-group-access-rules)
+  [ -n "$script_print_pgars" ] || fail "--include participant-group-access-rules produced no output"
+  echo "$script_print_pgars" | grep -q "includeFlagTestParticipantGroup" || fail "--include participant-group-access-rules did not include test PGAR"
 
   # Clean up
   test_cleanup "$AMA_QUERYABLE_CONFIG"
@@ -362,7 +392,7 @@ if should_run_test token-block; then
   # Add a new user to integrationGroup and generate token for that user
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user create userWithFreshToken
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user addTo userWithFreshToken integrationGroup
-  TOKEN_TEST_USER_TOKEN=$(pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" token request userWithFreshToken integrationGroup "$($DATE_CMD -d '2 days' +%s)")
+  TOKEN_TEST_USER_TOKEN=$(pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" token request userWithFreshToken integrationGroup "unix:$($DATE_CMD -d '2 days' +%s)")
 
   # Attempt to do a query with the generated token
   pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access
@@ -421,6 +451,7 @@ if should_run_test authserver-apache; then
     else
       trace grep "Location: http://localhost:16515.*[\?&]error=$expectError" "$DATA_DIR/authserverResponse.txt"
     fi
+    rm "$DATA_DIR/authserverResponse.txt"
   }
 
   toUpperCase() {
@@ -474,25 +505,76 @@ if should_run_test user-query; then
   userDisplayId="user-query-test-user"
   userPrimaryId="user-query-test-primary-id"
   userAlternativeIds=("user-query-test-alternative1" "user-query-test-alternative2")
-  [ "$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '."All Interactive Users" | any(."display id" == "'$userDisplayId'")')" == "false" ]
+  [ "$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '.users | any(."display-id" == "'$userDisplayId'")')" == "false" ]
   pepcli --oauth-token-group "Access Administrator" user create "$userDisplayId"
   pepcli --oauth-token-group "Access Administrator" user addIdentifier --primary-id "$userDisplayId" "$userPrimaryId"
   for id in "${userAlternativeIds[@]}"; do
     pepcli --oauth-token-group "Access Administrator" user addIdentifier "$userPrimaryId" "$id"
   done
-  queryResult="$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '."All Interactive Users"[] | select(."primary id" == "'$userPrimaryId'")')"
+  queryResult="$(pepcli --oauth-token-group "Access Administrator" user query --format json | jq '.users[] | select(."primary-id" == "'$userPrimaryId'")')"
   [ -n "$queryResult" ]
-  returnedDisplayId=$(echo "$queryResult" | jq --raw-output '."display id"')
+  returnedDisplayId=$(echo "$queryResult" | jq --raw-output '."display-id"')
   [ "$returnedDisplayId" == "$userDisplayId" ]
-  returnedPrimaryId=$(echo "$queryResult" | jq --raw-output '."primary id"')
+  returnedPrimaryId=$(echo "$queryResult" | jq --raw-output '."primary-id"')
   [ "$returnedPrimaryId" == "$userPrimaryId" ]
-  returnedAlternativeIds=$(echo "$queryResult" | jq --raw-output '."other user identifiers"[]')
+  returnedAlternativeIds=$(echo "$queryResult" | jq --raw-output '."other-identifiers"[]')
   echo "'$returnedAlternativeIds'"
   for id in "${userAlternativeIds[@]}"; do
     echo "$returnedAlternativeIds" | grep "$id"
   done
 
   pepcli --oauth-token-group "Access Administrator" user remove "$userPrimaryId"
+fi
+
+####################
+
+if should_run_test user-removal-and-expiration; then
+  USER_REMOVAL_AND_EXPIRATION_CONFIG='{
+    "userGroups": [{
+      "name": "test-group",
+      "users": ["test-user"]
+    }]
+  }'
+
+  test_setup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
+
+  token="$(pepcli token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
+  pepcli --oauth-token-group "Access Administrator" user removeFrom test-user test-group
+  pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid when the user is removed from the group"
+  trace sleep 1s
+
+  expiration="$($DATE_CMD -d "now+5 seconds" +%s)"
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
+  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  while [ "$($DATE_CMD -d "now+1 second" +%s)" -lt "$expiration" ]; do # We compare with now+1 second, so the following doesn't fail if in the meantime the current time increased to the next second
+    pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
+    trace sleep 1s
+  done
+  trace sleep 1s
+  pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid after group membership expiration"
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+10 years" +%s)" test-user test-group \
+    && fail "Shouldn't be able to update expiration for a user group membership that already expired"
+  original_expiration_seconds="15"
+  expiration="$($DATE_CMD -d "now+$original_expiration_seconds seconds" +%s)"
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
+  pepcli --oauth-token "$token" query enrollment && fail "Token that was once blocked should not get unblocked by updating the expiration"
+  newToken="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$newToken" query enrollment || fail "New token, requested after the issueDateTime of the block entry, should be valid"
+
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+10 years" +%s)" test-user test-group
+  trace sleep "${original_expiration_seconds}s"
+  pepcli --oauth-token "$newToken" query enrollment || fail "Token should still be valid after original expiration has passed, but updated expiration has not yet passed"
+
+  blocked_token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should be valid"
+  pepcli --oauth-token-group "Access Administrator" token block create --issuedBefore "unix:$($DATE_CMD -d "now" +%s)" --block-start "unix:$($DATE_CMD -d "now+5 seconds" +%s)" --message "Manually blocked" test-user test-group
+  pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should still be valid, before block-start timestamp"
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+20 years" +%s)" test-user test-group
+  trace sleep 5s
+  pepcli --oauth-token "$blocked_token" query enrollment && fail "Manually blocked token should not be unblocked by updating the expiration of the group membership"
+
+  test_cleanup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
 fi
 
 ####################
@@ -645,10 +727,83 @@ if should_run_test structured-output; then
     fail "Expected ${EXPECTED_CSV_DELIMITER_COUNT} semicolons but counted ${ACTUAL_CSV_DELIMITER_COUNT}"
   fi
 
+  # Repeat the last export command, but this time output directly to stdout. The output should be exactly the same
+  CSV_STDOUT=$(pepcli --oauth-token-group soUsers export\
+    --from "$DEST_DIR/pulled-data" --output-file - --force csv --delimiter semicolon)
+  if [ "$CSV_CONTENT" != "$CSV_STDOUT" ]; then
+    CSV_STDOUT_PATH="$DEST_DIR/pulled-data/export-direct.csv"
+    echo "$CSV_STDOUT" > "$CSV_STDOUT_PATH"
+    fail "Output to stdout ($CSV_STDOUT_PATH) is different from output to file ($CSV_PATH)."
+  fi
+
   # Clean up
   execute . rm -rf "$DEST_DIR/pulled-data"
 
   test_cleanup "$SO_CONFIG"
+fi
+
+####################
+
+if should_run_test pseudonym-conversion; then
+  PC_CONFIG='{
+    "userGroups": [{ "name": "pcUsers" }],
+    "columnGroups": [{
+      "name": "pcData",
+      "columns": [ "pcData.id" ],
+      "cgars": {
+        "pcUsers": [ "read" ],
+        "Data Administrator": [ "read", "write" ]
+      }
+    }],
+    "subjectGroups": [{
+      "name": "pcSubjects",
+      "subjects": [
+        { "pcData.id": "ID_0" },
+        { "pcData.id": "ID_1" }
+      ],
+      "pgars": { "pcUsers": [ "enumerate", "access" ] }
+    }]
+  }'
+
+  test_setup "$PC_CONFIG"
+
+  PSEUDONYM_LIST_JSON="$DATA_DIR/test_output/pc-local-pseudonyms.json"
+
+  pepcli --oauth-token-group pcUsers list\
+      -P pcSubjects -C pcData --show-dataless --local-pseudonyms\
+      > "$PSEUDONYM_LIST_JSON"
+
+  pcLookup() {
+    local -r fromId=$1
+    local -r toType=$2
+    jq -r ".[] | select(.data.\"pcData.id\"== \"$fromId\") | .$toType" "$PSEUDONYM_LIST_JSON"
+  }
+
+  assert_equivalent_pp() {
+    public_key() { echo "$1" | cut -d: -f3; }
+    stable_id() { pepcli pseudonym convert "$1" user; }
+
+    assert_equal "$(public_key "$1")" "$(public_key "$2")"
+    assert_equal "$(stable_id "$1")" "$(stable_id "$2")"
+  }
+
+  PP=$(pcLookup ID_1 pp)
+  LP=$(pcLookup ID_1 lp)
+  UP=$(pcLookup ID_1 blp)
+
+  assert_equal "$(pepcli pseudonym convert "$PP" local-pseudonym)" "$LP"
+  assert_equal "$(pepcli pseudonym convert "$LP" local-pseudonym)" "$LP"
+  assert_equal "$(pepcli pseudonym convert "$UP" local-pseudonym)" "$LP"
+
+  assert_equal "$(pepcli pseudonym convert "$PP" brief-local-pseudonym)" "$UP"
+  assert_equal "$(pepcli pseudonym convert "$LP" brief-local-pseudonym)" "$UP"
+  assert_equal "$(pepcli pseudonym convert "$UP" brief-local-pseudonym)" "$UP"
+
+  assert_equal "$(pepcli pseudonym convert "$PP" polymorphic-pseudonym)" "$PP"
+  assert_equivalent_pp "$(pepcli pseudonym convert "$LP" polymorphic-pseudonym)" "$PP"
+  assert_equivalent_pp "$(pepcli pseudonym convert "$UP" polymorphic-pseudonym)" "$PP"
+
+  test_cleanup "$PC_CONFIG"
 fi
 
 ####################
@@ -692,9 +847,7 @@ if should_run_test s3-roundtrip; then
   test_setup "$S3_ROUNDTRIP_CONFIG"
 
   # Store a large (i.e. stored in S3) file with some participants
-  readonly LARGE_RANDOM_DATA_FILE="$DEST_DIR/large-random-data.bin"
-  # 10 blocks @ 1048576 bytes each = 10MiB
-  execute . dd if=/dev/urandom of="$LARGE_RANDOM_DATA_FILE" bs=1048576 count=10
+  readonly LARGE_RANDOM_DATA_FILE=$(make_large_random_data_file "large-random-data.bin")
   for i in {1..50}; do
     pepcli --oauth-token-group "Research Assessor" store -p "participant$i" -c LargeColumn -i "$LARGE_RANDOM_DATA_FILE"
   done
@@ -717,6 +870,51 @@ if should_run_test s3-roundtrip; then
   done
 
   test_cleanup "$S3_ROUNDTRIP_CONFIG"
+fi
+
+####################
+
+if should_run_test page-paths; then
+  PAGE_PATHS_CONFIG='{
+    "columnGroups": [{
+      "name": "PagedColumns",
+      "columns": [ "PagedColumn" ],
+      "cgars": {  "Research Assessor": [ "read", "write" ] }
+    }]
+  }'
+  
+  test_setup "$PAGE_PATHS_CONFIG"
+  
+  pepcli --oauth-token-group "Research Assessor" query page-paths &&
+      fail "Research Assessor should not be able to query page paths"
+
+  # Count number of pages before storing
+  before=$(pepcli --oauth-token-group "System Administrator" query page-paths)
+  before=$(echo "$before" | wc -l)
+  
+  # Store a large (i.e. stored in S3) file
+  readonly PAGED_RANDOM_DATA_FILE=$(make_large_random_data_file "paged-random-data.bin")
+  pepcli --oauth-token-group "Research Assessor" store -p "some-participant" -c PagedColumn -i "$PAGED_RANDOM_DATA_FILE"
+  
+  # Count number of pages after storing
+  after=$(pepcli --oauth-token-group "System Administrator" query page-paths)
+  after=$(echo "$after" | wc -l)
+  if [ ! "$after" -gt "$before" ]; then
+    fail "Page path count should increase after storage (before = $before; after = $after)"
+  fi
+
+  # Remove paged entry from current data set, then count number of pages once again
+  # (This also clears the stored data for a followup invocation of the test.)
+  pepcli --oauth-token-group "Research Assessor" delete -p "some-participant" -c PagedColumn
+  after=$(pepcli --oauth-token-group "System Administrator" query page-paths)
+  after=$(echo "$after" | wc -l)
+  if [ "$after" -ne "$before" ]; then
+    fail "Page path count should revert to previous after deletion (before = $before; after = $after)"
+  fi
+
+  # Clean up
+  execute . rm "$PAGED_RANDOM_DATA_FILE"
+  test_cleanup "$PAGE_PATHS_CONFIG"
 fi
 
 ####################
@@ -895,6 +1093,8 @@ if should_run_test certificate-renewal; then
 
   execute "$certificate_renewal_data_dir" find . -maxdepth 1 -name "*.csr" -delete
   execute "$certificate_renewal_data_dir" find . -maxdepth 1 -name "*.chain" -delete
+
+  execute . rm -rf "$certificate_renewal_data_dir"
 fi
 
 ####################

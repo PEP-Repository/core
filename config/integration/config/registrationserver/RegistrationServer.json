@@ -1,33 +1,41 @@
 {
-  "KeysFile": "RegistrationServerKeys.json",
-  "TLSPrivateKeyFile": "../../pki/TLSRegistrationServer.key",
-  "TLSCertificateFile": "../../pki/TLSRegistrationServer.chain",
-  "PEPPrivateKeyFile": "../../pki/PEPRegistrationServer.key",
-  "PEPCertificateFile": "../../pki/PEPRegistrationServer.chain",
-  "CACertificateFile": "../../pki/rootCA.cert",
+  "CaCertificateFile": "../../pki/rootCA.cert",
   "ListenPort": 16518,
+  "TlsIdentity": {
+    "PrivateKeyFile": "../../pki/TLSRegistrationServer.key",
+    "CertificateFile": "../../pki/TLSRegistrationServer.chain"
+  },
+  "SigningIdentity": {
+    "PrivateKeyFile": "../../pki/PEPRegistrationServer.key",
+    "CertificateFile": "../../pki/PEPRegistrationServer.chain"
+  },
+  "ServerEndPoints": {
+    "AccessManager": {
+      "Name": "AccessManager",
+      "Address": "localhost",
+      "Port": 16501
+    },
+    "KeyServer": {
+      "Name": "KeyServer",
+      "Address": "localhost",
+      "Port": 16511
+    },
+    "StorageFacility": {
+      "Name": "StorageFacility",
+      "Address": "localhost",
+      "Port": 16519
+    },
+    "Transcryptor": {
+      "Name": "Transcryptor",
+      "Address": "localhost",
+      "Port": 16516
+    }
+  },
+  "SystemPublicKeys": {
+    "PublicKeyData": "",
+    "PublicKeyPseudonyms": ""
+  },
+  "EnrolledPartyKeysFile": "RegistrationServerKeys.json",
   "ShadowStorageFile": "ShadowShortPseudonyms.sqlite",
-  "ShadowPublicKeyFile": "../ShadowAdministration.pub",
-  "PublicKeyData": "",
-  "PublicKeyPseudonyms": "",
-  "AccessManager": {
-    "Name": "AccessManager",
-    "Address": "localhost",
-    "Port": 16501
-  },
-  "StorageFacility": {
-    "Name": "StorageFacility",
-    "Address": "localhost",
-    "Port": 16519
-  },
-  "KeyServer": {
-    "Name": "KeyServer",
-    "Address": "localhost",
-    "Port": 16511
-  },
-  "Transcryptor": {
-    "Name": "Transcryptor",
-    "Address": "localhost",
-    "Port": 16516
-  }
+  "ShadowPublicKeyFile": "../ShadowAdministration.pub"
 }

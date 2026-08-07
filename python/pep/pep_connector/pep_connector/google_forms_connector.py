@@ -1,8 +1,15 @@
+from __future__ import annotations
+
 import logging
 import importlib.util
-
 from .peprepository import PEPRepository
-from .connectors import Connector
+from .connectors import Connector, ConnectorConfig
+
+
+class GoogleFormsConfig(ConnectorConfig):
+    """Configuration for Google Forms connector."""
+    pass
+
 
 if not importlib.util.find_spec("google.oauth2.service_account"):
     raise ImportError("google.oauth2 is required for GoogleFormsConnector. Install it with 'pip install pep-connector[google_forms_connector]'")
@@ -16,12 +23,19 @@ else:
 class GoogleFormsConnector(Connector):
     LOG_TAG = "GoogleFormsConnector"
 
-    def __init__(self, repository: PEPRepository,
-                 prometheus_dir=None,
-                 use_prometheus=False,
-                 env_prefix=None,
-                 job_name=None):
-        super().__init__(repository, prometheus_dir, use_prometheus, env_prefix, job_name)
+    def __init__(self, repository: PEPRepository, config: GoogleFormsConfig):
+        """
+        Initialize GoogleFormsConnector with a GoogleFormsConfig object.
+
+        Args:
+            repository: PEPRepository instance
+            config: GoogleFormsConfig instance (required)
+        """
+        if not isinstance(config, GoogleFormsConfig):
+            raise ValueError("config must be an instance of GoogleFormsConfig")
+
+        # Initialize parent with the config
+        super().__init__(repository, config)
         self.log("GoogleFormsConnector initialized", logging.DEBUG)
 
     def read_google_form_responses(self):

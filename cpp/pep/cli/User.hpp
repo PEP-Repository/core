@@ -17,6 +17,7 @@ private:
   class UserGroupUserSubCommand;
   class UserAddToSubCommand;
   class UserRemoveFromSubCommand;
+  class UserUpdateExpirationSubCommand;
   class CommandUserQuery;
 
 protected:

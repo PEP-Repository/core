@@ -12,7 +12,7 @@ namespace pep {
 namespace castor {
 
 StoredData::StoredData(std::shared_ptr<ParticipantsByColumnBoundParticipantId> participants)
-  : mParticipants(participants) {
+  : participants_(participants) {
 }
 
 rxcpp::observable<std::shared_ptr<StoredData>> StoredData::Load(std::shared_ptr<CoreClient> client,
@@ -54,8 +54,8 @@ rxcpp::observable<std::shared_ptr<StoredData>> StoredData::Load(std::shared_ptr<
 }
 
 std::shared_ptr<PepParticipant> StoredData::tryGetParticipant(const ColumnBoundParticipantId& cbrId) const noexcept {
-  auto found = mParticipants->find(cbrId);
-  if (found == mParticipants->cend()) {
+  auto found = participants_->find(cbrId);
+  if (found == participants_->cend()) {
     return nullptr;
   }
   return found->second;
@@ -75,7 +75,7 @@ rxcpp::observable<StoreData2Entry> StoredData::getUpdateEntry(std::shared_ptr<St
   auto column = storable->getColumn();
   auto existing = participant->tryGetCellContent(column);
   if (existing == nullptr) {
-    PULLCASTOR_LOG(debug) << "Adding new cell to PEP.";
+    PEP_PULLCASTOR_LOG(Severity::Debug) << "Adding new cell to PEP.";
     return storable->getContent()->getData()
       .map([column, pp = std::make_shared<PolymorphicPseudonym>(participant->getPp()), extension = storable->getFileExtension()](const std::string& data) {
       return StoreData2Entry(pp, column, std::make_shared<std::string>(data), { MetadataXEntry::MakeFileExtension(extension) });
@@ -95,24 +95,24 @@ rxcpp::observable<StoreData2Entry> StoredData::getUpdateEntry(std::shared_ptr<St
       [](std::exception_ptr) {},
       [updating]() {
         if (*updating) {
-          PULLCASTOR_LOG(debug) << "Updating PEP cell with new content.";
+          PEP_PULLCASTOR_LOG(Severity::Debug) << "Updating PEP cell with new content.";
         }
         else {
-          PULLCASTOR_LOG(debug) << "Skipping cell that was already stored in PEP.";
+          PEP_PULLCASTOR_LOG(Severity::Debug) << "Skipping cell that was already stored in PEP.";
         }
       }
     );
 }
 
 rxcpp::observable<std::shared_ptr<const PepParticipant>> StoredData::getParticipants() const {
-  return RxIterate(*mParticipants)
+  return RxIterate(*participants_)
     .map([](const auto& pair) {return pair.second; })
     .op(RxDistinct())
     .op(RxSharedPtrCast<const PepParticipant>());
 }
 
 rxcpp::observable<std::string> StoredData::getCastorSps(std::shared_ptr<const PepParticipant> participant, const std::string& spColumnName) const {
-  return RxIterate(*mParticipants)
+  return RxIterate(*participants_)
     .filter([participant, spColumnName](const auto& pair) {return pair.first.getColumnName() == spColumnName && pair.second == participant; })
     .map([](const auto& pair) {return pair.first.getParticipantId(); });
 }

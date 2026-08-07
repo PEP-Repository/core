@@ -8,8 +8,6 @@ namespace Ui {
 class ParticipantEditor;
 }
 
-class MainWindow;
-
 class ParticipantEditor : public QWidget {
   Q_OBJECT
 
@@ -30,9 +28,9 @@ class ParticipantEditor : public QWidget {
   void confirmed();
 
  private:
-  Ui::ParticipantEditor* ui;
-  QString participantFirstName;
-  QString participantTussenvoegsels;
-  QString participantLastName;
-  QString participantDOB;
+  Ui::ParticipantEditor* ui_;
+  QString participantFirstName_;
+  QString participantTussenvoegsels_;
+  QString participantLastName_;
+  QString participantDOB_;
 };

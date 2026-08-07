@@ -11,13 +11,13 @@ const QString fourDigitYear("yyyy");
 
 DateEditor::DateEditor(QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::DateEditor)
+    ui_(new Ui::DateEditor)
 {
-  ui->setupUi(this);
-  setFocusProxy(ui->dateEdit);
+  ui_->setupUi(this);
+  setFocusProxy(ui_->dateEdit);
 
   auto locale = QLocale();
-  auto calendar = ui->dateEdit->calendarWidget();
+  auto calendar = ui_->dateEdit->calendarWidget();
   if (calendar != nullptr) {
     calendar->setLocale(locale);
   }
@@ -26,28 +26,28 @@ DateEditor::DateEditor(QWidget *parent) :
   auto dateFormat = locale.dateFormat(QLocale::FormatType::ShortFormat);
   if (dateFormat.contains(twoDigitYear, Qt::CaseSensitive) && !dateFormat.contains(fourDigitYear, Qt::CaseSensitive)) {
     dateFormat.replace(twoDigitYear, fourDigitYear, Qt::CaseSensitive);
-    ui->dateEdit->setDisplayFormat(dateFormat);
+    ui_->dateEdit->setDisplayFormat(dateFormat);
   }
 
-  QObject::connect(ui->dateEdit, &QDateEdit::dateChanged, this, &DateEditor::valueChanged);
+  QObject::connect(ui_->dateEdit, &QDateEdit::dateChanged, this, &DateEditor::valueChanged);
 }
 
 DateEditor::~DateEditor()
 {
-  delete ui;
+  delete ui_;
 }
 
 QDate DateEditor::getValue() const {
-  return ui->dateEdit->date();
+  return ui_->dateEdit->date();
 }
 
 void DateEditor::setValue(const QDate& value) {
   if (value != this->getValue()) {
-    ui->dateEdit->setDate(value);
+    ui_->dateEdit->setDate(value);
     emit valueChanged();
   }
 }
 
 bool DateEditor::hasAcceptableInput() const {
-  return ui->dateEdit->hasAcceptableInput();
+  return ui_->dateEdit->hasAcceptableInput();
 }

@@ -1,12 +1,12 @@
 # Library to produce structured and machine parseable cli-output
 find_package(nlohmann_json REQUIRED)
 
-add_library(${PROJECT_NAME}StructuredOutputlib STATIC
+add_library(${PROJECT_NAME}StructuredOutputlib
   Common.hpp
   Csv.hpp Csv.cpp
   FormatFlags.hpp FormatFlags.cpp
   IndexedStringPool.hpp
-  Json.hpp Json.cpp
+  Json.hpp
   Table.cpp Table.hpp
   Tree.hpp Tree.cpp
   Yaml.cpp Yaml.hpp

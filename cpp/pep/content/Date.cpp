@@ -63,7 +63,7 @@ std::optional<year_month_day> TryParseDdMmYyyy(const std::string& date) {
 
 std::string ToDdMonthAbbrevYyyyDate(const year_month_day& date) {
   auto day = unsigned{date.day()};
-  auto iMonth = unsigned{date.month()};
+  auto iMonth = unsigned{date.month()} - unsigned{January};
   auto year = int{date.year()};
   if (year < 0) {
     throw std::range_error("year cannot be negative for this date format");

@@ -17,23 +17,38 @@ ScalarMultProof Serializer<ScalarMultProof>::fromProtocolBuffer(proto::ScalarMul
 }
 
 void Serializer<ScalarMultProof>::moveIntoProtocolBuffer(proto::ScalarMultProof& dest, ScalarMultProof value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_cb(), value.mCB);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_cm(), value.mCM);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_s(), static_cast<const CurveScalar&>(value.mS));
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_cb(), value.cB_);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_cm(), value.cM_);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_s(), static_cast<const CurveScalar&>(value.mS_));
 }
 
 ReshuffleRekeyVerifiers Serializer<ReshuffleRekeyVerifiers>::fromProtocolBuffer(proto::ReshuffleRekeyVerifiers&& source) const {
   return ReshuffleRekeyVerifiers(
-    Serialization::FromProtocolBuffer(std::move(*source.mutable_z_over_kb())),
-    Serialization::FromProtocolBuffer(std::move(*source.mutable_zb())),
-    Serialization::FromProtocolBuffer(std::move(*source.mutable_ky()))
-  );
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_reshuffle_commitment())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_rekey_commitment())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_reshuffle_over_rekey_commitment())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_rekeyed_public_key())));
+}
+void Serializer<ReshuffleRekeyVerifiers>::moveIntoProtocolBuffer(proto::ReshuffleRekeyVerifiers& dest, ReshuffleRekeyVerifiers value) const {
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_reshuffle_commitment(), value.reshuffleCommitment);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rekey_commitment(), value.rekeyCommitment);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_reshuffle_over_rekey_commitment(), value.reshuffleOverRekeyCommitment);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rekeyed_public_key(), value.rekeyedPublicKey);
 }
 
-void Serializer<ReshuffleRekeyVerifiers>::moveIntoProtocolBuffer(proto::ReshuffleRekeyVerifiers& dest, ReshuffleRekeyVerifiers value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_z_over_kb(), value.mReshuffleOverRekeyPoint);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_zb(), value.mReshufflePoint);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_ky(), value.mRekeyedPublicKey);
+ReshuffleRekeyVerifiersProof Serializer<ReshuffleRekeyVerifiersProof>::fromProtocolBuffer(proto::ReshuffleRekeyVerifiersProof&& source) const {
+  return ReshuffleRekeyVerifiersProof(
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_rekey_inverse_point())),
+    InverseProof(Serialization::FromProtocolBuffer(std::move(*source.mutable_rekey_inverse_proof()))),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_reshuffle_times_rekey_inverse_proof())),
+    Serialization::FromProtocolBuffer(std::move(*source.mutable_rekey_times_public_key_proof())));
+}
+
+void Serializer<ReshuffleRekeyVerifiersProof>::moveIntoProtocolBuffer(proto::ReshuffleRekeyVerifiersProof& dest, ReshuffleRekeyVerifiersProof value) const {
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rekey_inverse_point(), value.rekeyInversePoint);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rekey_inverse_proof(), value.rekeyInverseProof.secretInverseTimesPointProof_);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_reshuffle_times_rekey_inverse_proof(), value.reshuffleTimesRekeyInverseProof);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rekey_times_public_key_proof(), value.rekeyTimesPublicKeyProof);
 }
 
 RskProof Serializer<RskProof>::fromProtocolBuffer(proto::RskProof&& source) const {
@@ -47,25 +62,11 @@ RskProof Serializer<RskProof>::fromProtocolBuffer(proto::RskProof&& source) cons
 }
 
 void Serializer<RskProof>::moveIntoProtocolBuffer(proto::RskProof& dest, RskProof value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_ry(), value.mRerandomizePubKey);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rb(), value.mRerandomizePoint);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rp(), value.mRerandomizeTimesPubKeyProof);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_bp(), value.mReshuffleOverRekeyTimesBProof);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_cp(), value.mReshuffleTimesCProof);
-}
-
-VerifiersResponse Serializer<VerifiersResponse>::fromProtocolBuffer(proto::VerifiersResponse&& source) const {
-  return VerifiersResponse(
-    Serialization::FromProtocolBuffer(std::move(*source.mutable_access_manager())),
-    Serialization::FromProtocolBuffer(std::move(*source.mutable_storage_facility())),
-    Serialization::FromProtocolBuffer(std::move(*source.mutable_transcryptor()))
-  );
-}
-
-void Serializer<VerifiersResponse>::moveIntoProtocolBuffer(proto::VerifiersResponse& dest, VerifiersResponse value) const {
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_access_manager(), value.mAccessManager);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_storage_facility(), value.mStorageFacility);
-  Serialization::MoveIntoProtocolBuffer(*dest.mutable_transcryptor(), value.mTranscryptor);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_ry(), value.rerandomizePubKey);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rb(), value.rerandomizePoint);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_rp(), value.rerandomizeTimesPubKeyProof);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_bp(), value.reshuffleOverRekeyTimesBProof);
+  Serialization::MoveIntoProtocolBuffer(*dest.mutable_cp(), value.reshuffleTimesCProof);
 }
 
 }

@@ -1,7 +1,18 @@
+if(DEFINED EMSCRIPTEN)
+  # pepcli can be used with Emscripten & Node.js, but currently requires some manual actions:
+  # - `npm install ws` in the cli build folder
+  # - Making sure the ClientConfig points to a websocket proxy
+  # - Optional for build performance: disabling -gsource-map and adding -sNO_STACK_OVERFLOW_CHECK (see notes in weblib CMakeLists.txt)
+  set_directory_properties(PROPERTIES
+      EXCLUDE_FROM_ALL ON
+  )
+endif()
+
 set(PEPCLI_SRCS
     Ama.cpp
     Castor.cpp
     CliApplication.cpp CliApplication.hpp
+    ColumnQuery.cpp ColumnQuery.hpp
     Command.cpp Command.hpp
     Commands.hpp
     Delete.cpp
@@ -19,9 +30,10 @@ set(PEPCLI_SRCS
     List.cpp
     Metrics.cpp
     MultiCellQuery.cpp MultiCellQuery.hpp
-    NoLongerSupportedCommand.cpp
     Ping.cpp
     Pull.cpp
+    pseudonym/CommandConvert.cpp pseudonym/CommandConvert.hpp
+    Pseudonym.cpp Pseudonym.hpp
     Query.cpp
     Register.cpp
     server/CommandCertificate.cpp server/CommandCertificate.hpp
@@ -40,34 +52,43 @@ set(PEPCLI_SRCS
     Validate.cpp
     Verifiers.cpp
     XEntry.cpp
+    structuredoutput/TreeFromUserQueryResponse.hpp structuredoutput/TreeFromUserQueryResponse.cpp
+    structuredoutput/TreeFromAmaQueryResponse.hpp structuredoutput/TreeFromAmaQueryResponse.cpp
 )
 
 add_cli_install_executable(${PROJECT_NAME}cli ${PEPCLI_SRCS})
 
 if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
-    find_package(Sparkle REQUIRED)
+  find_package(Sparkle REQUIRED)
 
-    if(NOT SPARKLE_LIBRARY)
-        message(FATAL_ERROR "Sparkle library not found")
-    endif()
+  if(NOT SPARKLE_LIBRARY)
+    message(FATAL_ERROR "Sparkle library not found")
+  endif()
 
-    # Get the directory of the Sparkle library
-    get_filename_component(SPARKLE_DIR ${SPARKLE_LIBRARY} DIRECTORY)
+  # Get the directory of the Sparkle library
+  get_filename_component(SPARKLE_DIR ${SPARKLE_LIBRARY} DIRECTORY)
 
-    # Append the relative path to the Sparkle binary
-    set(SPARKLE_BINARY "${SPARKLE_DIR}/sparkle.app/Contents/MacOS/sparkle")
+  # Append the relative path to the Sparkle binary
+  set(SPARKLE_BINARY "${SPARKLE_DIR}/sparkle.app/Contents/MacOS/sparkle")
 
-    #TODO cleanup using --install approach as used on Windows?
-    add_custom_command(TARGET ${PROJECT_NAME}cli POST_BUILD
+  # generate_appcast tool from the Sparkle package. It is not bundled into the app; it is copied
+  # next to the target so CI (macos-ci-build-app-bins.sh) can stage it for appcast generation.
+  set(SPARKLE_GENERATE_APPCAST "${SPARKLE_DIR}/bin/generate_appcast")
+
+  #TODO cleanup using --install approach as used on Windows?
+  add_custom_command(TARGET ${PROJECT_NAME}cli POST_BUILD
         COMMENT "Copy Sparkle framework files to cli"
         COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${PROJECT_NAME}cli>/Frameworks/
         COMMAND cp -R ${SPARKLE_LIBRARY} $<TARGET_FILE_DIR:${PROJECT_NAME}cli>/Frameworks/
 
         # Copy the Sparkle binary next to the target file
         COMMAND cp ${SPARKLE_BINARY} $<TARGET_FILE_DIR:${PROJECT_NAME}cli>
+
+        # Copy the generate_appcast tool next to the target file (staged by CI, not bundled)
+        COMMAND cp ${SPARKLE_GENERATE_APPCAST} $<TARGET_FILE_DIR:${PROJECT_NAME}cli>
     )
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_sources(${PROJECT_NAME}cli PRIVATE VersionInfo.rc)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  target_sources(${PROJECT_NAME}cli PRIVATE VersionInfo.rc)
 endif()
 
 target_link_libraries(${PROJECT_NAME}cli
@@ -78,7 +99,7 @@ target_link_libraries(${PROJECT_NAME}cli
   ${PROJECT_NAME}StructuredOutputlib
 )
 if(WITH_CASTOR)
-    target_link_libraries(${PROJECT_NAME}cli ${PROJECT_NAME}Castorlib)
+  target_link_libraries(${PROJECT_NAME}cli ${PROJECT_NAME}Castorlib)
 endif()
 
 configure_executable_companion(${PEP_INFRA_DIR}/client/ClientConfig.json REPLACE_VARIABLES)

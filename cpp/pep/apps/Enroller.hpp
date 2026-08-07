@@ -10,8 +10,7 @@ class Enroller : public commandline::ChildCommandOf<EnrollmentApplication> {
 protected:
   virtual std::vector<commandline::Parameter> getAuthorizationParameters() const = 0;
   virtual bool producesExtendedProperties() const noexcept = 0;
-  virtual bool producesDataKey() const noexcept = 0;
-  virtual rxcpp::observable<EnrollmentResult> enroll(std::shared_ptr<Client> client) const = 0;
+  virtual rxcpp::observable<EnrolledPartyKeys> enroll(std::shared_ptr<Client> client) const = 0;
 
   virtual void setProperties(Client::Builder& builder, const Configuration& config) const;
   virtual EndPoint getAccessManagerEndPoint(const Configuration& config) const;
@@ -38,8 +37,7 @@ protected:
     };
   }
   inline bool producesExtendedProperties() const noexcept override { return true; }
-  inline bool producesDataKey() const noexcept override { return true; }
-  rxcpp::observable<EnrollmentResult> enroll(std::shared_ptr<Client> client) const override;
+  rxcpp::observable<EnrolledPartyKeys> enroll(std::shared_ptr<Client> client) const override;
 
 public:
   explicit UserEnroller(EnrollmentApplication& parent)
@@ -49,7 +47,7 @@ public:
 
 class ServiceEnroller : public Enroller {
 private:
-  ServerTraits mServer;
+  ServerTraits server_;
 
 protected:
   std::vector<commandline::Parameter> getAuthorizationParameters() const override {
@@ -59,14 +57,13 @@ protected:
     };
   }
   inline bool producesExtendedProperties() const noexcept override { return false; }
-  inline bool producesDataKey() const noexcept override { return mServer.hasDataAccess(); }
   void setProperties(Client::Builder& builder, const Configuration& config) const override;
   EndPoint getAccessManagerEndPoint(const Configuration& config) const override;
-  inline rxcpp::observable<EnrollmentResult> enroll(std::shared_ptr<Client> client) const override { return client->enrollServer(); }
+  inline rxcpp::observable<EnrolledPartyKeys> enroll(std::shared_ptr<Client> client) const override { return client->enrollServer(); }
 
 public:
   ServiceEnroller(ServerTraits server, EnrollmentApplication& parent)
-    : Enroller(*server.enrollsAsParty(true), server.description(), parent), mServer(std::move(server)) {
+    : Enroller(*server.enrollsAsParty(true), server.description(), parent), server_(std::move(server)) {
   }
 };
 

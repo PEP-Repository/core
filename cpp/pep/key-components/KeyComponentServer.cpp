@@ -1,5 +1,6 @@
 #include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/key-components/KeyComponentServer.hpp>
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/utils/Configuration.hpp>
@@ -12,19 +13,19 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG = "Key component server";
+const std::string LogTag = "Key component server";
 
 }
 
 
 struct KeyComponentServer::Metrics : public RegisteredMetrics {
   Metrics(std::shared_ptr<prometheus::Registry> registry, const ServerTraits& serverTraits);
-  prometheus::Summary& keyComponent_request_duration;
+  prometheus::Summary& keyComponentRequestDuration;
 };
 
 KeyComponentServer::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry, const ServerTraits& serverTraits) :
   RegisteredMetrics(registry),
-  keyComponent_request_duration(prometheus::BuildSummary()
+  keyComponentRequestDuration(prometheus::BuildSummary()
     .Name("pep_" + serverTraits.metricsId() + "_keyComponent_request_duration_seconds")
     .Help("Duration of a successful keyComponent request")
     .Register(*registry)
@@ -35,9 +36,10 @@ KeyComponentServer::Metrics::Metrics(std::shared_ptr<prometheus::Registry> regis
 
 KeyComponentServer::KeyComponentServer(std::shared_ptr<Parameters> parameters) :
   SigningServer(parameters),
-  mPseudonymTranslator(parameters->getPseudonymTranslator()),
-  mDataTranslator(parameters->getDataTranslator()),
-  mMetrics(std::make_shared<KeyComponentServer::Metrics>(mRegistry, parameters->serverTraits())) {
+  pseudonymTranslator_(parameters->getPseudonymTranslator()),
+  dataTranslator_(parameters->getDataTranslator()),
+  metrics_(std::make_shared<KeyComponentServer::Metrics>(registry_, parameters->serverTraits())),
+  systemPublicKeys_(parameters->getSystemPublicKeys()) {
 
   RegisterRequestHandlers(*this, &KeyComponentServer::handleKeyComponentRequest);
 }
@@ -53,12 +55,12 @@ messaging::MessageBatches KeyComponentServer::handleKeyComponentRequest(std::sha
 
   auto recipient = RecipientForCertificate(signatory.certificateChain().leaf());
   KeyComponentResponse response;
-  response.mPseudonymEncryptionKeyComponent = mPseudonymTranslator->generateKeyComponent(recipient);
+  response.pseudonymEncryptionKeyComponent = pseudonymTranslator_->generateKeyComponent(recipient);
   if (HasDataAccess(*party)) {
-    response.mDataEncryptionKeyComponent = mDataTranslator->generateKeyComponent(recipient);
+    response.dataEncryptionKeyComponent = dataTranslator_->generateKeyComponent(recipient);
   }
 
-  mMetrics->keyComponent_request_duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
+  metrics_->keyComponentRequestDuration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
 
   return messaging::BatchSingleMessage(response);
 }
@@ -66,50 +68,45 @@ messaging::MessageBatches KeyComponentServer::handleKeyComponentRequest(std::sha
 
 KeyComponentServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
   : SigningServer::Parameters(io_context, config) {
-  std::filesystem::path systemKeysFile;
+  std::filesystem::path systemPrivateKeysFile;
 
   try {
-    if (auto optionalSystemKeysFile = config.get<std::optional<std::filesystem::path>>("SystemKeysFile")) {
-      systemKeysFile = optionalSystemKeysFile.value();
-    } else {
-      //Legacy version, from when we still had a (Soft)HSM. TODO: use new version in configuration for all environments, and remove legacy version.
-      systemKeysFile = config.get<std::filesystem::path>("HSM.ConfigFile");
-    }
+    systemPrivateKeysFile = config.get<std::filesystem::path>("SystemPrivateKeysFile");
+    systemPublicKeys_ = config.get<SystemPublicKeys>("SystemPublicKeys");
   }
   catch (std::exception& e) {
-    LOG(LOG_TAG, critical) << "Error with configuration file: " << e.what();
+    PEP_LOG(LogTag, Severity::Critical) << "Error with configuration file: " << e.what();
     throw;
   }
 
   boost::property_tree::ptree systemKeys;
-  boost::property_tree::read_json(std::filesystem::canonical(systemKeysFile).string(), systemKeys);
+  boost::property_tree::read_json(std::filesystem::canonical(systemPrivateKeysFile).string(), systemKeys);
   systemKeys = systemKeys.get_child_optional("Keys") //Old HSMKeys.json files have the keys in a Keys-object
     .get_value_or(systemKeys); //we now also allow them to be directly in the root, resulting in cleaner SystemKeys-files
   setPseudonymTranslator(std::make_shared<PseudonymTranslator>(ParsePseudonymTranslationKeys(systemKeys)));
   setDataTranslator(std::make_shared<DataTranslator>(ParseDataTranslationKeys(systemKeys)));
-
 }
 
 std::shared_ptr<PseudonymTranslator> KeyComponentServer::Parameters::getPseudonymTranslator() const {
-  return pseudonymTranslator;
+  return pseudonymTranslator_;
 }
 
 std::shared_ptr<DataTranslator> KeyComponentServer::Parameters::getDataTranslator() const {
-  return dataTranslator;
+  return dataTranslator_;
 }
 
 void KeyComponentServer::Parameters::setPseudonymTranslator(std::shared_ptr<PseudonymTranslator> pseudonymTranslator) {
-  Parameters::pseudonymTranslator = pseudonymTranslator;
+  pseudonymTranslator_ = pseudonymTranslator;
 }
 
 void KeyComponentServer::Parameters::setDataTranslator(std::shared_ptr<DataTranslator> dataTranslator) {
-  Parameters::dataTranslator = dataTranslator;
+  dataTranslator_ = dataTranslator;
 }
 
 void KeyComponentServer::Parameters::check() const {
-  if (!pseudonymTranslator)
+  if (!pseudonymTranslator_)
     throw std::runtime_error("pseudonymTranslator must be set");
-  if (!dataTranslator)
+  if (!dataTranslator_)
     throw std::runtime_error("dataTranslator must be set");
 
   SigningServer::Parameters::check();

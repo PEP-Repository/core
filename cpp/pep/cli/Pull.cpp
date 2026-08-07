@@ -21,6 +21,7 @@
 #include <pep/structuredoutput/Json.hpp>
 #include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxToVector.hpp>
+#include <pep/utils/File.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -31,9 +32,10 @@ using namespace pep::enumUtils;
 using namespace pep::cli;
 using namespace std::chrono_literals;
 namespace so = pep::structuredOutput;
+namespace fs = std::filesystem;
 
 namespace {
-constexpr auto SUPPORTED_EXPORT_FORMATS = so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml;
+constexpr auto SupportedExportFormats = so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml;
 
 struct Context {
   bool update{ false };
@@ -41,7 +43,7 @@ struct Context {
   bool resume{ false };
   bool updateFormat{ false };
   bool allAccessible{ false };
-  bool applyFileExtensions{ DownloadDirectory::APPLY_FILE_EXTENSIONS_BY_DEFAULT };
+  bool applyFileExtensions{ DownloadDirectory::ApplyFileExtensionsByDefault };
   std::string outputDirectory;
   std::string tempDirectory;
   DownloadDirectory::PullOptions options;
@@ -51,61 +53,53 @@ struct Context {
   so::FormatFlags exportFormats = so::FormatFlags::None;
 };
 
-/*!
-* \brief Will a saved configuration file be used for this command?
-*/
+/// \brief Will a saved configuration file be used for this command?
 bool UsesSavedConfig(const std::shared_ptr<Context> &ctx) {
   return ctx->update || ctx->updateFormat || ctx->resume;
 }
 
-/*!
-* \brief Create a working copy of the source in which changes can safely be made without losing the original data.
-* \param source Path to the original file or directory
-* \param dest Path to the directory in which to place the copies
-*/
-void HardlinkFolders(std::filesystem::path source, std::filesystem::path dest) {
-  for (const auto& entry : std::filesystem::directory_iterator(source)) {
-    if (!std::filesystem::is_directory(entry)) {
+/// \brief Create a working copy of the source in which changes can safely be made without losing the original data.
+/// \param source Path to the original file or directory
+/// \param dest Path to the directory in which to place the copies
+void HardlinkFolders(fs::path source, fs::path dest) {
+  for (const auto& entry : fs::directory_iterator(source)) {
+    if (!fs::is_directory(entry)) {
       auto filename = entry.path().filename();
-      std::filesystem::path newPath = dest / filename;
-      std::filesystem::create_hard_link(entry, newPath);
+      fs::path newPath = dest / filename;
+      fs::create_hard_link(entry, newPath);
     }
     else {
-      std::filesystem::path appendedSource = source / entry.path().filename();
-      std::filesystem::path appendedDest = dest / entry.path().filename();
-      std::filesystem::create_directory(appendedDest);
+      fs::path appendedSource = source / entry.path().filename();
+      fs::path appendedDest = dest / entry.path().filename();
+      fs::create_directory(appendedDest);
       HardlinkFolders(appendedSource, appendedDest);
     }
   }
 }
 
-/*!
-* \brief Changes the names of the participant- and metadata directories from the long User Pseudonyms to the shorter Participant Alias.
-* \param directory Path to the output directory
-* \param globalConfig Shared pointer to the GlobalConfiguration
-*/
-void UpdateFormat(std::filesystem::path directory, std::shared_ptr<pep::GlobalConfiguration> globalConfig) {
+/// \brief Changes the names of the participant- and metadata directories from the long User Pseudonyms to the shorter Participant Alias.
+/// \param directory Path to the output directory
+/// \param globalConfig Shared pointer to the GlobalConfiguration
+void UpdateFormat(fs::path directory, std::shared_ptr<pep::GlobalConfiguration> globalConfig) {
   auto metadataDir = directory / DownloadMetadata::GetDirectoryName();
-  for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(directory)) {
+  for (const fs::directory_entry& entry : fs::directory_iterator(directory)) {
     std::string entryName = entry.path().filename().string();
     auto metaPath = metadataDir / entryName;
-    if (std::filesystem::is_directory(entry)
-      && !std::filesystem::equivalent(entry.path(), metadataDir)
+    if (fs::is_directory(entry)
+      && !fs::equivalent(entry.path(), metadataDir)
       && !globalConfig->getUserPseudonymFormat().matches(entryName)
-      && std::filesystem::exists(metaPath)
+      && fs::exists(metaPath)
       && entryName.size() == pep::LocalPseudonym::TextLength()) {
       auto lp = pep::LocalPseudonym::FromText(entryName);
       std::string participantAlias = globalConfig->getUserPseudonymFormat().makeUserPseudonym(lp);
-      std::filesystem::rename(entry.path(), entry.path().parent_path() / participantAlias);
-      std::filesystem::rename(metaPath, metaPath.parent_path() / participantAlias);
+      fs::rename(entry.path(), entry.path().parent_path() / participantAlias);
+      fs::rename(metaPath, metaPath.parent_path() / participantAlias);
     }
   }
 }
 
-/*!
-* \brief Print the current stage of the download process to std::cout
-* \param progress The Progress object containing the current state
-*/
+/// \brief Print the current stage of the download process to std::cout
+/// \param progress The Progress object containing the current state
 void ReportProgress(const pep::Progress& progress) {
   auto state = progress.getState();
   assert(!state.empty());
@@ -118,27 +112,23 @@ void ReportProgress(const pep::Progress& progress) {
   }
 }
 
-/*!
-* \brief Assure that the temp directory exists and if needed, is reset to match the outputDirectory.
-* \param ctx Shared pointer to the Context
-*/
+/// \brief Assure that the temp directory exists and if needed, is reset to match the outputDirectory.
+/// \param ctx Shared pointer to the Context
 void prepareTempDirectory(const std::shared_ptr<Context> &ctx) {
   // Existing temp directory should be left intact only if --resume is specified
-  if (std::filesystem::exists(ctx->tempDirectory) && !ctx->resume) {
+  if (fs::exists(ctx->tempDirectory) && !ctx->resume) {
     // Updating but not resuming: we'll need a fresh temp directory
-    std::filesystem::remove_all(ctx->tempDirectory);
+    fs::remove_all(ctx->tempDirectory);
   }
 
-  if (!std::filesystem::exists(ctx->tempDirectory)) {
-    std::filesystem::create_directory(ctx->tempDirectory);
+  if (!fs::exists(ctx->tempDirectory)) {
+    fs::create_directory(ctx->tempDirectory);
     HardlinkFolders(ctx->outputDirectory, ctx->tempDirectory);
   }
 }
 
-/*!
-* \brief Many flags and switches can not be simultaneously set. This function guards against all incompatible combinations.
-* \param ctx Shared pointer to the Context
-*/
+/// \brief Many flags and switches can not be simultaneously set. This function guards against all incompatible combinations.
+/// \param ctx Shared pointer to the Context
 void checkContextSettings(const std::shared_ptr<Context> &ctx) {
   if (ctx->force && ctx->options.assumePristine) {
     throw std::runtime_error("Options --force and --assume-pristine cannot be used together - specify either one or the other");
@@ -156,13 +146,13 @@ void checkContextSettings(const std::shared_ptr<Context> &ctx) {
   ctx->progress->advance("Checking local data");
   if (ctx->update || ctx->updateFormat) {
     // Existing temp directory should be left intact only if --resume is specified
-    if (std::filesystem::exists(ctx->tempDirectory) && !ctx->resume) {
+    if (fs::exists(ctx->tempDirectory) && !ctx->resume) {
       // User wants to update and we'll discard the temp directory: we'll need an output directory to work with
-      if (!std::filesystem::exists(ctx->outputDirectory)) {
+      if (!fs::exists(ctx->outputDirectory)) {
         throw std::runtime_error("Didn't find a source directory with name: " + ctx->outputDirectory + " to update");
       }
       // Verify that user really wants temp directory to be discarded
-      if (!ctx->force && !std::filesystem::is_empty(ctx->tempDirectory)) {
+      if (!ctx->force && !fs::is_empty(ctx->tempDirectory)) {
         throw std::runtime_error("Temporary download directory " + ctx->tempDirectory +
           " already exists. Specify --force to clear this directory or --resume to resume the download from this directory");
       }
@@ -173,10 +163,10 @@ void checkContextSettings(const std::shared_ptr<Context> &ctx) {
   }
   else {
     if (!ctx->force) {
-      if (std::filesystem::exists(ctx->outputDirectory) && !std::filesystem::is_empty(ctx->outputDirectory)) {
+      if (fs::exists(ctx->outputDirectory) && !fs::is_empty(ctx->outputDirectory)) {
         throw std::runtime_error("Output directory " + ctx->outputDirectory + " already exists. Specify --force to clear the directory and download anyway");
       }
-      if (std::filesystem::exists(ctx->tempDirectory) && !std::filesystem::is_empty(ctx->tempDirectory)) {
+      if (fs::exists(ctx->tempDirectory) && !fs::is_empty(ctx->tempDirectory)) {
         throw std::runtime_error("Temporary download directory " + ctx->tempDirectory + " already exists. Specify --force to clear the directory and download anyway");
       }
     }
@@ -185,8 +175,8 @@ void checkContextSettings(const std::shared_ptr<Context> &ctx) {
 
 so::FormatFlags ParseSingleExportFormat(const std::string& name) {
   static_assert(
-      SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
-      "formats handled in this function must mirror the SUPPORTED_EXPORT_FORMATS");
+      SupportedExportFormats == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
+      "formats handled in this function must mirror the SupportedExportFormats");
 
   const auto parsed =
       FlagsIf(so::FormatFlags::Csv, name == "csv") |
@@ -194,7 +184,7 @@ so::FormatFlags ParseSingleExportFormat(const std::string& name) {
       FlagsIf(so::FormatFlags::Yaml, name == "yaml");
   if (parsed != so::FormatFlags::None) { return parsed; }
 
-  const auto supported = so::ToSingleString(SUPPORTED_EXPORT_FORMATS, ", ");
+  const auto supported = so::ToSingleString(SupportedExportFormats, ", ");
   throw std::runtime_error("\"" + name + "\" is not a valid export format. Supported formats are: " + supported);
 }
 
@@ -204,11 +194,9 @@ so::FormatFlags ParseExportFormats(const std::vector<std::string>& formatNames) 
   return flags;
 }
 
-/*!
-* \brief Based on the values given by the user, create a Context object that contains all required data to perform the download.
-* \param client Shared pointer to the pepClient.
-* \param values The cli flag and switch values given by the user
-*/
+/// \brief Based on the values given by the user, create a Context object that contains all required data to perform the download.
+/// \param client Shared pointer to the pepClient.
+/// \param values The cli flag and switch values given by the user
 rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<pep::CoreClient> client, const pep::commandline::NamedValues& values) {
   auto ctx = std::make_shared<Context>();
   if (values.has("report-progress")) {
@@ -219,8 +207,10 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
   ctx->force = values.has("force");
   ctx->resume = values.has("resume");
   ctx->updateFormat = values.has("update-pseudonym-format");
-  ctx->outputDirectory = values.get<std::filesystem::path>("output-directory").string();
-  ctx->tempDirectory = std::filesystem::path(ctx->outputDirectory).replace_filename(std::filesystem::path(ctx->outputDirectory).filename().string() + "-pending").string();
+  // Normalize, because deleting "path/." throws
+  auto outputDirectory = values.get<fs::path>("output-directory").lexically_normal();
+  ctx->outputDirectory = outputDirectory.string();
+  ctx->tempDirectory = pep::AppendDirectoryNameSuffix(outputDirectory, "-pending").string();
   ctx->options.assumePristine = values.has("assume-pristine");
   ctx->allAccessible = values.has("all-accessible");
   ctx->exportFormats = ParseExportFormats(values.getOptionalMultiple<std::string>("export"));
@@ -262,10 +252,10 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
         ctx->content.columnGroups.push_back(cg.first);
       }
       if (ctx->content.groups.empty()) {
-        LOG(LOG_TAG, pep::warning) << "No accessible participants - download will contain no data";
+        PEP_LOG(LogTag, pep::Severity::Warning) << "No accessible participants - download will contain no data";
       }
       if (ctx->content.columnGroups.empty()) {
-        LOG(LOG_TAG, pep::warning) << "No accessible columns - download will contain no data";
+        PEP_LOG(LogTag, pep::Severity::Warning) << "No accessible columns - download will contain no data";
       }
       return ctx;
     });
@@ -274,11 +264,11 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
     if (!UsesSavedConfig(ctx)) {
       bool fullySpecified = true;
       if (!MultiCellQuery::SpecifiesColumns(values)) {
-        LOG(LOG_TAG, pep::error) << "No columns specified";
+        PEP_LOG(LogTag, pep::Severity::Error) << "No columns specified";
         fullySpecified = false;
       }
       if (!MultiCellQuery::SpecifiesParticipants(values)) {
-        LOG(LOG_TAG, pep::error) << "No participants specified";
+        PEP_LOG(LogTag, pep::Severity::Error) << "No participants specified";
         fullySpecified = false;
       }
       if (!fullySpecified) {
@@ -298,12 +288,10 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
           });
   }
 }
-/*!
-* \brief Based on the settings in the Context, create a DownloadDirectory that will handle all further data downloading and file creation.
-* \param ctx shared pointer to the Context
-* \param client shared pointer to the pepClient
-* \param globalConfig Shared pointer to the GlobalConfiguration
-*/
+/// \brief Based on the settings in the Context, create a DownloadDirectory that will handle all further data downloading and file creation.
+/// \param ctx shared pointer to the Context
+/// \param client shared pointer to the pepClient
+/// \param globalConfig Shared pointer to the GlobalConfiguration
 std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr<Context> ctx, const std::shared_ptr<pep::CoreClient> client, const std::shared_ptr<pep::GlobalConfiguration> globalConfig, bool applyFileExtensions) {
   std::shared_ptr<DownloadDirectory> directory;
   if (ctx->update) {
@@ -349,11 +337,11 @@ std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr
   }
   else {
     // Either the outputDirectory and tempDirectory do not exist/are empty, or --force was specified. Either way, start with a clean slate.
-    if (std::filesystem::exists(ctx->outputDirectory)) {
-      std::filesystem::remove_all(ctx->outputDirectory);
+    if (fs::exists(ctx->outputDirectory)) {
+      fs::remove_all(ctx->outputDirectory);
     }
-    if (std::filesystem::exists(ctx->tempDirectory)) {
-      std::filesystem::remove_all(ctx->tempDirectory);
+    if (fs::exists(ctx->tempDirectory)) {
+      fs::remove_all(ctx->tempDirectory);
     }
     directory = DownloadDirectory::Create(ctx->tempDirectory, client, ctx->content, globalConfig, applyFileExtensions);
   }
@@ -364,7 +352,7 @@ void cleanUp(std::shared_ptr<Context> ctx) {
 
   //When updating, remove old data after succesfull pull
   if (ctx->update || ctx->updateFormat) {
-    std::filesystem::remove_all(ctx->outputDirectory);
+    fs::remove_all(ctx->outputDirectory);
 
     // The "rename" call below often hangs after our "remove_all", possibly due to file system latency.
     // (Letting the file system catch up while we) sleep reliably gets rid of the problem for me.
@@ -372,16 +360,16 @@ void cleanUp(std::shared_ptr<Context> ctx) {
   }
 
   //Move downloaded data to final destination after succesfull pull
-  if (std::filesystem::exists(ctx->outputDirectory)) {
+  if (fs::exists(ctx->outputDirectory)) {
     throw std::runtime_error("Output directory already exists, please remove it before initiating a pull.");
   }
-  std::filesystem::rename(ctx->tempDirectory, ctx->outputDirectory);
-  LOG(LOG_TAG, pep::info) << "Data downloaded to " << std::filesystem::absolute(ctx->outputDirectory).string();
+  fs::rename(ctx->tempDirectory, ctx->outputDirectory);
+  PEP_LOG(LogTag, pep::Severity::Info) << "Data downloaded to " << fs::absolute(ctx->outputDirectory).string();
 }
 
 struct ExportContext final {
   std::shared_ptr<pep::GlobalConfiguration> globalConfig;
-  std::filesystem::path input_directory;
+  fs::path input_directory;
   bool force;
 };
 
@@ -392,19 +380,19 @@ void ExecuteExports(const so::FormatFlags formats, const ExportContext ctx) {
   const auto table = so::TableFrom(*downloadDir);
   const auto exportAs = [&ctx](const std::string format, std::function<void(std::ofstream&)> write) {
     const auto dest = ctx.input_directory.parent_path() / ("export." + format); // assuming format == file extension
-    if (!ctx.force && std::filesystem::exists(dest)) {
-      LOG(LOG_TAG, pep::error) << "Export destination \"" + dest.string()
+    if (!ctx.force && fs::exists(dest)) {
+      PEP_LOG(LogTag, pep::Severity::Error) << "Export destination \"" + dest.string()
               + "\" already exists, please remove it and then run \"pepcli export " + format + "\".";
       return; // skip this format
     }
     auto stream = std::ofstream{dest};
-    LOG(LOG_TAG, pep::info) << "Exporting pulled data as \"" + format + "\" to \"" + dest.string() + "\".";
+    PEP_LOG(LogTag, pep::Severity::Info) << "Exporting pulled data as \"" + format + "\" to \"" + dest.string() + "\".";
     write(stream);
   };
 
   static_assert(
-      SUPPORTED_EXPORT_FORMATS == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
-      "formats handled in this function must mirror the SUPPORTED_EXPORT_FORMATS");
+      SupportedExportFormats == (so::FormatFlags::Csv | so::FormatFlags::Json | so::FormatFlags::Yaml),
+      "formats handled in this function must mirror the SupportedExportFormats");
 
   if (HasFlags(formats, so::FormatFlags::Csv)) {
     exportAs("csv", [&table](std::ofstream& stream) { so::csv::append(stream, table); });
@@ -430,7 +418,7 @@ protected:
     using pep::commandline::Parameter;
     using pep::commandline::Value;
     return ChildCommandOf<CliApplication>::getSupportedParameters()
-      + Parameter("output-directory", "Directory to write files to").shorthand('o').value(Value<std::filesystem::path>()
+      + Parameter("output-directory", "Directory to write files to").shorthand('o').value(Value<fs::path>()
         .directory().defaultsTo("pulled-data"))
       + Parameter("force", "Overwrite or remove existing data in output directory").shorthand('f')
       + Parameter("resume", "Resume a download from the temporary folder").shorthand('r')
@@ -442,7 +430,7 @@ protected:
       + Parameter("report-progress", "Produce progress status messages")
       + Parameter("suppress-file-extensions", "Don't apply file extensions to downloaded files")
       + Parameter("export", "Add supplementary output in the selected format").value(Value<std::string>()
-        .multiple().allow(ToIndividualStrings(SUPPORTED_EXPORT_FORMATS)));
+        .multiple().allow(ToIndividualStrings(SupportedExportFormats)));
   }
 
   int execute() override {

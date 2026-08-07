@@ -9,11 +9,11 @@ namespace {
 
 class StorageFacilityTestEnvironment : public pep::SelfRegisteringTestEnvironment<StorageFacilityTestEnvironment> {
 private:
-  std::optional<std::filesystem::path> mS3proxySh;
+  std::optional<std::filesystem::path> s3proxySh_;
 
   bool invokeS3proxySh(const char* command) {
-    if (mS3proxySh.has_value()) {
-      std::string cmd = mS3proxySh->string() + " " + command;
+    if (s3proxySh_.has_value()) {
+      std::string cmd = s3proxySh_->string() + " " + command;
       //NOLINTNEXTLINE(concurrency-mt-unsafe,bugprone-command-processor) Tests run single-threaded; Only used in tests
       std::system(cmd.c_str());
       return true;
@@ -27,7 +27,7 @@ public:
     : pep::SelfRegisteringTestEnvironment<StorageFacilityTestEnvironment>(argc, argv) {
     auto end = argv + argc;
     if (std::find(argv, end, std::string("--launch-s3proxy")) != end) {
-      mS3proxySh = std::filesystem::path(argv[0]).parent_path() / "s3proxy.sh";
+      s3proxySh_ = std::filesystem::path(argv[0]).parent_path() / "s3proxy.sh";
     }
   }
 

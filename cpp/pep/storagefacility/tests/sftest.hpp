@@ -21,12 +21,12 @@ namespace pep::sftest {
 
     std::string host;
     uint16_t port;
-    std::string expect_common_name;  // "" when not expecting a particular one
-    std::string s3_access_key;
-    std::string s3_secret_key;
-    std::string s3_service_name;
-    std::string s3_test_bucket;
-    std::string s3_test_bucket2;
+    std::string expectCommonName;  // "" when not expecting a particular one
+    std::string s3AccessKey;
+    std::string s3SecretKey;
+    std::string s3ServiceName;
+    std::string s3TestBucket;
+    std::string s3TestBucket2;
 
     std::string s3_host_type; // "pep" or "external"
     // If s3_host_type is "pep" then we use the following root ca cert to check
@@ -36,12 +36,12 @@ namespace pep::sftest {
     Envs()
       : host(getenv("PEP_S3_HOST", "localhost")),
         port(static_cast<uint16_t>(std::stoi(getenv("PEP_S3_PORT", portDefault)))),
-        expect_common_name(getenv("PEP_S3_EXPECT_COMMON_NAME", "S3")),
-        s3_access_key(getenv("PEP_S3_ACCESS_KEY", "MyAccessKey")),
-        s3_secret_key(getenv("PEP_S3_SECRET_KEY", "MySecret")),
-        s3_service_name(getenv("PEP_S3_SERVICE_NAME", "s3")),
-        s3_test_bucket(getenv("PEP_S3_TEST_BUCKET", "myBucket")),
-        s3_test_bucket2(getenv("PEP_S3_TEST_BUCKET2", "myBucket2")),
+        expectCommonName(getenv("PEP_S3_EXPECT_COMMON_NAME", "S3")),
+        s3AccessKey(getenv("PEP_S3_ACCESS_KEY", "MyAccessKey")),
+        s3SecretKey(getenv("PEP_S3_SECRET_KEY", "MySecret")),
+        s3ServiceName(getenv("PEP_S3_SERVICE_NAME", "s3")),
+        s3TestBucket(getenv("PEP_S3_TEST_BUCKET", "myBucket")),
+        s3TestBucket2(getenv("PEP_S3_TEST_BUCKET2", "myBucket2")),
         s3_host_type(getenv("PEP_S3_HOST_TYPE", "pep")),
         root_ca_path(GetAbsolutePath(
               getenv("PEP_ROOT_CA", "rootCA.cert")))
@@ -65,11 +65,11 @@ namespace pep::sftest {
         std::shared_ptr<boost::asio::io_context> io_context) {
 
       s3::Client::Parameters params = {{
-          this->host, this->port, this->expect_common_name,
+          this->host, this->port, this->expectCommonName,
         }, {
-          this->s3_access_key,
-          this->s3_secret_key,
-          this->s3_service_name,
+          this->s3AccessKey,
+          this->s3SecretKey,
+          this->s3ServiceName,
         },
         io_context,
         this->GetCaCertFilepath(),

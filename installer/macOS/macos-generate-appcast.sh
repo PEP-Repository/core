@@ -13,24 +13,23 @@ ditto -c -k --sequesterRsrc --keepParent "$PEP_MACOS_APP_PATH" "$PEP_MACOS_APP_P
 # Delete the non .zip file
 rm -rf "$PEP_MACOS_APP_PATH"
 
-SPARKLE_BIN="$(which sparkle)"
-if [[ -z "$SPARKLE_BIN" ]]; then
-  echo "Sparkle not found in PATH"
+# Locate the generate_appcast tool. In CI it is provided by the pipeline (staged from the Sparkle Conan package, see ci_cd/macos-ci-build-app-bins.sh), for local runs fall back to one on PATH.
+GENERATE_APPCAST_BIN="${GENERATE_APPCAST:-$(command -v generate_appcast || true)}"
+if [[ -z "$GENERATE_APPCAST_BIN" ]]; then
+  echo "generate_appcast not found (set GENERATE_APPCAST to its path or put it on PATH)"
   exit 1
 fi
 
-# Find the Sparkle installation directory
-SPARKLE_DIR="$(readlink -f "$(dirname "$(readlink -f "$SPARKLE_BIN")")/../../..")"
-
-if [[ -z "$SPARKLE_DIR" ]]; then
-  echo "Sparkle not found"
+GENERATE_APPCAST_BIN="$(readlink -f "$GENERATE_APPCAST_BIN")"
+if [[ ! -x "$GENERATE_APPCAST_BIN" ]]; then
+  echo "generate_appcast at $GENERATE_APPCAST_BIN is not executable"
   exit 1
 fi
 
 # use xattr -d com.apple.quarantine <file> to remove the quarantine attribute from generate appcast (which makes the binary noninteractive) 
 # Signing will be enforced in the future which would make this step unneccesary: https://brew.sh/2025/11/12/homebrew-5.0.0/
-if xattr -p com.apple.quarantine "$SPARKLE_DIR/bin/generate_appcast" &> /dev/null; then
-  if xattr -d com.apple.quarantine "$SPARKLE_DIR/bin/generate_appcast"; then
+if xattr -p com.apple.quarantine "$GENERATE_APPCAST_BIN" &> /dev/null; then
+  if xattr -d com.apple.quarantine "$GENERATE_APPCAST_BIN"; then
     echo "Removed quarantine attribute from generate_appcast"
   else
     echo "Failed to remove quarantine attribute from generate_appcast"
@@ -39,7 +38,7 @@ if xattr -p com.apple.quarantine "$SPARKLE_DIR/bin/generate_appcast" &> /dev/nul
 fi
 
 clean_up_sparkle() {
-  rm -rf $HOME/Library/Caches/Sparkle_generate_appcast/*
+  rm -rf "$HOME"/Library/Caches/Sparkle_generate_appcast/*
 }
 
 # Generate the appcast
@@ -64,7 +63,7 @@ if [[ "${CI:-false}" == "true" ]]; then
     exit 1
   fi
 
-  echo "$SPARKLE_KEY" | "$SPARKLE_DIR/bin/generate_appcast" --ed-key-file - \
+  echo "$SPARKLE_KEY" | "$GENERATE_APPCAST_BIN" --ed-key-file - \
   --link "https://pep.cs.ru.nl" \
   --critical-update-version "" \
   --auto-prune-update-files \
@@ -75,7 +74,7 @@ if [[ "${CI:-false}" == "true" ]]; then
 else
   source "$(git rev-parse --show-toplevel)/ci_cd/macos-ci-obtain-signing-certification.sh"
 
-  "$SPARKLE_DIR/bin/generate_appcast" \
+  "$GENERATE_APPCAST_BIN" \
   --link "https://pep.cs.ru.nl" \
   --critical-update-version "" \
   --auto-prune-update-files \

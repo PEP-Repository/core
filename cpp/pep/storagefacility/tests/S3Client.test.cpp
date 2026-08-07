@@ -35,14 +35,14 @@ namespace {
 
     {
       auto results = testutils::exhaust<std::string>(*io_context,
-        client->putObject("objectName", envs.s3_test_bucket, data));
+        client->putObject("objectName", envs.s3TestBucket, data));
 
       EXPECT_EQ(results->size(), 1);
     }
 
     {
       auto results = testutils::exhaust<std::shared_ptr<std::string>>(
-          *io_context, client->getObject("objectName", envs.s3_test_bucket));
+          *io_context, client->getObject("objectName", envs.s3TestBucket));
 
       EXPECT_EQ(results->size(), 1);
       EXPECT_EQ(*((*results)[0]), data);
@@ -51,7 +51,7 @@ namespace {
     {
       auto results = testutils::exhaust<std::shared_ptr<std::string>>(
           *io_context,
-        client->getObject("AnObjectThatShouldnotExist", envs.s3_test_bucket));
+        client->getObject("AnObjectThatShouldnotExist", envs.s3TestBucket));
 
       EXPECT_EQ(results->size(), 0);
     }

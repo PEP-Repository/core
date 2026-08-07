@@ -9,10 +9,10 @@ namespace pep {
 
 class GitlabVersion {
 public:
-  SemanticVersion getSemver() const { return mSemver;}
-  inline const std::string& getProjectPath() const noexcept { return mProjectPath; } // 'pep/foss', ... (Gitlab project path)
-  inline const std::string& getReference() const noexcept { return mReference; } // 'main', ... (git branches or tags)
-  inline const std::string& getCommit() const noexcept { return mCommit; } // git commit (SHA) if available
+  SemanticVersion getSemver() const { return semver_;}
+  inline const std::string& getProjectPath() const noexcept { return projectPath_; } // 'pep/foss', ... (Gitlab project path)
+  inline const std::string& getReference() const noexcept { return reference_; } // 'main', ... (git branches or tags)
+  inline const std::string& getCommit() const noexcept { return commit_; } // git commit (SHA) if available
 
   GitlabVersion(
     std::string projectPath,
@@ -38,9 +38,9 @@ protected:
   static std::string ConcatSummaryParts(const std::string& first, const std::string& delim, const std::string& last);
 
 private:
-  std::string mProjectPath;
-  std::string mReference;
-  std::string mCommit;
-  SemanticVersion mSemver;
+  std::string projectPath_;
+  std::string reference_;
+  std::string commit_;
+  SemanticVersion semver_;
 };
 } // namespace pep

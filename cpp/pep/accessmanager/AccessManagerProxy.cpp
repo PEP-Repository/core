@@ -12,7 +12,7 @@ namespace pep {
 rxcpp::observable<SignedTicket2> AccessManagerProxy::requestTicket(ClientSideTicketRequest2 request) const {
   TicketRequest2 sendable{
     std::move(request),
-    false // mRequestIndexedTicket
+    false // requestIndexedTicket_
   };
   return this->sendRequest<SignedTicket2>(this->sign(std::move(sendable)))
     .op(RxGetOne());
@@ -21,7 +21,7 @@ rxcpp::observable<SignedTicket2> AccessManagerProxy::requestTicket(ClientSideTic
 rxcpp::observable<IndexedTicket2> AccessManagerProxy::requestIndexedTicket(ClientSideTicketRequest2 request) const {
   TicketRequest2 sendable{
     std::move(request),
-    true // mRequestIndexedTicket
+    true // requestIndexedTicket_
   };
   return this->sendRequest<IndexedTicket2>(this->sign(std::move(sendable)))
     .op(RxGetOne());
@@ -39,6 +39,11 @@ rxcpp::observable<GlobalConfiguration> AccessManagerProxy::requestGlobalConfigur
 
 rxcpp::observable<VerifiersResponse> AccessManagerProxy::requestVerifiers() const {
   return this->sendRequest<VerifiersResponse>(VerifiersRequest())
+    .op(RxGetOne());
+}
+
+rxcpp::observable<UserVerifiersResponse> AccessManagerProxy::requestUserVerifiers(UserVerifiersRequest request) const {
+  return this->sendRequest<UserVerifiersResponse>(std::move(request))
     .op(RxGetOne());
 }
 

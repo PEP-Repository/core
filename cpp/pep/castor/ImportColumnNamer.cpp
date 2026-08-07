@@ -1,5 +1,6 @@
 #include <pep/castor/ImportColumnNamer.hpp>
 #include <pep/castor/Visit.hpp>
+#include <pep/utils/EnumUtils.hpp>
 
 #include <boost/algorithm/string/join.hpp>
 
@@ -7,13 +8,13 @@ namespace pep {
 namespace castor {
 
 ImportColumnNamer::ImportColumnNamer(ColumnNameMappings mappings)
-  : mMappings(std::move(mappings)) {
+  : mappings_(std::move(mappings)) {
 }
 
 std::string ImportColumnNamer::joinColumnNameSections(const std::string& configuredPrefix, const std::vector<std::string>& sections) const {
   std::vector<std::string> parts = { configuredPrefix };
   parts.reserve(parts.size() + sections.size());
-  std::transform(sections.cbegin(), sections.cend(), std::back_inserter(parts), [&mappings = mMappings](const std::string& section) {
+  std::transform(sections.cbegin(), sections.cend(), std::back_inserter(parts), [&mappings = mappings_](const std::string& section) {
     return mappings.getColumnNameSectionFor(section);
     });
   return boost::algorithm::join(parts, ".");
@@ -35,7 +36,7 @@ rxcpp::observable<std::string> ImportColumnNamer::getImportableColumnNames(std::
   if (studySlug.empty()) {
     throw std::runtime_error("No study slug configured for short pseudonym " + spName);
   }
-  return rxcpp::rxs::iterate(storageDefinitions).flat_map([studySlug, spName, connection, nameMappings = mMappings, answerSetCount](std::shared_ptr<CastorStorageDefinition> storage) {
+  return rxcpp::rxs::iterate(storageDefinitions).flat_map([studySlug, spName, connection, nameMappings = mappings_, answerSetCount](std::shared_ptr<CastorStorageDefinition> storage) {
     const auto& dataColumn = storage->getDataColumn();
     if (dataColumn.empty()) {
       throw std::runtime_error("No data column configured for storage of Castor short pseudonym " + spName);
@@ -53,11 +54,11 @@ rxcpp::observable<std::string> ImportColumnNamer::getImportableColumnNames(std::
       .flat_map([dataColumn, storage, spName, answerSetCount, namer = std::make_shared<ImportColumnNamer>(nameMappings)](std::shared_ptr<Study> study) -> rxcpp::observable<std::string> {
       auto type = storage->getStudyType();
       switch (type) {
-      case pep::CastorStudyType::STUDY:
+      case pep::CastorStudyType::Crf:
         return study->getForms()
           .map([dataColumn, namer](std::shared_ptr<pep::castor::Form> form) {return namer->getColumnName(dataColumn, form); });
 
-      case pep::CastorStudyType::SURVEY:
+      case pep::CastorStudyType::Survey:
         // If all survey package instances should be imported, both "week offset device column" and "answer set count" must be specified.
         // If only a single ("the latest") survey package instance should be imported, neither "week offset device column" nor "answer set count" must be specified.
         if (storage->getWeekOffsetDeviceColumn().empty()) {
@@ -92,11 +93,11 @@ rxcpp::observable<std::string> ImportColumnNamer::getImportableColumnNames(std::
               });
             });
 
-      case pep::CastorStudyType::REPEATING_DATA:
+      case pep::CastorStudyType::RepeatingData:
         return rxcpp::observable<>::just(storage->getDataColumn());
       }
 
-      throw std::runtime_error("Column " + spName + " has unsupported study type " + std::to_string(type));
+      throw std::runtime_error("Column " + spName + " has unsupported study type " + std::to_string(ToUnderlying(type)));
     });
   });
 

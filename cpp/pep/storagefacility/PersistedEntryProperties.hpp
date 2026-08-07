@@ -19,35 +19,29 @@ namespace pep {
  * performs the necessary prefixing. We do so in the EntryContent::Load and EntryContent::Save methods.
  */
 
- /*!
-  * \brief The structure used to store file store entry properties when they are persisted.
-  */
+ /// \brief The structure used to store file store entry properties when they are persisted.
 using PersistedEntryProperties = std::map<std::string, std::string>;
 
-/*!
- * \brief Reads a property and removes it from the structure.
- * \tparam T The type of property (value) to extract.
- * \param source The structure containing the property.
- * \param key The key (name) under which the property is stored.
- * \return The property's value.
- * \remark This template function implements the general case: values are stored by serializing the value (type).
- *         Specializations exist for certain (e.g. non-serializable) value types.
- * \remark Removes the (named) property so that remaining (x-prefixed) entries can be processed generically/iteratively.
- */
+/// \brief Reads a property and removes it from the structure.
+/// \tparam T The type of property (value) to extract.
+/// \param source The structure containing the property.
+/// \param key The key (name) under which the property is stored.
+/// \return The property's value.
+/// \remark This template function implements the general case: values are stored by serializing the value (type).
+///         Specializations exist for certain (e.g. non-serializable) value types.
+/// \remark Removes the (named) property so that remaining (x-prefixed) entries can be processed generically/iteratively.
 template <typename T>
 T ExtractPersistedEntryProperty(PersistedEntryProperties& source, const std::string& key) {
   return Serialization::FromString<T>(ExtractPersistedEntryProperty<std::string>(source, key));
 }
 
-/*!
- * \brief Sets a property to a certain value in the structure.
- * \tparam T The type of property (value) to assign.
- * \param destination The structure that should hold the property.
- * \param key The key (name) under which the property is stored.
- * \param value The value to store for the property.
- * \remark This template function implements the general case: values are stored by serializing the value (type).
- *         Specializations exist for certain (e.g. non-serializable) value types.
- */
+/// \brief Sets a property to a certain value in the structure.
+/// \tparam T The type of property (value) to assign.
+/// \param destination The structure that should hold the property.
+/// \param key The key (name) under which the property is stored.
+/// \param value The value to store for the property.
+/// \remark This template function implements the general case: values are stored by serializing the value (type).
+///         Specializations exist for certain (e.g. non-serializable) value types.
 template <typename T>
 void SetPersistedEntryProperty(PersistedEntryProperties& destination, const std::string& key, const T& value) {
   SetPersistedEntryProperty<std::string>(destination, key, Serialization::ToString(value));
@@ -76,13 +70,11 @@ template <> EncryptionScheme ExtractPersistedEntryProperty<EncryptionScheme>(Per
 //! Specialized property assignment for EncryptionScheme (enumerator) values.
 template <> void SetPersistedEntryProperty<EncryptionScheme>(PersistedEntryProperties& destination, const std::string& key, const EncryptionScheme& value);
 
-/*!
- * \brief Reads a property from the structure, returning it and removing it from the structure if it exists.
- * \tparam T The type of property to extract.
- * \param source The structure containing the property.
- * \param key The key (name) under which the property is stored.
- * \return The property's value, or std::nullopt if the property was not present in the structure.
- */
+/// \brief Reads a property from the structure, returning it and removing it from the structure if it exists.
+/// \tparam T The type of property to extract.
+/// \param source The structure containing the property.
+/// \param key The key (name) under which the property is stored.
+/// \return The property's value, or std::nullopt if the property was not present in the structure.
 template <typename T>
 std::optional<T> TryExtractPersistedEntryProperty(PersistedEntryProperties& source, const std::string& key) {
   if (source.find(key) != source.end()) {

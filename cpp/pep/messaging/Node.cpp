@@ -8,7 +8,7 @@ namespace pep::messaging {
 
 namespace {
 
-const std::string LOG_TAG = "Messaging node";
+const std::string LogTag = "Messaging node";
 
 std::string GetIncompatibleVersionSummary(const std::optional<GitlabVersion>& version) {
   if (version == std::nullopt) {
@@ -21,9 +21,9 @@ std::string GetIncompatibleVersionSummary(const std::optional<GitlabVersion>& ve
   return result;
 }
 
-void LogIncompatibleVersionDetails(severity_level severity, const std::string& type, const std::optional<GitlabVersion>& remote, const std::optional<GitlabVersion>& local) {
+void LogIncompatibleVersionDetails(Severity severity, const std::string& type, const std::optional<GitlabVersion>& remote, const std::optional<GitlabVersion>& local) {
   if (remote != std::nullopt || local != std::nullopt) {
-    LOG(LOG_TAG, severity) << "- " << type << " versions"
+    PEP_LOG(LogTag, severity) << "- " << type << " versions"
       << ": remote = " << GetIncompatibleVersionSummary(remote)
       << "; local = " << GetIncompatibleVersionSummary(local);
   }
@@ -31,19 +31,19 @@ void LogIncompatibleVersionDetails(severity_level severity, const std::string& t
 
 class BinaryFinalizationNotifier {
 private:
-  EventSubscription mSubscription;
-  std::optional<rxcpp::subscriber<FakeVoid>> mSubscriber;
+  EventSubscription subscription_;
+  std::optional<rxcpp::subscriber<FakeVoid>> subscriber_;
 
 private:
   BinaryFinalizationNotifier() noexcept = default;
 
   void notify() {
-    if (mSubscriber.has_value()) {
-      mSubscriber->on_next(FakeVoid());
-      mSubscriber->on_completed();
-      mSubscriber.reset();
+    if (subscriber_.has_value()) {
+      subscriber_->on_next(FakeVoid());
+      subscriber_->on_completed();
+      subscriber_.reset();
     }
-    mSubscription.cancel();
+    subscription_.cancel();
   }
 
 public:
@@ -51,7 +51,7 @@ public:
     std::shared_ptr<BinaryFinalizationNotifier> result(new BinaryFinalizationNotifier());
 
     if (node.status() != LifeCycler::Status::Finalized) { // Don't subscribe (because event won't be notified) if the node is already finalized
-      result->mSubscription = node.onStatusChange.subscribe([result](const LifeCycler::StatusChange& change) {
+      result->subscription_ = node.onStatusChange.subscribe([result](const LifeCycler::StatusChange& change) {
         if (change.updated == LifeCycler::Status::Finalized) {
           result->notify();
         }
@@ -62,25 +62,25 @@ public:
   }
 
   void hookup(rxcpp::subscriber<FakeVoid> subscriber) {
-    assert(!mSubscriber.has_value());
-    mSubscriber = subscriber;
+    assert(!subscriber_.has_value());
+    subscriber_ = subscriber;
 
-    if (!mSubscription.active()) { // The node was finalized to begin with
+    if (!subscription_.active()) { // The node was finalized to begin with
       this->notify();
     }
-    // else wait for us to be notified through our mSubscription
+    // else wait for us to be notified through our subscription_
   }
 };
 }
 
 Node::Node(const networking::Protocol::ServerParameters& parameters, RequestHandler& requestHandler)
-  : mIoContext(parameters.ioContext()), mBinary(networking::Server::Create(parameters)), mRequestHandler(&requestHandler), mIncompatibleRemotes(std::set<IncompatibleRemote>()) {
-  assert(mBinary->status() == LifeCycler::Status::Uninitialized);
+  : ioContext_(parameters.ioContext()), binary_(networking::Server::Create(parameters)), requestHandler_(&requestHandler), incompatibleRemotes_(std::set<IncompatibleRemote>()) {
+  assert(binary_->status() == LifeCycler::Status::Uninitialized);
 }
 
 Node::Node(const networking::Protocol::ClientParameters& parameters, std::optional<networking::Client::ReconnectParameters> reconnectParameters)
-  : mIoContext(parameters.ioContext()), mReconnectParameters(reconnectParameters), mBinary(networking::Client::Create(parameters, mReconnectParameters)) {
-  assert(mBinary->status() == LifeCycler::Status::Uninitialized);
+  : ioContext_(parameters.ioContext()), reconnectParameters_(reconnectParameters), binary_(networking::Client::Create(parameters, reconnectParameters_)) {
+  assert(binary_->status() == LifeCycler::Status::Uninitialized);
 }
 
 void Node::vetConnectionWith(const std::string& description, const std::string& address, const BinaryVersion& binary, const std::optional<ConfigVersion>& config) {
@@ -88,28 +88,28 @@ void Node::vetConnectionWith(const std::string& description, const std::string& 
     auto refuse = binary.isGitlabBuild() && BinaryVersion::current.isGitlabBuild(); // TODO: perhaps make this depend on ConfigVersion::getReference() == "local"?
 
     std::string msg;
-    severity_level severity{};
+    Severity severity{};
     if (refuse) {
       msg = "Rejected: " + description + " refusing";
-      severity = error;
+      severity = Severity::Error;
     } else {
       msg = "Development genuflection: " + description + " allowing";
-      severity = warning;
+      severity = Severity::Warning;
     }
 
     msg += " connection between incompatible remote (" + binary.getProtocolChecksum() + " at " + address
       + ") and local (" + BinaryVersion::current.getProtocolChecksum() + ") software versions";
 
     // Always log if we're not keeping track of incompatible remotes (i.e. this is a client node)
-    auto log = !mIncompatibleRemotes.has_value();
+    auto log = !incompatibleRemotes_.has_value();
     if (!log) {
       // If we haven't seen this incompatible remote before, log about it now (once)
       IncompatibleRemote remote{ address, GetIncompatibleVersionSummary(binary), GetIncompatibleVersionSummary(config) };
-      log = mIncompatibleRemotes->emplace(std::move(remote)).second;
+      log = incompatibleRemotes_->emplace(std::move(remote)).second;
     }
 
     if (log) {
-      LOG(LOG_TAG, severity) << msg;
+      PEP_LOG(LogTag, severity) << msg;
       LogIncompatibleVersionDetails(severity, "binary", binary, BinaryVersion::current); // TODO: check if derived (BinaryVersion) details are logged instead of only base (GitlabVersion) details
       LogIncompatibleVersionDetails(severity, "config", config, ConfigVersion::Current()); // TODO: check if derived (ConfigVersion) details are logged instead of only base (GitlabVersion) details
     }
@@ -121,34 +121,34 @@ void Node::vetConnectionWith(const std::string& description, const std::string& 
 }
 
 void Node::handleConnectionEstablishing(std::shared_ptr<Connection> connection, const LifeCycler::StatusChange& change) {
-  auto existing = std::find_if(mExistingConnections.begin(), mExistingConnections.end(), [connection](const ExistingConnection& candidate) {
+  auto existing = std::find_if(existingConnections_.begin(), existingConnections_.end(), [connection](const ExistingConnection& candidate) {
     return candidate.own == connection;
     });
-  if (existing == mExistingConnections.end()) {
-    // This messaging::Connection is sending a notification but we've already discarded it from our mExistingConnections, i.e. the associated
+  if (existing == existingConnections_.end()) {
+    // This messaging::Connection is sending a notification but we've already discarded it from our existingConnections_, i.e. the associated
     // (binary) networking::Connection has already been destroyed, and we've already run the cleanup code in (the lambda in) Node::start.
     // See https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/2867#note_58687
     // Since this Node (created and therefore) still owns the messaging::Connection, we need to notify our subscriber of the failure.
     assert(change.updated >= LifeCycler::Status::Finalizing && "Messaging connection doing stuff after its binary connection has died");
-    if (mSubscriber.has_value()) {
-      mSubscriber->on_next(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Binary connection was destroyed"))));
+    if (subscriber_.has_value()) {
+      subscriber_->on_next(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Binary connection was destroyed"))));
     }
     return;
   }
 
   switch (change.updated) {
   case LifeCycler::Status::Reinitializing: // Notify subscriber of our (failed) attempt and retry
-    LOG(LOG_TAG, debug) << "Messaging connection reinitializing";
-    if (mSubscriber.has_value()) {
-      mSubscriber->on_next(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Failed to establish messaging connection: will be retried"))));
+    PEP_LOG(LogTag, Severity::Debug) << "Messaging connection reinitializing";
+    if (subscriber_.has_value()) {
+      subscriber_->on_next(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Failed to establish messaging connection: will be retried"))));
     }
     break;
   case LifeCycler::Status::Initialized: // Established: hand off to subscriber
-    LOG(LOG_TAG, debug) << "Messaging connection established";
+    PEP_LOG(LogTag, Severity::Debug) << "Messaging connection established";
     existing->establishing.cancel();
     existing->own.reset();
-    if (mSubscriber.has_value()) {
-      mSubscriber->on_next(Connection::Attempt::Result::Success(connection));
+    if (subscriber_.has_value()) {
+      subscriber_->on_next(Connection::Attempt::Result::Success(connection));
     }
     break;
   default:
@@ -162,15 +162,15 @@ Node::~Node() noexcept {
 }
 
 std::string Node::describe() const {
-  if (mBinary == nullptr) {
+  if (binary_ == nullptr) {
     throw std::runtime_error("Can't retrieve description from discarded networking::Node");
   }
-  return mBinary->describe();
+  return binary_->describe();
 }
 
 rxcpp::observable<Connection::Attempt::Result> Node::start() {
-  assert(mSubscriber == std::nullopt);
-  assert(mBinary != nullptr);
+  assert(subscriber_ == std::nullopt);
+  assert(binary_ != nullptr);
 
   return CreateObservable<Connection::Attempt::Result>([weak = WeakFrom(*this)](rxcpp::subscriber<Connection::Attempt::Result> subscriber) {
     auto self = weak.lock();
@@ -182,8 +182,8 @@ rxcpp::observable<Connection::Attempt::Result> Node::start() {
       return;
     }
 
-    self->mSubscriber = subscriber;
-    self->mBinaryConnectionAttempt = self->mBinary->onConnectionAttempt.subscribe([weak, subscriber](const networking::Connection::Attempt::Result& binaryResult) {
+    self->subscriber_ = subscriber;
+    self->binaryConnectionAttempt_ = self->binary_->onConnectionAttempt.subscribe([weak, subscriber](const networking::Connection::Attempt::Result& binaryResult) {
       if (!binaryResult) {
         subscriber.on_next(Connection::Attempt::Result::Failure(binaryResult.exception()));
       } else {
@@ -197,9 +197,9 @@ rxcpp::observable<Connection::Attempt::Result> Node::start() {
           return;
         }
 
-        std::erase_if(self->mExistingConnections, [](const ExistingConnection& candidate) {return candidate.binary.lock() == nullptr; });
+        std::erase_if(self->existingConnections_, [](const ExistingConnection& candidate) {return candidate.binary.lock() == nullptr; });
         auto binaryConnection = *binaryResult;
-        if (std::any_of(self->mExistingConnections.begin(), self->mExistingConnections.end(), [binaryConnection](const ExistingConnection& existing) {
+        if (std::any_of(self->existingConnections_.begin(), self->existingConnections_.end(), [binaryConnection](const ExistingConnection& existing) {
           return existing.binary.lock() == binaryConnection;
           })) {
           throw std::runtime_error("Node attempting to create a second messaging connection for a single binary connection");
@@ -207,7 +207,7 @@ rxcpp::observable<Connection::Attempt::Result> Node::start() {
 
         ExistingConnection existing{
           .binary = binaryConnection,
-          .own = Connection::Open(self, binaryConnection, self->mIoContext, self->mRequestHandler),
+          .own = Connection::Open(self, binaryConnection, self->ioContext_, self->requestHandler_),
           .establishing{} // Silence clang's -Wmissing-field-initializers
         };
         existing.establishing = existing.own->onStatusChange.subscribe([weak, own = existing.own](const LifeCycler::StatusChange& change) {
@@ -216,12 +216,12 @@ rxcpp::observable<Connection::Attempt::Result> Node::start() {
           }
           });
 
-        self->mExistingConnections.emplace_back(std::move(existing));
+        self->existingConnections_.emplace_back(std::move(existing));
       }
       });
 
     auto binaryFinalization = std::make_shared<EventSubscription>();
-    *binaryFinalization = self->mBinary->onStatusChange.subscribe([weak, subscriber, binaryFinalization](const LifeCycler::StatusChange& change) {
+    *binaryFinalization = self->binary_->onStatusChange.subscribe([weak, subscriber, binaryFinalization](const LifeCycler::StatusChange& change) {
       if (change.updated == LifeCycler::Status::Finalizing) {
         binaryFinalization->cancel();
         if (subscriber.is_subscribed()) {
@@ -229,23 +229,23 @@ rxcpp::observable<Connection::Attempt::Result> Node::start() {
           subscriber.unsubscribe();
         }
         if (auto self = weak.lock()) {
-          self->mSubscriber.reset();
+          self->subscriber_.reset();
         }
       }
       });
 
-    self->mBinary->start();
+    self->binary_->start();
     });
 }
 
 rxcpp::observable<FakeVoid> Node::shutdown() {
-  auto binary = std::move(mBinary); // Ensure that a (possibly recursive) next call is a no-op
+  auto binary = std::move(binary_); // Ensure that a (possibly recursive) next call is a no-op
   if (binary == nullptr) {
     return rxcpp::observable<>::just(FakeVoid());
   }
 
-  mBinaryConnectionAttempt.cancel();
-  for (auto& existing : mExistingConnections) {
+  binaryConnectionAttempt_.cancel();
+  for (auto& existing : existingConnections_) {
     existing.establishing.cancel();
     existing.own.reset();
   }

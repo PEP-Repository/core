@@ -8,7 +8,7 @@ PEP is an acronym for "Polymorphic Encryption and Pseudonymization". The softwar
 
 1. Install required packages (ubuntu packages in monospace)
    - `git`
-   - conan (e.g. via `pipx`)
+   - conan 2.27 or newer (e.g. via `pipx`)
    - `cmake` 3.28 or newer (see https://apt.kitware.com/ for how to get this for older versions of debian-based OSs)
    - ninja (`ninja-build`)
    - `clang` (v18 is known to work (01-2024); see https://apt.llvm.org/ for how to get recent versions for older versions of debian-based OSs) (`g++` supported but not recommended for compiler performance reasons related to templates & RxCpp)
@@ -17,14 +17,11 @@ PEP is an acronym for "Polymorphic Encryption and Pseudonymization". The softwar
    - For Go watchdog:
      - Install the `golang` package (version 1.21 or newer. See <https://launchpad.net/%7Elongsleep/+archive/ubuntu/golang-backports>, if you use a linux distro based on Ubuntu 22.04)
      - set environment variables (e.g. in `.bashrc` or `.zshrc`):
-
        ```shell
        export GOPATH="$HOME/go"
        export PATH="$GOPATH/bin:$PATH"
        ```
-
      - install the Go protobuf compiler:
-
        ```shell
        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
        ```
@@ -36,7 +33,6 @@ PEP is an acronym for "Polymorphic Encryption and Pseudonymization". The softwar
    CC=clang CXX=clang++ ./docker-build/builder/conan/init_conan_profile.sh
    ```
 
-   Note: Conan <2.3 [may not](https://github.com/conan-io/conan/issues/8866) pick up your default compiler (`cc`/`c++`) without `CC`/`CXX`.
 4. Build dependencies and [generate CMake presets](https://docs.conan.io/2/examples/tools/cmake/cmake_toolchain/build_project_cmake_presets.html):
 
    ```shell

@@ -30,24 +30,24 @@ public:
 
 private:
   static std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> AddEnumerateAndRetrieveResult(std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> data, const pep::EnumerateAndRetrieveResult& result) {
-    if (!result.mDataSet) {
+    if (!result.dataSet) {
       throw std::runtime_error("Data could not be retrieved inline"); // TODO: support this
     }
-    if (result.mAccessGroupPseudonym == nullptr) {
+    if (result.accessGroupPseudonym == nullptr) {
       throw std::runtime_error("Access group pseudonym required");
     }
 
-    auto& entry = (*data)[result.mLocalPseudonymsIndex];
+    auto& entry = (*data)[result.localPseudonymsIndex];
     if (entry.accessGroupPseudonym == nullptr) { // A new ParticipantData instance (with .accessGroupPseudonym = nullptr) was just inserted
-      entry.accessGroupPseudonym = result.mAccessGroupPseudonym;
+      entry.accessGroupPseudonym = result.accessGroupPseudonym;
     }
-    assert(*entry.accessGroupPseudonym == *result.mAccessGroupPseudonym);
+    assert(*entry.accessGroupPseudonym == *result.accessGroupPseudonym);
 
-    if (result.mColumn == "ParticipantIdentifier") {
-      entry.id = result.mData;
+    if (result.column == "ParticipantIdentifier") {
+      entry.id = result.data;
     }
     else {
-      entry.deviceHistory[result.mColumn] = result.mData;
+      entry.deviceHistory[result.column] = result.data;
     }
 
     return data;
@@ -58,7 +58,7 @@ private:
 
     if (data.id.empty()) {
       assert(data.accessGroupPseudonym != nullptr);
-      LOG(LOG_TAG, pep::warning) << "Missing PEP ID for subject with local pseudonym " << data.accessGroupPseudonym->text();
+      PEP_LOG(LogTag, pep::Severity::Warning) << "Missing PEP ID for subject with local pseudonym " << data.accessGroupPseudonym->text();
       result = 1;
     }
 
@@ -67,11 +67,11 @@ private:
         pep::ParticipantDeviceHistory::Parse(history.second);
       }
       catch (const std::exception& e) {
-        LOG(LOG_TAG, pep::warning) << "Invalid device history in column " << history.first << " for participant " << data.id << ": " << e.what();
+        PEP_LOG(LogTag, pep::Severity::Warning) << "Invalid device history in column " << history.first << " for participant " << data.id << ": " << e.what();
         result = 1;
       }
       catch (...) {
-        LOG(LOG_TAG, pep::warning) << "Invalid device history in column " << history.first << " for participant " << data.id;
+        PEP_LOG(LogTag, pep::Severity::Warning) << "Invalid device history in column " << history.first << " for participant " << data.id;
         result = 1;
       }
     }
@@ -93,7 +93,7 @@ private:
         [ownResult](std::shared_ptr<pep::CoreClient> client) {
         return client->getGlobalConfiguration()
           .flat_map([client](std::shared_ptr<pep::GlobalConfiguration> config) {
-          pep::enumerateAndRetrieveData2Opts opts;
+          pep::EnumerateAndRetrieveData2Opts opts;
           opts.groups = { "*" };
           opts.columns = { "ParticipantIdentifier" };
           opts.includeAccessGroupPseudonyms = true;

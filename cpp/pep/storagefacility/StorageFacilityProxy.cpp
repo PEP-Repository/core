@@ -1,9 +1,11 @@
 #include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxToSet.hpp>
 #include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/storagefacility/StorageFacilityProxy.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/utils/XxHasher.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
 
 namespace pep {
 
@@ -24,13 +26,13 @@ rxcpp::observable<DataStoreResponse2> StorageFacilityProxy::requestDataStore(Dat
 
   // Calculate hash of (serialized) pages as they are processed
   messaging::MessageBatches batches = pages
-    .map([ctx, numFiles = request.mEntries.size()](messaging::TailSegment<DataPayloadPage> segment) -> messaging::MessageSequence {
+    .map([ctx, numFiles = request.entries.size()](messaging::TailSegment<DataPayloadPage> segment) -> messaging::MessageSequence {
     return segment
       .map([ctx, numFiles](DataPayloadPage page) {
 
-      if (page.mIndex >= numFiles) {
+      if (page.index >= numFiles) {
         throw std::runtime_error(std::format("Received out-of-bounds file index: {} >= {}",
-            page.mIndex, numFiles));
+            page.index, numFiles));
       }
 
       ctx->order.check(page);
@@ -44,7 +46,7 @@ rxcpp::observable<DataStoreResponse2> StorageFacilityProxy::requestDataStore(Dat
   return this->sendRequest<DataStoreResponse2>(this->sign(std::move(request)), std::move(batches))
     .op(RxGetOne())
     .tap([ctx](const DataStoreResponse2& response) {
-    if (response.mHash != ctx->hasher.digest()) {
+    if (response.hash != ctx->hasher.digest()) {
       throw std::runtime_error("Returned hash from the storage facility did not match the calculated hash for the data to be stored.");
     }
       });
@@ -67,6 +69,20 @@ rxcpp::observable<DataEnumerationResponse2> StorageFacilityProxy::requestDataEnu
 rxcpp::observable<DataHistoryResponse2> StorageFacilityProxy::requestDataHistory(DataHistoryRequest2 request) const {
   return this->sendRequest<DataHistoryResponse2>(this->sign(std::move(request)))
     .op(RxGetOne());
+}
+
+rxcpp::observable<DataSizeResponse> StorageFacilityProxy::requestDataSize(DataSizeRequest request) const {
+  return this->sendRequest<DataSizeResponse>(this->sign(std::move(request)))
+    .op(RxGetOne());
+}
+
+rxcpp::observable<PagePathResponse> StorageFacilityProxy::requestPagePaths() const {
+  return this->sendRequest<PagePathResponse>(this->sign(PagePathRequest{}))
+    .flat_map([](PagePathResponse chunk) {return rxcpp::observable<>::iterate(chunk.paths); })
+    .op(RxToSet())
+    .map([](std::shared_ptr<std::set<std::string>> paths) {
+        return PagePathResponse{ .paths = std::move(*paths) };
+      });
 }
 
 }

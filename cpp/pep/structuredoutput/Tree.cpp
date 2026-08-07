@@ -2,10 +2,13 @@
 
 #include <boost/property_tree/ptree.hpp>
 
+#include <algorithm>
+#include <tuple>
+
 namespace pep::structuredOutput {
 namespace {
 
-using nlohmann::json;
+using json = nlohmann::ordered_json;
 using ConstRecordRef = Table::ConstRecordRef;
 using OptConstRecordRef = std::optional<ConstRecordRef>;
 

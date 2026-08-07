@@ -47,6 +47,17 @@ public:
       const Recipient& recipient,
       const ElgamalPublicKey& masterPublicEncryptionKey) const;
 
+  /// Compute static public data necessary for verifying translation proofs with recipient \p recipient,
+  /// with proof
+  /// \param recipient Recipient
+  /// \param masterPublicEncryptionKey Master public pseudonym encryption key
+  /// \throws std::invalid_argument for invalid pseudonym
+  /// \note This only works if we do the first translation step
+  [[nodiscard]] ReshuffleRekeyVerifiersWithProof
+  computeCertifiedTranslationProofVerifiers(
+      const Recipient& recipient,
+      const ElgamalPublicKey& masterPublicEncryptionKey) const;
+
   /// Check translation proof correctness
   /// \param preTranslate Polymorphic or partially translated pseudonym from before translation step
   /// \param postTranslate Pseudonym after translation step

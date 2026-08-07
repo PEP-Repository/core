@@ -164,11 +164,11 @@ func (r *FileReader) Close() error {
 
 func computeAdditionalData(metadata *Metadata, pageNumber uint64) ([]byte, error) {
 	switch metadata.EncryptionScheme {
-	case pep_proto.EncryptionScheme_V1:
+	case pep_proto.EncryptionScheme_EncryptionV1:
 		return proto.Marshal(metadata.proto())
-	case pep_proto.EncryptionScheme_V2:
+	case pep_proto.EncryptionScheme_EncryptionV2:
 		fallthrough
-	case pep_proto.EncryptionScheme_V3:
+	case pep_proto.EncryptionScheme_EncryptionV3:
 		ret := make([]byte, 8)
 		binary.BigEndian.PutUint64(ret, pageNumber)
 		return ret, nil

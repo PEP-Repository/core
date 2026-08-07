@@ -2,6 +2,7 @@
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/utils/BuildFlavor.hpp>
 #include <pep/storagefacility/Constants.hpp>
+#include <pep/utils/Log.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Raw.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
@@ -20,39 +21,35 @@ namespace pep {
 
 namespace {
 
-const std::string CHECKSUM_SUBSTITUTE_KEY = "checksum-substitute";
+const std::string ChecksumSubstituteKey = "checksum-substitute";
 
 uint64_t GenerateChecksumSubstitute() {
   return RandomInteger<uint64_t>();
 }
 
-const std::string ENTRY_FILE_TYPE("pepentry");
-const std::string LOG_TAG("StorageFacility");
+const std::string EntryFileType("pepentry");
+const std::string LogTag("StorageFacility");
 
 }
 
-/**
- * Design:
- * - metadata is stored on local file system
- * - pages is stored on 'data' volume (which can be migrated to the cloud later on rather easy)
- * - every stored item is xxhashed so it can be verified that no error occured
- * - on start all the metadata is loaded into memory (4 KiB per entry x 256k entries = 1 GiB of RAM)
- * - I/O model: all reads are from memory; writes will synchronous write to disk for consistency
- * - retrieving 40k items out of 360k items (no historical items) cost 92ms
- * - retrieving 2 latest items out of 40k historical items of a total of 360k items cost 99ms
- */
+// Design:
+// - metadata is stored on local file system
+// - pages is stored on 'data' volume (which can be migrated to the cloud later on rather easy)
+// - every stored item is xxhashed so it can be verified that no error occured
+// - on start all the metadata is loaded into memory (4 KiB per entry x 256k entries = 1 GiB of RAM)
+// - I/O model: all reads are from memory; writes will synchronous write to disk for consistency
+// - retrieving 40k items out of 360k items (no historical items) cost 92ms
+// - retrieving 2 latest items out of 40k historical items of a total of 360k items cost 99ms
 
- /**
-  * Challenges:
-  * - correctly (with all error condition) retrieve data from S3 interface
-  * - if there are many entries; starting will take longer (possible migrate to mmap()ed data structure)
-  * - partitioning (within a host; but also mutliple storage facilities)
-  */
+ // Challenges:
+ // - correctly (with all error condition) retrieve data from S3 interface
+ // - if there are many entries; starting will take longer (possible migrate to mmap()ed data structure)
+ // - partitioning (within a host; but also mutliple storage facilities)
 
-const std::string FileStore::Entry::FILE_EXTENSION = ".entry";
+const std::string FileStore::Entry::FileExtension = ".entry";
 
 EntryContent::MetadataEntry FileStore::makeMetadataEntry(std::string key, std::string value) {
-  auto pos = mMetadataValues.emplace(std::move(key), std::set<std::string>()).first;
+  auto pos = metadataValues_.emplace(std::move(key), std::set<std::string>()).first;
   auto valuePos = pos->second.emplace(std::move(value)).first;
 
   auto keyPointer = &pos->first;
@@ -82,8 +79,8 @@ std::map<std::string, MetadataXEntry> FileStore::extractMetadataMap(const EntryC
 }
 
 FileStore::Participant* FileStore::getParticipant(const std::string& name) const {
-  auto pos = mParticipants.find(name);
-  if (pos == mParticipants.cend()) {
+  auto pos = participants_.find(name);
+  if (pos == participants_.cend()) {
     return nullptr;
   }
   return &**pos;
@@ -95,52 +92,56 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
     return *existing;
   }
 
-  return **mParticipants.emplace(std::make_unique<Participant>(*this, name)).first;
+  return **participants_.emplace(std::make_unique<Participant>(*this, name)).first;
 }
 
 const std::string& FileStore::getColumnString(const std::string& value) {
-  if (value.find(EntryName::DELIMITER) != std::string::npos) {
+  if (value.find(EntryName::Delimiter) != std::string::npos) {
     throw std::runtime_error("Cell name may not contain an entry name delimiter");
   }
-  return *mColumnNames.insert(value).first;
+  return *columnNames_.insert(value).first;
 }
 
 FileStore::FileStore(
   const std::filesystem::path& metadatapath,
-  std::shared_ptr<Configuration> pageStoreConfig,
+  const Configuration& pageStoreConfig,
   std::shared_ptr<boost::asio::io_context> io_context,
   std::shared_ptr<prometheus::Registry> metrics_registry)
-  : mPath(metadatapath),
-  mPagestore(PageStore::Create(io_context, metrics_registry, pageStoreConfig))
+  : path_(CheckedPath::FromTrusted(metadatapath)),
+  pagestore_(PageStore::Create(io_context, metrics_registry, pageStoreConfig))
 {
   // throws when an error occurs while creating any of the given directories in the supplied path
-  std::filesystem::create_directories(mPath);
+  std::filesystem::create_directories(path_);
 
   auto start_time = steady_clock::now();
-  for (const auto& p : std::filesystem::directory_iterator(mPath)) {
+  for (const auto& p : std::filesystem::directory_iterator(path_)) {
     auto name = p.path().filename().string();
     if (std::filesystem::is_directory(p.path()) && name.size() == LocalPseudonym::TextLength()) {
-      mParticipants.emplace(std::make_unique<Participant>(*this, name, true));
+      participants_.emplace(std::make_unique<Participant>(*this, name, true));
     }
   }
+
+  size_t entryCount{};
+  uint64_t totalPayloadBytes_{}, rollingPayloadBytes_{};
+  this->getMetrics(entryCount, totalPayloadBytes_, rollingPayloadBytes_);
 
   duration<double> seconds(steady_clock::now() - start_time);
   std::ostringstream message;
   message.setf(std::ios::fixed);
   message.precision(2);
-  message << "Loaded " << this->entryCount() << " file store entries in " << seconds;
+  message << "Loaded " << entryCount << " file store entries in " << seconds;
   if (seconds != decltype(seconds)::zero()) {
-    message << " (" << (static_cast<double>(this->entryCount()) / seconds.count()) << " entries per second)";
+    message << " (" << (static_cast<double>(entryCount) / seconds.count()) << " entries per second)";
   }
-  LOG(LOG_TAG, info) << message.str();
+  PEP_LOG(LogTag, Severity::Info) << message.str();
 }
 
 FileStore::Participant::Participant(FileStore& store, std::string name, bool load)
-  : mStore(store), mName(std::move(name)) {
+  : store_(store), name_(std::move(name)) {
   if (load) {
     for (const auto& p : std::filesystem::directory_iterator(this->path())) {
-      if (std::filesystem::is_directory(p.path())) {
-        mCells.emplace(std::make_unique<Cell>(*this, p.path().filename().string(), true));
+      if (p.is_directory()) {
+        cells_.emplace(std::make_unique<Cell>(*this, p.path().filename().string(), true));
       }
     }
   }
@@ -150,11 +151,21 @@ FileStore::Participant::Participant(FileStore& store, std::string name, bool loa
   }
 }
 
+FileStore::CellVersion FileStore::CellVersion::FromEntry(const Entry& entry) {
+  return CellVersion{
+    .validFrom = entry.getValidFrom(),
+    .checksumSubstitute = entry.getChecksumSubstitute(),
+    .payloadSize = entry.payloadSize(),
+    .isOriginalPayloadOwner = entry.isOriginalPayloadOwner(),
+    .isTombstone = entry.isTombstone(),
+  };
+}
+
 FileStore::Cell::Cell(Participant& participant, const std::string& columnName, bool load)
-  : mParticipant(participant), mColumnName(participant.getFileStore().getColumnString(columnName)) {
+  : participant_(participant), columnName_(participant.fileStore().getColumnString(columnName)) {
   if (load) {
     for (const auto& p : std::filesystem::directory_iterator(this->path())) {
-      auto entry = Entry::TryLoad(*this, p.path());
+      auto entry = Entry::TryLoad(*this, CheckedPath::FromTrusted(p.path()));
       if (entry != nullptr) {
         this->addEntry(entry);
       }
@@ -166,33 +177,40 @@ FileStore::Cell::Cell(Participant& participant, const std::string& columnName, b
   }
 }
 
-size_t FileStore::entryCount() const {
-  size_t result = 0;
-  for (const auto& participant : mParticipants) {
-    result += participant->entryCount();
+void FileStore::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {
+  entryCount = 0U;
+  totalPayloadBytes = 0U;
+  rollingPayloadBytes = 0U;
+
+  for (const auto& participant : participants_) {
+    size_t subEntryCount{};
+    uint64_t subTotalPayloadBytes{}, subRollingPayloadBytes{};
+
+    participant->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes, columns);
+
+    entryCount += subEntryCount;
+    totalPayloadBytes += subTotalPayloadBytes;
+    rollingPayloadBytes += subRollingPayloadBytes;
+  }
+}
+
+
+PropertyBasedContainer<const FileStore::Participant*, &FileStore::Participant::name>::set FileStore::participants() const {
+  PropertyBasedContainer<const FileStore::Participant*, &FileStore::Participant::name>::set result;
+  for (const auto& participant : participants_) {
+    [[maybe_unused]] auto emplaced = result.emplace(participant.get());
+    assert(emplaced.second);
+    assert(std::next(emplaced.first) == result.end()); // Should have been inserted at the back of the result set
   }
   return result;
 }
 
-void FileStore::forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const {
-  /* This method must provide its entries to the callback in (backward compatible) lexicographic order, e.g.
-   * 1. participant-a/column-x/timestamp-1
-   * 2. participant-a/column-x/timestamp-2
-   * 3. participant-a/column-y/timestamp-1
-   * 4. participant-b/column-x/timestamp-1
-   */
-  for (const auto& participant : mParticipants) {
-    participant->forEachEntryHeader(callback);
+std::set<std::string> FileStore::pagePaths() const {
+  std::set<std::string> result;
+  for (const auto& participant : participants_) {
+    InsertNonDuplicates(result, participant->pagePaths());
   }
-}
-
-
-FileStore::EntrySet FileStore::lookupWithHistory(const EntryName& name) const {
-  auto participant = this->getParticipant(name.participant());
-  if (participant == nullptr) {
-    return FileStore::EntrySet();
-  }
-  return participant->lookupWithHistory(name.column());
+  return result;
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::lookup(const EntryName& name, Timestamp validAt) {
@@ -207,20 +225,24 @@ std::shared_ptr<FileStore::Entry> FileStore::Cell::lookup(Timestamp validAt) {
   // The std::map<>::lower_bound function will find the entry _after_ the one we need when validAt == Timestamp::max().
   // So to make the function produce consistent results, we search for "validAt+1" to ensure that we _always_ find the entry after the one we need.
   auto find = validAt == Timestamp::max() ? Timestamp::max() : validAt + 1ms;
-  auto it = mEntryHeaders.lower_bound(find);
+  auto it = versions_.lower_bound(find);
 
   // If we're positioned on the first item, the request was for a "validAt" before the first entry was stored.
-  if (it == mEntryHeaders.begin())
+  if (it == versions_.begin())
     return nullptr;
 
   // Since we're positioned after the item we're interested in, we skip back.
   --it;
 
-  assert(mLatest != nullptr);
-  if (it->validFrom == mLatest->getValidFrom()) {
-    return mLatest;
+  assert(latest_ != nullptr);
+  if (it->validFrom == latest_->getValidFrom()) {
+    return latest_;
   }
   return Entry::Load(*this, it->validFrom);
+}
+
+std::set<std::string> FileStore::Cell::pagePaths() const {
+  return latest_->pagePaths();
 }
 
 std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool createIfNeeded) {
@@ -238,20 +260,20 @@ std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& 
 
 FileStore::EntryChange::EntryChange(Cell& cell)
   : EntryBase(cell, GenerateChecksumSubstitute(), nullptr),
-    mLastEntryValidFrom{/*zero*/} {
+    lastEntryValidFrom_{/*zero*/} {
 }
 
 FileStore::EntryChange::EntryChange(const Entry& overwrites)
-  : EntryBase(overwrites.getCell(), GenerateChecksumSubstitute(), overwrites.cloneContent()), mLastEntryValidFrom(overwrites.getValidFrom()) {
+  : EntryBase(overwrites.getCell(), GenerateChecksumSubstitute(), overwrites.cloneContent()), lastEntryValidFrom_(overwrites.getValidFrom()) {
 }
 
-std::filesystem::path FileStore::Entry::getFilePath(const std::string& extension) const {
+CheckedPath FileStore::Entry::getFilePath(const std::string& extension) const {
   auto filename = std::to_string(TicksSinceEpoch<milliseconds>(this->getValidFrom())) + extension;
-  return this->getCell().path() / filename;
+  return this->getCell().path() / CheckedFileName(filename);
 }
 
 FileStore::EntryBase::EntryBase(Cell& cell, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content)
-  : mCell(cell), mChecksumSubstitute(checksumSubstitute), mContent(std::move(content)) {
+  : cell_(cell), checksumSubstitute_(checksumSubstitute), content_(std::move(content)) {
 }
 
 std::unique_ptr<EntryContent> FileStore::Entry::cloneContent() const {
@@ -259,19 +281,40 @@ std::unique_ptr<EntryContent> FileStore::Entry::cloneContent() const {
   if (content == nullptr) {
     return nullptr;
   }
-  return std::make_unique<EntryContent>(*content, mValidFrom);
+  return std::make_unique<EntryContent>(*content, validFrom_);
 }
 
-FileStore& FileStore::EntryBase::getFileStore() const noexcept {
-  return this->getCell().getParticipant().getFileStore();
+FileStore& FileStore::EntryBase::getFileStore() noexcept {
+  return cell_.participant().fileStore();
 }
 
 EntryName FileStore::EntryBase::getName() const {
   return this->getCell().entryName();
 }
 
-FileStore::EntryHeader FileStore::Entry::header() const {
-  return EntryHeader{ this->getValidFrom(), this->getChecksumSubstitute() };
+uint64_t FileStore::EntryBase::payloadSize() const {
+  if (content_ == nullptr) {
+    return 0U;
+  }
+  auto payload = content_->payload();
+  assert(payload != nullptr);
+  return payload->size();
+}
+
+bool FileStore::EntryBase::isOriginalPayloadOwner() const {
+  if (content_ == nullptr) {
+    return false;
+  }
+  return !content_->getOriginalPayloadEntryTimestamp().has_value();
+}
+
+std::set<std::string> FileStore::EntryBase::pagePaths() const {
+  if (content_ == nullptr) {
+    return {};
+  }
+  auto payload = content_->payload();
+  assert(payload != nullptr);
+  return payload->getPagePaths(cell_.entryName());
 }
 
 messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
@@ -282,19 +325,19 @@ messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
   auto payload = content->payload();
   assert(payload != nullptr);
   const auto& cell = this->getCell();
-  return payload->readPage(cell.getParticipant().getFileStore().mPagestore, cell.entryName(), index);
+  return payload->readPage(cell.participant().fileStore().pagestore_, cell.entryName(), index);
 }
 
 void FileStore::Entry::save() const {
   std::ostringstream out;
 
-  out << ENTRY_FILE_TYPE;
+  out << EntryFileType;
   WriteBinary(out, this->getName().string());
-  WriteBinary(out, static_cast<std::uint64_t>(TicksSinceEpoch<milliseconds>(mValidFrom)));
+  WriteBinary(out, static_cast<std::uint64_t>(TicksSinceEpoch<milliseconds>(validFrom_)));
 
   std::vector<PageId> pages;
   PersistedEntryProperties properties;
-  SetPersistedEntryProperty(properties, CHECKSUM_SUBSTITUTE_KEY, this->getChecksumSubstitute());
+  SetPersistedEntryProperty(properties, ChecksumSubstituteKey, this->getChecksumSubstitute());
 
   EntryContent::Save(this->content(), properties, pages);
 
@@ -304,9 +347,9 @@ void FileStore::Entry::save() const {
   std::string content = std::move(out).str();
   XXH64_hash_t hash = XXH64(content.data(), content.length(), 0ULL);
 
-  auto tempfile = this->getFilePath(".tmp");
+  std::filesystem::path tempfile = this->getFilePath(".tmp");
   std::ofstream outfile;
-  outfile.open(tempfile.string(), std::ios::binary | std::ios::out | std::ios::trunc);
+  outfile.open(tempfile, std::ios::binary | std::ios::out | std::ios::trunc);
   if (!outfile.is_open())
     throw std::invalid_argument("could not write file: " + tempfile.string());
 
@@ -317,25 +360,25 @@ void FileStore::Entry::save() const {
   }
   outfile.close();
 
-  std::filesystem::rename(tempfile, this->getFilePath(Entry::FILE_EXTENSION));
+  std::filesystem::rename(tempfile, this->getFilePath(Entry::FileExtension));
 }
 
 void FileStore::EntryChange::commit(Timestamp availableFrom) && {
-  if (!mValid)
+  if (!valid_)
     throw std::runtime_error("FileStore: change to entry already committed/cancelled: " + this->getName().string());
-  if (availableFrom <= mLastEntryValidFrom)
+  if (availableFrom <= lastEntryValidFrom_)
     throw std::invalid_argument("FileStore: newer item is already available, can not store " + this->getName().string());
   auto newestEntry = this->getFileStore().lookup(this->getName());
-  if (newestEntry && newestEntry->getValidFrom() > mLastEntryValidFrom)
+  if (newestEntry && newestEntry->getValidFrom() > lastEntryValidFrom_)
     throw std::runtime_error("FileStore: concurrent modification to same entry detected: " + this->getName().string());
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
   // this should not happen due to combination of above conditions:
   // - check that the availableFrom > last item (on time of modify() method)
   // - check that last item on time of modify() is still the last item at time of commit()
-  if (this->getCell().entryHeaders().find(availableFrom) != this->getCell().entryHeaders().cend()) {
+  if (this->getCell().versions().find(availableFrom) != this->getCell().versions().cend()) {
     auto msg = "Cannot store duplicate entry with name " + this->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(availableFrom));
-    LOG(LOG_TAG, error) << msg;
+    PEP_LOG(LogTag, Severity::Error) << msg;
     throw std::runtime_error(msg);
   }
 #endif
@@ -349,7 +392,7 @@ void FileStore::EntryChange::commit(Timestamp availableFrom) && {
   // Create memory data structure
   auto entry = Entry::Create(std::move(*this), availableFrom);
   // Prevent this EntryChange from being re-used (a.o. because we just std::moved it)
-  mValid = false;
+  valid_ = false;
 
   // Save to disk
   entry->save();
@@ -358,17 +401,22 @@ void FileStore::EntryChange::commit(Timestamp availableFrom) && {
 }
 
 void FileStore::EntryChange::cancel() && {
-  if (!mValid)
+  if (!valid_)
     throw std::invalid_argument("FileStore: change to entry already committed/cancelled: " + this->getName().string());
 
   // FIXME: remove new pages
 
-  mValid = false;
+  valid_ = false;
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp timestamp) {
-  auto filename = std::to_string(TicksSinceEpoch<milliseconds>(timestamp)) + FILE_EXTENSION;
-  auto result = TryLoad(cell, cell.path() / filename);
+  // Note: On case-insensitive filesystems (e.g. Windows), file names could collide.
+  // Additionally, NTFS 8.3 short names could collide (a column called "PARTIC~1" will collide with "ParticipantIdentifier").
+  // See https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file.
+  // This may lead to security issues.
+  // So basically, we should not run the production StorageFacility on Windows with the current code.
+  auto filename = std::to_string(TicksSinceEpoch<milliseconds>(timestamp)) + FileExtension;
+  auto result = TryLoad(cell, cell.path() / CheckedFileName(filename));
   if (result == nullptr) {
     throw std::runtime_error("Could not load entry for cell " + cell.entryName().string()
         + " at timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(timestamp)));
@@ -376,24 +424,23 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
   return result;
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const std::filesystem::path& path) {
-  if (!std::filesystem::is_regular_file(path) || path.extension().string() != FILE_EXTENSION) {
+std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedPath& checkedPath) {
+  const std::filesystem::path& path = checkedPath;
+  if (!std::filesystem::is_regular_file(path) || path.extension().string() != FileExtension) {
     return nullptr;
   }
 
-  auto name = path.filename().string();
-  name = name.substr(0, name.size() - FILE_EXTENSION.size());
-  Timestamp validFrom(milliseconds{boost::lexical_cast<milliseconds::rep>(name)});
+  Timestamp validFrom(milliseconds{boost::lexical_cast<milliseconds::rep>(path.stem().string())});
 
   std::ifstream infile;
-  infile.open(path.string(), std::ios::binary | std::ios::in);
+  infile.open(path, std::ios::binary | std::ios::in);
   if (!infile.is_open())
     throw std::invalid_argument("could not open file for reading");
 
   // Read magic bytes from start of file, validating that this is file indeed represents a file store entry
-  std::string fileType(ENTRY_FILE_TYPE.size(), '\0');
+  std::string fileType(EntryFileType.size(), '\0');
   infile.read(fileType.data(), static_cast<std::streamsize>(fileType.size()));
-  if (fileType != ENTRY_FILE_TYPE) {
+  if (fileType != EntryFileType) {
     throw std::invalid_argument("could not read file (wrong file type): " + path.string());
   }
 
@@ -411,8 +458,8 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const st
   auto pages = ReadBinary(infile, std::vector<PageId>());
   auto properties = ReadBinary(infile, PersistedEntryProperties());
 
-  auto checksumSubstitute = ExtractPersistedEntryProperty<uint64_t>(properties, CHECKSUM_SUBSTITUTE_KEY);
-  auto entryContent = EntryContent::Load(cell.getParticipant().getFileStore(), properties, pages);
+  auto checksumSubstitute = ExtractPersistedEntryProperty<uint64_t>(properties, ChecksumSubstituteKey);
+  auto entryContent = EntryContent::Load(cell.participant().fileStore(), properties, pages);
 
   // Read content hash from (end of) file
   uint64_t expectedHash = 0;
@@ -439,59 +486,72 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const st
 }
 
 FileStore::Entry::Entry(EntryChange&& source, Timestamp validFrom)
-  : EntryBase(std::move(source)), mValidFrom(validFrom) {
+  : EntryBase(std::move(source)), validFrom_(validFrom) {
   assert(this->content() == nullptr || this->content()->payload() != nullptr);
 }
 
 FileStore::Entry::Entry(Cell& cell, Timestamp validFrom, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content)
-  : EntryBase(cell, checksumSubstitute, std::move(content)), mValidFrom(validFrom) {
+  : EntryBase(cell, checksumSubstitute, std::move(content)), validFrom_(validFrom) {
 }
 
 rxcpp::observable<std::string> FileStore::EntryChange::appendPage(std::shared_ptr<std::string> rawPage, uint64_t payloadSize, uint64_t pagenr) {
   if (pagenr == 0) {
-    assert(mPagedPayload == nullptr);
+    assert(pagedPayload_ == nullptr);
     assert(this->content()->payload() == nullptr);
 
-    if (rawPage->size() < INLINE_PAGE_THRESHOLD) {
+    if (rawPage->size() < InlinePageThreshold) {
       auto payload = std::make_shared<InlinedEntryPayload>(*rawPage, payloadSize);
       this->content()->setPayload(payload);
       return rxcpp::observable<>::just(payload->getEtag());
     }
 
-    mPagedPayload = std::make_shared<PagedEntryPayload>();
-    this->content()->setPayload(mPagedPayload);
+    pagedPayload_ = std::make_shared<PagedEntryPayload>();
+    this->content()->setPayload(pagedPayload_);
   }
 
-  if (mPagedPayload == nullptr) {
+  if (pagedPayload_ == nullptr) {
     throw std::runtime_error("Can't append page to nonpaged payload");
   }
-  return mPagedPayload->appendPage(*this->getFileStore().mPagestore, this->getName(), pagenr, rawPage, payloadSize);
+  return pagedPayload_->appendPage(*this->getFileStore().pagestore_, this->getName(), pagenr, rawPage, payloadSize);
 }
 
 EntryName FileStore::Cell::entryName() const {
-  return EntryName(this->getParticipant().name(), mColumnName);
+  return EntryName(this->participant().name(), columnName_);
 }
 
-std::filesystem::path FileStore::Cell::path() const {
-  return this->getParticipant().path() / mColumnName;
+CheckedPath FileStore::Cell::path() const {
+  return this->participant().path() / CheckedFileName(columnName_);
+}
+
+void FileStore::Cell::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const {
+  entryCount = versions_.size();
+
+  totalPayloadBytes = 0U;
+  for (const auto& version : versions_) {
+    if (version.isOriginalPayloadOwner) {
+      totalPayloadBytes += version.payloadSize;
+    }
+  }
+
+  rollingPayloadBytes = latest_ ? latest_->payloadSize() : 0U;
 }
 
 void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
-  auto emplaced = mEntryHeaders.emplace(entry->header()).second;
+  auto emplaced = versions_.emplace(CellVersion::FromEntry(*entry)).second;
   if (!emplaced) {
     auto msg = "Couldn't overwrite existing entry with name " + entry->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(entry->getValidFrom()));
-    LOG(LOG_TAG, error) << msg;
+    PEP_LOG(LogTag, Severity::Error) << msg;
     throw std::runtime_error(msg);
   }
-  if (mLatest == nullptr || entry->getValidFrom() > mLatest->getValidFrom()) {
-    mLatest = entry;
+  if (latest_ == nullptr || entry->getValidFrom() > latest_->getValidFrom()) {
+    latest_ = entry;
   }
 }
 
 FileStore::Cell* FileStore::Participant::getCell(const std::string& columnName) const {
-  auto pos = mCells.find(columnName);
-  if (pos == mCells.cend()) {
+  auto pos = cells_.find(columnName);
+  if (pos == cells_.cend()) {
     return nullptr;
   }
   return &**pos;
@@ -502,40 +562,38 @@ FileStore::Cell& FileStore::Participant::provideCell(const std::string& columnNa
   if (existing != nullptr) {
     return *existing;
   }
-  return **mCells.emplace(std::make_unique<Cell>(*this, columnName)).first;
+  return **cells_.emplace(std::make_unique<Cell>(*this, columnName)).first;
 }
 
-std::filesystem::path FileStore::Participant::path() const {
-  return this->getFileStore().metaDir() / mName;
-}
-
-size_t FileStore::Participant::entryCount() const {
-  size_t result = 0U;
-  for (const auto& cell : mCells) {
-    result += cell->entryHeaders().size();
+PropertyBasedContainer<const FileStore::Cell*, &FileStore::Cell::columnName>::set FileStore::Participant::cells() const {
+  PropertyBasedContainer<const FileStore::Cell*, &FileStore::Cell::columnName>::set result;
+  for (const auto& cell : cells_) {
+    [[maybe_unused]] auto emplaced = result.emplace(cell.get());
+    assert(emplaced.second);
+    assert(std::next(emplaced.first) == result.end()); // Should have been inserted at the back of the result set
   }
   return result;
 }
 
-void FileStore::Participant::forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const {
-  for (const auto& cell : mCells) {
-    for (const auto& header : cell->entryHeaders()) {
-      callback(header);
-    }
-  }
+CheckedPath FileStore::Participant::path() const {
+  return this->fileStore().metaDir() / CheckedFileName(name_);
 }
 
-FileStore::EntrySet FileStore::Participant::lookupWithHistory(const std::string& column) const {
-  FileStore::EntrySet result;
-  auto cell = this->getCell(column);
-  if (cell != nullptr) {
-    for (const auto& header : cell->entryHeaders()) {
-      auto entry = Entry::Load(*cell, header.validFrom);
-      [[maybe_unused]] auto emplaced = result.emplace(entry).second;
-      assert(emplaced);
+void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {
+  entryCount = 0U;
+  totalPayloadBytes = 0U;
+  rollingPayloadBytes = 0U;
+
+  for (const auto& cell : cells_) {
+    if (columns.empty() || columns.contains(cell->columnName())) {
+      size_t subEntryCount{};
+      uint64_t subTotalPayloadBytes{}, subRollingPayloadBytes{};
+      cell->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes);
+      entryCount += subEntryCount;
+      totalPayloadBytes += subTotalPayloadBytes;
+      rollingPayloadBytes += subRollingPayloadBytes;
     }
   }
-  return result;
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Participant::lookup(const std::string& column, Timestamp validAt) {
@@ -544,6 +602,14 @@ std::shared_ptr<FileStore::Entry> FileStore::Participant::lookup(const std::stri
     return nullptr;
   }
   return cell->lookup(validAt);
+}
+
+std::set<std::string> FileStore::Participant::pagePaths() const {
+  std::set<std::string> result;
+  for (const auto& cell : cells_) {
+    InsertNonDuplicates(result, cell->pagePaths());
+  }
+  return result;
 }
 
 }

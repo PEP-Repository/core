@@ -1,11 +1,11 @@
 #pragma once
 
+#include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/async/WorkerPool.hpp>
 #include <pep/key-components/KeyComponentServer.hpp>
+#include <pep/networking/EndPoint.hpp>
 #include <pep/rsk-pep/DataTranslator.hpp>
-#include <pep/rsk/Proofs.hpp>
 #include <pep/rsk-pep/PseudonymTranslator.hpp>
-#include <pep/rsk/Verifiers.hpp>
 #include <pep/transcryptor/TranscryptorMessages.hpp>
 
 #include <pep/transcryptor/Storage.hpp>
@@ -19,8 +19,8 @@ class Transcryptor : public KeyComponentServer {
   class Metrics : public RegisteredMetrics {
    public:
     Metrics(std::shared_ptr<prometheus::Registry> registry);
-    prometheus::Summary& transcryptor_request_duration;
-    prometheus::Gauge& transcryptor_log_size;
+    prometheus::Summary& transcryptorRequestDuration;
+    prometheus::Gauge& transcryptorLogSize;
   };
 
  public:
@@ -36,19 +36,23 @@ class Transcryptor : public KeyComponentServer {
     std::shared_ptr<TranscryptorStorage> getStorage() const;
     void setStorage(std::shared_ptr<TranscryptorStorage> storage);
 
-    const VerifiersResponse& getVerifiers() const;
-    void setVerifiers(const VerifiersResponse& verifiers);
+    const ServerVerifiers& getVerifiers() const;
+    void setVerifiers(const ServerVerifiers& verifiers);
 
     std::optional<ElgamalPrivateKey> getPseudonymKey() const;
     void setPseudonymKey(const ElgamalPrivateKey& key);
+
+    const EndPoint& getAccessManagerEndPoint() const { return accessManagerEndPoint_; }
 
    protected:
     void check() const override;
 
    private:
-    std::optional<ElgamalPrivateKey> pseudonymKey;
-    std::shared_ptr<TranscryptorStorage> storage;
-    std::optional<VerifiersResponse> verifiers;
+    std::optional<ElgamalPrivateKey> pseudonymKey_;
+    std::shared_ptr<TranscryptorStorage> storage_;
+    std::optional<ServerVerifiers> verifiers_;
+
+    EndPoint accessManagerEndPoint_;
   };
 
 public:
@@ -71,13 +75,14 @@ private:
     const std::vector<LocalPseudonyms>& pseuds);
 
 private:
-  std::shared_ptr<WorkerPool> mWorkerPool;
-  std::optional<ElgamalPrivateKey> mPseudonymKey;
-  std::shared_ptr<TranscryptorStorage> mStorage;
-  std::shared_ptr<Metrics> lpMetrics;
-  VerifiersResponse mVerifiers;
-  uintmax_t mNextTranscryptorRequestNumber = 1U;
-  uintmax_t mNextLogIssuedTicketRequestNumber = 1U;
+  std::shared_ptr<WorkerPool> workerPool_;
+  std::optional<ElgamalPrivateKey> pseudonymKey_;
+  AccessManagerProxy accessManagerProxy_;
+  std::shared_ptr<TranscryptorStorage> storage_;
+  std::shared_ptr<Metrics> lpMetrics_;
+  ServerVerifiers verifiers_;
+  uintmax_t nextTranscryptorRequestNumber_ = 1U;
+  uintmax_t nextLogIssuedTicketRequestNumber_ = 1U;
 };
 
 }

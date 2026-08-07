@@ -112,14 +112,29 @@ ci-yml-include-versions:
   script:
     - ./"$PEP_FOSS_REPO_DIR"/ci_cd/check-ci-yml-include-versions.sh "$PEP_GROUP_READ_API_TOKEN" . "$CI_CONFIG_PATH"
 
-analyse-scripts:
+analyse-source:
   stage: static-analysis
   tags: [docker-small]
   image: alpine:latest
+  #language=sh
   before_script:
-    - apk update -qq && apk add --no-cache bash git shellcheck
+    - apk add --no-cache bash git shellcheck check-jsonschema
+  #language=sh
   script:
     - ./"$PEP_FOSS_REPO_DIR"/scripts/analyse-scripts.sh
+    # For pep/dtap>, this also checks review config on feature branches because of the set-up-config-review job
+    - for branch in
+      "$CI_COMMIT_REF_NAME"
+      "$PEP_PROJECT_DEVELOPMENT_BRANCH"
+      "$PEP_PROJECT_TESTING_BRANCH"
+      "$PEP_PROJECT_ACCEPTANCE_BRANCH"
+      "$PEP_PROJECT_PRODUCTION_BRANCH"
+      ; do
+    -   if [ -n "$branch" ] && [ "$branch" != . ] && [ -d "./config/$branch" ]; then
+    -     echo "Validating $branch config"
+    -     ./"$PEP_FOSS_REPO_DIR"/scripts/validate-config.sh "./config/$branch"
+    -   fi
+    - done
 
 #############################################
 # Configuration for the prerequisites stage #
@@ -144,20 +159,20 @@ provide-binaries:
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   timeout: 1h 30m
   script:
-    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --command provide-base-images
-                                                         --git-dir .
-                                                         --env "$CI_COMMIT_REF_NAME"
-                                                         --tag "$CI_PIPELINE_ID"
-                                                         --foss-dir "$PEP_FOSS_REPO_DIR"
-                                                         --api-key "$PEP_GROUP_API_TOKEN"
-                                                         --force-rebuild "$FORCE_REBUILD"
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/provide-binaries.sh --git-dir .
+                                                       --env "$CI_COMMIT_REF_NAME"
+                                                       --tag "$CI_PIPELINE_ID"
+                                                       --foss-dir "$PEP_FOSS_REPO_DIR"
+                                                       --api-key "$PEP_GROUP_API_TOKEN"
+                                                       --force-rebuild "$FORCE_REBUILD"
   artifacts:
     paths:
-      # Mark the pepBinaries.wixlib, pep.flatpak and macOS_bins.zip as artifacts so we can (easily) retrieve them by depending on this job
+      # Mark the pepBinaries.wixlib, pep.flatpak, macOS_bins.zip and pep-repo-client-lib.tgz as artifacts so we can (easily) retrieve them by depending on this job
       - pepBinaries.wixlib
       - pep.flatpak
       - macOS_x86_64_bins.zip
       - macOS_arm64_bins.zip
+      - pep-repo-client-lib.tgz
 
 ##########################################
 # Configuration for the build stage      #
@@ -173,8 +188,7 @@ provide-binaries:
   variables:
     WITH_RSYSLOG: true
   script:
-    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --command build
-                                                         --git-dir .
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --git-dir .
                                                          --env "$CI_COMMIT_REF_NAME"
                                                          --tag "$CI_PIPELINE_ID"
                                                          --foss-dir "$PEP_FOSS_REPO_DIR"
@@ -297,6 +311,7 @@ macos-universal-installer:
   artifacts:
     paths:
       - ${STAGING_DIRECTORY}/universal/macOS_artifacts/installer
+      - ${STAGING_DIRECTORY}/universal/macOS_artifacts/sparkle-tools
 
 macos-notarization:
   stage: build
@@ -328,6 +343,7 @@ macos-notarization:
   artifacts:
     paths:
       - ${STAGING_DIRECTORY}/universal/macOS_artifacts/installer
+      - ${STAGING_DIRECTORY}/universal/macOS_artifacts/sparkle-tools
 
 macos-generate-appcast:
   stage: build
@@ -343,6 +359,7 @@ macos-generate-appcast:
     # Obtain project caption
     - caption=$(cat config/"$CI_COMMIT_REF_NAME"/project/caption.txt)
     - INSTALLER_BASE_DIR="${STAGING_DIRECTORY}/universal/macOS_artifacts/installer"
+    - export GENERATE_APPCAST="${STAGING_DIRECTORY}/universal/macOS_artifacts/sparkle-tools/generate_appcast"
     - |
       generate_appcast_with_legacy_support() {
         local full_appcast_path="$1"
@@ -475,11 +492,10 @@ docker-update-latest:
   dependencies: []
   environment: $CI_COMMIT_REF_NAME
   script:
-    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --command update-latest
-                                                         --git-dir .
-                                                         --env "$CI_COMMIT_REF_NAME"
-                                                         --tag "$CI_PIPELINE_ID"
-                                                         --foss-dir "$PEP_FOSS_REPO_DIR"
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/publish.sh update-latest --git-dir .
+                                                            --env "$CI_COMMIT_REF_NAME"
+                                                            --tag "$CI_PIPELINE_ID"
+                                                            --foss-dir "$PEP_FOSS_REPO_DIR"
     - *docker_login
     # Dynamically retag all extra images that were built
     - |
@@ -498,12 +514,11 @@ publish-docker-client:
   extends: .publish-base
   dependencies: []
   script:
-    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/config-dockerfiles.sh --command publish-client
-                                                         --git-dir .
-                                                         --env "$CI_COMMIT_REF_NAME"
-                                                         --tag "$CI_PIPELINE_ID"
-                                                         --foss-dir "$PEP_FOSS_REPO_DIR"
-                                                         --api-key "$PEP_GROUP_REGISTRY_TOKEN"
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/publish.sh publish-client --git-dir .
+                                                             --env "$CI_COMMIT_REF_NAME"
+                                                             --tag "$CI_PIPELINE_ID"
+                                                             --foss-dir "$PEP_FOSS_REPO_DIR"
+                                                             --api-key "$PEP_GROUP_REGISTRY_TOKEN"
 
 ##########################################
 # Configuration for the deploy stage     #

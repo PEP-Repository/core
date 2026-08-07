@@ -1,5 +1,7 @@
 #include <pep/apps/Enrollment.hpp>
+
 #include <pep/apps/Enroller.hpp>
+#include <pep/utils/Configuration.hpp>
 
 namespace pep {
 

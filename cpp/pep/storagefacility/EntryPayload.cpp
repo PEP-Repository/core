@@ -10,32 +10,32 @@ namespace pep {
 
 namespace {
 
-const std::string FILE_SIZE_KEY = "filesize";
-const std::string PAGE_SIZE_KEY = "pagesize";
-const std::string INLINE_PAGE_KEY = "inline-page";
+const std::string FileSizeKey = "filesize";
+const std::string PageSizeKey = "pagesize";
+const std::string InlinePageKey = "inline-page";
 
 std::string GetPagePath(const EntryName& entry, XXH64_hash_t xxhash) {
-  return entry.string() + EntryName::DELIMITER + std::to_string(xxhash) + ".page";
+  return entry.string() + EntryName::Delimiter + std::to_string(xxhash) + ".page";
 }
 
 }
 
 void EntryPayload::save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const {
-  SetPersistedEntryProperty(properties, FILE_SIZE_KEY, this->size());
+  SetPersistedEntryProperty(properties, FileSizeKey, this->size());
   auto pagesize = this->pageSize();
   if (pagesize.has_value()) {
-    SetPersistedEntryProperty(properties, PAGE_SIZE_KEY, *pagesize);
+    SetPersistedEntryProperty(properties, PageSizeKey, *pagesize);
   }
 }
 
 void EntryPayload::Save(std::shared_ptr<EntryPayload> payload, PersistedEntryProperties& properties, std::vector<PageId>& pages) {
   if (payload == nullptr) {
-    SetPersistedEntryProperty(properties, FILE_SIZE_KEY, uint64_t{0});
+    SetPersistedEntryProperty(properties, FileSizeKey, uint64_t{0});
   }
   else {
     payload->save(properties, pages);
-    assert(properties.count(FILE_SIZE_KEY) != 0U);
-    // Don't assert(properties.count(PAGE_SIZE_KEY) != 0U) since it doesn't hold for an empty PagedEntryPayload
+    assert(properties.count(FileSizeKey) != 0U);
+    // Don't assert(properties.count(PageSizeKey) != 0U) since it doesn't hold for an empty PagedEntryPayload
   }
 }
 
@@ -52,29 +52,29 @@ std::shared_ptr<EntryPayload> EntryPayload::Load(PersistedEntryProperties& prope
 
 bool InlinedEntryPayload::allMemberVarsAreEqual(const EntryPayload& rhs) const {
   const auto& downcast = static_cast<const InlinedEntryPayload&>(rhs);
-  return this->mContent == downcast.mContent
-      && this->mPayloadSize == downcast.mPayloadSize;
+  return this->content_ == downcast.content_
+      && this->payloadSize_ == downcast.payloadSize_;
 }
 
 messaging::MessageSequence InlinedEntryPayload::readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const {
   this->validatedPageIndex(index);
-  return rxcpp::observable<>::just(MakeSharedCopy(mContent));
+  return rxcpp::observable<>::just(MakeSharedCopy(content_));
 }
 
 std::string InlinedEntryPayload::getEtag() const {
-  auto xxhashstr = GetXxHashString(mContent);
-  return ETag(mContent, xxhashstr);
+  auto xxhashstr = GetXxHashString(content_);
+  return ETag(content_, xxhashstr);
 }
 
 void InlinedEntryPayload::save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const {
   assert(pages.empty());
 
-  SetPersistedEntryProperty(properties, INLINE_PAGE_KEY, mContent);
+  SetPersistedEntryProperty(properties, InlinePageKey, content_);
   EntryPayload::save(properties, pages);
 }
 
 std::shared_ptr<InlinedEntryPayload> InlinedEntryPayload::Load(PersistedEntryProperties& properties, std::vector<PageId>& pages) {
-  auto content = TryExtractPersistedEntryProperty<std::string>(properties, INLINE_PAGE_KEY);
+  auto content = TryExtractPersistedEntryProperty<std::string>(properties, InlinePageKey);
   if (!content.has_value()) {
     return nullptr;
   }
@@ -89,15 +89,15 @@ std::shared_ptr<InlinedEntryPayload> InlinedEntryPayload::Load(PersistedEntryPro
 
 bool PagedEntryPayload::allMemberVarsAreEqual(const EntryPayload& rhs) const {
   const auto& downcast = static_cast<const PagedEntryPayload&>(rhs);
-  return this->mPages == downcast.mPages
-      && this->mPayloadSize == downcast.mPayloadSize
-      && this->mPageSize == downcast.mPageSize;
+  return this->pages_ == downcast.pages_
+      && this->payloadSize_ == downcast.payloadSize_
+      && this->pageSize_ == downcast.pageSize_;
 }
 
 void PagedEntryPayload::save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const {
   assert(pages.empty());
 
-  pages = mPages;
+  pages = pages_;
   EntryPayload::save(properties, pages);
 }
 
@@ -125,13 +125,13 @@ std::string EntryPayload::XxHashToString(XXH64_hash_t xxhash) {
 }
 
 uint64_t EntryPayload::ExtractFileSize(PersistedEntryProperties& properties) {
-  return ExtractPersistedEntryProperty<uint64_t>(properties, FILE_SIZE_KEY);
+  return ExtractPersistedEntryProperty<uint64_t>(properties, FileSizeKey);
 }
 
 uint64_t EntryPayload::ExtractPageSize(PersistedEntryProperties& properties) {
   // Backward compatible: the "pagesize" property was added later, i.e. old entries don't have it.
   // See https://gitlab.pep.cs.ru.nl/pep/core/-/commit/8de467f1ddda2d0672e0a78fb670b0d9a70c976b#6aef02059815e8f42707322e6f46f5cfcb14ea65_609_568
-  auto result = TryExtractPersistedEntryProperty<uint64_t>(properties, PAGE_SIZE_KEY);
+  auto result = TryExtractPersistedEntryProperty<uint64_t>(properties, PageSizeKey);
   return result.value_or(uint64_t{0});
 }
 
@@ -146,14 +146,14 @@ rxcpp::observable<std::string> PagedEntryPayload::appendPage(PageStore& pageStor
   auto xxhashstr = XxHashToString(xxhash);
 
   // Throw an exception when a duplicate hash is found
-  if (std::find(mPages.begin(), mPages.end(), xxhash) != mPages.end()) {
+  if (std::find(pages_.begin(), pages_.end(), xxhash) != pages_.end()) {
     throw std::runtime_error("FileStore error, duplicate data hash found in Entry Change: " + name.string() + ", a hashing collision has (likely) occurred.");
   }
 
-  this->mPages.push_back(xxhash);
-  mPayloadSize += payloadSize;
+  this->pages_.push_back(xxhash);
+  payloadSize_ += payloadSize;
   if (pagenr == 0) {
-    mPageSize = payloadSize;
+    pageSize_ = payloadSize;
   }
 
   return pageStore.put(
@@ -169,20 +169,28 @@ size_t EntryPayload::validatedPageIndex(size_t index) const {
 }
 
 PagedEntryPayload::PagedEntryPayload(PersistedEntryProperties& properties, std::vector<PageId> pages)
-  : mPages(std::move(pages)), mPayloadSize(ExtractFileSize(properties)), mPageSize(ExtractPageSize(properties)) {
+  : pages_(std::move(pages)), payloadSize_(ExtractFileSize(properties)), pageSize_(ExtractPageSize(properties)) {
 }
 
 std::optional<uint64_t> PagedEntryPayload::pageSize() const {
-  if (mPageSize == 0U) {
+  if (pageSize_ == 0U) {
     return std::nullopt;
   }
-  return mPageSize;
+  return pageSize_;
+}
+
+std::set<std::string> PagedEntryPayload::getPagePaths(const EntryName& name) const {
+  std::set<std::string> result;
+  InsertNonDuplicates(result, pages_ | std::ranges::views::transform([&name](PageId hash) {
+    return GetPagePath(name, hash);
+    }));
+  return result;
 }
 
 messaging::MessageSequence PagedEntryPayload::readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const {
   index = this->validatedPageIndex(index);
 
-  uint64_t expected_hash = mPages[index];
+  uint64_t expected_hash = pages_[index];
   std::string path = GetPagePath(name, expected_hash);
 
   return pageStore->get(path).map(

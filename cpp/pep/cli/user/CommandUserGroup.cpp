@@ -1,5 +1,7 @@
 #include <pep/cli/user/CommandUserGroup.hpp>
+#include <pep/application/CommandLineCommandWrappers.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/structuredoutput/Common.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
 
@@ -13,7 +15,7 @@ public:
   using AmProxyMethod = rxcpp::observable<pep::FakeVoid> (pep::AccessManagerProxy::*)(pep::UserGroup) const;
 
 private:
-  AmProxyMethod mMethod;
+  AmProxyMethod method_;
 
 public:
   UserGroupSubCommand(const std::string& name,
@@ -21,7 +23,7 @@ public:
                       AmProxyMethod method,
                       CommandUserGroup& parent)
     : ChildCommandOf<CommandUserGroup>(name, description, parent),
-      mMethod(method) {}
+      method_(method) {}
 
 protected:
   pep::commandline::Parameters getSupportedParameters() const override {
@@ -39,10 +41,10 @@ protected:
   int execute() override {
     return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
       pep::UserGroup userGroup;
-      userGroup.mMaxAuthValidity = this->getParameterValues().getOptional<std::chrono::seconds>("max-auth-validity");
-      userGroup.mName = this->getParameterValues().get<std::string>("name");
+      userGroup.maxAuthValidity = this->getParameterValues().getOptional<std::chrono::seconds>("max-auth-validity");
+      userGroup.name = this->getParameterValues().get<std::string>("name");
       auto& am = *client->getAccessManagerProxy();
-      return (am.*mMethod)(userGroup);
+      return (am.*method_)(userGroup);
     });
   }
 };
@@ -75,5 +77,13 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CommandUser::CommandUser
                                           *this),
     std::make_shared<UserGroupSubCommand>("modify", "Modify user group", &pep::AccessManagerProxy::modifyUserGroup, *this),
     std::make_shared<UserGroupRemoveCommand>(*this),
+    pep::commandline::CreateAliasCommand(*this, "query", this->getParent(), {"query"}, 
+      [](std::queue<std::string>& /*forwarded*/) {
+        pep::commandline::NamedValues injected;
+        pep::commandline::Values includeValues;
+        includeValues.add<std::string>(std::string{pep::structuredOutput::queryKeys::userGroups.simple});
+        injected.set("include", includeValues);
+        return injected;
+      }),
   };
 }

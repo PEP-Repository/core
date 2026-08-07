@@ -64,11 +64,15 @@ uint64_t UserGroupRecord::checksum() const {
 UserGroupUserRecord::UserGroupUserRecord(
     int64_t internalUserId,
     int64_t userGroupId,
+    std::optional<Timestamp> expirationTimestamp,
     bool tombstone)
   : checksumNonce(RandomVector<char>(16)) {
   this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
   this->internalUserId = internalUserId;
   this->userGroupId = userGroupId;
+  if (expirationTimestamp) {
+    this->expirationTimestamp = TicksSinceEpoch<milliseconds>(*expirationTimestamp);
+  }
   this->tombstone = tombstone;
 }
 
@@ -80,7 +84,11 @@ UserGroupUserRecord::UserGroupUserRecord(const LegacyUserGroupUserRecord& legacy
 uint64_t UserGroupUserRecord::checksum() const {
   std::ostringstream os;
   os << std::string(checksumNonce.begin(), checksumNonce.end())
-     << timestamp << '\0' << internalUserId << '\0' << userGroupId << tombstone;
+     << timestamp << '\0' << internalUserId << '\0' << userGroupId;
+  if (expirationTimestamp) {
+    os << '\0' << *expirationTimestamp;
+  }
+  os << tombstone;
   return UnpackUint64BE(Sha256().digest(std::move(os).str()));
 }
 }

@@ -4,8 +4,8 @@
 namespace {
 
 TEST(ApplicationMetrics, GetMemoryUsageBytes) {
-#ifdef __APPLE__
-  GTEST_SKIP() << "GetMemoryUsageBytes test is unavailable on macOS.";
+#if !(defined(_WIN32) || defined(__linux__))
+  GTEST_SKIP() << "GetMemoryUsageBytes test is unavailable on this platform.";
 #endif
 
   // ApplicationMetrics::GetMemoryUsageBytes() returns 0 if called with Address Sanitizer enabled
@@ -14,8 +14,8 @@ TEST(ApplicationMetrics, GetMemoryUsageBytes) {
 }
 
 TEST(ApplicationMetrics, GetMemoryUsageProportion) {
-#ifdef __APPLE__
-  GTEST_SKIP() << "GetMemoryUsageProportion test is unavailable on macOS.";
+#if !(defined(_WIN32) || defined(__linux__))
+  GTEST_SKIP() << "GetMemoryUsageProportion test is unavailable on this platform.";
 #else
   auto memory = pep::ApplicationMetrics::GetMemoryUsageProportion();
   ASSERT_GT(memory.first, 0.0);

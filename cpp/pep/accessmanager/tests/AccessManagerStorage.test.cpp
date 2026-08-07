@@ -1,4 +1,4 @@
-#include <gmock/gmock.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <pep/accessmanager/Storage.hpp>
@@ -30,47 +30,44 @@ constexpr auto CaseInsensitive = CaseSensitivity::CaseInsensitive;
 namespace {
 
 void PrepareSortedMine(UserQueryResponse& response) {
-  erase_if(response.mUserGroups, [](const UserGroup& group) {
-    return !group.mName.starts_with("My");
+  erase_if(response.userGroups, [](const UserGroup& group) {
+    return !group.name.starts_with("My");
   });
-  erase_if(response.mUsers, [](const QRUser& user) {
-    return !(user.mDisplayId.has_value() && user.mDisplayId->starts_with("My"));
+  erase_if(response.users, [](const QRUser& user) {
+    return !(user.displayId.has_value() && user.displayId->starts_with("My"));
   });
-  for (QRUser& user : response.mUsers) {
-    sort(user.mGroups);
-    sort(user.mOtherUids);
+  for (QRUser& user : response.users) {
+    sort(user.groups);
+    sort(user.otherUids);
   }
-  sort(response.mUserGroups);
-  sort(response.mUsers);
+  sort(response.userGroups);
+  sort(response.users);
 }
 
 /*
-The following tests attempt to test the basic interactions with the database behind AccessManager::Backend::Storage. At times, there exists a depecdency on other functionality. For example, to
+The following tests attempt to test the basic interactions with the database behind AccessManager::Backend::Storage. At times, there exists a dependency on other functionality. For example, to
 test whether or not a participant has been correctly added to a participantGroup, we depend on createParticipantGroup(), and hasParticipantInGroup().
 At this moment, I see no way around this.*/
 
 class AccessManagerStorageTest : public ::testing::Test {
 public:
   static std::shared_ptr<AccessManager::Backend::Storage> storage;
-  const std::filesystem::path databasePath{":memory:"};
   static std::shared_ptr<GlobalConfiguration> globalConf;
 
   const PolymorphicPseudonym dummyPP{PolymorphicPseudonym::FromIdentifier(ElgamalPublicKey::Random(), "dummy")};
 
 
   static void SetUpTestSuite() {
-    globalConf = std::make_shared<GlobalConfiguration>(Serialization::FromJsonString<GlobalConfiguration>(tests::TEST_SUITE_GLOBAL_CONFIGURATION));
+    globalConf = std::make_shared<GlobalConfiguration>(Serialization::FromJsonString<GlobalConfiguration>(tests::TestSuiteGlobalConfiguration));
   }
 
   // Create a new AccessManager::Backend::Storage with a clean database
   void SetUp() override {
-    std::filesystem::remove(databasePath);
-    storage = std::make_shared<AccessManager::Backend::Storage>(databasePath, globalConf);
-
+    storage = std::make_shared<AccessManager::Backend::Storage>(":memory:", globalConf);
   }
 
   void TearDown() override {
-    std::filesystem::remove(databasePath);
+    storage.reset();
   }
 
   void createParticipantGroupParticipant(const std::string& participantGroup, const LocalPseudonym& localPseudonym) {
@@ -240,7 +237,7 @@ TEST_F(AccessManagerStorageTest, store_lp_and_localPseudonymIsStored) {
 
 TEST_F(AccessManagerStorageTest, getStoragePath_happy) {
   auto actual = storage->getPath();
-  auto expected = std::filesystem::path(databasePath);
+  auto expected = std::filesystem::path(":memory:");
   ASSERT_EQ(actual, expected);
 }
 
@@ -283,6 +280,18 @@ TEST_F(AccessManagerStorageTest, computeChecksum_unknown_chain) {
     std::string expectedMessage = "No such checksum chain";
     ASSERT_EQ(e.what(), expectedMessage);
   }
+}
+
+TEST_F(AccessManagerStorageTest, hasColumn) {
+  EXPECT_TRUE(storage->hasColumn("IsTestParticipant"));
+  EXPECT_FALSE(storage->hasColumn("IsTestparticipant")) << "match should be case sensitive";
+  EXPECT_FALSE(storage->hasColumn("NonExisting"));
+}
+
+TEST_F(AccessManagerStorageTest, getColumnCaseInsensitive) {
+  EXPECT_EQ(storage->getColumnCaseInsensitive("IsTestParticipant"), "IsTestParticipant");
+  EXPECT_EQ(storage->getColumnCaseInsensitive("IsTestparticipant"), "IsTestParticipant") << "match should be case insensitive";
+  EXPECT_EQ(storage->getColumnCaseInsensitive("NonExisting"), std::nullopt);
 }
 
 TEST_F(AccessManagerStorageTest, getColumns_happy) {
@@ -345,6 +354,27 @@ TEST_F(AccessManagerStorageTest, getColumnGroupColumns_deleted_column) {
   auto actualAfter = storage->getColumnGroupColumns(timestampAfter);
 
   ASSERT_EQ(actualBefore.size() - actualAfter.size(), 2);
+}
+
+TEST_F(AccessManagerStorageTest, createColumn) {
+  ASSERT_NO_THROW(storage->createColumn("MyColumn"));
+  PEP_EXPECT_THROWS_MESSAGE(
+    storage->createColumn("MyColumn"),
+    pep::Error,
+    HasSubstr("MyColumn"))
+    << "Should reject case re-creation of existing column";
+  PEP_EXPECT_THROWS_MESSAGE(
+    storage->createColumn("Mycolumn"),
+    pep::Error,
+    HasSubstr("MyColumn"))
+    << "Should reject case re-creation of existing column, ignoring case";
+
+  for (const auto& invalidName : { "1*1", "abc/def", "abc\\def" }) {
+    PEP_EXPECT_THROWS_MESSAGE(
+      storage->createColumn(invalidName),
+      pep::Error,
+      HasSubstr("Invalid column name")) << "Column name '" << invalidName << "' should have been rejected";
+  }
 }
 
 TEST_F(AccessManagerStorageTest, newUserGetsNewInternalId) {
@@ -506,7 +536,7 @@ TEST_F(AccessManagerStorageTest, cannotRemoveDisplayIdentifier) {
 TEST_F(AccessManagerStorageTest, cannotRemoveUidStillInGroups) {
   int64_t originalId = storage->createUser("user");
   storage->createUserGroup(UserGroup("group1", {}));
-  storage->addUserToGroup(originalId, "group1");
+  storage->addUserToGroup(originalId, "group1", {});
   EXPECT_ANY_THROW(storage->removeUser(originalId));
   storage->removeUserFromGroup(originalId, "group1");
   EXPECT_NO_THROW(storage->removeUser(originalId));
@@ -516,11 +546,11 @@ TEST_F(AccessManagerStorageTest, userInGroup_can_add_and_remove_user_from_group)
   // This test exposed the bug where userInGroup incorrectly uses UserGroupRecord instead of UserGroupUserRecord
   int64_t userId = storage->createUser("testuser");
   storage->createUserGroup(UserGroup("TestGroup", {}));
-  storage->addUserToGroup(userId, "TestGroup");
+  storage->addUserToGroup(userId, "TestGroup", {});
   EXPECT_TRUE(storage->userInGroup("testuser", "TestGroup"));
   storage->removeUserFromGroup(userId, "TestGroup");
   EXPECT_FALSE(storage->userInGroup("testuser", "TestGroup"));
-  storage->addUserToGroup(userId, "TestGroup");
+  storage->addUserToGroup(userId, "TestGroup", {});
   EXPECT_TRUE(storage->userInGroup("testuser", "TestGroup"));
 }
 
@@ -531,7 +561,7 @@ TEST_F(AccessManagerStorageTest, userGroupIsEmpty) {
   EXPECT_TRUE(storage->userGroupIsEmpty(userGroupId));
   const std::string user = "MyUser";
   storage->createUser(user);
-  storage->addUserToGroup(user, group);
+  storage->addUserToGroup(user, group, {});
   EXPECT_FALSE(storage->userGroupIsEmpty(userGroupId));
 }
 
@@ -561,8 +591,8 @@ TEST_F(AccessManagerStorageTest, findUserGroupId) {
   int64_t group1_id = storage->createUserGroup(group1);
   int64_t group2_id = storage->createUserGroup(group2);
 
-  EXPECT_EQ(storage->findUserGroupId(group1.mName), group1_id);
-  EXPECT_EQ(storage->findUserGroupId(group2.mName), group2_id);
+  EXPECT_EQ(storage->findUserGroupId(group1.name), group1_id);
+  EXPECT_EQ(storage->findUserGroupId(group2.name), group2_id);
 }
 
 TEST_F(AccessManagerStorageTest, findUserGroupId_non_existing) {
@@ -583,11 +613,11 @@ TEST_F(AccessManagerStorageTest, findUserGroupId_with_changed_validity) {
 
   int64_t group1_id = storage->createUserGroup(group1);
   int64_t group2_id = storage->createUserGroup(group2);
-  group1.mMaxAuthValidity = 42s;
+  group1.maxAuthValidity = 42s;
   storage->modifyUserGroup(group1);
 
-  EXPECT_EQ(storage->findUserGroupId(group1.mName), group1_id);
-  EXPECT_EQ(storage->findUserGroupId(group2.mName), group2_id);
+  EXPECT_EQ(storage->findUserGroupId(group1.name), group1_id);
+  EXPECT_EQ(storage->findUserGroupId(group2.name), group2_id);
 }
 
 TEST_F(AccessManagerStorageTest, changing_usergroup_name_invalidates_old_name) {
@@ -624,9 +654,9 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_groups) {
 
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
-  EXPECT_EQ(groupNames, (std::vector{group1.mName, group2.mName})) << "should return all group names";
-  EXPECT_EQ(response.mUserGroups, (std::vector<UserGroup>{
+  const auto groupNames = RangeToVector(response.userGroups | views::transform(std::mem_fn(&UserGroup::name)));
+  EXPECT_EQ(groupNames, (std::vector{group1.name, group2.name})) << "should return all group names";
+  EXPECT_EQ(response.userGroups, (std::vector<UserGroup>{
       group1,
       group2,
     })) << "should return all group properties";
@@ -641,7 +671,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_users) {
 
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
+  EXPECT_EQ(response.users, (std::vector<QRUser>{
       {user1, {}, {}, {}},
       {user2, {}, {}, {}},
     })) << "should return all users";
@@ -656,7 +686,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_users_alt_ids) {
 
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
+  EXPECT_EQ(response.users, (std::vector<QRUser>{
       {user1, {}, {user1Alt}, {}},
     })) << "should return alternative identifiers";
 }
@@ -677,14 +707,14 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_group_memberships) {
   storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::None);
   storage->createUser(user2);
 
-  storage->addUserToGroup(user1, group1);
-  storage->addUserToGroup(user2, group2);
+  storage->addUserToGroup(user1, group1, {});
+  storage->addUserToGroup(user2, group2, {});
 
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {user1, {}, {user1Alt}, {group1}},
-      {user2, {}, {}, {group2}},
+  EXPECT_EQ(response.users, (std::vector<QRUser>{
+      {user1, {}, {user1Alt}, {{group1, {}}}},
+      {user2, {}, {}, {{group2, {}}}},
     })) << "should return user-group memberships";
 }
 
@@ -706,20 +736,20 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_group) {
   storage->createUser(user2);
   storage->createUser(user3);
 
-  storage->addUserToGroup(user1, group1);
-  storage->addUserToGroup(user2, group2);
-  storage->addUserToGroup(user3, group1);
-  storage->addUserToGroup(user3, group2);
+  storage->addUserToGroup(user1, group1, {});
+  storage->addUserToGroup(user2, group2, {});
+  storage->addUserToGroup(user3, group1, {});
+  storage->addUserToGroup(user3, group2, {});
 
   auto response = storage->executeUserQuery({TimeNow(), "Group1", ""});
   PrepareSortedMine(response);
 
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
+  const auto groupNames = RangeToVector(response.userGroups | views::transform(std::mem_fn(&UserGroup::name)));
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return filtered group names";
 
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {user1, {}, {user1Alt}, {group1}},
-      {user3, {}, {}, {group1}}, // Note: we don't return group2 for user3
+  EXPECT_EQ(response.users, (std::vector<QRUser>{
+      {user1, {}, {user1Alt}, {{group1, {}}}},
+      {user3, {}, {}, {{group1, {}}}}, // Note: we don't return group2 for user3
     })) << "should return group-filtered users with group memberships";
 }
 
@@ -741,19 +771,19 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user) {
   storage->createUser(user2);
   storage->createUser(user3);
 
-  storage->addUserToGroup(user1, group1);
-  storage->addUserToGroup(user2, group2);
-  storage->addUserToGroup(user3, group1);
-  storage->addUserToGroup(user3, group2);
+  storage->addUserToGroup(user1, group1, {});
+  storage->addUserToGroup(user2, group2, {});
+  storage->addUserToGroup(user3, group1, {});
+  storage->addUserToGroup(user3, group2, {});
 
   auto response = storage->executeUserQuery({TimeNow(), "", "User1"});
   PrepareSortedMine(response);
 
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {user1, {}, {user1Alt}, {group1}}, // Note: we also want to see alternative IDs
+  EXPECT_EQ(response.users, (std::vector<QRUser>{
+      {user1, {}, {user1Alt}, {{group1, {}}}}, // Note: we also want to see alternative IDs
     })) << "should return filtered users with all alt IDs with group memberships";
 
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
+  const auto groupNames = RangeToVector(response.userGroups | views::transform(std::mem_fn(&UserGroup::name)));
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return user-filtered group names";
 }
 
@@ -773,16 +803,16 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_alt) {
   storage->addIdentifierForUser(user1, user1Alt, UserIdFlags::None);
   storage->createUser(user2);
 
-  storage->addUserToGroup(user1, group1);
-  storage->addUserToGroup(user2, group2);
+  storage->addUserToGroup(user1, group1, {});
+  storage->addUserToGroup(user2, group2, {});
 
   auto response = storage->executeUserQuery({TimeNow(), "", "-alt"});
   PrepareSortedMine(response);
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {user1, {}, {user1Alt}, {group1}},
+  EXPECT_EQ(response.users, (std::vector<QRUser>{
+      {user1, {}, {user1Alt}, {{group1, {}}}},
     })) << "should return filtered users with all alt IDs with group memberships";
 
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
+  const auto groupNames = RangeToVector(response.userGroups | views::transform(std::mem_fn(&UserGroup::name)));
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return user-filtered group names";
 }
 
@@ -805,20 +835,20 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_and_group) {
     storage->createUser(std::move(user));
   }
 
-  storage->addUserToGroup(userA1, groupA1);
-  storage->addUserToGroup(userA2, groupB1);
-  storage->addUserToGroup(userB1, groupA1);
-  storage->addUserToGroup(userB2, groupA2);
+  storage->addUserToGroup(userA1, groupA1, {});
+  storage->addUserToGroup(userA2, groupB1, {});
+  storage->addUserToGroup(userB1, groupA1, {});
+  storage->addUserToGroup(userB2, groupA2, {});
 
-  storage->addUserToGroup(userA1, groupB1);
+  storage->addUserToGroup(userA1, groupB1, {});
 
   auto response = storage->executeUserQuery({TimeNow(), "GroupA", "UserA"});
   PrepareSortedMine(response);
-  EXPECT_EQ(response.mUsers, (std::vector<QRUser>{
-      {userA1, {}, {}, {groupA1}},
+  EXPECT_EQ(response.users, (std::vector<QRUser>{
+      {userA1, {}, {}, {{groupA1, {}}}},
     })) << "should return double-filtered users with group memberships";
 
-  const auto groupNames = RangeToVector(response.mUserGroups | views::transform(std::mem_fn(&UserGroup::mName)));
+  const auto groupNames = RangeToVector(response.userGroups | views::transform(std::mem_fn(&UserGroup::name)));
   EXPECT_EQ(groupNames, std::vector{groupA1}) << "should return double-filtered group names";
 }
 
@@ -966,12 +996,12 @@ TEST_F(AccessManagerStorageTest, removeMetadataStructure) {
   const StructureMetadataKey key{"meta_group", "meta_key"};
   const std::string value = "meta value";
 
-  struct context {
+  struct Context {
     StructureMetadataType structureType;
     std::string description;
     std::function<void()> createStructure, removeStructure;
   };
-  auto contexts = std::initializer_list<context>{
+  auto contexts = std::initializer_list<Context>{
       {StructureMetadataType::Column, "column", [&] {storage->createColumn(structure); }, [&] {storage->removeColumn(structure); }},
       {StructureMetadataType::ColumnGroup, "column group", [&] {storage->createColumnGroup(structure); },
           [&] {storage->removeColumnGroup(structure, false); }},
@@ -982,7 +1012,7 @@ TEST_F(AccessManagerStorageTest, removeMetadataStructure) {
       {StructureMetadataType::UserGroup, "user group", [&] {storage->createUserGroup(UserGroup{structure, {}}); },
           [&] {storage->removeUserGroup(structure); }},
   };
-  for (const context& ctx : contexts) {
+  for (const Context& ctx : contexts) {
     ctx.createStructure();
     storage->setStructureMetadata(ctx.structureType, structure, key, value);
     {

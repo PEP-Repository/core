@@ -44,6 +44,7 @@ __pycache__/
 *.pyc
 *.egg-info
 *.whl
+uv.lock
 
 # macOS specific
 .DS_Store
@@ -60,6 +61,7 @@ ClientKeys.json
 OAuthToken.json
 pulled-data-pending/
 pulled-data/
+rotated_logs/*
 
 # infer cache
 infer_state/

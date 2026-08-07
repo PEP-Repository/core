@@ -9,8 +9,8 @@
 namespace {
 
 struct Result {
-  unsigned value_;
-  unsigned recursion_;
+  unsigned value;
+  unsigned recursion;
 };
 
 using Inner = rxcpp::observable<Result>;
@@ -47,8 +47,8 @@ Inner MakeInner(std::shared_ptr<unsigned> counter, InstanceCountedCallback andIn
     thread_local unsigned recursion = 0U;
 
     Result result{
-      .value_ = (*counter)--,
-      .recursion_ = recursion++,
+      .value = (*counter)--,
+      .recursion = recursion++,
     };
     PEP_DEFER(--recursion);
 
@@ -64,7 +64,7 @@ using ProduceNextInnerIfAvailable = std::function<void(std::shared_ptr<unsigned>
 void TestIterativeCountDown(ProduceNextInnerIfAvailable produce, bool recurs, const char* description) {
   constexpr unsigned count = 5U;
   std::vector<unsigned> produced;
-  bool recursion_detected = false;
+  bool recursionDetected = false;
 
   auto callbackInstancesBefore = InstanceCountedCallback::InstanceCount();
 
@@ -72,15 +72,15 @@ void TestIterativeCountDown(ProduceNextInnerIfAvailable produce, bool recurs, co
     produce(counter, subscriber);
     })
     .concat()
-    .subscribe([&recursion_detected, &produced](Result entry) {
-        produced.emplace_back(entry.value_);
-        if (entry.recursion_ != 0U) {
-          recursion_detected = true;
+    .subscribe([&recursionDetected, &produced](Result entry) {
+        produced.emplace_back(entry.value);
+        if (entry.recursion != 0U) {
+          recursionDetected = true;
         }
       });
 
   // Validate our primary concern
-  EXPECT_EQ(recurs, recursion_detected) << description << (recurs ? "should" : "shouldn't") << " cause recursive calls";
+  EXPECT_EQ(recurs, recursionDetected) << description << (recurs ? "should" : "shouldn't") << " cause recursive calls";
 
   // Validate the "produce" function's results
   std::vector<unsigned> expected(count);

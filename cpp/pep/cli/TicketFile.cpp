@@ -24,8 +24,8 @@ commandline::Parameters TicketFile::GetParameters(bool commandProvidesQuery) {
   return result + commandline::Parameter("ticket", "Use ticket stored in this file").shorthand('t').value(readParameterValue);
 }
 
-rxcpp::observable<IndexedTicket2> TicketFile::GetTicket(CoreClient& client, const commandline::NamedValues& parameterValues, const std::optional<requestTicket2Opts>& opts) {
-  auto requestOpts = opts.value_or(requestTicket2Opts());
+rxcpp::observable<IndexedTicket2> TicketFile::GetTicket(CoreClient& client, const commandline::NamedValues& parameterValues, const std::optional<RequestTicket2Opts>& opts) {
+  auto requestOpts = opts.value_or(RequestTicket2Opts());
   assert(requestOpts.ticket == nullptr);
   assert(!requestOpts.forceTicket);
 
@@ -56,7 +56,7 @@ rxcpp::observable<IndexedTicket2> TicketFile::GetTicket(CoreClient& client, cons
   rxcpp::observable<IndexedTicket2> result = client.requestTicket2(requestOpts);
   if (file.has_value()) {
     result = result.tap([file](const IndexedTicket2& ticket) {
-      std::ofstream tso(file->string(), std::ios_base::out | std::ios_base::binary);
+      std::ofstream tso(*file, std::ios_base::out | std::ios_base::binary);
       tso << pep::Serialization::ToString(ticket);
     });
   }

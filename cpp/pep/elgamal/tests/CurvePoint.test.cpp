@@ -5,16 +5,27 @@
 
 namespace {
 
-TEST(CurvePointTest, TestConstructor) {
-  pep::CurvePoint point;
-}
-
 TEST(CurvePointTest, TestCompare) {
   pep::CurvePoint pointA;
   EXPECT_EQ(pointA, pointA) << "Point is not equal to itself";
   pep::CurvePoint pointB = pep::CurvePoint::Random();
   EXPECT_EQ(pointB, pointB) << "Point is not equal to itself";
   EXPECT_NE(pointA, pointB) << "Different points are equal";
+}
+
+TEST(CurvePointTest, TestBase) {
+  const pep::CurvePoint base(pep::CurvePoint::Base);
+  EXPECT_EQ(base, pep::CurveScalar::One() * pep::CurvePoint::Base);
+}
+
+TEST(CurvePointTest, TestNeutral) {
+  const pep::CurvePoint neutral;
+
+  const pep::CurvePoint base(pep::CurvePoint::Base);
+  EXPECT_NE(base, neutral);
+  EXPECT_EQ(base, base + neutral);
+
+  EXPECT_EQ(pep::CurvePoint(neutral.pack()), neutral);
 }
 
 TEST(CurvePointTest, TestRandom) {

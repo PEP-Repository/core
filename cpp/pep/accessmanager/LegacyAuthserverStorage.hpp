@@ -36,7 +36,7 @@ struct LegacyUserGroupUserRecord  {
 
 namespace detail {
 // This function defines the database scheme used.
-static auto legacy_authserver_create_db(const std::string& path) {
+inline auto CreateLegacyAuthServerDb(const std::string& path) {
   using namespace sqlite_orm;
   // This is very similar to how the same tables are defined in AccessManagerStorage, but not entirely the same.
   // Some refactorings have been done during the migration of these tables to the access manager. So here we have the
@@ -89,9 +89,9 @@ static auto legacy_authserver_create_db(const std::string& path) {
 
 class LegacyAuthserverStorage {
 private:
-  using Implementor = database::Storage<detail::legacy_authserver_create_db>;
+  using Implementor = database::Storage<detail::CreateLegacyAuthServerDb>;
 
-  std::shared_ptr<Implementor> mStorage;
+  std::shared_ptr<Implementor> storage_;
 
   int64_t getNextInternalUserId() const;
 
@@ -102,15 +102,15 @@ public:
   LegacyAuthserverStorage(const std::filesystem::path &path);
 
   auto getUserIdRecords() const {
-    return mStorage->raw.iterate<UserIdRecord>(sqlite_orm::order_by(&UserIdRecord::seqno).asc());
+    return storage_->raw.iterate<UserIdRecord>(sqlite_orm::order_by(&UserIdRecord::seqno).asc());
   };
 
   auto getUserGroupRecords() const{
-    return mStorage->raw.iterate<UserGroupRecord>(sqlite_orm::order_by(&UserGroupRecord::seqno).asc());
+    return storage_->raw.iterate<UserGroupRecord>(sqlite_orm::order_by(&UserGroupRecord::seqno).asc());
   };
 
   auto getUserGroupUserRecords() const{
-    return mStorage->raw.iterate<LegacyUserGroupUserRecord>(sqlite_orm::order_by(&LegacyUserGroupUserRecord::seqno).asc());
+    return storage_->raw.iterate<LegacyUserGroupUserRecord>(sqlite_orm::order_by(&LegacyUserGroupUserRecord::seqno).asc());
   };
 };
 

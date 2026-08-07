@@ -16,50 +16,25 @@ public:
 
     ServerTraits serverTraits() const noexcept override { return ServerTraits::KeyServer(); }
 
-    /*!
-     * \return The client CA private key
-     */
-    const AsymmetricKey& getClientCAPrivateKey() const;
-    /*!
-     * \param privateKey The client CA private key
-     */
-    void setClientCAPrivateKey(const AsymmetricKey& privateKey);
+    const std::optional<X509Identity>& getClientCa() const { return clientCa_; }
 
-    /*!
-     * \return The certificate chain corresponding with the client CA private key
-     */
-    const std::optional<X509CertificateChain>& getClientCACertificateChain();
-    /*!
-     * \param certificateChain The certificate chain corresponding with the client CA private key
-     */
-    void setClientCACertificateChain(const X509CertificateChain& certificateChain);
-
-    /*!
-     * \return The oauth token secret, shared with the authentication server
-     */
+    /// \return The oauth token secret, shared with the authentication server
     const std::string& getOauthTokenSecret() const;
-    /*!
-     * \param oauthTokenSecret The oauth token secret, shared with the authentication server
-     */
+    /// \param oauthTokenSecret The oauth token secret, shared with the authentication server
     void setOauthTokenSecret(const std::string& oauthTokenSecret);
 
-    /*!
-     * \return The path where the blocklist of the keyserver is stored on disk
-     */
+    /// \return The path where the blocklist of the keyserver is stored on disk
     const std::filesystem::path& getBlocklistStoragePath() const;
-    /*!
-     * \param path The path where the blocklist of the keyserver is stored on disk
-     */
+    /// \param path The path where the blocklist of the keyserver is stored on disk
     void setBlocklistStoragePath(const std::filesystem::path& path);
 
   protected:
     void check() const override;
 
   private:
-    AsymmetricKey mClientCAPrivateKey;
-    std::optional<X509CertificateChain> mClientCACertificateChain;
-    std::string mOauthTokenSecret;
-    std::filesystem::path mBlocklistStoragePath;
+    std::optional<X509Identity> clientCa_;
+    std::string oauthTokenSecret_;
+    std::filesystem::path blocklistStoragePath_;
   };
 
 public:
@@ -80,10 +55,9 @@ private:
 
   bool isValid(const OAuthToken& authToken, const std::string& commonName, const std::string& organisationalUnit) const;
 
-  AsymmetricKey mClientCAPrivateKey;
-  X509CertificateChain mClientCACertificateChain;
-  std::string mOauthTokenSecret;
-  std::unique_ptr<tokenBlocking::Blocklist> mBlocklist;
+  X509Identity clientCa_;
+  std::string oauthTokenSecret_;
+  std::unique_ptr<tokenBlocking::Blocklist> blocklist_;
 };
 
 } // namespace pep

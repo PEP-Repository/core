@@ -2,7 +2,12 @@
 
 The `pepcli` application is the primary command line interface (CLI) application to interact with the PEP system. It is available for multiple platforms, and is included in PEP's `client` Docker images and in the Windows client software installer. Among `pepcli`'s functionalities are the ability to [upload and download data](uploading-and-downloading-data.md), and to administer the PEP system.
 
-The use of command line utilities such as `pepcli` is subject to details of the platform on which it is used. For example, a literal `*` (asterisk) parameter value must be escaped to `\*` on Linux to prevent [shell expansion](https://www.gnu.org/software/bash/manual/html_node/Shell-Expansions.html) ("globbing"). Such details are not (extensively) covered in this documentation. Users are expected to be knowledgeable enough about their platforms to perform basic tasks and avoid common pitfalls.
+The use of command line utilities such as `pepcli` is subject to details of the platform on which it is used. For example
+
+- a literal `*` (asterisk) parameter value must be escaped to `\*` on Linux to prevent [shell expansion](https://www.gnu.org/software/bash/manual/html_node/Shell-Expansions.html) ("globbing").
+- passing an empty parameter value [requires some hoop jumping in PowerShell](https://stackoverflow.com/questions/10297002/passing-empty-arguments-to-executables-using-powershell), e.g. enclosing a set of double quotes `""` by single quotes: `'""'` . Note that the [behavior may even vary across PowerShell versions](https://stackoverflow.com/a/77908046).
+
+Such details are not (extensively) covered in this documentation. Users are expected to be knowledgeable enough about their platforms to perform basic tasks and avoid common pitfalls.
 
 ## General usage
 
@@ -142,6 +147,8 @@ General purpose:
   - [`query column-access`](#query-column-access) lists the columns and column groups accessible to the enrolled user.
   - [`query participant-group-access`](#query-participant-group-access) lists the participant groups accessible to the enrolled user.
   - [`query enrollment`](#query-enrollment) tells users how they're enrolled.
+- [`pseudonym`](#pseudonym) provides ad hoc pseudonym operations: converting between formats and inspecting their type.
+  - [`pseudonym convert`](#pseudonym-convert) converts a pseudonym between different formats.
 
 Data storage and retrieval:
 
@@ -224,8 +231,8 @@ pepcli ama column create <column name>
 pepcli ama column remove <column name>
 ```
 
-Because of technical limitations, PEP column names may contain only [printable ASCII characters](https://en.wikipedia.org/wiki/ASCII#Printable_characters). Additional restrictions apply to the names of columns into which Castor data are imported.
-<!--- Link to and/or describe these resitrictions -->
+Because of technical limitations and the convenience of users downloading data, PEP column names must be valid file names on supported systems. For example, because of Microsoft Windows restrictions, column names cannot contain the characters `<>:"/\|?*`. Additional restrictions apply to the names of columns into which Castor data are imported.
+<!--- Link to and/or describe these restrictions -->
 
 Note that column removal will not discard data present in those columns; it will merely make the column's contents inaccessible. Therefore:
 
@@ -500,9 +507,25 @@ pepcli user unsetPrimaryId <uid>
 Users can be added to, and removed from user groups with the following commands:
 
 ```shell
-pepcli user addTo <uid> <group>
+pepcli user addTo [--end-date <yyyymmdd>] <uid> <group>
 pepcli user removeFrom <uid> <group>
 ```
+
+If an end-date is passed to the `pepcli user addTo` command, the user will be removed from the user group at the given date.
+Any tokens for the user will also be blocked starting from that date. 
+
+When a user is removed with `pepcli user removeFrom`, existing tokens for the user will be blocked immediately.
+
+### `user updateExpiration`
+
+The end-date of a membership of a user from a group can be updated with:
+
+```shell
+pepcli user updateExpiration [--end-date <yyyymmdd>] <uid> <group>
+```
+
+If no end-date is passed, any existing end-date is removed.
+If an end-date is passed, users will now be removed at that date, and tokens will be blocked starting from that date.
 
 ### `user group create/remove/modify`
 
@@ -613,17 +636,29 @@ so that they can no longer be used. This should only be necessary in exceptional
 The PEP servers maintain a blocklist to specify which tokens should be rejected, regardless of their validity period.
 All `pepcli token block` commands operate on this blocklist.
 
-A rejection rule has three fields, `subject`, `user-group` and `issuedBefore`. A single rule will block all tokens that
+A rejection rule has four fields, `subject`, `user-group`, `issuedBefore` and `blockStart`. A single rule will block all tokens that
 match the following criteria:
 
 - The subject of the token matches subject of the rule
 - The user-group of the token matches the user-group of the rule
 - The issue date, which tells when the token was created, is before the `issuedBefore` date
 
+The rule will go into effect at the `blockStart` date. Until that date, tokens matching the criteria will not yet be blocked.
+
+Rules are automatically added to the blocklist when:
+
+- a user is removed from a group with `pepcli user removeFrom`. The added rule has no explicit `blockStart`, so will go into effect immediately.
+- a user is added to a group with `pepcli user addTo`, and an end-date is passed. 
+- the end-date of a user group membership is updated with `pepcli user updateExpiration`
+
+In the latter two cases, the `blockStart` and `issuedBefore` dates will be equal to the end-date. So the rule will go
+into effect at the end-date. Tokens that are issued after the end-date are not blocked, since requesting new tokens for a user
+implies that they should get access again.
+
 #### token block create
 
 ```shell
-Usage: pepcli token block create [--issuedBefore-unixtime <value>] [--issuedBefore-yyyymmdd <value>] --message <value> <subject> <user-group>
+Usage: pepcli token block create [--issuedBefore-unixtime <value>] [--issuedBefore-yyyymmdd <value>] [--block-start-yyyymmdd <value>] --message <value> <subject> <user-group>
 ```
 
 The main command is `pepcli token block create`, which can block tokens by adding new rejection rules to the list.
@@ -646,9 +681,12 @@ can be altered with an `issuedBefore` switch, which comes in two flavours:
 
 Using both of these is not allowed and will be refused by the application.
 
-A reason to explicitly pass an `issuedBefore` date/time could be that you already generated a new timestamp, before
+A reason to explicitly pass an `issuedBefore` date/time could be that you already generated a new token, before
 creating the block rule. In that case, you could set `issuedBefore` to the date you created the new token or earlier,
 so that this new token is not affected.
+
+By default, the block applies immediately. This behaviour can be altered with the `--block-start-yyyymmdd`, which
+accepts a human readable 'yyyymmdd' date. The new rule will go into effect at the given date.
 
 On success, the application will print the entry that was created, with the exact values that were stored in the
 blocklist.
@@ -997,9 +1035,26 @@ pepcli query enrollment
 
 The output will include your user name (ID) and the user group to which you belong. The command will produce an error if you haven't enrolled yet, or if your enrollment has expired.
 
+## pseudonym
+
+Use the `pepcli pseudonym` command to perform ad hoc operations on pseudonyms.
+
+### pseudonym convert
+
+The `convert` subcommand converts a pseudonym from one format into another.
+
+```plaintext
+pepcli pseudonym convert <from> <to>
+```
+
+`<from>` is the pseudonym value to convert. `<to>` specifies the target type:
+`local-pseudonym` (or `lp`), `polymorphic-pseudonym` (or `pp`), or
+`brief-local-pseudonym` (or `blp`).
+
+
 ## store
 
-You can store data with this command:
+You can store data with this command:-
 
 ```plaintext
 pepcli store -c <column name> -p <participant> -i /PATH/TO/DATA/FILE

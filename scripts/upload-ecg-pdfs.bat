@@ -15,37 +15,37 @@ rem Call script that verifies only a single PDF file exists in each subdir.
 set OwnDir=%~dp0
 call "%OwnDir%\verify-single-upload-ecg-pdfs.bat" "%RootDir%"
 if %errorlevel% neq 0 (
-	@echo Terminating: please ensure that each subdirectory contains at most one PDF file.
-	exit /B !errorlevel!
+  @echo Terminating: please ensure that each subdirectory contains at most one PDF file.
+  exit /B !errorlevel!
 )
 
 rem Iterate over lines in the ID file: https://stackoverflow.com/a/24928087
 for /F "usebackq tokens=1-2 delims=," %%a in ("%IdFile%") do (
-	SET ParticipantId=%%a
-	SET EcgSp=%%b
-	rem Somehow %RootDir% is quoted if I don't suppress quotes explicitly
-	SET DataDir=%RootDir:"=%\!EcgSp!
-	@echo Processing directory "!DataDir!" for participant "!ParticipantId!".
-	
-	if exist "!DataDir!" (
-		rem Iterate over PDF files in data directory.
-		FOR %%f IN ("!DataDir!\*.pdf") DO (
-			SET CliInvocation=pepcli store --participant "!ParticipantId!" --column %EcgColumnName% --input-file "%%f"
-			rem Remove the "@echo" when you want to run for real
-			@echo     !CliInvocation!
-			
-			rem Terminate if pepcli fails
-			if !errorlevel! neq 0 (
-				@echo Terminating: "pepcli store" failed
-				exit /B !errorlevel!
-			)
-			
-			@echo     Uploaded "%%f"
-		)
-	)
+  SET ParticipantId=%%a
+  SET EcgSp=%%b
+  rem Somehow %RootDir% is quoted if I don't suppress quotes explicitly
+  SET DataDir=%RootDir:"=%\!EcgSp!
+  @echo Processing directory "!DataDir!" for participant "!ParticipantId!".
+  
+  if exist "!DataDir!" (
+    rem Iterate over PDF files in data directory.
+    FOR %%f IN ("!DataDir!\*.pdf") DO (
+      SET CliInvocation=pepcli store --participant "!ParticipantId!" --column %EcgColumnName% --input-file "%%f"
+      rem Remove the "@echo" when you want to run for real
+      @echo     !CliInvocation!
+      
+      rem Terminate if pepcli fails
+      if !errorlevel! neq 0 (
+        @echo Terminating: "pepcli store" failed
+        exit /B !errorlevel!
+      )
+      
+      @echo     Uploaded "%%f"
+    )
+  )
 )
 goto :End
-	  
+    
 :Invocation
 @echo Uploads ECG PDF files to PEP. Invoke from a directory containing pepcli(.exe).
 @echo Usage:

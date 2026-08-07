@@ -15,47 +15,23 @@ namespace pep
 // but _after_ the source observable emitted an on_next, on_error 
 // or on_complete.
 template <typename Action>
-struct RxButFirst {
-
+class RxButFirst {
   // check that Action can be invoked, and returns nothing
   static_assert(std::is_same_v<std::invoke_result_t<Action>, void>);
 
-private:
-  struct State {
-    State(Action&& action) 
-      : action(std::move(action)) {}
-
-    void tryIt() {
-      if (this->didIt)
-        return;
-      this->didIt = true;
-      this->action();
-    }
-
-    void use() {
-      assert(!this->used);
-      this->used = true;
-    }
-  private:
-    Action action;
-    bool didIt = false;
-    bool used = false;
-  };
-
-  std::shared_ptr<State> state;
-
+  class State;
+  std::shared_ptr<State> state_;
 
 public:
   explicit RxButFirst(Action&& doThis)
-    : state(std::make_shared<State>(std::move(doThis))) {
+    : state_(std::make_shared<State>(std::move(doThis))) {
   }
 
   template <typename TItem, typename SourceOperator>
   rxcpp::observable<TItem> operator()(
       rxcpp::observable<TItem, SourceOperator> obs) const {
 
-    auto state = this->state;
-
+    auto state = state_;
     state->use();
 
     return obs.tap(
@@ -76,6 +52,31 @@ public:
     );
   }
 };
+
+template <typename Action>
+class RxButFirst<Action>::State {
+private:
+  Action action_;
+  bool didIt_ = false;
+  bool used_ = false;
+
+public:
+  State(Action&& action)
+    : action_(std::move(action)) {}
+
+  void tryIt() {
+    if (didIt_)
+      return;
+    didIt_ = true;
+    action_();
+  }
+
+  void use() {
+    assert(!this->used_);
+    used_ = true;
+  }
+};
+
 
 }
 

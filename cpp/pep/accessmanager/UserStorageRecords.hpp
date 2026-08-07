@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <optional>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <pep/accessmanager/UserIdFlags.hpp>
 #include <pep/database/Record.hpp>
 
@@ -62,14 +62,13 @@ struct UserGroupRecord {
 
 struct LegacyUserGroupUserRecord;
 
-/**
- * @brief A record for storing user membership of a user group
- */
+/// A record for storing user membership of a user group
 struct UserGroupUserRecord {
   UserGroupUserRecord() = default;
   UserGroupUserRecord(
     int64_t internalUserId,
     int64_t userGroupId,
+    std::optional<Timestamp> expirationTimestamp,
     bool tombstone = false);
   explicit UserGroupUserRecord(const LegacyUserGroupUserRecord& legacyUserGroupUserRecord);
   uint64_t checksum() const;
@@ -83,6 +82,7 @@ struct UserGroupUserRecord {
   int64_t userGroupId{};
   /// The internalUserId of the user.
   int64_t internalUserId{};
+  std::optional<database::UnixMillis> expirationTimestamp{};
 
   static inline const std::tuple RecordIdentifier{
     &UserGroupUserRecord::userGroupId,

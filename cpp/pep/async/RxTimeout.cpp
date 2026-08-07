@@ -33,7 +33,7 @@ rxcpp::observable<FakeVoid> RxAsioTimer(const std::chrono::milliseconds& duratio
       implementor->cancel(); // Don't keep the io_context busy if no one is interested in the timer anymore
       });
     })
-    .subscribe_on(observe_on_asio(io_context))
+    .subscribe_on(ObserveOnAsio(io_context))
     .observe_on(observe_on);
 }
 

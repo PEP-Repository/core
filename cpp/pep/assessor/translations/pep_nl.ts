@@ -159,23 +159,23 @@
         <source>Export %1</source>
         <translation>Exporteer %1</translation>
     </message>
-	<message>
+    <message>
         <source>Data exported</source>
         <translation>Gegevens geëxporteerd</translation>
     </message>
-	<message>
-		<source>Export failed: %1</source>
+    <message>
+        <source>Export failed: %1</source>
         <translation>Data exporteren mislukt: %1</translation>
-	</message>
+    </message>
     <message>
         <source>Comma-separated values (*.csv);;All Files (%1)</source>
         <translation>Door komma's gescheiden waarden (*.csv);;Alle bestanden (%1)</translation>
     </message>
-	<message>
+    <message>
         <source>Device history</source>
         <translation>Apparaatgeschiedenis</translation>
     </message>
-	 <message>
+     <message>
         <source>Visit %1</source>
         <translation>Bezoek %1</translation>
     </message>

@@ -4,7 +4,9 @@ set -o errexit
 set -o nounset
 
 SCRIPTSELF=$(command -v "$0")
+readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+readonly SCRIPTPATH
 
 die() {
   exit 1

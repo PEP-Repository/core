@@ -5,7 +5,7 @@ using namespace pep::cli;
 
 CommandUser::UserSubCommand::UserSubCommand(const std::string &name, const std::string &description,
                                             CommandUser::UserSubCommand::AmProxyMethod method, CommandUser &parent)
-        : ChildCommandOf<CommandUser>(name, description, parent), mMethod(method) {
+        : ChildCommandOf<CommandUser>(name, description, parent), method_(method) {
 }
 
 pep::commandline::Parameters CommandUser::UserSubCommand::getSupportedParameters() const {
@@ -16,7 +16,7 @@ pep::commandline::Parameters CommandUser::UserSubCommand::getSupportedParameters
 int CommandUser::UserSubCommand::execute() {
   return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
     auto& am = *client->getAccessManagerProxy();
-    return (am.*mMethod)(this->getParameterValues().get<std::string>("uid"));
+    return (am.*method_)(this->getParameterValues().get<std::string>("uid"));
   });
 }
 
@@ -50,10 +50,17 @@ pep::commandline::Parameters CommandUser::UserGroupUserSubCommand::getSupportedP
                  .value(pep::commandline::Value<std::string>().positional().required());
 }
 
+pep::commandline::Parameters CommandUser::UserAddToSubCommand::getSupportedParameters() const {
+  return UserGroupUserSubCommand::getSupportedParameters()
+          + pep::commandline::Parameter("expiration", "Point in time at which membership of the user group for the user should end")
+                  .value(pep::commandline::Value<pep::Timestamp>());
+}
+
 int CommandUser::UserAddToSubCommand::execute() {
   return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
-    return client->getAccessManagerProxy()->addUserToGroup(this->getParameterValues().get<std::string>("uid"),
-                                this->getParameterValues().get<std::string>("group"));
+    const auto& values = this->getParameterValues();
+    return client->getAccessManagerProxy()->addUserToGroup(values.get<std::string>("uid"), values.get<std::string>("group"),
+      values.getOptional<Timestamp>("expiration"));
   });
 }
 
@@ -67,5 +74,19 @@ int CommandUser::UserRemoveFromSubCommand::execute() {
     return client->getAccessManagerProxy()->removeUserFromGroup(this->getParameterValues().get<std::string>("uid"),
                                 this->getParameterValues().get<std::string>("group"),
                                 !this->getParameterValues().has("dontBlockTokens"));
+  });
+}
+
+pep::commandline::Parameters CommandUser::UserUpdateExpirationSubCommand::getSupportedParameters() const {
+  return UserGroupUserSubCommand::getSupportedParameters()
+          + pep::commandline::Parameter("expiration", "Point in time at which membership of the user group for the user should end")
+                  .value(pep::commandline::Value<pep::Timestamp>());
+}
+
+int CommandUser::UserUpdateExpirationSubCommand::execute() {
+  return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
+    const auto& values = this->getParameterValues();
+    return client->getAccessManagerProxy()->updateExpiration(values.get<std::string>("uid"), values.get<std::string>("group"),
+      values.getOptional<Timestamp>("expiration"));
   });
 }

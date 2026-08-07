@@ -22,7 +22,7 @@ int GetWeekNumber(Timestamp moment, Timestamp offset) {
   using namespace std::chrono;
   auto diff = moment - offset;
   if (diff < decltype(diff)::zero()) {
-    PULLCASTOR_LOG(warning) << "Returning negative week number for timestamp that's before the offset";
+    PEP_PULLCASTOR_LOG(Severity::Warning) << "Returning negative week number for timestamp that's before the offset";
   }
   // Explicit floor to handle negative numbers, which may occur,
   //  see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1654
@@ -58,15 +58,15 @@ protected:
   using SurveyStepsById = std::unordered_map<std::string, std::shared_ptr<SurveyStep>>;
 
 private:
-  std::shared_ptr<StudyPuller> mSp;
-  std::string mColumnNamePrefix;
-  std::shared_ptr<RxCache<std::shared_ptr<SurveyStepsById>>> mSurveyStepsById;
+  std::shared_ptr<StudyPuller> sp_;
+  std::string columnNamePrefix_;
+  std::shared_ptr<RxCache<std::shared_ptr<SurveyStepsById>>> surveyStepsById_;
 
 protected:
   SpisPuller(std::shared_ptr<StudyPuller> sp, const std::string& columnNamePrefix);
 
-  inline std::shared_ptr<StudyPuller> getStudyPuller() const noexcept { return mSp; }
-  inline const std::string& getColumnNamePrefix() const noexcept { return mColumnNamePrefix; }
+  inline std::shared_ptr<StudyPuller> getStudyPuller() const noexcept { return sp_; }
+  inline const std::string& getColumnNamePrefix() const noexcept { return columnNamePrefix_; }
 
   rxcpp::observable<std::shared_ptr<StorableColumnContent>> loadContentForSpi(std::shared_ptr<SurveyPackageInstancePuller> spiPuller, rxcpp::observable<std::shared_ptr<SurveyDataPoint>> sdps);
 
@@ -83,8 +83,8 @@ class SurveyAspectPuller::AllSpisPuller : public SurveyAspectPuller::SpisPuller,
 private:
   using StudyStartsByParticipantId = std::unordered_map<std::string, Timestamp>;
 
-  std::string mDeviceHistoryColumn;
-  std::shared_ptr<RxCache<std::shared_ptr<StudyStartsByParticipantId>>> mStudyStartsByParticipantId;
+  std::string deviceHistoryColumn_;
+  std::shared_ptr<RxCache<std::shared_ptr<StudyStartsByParticipantId>>> studyStartsByParticipantId_;
 
   AllSpisPuller(std::shared_ptr<StudyPuller> sp, const std::string& spColumnName, const std::string& columnNamePrefix, const std::string& deviceHistoryColumn);
 
@@ -112,17 +112,17 @@ SurveyAspectPuller::LatestSpiPuller::LatestSpiPuller(std::shared_ptr<StudyPuller
 }
 
 SurveyAspectPuller::SurveyAspectPuller(std::shared_ptr<StudyPuller> sp, const StudyAspect& aspect)
-  : TypedStudyAspectPuller<SurveyAspectPuller, CastorStudyType::SURVEY>(sp, aspect) {
+  : TypedStudyAspectPuller<SurveyAspectPuller, CastorStudyType::Survey>(sp, aspect) {
 
-  mSpis = CreateRxCache([sp]() {
+  spis_ = CreateRxCache([sp]() {
     return SurveyPackageInstance::BulkRetrieve(sp->getStudy(), sp->getParticipants());
     });
-  mSpisByParticipantId = CreateRxCache([spis = mSpis]() {
+  spisByParticipantId_ = CreateRxCache([spis = spis_]() {
     return spis->observe()
       .filter([](std::shared_ptr<SurveyPackageInstance> spi) {
       bool result = !spi->isArchived();
       if (!result) {
-        PULLCASTOR_LOG(debug) << "Skipping archived SPI " << spi->getId()
+        PEP_PULLCASTOR_LOG(Severity::Debug) << "Skipping archived SPI " << spi->getId()
           << " for package '" << spi->getSurveyPackageName() << "'"
           << " for participant " << spi->getParticipantId();
       }
@@ -133,23 +133,23 @@ SurveyAspectPuller::SurveyAspectPuller(std::shared_ptr<StudyPuller> sp, const St
     });
   // Bulk-retrieve and cache SDP data if we're processing all participants
   if (!sp->getEnvironmentPuller()->getShortPseudonymsToProcess().has_value()) {
-    mSdpsBySpi = CreateRxCache([study = sp->getStudy(), spis = mSpis]() {
+    sdpsBySpi_ = CreateRxCache([study = sp->getStudy(), spis = spis_]() {
       return SurveyDataPoint::BulkRetrieve(study, spis->observe())
         .op(RxGroupToVectors([](std::shared_ptr<SurveyDataPoint> sdp) {return sdp->getSurveyPackageInstance(); }));
       });
   }
   const auto& offsetCol = aspect.getStorage()->getWeekOffsetDeviceColumn();
   if (!offsetCol.empty()) {
-    mSpisPuller = AllSpisPuller::Create(sp, aspect.getShortPseudonymColumn(), this->getColumnNamePrefix(), offsetCol);
+    spisPuller_ = AllSpisPuller::Create(sp, aspect.getShortPseudonymColumn(), this->getColumnNamePrefix(), offsetCol);
   }
   else {
-    mSpisPuller = LatestSpiPuller::Create(sp, this->getColumnNamePrefix());
+    spisPuller_ = LatestSpiPuller::Create(sp, this->getColumnNamePrefix());
   }
 }
 
 rxcpp::observable<std::shared_ptr<SurveyDataPoint>> SurveyAspectPuller::getDataPoints(std::shared_ptr<SurveyPackageInstance> spi) {
-  if (mSdpsBySpi != nullptr) {
-    return mSdpsBySpi->observe()
+  if (sdpsBySpi_ != nullptr) {
+    return sdpsBySpi_->observe()
       .flat_map([spi](std::shared_ptr<SdpsBySpi> sdpsBySpi) -> rxcpp::observable<std::shared_ptr<SurveyDataPoint>> {
       auto position = sdpsBySpi->find(spi);
       if (position == sdpsBySpi->cend()) {
@@ -162,8 +162,8 @@ rxcpp::observable<std::shared_ptr<SurveyDataPoint>> SurveyAspectPuller::getDataP
 }
 
 rxcpp::observable<std::shared_ptr<SdpsBySpi>> SurveyAspectPuller::getDataPoints(std::shared_ptr<Spis> spis) {
-  if (mSdpsBySpi != nullptr) {
-    return mSdpsBySpi->observe(); // Also contains SDPs for SPIs that caller didn't ask for, but AllSpisPuller::loadContentForSpis won't process entries for those excess SPIs
+  if (sdpsBySpi_ != nullptr) {
+    return sdpsBySpi_->observe(); // Also contains SDPs for SPIs that caller didn't ask for, but AllSpisPuller::loadContentForSpis won't process entries for those excess SPIs
   }
 
   assert(!spis->empty());
@@ -174,8 +174,8 @@ rxcpp::observable<std::shared_ptr<SdpsBySpi>> SurveyAspectPuller::getDataPoints(
 }
 
 SurveyAspectPuller::SpisPuller::SpisPuller(std::shared_ptr<StudyPuller> sp, const std::string& columnNamePrefix)
-  : mSp(sp), mColumnNamePrefix(columnNamePrefix) {
-  mSurveyStepsById = CreateRxCache([study = sp->getStudy()]() {
+  : sp_(sp), columnNamePrefix_(columnNamePrefix) {
+  surveyStepsById_ = CreateRxCache([study = sp->getStudy()]() {
     return study->getSurveys()
       .flat_map([](std::shared_ptr<Survey> survey) {return survey->getSteps(); })
       .op(RxToUnorderedMap([](std::shared_ptr<SurveyStep> step) {return step->getId(); }));
@@ -183,8 +183,8 @@ SurveyAspectPuller::SpisPuller::SpisPuller(std::shared_ptr<StudyPuller> sp, cons
 }
 
 SurveyAspectPuller::AllSpisPuller::AllSpisPuller(std::shared_ptr<StudyPuller> sp, const std::string& spColumnName, const std::string& columnNamePrefix, const std::string& deviceHistoryColumn)
-  : SpisPuller(sp, columnNamePrefix), mDeviceHistoryColumn(deviceHistoryColumn) {
-  mStudyStartsByParticipantId = CreateRxCache([ep = this->getStudyPuller()->getEnvironmentPuller(), spCol = spColumnName, dhCol = deviceHistoryColumn]() {
+  : SpisPuller(sp, columnNamePrefix), deviceHistoryColumn_(deviceHistoryColumn) {
+  studyStartsByParticipantId_ = CreateRxCache([ep = this->getStudyPuller()->getEnvironmentPuller(), spCol = spColumnName, dhCol = deviceHistoryColumn]() {
     return ep->getStoredData()
       .flat_map([spCol, dhCol](std::shared_ptr<StoredData> stored) {
       return stored->getParticipants()
@@ -219,7 +219,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::Sp
       .op(RxRequireNonEmpty())
       .op(RxToVector())
       .flat_map([self, stepId = stepIdAndFvs.get_key(), spiPuller](std::shared_ptr<std::vector<std::shared_ptr<FieldValue>>> fvs) {
-      return self->mSurveyStepsById->observe()
+      return self->surveyStepsById_->observe()
         .flat_map([self, stepId, spiPuller, fvs](std::shared_ptr<SurveyStepsById> stepsById) {
         auto step = stepsById->at(stepId);
         return spiPuller->loadContent(step, fvs);
@@ -276,7 +276,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::La
     const auto& latest = tspis->front();
     spi = latest.getSpi();
 
-    PULLCASTOR_LOG(info) << "Out of " << tspis->size() << " finished Survey Package Instances"
+    PEP_PULLCASTOR_LOG(Severity::Info) << "Out of " << tspis->size() << " finished Survey Package Instances"
       << " for survey package " << spi->getSurveyPackageName()
       << " we'll only consider the one finished at " << TimestampToXmlDateTime(latest.getTimestamp());
   }
@@ -290,11 +290,11 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::La
 }
 
 rxcpp::observable<Timestamp> SurveyAspectPuller::AllSpisPuller::getWeekNumberOffsetForParticipant(const std::string& participantId) {
-  return mStudyStartsByParticipantId->observe()
+  return studyStartsByParticipantId_->observe()
     .flat_map([participantId](std::shared_ptr<StudyStartsByParticipantId> ssByRecId) -> rxcpp::observable<Timestamp> {
     auto found = ssByRecId->find(participantId);
     if (found == ssByRecId->cend()) {
-      PULLCASTOR_LOG(warning) << "No surveys will be imported for participant " << participantId << " because the study start cannot be determined";
+      PEP_PULLCASTOR_LOG(Severity::Warning) << "No surveys will be imported for participant " << participantId << " because the study start cannot be determined";
       return rxcpp::observable<>::empty<Timestamp>();
     }
     return rxcpp::observable<>::just(found->second);
@@ -303,8 +303,8 @@ rxcpp::observable<Timestamp> SurveyAspectPuller::AllSpisPuller::getWeekNumberOff
 
 rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::getStorableContent(std::shared_ptr<CastorParticipant> participant) {
   auto rawParticipant = participant->getParticipant();
-  PULLCASTOR_LOG(debug) << "Getting content for study " << this->getStudyPuller()->getStudy()->getSlug() << ", surveys, participant " << rawParticipant->getId();
-  return mSpisByParticipantId->observe()
+  PEP_PULLCASTOR_LOG(Severity::Debug) << "Getting content for study " << this->getStudyPuller()->getStudy()->getSlug() << ", surveys, participant " << rawParticipant->getId();
+  return spisByParticipantId_->observe()
     .concat_map([rawParticipant, self = SharedFrom(*this)](std::shared_ptr<SpisById> spisByParticipantId) -> rxcpp::observable<std::shared_ptr<StorableColumnContent>> { // Process SPIs for this participant ID
     auto position = spisByParticipantId->find(rawParticipant->getId());
     if (position == spisByParticipantId->cend()) {
@@ -316,7 +316,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> SurveyAspectPuller::ge
       .concat_map([](std::shared_ptr<SpisById> spisBySpId) {return RxIterate(*spisBySpId); }) // Emit one vector of SPIs per survey package (ID)
       .concat_map([self](const auto& pair) { // Process SPIs for this survey package (ID)
       std::shared_ptr<Spis> spis = pair.second;
-      return self->mSpisPuller->loadContentForSpis(spis, self);
+      return self->spisPuller_->loadContentForSpis(spis, self);
     });
     });
 }

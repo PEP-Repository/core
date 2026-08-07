@@ -10,13 +10,15 @@ namespace pep {
 rxcpp::observable<std::string> RegistrationServerProxy::registerPepId() const {
   return this->sendRequest<PEPIdRegistrationResponse>(this->sign(PEPIdRegistrationRequest()))
     .op(RxGetOne())
-    .map([](const PEPIdRegistrationResponse& response) {return response.mPepId; });
+    .map([](const PEPIdRegistrationResponse& response) {return response.pepId; });
 }
 
 rxcpp::observable<FakeVoid> RegistrationServerProxy::completeShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier, const pep::AsymmetricKey& publicKeyShadowAdministration) const {
-  RegistrationRequest request(pp);
-  request.mEncryptedIdentifier = publicKeyShadowAdministration.encrypt(identifier);
-  request.mEncryptionPublicKeyPem = publicKeyShadowAdministration.toPem();
+  RegistrationRequest request{
+    .polymorphicPseudonym = pp,
+    .encryptedIdentifier = publicKeyShadowAdministration.encrypt(identifier),
+    .encryptionPublicKeyPem = publicKeyShadowAdministration.toPem(),
+  };
 
   return this->sendRequest<RegistrationResponse>(this->sign(std::move(request)))
     .op(messaging::ResponseToVoid());
@@ -27,7 +29,7 @@ rxcpp::observable<std::string> RegistrationServerProxy::listCastorImportColumns(
   return this->sendRequest<ListCastorImportColumnsResponse>(std::move(request))
     .op(RxGetOne())
     .flat_map([](ListCastorImportColumnsResponse response) {
-    return RxIterate(std::move(response.mImportColumns));
+    return RxIterate(std::move(response.importColumns));
       });
 }
 

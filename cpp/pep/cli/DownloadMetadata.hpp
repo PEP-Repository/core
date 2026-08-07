@@ -1,11 +1,12 @@
 #pragma once
 
 #include <pep/elgamal/ElgamalEncryption.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <pep/utils/XxHasher.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/morphing/Metadata.hpp>
 #include <pep/utils/Progress.hpp>
+#include <pep/utils/CheckedPath.hpp>
 
 #include <filesystem>
 #include <optional>
@@ -15,38 +16,38 @@ namespace pep::cli {
 
 class ParticipantIdentifier {
 private:
-  PolymorphicPseudonym mPolymorphic;
-  LocalPseudonym mLocal;
+  PolymorphicPseudonym polymorphic_;
+  LocalPseudonym local_;
 
 public:
   ParticipantIdentifier(const PolymorphicPseudonym& polymorphic, const LocalPseudonym& local);
 
-  const PolymorphicPseudonym& getPolymorphicPseudonym() const noexcept { return mPolymorphic; }
-  const LocalPseudonym& getLocalPseudonym() const noexcept { return mLocal; }
+  const PolymorphicPseudonym& getPolymorphicPseudonym() const noexcept { return polymorphic_; }
+  const LocalPseudonym& getLocalPseudonym() const noexcept { return local_; }
 
-  bool operator ==(const ParticipantIdentifier& other) const { return mLocal == other.mLocal; }
+  bool operator ==(const ParticipantIdentifier& other) const { return local_ == other.local_; }
   bool operator !=(const ParticipantIdentifier& other) const { return !(*this == other); }
 };
 
 class RecordDescriptor {
 private:
-  ParticipantIdentifier mParticipant;
-  std::string mColumn;
-  Timestamp mBlindingTimestamp;
-  std::optional<Timestamp> mPayloadBlindingTimestamp;
-  std::map<std::string, MetadataXEntry> mExtra;
+  ParticipantIdentifier participant_;
+  std::string column_;
+  Timestamp blindingTimestamp_;
+  std::optional<Timestamp> payloadBlindingTimestamp_;
+  std::map<std::string, MetadataXEntry> extra_;
 
 public:
   RecordDescriptor(const ParticipantIdentifier& participant, const std::string& column, const Timestamp& blindingTimestamp, const std::optional<Timestamp>& payloadBlindingTimestamp = std::nullopt);
   RecordDescriptor(const ParticipantIdentifier& participant, const std::string& column, const Timestamp& blindingTimestamp, const std::map<std::string, MetadataXEntry>& extra, const std::optional<Timestamp>& payloadBlindingTimestamp = std::nullopt);
 
-  const ParticipantIdentifier& getParticipant() const noexcept { return mParticipant; }
-  const std::string& getColumn() const noexcept { return mColumn; }
-  const Timestamp& getBlindingTimestamp() const noexcept { return mBlindingTimestamp; }
+  const ParticipantIdentifier& getParticipant() const noexcept { return participant_; }
+  const std::string& getColumn() const noexcept { return column_; }
+  const Timestamp& getBlindingTimestamp() const noexcept { return blindingTimestamp_; }
   const Timestamp& getPayloadBlindingTimestamp() const noexcept;
 
-  std::string getFileName(bool includingExtension = true) const noexcept;
-  const std::map<std::string, MetadataXEntry>& getExtra() const noexcept { return mExtra; }
+  CheckedFileName getFileName(bool includingExtension = true) const noexcept;
+  const std::map<std::string, MetadataXEntry>& getExtra() const noexcept { return extra_; }
 
   bool operator ==(const RecordDescriptor& other) const;
 };
@@ -69,23 +70,23 @@ private:
     RecordState record;
   };
 
-  std::shared_ptr<GlobalConfiguration> mGlobalConfig;
-  std::filesystem::path mDownloadDirectory;
-  std::shared_ptr<std::unordered_map<std::string, Snapshot>> mSnapshotsByRelativePath = std::make_shared<std::unordered_map<std::string, Snapshot>>(); // Heap-allocated so it can be updated from const methods
-  std::shared_ptr<std::unordered_map<RecordDescriptor, std::string>> mRelativePathsByDescriptor = std::make_shared<std::unordered_map<RecordDescriptor, std::string>>(); // Heap-allocated so it can be updated from const methods
+  std::shared_ptr<GlobalConfiguration> globalConfig_;
+  CheckedPath downloadDirectory_;
+  std::shared_ptr<std::unordered_map<CheckedRelativeFilePath, Snapshot>> snapshotsByRelativePath_ = std::make_shared<decltype(snapshotsByRelativePath_)::element_type>(); // Heap-allocated so it can be updated from const methods
+  std::shared_ptr<std::unordered_map<RecordDescriptor, CheckedRelativeFilePath>> relativePathsByDescriptor_ = std::make_shared<decltype(relativePathsByDescriptor_)::element_type>(); // Heap-allocated so it can be updated from const methods
 
-  std::filesystem::path provideDirectory() const;
-  std::filesystem::path provideParticipantDirectory(const LocalPseudonym& localPseudonym) const;
+  CheckedPath provideDirectory() const;
+  CheckedPath provideParticipantDirectory(const LocalPseudonym& localPseudonym) const;
   void ensureFormatUpToDate();
 
 public:
   explicit DownloadMetadata(const std::filesystem::path& downloadDirectory, std::shared_ptr<GlobalConfiguration> globalConfig, const Progress::OnCreation& onCreateProgress = [](std::shared_ptr<const Progress>) {});
 
-  std::filesystem::path getDirectory() const;
+  CheckedPath getDirectory() const;
   std::vector<RecordState> getRecords() const;
   std::optional<XxHasher::Hash> getHash(const RecordDescriptor& record) const;
-  std::optional<std::filesystem::path> getRelativePath(const RecordDescriptor& record) const;
-  void add(const RecordDescriptor& record, const std::string& dataFileName, XxHasher::Hash hash);
+  std::optional<CheckedRelativeFilePath> getRelativePath(const RecordDescriptor& record) const;
+  void add(const RecordDescriptor& record, const CheckedFileName& dataFileName, XxHasher::Hash hash);
   bool remove(const RecordDescriptor& record);
 };
 

@@ -9,22 +9,22 @@ namespace commandline {
 namespace {
 
 // Settable properties
-const std::streamsize CONSOLE_WIDTH = 80; // Optimize for this width
-const std::streamsize INDENT_WIDTH = 2;
-const std::streamsize SUPPLEMENT_INDENT_WIDTH = INDENT_WIDTH * 3;
+const std::streamsize ConsoleWidth = 80; // Optimize for this width
+const std::streamsize IndentWidth = 2;
+const std::streamsize SupplementIndentWidth = IndentWidth * 3;
 
 // Calculated from settable properties
-const std::streamsize COLUMN_WIDTH = (CONSOLE_WIDTH - 1 - INDENT_WIDTH) / 2;
-const std::string INDENT(INDENT_WIDTH, ' ');
-const std::string SUPPLEMENT_INDENT(SUPPLEMENT_INDENT_WIDTH, ' ');
+const std::streamsize ColumnWidth = (ConsoleWidth - 1 - IndentWidth) / 2;
+const std::string Indent(IndentWidth, ' ');
+const std::string SupplementIndent(SupplementIndentWidth, ' ');
 
 class HelpItemColumn {
 private:
-  std::string mText;
+  std::string text_;
 
 public:
-  explicit HelpItemColumn(const std::string& text) : mText(text) {}
-  void streamTo(std::ostream& destination) const { destination << std::setw(COLUMN_WIDTH) << std::left << mText; }
+  explicit HelpItemColumn(const std::string& text) : text_(text) {}
+  void streamTo(std::ostream& destination) const { destination << std::setw(ColumnWidth) << std::left << text_; }
 };
 
 std::ostream& operator <<(std::ostream& lhs, const HelpItemColumn& column) {
@@ -35,23 +35,23 @@ std::ostream& operator <<(std::ostream& lhs, const HelpItemColumn& column) {
 }
 
 void WriteHelpItem(std::ostream& destination, const std::string& entry, const std::string& description) {
-  destination << INDENT << HelpItemColumn(entry);
-  auto newline = entry.length() >= COLUMN_WIDTH;
+  destination << Indent << HelpItemColumn(entry);
+  auto newline = entry.length() >= ColumnWidth;
 
   auto descriptionLength = description.length();
   size_t i = 0;
   do {
     // Start on a new line if the previous one extended into the description column
     if (newline) {
-      destination << '\n' << INDENT << HelpItemColumn("");
+      destination << '\n' << Indent << HelpItemColumn("");
     }
 
     // Get a single line of output
-    auto line = description.substr(i, COLUMN_WIDTH);
+    auto line = description.substr(i, ColumnWidth);
     auto space = false;
-    if (description.length() > i + COLUMN_WIDTH) { // We have more to output after this line
+    if (description.length() > i + ColumnWidth) { // We have more to output after this line
       // TODO: split on any char that isspace(c) instead of only ASCII space
-      space = description[i + COLUMN_WIDTH] == ' '; // No further processing if the current line ended on a word boundary
+      space = description[i + ColumnWidth] == ' '; // No further processing if the current line ended on a word boundary
       if (!space) {
         // Try to end the current line on a word boundary
         auto crop = line.find_last_of(' ');
@@ -59,7 +59,7 @@ void WriteHelpItem(std::ostream& destination, const std::string& entry, const st
           line = line.substr(0, crop);
           space = true;
         }
-        // else there's no space in the line: we'll just cut on COLUMN_WIDTH
+        // else there's no space in the line: we'll just cut on ColumnWidth
       }
     }
 
@@ -76,7 +76,7 @@ void WriteHelpItem(std::ostream& destination, const std::string& entry, const st
 }
 
 void WriteHelpItemSupplement(std::ostream& destination, const std::string& text) {
-  destination << SUPPLEMENT_INDENT << text << '\n';
+  destination << SupplementIndent << text << '\n';
 }
 
 }

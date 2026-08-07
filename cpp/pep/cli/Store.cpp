@@ -33,7 +33,7 @@
 using namespace pep::cli;
 namespace pt = boost::property_tree;
 
-using pep::cli::LOG_TAG;
+using pep::cli::LogTag;
 
 namespace {
 
@@ -102,7 +102,7 @@ void AddSpecifiedMetadata(std::map<std::string, pep::MetadataXEntry>& metadata, 
   }
 }
 
-/* \brief Takes the parameters provided by the user, global configuration, pp, and column and puts them in a single struct. */
+/// Takes the parameters provided by the user, global configuration, pp, and column and puts them in a single struct.
 rxcpp::observable < std::shared_ptr<StoreContext>> CreateContext(std::shared_ptr<pep::CoreClient> client, const pep::commandline::NamedValues& parameterValues, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) {
   auto context = std::make_shared<StoreContext>();
   // Get local context parameters
@@ -138,14 +138,14 @@ rxcpp::observable < std::shared_ptr<StoreContext>> CreateContext(std::shared_ptr
         }
       }
       if (auto spColumn = columnSpec->getAssociatedShortPseudonymColumn()) {
-        pep::enumerateAndRetrieveData2Opts opts;
+        pep::EnumerateAndRetrieveData2Opts opts;
         opts.pps = {*context->pp};
         opts.columns = {*spColumn};
         return client->enumerateAndRetrieveData2(opts)
           .op(pep::RxGetOne("short pseudonym result"))
           .map([context](pep::EnumerateAndRetrieveResult result) {
           assert(!context->pseudonym.has_value());
-          context->pseudonym = result.mData;
+          context->pseudonym = result.data;
           auto placeholder = pep::Pseudonymiser::GetDefaultPlaceholder().substr(0, context->pseudonym->length());
           std::string placeholderKey{"pseudonymPlaceholder"};
 
@@ -174,7 +174,7 @@ void CheckSymlinkAllowed(const std::filesystem::path& inpath, bool shouldResolve
   }
   if (std::filesystem::is_directory(inpath)) {
     for (auto iterator = std::filesystem::recursive_directory_iterator(inpath, std::filesystem::directory_options::follow_directory_symlink); iterator != std::filesystem::recursive_directory_iterator{}; iterator++) {
-      if (std::filesystem::is_symlink(iterator->path())) {
+      if (iterator->is_symlink()) {
         foundSymlinks.push_back(iterator->path());
       }
     }
@@ -184,7 +184,7 @@ void CheckSymlinkAllowed(const std::filesystem::path& inpath, bool shouldResolve
     std::ostringstream message;
     message << "Symbolic link(s) found. By default this is not supported for pseudonymization.\n If symlinks should be resolved, please add the resolve-symlinks flag to the store command.\n Symlinks found at:\n";
     for (auto &path : foundSymlinks){
-      message << path.string() << "\n";
+      message << "\"" << path.string() << "\"\n";
     }
     throw std::runtime_error(std::move(message).str());
   }
@@ -211,7 +211,7 @@ std::filesystem::path CreatePseudonymizedFileToUpload(std::shared_ptr<StoreConte
 
   const auto& inputPath = context->inputPath;
   auto outputPath = FindUnusedPath(inputPath);
-  auto out = std::make_shared<std::ofstream>(outputPath.string(), std::ios::binary);
+  auto out = std::make_shared<std::ofstream>(outputPath, std::ios::binary);
 
   std::optional<pep::Pseudonymiser> pseudonymiser{std::nullopt};
   if (context->requiresDirectory) {
@@ -224,7 +224,7 @@ std::filesystem::path CreatePseudonymizedFileToUpload(std::shared_ptr<StoreConte
   else {
     // Single File that needs pseudonymisation
     assert(context->pseudonym.has_value());
-    std::ifstream in{inputPath.string(), std::ios::binary};
+    std::ifstream in{inputPath, std::ios::binary};
     auto writeToStream = [&out](const char* c, const std::streamsize l) {out->write(c, l); out->flush(); };
     pseudonymiser = pep::Pseudonymiser(*context->pseudonym);
     pseudonymiser->pseudonymise(in, writeToStream);
@@ -244,7 +244,7 @@ private:
     return "Please specify exactly one of --input-path, or --data, or --metadata-only";
   }
 
-  rxcpp::observable<pep::DataStorageResult2> storeNewCellData(std::shared_ptr<pep::CoreClient> client, const pep::storeData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) {
+  rxcpp::observable<pep::DataStorageResult2> storeNewCellData(std::shared_ptr<pep::CoreClient> client, const pep::StoreData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) {
     auto cleanupFiles = std::make_shared<std::vector<PathStreamPair>>();
     return CreateContext(client, this->getParameterValues(), pp, column)
       .flat_map([client, opts, cleanupFiles](std::shared_ptr<StoreContext> context) {
@@ -261,7 +261,7 @@ private:
             auto path = CreatePseudonymizedFileToUpload(context);
             // The stream object will be held alive and therefore open by rxcpp for too long, hindering deleting the file.
             // This extra pointer fileStream (pointer to iFstream, not istream) is given to the cleanupFiles to manually close the stream if necessary.
-            auto fileStream = std::make_shared<std::ifstream>(path.string(), std::ios_base::in | std::ios_base::binary);
+            auto fileStream = std::make_shared<std::ifstream>(path, std::ios_base::in | std::ios_base::binary);
             cleanupFiles->push_back(PathStreamPair{path, fileStream});
             stream = fileStream;
           }
@@ -272,7 +272,7 @@ private:
               stream = std::shared_ptr<std::istream>(&std::cin, [](void*) {});
             }
             else {
-              stream = std::make_shared<std::ifstream>(path.string(), std::ios_base::in | std::ios_base::binary);
+              stream = std::make_shared<std::ifstream>(path, std::ios_base::in | std::ios_base::binary);
             }
           }
           batches = pep::messaging::IStreamToMessageBatches(stream);
@@ -284,7 +284,7 @@ private:
         }
 
         pep::StoreData2Entry entry(context->pp, context->column, batches);
-        entry.mXMetadata = context->meta;
+        entry.xMetadata = context->meta;
         return client->storeData2({ entry }, opts);
         })
         .op(pep::RxBeforeTermination([cleanupFiles](std::optional<std::exception_ptr>) {
@@ -296,15 +296,15 @@ private:
               std::filesystem::remove(entry.path);
             }
             catch (std::exception& e) {
-              LOG(LOG_TAG, pep::warning) << "Could not remove temporary file " << entry.path << ": " << e.what();
+              PEP_LOG(LogTag, pep::Severity::Warning) << "Could not remove temporary file \"" << entry.path.string() << "\": " << e.what();
             }
           }
         }));
   }
 
-  rxcpp::observable<pep::DataStorageResult2> updateCellMetadata(std::shared_ptr<pep::CoreClient> client, const pep::storeData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) {
+  rxcpp::observable<pep::DataStorageResult2> updateCellMetadata(std::shared_ptr<pep::CoreClient> client, const pep::StoreData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) {
     pep::StoreMetadata2Entry entry(pp, column);
-    AddSpecifiedMetadata(entry.mXMetadata, this->getParameterValues());
+    AddSpecifiedMetadata(entry.xMetadata, this->getParameterValues());
     return client->updateMetadata2({ entry }, opts);
   }
 
@@ -371,7 +371,7 @@ protected:
     return SingleCellModificationCommand::ticketAccessModes();
   }
 
-  rxcpp::observable<pep::FakeVoid> performModification(std::shared_ptr<pep::CoreClient> client, const pep::storeData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) override {
+  rxcpp::observable<pep::FakeVoid> performModification(std::shared_ptr<pep::CoreClient> client, const pep::StoreData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) override {
     rxcpp::observable<pep::DataStorageResult2> store;
     if (this->getParameterValues().has("metadata-only")) {
       store = this->updateCellMetadata(client, opts, pp, column);
@@ -384,7 +384,7 @@ protected:
       .op(pep::RxGetOne())
       .map([](pep::DataStorageResult2 res) {
         pt::ptree out;
-        out.put("id", boost::algorithm::hex(res.mIds[0]));
+        out.put("id", boost::algorithm::hex(res.ids[0]));
         pt::write_json(std::cout, out);
         return pep::FakeVoid();
       });

@@ -4,15 +4,14 @@
 # For PEP(repo)'s polymorphic cryptography, see the Rsk, RskPep, and Morphing libs.
 
 
-add_library(${PROJECT_NAME}Cryptolib STATIC
+add_library(${PROJECT_NAME}Cryptolib
     AsymmetricKey.cpp AsymmetricKey.hpp
     Bytes.hpp
     BytesSerializer.cpp BytesSerializer.hpp
-    ConstTime.hpp
+    ConstTime.cpp ConstTime.hpp
     CryptoSerializers.cpp CryptoSerializers.hpp
     Encrypted.cpp Encrypted.hpp
     GcmContext.hpp
-    Timestamp.cpp Timestamp.hpp
     X509Certificate.cpp X509Certificate.hpp
 )
 

@@ -38,9 +38,29 @@ We aim to implement the supposedly [canonical C++ project structure](https://www
 - non-unit tests are located in the *root* level [`tests` subdirectory](./tests).
 - unit test sources aren't located next to the corresponding sources, but may instead be found in subdirectories named `tests`.
 - unit test sources don't implement standalone executables, but fit into the Google test framework (which puts multiple tests into a single executable).
-- library names (commonly) have `lib` as a suffix instead of as a prefix.
+- library names (commonly) have `lib` as a suffix.
 - sources of libraries and those of associated executables are located in the same directory instead of separate ones.
-- CMake: Use lowercase function names: CMake functions and macros can be called lower or upper case. Always use lower case. Upper case is for variables.
+
+# Style
+
+- Directory names are written in `kebab-case`.
+- Use two spaces per indentation level, do not use tabs. Exceptions: Python (4 spaces).
+- (See C++ docs for its style guidelines.)
+
+## Shell scripts
+
+- Script-local variable names are written in `lower_snake_case`.
+- Environment variable names are written in `SCREAMING_SNAKE_CASE`.
+
+## CMake
+
+- Local variable names are written in `lower_snake_case`.
+- Global/cache variable names are written in `SCREAMING_SNAKE_CASE`.
+- CMake builtins (functions, macros, control keywords) are called in lowercase, e.g. `if(my_var)`, and without space between name and arguments.
+
+## CLI subcommands & switches
+
+- CLI subcommand and switch names are written in `kebab-case`.
 
 # Documentation
 

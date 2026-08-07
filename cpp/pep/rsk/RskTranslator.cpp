@@ -91,6 +91,16 @@ ReshuffleRekeyVerifiers RskTranslator::computeReshuffleRekeyVerifiers(
       masterPublicEncryptionKey);
 }
 
+ReshuffleRekeyVerifiersWithProof
+RskTranslator::computeCertifiedReshuffleRekeyVerifiers(
+    const KeyFactors& recipientKeyFactors,
+    const ElgamalPublicKey& masterPublicEncryptionKey) const {
+  return ReshuffleRekeyVerifiersProof::ComputeCertified(
+      recipientKeyFactors.reshuffle,
+      recipientKeyFactors.rekey,
+      masterPublicEncryptionKey);
+}
+
 CurveScalar RskTranslator::generateKeyComponent(
     const CurveScalar& encryptionKeyFactor,
     const CurveScalar& masterPrivateEncryptionKeyShare
@@ -107,7 +117,7 @@ CurveScalar RskTranslator::generateKeyComponent(
 CurveScalar RskTranslator::generateKeyFactor(
     const KeyFactorSecret& keyFactorSecret,
     const RecipientBase& recipient) const {
-  if (!keys_.domain) {
+  if (keys_.domain == 0) {
     throw std::invalid_argument("Key domain is not set");
   }
   Sha256 hasher;

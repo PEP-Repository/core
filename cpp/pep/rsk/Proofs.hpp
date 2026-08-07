@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <pep/elgamal/ElgamalEncryption.hpp>
+#include <pep/serialization/Serializer.hpp>
 
 namespace pep {
 
@@ -25,14 +26,16 @@ class ScalarMultProof {
       const CurvePoint& cb,
       const CurvePoint& cm);
 
- public:
-  CurvePoint mCB;
-  CurvePoint mCM;
-  PublicCurveScalar mS;
+  CurvePoint cB_;
+  CurvePoint cM_;
+  PublicCurveScalar mS_;
 
+  friend class Serializer<ScalarMultProof>;
+
+public:
   ScalarMultProof() = default;
   ScalarMultProof(const CurvePoint& cb, const CurvePoint& cm, const PublicCurveScalar& s)
-    : mCB(cb), mCM(cm), mS(s) { }
+    : cB_(cb), cM_(cm), mS_(s) { }
 
   void ensurePacked() const; // See CurvePoint::ensurePacked()
 
@@ -52,42 +55,95 @@ class ScalarMultProof {
     const CurvePoint& post) const;
 };
 
+/// Proof that a point X^{-1} is in the form of x^{-1}B, given X = xB
+class InverseProof {
+public:
+  ScalarMultProof secretInverseTimesPointProof_;
+
+  InverseProof() = default;
+  explicit InverseProof(const ScalarMultProof& secretInverseTimesPointProof)
+    : secretInverseTimesPointProof_(secretInverseTimesPointProof) {}
+
+  static InverseProof Create(
+    const CurvePoint& secretInversePoint,
+    const CurvePoint& secretAsPoint,
+    const CurveScalar& secretInverse);
+
+  void verify(
+    const CurvePoint& secretInversePoint,
+    const CurvePoint& secretAsPoint) const;
+};
+
 // Public data required to verify an RskProof.
 class ReshuffleRekeyVerifiers {
  public:
   ReshuffleRekeyVerifiers() = default;
   ReshuffleRekeyVerifiers(
-      const CurvePoint& reshuffleOverRekeyPoint,
-      const CurvePoint& reshufflePoint,
-      const CurvePoint& rekeyedPublicKey)
-  : mReshuffleOverRekeyPoint(reshuffleOverRekeyPoint),
-    mReshufflePoint(reshufflePoint),
-    mRekeyedPublicKey(rekeyedPublicKey) { }
+      const CurvePoint& reshuffleCommitment,
+      const CurvePoint& rekeyCommitment,
+      const CurvePoint& reshuffleOverRekeyCommitment,
+      const ElgamalPublicKey& rekeyedPublicKey)
+  : reshuffleCommitment(reshuffleCommitment),
+    rekeyCommitment(rekeyCommitment),
+    reshuffleOverRekeyCommitment(reshuffleOverRekeyCommitment),
+    rekeyedPublicKey(rekeyedPublicKey) { }
   static ReshuffleRekeyVerifiers Compute(
     const CurveScalar& reshuffle,
     const CurveScalar& rekey,
-    const CurvePoint& publicKey);
+    const ElgamalPublicKey& globalKey);
 
-  CurvePoint mReshuffleOverRekeyPoint;
-  CurvePoint mReshufflePoint;
-  CurvePoint mRekeyedPublicKey;
+  CurvePoint reshuffleCommitment;
+  CurvePoint rekeyCommitment;
+  CurvePoint reshuffleOverRekeyCommitment;
+  ElgamalPublicKey rekeyedPublicKey;
 
   [[nodiscard]] auto operator<=>(const ReshuffleRekeyVerifiers& right) const = default;
 
   void ensureThreadSafe() const; // See CurvePoint::ensureThreadSafe()
 };
 
+using ReshuffleRekeyVerifiersWithProof = std::pair<ReshuffleRekeyVerifiers, class ReshuffleRekeyVerifiersProof>;
+
+/// Proof of internal consistency of ReshuffleRekeyVerifiers
+class ReshuffleRekeyVerifiersProof {
+public:
+  ReshuffleRekeyVerifiersProof() = default;
+  ReshuffleRekeyVerifiersProof(
+    const CurvePoint& rekeyInversePoint,
+    const InverseProof& rekeyInverseProof,
+    const ScalarMultProof& reshuffleTimesRekeyInverseProof,
+    const ScalarMultProof& rekeyTimesPublicKeyProof)
+  : rekeyInversePoint(rekeyInversePoint),
+    rekeyInverseProof(rekeyInverseProof),
+    reshuffleTimesRekeyInverseProof(reshuffleTimesRekeyInverseProof),
+    rekeyTimesPublicKeyProof(rekeyTimesPublicKeyProof) {}
+
+  CurvePoint rekeyInversePoint;
+  InverseProof rekeyInverseProof;
+  ScalarMultProof reshuffleTimesRekeyInverseProof;
+  ScalarMultProof rekeyTimesPublicKeyProof;
+
+  static ReshuffleRekeyVerifiersWithProof
+  ComputeCertified(
+    const CurveScalar& reshuffle,
+    const CurveScalar& rekey,
+    const ElgamalPublicKey& globalKey);
+
+  void verify(
+    const ReshuffleRekeyVerifiers& verifiers,
+    const ElgamalPublicKey& globalKey) const;
+};
 
 
 // A compositional non-interactive zero-knowledge proof that
 // an ElgamalEncryption (b, c, publicKey) has been RSKed to (b', c', publicKey')
 class RskProof {
  public:
-  CurvePoint mRerandomizePubKey;
-  CurvePoint mRerandomizePoint;
-  ScalarMultProof mRerandomizeTimesPubKeyProof; // ScalarMultProof for rerandomize * publicKey
-  ScalarMultProof mReshuffleOverRekeyTimesBProof; // ScalarMultProof for (reshuffle/rekey) * b
-  ScalarMultProof mReshuffleTimesCProof; // ScalarMultProof for reshuffle * c
+  CurvePoint rerandomizePubKey;
+  CurvePoint rerandomizePoint;
+  ScalarMultProof rerandomizeTimesPubKeyProof; // ScalarMultProof for rerandomize * publicKey
+  ScalarMultProof reshuffleOverRekeyTimesBProof; // ScalarMultProof for (reshuffle/rekey) * b
+  ScalarMultProof reshuffleTimesCProof; // ScalarMultProof for reshuffle * c
 
   RskProof() = default;
   RskProof(
@@ -96,32 +152,32 @@ class RskProof {
     const ScalarMultProof& rerandomizeTimesPubKeyProof,
     const ScalarMultProof& reshuffleOverRekeyTimesBProof,
     const ScalarMultProof& reshuffleTimesCProof)
-  : mRerandomizePubKey(rerandomizePubKey),
-    mRerandomizePoint(rerandomizePoint),
-    mRerandomizeTimesPubKeyProof(rerandomizeTimesPubKeyProof),
-    mReshuffleOverRekeyTimesBProof(reshuffleOverRekeyTimesBProof),
-    mReshuffleTimesCProof(reshuffleTimesCProof) {}
+  : rerandomizePubKey(rerandomizePubKey),
+    rerandomizePoint(rerandomizePoint),
+    rerandomizeTimesPubKeyProof(rerandomizeTimesPubKeyProof),
+    reshuffleOverRekeyTimesBProof(reshuffleOverRekeyTimesBProof),
+    reshuffleTimesCProof(reshuffleTimesCProof) {}
 
   void ensurePacked() const {
-    mRerandomizePubKey.ensurePacked();
-    mRerandomizePoint.ensurePacked();
-    mRerandomizeTimesPubKeyProof.ensurePacked();
-    mReshuffleOverRekeyTimesBProof.ensurePacked();
-    mReshuffleTimesCProof.ensurePacked();
+    rerandomizePubKey.ensurePacked();
+    rerandomizePoint.ensurePacked();
+    rerandomizeTimesPubKeyProof.ensurePacked();
+    reshuffleOverRekeyTimesBProof.ensurePacked();
+    reshuffleTimesCProof.ensurePacked();
   }
 
   // Constructs a proof that pre is RSKed to post.
   //
-  // Assumes reshufflePoint = reshuffle*B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyPoint = reshuffle/rekey*B,
+  // Assumes reshuffleCommitment = reshuffle*B, reshuffleOverRekey = reshuffle/rekey, reshuffleOverRekeyCommitment = reshuffle/rekey*B,
   // rerandomizePubKey = rerandomize*publicKey, rerandomizePoint = rerandomize*B,
   // and (of course) that post is the RSKed version of pre.
   static RskProof Create(
     const ElgamalEncryption& pre,
     const ElgamalEncryption& post,
     const CurveScalar& reshuffle,
-    const CurvePoint& reshufflePoint,
+    const CurvePoint& reshuffleCommitment,
     const CurveScalar& reshuffleOverRekey,
-    const CurvePoint& reshuffleOverRekeyPoint,
+    const CurvePoint& reshuffleOverRekeyCommitment,
     const CurveScalar& rerandomize,
     const CurvePoint& rerandomizePubKey,
     const CurvePoint& rerandomizePoint);
@@ -129,7 +185,7 @@ class RskProof {
   // Stores the RSKed version of ElgamalEncryption in to out and
   // returns a zero-knowledge proof of correctness.
   //
-  // XXX Add optimised version to EGCache
+  // TODO Add optimised version to EGCache
   static RskProof CertifiedRsk(
     const ElgamalEncryption& in,
     ElgamalEncryption& out,

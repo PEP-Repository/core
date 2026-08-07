@@ -4,7 +4,7 @@
 namespace pep::networking {
 
 Node::Node(std::shared_ptr<Protocol::NodeComponent> component) noexcept
-  : mComponent(std::move(component)) {
+  : component_(std::move(component)) {
 }
 
 void Node::shutdown() {
@@ -12,29 +12,29 @@ void Node::shutdown() {
     this->setStatus(Status::Finalizing);
   }
 
-  // Don't iterate directly over mSockets because closing each socket will remove it from mSockets, invalidating our iterator
-  auto all = std::move(mSockets);
-  mSockets.clear(); // Just in case our std::move didn't clear mSockets
+  // Don't iterate directly over sockets_ because closing each socket will remove it from sockets_, invalidating our iterator
+  auto all = std::move(sockets_);
+  sockets_.clear(); // Just in case our std::move didn't clear sockets_
 
   for (auto& socket : all) {
     socket.first->close();
   }
 
   // Discard our component _after_ the sockets, which may need the component to clean up after themselves
-  if (mComponent != nullptr) {
-    mComponent->close();
-    mComponent.reset();
+  if (component_ != nullptr) {
+    component_->close();
+    component_.reset();
   }
 
   this->setStatus(Status::Finalized); // TODO: don't notify until sockets and component have been Status::finalized
 }
 
 void Node::openSocket(const SocketConnectionAttempt::Handler& onSocketConnection) {
-  assert(mComponent != nullptr);
+  assert(component_ != nullptr);
 
   auto weak = WeakFrom(*this);
 
-  auto socket = mComponent->openSocket([weak, onSocketConnection](const SocketConnectionAttempt::Result& socketResult) {
+  auto socket = component_->openSocket([weak, onSocketConnection](const SocketConnectionAttempt::Result& socketResult) {
     if (!socketResult) { // Socked couldnt' be opened: forward the error to our callback
       onSocketConnection(socketResult);
       return;
@@ -58,12 +58,12 @@ void Node::openSocket(const SocketConnectionAttempt::Handler& onSocketConnection
   auto subscription = socket->onConnectivityChange.subscribe([weak, socket](const Protocol::Socket::ConnectivityChange& change) {
     auto self = weak.lock();
     if (change.updated >= Transport::ConnectivityStatus::Disconnecting && self != nullptr) {
-      self->mSockets.erase(socket);
+      self->sockets_.erase(socket);
     }
     });
 
   // Store the socket so we can close it when the node is shut down
-  [[maybe_unused]] auto emplaced = mSockets.emplace(socket, std::move(subscription)).second;
+  [[maybe_unused]] auto emplaced = sockets_.emplace(socket, std::move(subscription)).second;
   assert(emplaced);
 }
 

@@ -8,7 +8,12 @@
 set -eu
 
 SCRIPTSELF=$(command -v "$0")
+readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+readonly SCRIPTPATH
+
+# shellcheck source=scripts/sh-utils.sh
+. "$SCRIPTPATH/sh-utils.sh"
 
 no_project=false
 while [ "$#" != 0 ]; do
@@ -29,9 +34,30 @@ while [ "$#" != 0 ]; do
   shift
 done
 
-git_dir="${1:?Expected git dir}"; shift
-api_key="${1:?Expected API key}"; shift
-command="${1:?Expected command}"; shift
+readonly git_dir="${1:?Expected git dir}"; shift
+readonly api_key="${1:?Expected API key}"; shift
+readonly command="${1:?Expected command}"; shift
+
+# Commands that don't require a project URL or API connection
+case $command in
+  get-outdated-creation-timestamp)
+    # Read a JSON object from stdin containing a ".created_at" property, e.g.
+    # - Docker image (tag) details: https://docs.gitlab.com/ee/api/container_registry.html#get-details-of-a-registry-repository-tag
+    # - project package details: https://docs.gitlab.com/ee/api/packages.html#get-a-project-package
+    # - pipelines
+    # If the ".created_at" is older than the (hard-coded) threshold, this function prints
+    # the value of that ".created_at" property (so that the caller can report its value), otherwise print nothing. Exit 0 in both cases.
+    entry=$(cat)
+    created_at=$(printf '%s' "$entry" | jq --raw-output ".created_at")
+    seconds=$(( $(date +%s) - $(date -d "$created_at" +%s) ))
+    days=$(( seconds / 60 / 60 / 24 ))
+    if [ "$days" -ge 6 ]; then
+      echo "$created_at"
+    fi
+    exit 0
+    ;;
+esac
+
 rel_path="${1?:Expected URL path}"; shift
 # Further arguments are passed verbatim to the "curl" command(s) that we issue
 
@@ -41,13 +67,6 @@ if ! $no_project; then
   project_path=$("$SCRIPTPATH"/gitdir.sh origin-path "$git_root")
   project_id=$("$SCRIPTPATH"/url.sh encode "${project_path}")
 fi
-
-contains() {
-  string="$1"
-  substring="$2"
-  # `&& true` prevents quitting for nonzero exit code
-  [ "${string#*"$substring"}" != "$string" ] && true
-}
 
 request() {
   method=$(echo "$1" | tr "[:lower:]" "[:upper:]")

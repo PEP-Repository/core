@@ -29,35 +29,35 @@ const std::set<LifeCycler::Status>& GetAllowedLifeCycleTransitions(LifeCycler::S
 }
 
 LifeCycler::~LifeCycler() noexcept {
-  assert(mStatus == Status::Uninitialized || mStatus >= Status::Finalizing); // Derived class should have started finalization already
+  assert(status_ == Status::Uninitialized || status_ >= Status::Finalizing); // Derived class should have started finalization already
 
   // In case derived class forgot to set the status, ensure that subscribers receive the (possibly expected/required) notification that we're finalizing
-  if (mStatus != Status::Uninitialized && mStatus < Status::Finalizing && GetAllowedLifeCycleTransitions(mStatus).contains(Status::Finalizing)) {
+  if (status_ != Status::Uninitialized && status_ < Status::Finalizing && GetAllowedLifeCycleTransitions(status_).contains(Status::Finalizing)) {
     this->setStatus(Status::Finalizing);
   }
 
   // Ensure that the instance has sent the "finalized" notification before being (fully) destroyed
-  if (mStatus != Status::Finalized) {
-    assert(GetAllowedLifeCycleTransitions(mStatus).contains(Status::Finalized));
+  if (status_ != Status::Finalized) {
+    assert(GetAllowedLifeCycleTransitions(status_).contains(Status::Finalized));
     this->setStatus(Status::Finalized);
   }
 }
 
 LifeCycler::Status LifeCycler::setStatus(Status status) {
-  auto result = mStatus;
+  auto result = status_;
 
   if (status != result) {
     if (result == Status::Initialized && status == Status::Initializing) { // When initialized instances call this->setStatus(Status::initializing) ...
       this->setStatus(Status::Reinitializing); // ... we ensure that listeners also receive a "reinitializing" notification (which they may expect)
-      assert(GetAllowedLifeCycleTransitions(mStatus).contains(status));
+      assert(GetAllowedLifeCycleTransitions(status_).contains(status));
     }
     else if (!GetAllowedLifeCycleTransitions(result).contains(status)) {
       throw std::runtime_error("Can't transition from life cycle status " + std::to_string(ToUnderlying(result)) + " to " + std::to_string(ToUnderlying(status)));
     }
 
-    auto previous = mStatus;
-    mStatus = status;
-    onStatusChange.notify({ previous, mStatus });
+    auto previous = status_;
+    status_ = status;
+    onStatusChange.notify({ previous, status_ });
   }
 
   return result;

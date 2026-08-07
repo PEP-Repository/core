@@ -12,36 +12,39 @@
 
 namespace pep::chrono {
 namespace detail {
-  template<class T>
-  void writeFilled(std::ostream& ostream, T num, bool hasPreviousOutput) {
-    auto flags = ostream.flags();
-    if(hasPreviousOutput) {
-      auto width = std::max(static_cast<int>(log10(static_cast<double>(num)) + 1), 2);
-      ostream << std::setfill('0') << std::setw(width);
-    }
-    ostream << num;
-    ostream.flags(flags);
-  }
 
-  template<typename DurationType, typename Rep, typename Period>
-  std::chrono::duration<Rep, Period> writeDurationAs(std::chrono::duration<Rep, Period> in, const std::string& unit, std::ostream& ostream, bool hasPreviousOutput = false) {
-    auto converted = duration_cast<DurationType>(in);
-    if(converted.count() > 0) {
-      writeFilled(ostream, converted.count(), hasPreviousOutput);
-      ostream << unit;
-    }
-    auto retVal = in - duration_cast<std::chrono::duration<Rep, Period>>(converted);
-    return retVal;
+template<class T>
+void WriteFilled(std::ostream& ostream, T num, bool hasPreviousOutput) {
+  auto flags = ostream.flags();
+  if(hasPreviousOutput) {
+    auto width = std::max(static_cast<int>(log10(static_cast<double>(num)) + 1), 2);
+    ostream << std::setfill('0') << std::setw(width);
   }
+  ostream << num;
+  ostream.flags(flags);
 }
 
+template<typename DurationType, typename Rep, typename Period>
+std::chrono::duration<Rep, Period> WriteDurationAs(std::chrono::duration<Rep, Period> in, const std::string& unit, std::ostream& ostream, bool hasPreviousOutput = false) {
+  auto converted = duration_cast<DurationType>(in);
+  if(converted.count() > 0) {
+    WriteFilled(ostream, converted.count(), hasPreviousOutput);
+    ostream << unit;
+  }
+  auto retVal = in - duration_cast<std::chrono::duration<Rep, Period>>(converted);
+  return retVal;
+}
+
+} // namespace detail
+
+
 template<typename T>
-struct is_duration
+struct IsDuration
   : std::false_type
 { };
 
 template<typename Rep, typename Period>
-struct is_duration<std::chrono::duration<Rep, Period>>
+struct IsDuration<std::chrono::duration<Rep, Period>>
   : std::true_type
 { };
 
@@ -82,12 +85,12 @@ void WriteHumanReadableDuration(std::chrono::duration<Rep, Period> duration, std
     ostream << "0 seconds";
     return;
   }
-  auto remaining = detail::writeDurationAs<std::chrono::days>(duration, "d", ostream);
-  remaining = detail::writeDurationAs<std::chrono::hours>(remaining, "h", ostream, remaining != duration);
-  remaining = detail::writeDurationAs<std::chrono::minutes>(remaining, "m", ostream, remaining != duration);
+  auto remaining = detail::WriteDurationAs<std::chrono::days>(duration, "d", ostream);
+  remaining = detail::WriteDurationAs<std::chrono::hours>(remaining, "h", ostream, remaining != duration);
+  remaining = detail::WriteDurationAs<std::chrono::minutes>(remaining, "m", ostream, remaining != duration);
   auto seconds = duration_cast<std::chrono::duration<double>>(remaining);
   if(seconds.count() > 0) {
-    detail::writeFilled(ostream, seconds.count(), remaining != duration);
+    detail::WriteFilled(ostream, seconds.count(), remaining != duration);
     ostream << "s";
   }
 }

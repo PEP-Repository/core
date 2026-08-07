@@ -1,9 +1,15 @@
+#include <pep/async/RxInstead.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/cli/ColumnQuery.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/utils/Math.hpp>
+#include <pep/utils/MiscUtil.hpp>
 
+#include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 using namespace pep::cli;
 
@@ -93,7 +99,7 @@ private:
                 }
 
                 // Create and/or update entries for columns associated with the group
-                for (auto i : entry.second.columns.mIndices) {
+                for (auto i : entry.second.columns.indices) {
                   auto& column = columns[access.columns[i]];
                   column.readable |= modes.readable;
                   column.writable |= modes.writable;
@@ -233,6 +239,125 @@ private:
     }
   };
 
+  class CommandQueryDataSize : public ChildCommandOf<CommandQuery> {
+  public:
+    explicit CommandQueryDataSize(CommandQuery& parent)
+      : ChildCommandOf<CommandQuery>("data-size", "Reports size of stored data", parent) {}
+
+  protected:
+    int execute() override {
+      return this->executeEventLoopFor(true, [this](std::shared_ptr<pep::CoreClient> client) {
+          auto request = std::make_shared<pep::DataSizeRequest>();
+          auto addColumns = [request](const std::vector<std::string>& columns) {
+            std::copy(columns.begin(), columns.end(), std::inserter(request->columns, request->columns.begin()));
+            };
+          addColumns(ColumnQuery::GetColumns(this->getParameterValues()));
+
+          rxcpp::observable<std::shared_ptr<pep::DataSizeRequest>> obs;
+          auto columnGroups = ColumnQuery::GetColumnGroups(this->getParameterValues());
+          if (columnGroups.empty()) {
+            obs = rxcpp::observable<>::just(request);
+          }
+          else {
+            obs = client->getAccessManagerProxy()->amaQuery(pep::AmaQuery{})
+              .tap([addColumns, columnGroups](const pep::AmaQueryResponse& response) {
+                  for (const auto& name : columnGroups) {
+                    auto existing = std::find_if(response.columnGroups.begin(), response.columnGroups.end(), [&name](const pep::AmaQRColumnGroup& group) { return group.name == name; });
+                    if (existing != response.columnGroups.end()) {
+                      addColumns(existing->columns);
+                    }
+                    else {
+                      std::cerr << "Not including columns from group '" << name << "' because the column group does not exist." << std::endl;
+                    }
+                  }
+                })
+              .op(RxInstead(request))
+              .tap([](std::shared_ptr<pep::DataSizeRequest> request) {
+                  // Don't confuse user by reporting unfiltered byte counts in case all specified column groups didn't exist
+                  if (request->columns.empty()) {
+                    throw std::runtime_error("No columns found for specified column group(s)");
+                  }
+                });
+          }
+
+          return obs
+            .flat_map([client](std::shared_ptr<pep::DataSizeRequest> request) {return client->getStorageFacilityProxy()->requestDataSize(std::move(*request)); })
+            .map([](pep::DataSizeResponse response) {
+                // Determine prefix and base for output: e.g. "Mi" for base-2 megabyte or "G" for base-10 gigabyte
+                std::optional<std::string> units;
+                if (auto base2 = pep::IntegralLog(response.blockSize, static_cast<uint64_t>(2U))) {
+                  units = pep::BinaryPrefix(*base2);
+                }
+                else if (auto base10 = pep::IntegralLog(response.blockSize, static_cast<uint64_t>(10U))) {
+                  units = pep::SiPrefix(*base10);
+                }
+
+                // Finalize units string and description of such a "chunk"
+                std::string chunk;
+                if (units.has_value()) {
+                  chunk = *units += 'B';
+                }
+                else {
+                  units = "bytes";
+                  chunk = "multiple of " + std::to_string(response.blockSize) + " bytes";
+                  // (Ab)use response fields to store byte counts. While this makes the "response" object's state inconsistent,
+                  // it allows us to check for the original block size when outputting rounding information (below).
+                  response.totalBlocks *= response.blockSize;
+                  response.rollingBlocks *= response.blockSize;
+                }
+
+                // Left pad numbers (with spaces) so that we can...
+                auto entire = std::to_string(response.totalBlocks);
+                auto latest = std::to_string(response.rollingBlocks);
+                auto width = std::max(entire.size(), latest.size());
+                entire = std::string(width - entire.size(), ' ') + entire;
+                latest = std::string(width - latest.size(), ' ') + latest;
+
+                // ...produce aligned output
+                std::cout
+                  << "Entire history contains " << entire << ' ' << *units << '\n'
+                  << "Latest version contains " << latest << ' ' << *units;
+                if (response.blockSize != 1U) {
+                  std::cout << '\n'
+                    << "(rounded up to the nearest " << chunk << ')';
+                }
+
+                return pep::FakeVoid();
+              });
+        });
+    }
+
+    pep::commandline::Parameters getSupportedParameters() const override {
+      return ChildCommandOf<CommandQuery>::getSupportedParameters()
+        + ColumnQuery::Parameters();
+    }
+  };
+
+  class CommandQueryPagePaths : public ChildCommandOf<CommandQuery> {
+  public:
+    explicit CommandQueryPagePaths(CommandQuery& parent)
+      : ChildCommandOf<CommandQuery>("page-paths", "Reports (relative) paths of the current data set's pages in Storage Facility's page store", parent)
+    {}
+
+    std::optional<std::string> getAdditionalDescription() const override {
+      return "This command should be needed/used only for extraordinary maintenance of Storage Facility's page store, such as migration to a new storage provider.";
+    }
+
+  protected:
+    int execute() override {
+      return this->executeEventLoopFor(true, [](std::shared_ptr<pep::CoreClient> client) {
+        return client->getStorageFacilityProxy()->requestPagePaths()
+          .map([](const pep::PagePathResponse& response) {
+              for (const auto& path : response.paths) {
+                std::cout << path << '\n';
+              }
+              std::cout.flush();
+              return pep::FakeVoid();
+            });
+        });
+    }
+  };
+
 protected:
   inline std::optional<std::string> getRelativeDocumentationUrl() const override {
     return "using-pepcli#query";
@@ -244,6 +369,8 @@ protected:
     result.push_back(std::make_shared<CommandQueryParticipantGroupAccess>(*this));
     result.push_back(std::make_shared<CommandQueryEnrollment>(*this));
     result.push_back(std::make_shared<CommandQueryToken>(*this));
+    result.push_back(std::make_shared<CommandQueryDataSize>(*this));
+    result.push_back(std::make_shared<CommandQueryPagePaths>(*this));
     return result;
   }
 };
