@@ -246,7 +246,7 @@ void ExportWidget::onItemChanged(QListWidgetItem* item) {
 void ExportWidget::updateSelectionState() {
   auto selected = getSelectedItems();
   ui_->exportButton->setEnabled(!selected.empty());
-  ui_->expandDetailsCheckBox->setEnabled(std::ranges::contains(selected,
+  ui_->expandDetailsCheckBox->setEnabled(std::ranges::any_of(selected,
     [](const std::shared_ptr<ExportableItem>& item) { return item->getDetailExpander().has_value(); }));
 }
 
