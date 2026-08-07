@@ -26,8 +26,7 @@ bool AssessorDefinition::matchesStudyContext(const StudyContext& context) const 
   if (studyContexts.empty()) {
     return context.isDefault();
   }
-  auto contextsEnd = studyContexts.cend();
-  return find_if(studyContexts.cbegin(), contextsEnd, [id = context.getId()](const std::string& candidate) { return boost::iequals(candidate, id); }) != contextsEnd;
+  return any_of(studyContexts, [id = context.getId()](const std::string& candidate) { return boost::iequals(candidate, id); });
 }
 
 size_t UserPseudonymFormat::getTotalLength() const {
@@ -99,11 +98,10 @@ std::optional<size_t> PseudonymFormat::getLength() const {
 }
 
 std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonym(const std::string& column) const noexcept {
-  auto end = shortPseudonyms_.cend();
-  auto position = find_if(shortPseudonyms_.cbegin(), end, [column](ShortPseudonymDefinition candidate) {
-    return column == candidate.getColumn().getFullName();
+  auto position = find(shortPseudonyms_, column, [](const ShortPseudonymDefinition& candidate) {
+    return candidate.getColumn().getFullName();
   });
-  if (position == end) {
+  if (position == shortPseudonyms_.cend()) {
     return std::nullopt;
   }
   return *position;
@@ -111,17 +109,15 @@ std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonym(c
 
 std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonymForValue(const std::string& value) const noexcept {
   // Look up the value in the errata
-  auto errataEnd = spErrata_.cend();
-  auto erratum = find_if(spErrata_.cbegin(), errataEnd, [&value](const ShortPseudonymErratum& candidate) { return candidate.value == value; });
-  if (erratum != errataEnd) {
+  auto erratum = find(spErrata_, value, &ShortPseudonymErratum::value);
+  if (erratum != spErrata_.cend()) {
     assert(!erratum->column.empty());
     return this->getShortPseudonym(erratum->column);
   }
 
   // Look up the value's prefix in the short pseudonym definitions
-  auto spsEnd = shortPseudonyms_.cend();
-  auto sp = find_if(shortPseudonyms_.cbegin(), spsEnd, [&value](const ShortPseudonymDefinition& candidate) {return value.starts_with(candidate.getPrefix()); });
-  if (sp != spsEnd) {
+  auto sp = find_if(shortPseudonyms_, [&value](const ShortPseudonymDefinition& candidate) {return value.starts_with(candidate.getPrefix()); });
+  if (sp != shortPseudonyms_.cend()) {
     return *sp;
   }
 
@@ -131,11 +127,8 @@ std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonymFo
 
 
 std::optional<ColumnSpecification> GlobalConfiguration::getColumnSpecification(const std::string& column) const noexcept {
-  auto end = columnSpecifications_.cend();
-  auto position = find_if(columnSpecifications_.cbegin(), end, [column](ColumnSpecification candidate) {
-    return column == candidate.getColumn();
-  });
-  if (position == end) {
+  auto position = find(columnSpecifications_, column, &ColumnSpecification::getColumn);
+  if (position == columnSpecifications_.cend()) {
     return std::nullopt;
   }
   return *position;

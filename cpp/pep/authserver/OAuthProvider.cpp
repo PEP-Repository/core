@@ -354,7 +354,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
   if(registeredUris.empty()) {
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("403 Forbidden", "client_id not registered"));
   }
-  if (find_if(registeredUris, std::bind_front(CompareRedirectUris, redirectUriString)) == registeredUris.end()) {
+  if (none_of(registeredUris, std::bind_front(CompareRedirectUris, redirectUriString))) {
     return rxcpp::rxs::just(MakeErrorTextHttpResponse("403 Forbidden", "Specified redirect_uri is not registered"));
   }
 

@@ -109,7 +109,7 @@ protected:
           .distinct()
           .op(pep::RxToSet())
           .flat_map([](std::shared_ptr<std::set<std::string>> groups) -> rxcpp::observable<std::string> {
-          if (groups->find("*") != groups->cend()) {
+          if (groups->contains("*")) {
             return rxcpp::observable<>::just(std::string("*"));
           }
           return pep::RxIterate(std::move(*groups));
@@ -208,7 +208,7 @@ protected:
         [](std::shared_ptr<ColumnExtensions> all, std::shared_ptr<ColumnExtensions> sub) {
           for (auto entry : *sub) {
             const auto& key = entry.first;
-            if (all->find(key) != all->cend()) {
+            if (all->contains(key)) {
               throw std::runtime_error("Multiple extensions specified for column " + key);
             }
             [[maybe_unused]] auto emplaced = all->emplace(entry).second;
@@ -223,7 +223,7 @@ protected:
         std::shared_ptr<std::set<std::string>> accessible = std::get<1>(context);
         auto i = required->begin();
         while (i != required->end()) {
-          if (accessible->find(i->first) == accessible->cend()) {
+          if (!accessible->contains(i->first)) {
             std::cerr << "Skipping inaccessible column " << i->first << std::endl;
             i = required->erase(i);
           }

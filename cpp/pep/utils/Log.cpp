@@ -100,9 +100,8 @@ std::string FormatThreadName() {
 
 Severity Logging::ParseSeverity(const std::string& level) {
   auto names = GetSeverityLevelNames();
-  auto end = names.cend();
-  auto position = find_if(names.cbegin(), end, [&level](const std::pair<const Severity, std::string>& candidate) {return candidate.second == level; });
-  if (position == end) {
+  auto position = find(names, level, &std::pair<const Severity, std::string>::second);
+  if (position == names.cend()) {
     throw std::runtime_error("Invalid severity level " + level);
   }
   return position->first;

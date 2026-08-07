@@ -137,7 +137,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
         // If SP column names have been specified, limit to those
         if (spColumns.has_value()) {
           allowedSps = allowedSps.filter([spColumns](const ShortPseudonymDefinition& sp) {
-            return find(spColumns->cbegin(), spColumns->cend(), sp.getColumn().getFullName()) != spColumns->cend();
+            return contains(*spColumns, sp.getColumn().getFullName());
           });
         }
 

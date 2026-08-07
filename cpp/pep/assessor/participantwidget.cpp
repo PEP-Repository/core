@@ -1397,9 +1397,7 @@ bool ParticipantDataAggregator::isVisitAssessorColumn(const std::string& columnN
 }
 
 bool ParticipantDataAggregator::isDeviceHistoryColumn(const std::string& columnName) const {
-  const auto& devices = globalConfig_.getDevices();
-  auto end = devices.cend();
-  return find_if(devices.cbegin(), end, [&columnName](const pep::DeviceRegistrationDefinition& definition) {return definition.columnName == columnName; }) != end;
+  return contains(globalConfig_.getDevices(), columnName, &pep::DeviceRegistrationDefinition::columnName);
 }
 
 ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept

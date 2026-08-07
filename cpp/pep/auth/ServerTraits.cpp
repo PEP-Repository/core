@@ -11,7 +11,7 @@ namespace pep {
 
 std::string ServerTraits::defaultId() const {
   auto result = description_;
-  result.erase(std::remove_if(result.begin(), result.end(), isspace), result.end());
+  std::erase_if(result, isspace);
   return result;
 }
 

@@ -207,11 +207,10 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
 
 void AccessManager::Parameters::setGlobalConfiguration(std::shared_ptr<GlobalConfiguration> gc) {
   const auto& contexts = gc->getStudyContexts().getItems();
-  auto contexts_end = contexts.cend();
   auto end = gc->getShortPseudonyms().cend();
   for (auto i = gc->getShortPseudonyms().cbegin(); i != end; ++i) {
     if (!contexts.empty()) {
-      if (contexts_end == find_if(contexts.cbegin(), contexts_end, [&i](const StudyContext& candidate) {return candidate.matchesShortPseudonym(*i); })) {
+      if (none_of(contexts, [&i](const StudyContext& candidate) {return candidate.matchesShortPseudonym(*i); })) {
         throw std::runtime_error("Short pseudonym " + i->getColumn().getFullName() + " defined for unknown study context " + i->getStudyContext());
       }
     }
@@ -463,6 +462,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                       // so we let it process indices to work around this.  If we need this
                       // more often, it's better to change batched_map()
                       std::vector<size_t> is(request->entries.size());
+                      //NOLINTNEXTLINE(modernize-use-ranges) std::ranges::iota needs libc++ 23; unavailable on our Emscripten/Apple Clang floor
                       std::iota(is.begin(), is.end(), std::size_t{});
                       return server->workerPool_->batched_map<8>(is,
                             ObserveOnAsio(*server->getIoContext()),
@@ -522,8 +522,6 @@ void AccessManager::computeChecksumChainChecksum(
 
 messaging::MessageBatches
 AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signedRequest) {
-  using namespace std::ranges;
-
   auto time = std::chrono::steady_clock::now();
   auto requestNumber = nextTicketRequestNumber_++;
 
