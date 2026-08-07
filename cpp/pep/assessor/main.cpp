@@ -155,9 +155,10 @@ class PepAssessorApplication : public pep::Application {
 
   int execute() override {
     //QApplication must be instantiated before being used to pass in the client config
-    auto argc = this->getArgc();
-    auto argv = this->getArgv();
-    QApplication pepAssessor(argc, argv);
+    auto argsCopy = getArgs();
+    auto argv = pep::RangeToVector(argsCopy | std::views::transform([](std::string& arg) { return arg.data(); }));
+    int argc = static_cast<int>(argv.size());
+    QApplication pepAssessor(argc, argv.data());
 
     // Terminate if there's another PEP Assessor running to prevent later failure, e.g. w.r.t. the port receiving the OAuth token after logon
     if (!EnsureOnlyInstance(&pepAssessor)) {
