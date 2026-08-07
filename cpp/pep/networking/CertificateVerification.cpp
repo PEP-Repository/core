@@ -111,7 +111,7 @@ bool VerifyCertificateBasedOnExpectedCommonName(const std::string& expectedCommo
     asn1CommonName = X509_NAME_ENTRY_get_data(name_entry);
   }
 
-  if (asn1CommonName && asn1CommonName->data && asn1CommonName->length) {
+  if (asn1CommonName && asn1CommonName->data && asn1CommonName->length > 0) {
     //const char* commonName = reinterpret_cast<const char*>(asn1CommonName->data);
     std::string commonName(
       reinterpret_cast<const char*>(asn1CommonName->data),

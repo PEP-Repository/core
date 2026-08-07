@@ -26,11 +26,9 @@ AsymmetricKey::~AsymmetricKey() {
   EVP_PKEY_free(key_);
 }
 
-/**
- * @brief Constructor. Initializes the AsymmetricKey object with the given key type makes a deep copy of the given key.
- * @param keyType The type of the key (private or public).
- * @param o The EVP_PKEY* representing the key.
- */
+/// \brief Constructor. Initializes the AsymmetricKey object with the given key type makes a deep copy of the given key.
+/// \param keyType The type of the key (private or public).
+/// \param o The EVP_PKEY* representing the key.
 AsymmetricKey::AsymmetricKey(AsymmetricKeyType keyType, EVP_PKEY* o) {
   this->keyType = keyType;
 
@@ -50,10 +48,8 @@ AsymmetricKey::AsymmetricKey(AsymmetricKeyType keyType, EVP_PKEY* o) {
   }
 }
 
-/**
- * @brief Constructor. Initializes the AsymmetricKey object with the key data from the given buffer.
- * @param buf The buffer containing the key data in PEM format.
- */
+/// \brief Constructor. Initializes the AsymmetricKey object with the key data from the given buffer.
+/// \param buf The buffer containing the key data in PEM format.
 AsymmetricKey::AsymmetricKey(std::string_view buf) {
 
   BIO* bio = BIO_new_mem_buf(buf.data(), boost::numeric_cast<int>(buf.size()));
@@ -205,14 +201,12 @@ std::string AsymmetricKey::decrypt(const std::string& str) const {
   return szOutput;
 }
 
-/**
- *
- * Write a public/private key to a PKCS#8 PEM string.
- *
- * @brief Converts the key to PEM format.
- * @return The key in PEM format.
- * @throws std::runtime_error if the key type is not set or if an OpenSSL error occurred.
- */
+///
+/// Write a public/private key to a PKCS#8 PEM string.
+///
+/// \brief Converts the key to PEM format.
+/// \return The key in PEM format.
+/// \throws std::runtime_error if the key type is not set or if an OpenSSL error occurred.
 std::string AsymmetricKey::toPem() const {
   std::lock_guard<std::mutex> lock(m_);
   if (!set_) {
@@ -292,11 +286,9 @@ std::string AsymmetricKey::toDer() const {
   return OpenSSLBIOToString(bio);
 }
 
-/**
- * @brief Checks if this private key corresponds to the given public key.
- * @param publicKey The public key to be checked.
- * @return True if the private key corresponds to the public key, false otherwise.
- */
+/// \brief Checks if this private key corresponds to the given public key.
+/// \param publicKey The public key to be checked.
+/// \return True if the private key corresponds to the public key, false otherwise.
 bool AsymmetricKey::isPrivateKeyFor(const AsymmetricKey& publicKey) const {
   std::scoped_lock lock(m_, publicKey.m_);
   if (!set_ || !publicKey.set_){
@@ -322,7 +314,7 @@ bool AsymmetricKey::isPrivateKeyFor(const AsymmetricKey& publicKey) const {
   PEP_DEFER(BN_free(rsa_priv_n));
 
   // Extract n with EVP_PKEY_get_bn_param for private key
-  if (EVP_PKEY_is_a(key_, "RSA")) {
+  if (EVP_PKEY_is_a(key_, "RSA") != 0) {
     if (EVP_PKEY_get_bn_param(key_, OSSL_PKEY_PARAM_RSA_N, &rsa_priv_n) <= 0) {
       throw pep::OpenSSLError("Failed to get RSA private key n in AsymmetricKey::isPrivateKeyFor.");
     }
@@ -331,7 +323,7 @@ bool AsymmetricKey::isPrivateKeyFor(const AsymmetricKey& publicKey) const {
   }
 
   // Extract the modulus (n) from the public key
-  if (EVP_PKEY_is_a(publicKey.key_, "RSA")) {
+  if (EVP_PKEY_is_a(publicKey.key_, "RSA") != 0) {
     if (EVP_PKEY_get_bn_param(publicKey.key_, OSSL_PKEY_PARAM_RSA_N, &rsa_pub_n) <= 0) {
       throw pep::OpenSSLError("Failed to get RSA public key n in AsymmetricKey::isPrivateKeyFor.");
     }

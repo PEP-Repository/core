@@ -1,5 +1,6 @@
 #include <pep/archiving/Tar.hpp>
 
+#include <pep/utils/File.hpp>
 #include <pep/utils/Log.hpp>
 
 #include <archive.h>
@@ -142,8 +143,8 @@ Tar::~Tar() {
 }
 
 
-void Tar::nextEntry(const std::filesystem::path& path, int64_t size) {
-  const std::string& pathString = path.generic_string();
+void Tar::nextEntry(const CheckedPath& path, int64_t size) {
+  const auto pathString = path.path().generic_string();
 
   archive_entry* entry = archive_entry_new();
   archive_entry_set_pathname(entry, pathString.c_str());
@@ -199,10 +200,17 @@ void Tar::Extract(std::istream& stream, const std::filesystem::path& outputDirec
   }
   archive_entry* archive_entry{};
   while( (archive_entry = readNextHeader(archive)) ) {
-    std::filesystem::path outpath = outputDirectory / archive_entry_pathname(archive_entry);
-    std::filesystem::create_directories(outpath.parent_path());
+    std::filesystem::path rawEntryPath(archive_entry_pathname(archive_entry));
+    if (archive_entry_filetype(archive_entry) != AE_IFREG) {
+      PEP_LOG(LogTag, Severity::Debug) << "Skipping non-regular file in tar archive: " << rawEntryPath;
+      continue;
+    }
+
+    CheckedRelativeFilePath entryPath(std::move(rawEntryPath));
+    std::filesystem::path outpath = outputDirectory / entryPath;
+    std::filesystem::create_directories(GetParentDirectory(outpath));
     std::ofstream out(
-      outpath.string(),
+      outpath,
       std::ios::binary);
     if(!out) {
       std::ostringstream oss;

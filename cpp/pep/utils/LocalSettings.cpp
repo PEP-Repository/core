@@ -423,7 +423,7 @@ LocalSettingsIni::LocalSettingsIni (const std::string& szFilename) {
       passwd pwdBuf{}, *result{};
       while (true) {
         auto err = getpwuid_r(getuid(), &pwdBuf, buf.data(), buf.size(), &result);
-        if (!err) {
+        if (err == 0) {
           break;
         }
         if (err != ERANGE) {

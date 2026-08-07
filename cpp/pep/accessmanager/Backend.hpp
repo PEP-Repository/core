@@ -29,67 +29,48 @@ public:
   bool hasLocalPseudonym(const LocalPseudonym& localPseudonym);
   void storeLocalPseudonymAndPP(const LocalPseudonym& localPseudonym, const PolymorphicPseudonym& polymorphicPseudonym);
 
-  /*!
-  * \brief Check the basic assumptions of a ticket request, such as the existence of specified columns, no double entries, etc.
-  * \param request The request to be checked.
-  */
+  /// \brief Check the basic assumptions of a ticket request, such as the existence of specified columns, no double entries, etc.
+  /// \param request The request to be checked.
   void checkTicketRequest(const TicketRequest2& request);
 
-  /*!
-  * \brief Check whether or not the userGroup at the timestamp is granted the access modes for the participantGroups.
-  * \throws Error when not all access modes are granted.
-  */
+  /// \brief Check whether or not the userGroup at the timestamp is granted the access modes for the participantGroups.
+  /// \throws Error when not all access modes are granted.
   void checkParticipantGroupAccess(std::span<const std::string> participantGroups, const std::string& userGroup, std::vector<std::string>& modes, const Timestamp& timestamp);
 
-  /*!
-  * \brief Fill the pre_PPs vector with polymorph pseudonyms found in the participantGroup. For each participantGroup, add an entry to the participantGroupMap containing all indexes
-  *        of the pps that are in the participantGroup.
-  * \param pps Both an in and out parameter. Vector containing the loose requested polymorph pseudonyms. This vector is appended with the pps found in the requested participantGroups.
-  */
+  /// \brief Fill the pre_PPs vector with polymorph pseudonyms found in the participantGroup. For each participantGroup, add an entry to the participantGroupMap containing all indexes
+  ///        of the pps that are in the participantGroup.
+  /// \param pps Both an in and out parameter. Vector containing the loose requested polymorph pseudonyms. This vector is appended with the pps found in the requested participantGroups.
   std::unordered_map<std::string, pep::IndexList> fillParticipantGroupMap(std::span<const std::string> participantGroups, std::vector<Pp>& pps);
 
-  /* !
-  * \brief For each column in columns, look up the associated columngroups. Then check whether or not the userGroup has the required access to ANY of those columnGroups. If not, throw an error.
-  * For each columnGroup in columnGroups, assert whether or not the userGroup has the required access modes. If so, for each columnGroup, look up all columns that are in it and add them
-  *         to the columns vector. Add an entry to the columnmGroupMap containing all indexes of the columns that are in the columnGroup.
-  *  \param userGroup
-  *  \param columnGroups
-  *  \param modes
-  *  \param at timestamp of moment in time for when to assert access and columnGroup membership.
-  *  \param columns Both an in and out parameter. Vector containing the loose requested columns. This vector is appended with the columns found in the requested columnGroups.
-  *  \returns Map of IndexList (indexes of columns in columnGroup) by string (name of columnGroup).
-  */
+  /// \brief For each column in columns, look up the associated columngroups. Then check whether or not the userGroup has the required access to ANY of those columnGroups. If not, throw an error.
+  /// For each columnGroup in columnGroups, assert whether or not the userGroup has the required access modes. If so, for each columnGroup, look up all columns that are in it and add them
+  ///         to the columns vector. Add an entry to the columnmGroupMap containing all indexes of the columns that are in the columnGroup.
+  ///  \param at timestamp of moment in time for when to assert access and columnGroup membership.
+  ///  \param columns Both an in and out parameter. Vector containing the loose requested columns. This vector is appended with the columns found in the requested columnGroups.
+  ///  \returns Map of IndexList (indexes of columns in columnGroup) by string (name of columnGroup).
   std::unordered_map<std::string, IndexList> unfoldColumnGroupsAndCheckAccess(const std::string& userGroup, const std::vector<std::string>& columnGroups, const std::vector<std::string>& modes, Timestamp at,
                                          std::vector<std::string>& columns);
 
-  /*!
-  * \brief Check the basic assumptions of a EncryptionKeyRequest. The accompanying ticket has to have the required access.
-  * \param request The request to be checked.
-  * \param ticket The ticket
-  */
+  /// \brief Check the basic assumptions of a EncryptionKeyRequest. The accompanying ticket has to have the required access.
+  /// \param request The request to be checked.
+  /// \param ticket The ticket
   void checkTicketForEncryptionKeyRequest(std::shared_ptr<EncryptionKeyRequest> request, const Ticket2& ticket);
-    /*!
-  * \brief Return all recorded columns, columngroups (with their columns), columngroup access rules, participantgroups, and participant access rules.
-  * \param query Filtering object containing the timestamp of the query and potential filters on the entries named above.
-  */
+    /// \brief Return all recorded columns, columngroups (with their columns), columngroup access rules, participantgroups, and participant access rules.
+    /// \param query Filtering object containing the timestamp of the query and potential filters on the entries named above.
   AmaQueryResponse performAMAQuery(const AmaQuery& query, const std::string& userGroup);
 
   UserQueryResponse performUserQuery(const UserQuery& query, const std::string& userGroup);
 
 
-  /*!
-  * /brief Get all columns this userGroup has access to.
-  * \param request Request stating filtering conditions.
-  * \param userGroup the userGroup for which to assert access
-  * \return ColumnAccess A map containing all access modes and columns by columnGroups, and a vector of columns.
-  */
+  /// /brief Get all columns this userGroup has access to.
+  /// \param request Request stating filtering conditions.
+  /// \param userGroup the userGroup for which to assert access
+  /// \return ColumnAccess A map containing all access modes and columns by columnGroups, and a vector of columns.
   ColumnAccess handleColumnAccessRequest(const ColumnAccessRequest& request, const std::string& userGroup);
-   /*!
-  * /brief Get all participantGroups this userGroup has access to.
-  * \param request Request stating filtering conditions.
-  * \param userGroup the userGroup for which to assert access
-  * \return ParticipantGroupAccess A map containing all access modes by participantGroups.
-  */
+   /// /brief Get all participantGroups this userGroup has access to.
+   /// \param request Request stating filtering conditions.
+   /// \param userGroup the userGroup for which to assert access
+   /// \return ParticipantGroupAccess A map containing all access modes by participantGroups.
   ParticipantGroupAccess handleParticipantGroupAccessRequest(const ParticipantGroupAccessRequest& request, const std::string& userGroup);
   ColumnNameMappingResponse handleColumnNameMappingRequest(const ColumnNameMappingRequest& request, const std::string& userGroup);
 
@@ -130,6 +111,12 @@ private:
   void removeColumnGroupAccessRulesForRequest(const AmaMutationRequest& amRequest);
   void createParticipantGroupAccessRulesForRequest(const AmaMutationRequest& amRequest);
   void removeParticipantGroupAccessRulesForRequest(const AmaMutationRequest& amRequest);
+
+  rxcpp::observable<std::shared_ptr<std::set<int64_t>>> addBlockEntries(int64_t internalUserId, const std::string& group, Timestamp issueDateTime, std::string note,
+                                                                    std::optional<Timestamp> blockStartDateTime);
+  rxcpp::observable<FakeVoid> removeBlockEntries(int64_t internalUserId, std::string group, std::set<int64_t> excludeBlockEntries = {});
+  rxcpp::observable<FakeVoid> updateTokenBlocking (int64_t internalUserId, std::string group, std::optional<Timestamp> issueDateTime,
+    std::string note, std::optional<Timestamp> blockStartDateTime);
 
   std::shared_ptr<AccessManager::Backend::Storage> storage_;
   //We want to assign this pointer from within the constructor of access manager. shared_from_this doesn't work there, so we use a raw pointer. Should be safe, because without access manager there is also no backend.

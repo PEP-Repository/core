@@ -2,7 +2,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <chrono>
-//XXX Remove when std timezones are widely supported
+//TODO(workaround) Remove when std timezones are widely supported
 #if __cpp_lib_chrono < 201907L
 #include <date/tz.h>
 using date::parse;

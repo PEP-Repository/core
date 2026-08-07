@@ -24,6 +24,7 @@ std::vector<std::shared_ptr<pep::commandline::Command>> CommandUser::createChild
     std::make_shared<UserSubCommand>("removeIdentifier", "Remove identifier for a user", &pep::AccessManagerProxy::removeUserIdentifier, *this),
     std::make_shared<UserAddToSubCommand>(*this),
     std::make_shared<UserRemoveFromSubCommand>(*this),
+    std::make_shared<UserUpdateExpirationSubCommand>(*this),
   };
 }
 

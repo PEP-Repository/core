@@ -1,6 +1,6 @@
 # Functionality related to predefined content (formats) stored in PEP.
 
-add_library(${PROJECT_NAME}Contentlib STATIC
+add_library(${PROJECT_NAME}Contentlib
   Date.cpp Date.hpp
   ParticipantDeviceHistory.cpp ParticipantDeviceHistory.hpp
   ParticipantPersonalia.cpp ParticipantPersonalia.hpp

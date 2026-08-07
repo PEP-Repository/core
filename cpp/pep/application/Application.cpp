@@ -1,6 +1,7 @@
 #include <pep/application/Application.hpp>
 #include <pep/application/Unwinder.hpp>
 #include <pep/versioning/Version.hpp>
+#include <pep/utils/Configuration.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Paths.hpp>
@@ -26,6 +27,8 @@ namespace pep {
 
 namespace {
 
+const std::string LogTag = "Application";
+
 //NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static const Application* applicationInstance = nullptr;
 //NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -37,7 +40,7 @@ void LogVersionInfo(const std::string& tag, std::string summary) {
   if (summary.empty()) {
     summary = "No version information available. Running a local build?";
   }
-  PEP_LOG("Application " + tag, Severity::Info) << summary;
+  PEP_LOG(LogTag + ' ' += tag, Severity::Info) << summary;
 }
 
 template <typename T>
@@ -232,10 +235,16 @@ void Application::initializeLoggingOnce() {
   { // initialize logging sinks
     std::vector<std::shared_ptr<Logging>> logging;
 
-    if (auto console_level = values.has("logLevel")
-        ? values.getOptional<Severity>("logLevel")
-        : consoleLogMinimumSeverityLevel()) {
-      logging.push_back(std::make_shared<ConsoleLogging>(*console_level));
+    std::optional<Severity> consoleLevel = this->consoleLogMinimumSeverityLevel();
+    if (auto consoleLevelStr = values.getOptional<std::string>("loglevel")) {
+      consoleLevel = Logging::ParseSeverity(*consoleLevelStr);
+      if (consoleLevel < Logging::compiledMinimumSeverity) {
+        PEP_LOG(LogTag, Severity::Warning)
+          << "Logs with severity below <" << Logging::FormatSeverity(Logging::compiledMinimumSeverity) << "> are not enabled for this build";
+      }
+    }
+    if (consoleLevel) {
+      logging.push_back(std::make_shared<ConsoleLogging>(*consoleLevel));
       usingConsoleLog = true;
     }
 
@@ -300,7 +309,7 @@ std::filesystem::path Application::getConfigDirectory() {
 }
 
 Configuration Application::loadMainConfigFile() {
-  //NOLINTNEXTLINE(bugprone-unused-local-non-trivial-variable) XXX False positive in older Clang-Tidy
+  //NOLINTNEXTLINE(bugprone-unused-local-non-trivial-variable) TODO(workaround) False positive in older Clang-Tidy
   [[maybe_unused]] auto dir = this->getConfigDirectory(); // Logs version info (if required) at this time
   auto file = this->getMainConfigPath();
   assert(dir == file.parent_path());
@@ -318,7 +327,7 @@ bool Application::ReportTermination(std::exception_ptr exception) noexcept {
     }
 
     if (usingConsoleLog) {
-      PEP_LOG("Application", Severity::Critical) << "Terminating application " << detail;
+      PEP_LOG(LogTag, Severity::Critical) << "Terminating application " << detail;
     }
     else {
       auto channel = CreateNotificationChannel(true);
@@ -406,13 +415,9 @@ std::optional<Severity> Application::fileLogMinimumSeverityLevel() const {
 
 commandline::Parameters Application::getSupportedParameters() const {
   auto loglevel = commandline::Value<std::string>().allow(Logging::SeverityNames());
-  auto defaultValue = this->consoleLogMinimumSeverityLevel();
-  if (defaultValue.has_value()) {
-    loglevel = loglevel.defaultsTo(Logging::FormatSeverity(*defaultValue));
-  }
   auto result = commandline::Command::getSupportedParameters()
     + commandline::Parameter("suppress-version-info", "Don't log (" + Logging::FormatSeverity(Severity::Info) + "-level messages with) version details")
-    + commandline::Parameter("loglevel", "Write log messages to stderr if they have at least this severity").value(loglevel)
+    + commandline::Parameter("loglevel", "Write log messages to stderr if they have at least this severity").value(std::move(loglevel))
     + commandline::Parameter("version", "Produce version info and exit");
 
 #ifdef _WIN32
@@ -457,7 +462,7 @@ std::optional<int> Application::processLexedParameters(const commandline::LexedV
   // Also, we allow printing version info above.
   if (::GetACP() != CP_UTF8) {
     if (lexed.contains("allow-non-utf8")) {
-      PEP_LOG("Application", Severity::Warning)
+      PEP_LOG(LogTag, Severity::Warning)
         << "Code page was not set to UTF-8, you may be using an old Windows version. "
            "Using --allow-non-utf8 is not recommended, you may experience problems using special characters.";
     } else {

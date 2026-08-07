@@ -1,4 +1,5 @@
 #include <pep/apps/Enroller.hpp>
+#include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
@@ -94,7 +95,7 @@ int Enroller::execute() {
       boost::property_tree::ptree keyConfig;
       SerializeProperties(keyConfig, result);
       if (values.has("output-path")) {
-        std::ofstream output(values.get<std::filesystem::path>("output-path").string());
+        std::ofstream output(values.get<std::filesystem::path>("output-path"));
         boost::property_tree::write_json(output, keyConfig);
       }
       else {

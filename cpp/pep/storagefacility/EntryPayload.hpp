@@ -12,9 +12,7 @@ namespace pep {
 
 using PageId = uint64_t;
 
-/*!
- * \brief Base class for entry payloads: sequences of pages containing (encrypted) cell data.
- */
+/// Base class for entry payloads: sequences of pages containing (encrypted) cell data.
 class EntryPayload {
 protected:
   size_t validatedPageIndex(size_t index) const;
@@ -49,16 +47,15 @@ public:
   virtual size_t pageCount() const noexcept = 0;
   virtual uint64_t size() const noexcept = 0;
   virtual std::optional<uint64_t> pageSize() const = 0;
+  virtual std::set<std::string> getPagePaths(const EntryName& name) const = 0;
   virtual messaging::MessageSequence readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const = 0;
 
   static void Save(std::shared_ptr<EntryPayload> payload, PersistedEntryProperties& properties, std::vector<PageId>& pages);
   static std::shared_ptr<EntryPayload> Load(PersistedEntryProperties& properties, std::vector<PageId>& pages);
 };
 
-/*!
- * \brief An entry payload consisting of a single small page stored on the FileStore (i.e. without using the PageStore).
- * \remark The size limit is determined by the InlinePageThreshold constant.
- */
+/// \brief An entry payload consisting of a single small page stored on the FileStore (i.e. without using the PageStore).
+/// \remark The size limit is determined by the InlinePageThreshold constant.
 class InlinedEntryPayload : public EntryPayload {
 private:
   std::string content_;
@@ -77,6 +74,7 @@ public:
   size_t pageCount() const noexcept override { return 1U; }
   uint64_t size() const noexcept override { return payloadSize_; }
   std::optional<uint64_t> pageSize() const override { return this->size(); }
+  std::set<std::string> getPagePaths(const EntryName& /* unused */) const override { return {}; }
 
   messaging::MessageSequence readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const override;
   std::string getEtag() const;
@@ -84,9 +82,7 @@ public:
   static std::shared_ptr<InlinedEntryPayload> Load(PersistedEntryProperties& properties, std::vector<PageId>& pages);
 };
 
-/*!
- * \brief An entry payload whose pages are stored in a PageStore.
- */
+/// An entry payload whose pages are stored in a PageStore.
 class PagedEntryPayload : public EntryPayload {
 private:
   std::vector<PageId> pages_;
@@ -107,6 +103,7 @@ public:
   size_t pageCount() const noexcept override { return pages_.size(); }
   uint64_t size() const noexcept override { return payloadSize_; }
   std::optional<uint64_t> pageSize() const override;
+  std::set<std::string> getPagePaths(const EntryName& name) const override;
 
   messaging::MessageSequence readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const override;
 

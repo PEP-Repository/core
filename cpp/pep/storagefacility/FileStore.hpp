@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/utils/CheckedPath.hpp>
 #include <pep/utils/Shared.hpp>
 #include <pep/storagefacility/EntryContent.hpp>
 #include <pep/messaging/MessageSequence.hpp>
@@ -10,11 +11,9 @@
 
 namespace pep {
 
-/**
- * directory structure:
- * - .1, .2, .3 are pages
- * - name.mtime.entry is a snapshot of all the metadata and pages that are used
- */
+/// directory structure:
+/// - .1, .2, .3 are pages
+/// - name.mtime.entry is a snapshot of all the metadata and pages that are used
 class FileStore : public SharedConstructor<FileStore> {
   friend class SharedConstructor<FileStore>;
   friend class EntryContent;
@@ -24,20 +23,10 @@ public:
   class Cell;
   class Entry;
 
-  struct EntryHeader {
-    Timestamp validFrom;
-    uint64_t checksumSubstitute{};
-    uint64_t payloadSize{};
-    bool isOriginalPayloadOwner{};
-  };
-  using EntryHeaders = typename PropertyBasedContainer<EntryHeader, &EntryHeader::validFrom>::set;
-
-  /*!
-   * \brief Utility base class for Entry and EntryChange classes (defined below).
-   * \remark Ensures that appropriate values are copied when we
-   *         - create an EntryChange on the basis of an existing Entry, i.e. when preparing a cell update.
-   *         - create an Entry on the basis of an EntryChange, i.e. when committing the EntryChange.
-   */
+  /// \brief Utility base class for Entry and EntryChange classes (defined below).
+  /// \remark Ensures that appropriate values are copied when we
+  ///         - create an EntryChange on the basis of an existing Entry, i.e. when preparing a cell update.
+  ///         - create an Entry on the basis of an EntryChange, i.e. when committing the EntryChange.
   class EntryBase {
   private:
     Cell& cell_;
@@ -61,7 +50,7 @@ public:
 
     Cell& getCell() const noexcept { return cell_; }
     uint64_t getChecksumSubstitute() const { return checksumSubstitute_; }
-    FileStore& getFileStore() const noexcept;
+    FileStore& getFileStore() noexcept;
 
     const std::unique_ptr<EntryContent>& content() const { return content_; }
     EntryName getName() const;
@@ -69,11 +58,11 @@ public:
     bool isTombstone() const { return content_ == nullptr; }
     uint64_t payloadSize() const;
     bool isOriginalPayloadOwner() const;
+
+    std::set<std::string> pagePaths() const;
   };
 
-  /*!
-   * \brief Represents a pending update to a cell. A new Entry will be created when an EntryChange is commit()ted.
-   */
+  /// \brief Represents a pending update to a cell. A new Entry will be created when an EntryChange is commit()ted.
   class EntryChange : public EntryBase, public std::enable_shared_from_this<EntryChange>, private SharedConstructor<EntryChange> {
     // Allow SharedConstructor<EntryChange>::Create to access our private constructor(s)
     friend class SharedConstructor<EntryChange>;
@@ -99,9 +88,7 @@ public:
     void cancel() &&;
   };
 
-  /*!
-   * \brief Represents a cell version ("data card").
-   */
+  /// \brief Represents a cell version ("data card").
   class Entry : public EntryBase, public std::enable_shared_from_this<Entry>, private SharedConstructor<Entry>
   {
     // Allow SharedConstructor<Entry>::Create to access our private constructor(s)
@@ -117,42 +104,53 @@ public:
     Entry(EntryChange&& source, Timestamp validFrom);
     Entry(Cell& cell, Timestamp validFrom, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
 
-    std::filesystem::path getFilePath(const std::string& extension) const;
+    CheckedPath getFilePath(const std::string& extension) const;
 
   public:
     std::unique_ptr<EntryContent> cloneContent() const;
 
     Timestamp getValidFrom() const noexcept { return validFrom_; }
-    EntryHeader header() const;
     messaging::MessageSequence readPage(size_t index);
 
     void save() const;
-    static std::shared_ptr<Entry> TryLoad(Cell& cell, const std::filesystem::path& path);
+    static std::shared_ptr<Entry> TryLoad(Cell& cell, const CheckedPath& path);
     static std::shared_ptr<Entry> Load(Cell& cell, Timestamp timestamp);
   };
 
-  using EntrySet = typename PropertyBasedContainer<std::shared_ptr<Entry>, &Entry::getValidFrom>::set;
+  struct CellVersion {
+    Timestamp validFrom;
+    uint64_t checksumSubstitute{};
+    uint64_t payloadSize{};
+    bool isOriginalPayloadOwner{};
+    bool isTombstone{};
+
+    static CellVersion FromEntry(const Entry& entry);
+  };
+  using CellVersions = typename PropertyBasedContainer<CellVersion, &CellVersion::validFrom>::set;
 
   class Cell {
   private:
     Participant& participant_;
     const std::string& columnName_; // reference to unique string in FileStore::columnNames_
-    EntryHeaders entryHeaders_;
+    CellVersions versions_;
     std::shared_ptr<Entry> latest_;
 
   public:
     Cell(Participant& participant, const std::string& columnName, bool load = false);
 
-    Participant& getParticipant() const { return participant_; }
+    Participant& participant() { return participant_; }
+    const Participant& participant() const { return participant_; }
     const std::string& columnName() const noexcept { return columnName_; }
+    const CellVersions& versions() const noexcept { return versions_; }
 
     EntryName entryName() const;
-    std::filesystem::path path() const;
+    CheckedPath path() const;
 
-    const EntryHeaders& entryHeaders() const noexcept { return entryHeaders_; }
     void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const;
     void addEntry(std::shared_ptr<Entry> entry);
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
+
+    std::set<std::string> pagePaths() const; // for latest version
   };
 
   class Participant {
@@ -167,33 +165,20 @@ public:
   public:
     Participant(FileStore& store, std::string name, bool load = false);
 
-    FileStore& getFileStore() const noexcept { return store_; }
+    FileStore& fileStore() noexcept { return store_; }
+    const FileStore& fileStore() const noexcept { return store_; }
     const std::string& name() const noexcept { return name_; }
+    PropertyBasedContainer<const Cell*, &Cell::columnName>::set cells() const;
 
-    std::filesystem::path path() const;
+    CheckedPath path() const;
 
     std::shared_ptr<EntryChange> createEntry(const std::string& columnName) { return EntryChange::Create(this->provideCell(columnName)); }
 
     void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const;
-    void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
-    EntrySet lookupWithHistory(const std::string& column) const;
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
+
+    std::set<std::string> pagePaths() const; // for latest version
   };
-
-
-  EntrySet lookupWithHistory(const EntryName& name) const;
-  std::shared_ptr<Entry> lookup(const EntryName& name, Timestamp validAt = Timestamp::max());
-  std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool createIfNeeded = false);
-
-  EntryContent::Metadata makeMetadataMap(const std::map<std::string, MetadataXEntry>& xentries);
-  std::map<std::string, MetadataXEntry> extractMetadataMap(const EntryContent::Metadata& metadata);
-
-  void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns = {}) const;
-  void forEachEntryHeader(const std::function<void(const EntryHeader&)>& callback) const;
-
-  const std::filesystem::path& metaDir() const {
-    return path_;
-  }
 
 private:
   FileStore(
@@ -209,7 +194,7 @@ private:
   std::map<std::string, std::set<std::string>> metadataValues_;
 
   PropertyBasedContainer<std::unique_ptr<Participant>, &Participant::name>::set participants_;
-  std::filesystem::path path_;
+  CheckedPath path_;
   std::shared_ptr<PageStore> pagestore_;
 
   const std::string& getColumnString(const std::string& value);
@@ -217,6 +202,23 @@ private:
 
   Participant* getParticipant(const std::string& name) const;
   Participant& provideParticipant(const std::string& name);
+
+public:
+  PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;
+
+  std::shared_ptr<Entry> lookup(const EntryName& name, Timestamp validAt = Timestamp::max());
+  std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool createIfNeeded = false);
+
+  EntryContent::Metadata makeMetadataMap(const std::map<std::string, MetadataXEntry>& xentries);
+  std::map<std::string, MetadataXEntry> extractMetadataMap(const EntryContent::Metadata& metadata);
+
+  void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns = {}) const;
+
+  const CheckedPath& metaDir() const {
+    return path_;
+  }
+
+  std::set<std::string> pagePaths() const; // for latest version
 };
 
 }

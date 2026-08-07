@@ -139,10 +139,15 @@ is_test_included() {
   ([ -z "$TESTS_TO_RUN" ] || contains " $TESTS_TO_RUN " " $test ") && ! contains " $TESTS_TO_SKIP " " $test " && true
 }
 
+known_tests=()
+known_enabled_tests=()
+
 # Prints & returns if test will be ran
 should_run_test() {
-  test="$1"
+  local test="$1"
+  known_tests+=("$test")
   if is_test_included "$test"; then
+    known_enabled_tests+=("$test")
     echo
     printGreen "==== Running tests: $test ===="
   else
@@ -150,6 +155,18 @@ should_run_test() {
     printGreen "(Skipping tests: $test)"
     return 1
   fi
+}
+
+# Only works for tests for which should_run_test has been called
+is_known_test() {
+  local test="$1"
+  local test2
+  for test2 in "${known_tests[@]}"; do
+    if [ "$test2" = "$test" ]; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 url_encode() {
@@ -227,10 +244,16 @@ pepcli() {
 write_registration_server_cell() {
   column="$1"
   shift
-  parameters="$@"
 
   # (Ab)using column group "ParticipantInfo" to temporarily grant write privileges to "Research Assessor"
   pepcli --oauth-token-group "Data Administrator" ama column addTo "${column}" ParticipantInfo
   pepcli --oauth-token-group "Research Assessor" "$@" -c "${column}"
   pepcli --oauth-token-group "Data Administrator" ama column removeFrom "${column}" ParticipantInfo
+}
+
+make_large_random_data_file() {
+  path="$DEST_DIR/$1"
+  # 10 blocks @ 1048576 bytes each = 10MiB
+  execute . dd if=/dev/urandom of="$path" bs=1048576 count=10
+  echo "$path"
 }

@@ -3,6 +3,7 @@
 #include <pep/application/Application.hpp>
 #include <pep/versioning/Version.hpp>
 #include <pep/client/Client.hpp>
+#include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/storagefacility/Constants.hpp>

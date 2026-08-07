@@ -183,6 +183,17 @@ message DataPayloadPage {
   uint32 index = 7;
 }
 
+message PagePathRequest {}
+
+message SignedPagePathRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message PagePathResponse {
+  repeated string paths = 1;
+}
+
 message EncryptionKeyRequest {
   reserved 1, 4;
 
@@ -464,7 +475,7 @@ message ChecksumChainRequest {
 }
 message ChecksumChainResponse {
   bytes checkpoint = 1; // The last checkpoint included in the XOR
-  bytes xorredChecksums = 2;
+  bytes xorred_checksums = 2;
 }
 
 // New API
@@ -1158,6 +1169,13 @@ message RemoveUserGroup {
 message AddUserToGroup {
   string uid = 1;
   string group = 2;
+  optional Timestamp expiration = 3;
+}
+
+message UpdateExpiration {
+  string uid = 1;
+  string group = 2;
+  optional Timestamp expiration = 3;
 }
 
 message RemoveUserFromGroup {
@@ -1181,6 +1199,7 @@ message UserMutationRequest {
 
   repeated AddUserToGroup add_user_to_group = 3;
   repeated RemoveUserFromGroup remove_user_from_group = 4;
+  repeated UpdateExpiration update_expiration = 13;
 }
 
 message SignedUserMutationRequest {
@@ -1201,12 +1220,16 @@ message SignedUserQuery {
   Signature signature = 3;
   bytes data = 4;
 }
+message QRUserGroupMembership {
+  string user_group = 1;
+  optional Timestamp expiration = 2;
+}
 message QRUser {
-  reserved 1;
+  reserved 1, 2;
   optional string display_id = 3;
   optional string primary_id = 4;
   repeated string other_uids = 5;
-  repeated string groups = 2;
+  repeated QRUserGroupMembership groups = 6;
 }
 message UserQueryResponse {
   reserved 1, 2;
@@ -1304,8 +1327,8 @@ message SignedColumnAccessRequest {
 }
 
 message ColumnAccessRequest {
-  bool includeImplicitlyGranted = 1;
-  repeated string requireModes = 2;
+  bool include_implicitly_granted = 1;
+  repeated string require_modes = 2;
 }
 
 message ColumnGroupAccess {
@@ -1314,8 +1337,8 @@ message ColumnGroupAccess {
 }
 
 message ColumnAccessResponse {
-  repeated ColumnGroupAccess columnGroups = 1;
-  repeated IndexList columnGroupColumns = 2;
+  repeated ColumnGroupAccess column_groups = 1;
+  repeated IndexList column_group_columns = 2;
   repeated string columns = 3;
 }
 
@@ -1376,7 +1399,7 @@ message SignedParticipantGroupAccessRequest {
 }
 
 message ParticipantGroupAccessRequest {
-  bool includeImplicitlyGranted = 1;
+  bool include_implicitly_granted = 1;
 }
 
 message ParticipantGroupAccess {
@@ -1385,21 +1408,22 @@ message ParticipantGroupAccess {
 }
 
 message ParticipantGroupAccessResponse {
-  repeated ParticipantGroupAccess participantGroups = 1;
+  repeated ParticipantGroupAccess participant_groups = 1;
 }
 
 message TokenBlockingTokenIdentifier {
   string subject = 1;
-  string userGroup = 2;
-  Timestamp issueDateTime = 3;
+  string user_group = 2;
+  Timestamp issue_date_time = 3;
 }
 
 message TokenBlockingBlocklistEntry {
   int64 id = 1;
   TokenBlockingTokenIdentifier target = 2;
-  string metadataNote = 3;
-  string metadataIssuer = 4;
-  Timestamp metadataCreationDateTime = 5;
+  string metadata_note = 3;
+  string metadata_issuer = 4;
+  Timestamp metadata_creation_date_time = 5;
+  optional Timestamp metadata_block_start_date_time = 6;
 }
 
 message TokenBlockingListRequest {}
@@ -1416,6 +1440,7 @@ message TokenBlockingListResponse {
 message TokenBlockingCreateRequest {
   TokenBlockingTokenIdentifier target = 1;
   string note = 2;
+  optional Timestamp block_start_date_time = 3;
 }
 
 message SignedTokenBlockingCreateRequest {

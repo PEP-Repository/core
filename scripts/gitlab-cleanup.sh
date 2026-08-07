@@ -372,7 +372,8 @@ delete_container_repository() {
 # https://docs.gitlab.com/ee/api/packages.html#for-a-project
 list_project_package_versions() {
   local dir="$1"
-  gitlab_dir_api "$dir" get-multipage 'packages?package_type=generic'
+  local package_type="$2"
+  gitlab_dir_api "$dir" get-multipage "packages?package_type=$package_type"
 }
 
 delete_package_version() {
@@ -521,7 +522,7 @@ list_used_foss_package_versions() {
 list_foss_package_versions() {
   >&2 echo "Listing package versions..."
   local versions
-  versions="$(set_opts && list_project_package_versions "$foss_dir")"
+  versions="$(set_opts && list_project_package_versions "$foss_dir" generic)"
   # Split from assignment because we don't have pipefail
   raw_echo "$versions" | jq --compact-output '.[]'
 }
@@ -539,6 +540,51 @@ clean_foss_packages() {
     .version \
     "\"\(.name)$chr_tab\(.version)$chr_tab(\(._links.web_path))\"" \
     delete_foss_package_version
+}
+
+
+# ====================================================
+# ==== PEP FOSS npm package versions cleanup ====
+# ====================================================
+# See https://gitlab.pep.cs.ru.nl/pep/core/-/packages.
+# Each version is a semver string; the commit SHA is stored as an npm dist-tag.
+# We keep versions whose dist-tag matches a protected branch/tag commit SHA,
+# but in theory all missing versions can be rebuilt automatically.
+
+list_used_foss_npm_package_versions() {
+  local dist_tags_raw
+  dist_tags_raw=$(gitlab_dir_api "$foss_dir" get 'packages/npm/pep-repo-client-lib' 2>/dev/null) || true
+  [ -z "$dist_tags_raw" ] && return
+  local dist_tags
+  dist_tags=$(raw_echo "$dist_tags_raw" | jq '."dist-tags" // {}')
+  list_protected_commits "$foss_dir" | while read -r sha; do
+    version=$(raw_echo "$dist_tags" | jq -r --arg sha "$sha" '.[$sha] // empty')
+    if [ -n "$version" ]; then
+      raw_echo "$version"
+    fi
+  done
+}
+
+list_foss_npm_package_versions() {
+  >&2 echo "Listing npm package versions..."
+  local versions
+  versions="$(set_opts && list_project_package_versions "$foss_dir" npm)"
+  raw_echo "$versions" | jq --compact-output '.[]'
+}
+
+delete_foss_npm_package_version() {
+  local ver_obj="$1"
+  delete_package_version "$foss_dir" "$ver_obj"
+}
+
+# Command to clean PEP FOSS unused npm package versions
+clean_foss_npm_packages() {
+  generic_cleanup 'PEP FOSS npm package cleanup' 'npm package versions' \
+    list_used_foss_npm_package_versions \
+    list_foss_npm_package_versions \
+    .version \
+    "\"\(.name)$chr_tab\(.version)$chr_tab(\(._links.web_path))\"" \
+    delete_foss_npm_package_version
 }
 
 
@@ -761,6 +807,7 @@ clean_foss() {
   clean_foss_binaries_for_branches
   clean_docker_build_containers
   clean_foss_packages
+  clean_foss_npm_packages
   clean_foss_containers
 }
 clean_dtap() {
@@ -776,6 +823,8 @@ case $command in
     clean_docker_build_containers ;;
   clean-foss-packages)
     clean_foss_packages ;;
+  clean-foss-npm-packages)
+    clean_foss_npm_packages ;;
   clean-foss-containers)
     clean_foss_containers ;;
   clean-dtap-branches)

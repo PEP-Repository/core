@@ -27,7 +27,7 @@ public:
 
   static size_t TextLength();
   std::string text() const;
-  static CurveScalar FromText(const std::string& text);
+  static CurveScalar FromText(std::string_view text);
 
   [[nodiscard]] CurveScalar operator+(const CurveScalar& s) const;
   [[nodiscard]] CurveScalar operator-(const CurveScalar& s) const;

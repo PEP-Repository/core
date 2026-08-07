@@ -84,21 +84,17 @@ void Requestor::processResponse(const std::string& recipient, const StreamId& st
   // got response, send it back using the rx subscriber
   auto subscriber = it->second.subscriber;
 
-  bool close = flags.close();
-  bool error = flags.error();
-  bool payload = flags.payload();
-
-  if (error || close) {
+  if (flags.has(Flags::Error) || flags.has(Flags::Close)) {
     entries_.erase(it);
   }
   PEP_DEFER(
-    if (error || close) {
+    if (flags.has(Flags::Error) || flags.has(Flags::Close)) {
       PEP_LOG(LogTag, Severity::Verbose)
         << "Closed stream " << streamId
         << " (to " << recipient << ")";
     });
 
-  if (error) {
+  if (flags.has(Flags::Error)) {
     auto err = Error::ReconstructIfDeserializable(body);
     if (err == nullptr) {
       // Backward compatible: if no Error instance could be deserialized, report on an empty instance
@@ -110,9 +106,9 @@ void Requestor::processResponse(const std::string& recipient, const StreamId& st
       << GetExceptionMessage(err);
     subscriber.on_error(err);
   } else {
-    if (payload)
+    if (flags.has(Flags::Payload))
       subscriber.on_next(std::move(body));
-    if (close)
+    if (flags.has(Flags::Close))
       subscriber.on_completed();
   }
 }

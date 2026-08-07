@@ -1,4 +1,4 @@
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <pep/utils/StringStream.hpp>
 
@@ -56,7 +56,7 @@ private:
 
 class XmlDateTimeParser : public TimestampParser {
 public:
-  XmlDateTimeParser() : TimestampParser{"xml date-time"} {}
+  explicit XmlDateTimeParser(std::string timeZone) : TimestampParser{"xml date-time"}, timeZone_{std::move(timeZone)} {}
 
 protected:
   Timestamp parseImpl(std::string_view str) override {
@@ -77,9 +77,20 @@ protected:
         throw std::invalid_argument(std::format("Unparsed data remains: {}", remaining));
       }
     }
+    if (parsed.zone() == nullptr) {
+      if (timeZone_ == SystemLocalTimeZone) {
+        using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
+        return TimestampFromBoostPtime(Adjustor::utc_to_local(bpt::ptime(parsed.utc_time())));
+      }
+      auto offset = blt::posix_time_zone(timeZone_).base_utc_offset();
+      parsed+=offset;
+    }
 
     return TimestampFromBoostPtime(parsed.utc_time());
   }
+
+private:
+  std::string timeZone_;
 };
 
 class YyyyMmDdDateParser final : public TimestampParser {
@@ -122,7 +133,7 @@ private:
   /// Takes a Boost local_date_time object where the base_utc_offset is inverted
   /// and returns the UTC time as if the offset was set correctly.
   /// See https://github.com/boostorg/date_time/issues/240
-  /// @note This function was added as a workaround for a bug in bpt::posix_time_zone, where
+  /// \note This function was added as a workaround for a bug in bpt::posix_time_zone, where
   ///   after parsing a posix timezone string, the base utc offset is set to the inverse of the expected value.
   static bpt::ptime UtcTimeFromIncorrectPTime(blt::local_date_time time) {
     // TODO: Remove this workaround when Boost has been fixed and then
@@ -168,12 +179,12 @@ std::string TimestampToXmlDateTime(Timestamp time) {
   return std::move(ss).str();
 }
 
-Timestamp TimestampFromXmlDataTime(std::string_view xml) {
-  return XmlDateTimeParser{}.parse(xml);
-}
-
 Timestamp TimeZone::timestampFromYyyyMmDd(std::string_view yyyyMmDd) const {
   return YyyyMmDdDateParser{str_}.parse(yyyyMmDd);
+}
+
+Timestamp TimeZone::timestampFromXmlDateTime(std::string_view xml) const {
+  return XmlDateTimeParser{str_}.parse(xml);
 }
 
 

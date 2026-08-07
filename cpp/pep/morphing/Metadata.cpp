@@ -95,7 +95,7 @@ KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const Local
       ss << name;
       ss << PackUint64BE(xentry.payloadForStore().size());
       ss << xentry.payloadForStore();
-      ss << PackUint8(xentry.storeEncrypted());
+      ss << PackUint8(static_cast<uint8_t>(xentry.storeEncrypted()));
     }
 
     return { std::move(ss).str(), true };

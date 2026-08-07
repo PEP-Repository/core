@@ -3,7 +3,7 @@
 
 namespace pep {
 
-size_t AmaQRColumnGroup::FillToProtobufSerializationCapacity(AmaQRColumnGroup& dest, const AmaQRColumnGroup& source, const size_t& cap, const size_t& offset, const size_t& padding) {
+size_t AmaQRColumnGroup::FillToProtobufSerializationCapacity(AmaQRColumnGroup& dest, size_t cap, const AmaQRColumnGroup& source, size_t offset, size_t padding) {
   assert(offset == 0 || offset < source.columns.size());
   assert(!source.name.empty());
   size_t paddedNameLength = source.name.length() + padding;
@@ -11,7 +11,7 @@ size_t AmaQRColumnGroup::FillToProtobufSerializationCapacity(AmaQRColumnGroup& d
     return 0; // sentinel value indicating not even the name fits in the new group.
   }
   dest.name = source.name;
-  return paddedNameLength + FillVectorToCapacity(dest.columns, source.columns, cap - paddedNameLength, offset, padding);
+  return paddedNameLength + FillToCapacity(std::back_inserter(dest.columns), cap - paddedNameLength, std::ranges::drop_view{ source.columns, static_cast<ptrdiff_t>(offset) }, padding);
 }
 
 bool AmaMutationRequest::hasDataAdminOperation() const {

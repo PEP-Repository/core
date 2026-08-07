@@ -2,12 +2,12 @@
 #include <pep/keyserver/KeyServerSerializers.hpp>
 #include <pep/keyserver/tokenblocking/SqliteBlocklist.hpp>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <chrono>
 #include <pep/auth/ServerTraits.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/utils/Configuration.hpp>
 
@@ -26,7 +26,7 @@ tokenBlocking::TokenIdentifier Identifiers(const OAuthToken& token) {
 }
 
 void EnsureTokenBlockingAdminAccess(const std::string& organizationalUnit) {
-  UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, organizationalUnit, "token blocklist management");
+  UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::AccessManager}, organizationalUnit, "token blocklist management");
 }
 
 } // namespace
@@ -52,7 +52,7 @@ KeyServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_co
     Configuration oauthProperties = Configuration::FromFile(oauthTokenSecretFile);
 
     std::string secretHex = oauthProperties.get<std::string>("OAuthTokenSecret");
-    setOauthTokenSecret(boost::algorithm::unhex(secretHex));
+    setOauthTokenSecret(const_time::FromHex(secretHex));
   }
   catch (std::exception& e) {
     PEP_LOG(LogTag, Severity::Critical) << "Error with oauth file: " << e.what();
@@ -114,7 +114,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
     std::shared_ptr<SignedTokenBlockingCreateRequest> signedRequest) {
 
   auto certified = signedRequest->open(*this->getRootCAs());
-  UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::AccessManager}, certified.signatory.organizationalUnit(), "token blocklist management");
+  EnsureTokenBlockingAdminAccess(certified.signatory.organizationalUnit());
   const auto& request = certified.message;
 
   assert(blocklist_ != nullptr);
@@ -125,7 +125,8 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
       .metadata{
           .note = request.note,
           .issuer = certified.signatory.commonName(),
-          .creationDateTime = TimeNow()}};
+          .creationDateTime = TimeNow(),
+          .blockStartDateTime = request.blockStartDateTime}};
   entry.id = blocklist_->add(entry.target, entry.metadata);
   return messaging::BatchSingleMessage(TokenBlockingCreateResponse{std::move(entry)});
 }

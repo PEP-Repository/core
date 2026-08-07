@@ -7,7 +7,7 @@
 #include <pep/utils/Log.hpp>
 #include <pep/castor/Study.hpp>
 #include <pep/castor/Ptree.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -29,7 +29,7 @@ namespace castor {
 namespace {
 
 const std::string LogTag("CastorClient");
-const std::string CASTOR_429_RESPONSE_MESSAGE_HEADER = "Too many requests, retry after: ";
+const std::string Castor429ResponseMessageHeader = "Too many requests, retry after: ";
 
 std::shared_ptr<networking::HttpClient> CreateHttpClient(boost::asio::io_context& ioContext, const EndPoint& endPoint, std::optional<std::filesystem::path> caCertFilepath) {
   networking::HttpClient::Parameters parameters(ioContext, true, endPoint);
@@ -109,25 +109,21 @@ rxcpp::observable<HTTPResponse> CastorClient::sendPreAuthorizedRequest(std::shar
   return http_->sendRequest(*request);
 }
 
-/*!
- * \brief Make a GET Request
- *
- * \param path Path to the resource to get
- * \param useBasePath Whether \p path should be relative to the \ref setBasePath "base path" or not
- * \return The created Request
- */
+/// \brief Make a GET Request
+///
+/// \param path Path to the resource to get
+/// \param useBasePath Whether \p path should be relative to the \ref setBasePath "base path" or not
+/// \return The created Request
 std::shared_ptr<HTTPRequest> CastorClient::makeGet(const std::string& path, const bool& useBasePath) {
   return MakeSharedCopy(http_->makeRequest(networking::HttpMethod::Get, (useBasePath ? BasePath : "") + path));
 };
 
-/*!
- * \brief Make a POST Request
- *
- * \param path Path to the resource to post
- * \param body Body of the Request
- * \param useBasePath Whether \p path should be relative to the \ref setBasePath "base path" or not
- * \return The created Request
- */
+/// \brief Make a POST Request
+///
+/// \param path Path to the resource to post
+/// \param body Body of the Request
+/// \param useBasePath Whether \p path should be relative to the \ref setBasePath "base path" or not
+/// \return The created Request
 std::shared_ptr<HTTPRequest> CastorClient::makePost(const std::string& path,
   const std::string& body,
   const bool& useBasePath) {
@@ -202,13 +198,13 @@ rxcpp::observable<JsonPtr> CastorClient::handleCastorResponse(std::shared_ptr<HT
     }
     // TODO: don't parse human-readable "message" to extract timestamp
     auto message = errors.front().second.get<std::string>("message"); // E.g. "Too many requests, retry after: 2023-01-31T00:32:32+00:00"
-    if (!message.starts_with(CASTOR_429_RESPONSE_MESSAGE_HEADER)) {
+    if (!message.starts_with(Castor429ResponseMessageHeader)) {
       throw CastorException::FromErrorResponse(response, "Castor 429 response contains unparseable retry time message");
     }
-    auto xml = message.substr(CASTOR_429_RESPONSE_MESSAGE_HEADER.size());
+    auto xml = message.substr(Castor429ResponseMessageHeader.size());
 
     // Calculate the time to wait before retrying
-    auto retryWhen = TimestampFromXmlDataTime(xml);
+    auto retryWhen = TimeZone::Utc().timestampFromXmlDateTime(xml);
 
     // An observable that'll emit a FakeVoid when we can retry the request
     rxcpp::observable<FakeVoid> wait;

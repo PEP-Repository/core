@@ -77,35 +77,35 @@ void Serializer<EncryptionKeyResponse>::moveIntoProtocolBuffer(proto::Encryption
 }
 
 ColumnAccessRequest Serializer<ColumnAccessRequest>::fromProtocolBuffer(proto::ColumnAccessRequest&& source) const {
-  auto result = ColumnAccessRequest{ source.includeimplicitlygranted(), {} };
-  result.requireModes.reserve(static_cast<size_t>(source.requiremodes_size()));
-  for (auto mode : source.requiremodes()) {
+  auto result = ColumnAccessRequest{ source.include_implicitly_granted(), {} };
+  result.requireModes.reserve(static_cast<size_t>(source.require_modes_size()));
+  for (auto mode : source.require_modes()) {
     result.requireModes.push_back(mode);
   }
   return result;
 }
 
 void Serializer<ColumnAccessRequest>::moveIntoProtocolBuffer(proto::ColumnAccessRequest& dest, ColumnAccessRequest value) const {
-  dest.set_includeimplicitlygranted(value.includeImplicitlyGranted);
-  dest.mutable_requiremodes()->Reserve(static_cast<int>(value.requireModes.size()));
+  dest.set_include_implicitly_granted(value.includeImplicitlyGranted);
+  dest.mutable_require_modes()->Reserve(static_cast<int>(value.requireModes.size()));
   for (auto& mode : value.requireModes) {
-    dest.add_requiremodes(std::move(mode));
+    dest.add_require_modes(std::move(mode));
   }
 }
 
 ColumnAccessResponse Serializer<ColumnAccessResponse>::fromProtocolBuffer(proto::ColumnAccessResponse&& source) const {
-  if (source.columngroups_size() != source.columngroupcolumns_size()) {
+  if (source.column_groups_size() != source.column_group_columns_size()) {
     std::ostringstream msg;
-    msg << "Invalid Column Access specification: " << source.columngroupcolumns_size() << " column set(s) specified for " << source.columngroups_size() << " column group(s)";
+    msg << "Invalid Column Access specification: " << source.column_group_columns_size() << " column set(s) specified for " << source.column_groups_size() << " column group(s)";
     throw std::runtime_error(msg.str());
   }
 
   ColumnAccessResponse result;
-  result.columnGroups.reserve(static_cast<unsigned>(source.columngroups_size()));
+  result.columnGroups.reserve(static_cast<unsigned>(source.column_groups_size()));
 
-  for (int i = 0; i < source.columngroups_size(); ++i) {
-    auto& entry = source.columngroups(i);
-    auto indices = source.columngroupcolumns(i);
+  for (int i = 0; i < source.column_groups_size(); ++i) {
+    auto& entry = source.column_groups(i);
+    auto indices = source.column_group_columns(i);
 
     ColumnAccess::GroupProperties properties;
     properties.modes.reserve(static_cast<unsigned>(entry.modes_size()));
@@ -125,8 +125,8 @@ ColumnAccessResponse Serializer<ColumnAccessResponse>::fromProtocolBuffer(proto:
 }
 
 void Serializer<ColumnAccessResponse>::moveIntoProtocolBuffer(proto::ColumnAccessResponse& dest, ColumnAccessResponse value) const {
-  dest.mutable_columngroups()->Reserve(static_cast<int>(value.columnGroups.size()));
-  dest.mutable_columngroupcolumns()->Reserve(static_cast<int>(value.columnGroups.size()));
+  dest.mutable_column_groups()->Reserve(static_cast<int>(value.columnGroups.size()));
+  dest.mutable_column_group_columns()->Reserve(static_cast<int>(value.columnGroups.size()));
 
   for (auto& cg : value.columnGroups) {
     proto::ColumnGroupAccess entry;
@@ -136,8 +136,8 @@ void Serializer<ColumnAccessResponse>::moveIntoProtocolBuffer(proto::ColumnAcces
       entry.add_modes(std::move(mode));
     }
 
-    dest.add_columngroups()->CopyFrom(entry);
-    dest.add_columngroupcolumns()->CopyFrom(Serialization::ToProtocolBuffer(cg.second.columns));
+    dest.add_column_groups()->CopyFrom(entry);
+    dest.add_column_group_columns()->CopyFrom(Serialization::ToProtocolBuffer(cg.second.columns));
   }
 
   dest.mutable_columns()->Reserve(static_cast<int>(value.columns.size()));
@@ -147,17 +147,17 @@ void Serializer<ColumnAccessResponse>::moveIntoProtocolBuffer(proto::ColumnAcces
 }
 
 ParticipantGroupAccessRequest Serializer<ParticipantGroupAccessRequest>::fromProtocolBuffer(proto::ParticipantGroupAccessRequest&& source) const {
-  return ParticipantGroupAccessRequest{ source.includeimplicitlygranted() };
+  return ParticipantGroupAccessRequest{ source.include_implicitly_granted() };
 }
 
 void Serializer<ParticipantGroupAccessRequest>::moveIntoProtocolBuffer(proto::ParticipantGroupAccessRequest& dest, ParticipantGroupAccessRequest value) const {
-  dest.set_includeimplicitlygranted(value.includeImplicitlyGranted);
+  dest.set_include_implicitly_granted(value.includeImplicitlyGranted);
 }
 
 ParticipantGroupAccessResponse Serializer<ParticipantGroupAccessResponse>::fromProtocolBuffer(proto::ParticipantGroupAccessResponse&& source) const {
   ParticipantGroupAccessResponse result;
-  result.participantGroups.reserve(static_cast<size_t>(source.participantgroups_size()));
-  for (auto& entry : source.participantgroups()) {
+  result.participantGroups.reserve(static_cast<size_t>(source.participant_groups_size()));
+  for (auto& entry : source.participant_groups()) {
     std::vector<std::string> modes;
     modes.reserve(static_cast<size_t>(entry.modes_size()));
     modes.insert(modes.end(), entry.modes().begin(), entry.modes().end());
@@ -167,7 +167,7 @@ ParticipantGroupAccessResponse Serializer<ParticipantGroupAccessResponse>::fromP
 }
 
 void Serializer<ParticipantGroupAccessResponse>::moveIntoProtocolBuffer(proto::ParticipantGroupAccessResponse& dest, ParticipantGroupAccessResponse value) const {
-  dest.mutable_participantgroups()->Reserve(static_cast<int>(value.participantGroups.size()));
+  dest.mutable_participant_groups()->Reserve(static_cast<int>(value.participantGroups.size()));
 
   for (auto& pg : value.participantGroups) {
     proto::ParticipantGroupAccess entry;
@@ -176,7 +176,7 @@ void Serializer<ParticipantGroupAccessResponse>::moveIntoProtocolBuffer(proto::P
     for (auto& mode : pg.second) {
       entry.add_modes(std::move(mode));
     }
-    dest.add_participantgroups()->CopyFrom(entry);
+    dest.add_participant_groups()->CopyFrom(entry);
   }
 }
 

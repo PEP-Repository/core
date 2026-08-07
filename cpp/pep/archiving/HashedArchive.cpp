@@ -9,11 +9,11 @@ namespace pep {
 
 HashedArchive::HashedArchive(std::shared_ptr<Archive> archive) : archive_(archive), hasher_(std::make_unique<XxHasher>(DownloadHashSeed)) {}
 
-void HashedArchive::nextEntry(const std::filesystem::path& path, int64_t size) {
+void HashedArchive::nextEntry(const CheckedPath& path, int64_t size) {
   if(!currentEntry_.empty()) {
     throw std::runtime_error("Called nextEntry() when previous entry has not yet been closed");
   }
-  currentEntry_ = path.string();
+  currentEntry_ = path.path().string();
   archive_->nextEntry(path, size);
 }
 void HashedArchive::writeData(const char* c, const std::streamsize l) {
@@ -61,7 +61,7 @@ void HashedArchive::processDirectory(const std::filesystem::path& path, const::s
         subpath / inpath.filename();
     if (!std::filesystem::is_directory(entry)) {
       nextEntry(
-          newSubpath,
+          CheckedPath::FromTrusted(newSubpath),
           static_cast<int64_t>(std::filesystem::file_size(inpath)));
       if (std::filesystem::file_size(inpath) > 0){
         //mmap file content and turn it into a string_view

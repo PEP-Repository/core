@@ -5,9 +5,7 @@
 
 namespace pep::networking {
 
-/**
- * @brief A Node that accepts incoming connections.
- */
+/// A Node that accepts incoming connections.
 class Server : public SharedConstructor<Server>, public Node {
   friend class SharedConstructor<Server>;
 
@@ -35,10 +33,8 @@ public:
   /// \copydoc Node::shutdown
   void shutdown() override;
 
-  /**
-   * @brief Creates parameters for a local client to connect to this server.
-   * @return A ClientParameters instance with which a Client instance can be created.
-   */
+  /// \brief Creates parameters for a local client to connect to this server.
+  /// \return A ClientParameters instance with which a Client instance can be created.
   std::shared_ptr<Protocol::ClientParameters> createClientParameters() const;
 };
 

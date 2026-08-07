@@ -393,7 +393,7 @@ cleanup:
 .ccache-configuration: &ccache-configuration
   cache:
     paths:
-      - ccache/
+      - temp/ccache/
     key: "ccache"
 
   before_script:
@@ -401,7 +401,7 @@ cleanup:
     - export CCACHE_BASEDIR="$PWD"
 
     # Instruct Ccache to use our cache directory (shared between jobs)
-    - export CCACHE_DIR="$PWD/ccache"
+    - export CCACHE_DIR="$PWD/temp/ccache"
 
     # Remove old(ish) cache entries, as the cache upload was taking longer than the job itself
     - ccache --evict-older-than "$CCACHE_EXPIRATION_TIME" || true
@@ -414,7 +414,7 @@ cleanup:
 # Print Ccache stats after each job, refer to this in after_script
 # We need to specify CCACHE_DIR explicitly because somehow CCACHE_DIR is wiped at this point
 .ccache-print: &ccache-print |
-  CCACHE_DIR="$PWD/ccache" ccache --show-stats --verbose 2> /dev/null || true
+  CCACHE_DIR="$PWD/temp/ccache" ccache --show-stats --verbose 2> /dev/null || true
 
 .stage-artifacts: &stage-artifacts
   - |
@@ -679,7 +679,7 @@ ubuntu-lts-debug-without-castor:
   cache:
     - key: "ccache"
       paths:
-        - ccache/
+        - temp/ccache/
     - key: "infer-state"
       paths:
         - infer_state/
@@ -715,9 +715,16 @@ ubuntu-lts-debug-without-castor:
       cat infer-out/report.sarif | jq '
         .runs[0].results |= map(
           select(
-            all(
-              .codeFlows[]?.threadFlows[]?.locations[]?.location.physicalLocation.artifactLocation.uri;
+            [.codeFlows[]?.threadFlows[]?.locations[]?.location.physicalLocation.artifactLocation.uri] as $uris
+            # Filter out issues containing an RxCpp header
+            | all(
+              $uris[];
               test("rxcpp") | not
+            )
+            # Filter out issues pertaining only STL headers
+            and any (
+              $uris[];
+              test("include/c++") | not
             )
           )
         )
@@ -967,7 +974,7 @@ windows-debug:
   tags:
     - windows-parallel
   rules:
-    - if: $BUILD_ALL_TARGETS
+    - if: $BUILD_ALL_TARGETS != ''
       when: on_success
     - when: manual
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
@@ -1053,7 +1060,7 @@ macos-debug:
     - job: retrieve-lockfile
       optional: true
   rules:
-    - if: $BUILD_ALL_TARGETS
+    - if: $BUILD_ALL_TARGETS != ''
       when: on_success
     - when: manual
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
@@ -1365,6 +1372,31 @@ upload-flatpak:
             --upload-file "pep.flatpak"
             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/flatpak/${CI_COMMIT_SHA}/pep.flatpak"'
 
+upload-weblib-npm:
+  stage: upload
+  image: $BUILDER_IMAGE_WEBLIB
+  tags:
+    - docker-small
+  needs:
+    - weblib-release
+  interruptible: false
+  #language=sh
+  script:
+    # Add Node.js to PATH
+    - . ~/.profile
+    - PACKAGE_VERSION=$(./scripts/parse-version.sh get-semver version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
+    - PEP_NPM_REGISTRY="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/npm/"
+    # Only authenticate to the GitLab registry, do not set it as the default registry (registry=), otherwise
+    # npm tries to fetch public (transitive) dependencies from it too and they 404.
+    - PEP_NPM_AUTH_REGISTRY="${PEP_NPM_REGISTRY#https://}"
+    - npm config set "//${PEP_NPM_AUTH_REGISTRY}:_authToken=${CI_JOB_TOKEN}"
+    - cd weblib/pep-repo-client-lib
+    - npm version --no-git-tag-version "${PACKAGE_VERSION}"
+    - npm install
+    - npm pack
+    # Tag with commit SHA so provide-binaries.sh can find this version by SHA
+    - npm publish ./pep-repo-client-lib-*.tgz --tag "${CI_COMMIT_SHA}" --registry "${PEP_NPM_REGISTRY}"
+
 retag-pep-docker-images:
   extends:
     - .upload-base
@@ -1379,27 +1411,13 @@ retag-pep-docker-images:
   #language=sh
   script:
     - *docker_login
-    - docker image pull "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST"
-    - docker image pull "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST"
-    - docker image pull "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST"
-    - docker image pull "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST"
-    - docker image pull "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST"
-    - docker image pull "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST"
-    - docker image pull "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST"
-    - docker image tag  "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
-    - docker image tag  "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST" "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
-    - docker image tag  "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
-    - docker image tag  "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
-    - docker image tag  "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
-    - docker image tag  "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
-    - docker image tag  "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST" "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
-    - docker image push "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
-    - docker image push "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
-    - docker image push "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
-    - docker image push "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
-    - docker image push "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
-    - docker image push "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
-    - docker image push "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
+    - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
+    - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_MONITORING:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_MONITORING:$IMAGE_TAG"
+    - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
+    - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
+    - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
+    - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
+    - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
 
 ##########################################
 # Configuration for the publish stage    #

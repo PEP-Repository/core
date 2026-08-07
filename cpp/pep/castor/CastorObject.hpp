@@ -32,33 +32,27 @@ namespace castor {
   std::string json_;
 
  public:
-  /*!
-   * \return The pretty printed Json representation for this object. For debugging purposes.
-   */
+  /// \return The pretty printed Json representation for this object. For debugging purposes.
   std::string toJsonString() const { return json_; }
 
 #endif
 
  protected:
   static const std::string DefaultIdField;
-  /*!
-   * \brief Construct a new CastorObject
-   *
-   * \param json The %Json response from the Castor API for this object
-   * \param idField The name of the field in which the object's ID is stored. Defaults to "id"
-   */
+  /// \brief Construct a new CastorObject
+  ///
+  /// \param json The %Json response from the Castor API for this object
+  /// \param idField The name of the field in which the object's ID is stored. Defaults to "id"
   CastorObject(JsonPtr json, const std::string& idField = DefaultIdField);
 
-  /*!
-   * \brief Retrieve a list of objects that are children of a specified parent object.
-   *
-   * \tparam ChildType The type of the objects in the list
-   * \tparam ParentType The type of the parent object (which is passed to every child item's constructor)
-   * \param parent the parent object instance
-   * \param apiPath path to request from the API
-   * \param embeddedItemsNodeName name of the node under the "_embedded" node that contains data on child items
-   * \return Observable that, if no error occurs, emits one ChildType for every item in the list
-   */
+  /// \brief Retrieve a list of objects that are children of a specified parent object.
+  ///
+  /// \tparam ChildType The type of the objects in the list
+  /// \tparam ParentType The type of the parent object (which is passed to every child item's constructor)
+  /// \param parent the parent object instance
+  /// \param apiPath path to request from the API
+  /// \param embeddedItemsNodeName name of the node under the "_embedded" node that contains data on child items
+  /// \return Observable that, if no error occurs, emits one ChildType for every item in the list
   template<class ChildType, class ParentType>
   static rxcpp::observable<std::shared_ptr<ChildType>> RetrieveList(std::shared_ptr<ParentType> parent, const std::string& apiPath, const std::string& embeddedItemsNodeName) {
     static_assert(std::is_base_of<CastorObject, ParentType>::value, "ParentType must derive from (or be) CastorObject");
@@ -70,12 +64,10 @@ namespace castor {
   }
 };
 
-/*!
- * \brief Utility base class for classes that have a parent (in our object model).
- * 
- * \tparam TParent The parent type.
- * \tparam TBase The class from which this class should inherit. This type must be CastorObject or derive from it.
- */
+/// \brief Utility base class for classes that have a parent (in our object model).
+///
+/// \tparam TParent The parent type.
+/// \tparam TBase The class from which this class should inherit. This type must be CastorObject or derive from it.
 template <typename TParent, typename TBase = CastorObject>
 class ParentedCastorObject : public TBase {
 private:
@@ -111,17 +103,15 @@ protected:
   std::string makeParentRelativeUrl(const std::string& relative) const { return GetParentRelativeEndpoint(parent_, relative) + "/" + this->getId(); }
 };
 
-/*!
- * \brief Utility base class for classes that follow the most common pattern for Castor API objects and locations:
- *        - they have a parent, and
- *        - all children belonging to the parent can be listed by suffixing a fixed string to the parent's URL, and
- *        - each child's own URL is equal to the (parent-relative) list URL plus the child's (own) ID.
- *
- * \tparam TChild The (most) derived type that inherits this class.
- * \tparam TParent The parent type.
- *
- * \remark Inheritors must define static const strings RelativeApiEndpoint and EmbeddedApiNodeName in their own (TChild) type.
- */
+/// \brief Utility base class for classes that follow the most common pattern for Castor API objects and locations:
+///        - they have a parent, and
+///        - all children belonging to the parent can be listed by suffixing a fixed string to the parent's URL, and
+///        - each child's own URL is equal to the (parent-relative) list URL plus the child's (own) ID.
+///
+/// \tparam TChild The (most) derived type that inherits this class.
+/// \tparam TParent The parent type.
+///
+/// \remark Inheritors must define static const strings RelativeApiEndpoint and EmbeddedApiNodeName in their own (TChild) type.
 template <typename TChild, typename TParent>
 class SimpleCastorChildObject : public ParentedCastorObject<TParent> {
   friend TChild;
@@ -133,12 +123,10 @@ public:
   //! \return A url that can be used to retrieve this child object from the Castor API
   std::string makeUrl() const override { return this->makeParentRelativeUrl(TChild::RelativeApiEndpoint); }
 
-  /*!
- * \brief Get a list of objects that are children of a specified parent object
- *
- * \param parent the parent object instance
- * \return Observable that, if no error occurs, emits one ChildType for every item in the list
- */
+  /// \brief Get a list of objects that are children of a specified parent object
+  ///
+  /// \param parent the parent object instance
+  /// \return Observable that, if no error occurs, emits one ChildType for every item in the list
   static rxcpp::observable<std::shared_ptr<TChild>> RetrieveForParent(std::shared_ptr<TParent> parent) {
     return CastorObject::RetrieveList<TChild, TParent>(
       parent,

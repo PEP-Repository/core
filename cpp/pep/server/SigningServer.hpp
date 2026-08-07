@@ -6,9 +6,7 @@
 
 namespace pep {
 
-/*!
-* \brief A Server that can cryptographically sign its messages.
-*/
+/// A Server that can cryptographically sign its messages.
 class SigningServer : public Server, protected MessageSigner {
 public:
   /// \copydoc Server::Parameters

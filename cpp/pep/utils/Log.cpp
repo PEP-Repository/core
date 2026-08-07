@@ -269,7 +269,7 @@ std::string Logging::Escape(const std::string& in) {
       ss << "\\\\";
     } else if (c == '"') {
       ss << "\"";
-    } else if (std::isprint(c)) {
+    } else if (std::isprint(c) != 0) {
       ss << c;
     } else {
       ss << "\\x"

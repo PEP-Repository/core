@@ -28,13 +28,12 @@ public:
     assert(!oldPseudonym_.empty());
   }
 
-  /* Reads data from source and replaces all instances of the old pseudonym with the new. Uses a fixed length buffer preReadFromSource_ and keeps reading bytes from the source until
-   * the requested amount of bytes, plus the length of the old pseudonym are in buffer. After processing, it can then be safely said that the first n bytes do not contain any part of
-   * the old pseudonym.
-   * \param src: Templated Source object. The data is collected from here.
-   * \param s: The char array to which the filtered data will be written.
-   * \param n: The amount of chars requested by the caller.
-   */
+  /// Reads data from source and replaces all instances of the old pseudonym with the new. Uses a fixed length buffer preReadFromSource_ and keeps reading bytes from the source until
+  /// the requested amount of bytes, plus the length of the old pseudonym are in buffer. After processing, it can then be safely said that the first n bytes do not contain any part of
+  /// the old pseudonym.
+  /// \param src Templated Source object. The data is collected from here.
+  /// \param s The char array to which the filtered data will be written.
+  /// \param n The amount of chars requested by the caller.
   template<typename Source>
   std::streamsize read(Source& src, char* s, std::streamsize n) {
     // If we reached the end of the file (marked by bool) and the buffer is empty, return EOF, indicating the end of this stream.

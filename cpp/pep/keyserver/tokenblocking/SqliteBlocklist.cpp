@@ -21,6 +21,7 @@ struct FlatEntry final {
   std::string metadataNote;
   std::string metadataIssuer;
   database::UnixMillis metaCreationDateTime = 0;
+  std::optional<database::UnixMillis> metaBlockStartDateTime = 0;
 };
 
 /// Consumes a FlatEntry to build a Blocklist::Entry
@@ -34,7 +35,8 @@ Blocklist::Entry Inflate(FlatEntry&& flat) {
       .metadata = {
           .note = std::move(flat.metadataNote),
           .issuer = std::move(flat.metadataIssuer),
-          .creationDateTime = Timestamp(milliseconds{flat.metaCreationDateTime})}};
+          .creationDateTime = Timestamp(milliseconds{flat.metaCreationDateTime}),
+          .blockStartDateTime = flat.metaBlockStartDateTime ? std::make_optional(Timestamp(milliseconds{*flat.metaBlockStartDateTime})) : std::nullopt}};
 }
 
 /// Consumes an optional FlatEntry to build an optional Blocklist::Entry
@@ -61,7 +63,8 @@ auto MakeStorage(const std::filesystem::path& dbFile) {
           make_column("targetIssueDateTime", &FlatEntry::targetIssueDateTime),
           make_column("metadataNote", &FlatEntry::metadataNote),
           make_column("metadataIssuer", &FlatEntry::metadataIssuer),
-          make_column("creationDateTime", &FlatEntry::metaCreationDateTime)));
+          make_column("creationDateTime", &FlatEntry::metaCreationDateTime),
+          make_column("blockStartDateTime", &FlatEntry::metaBlockStartDateTime, default_value(0))));
   return storage;
 }
 
@@ -126,7 +129,8 @@ int64_t SqliteBlocklist::add(const TokenIdentifier& t, const Entry::Metadata& m)
       .targetIssueDateTime = TicksSinceEpoch<milliseconds>(t.issueDateTime),
       .metadataNote = m.note,
       .metadataIssuer = m.issuer,
-      .metaCreationDateTime = TicksSinceEpoch<milliseconds>(m.creationDateTime)});
+      .metaCreationDateTime = TicksSinceEpoch<milliseconds>(m.creationDateTime),
+      .metaBlockStartDateTime = m.blockStartDateTime ? std::make_optional(TicksSinceEpoch<milliseconds>(*m.blockStartDateTime)) : std::nullopt});
 }
 
 std::optional<Blocklist::Entry> SqliteBlocklist::removeById(int64_t id) {

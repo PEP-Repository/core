@@ -9,10 +9,8 @@
 namespace pep {
 
 struct UserGroup {
-  /*!
-   * \brief Check access, throws if access is denied
-   * \throws pep::Error if access is denied
-   */
+  /// \brief Check access, throws if access is denied
+  /// \throws pep::Error if access is denied
   static void EnsureAccess(std::unordered_set<std::string> allowedUserGroups, std::string_view currentUserGroup, std::string_view
                            actionDescription = "This action");
 
@@ -29,12 +27,14 @@ struct UserGroup {
   std::optional<std::chrono::seconds> maxAuthValidity;
 
   // Special access groups that are checked in the code
-  inline static const std::string AccessAdministrator{"Access Administrator"},
-    DataAdministrator{"Data Administrator"},
-    SystemAdministrator{"System Administrator"},
-    ResearchAssessor{"Research Assessor"},
-    Watchdog{"Watchdog"},
-    Monitor{"Monitor"};
+  inline static const std::string
+    AccessAdministrator { "Access Administrator" },
+    DataAdministrator   { "Data Administrator" },
+    RepositoryManager   { "Repository Manager"},
+    Monitor             { "Monitor" },
+    ResearchAssessor    { "Research Assessor" },
+    SystemAdministrator { "System Administrator" },
+    Watchdog            { "Watchdog" };
 
   static const std::string AccessManager;
   static const std::unordered_set<std::string> Authserver;

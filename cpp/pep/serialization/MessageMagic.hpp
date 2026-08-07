@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/serialization/NormalizedTypeNaming.hpp>
+#include <pep/utils/NormalizedTypeNaming.hpp>
 #include <pep/utils/SelfRegistering.hpp>
 
 #include <optional>
@@ -22,9 +22,7 @@ std::string DescribeMessageMagic(MessageMagic magic);
 template <typename TMessage>
 struct MessageMagician;
 
-/*!
-* \brief Base class for MessageMagician<>. Add non-template methods here to prevent template-induced code bloat.
-*/
+/// \brief Base class for MessageMagician<>. Add non-template methods here to prevent template-induced code bloat.
 class BasicMessageMagician {
   template <typename TMessage>
   friend struct MessageMagician;

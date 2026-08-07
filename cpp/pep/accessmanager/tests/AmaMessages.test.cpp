@@ -12,7 +12,7 @@ TEST(AmaQRColumnGroupFillColumnGroupToCapacity, simple) {
   size_t offset{0};
 
   //Act
-  size_t actualLength = pep::AmaQRColumnGroup::FillToProtobufSerializationCapacity(dest, source, capactity, offset);
+  size_t actualLength = pep::AmaQRColumnGroup::FillToProtobufSerializationCapacity(dest, capactity, source, offset);
 
   //Assert
   pep::AmaQRColumnGroup expectedCG{"cgName", std::vector<std::string>{"col1", "col2", "col3"}};
@@ -29,7 +29,7 @@ TEST(AmaQRColumnGroupFillColumnGroupToCapacity, capacityZero) {
   size_t offset{0};
 
   //Act
-  size_t actualLength = pep::AmaQRColumnGroup::FillToProtobufSerializationCapacity(dest, source, capactity, offset);
+  size_t actualLength = pep::AmaQRColumnGroup::FillToProtobufSerializationCapacity(dest, capactity, source, offset);
 
   //Assert
   ASSERT_EQ(dest.name, "");
@@ -46,7 +46,7 @@ TEST(AmaQRColumnGroupFillColumnGroupToCapacity, CapacityLimited) {
   size_t offset{0};
 
   //Act
-  size_t actualLength = pep::AmaQRColumnGroup::FillToProtobufSerializationCapacity(dest, source, capactity, offset);
+  size_t actualLength = pep::AmaQRColumnGroup::FillToProtobufSerializationCapacity(dest, capactity, source, offset);
 
   //Assert
   pep::AmaQRColumnGroup expectedCG{"cgName", std::vector<std::string>{"col1"}};
@@ -63,7 +63,7 @@ TEST(AmaQRColumnGroupFillColumnGroupToCapacity, OffsetLimited) {
   size_t offset{2};
 
   //Act
-  size_t actualLength = pep::AmaQRColumnGroup::FillToProtobufSerializationCapacity(dest, source, capactity, offset);
+  size_t actualLength = pep::AmaQRColumnGroup::FillToProtobufSerializationCapacity(dest, capactity, source, offset);
 
   //Assert
   pep::AmaQRColumnGroup expectedCG{"cgName", std::vector<std::string>{"col3"}};
@@ -80,7 +80,7 @@ TEST(AmaQRColumnGroupFillColumnGroupToCapacity, OffsetAndCapacity) {
   size_t offset{2};
 
   //Act
-  size_t actualLength = pep::AmaQRColumnGroup::FillToProtobufSerializationCapacity(dest, source, capactity, offset);
+  size_t actualLength = pep::AmaQRColumnGroup::FillToProtobufSerializationCapacity(dest, capactity, source, offset);
 
   //Assert
   pep::AmaQRColumnGroup expectedCG{"cgName", std::vector<std::string>{"col3"}};
@@ -99,7 +99,7 @@ TEST(AmaQRColumnGroupFillColumnGroupToCapacity, NoPadding) {
   size_t padding{0};
 
   //Act
-  size_t actualLength = pep::AmaQRColumnGroup::FillToProtobufSerializationCapacity(dest, source, capactity, offset, padding);
+  size_t actualLength = pep::AmaQRColumnGroup::FillToProtobufSerializationCapacity(dest, capactity, source, offset, padding);
 
   //Assert
   pep::AmaQRColumnGroup expectedCG{"cgName", std::vector<std::string>{"col1", "col2", "col3"}};

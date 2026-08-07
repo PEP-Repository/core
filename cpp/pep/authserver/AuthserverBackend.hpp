@@ -56,13 +56,11 @@ public:
       const std::string &primaryId,
       const std::vector<std::string> &alternativeIds);
 
-  /**
-   * \brief Generate an OAuth Token
-   * \param uid The uid of the user to generate a token for
-   * \param group The user group to generate a token for. It is possible to generate tokens for users/groups unknown to the authserver.
-   * \param expirationTime The time at which the token will expire
-   * \return The generated OAuthToken
-   */
+  /// \brief Generate an OAuth Token
+  /// \param uid The uid of the user to generate a token for
+  /// \param group The user group to generate a token for. It is possible to generate tokens for users/groups unknown to the authserver.
+  /// \param expirationTime The time at which the token will expire
+  /// \return The generated OAuthToken
   OAuthToken getToken(const std::string& uid, const std::string& group, const Timestamp& expirationTime) const;
   OAuthToken getToken(const std::string& uid,
                       const UserGroup& group,

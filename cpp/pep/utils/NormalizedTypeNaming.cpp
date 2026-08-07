@@ -1,4 +1,4 @@
-#include <pep/serialization/NormalizedTypeNaming.hpp>
+#include <pep/utils/NormalizedTypeNaming.hpp>
 #include <cassert>
 
 namespace pep {

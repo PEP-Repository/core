@@ -56,7 +56,7 @@ public:
 class PseudonymFormat {
 private:
   std::string prefix_;
-  size_t digits_;
+  size_t digits_{};
   std::string regexPattern_;
 
 public:
@@ -72,10 +72,8 @@ public:
   std::optional<size_t> getLength() const; // Only produces a value for generable formats
 };
 
-/*!
- * \brief Contains some column metadata
- * The column may not necessarily exist yet
- */
+/// \brief Contains some column metadata
+/// The column may not necessarily exist yet
 class ColumnSpecification {
 private:
   std::string column_;

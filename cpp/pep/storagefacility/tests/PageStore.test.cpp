@@ -5,6 +5,7 @@
 
 #include <pep/application/Application.hpp>
 #include <pep/async/tests/RxTestUtils.hpp>
+#include <pep/utils/Configuration.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>

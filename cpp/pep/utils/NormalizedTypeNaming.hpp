@@ -5,9 +5,7 @@
 
 namespace pep {
 
-/*!
-* \brief Base class for NormalizedTypeNamer<>. Add non-template methods here to prevent template-induced code bloat.
-*/
+/// \brief Base class for NormalizedTypeNamer<>. Add non-template methods here to prevent template-induced code bloat.
 class BasicNormalizedTypeNamer {
   template <typename T>
   friend struct NormalizedTypeNamer;

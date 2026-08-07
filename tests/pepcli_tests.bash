@@ -27,6 +27,17 @@ TEST_PARTICIPANT="$(openssl rand -base64 12)"
 ####################
 
 if should_run_test basic; then
+  # Test --loglevel
+  # `|&` redirects both stdout & stderr
+  # `tee /dev/stderr` is to print message to console as well as grepping. We need `|| true` because of SIGPIPE.
+  if ! execute . "$PEPCLI_COMMAND" query --help |& (tee /dev/stderr || true) | grep -qF '<info>'; then
+    # pepcli prints info message with version
+    fail 'Default loglevel should include info log messages'
+  fi
+  if execute . "$PEPCLI_COMMAND" --loglevel warning query --help |& grep -qF '<info>'; then
+    fail 'warning loglevel should should not include info messages'
+  fi
+
   # Store a PEP ID...
   id=$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
   # ... then verify that we can read it back (see #2750)
@@ -219,17 +230,31 @@ fi
 
 if should_run_test structure-history; then
 
-  # Create a user group, remove it later and then verify that we can query the group that was removed through the --at option
+  # Create a user group, remove it later and then verify that we can query the group that was removed through the --point-in-time option
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user group create onceUponATimeGroup
-  UTC_TIMESTAMP=$($DATE_CMD +%s%N | cut -b1-13)
+  UTC_TIMESTAMP_MS=$($DATE_CMD +%s%N | cut -b1-13)
+  sleep 1s
+  UTC_TIMESTAMP=$($DATE_CMD +%s)
+  UTC_ISO_DATETIME=$($DATE_CMD -u +%FT%TZ)
+  DIFFERENT_TZ_ISO_DATETIME=$(TZ="<-07>+7" $DATE_CMD --date="$UTC_ISO_DATETIME" +%FT%T%:z)
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user group remove onceUponATimeGroup
-  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --at "$UTC_TIMESTAMP" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "unix-ms:$UTC_TIMESTAMP_MS" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "unix:$UTC_TIMESTAMP" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "$UTC_ISO_DATETIME" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "$DIFFERENT_TZ_ISO_DATETIME" | grep 'onceUponATimeGroup'
 
-  # Create a column, remove it later and then verify that we can still query the column that was removed through the --at option
+  # Create a column, remove it later and then verify that we can still query the column that was removed through the --point-in-time option
   pepcli --oauth-token-group "Data Administrator" ama column create onceUponATimeColumn
-  UTC_TIMESTAMP=$($DATE_CMD +%s%N | cut -b1-13)
+  UTC_TIMESTAMP_MS=$($DATE_CMD +%s%N | cut -b1-13)
+  sleep 1s
+  UTC_TIMESTAMP=$($DATE_CMD +%s)
+  UTC_ISO_DATETIME=$($DATE_CMD -u +%FT%TZ)
+  DIFFERENT_TZ_ISO_DATETIME=$(TZ="<-07>+7" $DATE_CMD --date="$UTC_ISO_DATETIME" +%FT%T%:z)
   pepcli --oauth-token-group "Data Administrator" ama column remove onceUponATimeColumn
-  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --at "$UTC_TIMESTAMP" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "unix-ms:$UTC_TIMESTAMP_MS" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "unix:$UTC_TIMESTAMP" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "$UTC_ISO_DATETIME" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "$DIFFERENT_TZ_ISO_DATETIME" | grep 'onceUponATimeColumn'
 
 fi
 
@@ -367,7 +392,7 @@ if should_run_test token-block; then
   # Add a new user to integrationGroup and generate token for that user
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user create userWithFreshToken
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user addTo userWithFreshToken integrationGroup
-  TOKEN_TEST_USER_TOKEN=$(pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" token request userWithFreshToken integrationGroup "$($DATE_CMD -d '2 days' +%s)")
+  TOKEN_TEST_USER_TOKEN=$(pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" token request userWithFreshToken integrationGroup "unix:$($DATE_CMD -d '2 days' +%s)")
 
   # Attempt to do a query with the generated token
   pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access
@@ -499,6 +524,57 @@ if should_run_test user-query; then
   done
 
   pepcli --oauth-token-group "Access Administrator" user remove "$userPrimaryId"
+fi
+
+####################
+
+if should_run_test user-removal-and-expiration; then
+  USER_REMOVAL_AND_EXPIRATION_CONFIG='{
+    "userGroups": [{
+      "name": "test-group",
+      "users": ["test-user"]
+    }]
+  }'
+
+  test_setup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
+
+  token="$(pepcli token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
+  pepcli --oauth-token-group "Access Administrator" user removeFrom test-user test-group
+  pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid when the user is removed from the group"
+  trace sleep 1s
+
+  expiration="$($DATE_CMD -d "now+5 seconds" +%s)"
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
+  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  while [ "$($DATE_CMD -d "now+1 second" +%s)" -lt "$expiration" ]; do # We compare with now+1 second, so the following doesn't fail if in the meantime the current time increased to the next second
+    pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
+    trace sleep 1s
+  done
+  trace sleep 1s
+  pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid after group membership expiration"
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+10 years" +%s)" test-user test-group \
+    && fail "Shouldn't be able to update expiration for a user group membership that already expired"
+  original_expiration_seconds="15"
+  expiration="$($DATE_CMD -d "now+$original_expiration_seconds seconds" +%s)"
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
+  pepcli --oauth-token "$token" query enrollment && fail "Token that was once blocked should not get unblocked by updating the expiration"
+  newToken="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$newToken" query enrollment || fail "New token, requested after the issueDateTime of the block entry, should be valid"
+
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+10 years" +%s)" test-user test-group
+  trace sleep "${original_expiration_seconds}s"
+  pepcli --oauth-token "$newToken" query enrollment || fail "Token should still be valid after original expiration has passed, but updated expiration has not yet passed"
+
+  blocked_token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should be valid"
+  pepcli --oauth-token-group "Access Administrator" token block create --issuedBefore "unix:$($DATE_CMD -d "now" +%s)" --block-start "unix:$($DATE_CMD -d "now+5 seconds" +%s)" --message "Manually blocked" test-user test-group
+  pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should still be valid, before block-start timestamp"
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+20 years" +%s)" test-user test-group
+  trace sleep 5s
+  pepcli --oauth-token "$blocked_token" query enrollment && fail "Manually blocked token should not be unblocked by updating the expiration of the group membership"
+
+  test_cleanup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
 fi
 
 ####################
@@ -771,9 +847,7 @@ if should_run_test s3-roundtrip; then
   test_setup "$S3_ROUNDTRIP_CONFIG"
 
   # Store a large (i.e. stored in S3) file with some participants
-  readonly LARGE_RANDOM_DATA_FILE="$DEST_DIR/large-random-data.bin"
-  # 10 blocks @ 1048576 bytes each = 10MiB
-  execute . dd if=/dev/urandom of="$LARGE_RANDOM_DATA_FILE" bs=1048576 count=10
+  readonly LARGE_RANDOM_DATA_FILE=$(make_large_random_data_file "large-random-data.bin")
   for i in {1..50}; do
     pepcli --oauth-token-group "Research Assessor" store -p "participant$i" -c LargeColumn -i "$LARGE_RANDOM_DATA_FILE"
   done
@@ -796,6 +870,51 @@ if should_run_test s3-roundtrip; then
   done
 
   test_cleanup "$S3_ROUNDTRIP_CONFIG"
+fi
+
+####################
+
+if should_run_test page-paths; then
+  PAGE_PATHS_CONFIG='{
+    "columnGroups": [{
+      "name": "PagedColumns",
+      "columns": [ "PagedColumn" ],
+      "cgars": {  "Research Assessor": [ "read", "write" ] }
+    }]
+  }'
+  
+  test_setup "$PAGE_PATHS_CONFIG"
+  
+  pepcli --oauth-token-group "Research Assessor" query page-paths &&
+      fail "Research Assessor should not be able to query page paths"
+
+  # Count number of pages before storing
+  before=$(pepcli --oauth-token-group "System Administrator" query page-paths)
+  before=$(echo "$before" | wc -l)
+  
+  # Store a large (i.e. stored in S3) file
+  readonly PAGED_RANDOM_DATA_FILE=$(make_large_random_data_file "paged-random-data.bin")
+  pepcli --oauth-token-group "Research Assessor" store -p "some-participant" -c PagedColumn -i "$PAGED_RANDOM_DATA_FILE"
+  
+  # Count number of pages after storing
+  after=$(pepcli --oauth-token-group "System Administrator" query page-paths)
+  after=$(echo "$after" | wc -l)
+  if [ ! "$after" -gt "$before" ]; then
+    fail "Page path count should increase after storage (before = $before; after = $after)"
+  fi
+
+  # Remove paged entry from current data set, then count number of pages once again
+  # (This also clears the stored data for a followup invocation of the test.)
+  pepcli --oauth-token-group "Research Assessor" delete -p "some-participant" -c PagedColumn
+  after=$(pepcli --oauth-token-group "System Administrator" query page-paths)
+  after=$(echo "$after" | wc -l)
+  if [ "$after" -ne "$before" ]; then
+    fail "Page path count should revert to previous after deletion (before = $before; after = $after)"
+  fi
+
+  # Clean up
+  execute . rm "$PAGED_RANDOM_DATA_FILE"
+  test_cleanup "$PAGE_PATHS_CONFIG"
 fi
 
 ####################

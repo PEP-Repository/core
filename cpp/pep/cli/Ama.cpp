@@ -413,8 +413,8 @@ private:
             .value(pep::commandline::Value<std::string>()
                 .allow(std::vector<std::string>({"yaml", "json", "json-compact"}))
                 .defaultsTo("yaml"))
-        + pep::commandline::Parameter("at", "Query for this timestamp (milliseconds since 1970-01-01 00:00:00 in UTC), defaults to now if omitted")
-            .value(pep::commandline::Value<milliseconds::rep>())
+        + pep::commandline::Parameter("point-in-time", "Query for the situation at the specified point-in-time. Defaults to now if omitted")
+             .value(pep::commandline::Value<pep::Timestamp>())
         + pep::commandline::Parameter("column", "Show results related to this column (exact match required). You can combine multiple filters to narrow down the results.").value(pep::commandline::Value<std::string>())
         + pep::commandline::Parameter("column-group", "Show results related to this column group (exact match required)").value(pep::commandline::Value<std::string>())
         + pep::commandline::Parameter("user-group", "Show results related to this user group (exact match required)").value(pep::commandline::Value<std::string>())
@@ -456,9 +456,7 @@ private:
 
     static pep::AmaQuery extractQuery(const pep::commandline::NamedValues& values) {
       return {
-        .at = pep::GetOptionalValue(values.getOptional<milliseconds::rep>("at"), [](milliseconds::rep ms) {
-          return pep::Timestamp(milliseconds{ms});
-        }),
+        .at = values.getOptional<pep::Timestamp>("point-in-time"),
         .columnFilter = values.getOptional<std::string>("column").value_or(""),
         .columnGroupFilter = values.getOptional<std::string>("column-group").value_or(""),
         .participantGroupFilter = values.getOptional<std::string>("participant-group").value_or(""),

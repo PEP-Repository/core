@@ -38,9 +38,7 @@ public:
   inline bool eatsAll() const noexcept { return eatAll_; }
 
   virtual ArgValueType getType() const noexcept { return ArgValueType::String; }
-  /*!
-   * \brief Get string representation of default value and its description
-   */
+  /// \brief Get string representation of default value and its description
   virtual std::optional<std::pair<std::string, std::optional<std::string>>> getDefault() const noexcept { return {}; }
   virtual std::vector<std::string> getSuggested() const noexcept { return {}; }
 
@@ -65,6 +63,13 @@ template <typename R, typename P>
 struct Format<std::chrono::duration<R, P>> {
   std::string operator()(const std::chrono::duration<R, P>& v) {
     return chrono::ToString(v);
+  }
+};
+
+template <>
+struct Format<Timestamp> {
+  std::string operator()(const Timestamp& v) {
+    return TimestampToXmlDateTime(v);
   }
 };
 
@@ -304,6 +309,17 @@ public:
     assert(result.type_ != ArgValueType::Directory && "Already marked as directory");
     result.type_ = ArgValueType::Directory;
     return result;
+  }
+};
+
+template <>
+class ValueSpecification<Timestamp> : public detail::ValueSpecificationTemplate<ValueSpecification<Timestamp>, Timestamp> {
+public:
+  ValueSpecification() : detail::ValueSpecificationTemplate<ValueSpecification, Timestamp>(ArgValueType::String) {}
+
+  void writeHelpText(std::ostream& destination) const override {
+    WriteHelpItemSupplement(destination, "Possible formats: 2016-05-30 (start of the given date, local time), 2016-05-30T13:39:17 (local time),  2016-05-30T11:39:17Z (UTC)");
+    ValueSpecificationTemplate::writeHelpText(destination);
   }
 };
 

@@ -1,5 +1,6 @@
 #include <pep/storagefacility/StorageFacility.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
@@ -16,7 +17,6 @@
 #include <pep/utils/Defer.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -42,8 +42,8 @@ namespace pep {
 
 namespace {
 
-constexpr size_t ENUMERATION_RESPONSE_MAX_ENTRIES = 2500;
-constexpr size_t PAYLOAD_PAGES_MAX_CONCURRENCY = 1000; // Prevent excessive memory use: see https://gitlab.pep.cs.ru.nl/pep/ppp-config/-/issues/166#note_50515
+constexpr size_t EnumerationResponseMaxEntries = 2500;
+constexpr size_t PayloadPagesMaxConcurrency = 1000; // Prevent excessive memory use: see https://gitlab.pep.cs.ru.nl/pep/ppp-config/-/issues/166#note_50515
 
 class TicketIndices {
 public:
@@ -178,7 +178,6 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   : SigningServer::Parameters(io_context, config) {
   std::filesystem::path keysFile;
   std::filesystem::path encIdKeyFile;
-  auto pageStoreConfig = std::make_shared<Configuration>();
 
   try {
     keysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
@@ -217,15 +216,15 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     boost::property_tree::ptree root;
     root.add<std::string>(
       "Key",
-      boost::algorithm::hex(encIdKey)
+      const_time::ToHex(encIdKey)
     );
-    std::ofstream os(encIdKeyFile.string());
+    std::ofstream os(encIdKeyFile);
     std::filesystem::permissions(encIdKeyFile, std::filesystem::perms::owner_read);
     boost::property_tree::write_json(os, root);
   }
   else {
     Configuration encIdKeyConfig = Configuration::FromFile(encIdKeyFile);
-    encIdKey = boost::algorithm::unhex(encIdKeyConfig.get<std::string>("Key"));
+    encIdKey = const_time::FromHex(encIdKeyConfig.get<std::string>("Key"));
   }
 
   setEncIdKey(encIdKey);
@@ -274,16 +273,16 @@ void StorageFacility::computeChecksumChainChecksum(
 
   // both "files" and "entry-count" checksums are computed by adding
   // one entry at a time, via:
-  std::function<void(const FileStore::EntryHeader&)> add;
+  std::function<void(const FileStore::CellVersion&)> add;
 
   if (chain == "files") {
-    add = [&checksum](const FileStore::EntryHeader& header) {
-      auto checksumSubstitute = header.checksumSubstitute;
+    add = [&checksum](const FileStore::CellVersion& version) {
+      auto checksumSubstitute = version.checksumSubstitute;
       checksum ^= checksumSubstitute;
     };
   }
   else if (chain == "entry-count") {
-    add = [&checksum](const FileStore::EntryHeader& header) {
+    add = [&checksum](const FileStore::CellVersion& version) {
       checksum++;
     };
   }
@@ -299,13 +298,24 @@ void StorageFacility::computeChecksumChainChecksum(
     maxCheckpoint = TicksSinceEpoch<std::chrono::milliseconds>(TimeNow() - 1min);
   }
 
-  fileStore_->forEachEntryHeader([add, &checkpoint, max = *maxCheckpoint](const FileStore::EntryHeader& header) {
-    std::uint64_t validFromMs{static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(header.validFrom))};
-    if (validFromMs <= max) {
-      checkpoint = std::max(checkpoint, validFromMs);
-      add(header);
+  /* Checksums over cell versions must be calculated in (backward compatible) lexicographic order, e.g.
+   * 1. participant-a/column-x/timestamp-1
+   * 2. participant-a/column-x/timestamp-2
+   * 3. participant-a/column-y/timestamp-1
+   * 4. participant-b/column-x/timestamp-1
+   */
+  for (const auto& participant : fileStore_->participants()) {
+    for (const auto& cell : participant->cells()) {
+      for (const auto& version : cell->versions()) {
+        std::uint64_t validFromMs{ static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(version.validFrom)) };
+        if (validFromMs <= *maxCheckpoint) {
+          checkpoint = std::max(checkpoint, validFromMs);
+          add(version);
+        }
+
+      }
     }
-    });
+  }
 }
 
 messaging::MessageBatches
@@ -425,7 +435,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
         // We use index_ to lookup the primary key in ids when serving data below.
         // The client should not learn index_, so we clear it.
         responseMsgs.back().entries.back().index = 0;
-        if (++i == ENUMERATION_RESPONSE_MAX_ENTRIES) {
+        if (++i == EnumerationResponseMaxEntries) {
           i = 0;
           responseMsgs.back().hasMore = true;
           responseMsgs.emplace_back();
@@ -501,7 +511,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       response->entries.push_back(std::move(entry));
 
       // Prevent individual DataEnumerationResponse2 messages from becoming too large
-      if (response->entries.size() >= ENUMERATION_RESPONSE_MAX_ENTRIES) {
+      if (response->entries.size() >= EnumerationResponseMaxEntries) {
         response->hasMore = true;
         sendResponse();
       }
@@ -629,15 +639,15 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
 
       subscriber_ = subscriber;
       /* We queue a batch of pages to be sent out "immediately" (i.e. as soon as possible),
-       * but we don't queue more than PAYLOAD_PAGES_MAX_CONCURRENCY at the same time.
+       * but we don't queue more than PayloadPagesMaxConcurrency at the same time.
        * If there are more pages than the initial batch, a new page is scheduled only when
        * (the contents of) a previous page have been fully processed.
        * This keeps the the number of pages being processed under (or at)
-       * PAYLOAD_PAGES_MAX_CONCURRENCY at all times.
+       * PayloadPagesMaxConcurrency at all times.
        */
-      for (size_t i = 0; i < PAYLOAD_PAGES_MAX_CONCURRENCY; ++i) {
+      for (size_t i = 0; i < PayloadPagesMaxConcurrency; ++i) {
         if (!this->emitNextPage()) {
-          break; // The number of pages to send out is less than PAYLOAD_PAGES_MAX_CONCURRENCY
+          break; // The number of pages to send out is less than PayloadPagesMaxConcurrency
         }
       }
     }
@@ -839,9 +849,9 @@ messaging::MessageBatches StorageFacility::handleDataStoreRequest2(
 }
 
 messaging::MessageBatches
-StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdateRequest2> lpRequest) {
+StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdateRequest2> signedRequest) {
   const auto& rootCAs = this->getRootCAs();
-  auto certified = lpRequest->open(*rootCAs);
+  auto certified = signedRequest->open(*rootCAs);
   auto request = MakeSharedCopy(std::move(certified.message));
   auto userGroup = certified.signatory.organizationalUnit();
 
@@ -973,13 +983,13 @@ std::vector<std::optional<LocalPseudonym>> StorageFacility::decryptLocalPseudony
 }
 
 messaging::MessageBatches
-StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> lpRequest) {
+StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> signedRequest) {
   // TODO: consolidate duplicate code with handleDataEnumerationRequest2
   PEP_LOG(LogTag, Severity::Debug) << "Received DataHistoryRequest2";
 
   auto start_time = std::chrono::steady_clock::now();
   const auto& rootCAs = this->getRootCAs();
-  auto certified = lpRequest->open(*rootCAs);
+  auto certified = signedRequest->open(*rootCAs);
   const auto& request = certified.message;
 
   auto accessGroup = certified.signatory.organizationalUnit();
@@ -1012,31 +1022,38 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, request.pseudonyms.has_value() ? &request.pseudonyms->indices : nullptr);
 
   std::vector<uint64_t> ids; // used to lookup id from responseEntry index_
+  auto participants = fileStore_->participants();
   for (size_t pseud_index = 0; pseud_index < localPseudonyms.size(); pseud_index++) {
     if (!localPseudonyms[pseud_index].has_value()) {
       continue;
     }
+    const auto& localPseudonym = localPseudonyms[pseud_index]->text();
+    auto iParticipant = participants.find(localPseudonym);
+    if (iParticipant == participants.end()) {
+      continue;
+    }
+
+    const FileStore::Participant& participant = **iParticipant;
+    auto cells = participant.cells();
     for (const auto& col : includeColumn) {
       auto colIndexIt = columnIndex.find(col);
       if (colIndexIt == columnIndex.end()) {
         continue;
       }
+      auto iCell = cells.find(col);
+      if (iCell == cells.end()) {
+        continue;
+      }
 
-      const auto& localPseudonym = *localPseudonyms[pseud_index];
-      // enumerateData returns an error if there are no entries, which
-      // we will ignore. Other errors are already logged.
-      EntryName key(localPseudonym, col);
-      auto history = fileStore_->lookupWithHistory(key);
-      for (const auto& entry : history) {
-        assert(entry != nullptr);
-
-        Timestamp validFrom = entry->getValidFrom();
+      auto entryName = EntryName(participant.name(), col).string();
+      const FileStore::Cell& cell = **iCell;
+      for (const auto& version : cell.versions()) {
         response.entries.push_back({
           .columnIndex = colIndexIt->second,
           .pseudonymIndex = static_cast<uint32_t>(pseud_index),
-          .timestamp = validFrom,
-          .id = !entry->isTombstone() ? encryptId(entry->getName().string(), validFrom) : "",
-        });
+          .timestamp = version.validFrom,
+          .id = !version.isTombstone ? encryptId(entryName, version.validFrom) : "",
+          });
       }
     }
   }
@@ -1047,12 +1064,12 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
     rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(response))).as_dynamic());
 }
 
-messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> lpRequest) {
+messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> signedRequest) {
   const auto& rootCAs = this->getRootCAs();
-  auto certified = lpRequest->open(*rootCAs);
+  auto certified = signedRequest->open(*rootCAs);
 
   auto accessGroup = certified.signatory.organizationalUnit();
-  UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
+  UserGroup::EnsureAccess({ UserGroup::DataAdministrator, UserGroup::RepositoryManager }, accessGroup);
 
   const auto& request = certified.message;
 
@@ -1061,7 +1078,7 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
   this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.columns);
 
   auto countBlocks = [blockSize = dataSizeResolution_](uint64_t bytes) {
-      assert(bytes % blockSize == 0U);
+      assert(bytes % blockSize == 0U); // Values produced by this->getFileStoreMetrics are rounded to dataSizeResolution_
       return bytes / blockSize;
     };
 
@@ -1069,6 +1086,34 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
     .blockSize = dataSizeResolution_,
     .totalBlocks = countBlocks(totalBytes),
     .rollingBlocks = countBlocks(rollingBytes),
+    });
+}
+
+messaging::MessageBatches StorageFacility::handlePagePathRequest(std::shared_ptr<SignedPagePathRequest> signedRequest) {
+  const auto& rootCAs = this->getRootCAs();
+  auto certified = signedRequest->open(*rootCAs);
+
+  auto accessGroup = certified.signatory.organizationalUnit();
+  UserGroup::EnsureAccess({ UserGroup::SystemAdministrator }, accessGroup);
+
+  return CreateObservable<messaging::MessageSequence>([fileStore = fileStore_](rxcpp::subscriber<messaging::MessageSequence> subscriber) {
+    auto all = fileStore->pagePaths();
+    auto i = all.cbegin(), end = all.cend();
+
+    while (i != end) {
+      PagePathResponse chunk;
+      FillToCapacity(std::inserter(chunk.paths, chunk.paths.end()), messaging::NetMessageCapacity, std::ranges::subrange{ i, end });
+      if (chunk.paths.size() == 0U) {
+        throw std::runtime_error("Could not create network-portable set of page paths");
+      }
+
+      // Update the source iterator (the position in "all" page paths) so we skip processed items in the next iteration
+      // Unfortunately we can't "i += ..." because std::set does not provide random access iteration
+      std::advance(i, chunk.paths.size());
+
+      subscriber.on_next(rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(std::move(chunk)))));
+    }
+    subscriber.on_completed();
     });
 }
 
@@ -1146,7 +1191,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
                           &StorageFacility::handleMetadataStoreRequest2,
                           &StorageFacility::handleDataEnumerationRequest2,
                           &StorageFacility::handleDataHistoryRequest2,
-                          &StorageFacility::handleDataSizeRequest);
+                          &StorageFacility::handleDataSizeRequest,
+                          &StorageFacility::handlePagePathRequest);
 
   this->updateFileStoreMetrics();
   statsTimer({});
