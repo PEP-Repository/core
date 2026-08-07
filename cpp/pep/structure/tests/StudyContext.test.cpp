@@ -17,7 +17,7 @@ TEST(StudyContextTest, RejectsInvalidIds) {
   EXPECT_THROW(pep::StudyContext("with.period"), std::runtime_error);
   EXPECT_THROW(pep::StudyContext("with-dash"), std::runtime_error);
   EXPECT_THROW(pep::StudyContext("with\ttab"), std::runtime_error);
-  EXPECT_THROW(pep::StudyContext("accénted"), std::runtime_error);
+  EXPECT_THROW(pep::StudyContext("acc\xC3\xA9nted"), std::runtime_error); // UTF-8 encoding of e-acute
 }
 
 TEST(StudyContextTest, AcceptsAlphanumericsAndUnderscores) {
