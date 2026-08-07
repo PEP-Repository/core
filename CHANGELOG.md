@@ -10,7 +10,7 @@
 
 - core#2488: Added command `pepcli pseudonym convert`, which converts a pseudonym of any form into a polymorphic, local, or brief-local pseudonym.
 
-- Study context ids are now validated (only alphanumerics and underscores are allowed) and compared case insensitively everywhere.
+- core#2941: Study context ids are now validated (only alphanumerics and underscores are allowed) and compared case insensitively everywhere.
   Duplicate ids are rejected. Generated names (columns, participant groups) keep using the casing as configured, so existing data is unaffected.
 
 - core#2928: Unified timestamp input for pepcli. The `at` parameter for `pepcli user query` and `pepcli ama query` has been renamed to `point-in-time`.
