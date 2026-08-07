@@ -720,12 +720,12 @@ void ParticipantWidget::locateBartender() {
       DWORD dwType{};
       DWORD sizeWithNull{};
       // First query size
-      if (::RegGetValueA(key, nullptr, valueName, stringTypes, nullptr, nullptr, &size) == ERROR_SUCCESS) {
+      if (::RegGetValueA(key, nullptr, valueName, stringTypes, nullptr, nullptr, &sizeWithNull) == ERROR_SUCCESS) {
         std::string data(sizeWithNull - 1, '\0');
         // Then query value
         if (::RegGetValueA(key, nullptr, valueName, stringTypes, nullptr, data.data(), &sizeWithNull) == ERROR_SUCCESS) {
           assert(sizeWithNull = data.size() + 1);
-  `       bestDir = std::move(data);
+          bestDir = std::move(data);
         }
       }
     }
