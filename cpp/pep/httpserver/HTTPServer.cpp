@@ -7,6 +7,7 @@
 
 #include <civetweb.h>
 #include <boost/asio/io_context.hpp>
+#include <span>
 #include <sstream>
 
 namespace pep {
@@ -85,10 +86,10 @@ int requestHandler(struct mg_connection *conn, void *cbdata)
   PEP_LOG(LogTag, Severity::Debug) << "Request handler matches request. Start handling the request";
   try {
     std::map<std::string, std::string, CaseInsensitiveCompare> headers;
-    for(size_t i = 0; i < static_cast<size_t>(requestInfo->num_headers); ++i) {
-      const auto& [it, isNew] = headers.try_emplace(requestInfo->http_headers[i].name, requestInfo->http_headers[i].value);
+    for (const auto& header : std::span(requestInfo->http_headers, static_cast<size_t>(requestInfo->num_headers))) {
+      const auto& [it, isNew] = headers.try_emplace(header.name, header.value);
       if(!isNew) {
-        it->second = it->second + "," + requestInfo->http_headers[i].value; //Multiple occurrences of the same header can be combined, separated by comma's see https://tools.ietf.org/html/rfc2616#section-4.2
+        it->second = it->second + "," + header.value; //Multiple occurrences of the same header can be combined, separated by comma's see https://tools.ietf.org/html/rfc2616#section-4.2
       }
     }
     auto hostHeader = headers.find("Host");

@@ -4,6 +4,8 @@
 #include <pep/serialization/ErrorSerializer.hpp>
 #include <pep/serialization/Serialization.hpp>
 
+#include <ranges>
+
 using namespace std::ranges;
 
 namespace pep::messaging {
@@ -199,16 +201,15 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
           // We're done sending batches for this message(Id)
           self->generators_.erase(messageId);
 
-          bool adjustedInlinePayload = false;
           // try to reuse a packet already in the outgoing_ queue
-          for (auto it = self->outgoing_.rbegin(); it != self->outgoing_.rend(); ++it) {
-            if (it->properties.messageId() == messageId) {
-              it->properties = MessageProperties(it->properties.messageId(),it->properties.flags().withClose());
-              adjustedInlinePayload = true;
-              break;
-            }
+          auto queuedLast = self->outgoing_ | views::reverse;
+          auto queued = find_if(queuedLast, [&messageId](const OutgoingMessage& candidate) {
+            return candidate.properties.messageId() == messageId;
+          });
+          if (queued != queuedLast.end()) {
+            queued->properties = MessageProperties(queued->properties.messageId(), queued->properties.flags().withClose());
           }
-          if (!adjustedInlinePayload) {
+          else {
             self->emplaceOutgoing(messageId, Flags::Close, std::make_shared<std::string>(""));
           }
         } else {

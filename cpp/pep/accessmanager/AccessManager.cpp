@@ -110,9 +110,8 @@ std::vector<AmaQueryResponse> ExtractPartialQueryResponse(const AmaQueryResponse
   size_t responseStrings = MaxAmaQueryResponseStrings + 1U; // Mark "previous response full" to have first AmaQueryResponse created
 
   // TODO: use more efficient chunking for T with fixed number of strings
-  for (size_t i = 0U; i < sourceEntries.size(); ++i) {
-    // Get source AmaQRxyz entry and check whether it'll fit in a message at all
-    const T& entry = sourceEntries[i];
+  for (const T& entry : sourceEntries) {
+    // Check whether the source AmaQRxyz entry will fit in a message at all
     auto entryStrings = CountAmaQueryResponseEntryStrings(entry);
     if (entryStrings > AmaQueryResponseStringsWarningThreshold) {
       PEP_LOG(LogTag, Severity::Warning) << "(Excessively) large AMA query response entry: " << NormalizedTypeNamer<T>::GetTypeName() << " contains " + std::to_string(entryStrings) + " strings";

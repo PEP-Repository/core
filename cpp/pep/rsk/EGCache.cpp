@@ -166,8 +166,8 @@ private:
       for (const auto& pair : data_)
         entries.emplace_back(pair.second.getLastUse(), pair.first);
       std::ranges::sort(entries, [](auto& a, auto& b) { return a.first < b.first; });
-      for (size_t i = 0; i < toEvict; i++) {
-        data_.erase(entries[i].second);
+      for (const auto& entry : entries | std::views::take(static_cast<std::ptrdiff_t>(toEvict))) {
+        data_.erase(entry.second);
       }
 
       PEP_LOG(LogTag, Severity::Info) << "Pruned " << Options::Name << " cache down to "

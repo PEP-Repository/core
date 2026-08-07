@@ -229,9 +229,8 @@ template <typename Derived, typename T>
 template <typename TContainer>
 Derived ValueSpecificationTemplate<Derived, T>::allow(const TContainer& values) const {
   Derived result = static_cast<const Derived&>(*this);
-  auto end = values.end();
-  for (auto i = values.begin(); i != end; ++i) {
-    result.addAllowedValue(*i);
+  for (const auto& value : values) {
+    result.addAllowedValue(value);
   }
   return result;
 }

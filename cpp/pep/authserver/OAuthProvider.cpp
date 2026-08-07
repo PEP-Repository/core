@@ -235,14 +235,11 @@ OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<Authserve
     PEP_LOG(LogTag, Severity::Debug) << "Cleaning up expired grants";
 
     auto now = std::chrono::steady_clock::now();
-    for(auto it = activeGrants_.begin(); it != activeGrants_.end(); /* updated inside loop */) {
-      if(now - it->second.createdAt > activeGrantExpiration_) {
-        PEP_LOG(LogTag, Severity::Debug) << "Removed expired grant";
-        it = activeGrants_.erase(it);
-      }
-      else {
-        ++it;
-      }
+    auto removed = std::erase_if(activeGrants_, [this, now](const auto& entry) {
+      return now - entry.second.createdAt > activeGrantExpiration_;
+    });
+    if (removed != 0U) {
+      PEP_LOG(LogTag, Severity::Debug) << "Removed " << removed << " expired grant(s)";
     }
   });
 }
