@@ -18,6 +18,8 @@
 #include <rxcpp/operators/rx-tap.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
@@ -36,7 +38,7 @@ rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string&
     // For every column group...
     for (const auto& cg : access.columnGroups) {
       const auto& cgAccess = cg.second;
-      if (std::ranges::contains(cgAccess.modes, mode)) { // ...if we have the requested access mode to that group...
+      if (contains(cgAccess.modes, mode)) { // ...if we have the requested access mode to that group...
         for (auto index : cgAccess.columns.indices) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
           remaining->erase(access.columns[index]);
         }
@@ -91,7 +93,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
 
         // Create StoreData2Entry instances for the data-to-store
         auto entries = *values
-          | std::views::transform([polymorphicPseudonym](const auto& pair) {
+          | views::transform([polymorphicPseudonym](const auto& pair) {
                          const std::string& column = pair.first;
                          const CellProperties& props = pair.second;
                          StoreData2Entry result(polymorphicPseudonym, column, props.value);
@@ -100,7 +102,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
                          }
                          return result;
                        })
-          | std::ranges::to<std::vector>();
+          | to<std::vector>();
 
         // Store data in PEP
         auto process = storeData2(entries).op(RxToEmpty<FakeVoid>());

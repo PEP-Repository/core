@@ -20,6 +20,8 @@
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
 
+using namespace std::ranges;
+
 namespace {
 
 const QString AllFilesWildcard =
@@ -32,7 +34,7 @@ const QString AllFilesWildcard =
 
 void SortAndInsert(std::vector<std::shared_ptr<ExportableItem>>& dest, std::vector<std::shared_ptr<ExportableShortPseudonymItem>>& source) {
   // Sort SPs to make them easier to find in the UI
-  std::ranges::sort(source, {}, [](const auto& item) { return item->getDescription(); });
+  sort(source, {}, [](const auto& item) { return item->getDescription(); });
   dest.append_range(source);
 }
 
@@ -56,7 +58,7 @@ void ExportWidget::WriteParticipantData(const QList<std::shared_ptr<ExportableIt
     if (expandDetails && expander) {
       (*expander)(table, cellContent);
       assert(!table.empty());
-      assert(std::ranges::none_of(table, &ExportDataRow::empty));
+      assert(none_of(table, &ExportDataRow::empty));
     }
     else {
       auto& row = table.emplace_back();
@@ -244,7 +246,7 @@ void ExportWidget::onItemChanged(QListWidgetItem* item) {
 void ExportWidget::updateSelectionState() {
   auto selected = getSelectedItems();
   ui_->exportButton->setEnabled(!selected.empty());
-  ui_->expandDetailsCheckBox->setEnabled(std::ranges::any_of(selected,
+  ui_->expandDetailsCheckBox->setEnabled(any_of(selected,
     [](const std::shared_ptr<ExportableItem>& item) { return item->getDetailExpander().has_value(); }));
 }
 
@@ -337,7 +339,7 @@ rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipa
   pep::EnumerateAndRetrieveData2Opts opts;
   opts.groups = { "*" };
   opts.columns = { "StudyContexts" };
-  opts.columns.append_range(items | std::views::transform([](const auto& item) { return item->getSourceColumnName(); }));
+  opts.columns.append_range(items | views::transform([](const auto& item) { return item->getSourceColumnName(); }));
 
   using ParticipantData = std::map<std::string, std::string>;
   return pepClient_->enumerateAndRetrieveData2(opts) // Get study contexts, plus values for all requested columns

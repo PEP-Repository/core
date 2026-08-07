@@ -24,6 +24,7 @@
 
 using namespace pep;
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 
@@ -215,7 +216,7 @@ std::vector<DownloadDirectory::NonPristineEntry> DownloadDirectory::getNonPristi
   // Check entries that shouldn't be there
   // TODO: report Progress for this?
   auto unknown = this->getUnknownContents(dirs, files);
-  result.append_range(unknown | std::views::transform([](const std::filesystem::path& path) {
+  result.append_range(unknown | views::transform([](const std::filesystem::path& path) {
     return NonPristineEntry{ std::nullopt, path };
     }));
 
@@ -273,8 +274,8 @@ filesystem::SetOfExistingPaths DownloadDirectory::getUnknownContents(const files
 std::vector<RecordDescriptor> DownloadDirectory::getRecords(const std::function<bool(const RecordDescriptor&)>& match) const {
   auto pristine = metadata_.getRecords(); // TODO: don't rely on pristine data here
   auto result = pristine
-    | std::views::transform(&RecordState::descriptor)
-    | std::ranges::to<std::vector>();
+    | views::transform(&RecordState::descriptor)
+    | to<std::vector>();
   std::erase_if(result, [&match](const RecordDescriptor& candidate) {return !match(candidate); });
 
   return result;

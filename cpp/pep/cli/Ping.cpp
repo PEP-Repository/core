@@ -9,6 +9,7 @@
 #include <rxcpp/operators/rx-map.hpp>
 
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 
@@ -57,10 +58,10 @@ protected:
     auto traits = pep::ServerTraits::All();
 
     auto serverIds = traits
-      | std::views::transform(&pep::ServerTraits::commandLineId)
-      | std::ranges::to<std::vector>();
+      | views::transform(&pep::ServerTraits::commandLineId)
+      | to<std::vector>();
     // Sort by command line ID: produces nicely sorted child commands
-    std::ranges::sort(serverIds);
+    sort(serverIds);
 
     return ChildCommandOf<CliApplication>::getSupportedParameters()
       + pep::commandline::Parameter("server", "Server to ping").value(pep::commandline::Value<std::string>().required().allow(serverIds))

@@ -3,6 +3,8 @@
 
 #include <ranges>
 
+using namespace std::ranges;
+
 namespace pep {
 
 void Serializer<std::shared_ptr<CastorStorageDefinition>>::moveIntoProtocolBuffer(proto::CastorStorageDefinition& dest, std::shared_ptr<CastorStorageDefinition> value) const {
@@ -154,7 +156,7 @@ AssessorDefinition Serializer<AssessorDefinition>::fromProtocolBuffer(proto::Ass
   AssessorDefinition result;
   result.id = source.id();
   result.name = std::move(*source.mutable_name());
-  result.studyContexts = *source.mutable_study_contexts() | std::views::as_rvalue | std::ranges::to<std::vector>();
+  result.studyContexts = *source.mutable_study_contexts() | views::as_rvalue | to<std::vector>();
   return result;
 }
 

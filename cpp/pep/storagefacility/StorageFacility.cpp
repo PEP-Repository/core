@@ -38,6 +38,7 @@
 #include <prometheus/counter.h>
 
 using namespace std::chrono_literals;
+using namespace std::ranges;
 
 namespace pep {
 
@@ -340,8 +341,8 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   // Look-up table to check whether to include column
   auto includeColumn = request.columns
     ? request.columns->indices
-        | std::views::transform([&ticket](uint32_t idx) { return ticket.columns.at(idx); })
-        | std::ranges::to<std::vector>()
+        | views::transform([&ticket](uint32_t idx) { return ticket.columns.at(idx); })
+        | to<std::vector>()
     : ticket.columns;
 
   // Create column-to-ticket-column-index look-up-table
@@ -856,8 +857,8 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
 
   // Fill a vector with indices of pseudonyms that we want/need decrypted
   auto pseudIndices = request->entries
-    | std::views::transform(&DataStoreEntry2::pseudonymIndex)
-    | std::ranges::to<std::vector>();
+    | views::transform(&DataStoreEntry2::pseudonymIndex)
+    | to<std::vector>();
 
   // Decrypt pseudonyms.
   auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, &pseudIndices);
@@ -995,8 +996,8 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   // Look-up table to check whether to include column
   auto includeColumn = request.columns
     ? request.columns->indices
-        | std::views::transform([&ticket](uint32_t idx) { return ticket.columns.at(idx); })
-        | std::ranges::to<std::vector>()
+        | views::transform([&ticket](uint32_t idx) { return ticket.columns.at(idx); })
+        | to<std::vector>()
     : ticket.columns;
 
   // Create column-to-ticket-column-index look-up-table
@@ -1089,7 +1090,7 @@ messaging::MessageBatches StorageFacility::handlePagePathRequest(std::shared_ptr
 
     while (i != end) {
       PagePathResponse chunk;
-      FillToCapacity(std::inserter(chunk.paths, chunk.paths.end()), messaging::NetMessageCapacity, std::ranges::subrange{ i, end });
+      FillToCapacity(std::inserter(chunk.paths, chunk.paths.end()), messaging::NetMessageCapacity, subrange{ i, end });
       if (chunk.paths.size() == 0U) {
         throw std::runtime_error("Could not create network-portable set of page paths");
       }

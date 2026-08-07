@@ -2,6 +2,8 @@
 
 #include <ranges>
 
+using namespace std::ranges;
+
 namespace pep {
 
 MetricsResponse Serializer<MetricsResponse>::fromProtocolBuffer(proto::MetricsResponse&& source) const {
@@ -16,7 +18,7 @@ void Serializer<MetricsResponse>::moveIntoProtocolBuffer(proto::MetricsResponse&
 
 ChecksumChainNamesResponse Serializer<ChecksumChainNamesResponse>::fromProtocolBuffer(proto::ChecksumChainNamesResponse&& source) const {
   ChecksumChainNamesResponse result;
-  result.names = *source.mutable_names() | std::views::as_rvalue | std::ranges::to<std::vector>();
+  result.names = *source.mutable_names() | views::as_rvalue | to<std::vector>();
   return result;
 }
 

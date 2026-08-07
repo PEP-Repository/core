@@ -4,6 +4,8 @@
 #include <pep/networking/Server.hpp>
 #include <pep/utils/Log.hpp>
 
+using namespace std::ranges;
+
 namespace pep::messaging {
 
 namespace {
@@ -121,7 +123,7 @@ void Node::vetConnectionWith(const std::string& description, const std::string& 
 }
 
 void Node::handleConnectionEstablishing(std::shared_ptr<Connection> connection, const LifeCycler::StatusChange& change) {
-  auto existing = std::ranges::find_if(existingConnections_, [connection](const ExistingConnection& candidate) {
+  auto existing = find_if(existingConnections_, [connection](const ExistingConnection& candidate) {
     return candidate.own == connection;
     });
   if (existing == existingConnections_.end()) {
@@ -199,7 +201,7 @@ rxcpp::observable<Connection::Attempt::Result> Node::start() {
 
         std::erase_if(self->existingConnections_, [](const ExistingConnection& candidate) {return candidate.binary.lock() == nullptr; });
         auto binaryConnection = *binaryResult;
-        if (std::ranges::any_of(self->existingConnections_, [binaryConnection](const ExistingConnection& existing) {
+        if (any_of(self->existingConnections_, [binaryConnection](const ExistingConnection& existing) {
           return existing.binary.lock() == binaryConnection;
           })) {
           throw std::runtime_error("Node attempting to create a second messaging connection for a single binary connection");

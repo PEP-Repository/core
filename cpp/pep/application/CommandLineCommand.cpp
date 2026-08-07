@@ -11,6 +11,8 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/format.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 namespace commandline {
 
@@ -44,7 +46,7 @@ int Command::issueCommandLineHelp(const std::optional<std::string>& error) {
     fullSelf = parent.command + ' ' + fullSelf;
   }
 
-  std::ranges::reverse(parents);
+  reverse(parents);
 
   auto parameters = this->getSupportedParameters();
   auto children = this->createChildCommands();
@@ -66,7 +68,7 @@ int Command::issueCommandLineHelp(const std::optional<std::string>& error) {
   auto arguments = parameters.getInvocationSummary();
   if (!children.empty()) {
     char pre = '[', post = ']';
-    if (std::ranges::all_of(children, [](std::shared_ptr<Command> child) {
+    if (all_of(children, [](std::shared_ptr<Command> child) {
       assert(!child->getSupportedParameters().empty()); // Should have at least the --help switch
       return child->hasRequiredArgument(); })) {
       pre = '<';
@@ -249,7 +251,7 @@ int Command::routeToDescendant(CommandPath childPath, NamedValues leafValues, st
   if (childPath.segments.size() > 1U) {
     remaining.segments.assign(childPath.segments.begin() + 1, childPath.segments.end());
   }
-  auto child = std::ranges::find_if(children, [&childName](const std::shared_ptr<Command>& c) {
+  auto child = find_if(children, [&childName](const std::shared_ptr<Command>& c) {
     return c->getName() == childName;
   });
 
@@ -359,14 +361,14 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
   }
 
   // Step 12: Optionally dispatch to child command
-  assert(std::ranges::all_of(children, [this](const std::shared_ptr<Command>& child) { return child->getParentCommand() == this; }));
+  assert(all_of(children, [this](const std::shared_ptr<Command>& child) { return child->getParentCommand() == this; }));
   if (!children.empty()) {
     if (arguments.empty()) {
       return this->issueCommandLineHelp("No command specified.");
     }
     std::string command = arguments.front();
     arguments.pop();
-    auto child = std::ranges::find_if(children, [&command](const std::shared_ptr<Command>& child) {
+    auto child = find_if(children, [&command](const std::shared_ptr<Command>& child) {
       return child->getName() == command;
     });
     if (child == children.cend()) {
@@ -415,7 +417,7 @@ int Command::printAutocompleteInfo(std::queue<std::string>& arguments) {
       // Complete parameter switches
       auto completeParams = parameters.getSwitchesToAutocomplete(lexed);
       // Put required parameters first
-      std::ranges::stable_sort(completeParams, std::greater{}, &Parameter::isRequired);
+      stable_sort(completeParams, std::greater{}, &Parameter::isRequired);
       complete.parameters(completeParams);
     }
   }
@@ -445,7 +447,7 @@ int Command::autocompleteChildCommand(std::queue<std::string>& arguments) {
   else { // We have child commands
     std::string command = arguments.front();
     arguments.pop();
-    auto child = std::ranges::find_if(children, [&command](const std::shared_ptr<Command>& child) {
+    auto child = find_if(children, [&command](const std::shared_ptr<Command>& child) {
       return child->getName() == command && !child->isUndocumented();
     });
     if (child == children.cend()) {

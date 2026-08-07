@@ -5,6 +5,8 @@
 
 #include <boost/algorithm/string/predicate.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 
 UserPseudonymFormat::UserPseudonymFormat(const std::string &prefix, size_t length)
@@ -25,7 +27,7 @@ bool AssessorDefinition::matchesStudyContext(const StudyContext& context) const 
     return context.isDefault();
   }
   auto contextsEnd = studyContexts.cend();
-  return std::ranges::find_if(studyContexts.cbegin(), contextsEnd, [id = context.getId()](const std::string& candidate) { return boost::iequals(candidate, id); }) != contextsEnd;
+  return find_if(studyContexts.cbegin(), contextsEnd, [id = context.getId()](const std::string& candidate) { return boost::iequals(candidate, id); }) != contextsEnd;
 }
 
 size_t UserPseudonymFormat::getTotalLength() const {
@@ -98,7 +100,7 @@ std::optional<size_t> PseudonymFormat::getLength() const {
 
 std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonym(const std::string& column) const noexcept {
   auto end = shortPseudonyms_.cend();
-  auto position = std::ranges::find_if(shortPseudonyms_.cbegin(), end, [column](ShortPseudonymDefinition candidate) {
+  auto position = find_if(shortPseudonyms_.cbegin(), end, [column](ShortPseudonymDefinition candidate) {
     return column == candidate.getColumn().getFullName();
   });
   if (position == end) {
@@ -110,7 +112,7 @@ std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonym(c
 std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonymForValue(const std::string& value) const noexcept {
   // Look up the value in the errata
   auto errataEnd = spErrata_.cend();
-  auto erratum = std::ranges::find_if(spErrata_.cbegin(), errataEnd, [&value](const ShortPseudonymErratum& candidate) { return candidate.value == value; });
+  auto erratum = find_if(spErrata_.cbegin(), errataEnd, [&value](const ShortPseudonymErratum& candidate) { return candidate.value == value; });
   if (erratum != errataEnd) {
     assert(!erratum->column.empty());
     return this->getShortPseudonym(erratum->column);
@@ -118,7 +120,7 @@ std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonymFo
 
   // Look up the value's prefix in the short pseudonym definitions
   auto spsEnd = shortPseudonyms_.cend();
-  auto sp = std::ranges::find_if(shortPseudonyms_.cbegin(), spsEnd, [&value](const ShortPseudonymDefinition& candidate) {return value.starts_with(candidate.getPrefix()); });
+  auto sp = find_if(shortPseudonyms_.cbegin(), spsEnd, [&value](const ShortPseudonymDefinition& candidate) {return value.starts_with(candidate.getPrefix()); });
   if (sp != spsEnd) {
     return *sp;
   }
@@ -130,7 +132,7 @@ std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonymFo
 
 std::optional<ColumnSpecification> GlobalConfiguration::getColumnSpecification(const std::string& column) const noexcept {
   auto end = columnSpecifications_.cend();
-  auto position = std::ranges::find_if(columnSpecifications_.cbegin(), end, [column](ColumnSpecification candidate) {
+  auto position = find_if(columnSpecifications_.cbegin(), end, [column](ColumnSpecification candidate) {
     return column == candidate.getColumn();
   });
   if (position == end) {
@@ -219,8 +221,8 @@ GlobalConfiguration::GlobalConfiguration(
 
 std::vector<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonyms(const std::string& studyContext, const std::optional<uint32_t>& visitNumber) const {
   auto result = shortPseudonyms_
-    | std::views::filter([studyContext, visitNumber](const ShortPseudonymDefinition& candidate) {return candidate.getStudyContext() == studyContext && candidate.getColumn().getVisitNumber() == visitNumber; })
-    | std::ranges::to<std::vector>();
+    | views::filter([studyContext, visitNumber](const ShortPseudonymDefinition& candidate) {return candidate.getStudyContext() == studyContext && candidate.getColumn().getVisitNumber() == visitNumber; })
+    | to<std::vector>();
 
   for (const auto& entry : additionalStickers_) {
     if (entry.studyContext == studyContext && entry.visit == visitNumber) {
@@ -236,9 +238,9 @@ std::vector<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonyms(co
 
 std::vector<std::string> GlobalConfiguration::getVisitAssessorColumns(const pep::StudyContext& context) const {
   auto visits = getNumberOfVisits(context.getIdIfNonDefault());
-  return std::views::iota(1U, visits + 1U)
-    | std::views::transform([&context](uint32_t visit) { return context.getAdministeringAssessorColumnName(visit); })
-    | std::ranges::to<std::vector>();
+  return views::iota(1U, visits + 1U)
+    | views::transform([&context](uint32_t visit) { return context.getAdministeringAssessorColumnName(visit); })
+    | to<std::vector>();
 }
 
 

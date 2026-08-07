@@ -5,11 +5,13 @@
 #include <cassert>
 #include <ranges>
 
+using namespace std::ranges;
+
 namespace pep {
 
 std::string ServerTraits::defaultId() const {
   auto result = description_;
-  result.erase(remove_if(result.begin(), result.end(), isspace), result.end());
+  result.erase(std::remove_if(result.begin(), result.end(), isspace), result.end());
   return result;
 }
 
@@ -158,8 +160,8 @@ std::optional<ServerTraits> ServerTraits::Find(const std::function<bool(const Se
     return *filtered.begin();
   default:
     auto descriptions = filtered
-      | std::views::transform(&ServerTraits::description)
-      | std::ranges::to<std::vector>();
+      | views::transform(&ServerTraits::description)
+      | to<std::vector>();
     throw std::runtime_error("Multiple server traits match the predicate: " + boost::join(descriptions, " and "));
   }
 }

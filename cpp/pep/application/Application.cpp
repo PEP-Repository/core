@@ -24,6 +24,8 @@
 #include <unistd.h>
 #endif
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
@@ -272,7 +274,7 @@ int Application::run(int argc, char* argv[]) { //NOLINT(modernize-avoid-c-arrays
   }
 
   std::queue<std::string> args;
-  std::ranges::for_each(argv + 1, argv + argc, [&args](const char* arg) {args.push(arg); });
+  for_each(argv + 1, argv + argc, [&args](const char* arg) {args.push(arg); });
 
   argc_ = argc;
   argv_ = argv;
@@ -362,8 +364,8 @@ class MainFunctionArguments {
      }
 
      argv_ = argStrings_
-       | std::views::transform([](std::string& argString) { return argString.data(); })
-       | std::ranges::to<std::vector>();
+       | views::transform([](std::string& argString) { return argString.data(); })
+       | to<std::vector>();
 
      argv_.emplace_back(nullptr); // C++ standard requires that "The value of argv[argc] shall be 0": see https://timsong-cpp.github.io/cppwp/basic.start.main
    }

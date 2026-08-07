@@ -4,6 +4,8 @@
 
 #include <ranges>
 
+using namespace std::ranges;
+
 namespace pep {
 
 PEPIdRegistrationResponse Serializer<PEPIdRegistrationResponse>::fromProtocolBuffer(proto::PEPIdRegistrationResponse&& source) const {
@@ -45,7 +47,7 @@ void Serializer<ListCastorImportColumnsRequest>::moveIntoProtocolBuffer(proto::L
 
 ListCastorImportColumnsResponse Serializer<ListCastorImportColumnsResponse>::fromProtocolBuffer(proto::ListCastorImportColumnsResponse&& source) const {
   ListCastorImportColumnsResponse result;
-  result.importColumns = *source.mutable_import_columns() | std::views::as_rvalue | std::ranges::to<std::vector>();
+  result.importColumns = *source.mutable_import_columns() | views::as_rvalue | to<std::vector>();
   return result;
 }
 

@@ -32,6 +32,7 @@
 using namespace pep::enumUtils;
 using namespace pep::cli;
 using namespace std::chrono_literals;
+using namespace std::ranges;
 namespace so = pep::structuredOutput;
 namespace fs = std::filesystem;
 
@@ -255,14 +256,14 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
       .map([ctx](const auto &access) {
       const pep::ParticipantGroupAccess &pga = std::get<0>(access);
       ctx->content.groups.append_range(pga.participantGroups
-        | std::views::filter([](const auto& pgWithModes) { return std::ranges::contains(pgWithModes.second, "access"); })
-        | std::views::keys);
+        | views::filter([](const auto& pgWithModes) { return contains(pgWithModes.second, "access"); })
+        | views::keys);
 
       const pep::ColumnAccess &ca = std::get<1>(access);
-      assert(std::ranges::all_of(std::views::values(ca.columnGroups), [](const auto& cgProps) {
-        return std::ranges::contains(cgProps.modes, "read");
+      assert(all_of(views::values(ca.columnGroups), [](const auto& cgProps) {
+        return contains(cgProps.modes, "read");
       }));
-      ctx->content.columnGroups.append_range(std::views::keys(ca.columnGroups));
+      ctx->content.columnGroups.append_range(views::keys(ca.columnGroups));
       if (ctx->content.groups.empty()) {
         PEP_LOG(LogTag, pep::Severity::Warning) << "No accessible participants - download will contain no data";
       }
@@ -328,7 +329,7 @@ std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr
         lines.reserve(nonpristine.size() + 1);
         lines.emplace_back("Data in output directory " + ctx->outputDirectory + " has changed since last download. Specify --force to discard local changes and update to server version.");
 
-        lines.append_range(nonpristine | std::views::transform([](const pep::cli::DownloadDirectory::NonPristineEntry& entry) {
+        lines.append_range(nonpristine | views::transform([](const pep::cli::DownloadDirectory::NonPristineEntry& entry) {
           if (!entry.path.has_value()) {
             assert(entry.record.has_value());
             return "Absent file for participant " + entry.record->getParticipant().getLocalPseudonym().text() + ", column " + entry.record->getColumn();

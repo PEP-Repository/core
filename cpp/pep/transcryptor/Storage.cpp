@@ -792,7 +792,7 @@ std::vector<std::string> TranscryptorStorage::getChecksumChainNames() {
 
 int64_t TranscryptorStorage::getOrCreateModeSet(
     std::vector<std::string> modes) {
-  std::ranges::sort(modes);
+  sort(modes);
   Sha256 hash;
   for (const auto& mode : modes) {
     hash.update(PackUint64BE(mode.size()));
@@ -819,7 +819,7 @@ int64_t TranscryptorStorage::getOrCreateModeSet(
 
 int64_t TranscryptorStorage::getOrCreateColumnSet(
     std::vector<std::string> cols) {
-  std::ranges::sort(cols);
+  sort(cols);
   Sha256 hash;
   for (const auto& col : cols) {
     hash.update(PackUint64BE(col.size()));

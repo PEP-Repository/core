@@ -7,6 +7,8 @@
 
 #include <ranges>
 
+using namespace std::ranges;
+
 namespace pep {
 
 DataEnumerationRequest2 Serializer<DataEnumerationRequest2>::fromProtocolBuffer(proto::DataEnumerationRequest2&& source) const {
@@ -65,7 +67,7 @@ void Serializer<DataEnumerationResponse2>::moveIntoProtocolBuffer(proto::DataEnu
 MetadataReadRequest2 Serializer<MetadataReadRequest2>::fromProtocolBuffer(proto::MetadataReadRequest2&& source) const {
   MetadataReadRequest2 result;
   result.ticket = Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket()));
-  result.ids = *source.mutable_ids() | std::views::as_rvalue | std::ranges::to<std::vector>();
+  result.ids = *source.mutable_ids() | views::as_rvalue | to<std::vector>();
   return result;
 }
 
@@ -79,7 +81,7 @@ void Serializer<MetadataReadRequest2>::moveIntoProtocolBuffer(proto::MetadataRea
 DataReadRequest2 Serializer<DataReadRequest2>::fromProtocolBuffer(proto::DataReadRequest2&& source) const {
   DataReadRequest2 result;
   result.ticket = Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket()));
-  result.ids = *source.mutable_ids() | std::views::as_rvalue | std::ranges::to<std::vector>();
+  result.ids = *source.mutable_ids() | views::as_rvalue | to<std::vector>();
   return result;
 }
 
@@ -105,7 +107,7 @@ void Serializer<MetadataUpdateRequest2>::moveIntoProtocolBuffer(proto::MetadataU
 
 MetadataUpdateResponse2 Serializer<MetadataUpdateResponse2>::fromProtocolBuffer(proto::MetadataUpdateResponse2&& source) const {
   MetadataUpdateResponse2 result;
-  result.ids = *source.mutable_ids() | std::views::as_rvalue | std::ranges::to<std::vector>();
+  result.ids = *source.mutable_ids() | views::as_rvalue | to<std::vector>();
   return result;
 }
 
@@ -117,7 +119,7 @@ void Serializer<MetadataUpdateResponse2>::moveIntoProtocolBuffer(proto::Metadata
 
 DataStoreResponse2 Serializer<DataStoreResponse2>::fromProtocolBuffer(proto::DataStoreResponse2&& source) const {
   DataStoreResponse2 result;
-  result.ids = *source.mutable_ids() | std::views::as_rvalue | std::ranges::to<std::vector>();
+  result.ids = *source.mutable_ids() | views::as_rvalue | to<std::vector>();
   result.hash = source.hash();
   return result;
 }

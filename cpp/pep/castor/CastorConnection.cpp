@@ -14,6 +14,8 @@
 
 #include <boost/property_tree/ptree.hpp>
 
+using namespace std::ranges;
+
 namespace pep::castor {
 
 namespace {
@@ -29,8 +31,8 @@ namespace {
 std::vector<std::shared_ptr<boost::property_tree::ptree>> CreateSharedChildTrees(JsonPtr parent, const std::string& embeddedItemsNodeName) {
   const auto& children = GetFromPtree<boost::property_tree::ptree>(*parent, "_embedded." + embeddedItemsNodeName);
   return children
-    | std::views::transform([](const auto& item) {return std::make_shared<boost::property_tree::ptree>(item.second); })
-    | std::ranges::to<std::vector>();
+    | views::transform([](const auto& item) {return std::make_shared<boost::property_tree::ptree>(item.second); })
+    | to<std::vector>();
 }
 
 }

@@ -43,6 +43,7 @@
 #include <Windows.h>
 #endif /*_WIN32*/
 
+using namespace std::ranges;
 
 namespace {
 
@@ -384,7 +385,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
     type = "stop";
   }
   else {
-    std::ranges::transform(serial, serial.begin(), ::toupper);
+    transform(serial, serial.begin(), ::toupper);
     type = "start";
   }
 
@@ -415,10 +416,10 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
 std::vector<pep::ShortPseudonymDefinition> ParticipantWidget::getPrintableShortPseudonyms(const std::optional<unsigned int>& visit) const {
   auto all = globalConfig_.getShortPseudonyms(studyContext_.getIdIfNonDefault(), visit);
   return all
-    | std::views::filter([](const pep::ShortPseudonymDefinition& entry) {
+    | views::filter([](const pep::ShortPseudonymDefinition& entry) {
       return entry.getStickers() > 0;
     })
-    | std::ranges::to<std::vector>();
+    | to<std::vector>();
 }
 
 void ParticipantWidget::updateVisitAssessor(QString id) {
@@ -867,7 +868,7 @@ void ParticipantWidget::processData() {
     auto current = history.getCurrent();
     widget->setDeviceId(current ? QString::fromStdString(current->serial) : QString());
 
-    auto historyWidget = std::ranges::find_if(deviceHistoryWidgets_, [&columnName](DeviceHistoryWidget *candidate) {return candidate->getColumnName() == columnName; });
+    auto historyWidget = find_if(deviceHistoryWidgets_, [&columnName](DeviceHistoryWidget *candidate) {return candidate->getColumnName() == columnName; });
     (*historyWidget)->setHistory(history);
 
     if (studyContext_.matches(globalConfig_.getDevices()[i].studyContext)) {
@@ -1316,7 +1317,7 @@ ParticipantWidget::~ParticipantWidget() {
 
 const pep::ShortPseudonymDefinition *ParticipantDataAggregator::getShortPseudonymDefinition(const std::string& shortPseudonymTag) const {
   const auto& spDefinitions = globalConfig_.getShortPseudonyms();
-  auto position = std::ranges::find_if(std::begin(spDefinitions), std::end(spDefinitions), [shortPseudonymTag](pep::ShortPseudonymDefinition definition) {
+  auto position = find_if(std::begin(spDefinitions), std::end(spDefinitions), [shortPseudonymTag](pep::ShortPseudonymDefinition definition) {
     return definition.getColumn().getFullName() == shortPseudonymTag;
   });
   if (position == std::end(spDefinitions)) {
@@ -1398,12 +1399,12 @@ bool ParticipantDataAggregator::isVisitAssessorColumn(const std::string& columnN
 bool ParticipantDataAggregator::isDeviceHistoryColumn(const std::string& columnName) const {
   const auto& devices = globalConfig_.getDevices();
   auto end = devices.cend();
-  return std::ranges::find_if(devices.cbegin(), end, [&columnName](const pep::DeviceRegistrationDefinition& definition) {return definition.columnName == columnName; }) != end;
+  return find_if(devices.cbegin(), end, [&columnName](const pep::DeviceRegistrationDefinition& definition) {return definition.columnName == columnName; }) != end;
 }
 
 ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept
   : globalConfig_(globalConfig), participantIdentifierIsSet_(false) {
-  unfilledShortPseudonyms_.append_range(globalConfig_.getShortPseudonyms() | std::views::transform([](const pep::ShortPseudonymDefinition& definition) {return &definition; }));
+  unfilledShortPseudonyms_.append_range(globalConfig_.getShortPseudonyms() | views::transform([](const pep::ShortPseudonymDefinition& definition) {return &definition; }));
 }
 
 void ParticipantDataAggregator::process(const pep::EnumerateAndRetrieveResult& result) {

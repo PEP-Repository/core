@@ -28,6 +28,7 @@
 #include <unordered_set>
 
 using std::chrono::milliseconds;
+using namespace std::ranges;
 
 namespace pep {
 
@@ -676,7 +677,7 @@ const std::unordered_map<std::string, decltype(&ComputeChecksumImpl<SelectStarPs
 }
 
 std::vector<std::string> AccessManager::Backend::Storage::getChecksumChainNames() {
-  return std::views::keys(computeChecksumImpls) | std::ranges::to<std::vector>();
+  return views::keys(computeChecksumImpls) | to<std::vector>();
 }
 
 void AccessManager::Backend::Storage::computeChecksum(const std::string& chain,
@@ -688,7 +689,7 @@ void AccessManager::Backend::Storage::computeChecksum(const std::string& chain,
 }
 
 std::vector<PolymorphicPseudonym> AccessManager::Backend::Storage::getPPs() {
-  return {std::from_range, std::views::values(lpToPpMap_)};
+  return {std::from_range, views::values(lpToPpMap_)};
 }
 
 std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> AccessManager::Backend::Storage::getPpGroups(std::span<const std::string> participantGroups) {
@@ -818,7 +819,7 @@ void AccessManager::Backend::Storage::removeParticipantGroup(const std::string& 
 /* Core operations on ParticipantGroupParticipants */
 bool AccessManager::Backend::Storage::hasParticipantInGroup(const LocalPseudonym& localPseudonym, const std::string& participantGroup) {
   return implementor_->currentRecordExists<ParticipantGroupParticipantRecord>(
-    c(&ParticipantGroupParticipantRecord::localPseudonym) == std::ranges::to<std::vector>(localPseudonym.pack())
+    c(&ParticipantGroupParticipantRecord::localPseudonym) == to<std::vector>(localPseudonym.pack())
     && c(&ParticipantGroupParticipantRecord::participantGroup) == participantGroup);
 }
 
@@ -1484,7 +1485,7 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const
     const auto vector = to<std::vector>(std::forward<decltype(range)>(range));
     if (vector.empty()) { return std::nullopt; }
 
-    const auto allEqual = std::ranges::equal(++vector.begin(), vector.end(), vector.begin(), vector.end() - 1); // compares adjacent elements
+    const auto allEqual = equal(++vector.begin(), vector.end(), vector.begin(), vector.end() - 1); // compares adjacent elements
     if (!allEqual) { throw Error{"Failed to resolve to a unique internal user id: found multiple matching users"}; }
 
     return vector.front();
@@ -1506,7 +1507,7 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const
 }
 
 std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifiersForUser(int64_t internalUserId, Timestamp at) const {
-  return std::ranges::to<std::unordered_set>(
+  return to<std::unordered_set>(
     implementor_->getCurrentRecords(
       c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
       && c(&UserIdRecord::internalUserId) == internalUserId,
@@ -2080,7 +2081,7 @@ void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataT
   }
 
   const auto keys = getStructureMetadataKeys(TimeNow(), subjectType, subject);
-  if (!std::ranges::contains(keys, key)) {
+  if (!contains(keys, key)) {
     std::ostringstream msg;
     msg << Logging::Escape(subject) << " does not exist or does not contain metadata key "
         << Logging::Escape(key.toString());
@@ -2099,7 +2100,7 @@ void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataT
   assert(HasInternalId(subjectType));
   const auto keys = getStructureMetadataKeys(TimeNow(), subjectType, internalSubjectId);
 
-  if (!std::ranges::contains(keys, key)) {
+  if (!contains(keys, key)) {
     std::ostringstream msg;
     msg << "subject does not exist or does not contain metadata key "
         << Logging::Escape(key.toString());

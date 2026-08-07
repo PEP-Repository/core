@@ -4,13 +4,15 @@
 #include <ranges>
 #include <utility>
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
 
 void AppendAndSquashVector(std::vector<AmaQRColumnGroup>& destination, const std::vector<AmaQRColumnGroup>& source) {
   for (auto& sourceGroup : source) {
-    auto found = std::ranges::find(destination, sourceGroup.name, &AmaQRColumnGroup::name);
+    auto found = find(destination, sourceGroup.name, &AmaQRColumnGroup::name);
     if (found != destination.end()) {
       // The group already exists in the destination. Add the columns_ of the sourceGroup to this destinationGroup.
       found->columns.append_range(sourceGroup.columns);
@@ -97,10 +99,10 @@ rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaRemoveParticipantsFromGroup(const std::string& group, const std::vector<PolymorphicPseudonym>& participants) const {
   AmaMutationRequest request;
   request.removeParticipantFromGroup = participants
-    | std::views::transform([&group](const PolymorphicPseudonym& pp) {
+    | views::transform([&group](const PolymorphicPseudonym& pp) {
       return AmaRemoveParticipantFromGroup(group, pp);
       })
-    | std::ranges::to<std::vector>();
+    | to<std::vector>();
   return requestAmaMutation(std::move(request));
 }
 

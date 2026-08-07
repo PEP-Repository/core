@@ -6,6 +6,8 @@
 
 #include <boost/property_tree/json_parser.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 
 ParticipantDeviceRecord ParticipantDeviceRecord::Deserialize(const boost::property_tree::ptree& source) {
@@ -55,7 +57,7 @@ bool ParticipantDeviceHistory::isValid(std::string* invalidReason) const {
 
 ParticipantDeviceHistory::ParticipantDeviceHistory(const std::vector<ParticipantDeviceRecord>& records, bool throwIfInvalid)
   : records_(records) {
-  std::ranges::sort(records_);
+  sort(records_);
   const ParticipantDeviceRecord *active = nullptr;
   std::optional<Timestamp> lastTimestamp;
   for (auto i = begin(); i != end(); ++i) {
@@ -101,9 +103,9 @@ ParticipantDeviceHistory ParticipantDeviceHistory::Parse(const std::string& json
   boost::property_tree::read_json(source, root);
   const auto& entries = root.get_child("entries");
 
-  auto records = std::views::values(entries)
-    | std::views::transform(&ParticipantDeviceRecord::Deserialize)
-    | std::ranges::to<std::vector>();
+  auto records = views::values(entries)
+    | views::transform(&ParticipantDeviceRecord::Deserialize)
+    | to<std::vector>();
 
   return ParticipantDeviceHistory(records, throwIfInvalid);
 }

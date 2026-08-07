@@ -143,20 +143,21 @@ Derived ValueSpecificationTemplate<Derived, T>::enableFlag(bool ValueSpecificati
 
 template <typename Derived, typename T>
 std::vector<std::string> ValueSpecificationTemplate<Derived, T>::getSuggested() const noexcept {
+  using namespace std::ranges;
   std::vector<std::string> result;
   if (default_) {
     result.emplace_back(detail::Format<T>()(*default_));
   }
   for (const auto& v : suggested_) {
     std::string s = detail::Format<T>()(v);
-    if (!std::ranges::contains(result, s)) {
+    if (!contains(result, s)) {
       result.emplace_back(s);
     }
   }
   if (allowed_) {
     for (const auto& v : *allowed_) {
       std::string s = detail::Format<T>()(v);
-      if (!std::ranges::contains(result, s)) {
+      if (!contains(result, s)) {
         result.emplace_back(s);
       }
     }

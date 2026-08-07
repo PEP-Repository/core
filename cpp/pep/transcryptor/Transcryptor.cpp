@@ -28,6 +28,8 @@
 #include <chrono>
 #include <numeric>
 
+using namespace std::ranges;
+
 namespace pep {
 
 const std::string LogTag ("Transcryptor");
@@ -279,8 +281,8 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       [](std::shared_ptr<Results> results, std::shared_ptr<Batch> batch) {
         results->responseEntries.reserve(results->responseEntries.size() + batch->results.responseEntries.size());
         results->localPseudonyms.reserve(results->localPseudonyms.size() + batch->results.localPseudonyms.size());
-        std::ranges::copy(batch->results.responseEntries, std::back_insert_iterator(results->responseEntries));
-        std::ranges::copy(batch->results.localPseudonyms, std::back_insert_iterator(results->localPseudonyms));
+        copy(batch->results.responseEntries, std::back_insert_iterator(results->responseEntries));
+        copy(batch->results.localPseudonyms, std::back_insert_iterator(results->localPseudonyms));
         return results;
       })
     .map([server, ctx, start_time](std::shared_ptr<Results> results) {

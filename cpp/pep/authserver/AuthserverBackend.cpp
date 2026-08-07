@@ -16,6 +16,8 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-take.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
@@ -126,8 +128,8 @@ AuthserverBackend::AuthserverBackend(const Parameters &params)
 
 std::vector<std::string> AuthserverBackend::getChecksumChainNames() const {
   return checksumNameMappings
-    | std::views::keys
-    | std::ranges::to<std::vector>();
+    | views::keys
+    | to<std::vector>();
 }
 
 rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainRequest(ChecksumChainRequest request) {

@@ -23,6 +23,7 @@
 #include <filesystem>
 
 using namespace pep::cli;
+using namespace std::ranges;
 namespace pt = boost::property_tree;
 
 namespace {
@@ -131,7 +132,7 @@ private:
       columns.reserve(ptree.size());
       size_t startSize = columns.size();
       for (const auto& entry : ptree) {
-        if (!std::ranges::contains(columns, entry.first)) {
+        if (!contains(columns, entry.first)) {
           columns.push_back(entry.first);
         }
       }
@@ -294,7 +295,7 @@ private:
               [[maybe_unused]] auto emplaced = config->existing.emplace(column.name);
               assert(emplaced.second);
             }
-            const auto& castorGroup = std::ranges::find_if(response.columnGroups, [](const pep::AmaQRColumnGroup& group) {return group.name == "Castor"; });
+            const auto& castorGroup = find_if(response.columnGroups, [](const pep::AmaQRColumnGroup& group) {return group.name == "Castor"; });
             if (castorGroup != response.columnGroups.cend()) {
               for (const auto& column : castorGroup->columns) {
                 [[maybe_unused]] auto emplaced = config->grouped.emplace(column);
@@ -436,7 +437,7 @@ private:
     private:
       static pep::FakeVoid ReportColumnNameMappings(const pep::ColumnNameMappings& mappings) {
         auto entries = mappings.getEntries();
-        std::ranges::sort(entries, [](const pep::ColumnNameMapping& lhs, const pep::ColumnNameMapping& rhs) { return lhs.original.getValue() < rhs.original.getValue(); });
+        sort(entries, [](const pep::ColumnNameMapping& lhs, const pep::ColumnNameMapping& rhs) { return lhs.original.getValue() < rhs.original.getValue(); });
         for (const auto& entry : entries) {
           std::cout << std::quoted(entry.original.getValue()) << " --> " << std::quoted(entry.mapped.getValue()) << std::endl;
         }

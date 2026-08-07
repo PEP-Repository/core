@@ -141,7 +141,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
               }
 
               pseudIdxs.insert_range(ctx->requestTicketOpts->pps
-                | std::views::transform([&lut](const PolymorphicPseudonym& pp) { return lut.at(pp); }));
+                | views::transform([&lut](const PolymorphicPseudonym& pp) { return lut.at(pp); }));
             }
             if (!ctx->requestTicketOpts->columns.empty()) {
               auto ticketCols = indexedTicket.getColumns();
@@ -152,10 +152,10 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
               }
 
               colIdxs.insert_range(ctx->requestTicketOpts->columns
-                | std::views::transform([&lut](const std::string& col) { return lut.at(col); }));
+                | views::transform([&lut](const std::string& col) { return lut.at(col); }));
             }
-            enumRequest.pseudonyms = IndexList(pseudIdxs | std::ranges::to<std::vector>());
-            enumRequest.columns = IndexList(colIdxs | std::ranges::to<std::vector>());
+            enumRequest.pseudonyms = IndexList(pseudIdxs | to<std::vector>());
+            enumRequest.columns = IndexList(colIdxs | to<std::vector>());
           }
 
           return getStorageFacilityProxy(true)->requestDataEnumeration(std::move(enumRequest))

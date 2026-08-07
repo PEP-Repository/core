@@ -29,6 +29,8 @@
 #error "Non-Windows build need native boost logging functionality"
 #endif
 
+using namespace std::ranges;
+
 namespace pep {
 
 const Severity Logging::compiledMinimumSeverity = Severity::PEP_COMPILED_MIN_LOG_SEVERITY;
@@ -99,7 +101,7 @@ std::string FormatThreadName() {
 Severity Logging::ParseSeverity(const std::string& level) {
   auto names = GetSeverityLevelNames();
   auto end = names.cend();
-  auto position = std::ranges::find_if(names.cbegin(), end, [&level](const std::pair<const Severity, std::string>& candidate) {return candidate.second == level; });
+  auto position = find_if(names.cbegin(), end, [&level](const std::pair<const Severity, std::string>& candidate) {return candidate.second == level; });
   if (position == end) {
     throw std::runtime_error("Invalid severity level " + level);
   }
@@ -117,8 +119,8 @@ std::string Logging::FormatSeverity(Severity level) {
 
 std::vector<std::string> Logging::SeverityNames() {
   return GetSeverityLevelNames()
-    | std::views::values
-    | std::ranges::to<std::vector>();
+    | views::values
+    | to<std::vector>();
 }
 
 Logging::pep_severity_channel_logger& Logging::GetLogger() {

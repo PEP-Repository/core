@@ -7,6 +7,8 @@
 
 #include <ranges>
 
+using namespace std::ranges;
+
 namespace pep::structuredOutput {
 namespace {
 
@@ -28,7 +30,7 @@ Tree TreeFrom(const pep::AmaQueryResponse& res, const QueryDisplayConfig<AmaQuer
   // Build columns array
   if (printColumns) {
     root.emplace(GetKeyName(queryKeys::columns, useDescriptive),
-                 res.columns | std::views::transform(&AmaQRColumn::name) | std::ranges::to<std::vector>());
+                 res.columns | views::transform(&AmaQRColumn::name) | to<std::vector>());
   }
 
   // Build column groups array
@@ -69,7 +71,7 @@ Tree TreeFrom(const pep::AmaQueryResponse& res, const QueryDisplayConfig<AmaQuer
   // Build participant groups array
   if (printParticipantGroups) {
     root.emplace(GetKeyName(queryKeys::participantGroups, useDescriptive),
-                 res.participantGroups | std::views::transform(&AmaQRParticipantGroup::name) | std::ranges::to<std::vector>());
+                 res.participantGroups | views::transform(&AmaQRParticipantGroup::name) | to<std::vector>());
   }
 
   // Build participant group access rules

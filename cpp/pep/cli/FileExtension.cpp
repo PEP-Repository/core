@@ -27,6 +27,7 @@
 #include <utility>
 
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 
@@ -98,8 +99,8 @@ protected:
           std::set<std::string> result;
           for (const auto& group : access.participantGroups) {
             const auto& modes = group.second;
-            if (std::ranges::contains(modes, "access")
-              && std::ranges::contains(modes, "enumerate")) {
+            if (contains(modes, "access")
+              && contains(modes, "enumerate")) {
               result.emplace(group.first);
             }
           }
@@ -139,8 +140,8 @@ protected:
       }
       else {
         columns = position->second.columns.indices
-          | std::views::transform([&access](uint32_t index) { return access->columns[index]; })
-          | std::ranges::to<std::vector>();
+          | views::transform([&access](uint32_t index) { return access->columns[index]; })
+          | to<std::vector>();
       }
       return pep::RxIterate(std::move(columns));
         });
@@ -410,8 +411,8 @@ protected:
           ticketRequest.pps = *pps;
 
           ticketRequest.columns = *columnExtensions
-            | std::views::keys
-            | std::ranges::to<std::vector>();
+            | views::keys
+            | to<std::vector>();
 
           return client->requestTicket2(ticketRequest)
             .flat_map([client](const pep::IndexedTicket2& ticket) {return client->enumerateData(ticket.getTicket()); })
@@ -504,7 +505,7 @@ protected:
       return rxcpp::observable<>::just(true);
     }
 
-    auto storeEntries = updates | std::views::transform([verbose = this->getParameterValues().has("verbose")](const Update& update) {
+    auto storeEntries = updates | views::transform([verbose = this->getParameterValues().has("verbose")](const Update& update) {
       if (verbose) {
         const auto& previous = update.getPreviousExtension();
         if (previous.has_value()) {
@@ -519,7 +520,7 @@ protected:
       }
       return update.getStoreEntry();
       })
-      | std::ranges::to<std::vector>();
+      | to<std::vector>();
     std::cout.flush();
 
     return client->updateMetadata2(storeEntries)
@@ -739,8 +740,8 @@ protected:
         opts.columns = MultiCellQuery::GetColumns(vm);
 
         opts.pps = *specs
-          | std::views::keys
-          | std::ranges::to<std::vector>();
+          | views::keys
+          | to<std::vector>();
 
         return client->requestTicket2(opts)
           .flat_map([client](pep::IndexedTicket2 indexed) {

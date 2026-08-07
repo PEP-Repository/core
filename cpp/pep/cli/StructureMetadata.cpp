@@ -17,6 +17,7 @@
 using namespace pep;
 using namespace pep::cli;
 using namespace std::string_literals;
+using namespace std::ranges;
 
 namespace {
 
@@ -75,7 +76,7 @@ protected:
     return ChildCommandOf::getSupportedParameters()
         + commandline::Parameter("type", "The structure type to alter metadata for")
         .value(commandline::Value<std::string>().positional().required()
-          .allow(std::views::keys(MetadataTypeMapping)));
+          .allow(views::keys(MetadataTypeMapping)));
   }
 
   std::vector<std::shared_ptr<Command>> createChildCommands() override;
@@ -149,10 +150,10 @@ protected:
           auto subjects = values.getOptionalMultiple<std::string>("subject");
           auto keyStrs = values.getOptionalMultiple<std::string>("key");
           auto keys = keyStrs
-            | std::views::transform([](std::string_view key) {
+            | views::transform([](std::string_view key) {
               return ParseMetadataKey(key, true);
             })
-            | std::ranges::to<std::vector>();
+            | to<std::vector>();
 
           bool json = values.has("json");
 

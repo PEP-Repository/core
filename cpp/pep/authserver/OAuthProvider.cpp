@@ -424,8 +424,8 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
         std::ostringstream body;
         body << BeginGroupSelectionTemplate;
         auto sortedGroups = *groups
-          | std::views::transform(&UserGroup::name)
-          | std::ranges::to<std::set>();
+          | views::transform(&UserGroup::name)
+          | to<std::set>();
         for(auto& g : sortedGroups) {
           body << "<option>" << g << "</option>";
         }

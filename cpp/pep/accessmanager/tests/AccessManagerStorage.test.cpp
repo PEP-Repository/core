@@ -260,8 +260,8 @@ TEST_F(AccessManagerStorageTest, getChecksumChainNames_happy) {
     "user-group-users",
     "structure-metadata",
   };
-  std::ranges::sort(actual);
-  std::ranges::sort(expected);
+  sort(actual);
+  sort(expected);
   ASSERT_EQ(actual, expected);
 }
 

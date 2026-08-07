@@ -5,6 +5,8 @@
 
 #include <ranges>
 
+using namespace std::ranges;
+
 namespace pep {
 
 AmaCreateColumn Serializer<AmaCreateColumn>::fromProtocolBuffer(proto::AmaCreateColumn&& source) const {
@@ -306,7 +308,7 @@ void Serializer<AmaQRParticipantGroup>::moveIntoProtocolBuffer(proto::AmaQRParti
 AmaQRColumnGroup Serializer<AmaQRColumnGroup>::fromProtocolBuffer(proto::AmaQRColumnGroup&& source) const {
   return AmaQRColumnGroup(
     std::move(*source.mutable_name()),
-    *source.mutable_columns() | std::views::as_rvalue | std::ranges::to<std::vector>());
+    *source.mutable_columns() | views::as_rvalue | to<std::vector>());
 }
 
 void Serializer<AmaQRColumnGroup>::moveIntoProtocolBuffer(proto::AmaQRColumnGroup& dest, AmaQRColumnGroup value) const {

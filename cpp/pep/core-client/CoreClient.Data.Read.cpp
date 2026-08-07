@@ -18,6 +18,8 @@
 #include <rxcpp/operators/rx-take.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
@@ -39,7 +41,7 @@ void FillHistoryRequestIndices(const SignedTicket2& ticket,
     std::vector<TTicketItem>& ticketItems = (*unsignedTicket).*ticketItemsMember;
     indexList = IndexList();
     for (const auto& specifiedItem : *specified) {
-      auto position = std::ranges::find_if(ticketItems, [&specifiedItem, &itemsMatch](const TTicketItem& ticketItem) {
+      auto position = find_if(ticketItems, [&specifiedItem, &itemsMatch](const TTicketItem& ticketItem) {
         return itemsMatch(ticketItem, specifiedItem);
         });
       if (position >= ticketItems.cend()) {
@@ -276,7 +278,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
     .flat_map([this, ticket = std::move(openedTicket)](std::shared_ptr<std::vector<DataHistoryEntry2>> entries) {
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonyms>> localPseuds;
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonym>> agPseuds;
-      auto results = *entries | std::views::transform([this, &ticket, localPseuds, agPseuds](const DataHistoryEntry2& entry) mutable {
+      auto results = *entries | views::transform([this, &ticket, localPseuds, agPseuds](const DataHistoryEntry2& entry) mutable {
         auto ilp = localPseuds.find(entry.pseudonymIndex);
         if (ilp == localPseuds.cend()) {
           auto emplaced = localPseuds.emplace(std::make_pair(entry.pseudonymIndex, MakeSharedCopy(ticket.accessSubjects[entry.pseudonymIndex])));
@@ -308,7 +310,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
           !entry.id.empty() ? std::optional{entry.id} : std::nullopt,
         };
         })
-        | std::ranges::to<std::vector>();
+        | to<std::vector>();
       return rxcpp::observable<>::just(results);
     });
 }

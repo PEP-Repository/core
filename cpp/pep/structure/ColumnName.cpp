@@ -19,6 +19,8 @@ std::string Mangle(const std::string& columnNameSection) {
 
 }
 
+using namespace std::ranges;
+
 namespace pep {
 
 ColumnNameSection::ColumnNameSection(std::string value)
@@ -50,8 +52,8 @@ std::string ColumnNameMappings::getColumnNameSectionFor(const std::string& rawOr
 
 std::vector<ColumnNameMapping> ColumnNameMappings::getEntries() const {
   return entries_
-    | std::views::values
-    | std::ranges::to<std::vector>();
+    | views::values
+    | to<std::vector>();
 }
 
 }

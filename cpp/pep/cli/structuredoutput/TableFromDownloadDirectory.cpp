@@ -13,6 +13,7 @@
 #include <vector>
 
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace pep::structuredOutput {
 namespace {
@@ -43,7 +44,7 @@ TableTripletsAndPools triplets(
       .participants = IndexedStringPool<ParticipantIdentifier>{participantProjection},
       .columns = IndexedStringPool<std::string>{identity}};
 
-  out.triplets.append_range(descs | std::views::transform([&out, &valueProjection](const RecordDescriptor& d) {
+  out.triplets.append_range(descs | views::transform([&out, &valueProjection](const RecordDescriptor& d) {
     return TableTriplet{
         .participant = out.participants.map(d.getParticipant()),
         .column = out.columns.map(d.getColumn()),
@@ -102,7 +103,7 @@ bool AllColumnFilesArePrintable(const Table& table, std::size_t columnNr, const 
     if (!IsFileLike(field)) return false;
     const auto content = readFile(field);
     const auto isPrintable = [](char c) { return std::isprint(c); };
-    return std::ranges::all_of(content, isPrintable);
+    return all_of(content, isPrintable);
   });
 }
 

@@ -7,6 +7,8 @@
 
 #include <boost/algorithm/string/join.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 namespace commandline {
 
@@ -134,7 +136,7 @@ Values Parameter::parse(const ProvidedValues& lexed) const {
 
 bool Parameter::isLackingValue(const ProvidedValues& lexed) const noexcept {
   if (this->getValueSpecification()) {
-    return std::ranges::any_of(lexed, [](const ProvidedValue &val) {
+    return any_of(lexed, [](const ProvidedValue &val) {
       return !val.has_value();
     });
   }
@@ -268,7 +270,7 @@ void Parameters::writeHelpText(std::ostream& destination) const {
       entries.push_back(std::make_tuple(alias.first, alias.second, *canonical));
     }
   }
-  std::ranges::sort(entries, {}, [](const Entry& entry) -> decltype(auto) { return std::get<0>(entry).getText(); });
+  sort(entries, {}, [](const Entry& entry) -> decltype(auto) { return std::get<0>(entry).getText(); });
 
   if (!entries.empty()) {
     destination << "\nSwitch aliases: \n";
@@ -293,7 +295,7 @@ Parameters Parameters::operator +(const std::vector<Parameter>& parameters) cons
 }
 
 const Parameter* Parameters::find(const std::string& name) const {
-  auto pos = std::ranges::find_if(entries_, [&name](const Parameter& candidate) {return candidate.getName() == name; });
+  auto pos = find_if(entries_, [&name](const Parameter& candidate) {return candidate.getName() == name; });
   if (pos == entries_.cend()) {
     return nullptr;
   }
@@ -305,7 +307,7 @@ void Parameters::writeHelpText(std::ostream& destination, const std::string& hea
     const std::vector<Parameter>& parameters;
     bool operator()(Index lhs, Index rhs) const { return std::less<std::string>()(parameters[lhs].getName(), parameters[rhs].getName()); }
   };
-  std::ranges::sort(indices, CompareParameterNamesByIndex{ entries_ });
+  sort(indices, CompareParameterNamesByIndex{ entries_ });
 
   auto announce = true;
   for (auto index : indices) {
@@ -461,24 +463,24 @@ std::vector<const Parameter*> Parameters::getSwitchesToAutocomplete(const LexedV
 }
 
 bool Parameters::hasRequired() const {
-  return std::ranges::any_of(entries_, [](const Parameter& s) {return s.isRequired(); });
+  return any_of(entries_, [](const Parameter& s) {return s.isRequired(); });
 }
 
 bool Parameters::hasInfinitePositional() const noexcept {
-  return std::ranges::any_of(entries_, [](const Parameter& s) {return s.allowsMultiple(); });
+  return any_of(entries_, [](const Parameter& s) {return s.allowsMultiple(); });
 }
 
 std::vector<std::string> Parameters::getInvocationSummary() const {
   std::vector<std::optional<std::string>> optionals;
   optionals.reserve(entries_.size());
-  optionals.append_range(named_ | std::views::transform([this](Index index) {return entries_[index].getInvocationSummary(true); }));
-  optionals.append_range(positional_ | std::views::transform([this](Index index) {return entries_[index].getInvocationSummary(true); }));
+  optionals.append_range(named_ | views::transform([this](Index index) {return entries_[index].getInvocationSummary(true); }));
+  optionals.append_range(positional_ | views::transform([this](Index index) {return entries_[index].getInvocationSummary(true); }));
 
   std::erase(optionals, std::nullopt);
 
   return optionals
-    | std::views::transform([](const std::optional<std::string>& entry) {return *entry; })
-    | std::ranges::to<std::vector>();
+    | views::transform([](const std::optional<std::string>& entry) {return *entry; })
+    | to<std::vector>();
 }
 
 }

@@ -4,6 +4,8 @@
 
 #include <ranges>
 
+using namespace std::ranges;
+
 AssessorWidget::AssessorWidget(QWidget *parent) :
   QWidget(parent),
   ui_(new Ui::AssessorWidget)
@@ -34,9 +36,9 @@ void AssessorWidget::setAssessors(const std::vector<pep::AssessorDefinition>& as
     throw std::runtime_error("Can only set assessors once");
   }
   assessors_ = assessors
-    | std::views::filter([&studyContext](const pep::AssessorDefinition& candidate) {return candidate.matchesStudyContext(studyContext); })
-    | std::ranges::to<std::vector>();
-  std::ranges::sort(assessors_, [](const pep::AssessorDefinition& lhs, const pep::AssessorDefinition& rhs) {return strcmp(lhs.name.c_str(), rhs.name.c_str()) < 0; });
+    | views::filter([&studyContext](const pep::AssessorDefinition& candidate) {return candidate.matchesStudyContext(studyContext); })
+    | to<std::vector>();
+  sort(assessors_, [](const pep::AssessorDefinition& lhs, const pep::AssessorDefinition& rhs) {return strcmp(lhs.name.c_str(), rhs.name.c_str()) < 0; });
 
   auto enable = !assessors_.empty();
   ui_->assessorComboBox->setEnabled(enable);
@@ -59,7 +61,7 @@ void AssessorWidget::setCurrentAssessor(const std::optional<unsigned int>& id) {
   int index = 0; // Select the <none/unspecified> entry by default
 
   if (id.has_value()) {
-    auto position = std::ranges::find_if(assessors_, [&id](const pep::AssessorDefinition& candidate) {return candidate.id == id; });
+    auto position = find_if(assessors_, [&id](const pep::AssessorDefinition& candidate) {return candidate.id == id; });
     if (position == assessors_.cend()) {
       /* Assessor was previously selected and stored but
        * - either removed from GlobalConfiguration,

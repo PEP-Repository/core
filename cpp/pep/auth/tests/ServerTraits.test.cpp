@@ -7,6 +7,8 @@
 #include <ranges>
 #include <utility>
 
+using namespace std::ranges;
+
 namespace {
 
 template <typename T> using ServerProperties = std::unordered_map<pep::ServerTraits, T>;
@@ -73,10 +75,10 @@ void VerifyServersHaveUniqueProperties(const std::unordered_set<pep::ServerTrait
   // Aggregate the properties for all servers
   using Plain = std::remove_const_t<std::remove_reference_t<T>>;
   auto properties = servers
-    | std::views::transform([getProperty](const pep::ServerTraits& server) {
+    | views::transform([getProperty](const pep::ServerTraits& server) {
       return std::make_pair(server, getProperty(server));
       })
-    | std::ranges::to<ServerProperties>();
+    | to<ServerProperties>();
 
   // Compare each server('s property) against each other server('s property)
   using Value = ServerPropertyValue<Plain>;

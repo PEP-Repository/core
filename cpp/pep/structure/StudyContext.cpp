@@ -5,6 +5,8 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/split.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
@@ -26,7 +28,7 @@ bool StudyContext::matches(const std::string& contexts) const {
     return isDefault();
   }
   auto ids = ContextStringToIds(contexts);
-  return std::ranges::contains(ids, getId());
+  return contains(ids, getId());
 }
 
 bool StudyContext::matchesShortPseudonym(const pep::ShortPseudonymDefinition& sp) const {
@@ -48,7 +50,7 @@ bool StudyContext::operator ==(const StudyContext& other) const {
 }
 
 std::vector<StudyContext>::const_iterator StudyContexts::getPositionOf(const StudyContext& context) const {
-  return std::ranges::find(items_, context);
+  return find(items_, context);
 }
 
 StudyContexts::StudyContexts(std::vector<StudyContext> items)
@@ -87,7 +89,7 @@ void StudyContexts::remove(const StudyContext& context) {
 }
 
 const StudyContext& StudyContexts::getById(const std::string& id) const {
-  auto position = std::ranges::find(items_, id, &StudyContext::getId);
+  auto position = find(items_, id, &StudyContext::getId);
   if (position == items_.cend()) {
     throw std::runtime_error("Study context " + id + " not found");
   }
@@ -95,7 +97,7 @@ const StudyContext& StudyContexts::getById(const std::string& id) const {
 }
 
 const StudyContext* StudyContexts::getDefault() const noexcept {
-  auto position = std::ranges::find_if(items_, &StudyContext::isDefault);
+  auto position = find_if(items_, &StudyContext::isDefault);
   if (position == items_.cend()) {
     return nullptr;
   }
@@ -121,7 +123,7 @@ StudyContexts StudyContexts::parse(const std::string& value) const {
 
 std::string StudyContexts::toString() const {
   // Not passing the view to boost::algorithm::join directly: it doesn't support C++20 ranges
-  return boost::algorithm::join(items_ | std::views::transform(&StudyContext::getId) | std::ranges::to<std::vector>(), ",");
+  return boost::algorithm::join(items_ | views::transform(&StudyContext::getId) | to<std::vector>(), ",");
 }
 
 }

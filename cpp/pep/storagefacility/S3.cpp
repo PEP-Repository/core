@@ -15,6 +15,8 @@
 
 // See S3.hpp for (more) documentation.
 
+using namespace std::ranges;
+
 namespace pep::s3::request
 {
 
@@ -207,7 +209,7 @@ namespace authorization_header {
       for (auto query : encodedQueries)
         keys.push_back(std::string(query.key));
 
-      std::ranges::sort(keys);
+      sort(keys);
 
       std::ostringstream ss;
 
@@ -227,10 +229,10 @@ namespace authorization_header {
       auto keys = c.signHeaders;
       if (keys.empty()) {
         // sign all headers
-        keys = std::views::keys(headers) | std::ranges::to<std::vector>();
+        keys = views::keys(headers) | to<std::vector>();
       }
 
-      std::ranges::sort(keys);
+      sort(keys);
 
       std::ostringstream ss_result;
       std::ostringstream ss_signed_headers;

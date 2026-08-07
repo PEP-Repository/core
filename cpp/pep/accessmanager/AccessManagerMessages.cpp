@@ -3,6 +3,8 @@
 #include <format>
 #include <ranges>
 
+using namespace std::ranges;
+
 namespace pep {
 
 std::shared_ptr<SignedTicket2> IndexedTicket2::getTicket() const {
@@ -10,11 +12,11 @@ std::shared_ptr<SignedTicket2> IndexedTicket2::getTicket() const {
 }
 
 std::vector<std::string> IndexedTicket2::getColumnGroups() const {
-  return std::views::keys(columnGroups_) | std::ranges::to<std::vector>();
+  return views::keys(columnGroups_) | to<std::vector>();
 }
 
 std::vector<std::string> IndexedTicket2::getParticipantGroups() const {
-  return std::views::keys(participantGroups_) | std::ranges::to<std::vector>();
+  return views::keys(participantGroups_) | to<std::vector>();
 }
 
 std::vector<std::string> IndexedTicket2::getColumns() const {

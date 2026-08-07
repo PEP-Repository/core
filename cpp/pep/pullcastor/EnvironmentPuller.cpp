@@ -22,6 +22,8 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 namespace castor {
 
@@ -47,8 +49,8 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
     std::set<std::string> result;
     for (const auto& group : access.columnGroups) {
       const ColumnAccess::GroupProperties& properties = group.second;
-      if (std::ranges::contains(properties.modes, "read")
-        && std::ranges::contains(properties.modes, "write")) {
+      if (contains(properties.modes, "read")
+        && contains(properties.modes, "write")) {
         for (const auto index : properties.columns.indices) {
           const auto& column = access.columns[index];
           result.emplace(column);
@@ -135,7 +137,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
         // If SP column names have been specified, limit to those
         if (spColumns.has_value()) {
           allowedSps = allowedSps.filter([spColumns](const ShortPseudonymDefinition& sp) {
-            return std::ranges::find(spColumns->cbegin(), spColumns->cend(), sp.getColumn().getFullName()) != spColumns->cend();
+            return find(spColumns->cbegin(), spColumns->cend(), sp.getColumn().getFullName()) != spColumns->cend();
           });
         }
 

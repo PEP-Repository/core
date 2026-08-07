@@ -26,9 +26,10 @@ namespace pep {
  */
 template<typename T>
 bool IsSubset(std::vector<T> a, std::vector<T> b) {
-  std::ranges::sort(a);
-  std::ranges::sort(b);
-  return std::ranges::includes(b, a);
+  using namespace std::ranges;
+  sort(a);
+  sort(b);
+  return includes(b, a);
 }
 
 /*!
@@ -36,8 +37,9 @@ bool IsSubset(std::vector<T> a, std::vector<T> b) {
  */
 template <typename T, typename TCompare>
 std::optional<T> TryFindDuplicateValue(std::vector<T> vec, const TCompare& comp) {
-  std::ranges::sort(vec, comp);
-  auto position = std::ranges::adjacent_find(vec);
+  using namespace std::ranges;
+  sort(vec, comp);
+  auto position = adjacent_find(vec);
   if (position != vec.cend()) {
     return *position;
   }
@@ -111,28 +113,31 @@ concept Slice = std::ranges::contiguous_range<R> && std::ranges::sized_range<R>;
 /// \note For plain chars, you cah just use \c string_view(span) .
 [[nodiscard]] std::string_view SpanToString(const Slice auto& span)
 requires(ByteLike<std::ranges::range_value_t<decltype(span)>>) {
-  return {reinterpret_cast<const char*>(std::ranges::data(span)), std::ranges::size(span)};
+  using namespace std::ranges;
+  return {reinterpret_cast<const char*>(data(span)), size(span)};
 }
 
 /// \throws std::invalid_argument if \p span does not have \p Extent elements
 template<size_t Extent>
 [[nodiscard]] auto ToSizedSpan(const Slice auto& span) {
+  using namespace std::ranges;
   if constexpr (Extent != std::dynamic_extent) {
-    if (std::ranges::size(span) != Extent) {
+    if (size(span) != Extent) {
       throw std::invalid_argument("Argument has incorrect number of elements");
     }
   }
   // range_value_t does not retain const
-  using Elem = std::remove_reference_t<std::ranges::range_reference_t<decltype(span)>>;
-  return std::span<Elem, Extent>{reinterpret_cast<Elem*>(std::ranges::data(span)), std::ranges::size(span)};
+  using Elem = std::remove_reference_t<range_reference_t<decltype(span)>>;
+  return std::span<Elem, Extent>{reinterpret_cast<Elem*>(data(span)), size(span)};
 }
 
 template<ByteLike To>
 [[nodiscard]] auto ConvertBytes(Slice auto&& span)
   requires(ByteLike<std::ranges::range_value_t<decltype(span)>>) {
+  using namespace std::ranges;
   // range_value_t does not retain const
-  using From = std::remove_reference_t<std::ranges::range_reference_t<decltype(span)>>;
-  return std::span<CopyConstness<To, From>>{reinterpret_cast<CopyConstness<To, From>*>(std::ranges::data(span)), std::ranges::size(span)};
+  using From = std::remove_reference_t<range_reference_t<decltype(span)>>;
+  return std::span<CopyConstness<To, From>>{reinterpret_cast<CopyConstness<To, From>*>(data(span)), size(span)};
 }
 
 template<ByteLike To, ByteLike From = std::byte, size_t Extent = std::dynamic_extent>

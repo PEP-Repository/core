@@ -9,6 +9,8 @@
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
@@ -232,12 +234,12 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     enumRequest.ticket = *signedTicket;
     enumRequest.columns = IndexList();
     enumRequest.columns->indices = ctx->columns
-      | std::views::values
-      | std::ranges::to<std::vector>();
+      | views::values
+      | to<std::vector>();
     enumRequest.pseudonyms = IndexList();
     enumRequest.pseudonyms->indices = ctx->pps
-      | std::views::values
-      | std::ranges::to<std::vector>();
+      | views::values
+      | to<std::vector>();
 
     return this->getStorageFacilityProxy(true)->requestDataEnumeration(std::move(enumRequest))
       .map([ctx](const DataEnumerationResponse2& response) { return response.entries; })
@@ -339,7 +341,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
               return result;
             })
           .map([](std::shared_ptr<DataStorageResult2> result) {
-            assert(std::ranges::all_of(result->ids, [](const std::string& id) {return !id.empty(); }));
+            assert(all_of(result->ids, [](const std::string& id) {return !id.empty(); }));
             return *result;
             }).as_dynamic();
           }).as_dynamic(); // Reduce compiler memory usage

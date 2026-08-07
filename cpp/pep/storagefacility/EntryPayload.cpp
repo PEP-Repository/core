@@ -6,6 +6,8 @@
 
 #include <rxcpp/operators/rx-map.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
@@ -146,7 +148,7 @@ rxcpp::observable<std::string> PagedEntryPayload::appendPage(PageStore& pageStor
   auto xxhashstr = XxHashToString(xxhash);
 
   // Throw an exception when a duplicate hash is found
-  if (std::ranges::contains(pages_, xxhash)) {
+  if (contains(pages_, xxhash)) {
     throw std::runtime_error("FileStore error, duplicate data hash found in Entry Change: " + name.string() + ", a hashing collision has (likely) occurred.");
   }
 
@@ -181,7 +183,7 @@ std::optional<uint64_t> PagedEntryPayload::pageSize() const {
 
 std::set<std::string> PagedEntryPayload::getPagePaths(const EntryName& name) const {
   std::set<std::string> result;
-  InsertNonDuplicates(result, pages_ | std::views::transform([&name](PageId hash) {
+  InsertNonDuplicates(result, pages_ | views::transform([&name](PageId hash) {
     return GetPagePath(name, hash);
     }));
   return result;

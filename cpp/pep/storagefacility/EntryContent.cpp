@@ -4,6 +4,8 @@
 
 #include <ranges>
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
@@ -63,7 +65,7 @@ void EntryContent::Save(const std::unique_ptr<EntryContent>& content, PersistedE
       SetPersistedEntryProperty(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY, *original);
     }
 
-    properties.insert_range(content->metadata_ | std::views::transform([](const auto& entry) {
+    properties.insert_range(content->metadata_ | views::transform([](const auto& entry) {
       auto key = X_ENTRY_PREFIX + *entry.first;
       return std::make_pair(key, *entry.second);
       }));
@@ -91,11 +93,11 @@ std::unique_ptr<EntryContent> EntryContent::Load(FileStore& fileStore, Persisted
   assert(pages.empty());
 
   auto storableMetadata = properties
-    | std::views::transform([&fileStore](const auto& entry) {
+    | views::transform([&fileStore](const auto& entry) {
       assert(entry.first.starts_with(X_ENTRY_PREFIX));
       return fileStore.makeMetadataEntry(entry.first.substr(X_ENTRY_PREFIX.size()), entry.second);
       })
-    | std::ranges::to<Metadata>();
+    | to<Metadata>();
 
   return std::make_unique<EntryContent>(
     storableMetadata,

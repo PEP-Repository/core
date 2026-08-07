@@ -12,6 +12,7 @@
 
 using namespace pep;
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 
@@ -180,7 +181,7 @@ void DownloadProcessor::prepareLocalData(
       // or the payload will be updated to a newer version (i.e. same participant and column, but different timestamp)
       if (!destination_->remove(existing)) {
         if (assumePristine) {
-          bool update = std::ranges::any_of(*downloads | std::views::values, [&existing](const std::shared_ptr<EnumerateResult>& enumerated) {
+          bool update = any_of(*downloads | views::values, [&existing](const std::shared_ptr<EnumerateResult>& enumerated) {
             return *enumerated->accessGroupPseudonym == existing.getParticipant().getLocalPseudonym()
               && enumerated->column == existing.getColumn();
             });

@@ -18,6 +18,8 @@ namespace so = pep::structuredOutput;
 
 }
 
+using namespace std::ranges;
+
 pep::commandline::Parameters CommandUser::CommandUserQuery::getSupportedParameters() const {
   const auto userGroupsOpt = std::string{so::queryKeys::userGroups.simple};
   const auto usersOpt = std::string{so::queryKeys::users.simple};
@@ -54,7 +56,7 @@ int CommandUser::CommandUserQuery::execute() {
       }
 
       // Warn for users without displayId
-      auto usersWithoutDisplayId = res.users | std::views::filter([](QRUser user){ return !user.displayId; });
+      auto usersWithoutDisplayId = res.users | views::filter([](QRUser user){ return !user.displayId; });
       for (auto& user : usersWithoutDisplayId) {
         auto uids = std::move(user.otherUids);
         if (user.primaryId) {
@@ -72,7 +74,7 @@ so::QueryDisplayConfig<so::UserQueryFlags> CommandUser::CommandUserQuery::extrac
   using Flags = so::UserQueryFlags;
 
   const auto isIncluded = [includedTypes = values.getOptionalMultiple<std::string>("include")](const auto key) {
-    return includedTypes.empty() || std::ranges::contains(includedTypes, key.simple);
+    return includedTypes.empty() || contains(includedTypes, key.simple);
   };
   const auto format = values.get<std::string>("format");
 

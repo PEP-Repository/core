@@ -41,6 +41,8 @@
 #include <prometheus/gauge.h>
 #include <prometheus/summary.h>
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
@@ -132,7 +134,7 @@ std::vector<AmaQueryResponse> ExtractPartialQueryResponse(const AmaQueryResponse
   }
 
   // Reclaim reserved-but-unused space
-  std::ranges::for_each(responses, [member](AmaQueryResponse& response) {(response.*member).shrink_to_fit(); });
+  for_each(responses, [member](AmaQueryResponse& response) {(response.*member).shrink_to_fit(); });
 
   return responses;
 }
@@ -209,7 +211,7 @@ void AccessManager::Parameters::setGlobalConfiguration(std::shared_ptr<GlobalCon
   auto end = gc->getShortPseudonyms().cend();
   for (auto i = gc->getShortPseudonyms().cbegin(); i != end; ++i) {
     if (!contexts.empty()) {
-      if (contexts_end == std::ranges::find_if(contexts.cbegin(), contexts_end, [&i](const StudyContext& candidate) {return candidate.matchesShortPseudonym(*i); })) {
+      if (contexts_end == find_if(contexts.cbegin(), contexts_end, [&i](const StudyContext& candidate) {return candidate.matchesShortPseudonym(*i); })) {
         throw std::runtime_error("Short pseudonym " + i->getColumn().getFullName() + " defined for unknown study context " + i->getStudyContext());
       }
     }

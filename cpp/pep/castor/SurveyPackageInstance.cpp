@@ -7,6 +7,8 @@
 
 #include <entities.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 namespace castor {
 
@@ -38,8 +40,8 @@ SurveyPackageInstance::SurveyPackageInstance(std::shared_ptr<Participant> partic
     const auto& siPtrees = GetFromPtree<boost::optional<boost::property_tree::ptree>>(*embedded, "survey_instances");
     if (siPtrees) {
       surveyInstanceIds_.append_range(*siPtrees
-        | std::views::values
-        | std::views::transform([](const auto& siPtree) {
+        | views::values
+        | views::transform([](const auto& siPtree) {
           return GetFromPtree<std::string>(siPtree, "id");
         }));
     }
