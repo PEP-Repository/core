@@ -98,7 +98,7 @@ namespace authorization_header {
       // We do not allow spaces in access keys, for these are not dealt with
       // correctly by minio.
 
-      if (c.credentials.accessKey.find(' ') != std::string::npos)
+      if (c.credentials.accessKey.contains(' '))
         throw std::runtime_error("There is a space (' ') in the access key; "
             "not all S3 servers can't deal with that.");
 

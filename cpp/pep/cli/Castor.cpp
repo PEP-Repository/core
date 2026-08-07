@@ -68,10 +68,10 @@ private:
 
     std::string csvEscape(std::string value) {
       size_t quotePos = value.find('"');
-      bool useQuotes = value.find(csvSeparator_) != std::string::npos
-        || value.find(' ') != std::string::npos
-        || value.find('\n') != std::string::npos
-        || value.find('\r') != std::string::npos
+      bool useQuotes = value.contains(csvSeparator_)
+        || value.contains(' ')
+        || value.contains('\n')
+        || value.contains('\r')
         || quotePos != std::string::npos;
       while (quotePos != std::string::npos) {
         value.replace(quotePos, 1, "\"\"");

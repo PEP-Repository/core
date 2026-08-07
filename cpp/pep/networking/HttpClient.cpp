@@ -374,7 +374,7 @@ void HttpClient::handleReadHeaderLine(const DelimitedTransfer::Result& result) {
 void HttpClient::readBody() {
   auto transferEncodingHeader = response_.getHeaders().find("Transfer-Encoding");
   if (transferEncodingHeader != response_.getHeaders().end()) {
-    if (transferEncodingHeader->second.find("chunked") == std::string::npos) {
+    if (!transferEncodingHeader->second.contains("chunked")) {
       // Since binaryClient_ may have received (or may still receive) stuff that we can't process, we can't (reliably) keep using it
       this->restart();
       this->finishSending(std::make_exception_ptr(std::runtime_error("Unsupported transfer encoding " + transferEncodingHeader->second)));

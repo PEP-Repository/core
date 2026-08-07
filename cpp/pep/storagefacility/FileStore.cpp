@@ -100,7 +100,7 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
 }
 
 const std::string& FileStore::getColumnString(const std::string& value) {
-  if (value.find(EntryName::Delimiter) != std::string::npos) {
+  if (value.contains(EntryName::Delimiter)) {
     throw std::runtime_error("Cell name may not contain an entry name delimiter");
   }
   return *columnNames_.insert(value).first;
