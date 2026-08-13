@@ -33,7 +33,7 @@ StudyContext::StudyContext(std::string id)
   if (id_.empty()) {
     throw std::runtime_error("Study context id must not be empty");
   }
-  if (!std::all_of(id_.cbegin(), id_.cend(), IsValidIdCharacter)) {
+  if (!std::ranges::all_of(id_, IsValidIdCharacter)) {
     throw std::runtime_error("Study context id \"" + id_ + "\" is invalid: only alphanumerics and underscores are allowed");
   }
 }
@@ -47,7 +47,7 @@ bool StudyContext::matches(const std::string& contexts) const {
     return isDefault();
   }
   auto ids = ContextStringToIds(contexts);
-  return std::find_if(ids.cbegin(), ids.cend(), [this](const std::string& id) { return boost::iequals(id, getId()); }) != ids.cend();
+  return std::ranges::any_of(ids, [this](const std::string& id) { return boost::iequals(id, getId()); });
 }
 
 bool StudyContext::matchesShortPseudonym(const pep::ShortPseudonymDefinition& sp) const {
@@ -73,7 +73,7 @@ std::vector<StudyContext>::const_iterator StudyContexts::getPositionOf(const Stu
 }
 
 std::vector<StudyContext>::const_iterator StudyContexts::findById(const std::string& id) const {
-  return std::find_if(items_.cbegin(), items_.cend(), [&id](const StudyContext& candidate) { return boost::iequals(candidate.getId(), id); });
+  return std::ranges::find_if(items_, [&id](const StudyContext& candidate) { return boost::iequals(candidate.getId(), id); });
 }
 
 StudyContexts::StudyContexts(std::vector<StudyContext> items)
