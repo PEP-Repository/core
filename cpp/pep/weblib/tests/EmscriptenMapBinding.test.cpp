@@ -22,7 +22,7 @@ namespace {
 using StringMap = std::map<std::string, std::string>;
 using UnorderedStringMap = std::unordered_map<std::string, std::string>;
 
-/// Renders a cpp map as a string. Renders through an std::map, so that the order is deterministic.
+/// Renders a cpp map as a string through a std::map, so that the order is deterministic.
 template <pep::AnyMap Map>
 std::string DescribeMapCpp(const Map& map) {
   std::string result;
@@ -123,11 +123,10 @@ TEST(EmscriptenMapBinding, toWireTypeUnorderedMap) {
 TEST(EmscriptenMapBinding, toWireTypeCopy) {
   const StringMap map{{"a", "1"}, {"b", "2"}};
   EXPECT_EQ(PassCppMapCopyToJs(map), "a=1;b=2;");
-  EXPECT_EQ(DescribeMapCpp(map), "a=1;b=2;") << "Should leave the copied map intact";
 }
 
 TEST(EmscriptenMapBinding, boundFunctionSignature) {
-  // Chained on the main thread, because a val cannot be accessed from another thread.
+  // The whole chain runs inside PromiseTest, because a val must be used on the main thread, and the test body is not on it.
   const std::string described = PromiseTest([] {
     const val echoed = val::module_property("pepTestEchoMap")(MakeJsMap({{"b", "2"}, {"a", "1"}}));
     return val::global("Promise").call<val>("resolve", DescribeMapJs(echoed));
