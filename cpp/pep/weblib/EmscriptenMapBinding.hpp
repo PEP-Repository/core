@@ -35,9 +35,7 @@ public:
 
   /// Deserialize
   static Map fromWireType(WireType value) {
-    // Iterating a JS Map yields its [key, value] entries.
-    // Note that we cannot use range adaptors here: `val` provides begin()/end(), but does not model
-    // std::ranges::range, because its iterator lacks a difference_type and its operator++ returns void.
+    // Note that we cant (yet) use std::ranges, as val::iterator fails https://en.cppreference.com/cpp/iterator/input_or_output_iterator requirements
     Map map;
     for (const val& entry : ValBinding::fromWireType(value)) {
       map.emplace(
