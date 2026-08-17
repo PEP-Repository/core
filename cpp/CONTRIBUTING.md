@@ -383,13 +383,13 @@ PEP provides a [logging system](https://gitlab.pep.cs.ru.nl/pep/core/blob/main/c
 
 These are the environments we build for and thus need to support (2026-08-17):
 
-| Platform              | Architecture | Compiler                         | Standard library |
-|-----------------------|--------------|----------------------------------|------------------|
-| Windows 10 build 1809 | x86-64       | MSVC build tools 14.51 (VS 2026) | MS STL           |
-| macOS 13.3            | x86-64       | Apple Clang 17                   | Apple libc++     |
-| macOS 13.3            | arm64        | Apple Clang 21                   | Apple libc++     |
-| Linux Ubuntu 26.04    | x86-64       | Clang 21                         | GCC libstdc++ 15 |
-| Linux Flatpak KDE 6.9 | x86-64       | GCC 14                           | GCC libstdc++    |
-| Emscripten            | wasm32       | emcc 4.0.22 / Clang 22           | Clang libc++ 20  |
+| Platform               | Architecture | Compiler                         | Standard library |
+|------------------------|--------------|----------------------------------|------------------|
+| Windows 10 build 1809  | x86-64       | MSVC build tools 14.51 (VS 2026) | MS STL           |
+| macOS 13.3             | x86-64       | Apple Clang 17                   | Apple libc++     |
+| macOS 13.3             | arm64        | Apple Clang 21                   | Apple libc++     |
+| Linux Ubuntu 26.04     | x86-64       | Clang 21                         | GCC libstdc++ 15 |
+| Linux Flatpak KDE 6.11 | x86-64       | GCC 15                           | GCC libstdc++    |
+| Emscripten             | wasm32       | emcc 4.0.22 / Clang 22           | Clang libc++ 20  |
 
 See [cppstat](https://cppstat.org/) for info on supported features.
