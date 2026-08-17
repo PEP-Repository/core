@@ -3,6 +3,7 @@
 #include <pep/utils/TaggedValue.hpp>
 
 #include <optional>
+#include <ranges>
 #include <unordered_map>
 #include <vector>
 
@@ -206,7 +207,7 @@ public:
       }
     }
     else {
-      if (std::ranges::any_of(source, [](const boost::property_tree::ptree::value_type& entry) {return !entry.first.empty(); })) {
+      if (std::ranges::all_of(std::views::keys(source), &std::string::empty)) {
         throw std::runtime_error("Vector can only be read from node with unnamed entries");
       }
     }
