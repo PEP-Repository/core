@@ -5,11 +5,9 @@
 namespace pep {
 namespace castor {
 
-/*!
- * \brief Class representing a Site in the Castor API
- *
- * Sites are created in each study. The same site in different studies is therefore represented by different instances of this class
- */
+/// \brief Class representing a Site in the Castor API
+///
+/// Sites are created in each study. The same site in different studies is therefore represented by different instances of this class
 class Site : public SimpleCastorChildObject<Site, Study>, public SharedConstructor<Site> {
  private:
   std::string abbreviation_;
@@ -25,12 +23,10 @@ class Site : public SimpleCastorChildObject<Site, Study>, public SharedConstruct
   std::string getName() const;
 
  protected:
-  /*!
-   * \brief construct a Site
-   *
-   * \param study The Study this site belongs to
-   * \param json The %Json response from the Castor API for this site
-   */
+  /// \brief construct a Site
+  ///
+  /// \param study The Study this site belongs to
+  /// \param json The %Json response from the Castor API for this site
    Site(std::shared_ptr<Study> study, JsonPtr json);
 
  private:

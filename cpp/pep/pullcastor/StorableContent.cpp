@@ -29,10 +29,8 @@ bool PtreesEqual(const boost::property_tree::ptree& p1, const boost::property_tr
   return true;
 }
 
-/*!
-  * \brief Cell content that stores JSON data.
-  * \remark Provides better comparison to existing (string) data than simple CellData does, preventing unnecessary updates being sent to PEP.
-  */
+/// \brief Cell content that stores JSON data.
+/// \remark Provides better comparison to existing (string) data than simple CellData does, preventing unnecessary updates being sent to PEP.
 class JsonCellContent : public CellContent, public SharedConstructor<JsonCellContent> {
 private:
   mutable std::optional<std::string> value_;
@@ -45,10 +43,8 @@ public:
     : structure_(structure) {
   }
 
-  /*!
-  * \brief Produces JSON corresponding with this instance's Ptree structure.
-  * \return A string containing JSON data.
-  */
+  /// \brief Produces JSON corresponding with this instance's Ptree structure.
+  /// \return A string containing JSON data.
   const std::string& getValue() const {
     if (!value_.has_value()) {
       assert(structure_ != nullptr);
@@ -59,20 +55,16 @@ public:
     return *value_;
   }
 
-  /*!
-    * \brief Produces (an observable emitting) the raw (binary) data in the cell.
-    * \return (An observable emitting) the cell's raw, binary data.
-    */
+  /// \brief Produces (an observable emitting) the raw (binary) data in the cell.
+  /// \return (An observable emitting) the cell's raw, binary data.
   rxcpp::observable<std::string> getData() const override {
     return rxcpp::observable<>::just(this->getValue());
   }
 
-  /*!
-    * \brief Produces (an observable emitting) data to store if the cell should contain this instance's data, but currently contains the specified data.
-    * \param existing The data currently stored in PEP.
-    * \return (An observable emitting) this instance's data if it doesn't match the existing data.
-    * \remark An update won't be required if named Ptree nodes are ordered differently in existing data.
-    */
+  /// \brief Produces (an observable emitting) data to store if the cell should contain this instance's data, but currently contains the specified data.
+  /// \param existing The data currently stored in PEP.
+  /// \return (An observable emitting) this instance's data if it doesn't match the existing data.
+  /// \remark An update won't be required if named Ptree nodes are ordered differently in existing data.
   rxcpp::observable<std::string> getDataToStore(const std::string& existing) const override {
     boost::property_tree::ptree tree;
     std::istringstream content(existing);

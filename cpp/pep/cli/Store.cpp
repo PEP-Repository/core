@@ -102,7 +102,7 @@ void AddSpecifiedMetadata(std::map<std::string, pep::MetadataXEntry>& metadata, 
   }
 }
 
-/* \brief Takes the parameters provided by the user, global configuration, pp, and column and puts them in a single struct. */
+/// Takes the parameters provided by the user, global configuration, pp, and column and puts them in a single struct.
 rxcpp::observable < std::shared_ptr<StoreContext>> CreateContext(std::shared_ptr<pep::CoreClient> client, const pep::commandline::NamedValues& parameterValues, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) {
   auto context = std::make_shared<StoreContext>();
   // Get local context parameters

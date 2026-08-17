@@ -21,12 +21,10 @@ class RepeatingDataPoint : public DataPoint<RepeatingDataPoint, RepeatingDataIns
   static rxcpp::observable<std::shared_ptr<RepeatingDataPoint>> BulkRetrieve(std::shared_ptr<Study> study, rxcpp::observable<std::shared_ptr<RepeatingDataInstance>> rdis);
 
  protected:
-  /*!
-   * \brief Construct a new DataPoint
-   *
-   * \param repeatingDataInstance The RepeatingDataInstance this data point belongs to
-   * \param json The %Json response from the Castor API for this data point
-   */
+  /// \brief Construct a new DataPoint
+  ///
+  /// \param repeatingDataInstance The RepeatingDataInstance this data point belongs to
+  /// \param json The %Json response from the Castor API for this data point
   RepeatingDataPoint(std::shared_ptr<RepeatingDataInstance> repeatingDataInstance, JsonPtr json);
 
   friend class SharedConstructor<RepeatingDataPoint>;

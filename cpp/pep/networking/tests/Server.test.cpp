@@ -103,8 +103,8 @@ TEST_F(Server, DiscardsUnopenedSocket) {
 }
 
 TEST_F(Server, UnschedulesOnDestruction) {
-  auto SHORT_TIME = 100ms;
-  auto LONG_TIME = 200ms;
+  constexpr auto ShortTime = 100ms;
+  constexpr auto LongTime = 200ms;
 
   boost::asio::io_context context;
 
@@ -114,7 +114,7 @@ TEST_F(Server, UnschedulesOnDestruction) {
 
   // Release our shared_ptr to the server after SHORT_DURATION
   boost::asio::steady_timer timer(context);
-  timer.expires_after(SHORT_TIME);
+  timer.expires_after(ShortTime);
   timer.async_wait([&server /* note: captured by reference */](const boost::system::error_code& error) {
     server.reset(); // Ensure that the server is discarded even if our test assertion doesn't hold, preventing said server from keeping the I/O context busy
     ASSERT_FALSE(error) << "Timer produced an error: " << error;
@@ -122,10 +122,10 @@ TEST_F(Server, UnschedulesOnDestruction) {
 
   // Have the I/O context run for at most LONG_DURATION, and measure how long it runs
   auto started = pep::testing::Clock::now();
-  context.run_for(LONG_TIME);
+  context.run_for(LongTime);
   auto duration = pep::testing::MillisecondsSince(started);
 
   // If the server unscheduled all its work when it was destroyed, the I/O context will have stopped running at that moment
-  ASSERT_GE(duration, SHORT_TIME) << "I/O context finished before server was discarded";
-  ASSERT_LT(duration, LONG_TIME) << "I/O server kept running after server was discarded";
+  ASSERT_GE(duration, ShortTime) << "I/O context finished before server was discarded";
+  ASSERT_LT(duration, LongTime) << "I/O server kept running after server was discarded";
 }

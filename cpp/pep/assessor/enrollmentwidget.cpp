@@ -65,8 +65,7 @@ void EnrollmentWidget::showEditor() {
   setCurrentIndex(0);
 }
 
-/*! \brief Confirms user input with the user
- */
+/// \brief Confirms user input with the user
 void EnrollmentWidget::showRegisteredParticipant(std::shared_ptr<pep::ParticipantPersonalia> personalia) {
   QWidget* confirmWidget = new QWidget(this);
   Ui::ConfirmEnrollmentWidget confirmUi;
@@ -116,18 +115,16 @@ void EnrollmentWidget::onRegistrationProceeding() {
   }
 }
 
-/*! \brief Destructor
- *
- * Clears out the UI object.
- */
+/// \brief Destructor
+///
+/// Clears out the UI object.
 EnrollmentWidget::~EnrollmentWidget() {
   completeParticipantRegistrationSubscription_.unsubscribe();
   registerParticipantSubscription_.unsubscribe();
   delete ui_;
 }
 
-/*! \brief Set UI focus to the personalia editor
- */
+/// \brief Set UI focus to the personalia editor
 void EnrollmentWidget::doFocus() {
   ui_->editor->doFocus();
 }

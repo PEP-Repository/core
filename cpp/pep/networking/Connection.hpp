@@ -4,9 +4,7 @@
 
 namespace pep::networking {
 
-/*!
- * \brief A Transport that's self-finalizing.
- */
+/// A Transport that's self-finalizing.
 class Connection : public Transport {
 private:
   std::shared_ptr<Protocol::Socket> socket_ = nullptr;

@@ -4,8 +4,9 @@
 using namespace std::chrono_literals;
 
 namespace pep {
-
+namespace {
 const auto LogTag = "Activity monitor";
+}
 
 const std::chrono::seconds ActivityMonitor::DefaultMaxInactive = 1min;
 

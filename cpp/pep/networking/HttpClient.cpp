@@ -26,7 +26,7 @@ struct ProtocolProperties {
   uint16_t defaultPort;
 };
 
-const std::vector<ProtocolProperties> SUPPORTED_PROTOCOLS = {
+const std::vector<ProtocolProperties> SupportedProtocols = {
   { false, "http", 80 },
   { true, "https", 443}
 };
@@ -36,8 +36,8 @@ void TrimOutsideWhitespace(std::string& str) {
 }
 
 std::string FormatHttpUrl(bool tls, const EndPoint& endPoint) {
-  auto protocol = find_if(SUPPORTED_PROTOCOLS, [tls](const ProtocolProperties& candidate) { return candidate.tls == tls; });
-  assert(protocol != SUPPORTED_PROTOCOLS.end());
+  auto protocol = find_if(SupportedProtocols, [tls](const ProtocolProperties& candidate) { return candidate.tls == tls; });
+  assert(protocol != SupportedProtocols.end());
 
   auto result = protocol->scheme + "://" + endPoint.hostname;
   if (endPoint.port != protocol->defaultPort) {
@@ -65,8 +65,8 @@ HttpClient::Parameters::Parameters(boost::asio::io_context& ioContext, boost::ur
   : ioContext_(ioContext), tls_(false), baseUri_(std::move(absoluteBase)) {
   this->validateBaseUri();
 
-  auto protocol = find_if(SUPPORTED_PROTOCOLS, [scheme = baseUri_.scheme()](const ProtocolProperties& candidate) { return candidate.scheme == scheme; });
-  if (protocol == SUPPORTED_PROTOCOLS.end()) {
+  auto protocol = find_if(SupportedProtocols, [scheme = baseUri_.scheme()](const ProtocolProperties& candidate) { return candidate.scheme == scheme; });
+  if (protocol == SupportedProtocols.end()) {
     throw std::runtime_error("Unsupported protocol " + std::string(baseUri_.scheme()));
   }
 

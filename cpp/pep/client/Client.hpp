@@ -64,39 +64,33 @@ public:
     EndPoint registrationServerEndPoint_;
   };
 
-  /*!
-   * \brief Register a participant, storing the provided personal details in PEP
-   *
-   * \param personalia The participant's personally identifying information.
-   * \param isTestParticipant Whether the participant should be considered a test participant.
-   * \param studyContext The study context the participant should be assigned to. Leave empty to assign to the default
-   * context. \param complete Whether to complete the participant('s short pseudonym) registration. \return
-   * rxcpp::observable< std::string > producing the (generated) participant ID
-   */
+  /// \brief Register a participant, storing the provided personal details in PEP
+  ///
+  /// \param personalia The participant's personally identifying information.
+  /// \param isTestParticipant Whether the participant should be considered a test participant.
+  /// \param studyContext The study context the participant should be assigned to. Leave empty to assign to the default
+  /// context. \param complete Whether to complete the participant('s short pseudonym) registration. \return
+  /// rxcpp::observable< std::string > producing the (generated) participant ID
   rxcpp::observable<std::string> registerParticipant(const ParticipantPersonalia& personalia,
                                                      bool isTestParticipant,
                                                      const std::string& studyContext = "",
                                                      bool complete = true);
 
-  /*!
-   * \brief Completes a participant's registration. Should be called for participants whose initial registration was
-   * (possibly) incomplete, i.e. registerParticipant was called with complete == false, or the participant has been
-   * registered from an earlier code base, or additional short pseudonyms need to be generated.
-   *
-   * \param skipIdentifierStorage Pass true if you're sure the participant ID has already been stored, i.e. this method
-   * is called after a call to registerParticipant. \return rxcpp::observable< RegistrationResponse >
-   */
+  /// \brief Completes a participant's registration. Should be called for participants whose initial registration was
+  /// (possibly) incomplete, i.e. registerParticipant was called with complete == false, or the participant has been
+  /// registered from an earlier code base, or additional short pseudonyms need to be generated.
+  ///
+  /// \param skipIdentifierStorage Pass true if you're sure the participant ID has already been stored, i.e. this method
+  /// is called after a call to registerParticipant. \return rxcpp::observable< RegistrationResponse >
   rxcpp::observable<FakeVoid> completeParticipantRegistration(
       const std::string& identifier, bool skipIdentifierStorage = false);
 
-  /*!
-   * \brief Enroll a user. A key pair is generated and, using a provided OAuth token, a certificate and PEP key
-   * components are requested. If the enrollment is successful, the following variables are update: privateKey,
-   * certificateChain, encryptionKey, publicKeyData, publicKeyPseudonyms
-   *
-   * \param oauthToken An OAuth token that can be used to authenticate against the key server
-   * \return rxcpp::observable< EnrolledPartyKeys >
-   */
+  /// \brief Enroll a user. A key pair is generated and, using a provided OAuth token, a certificate and PEP key
+  /// components are requested. If the enrollment is successful, the following variables are update: privateKey,
+  /// certificateChain, encryptionKey, publicKeyData, publicKeyPseudonyms
+  ///
+  /// \param oauthToken An OAuth token that can be used to authenticate against the key server
+  /// \return rxcpp::observable< EnrolledPartyKeys >
   rxcpp::observable<EnrolledPartyKeys> enrollUser(const std::string& oauthToken);
 
   std::shared_ptr<const KeyServerProxy> getKeyServerProxy(bool require = true) const;

@@ -9,10 +9,8 @@
 namespace pep {
 
 struct UserGroup {
-  /*!
-   * \brief Check access, throws if access is denied
-   * \throws pep::Error if access is denied
-   */
+  /// \brief Check access, throws if access is denied
+  /// \throws pep::Error if access is denied
   static void EnsureAccess(std::unordered_set<std::string> allowedUserGroups, std::string_view currentUserGroup, std::string_view
                            actionDescription = "This action");
 

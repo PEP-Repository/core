@@ -42,18 +42,18 @@ Temporary Temporary::MakeFile(const std::string& content, const std::filesystem:
 }
 
 std::string RandomizedName(std::string str) {
-  constexpr auto SPECIAL_CHAR = '%';
-  constexpr std::string_view AVAILABLE_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
+  constexpr auto SpecialChar = '%';
+  constexpr std::string_view AvailableChars = "abcdefghijklmnopqrstuvwxyz0123456789";
 
-  auto randomChar = [&AVAILABLE_CHARS,
+  auto randomChar = [&AvailableChars,
                      engine = std::default_random_engine(std::random_device{}()),
                      distribution =
-                         std::uniform_int_distribution<std::size_t>(0, AVAILABLE_CHARS.size() - 1)]() mutable {
-    return AVAILABLE_CHARS[distribution(engine)];
+                         std::uniform_int_distribution<std::size_t>(0, AvailableChars.size() - 1)]() mutable {
+    return AvailableChars[distribution(engine)];
   };
 
   for (auto& c : str) {
-    c = (c != SPECIAL_CHAR) ? c : randomChar();
+    c = (c != SpecialChar) ? c : randomChar();
   }
   return str;
 }

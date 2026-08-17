@@ -26,9 +26,8 @@ public:
   bool hasGitlabProperties() const noexcept;
 };
 
-/* \brief Checks for equality of only the first three values (major, minor, build).
- * The fourth, revision, is only used to pinpoint the specific GitLab job that built this particular instance and therefore does not provide any
- * information about the "newness' of the software.
- */
+/// \brief Checks for equality of only the first three values (major, minor, build).
+/// The fourth, revision, is only used to pinpoint the specific GitLab job that built this particular instance and therefore does not provide any
+/// information about the "newness' of the software.
 bool IsSemanticVersionEquivalent(const SemanticVersion& lhs, const SemanticVersion& rhs);
 }

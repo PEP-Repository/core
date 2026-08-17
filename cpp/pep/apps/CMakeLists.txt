@@ -2,7 +2,7 @@ add_cli_install_executable(${PROJECT_NAME}Enrollment
   Enrollment.cpp Enrollment.hpp
   Enroller.cpp Enroller.hpp
 )
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_sources(${PROJECT_NAME}Enrollment PRIVATE Enrollment.VersionInfo.rc)
 endif()
 target_link_libraries(${PROJECT_NAME}Enrollment
@@ -12,7 +12,7 @@ target_link_libraries(${PROJECT_NAME}Enrollment
 
 
 add_cli_install_executable(${PROJECT_NAME}GenerateSystemKeys GenerateSystemKeys.cpp)
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_sources(${PROJECT_NAME}GenerateSystemKeys PRIVATE GenerateSystemKeys.VersionInfo.rc)
 endif()
 target_link_libraries(${PROJECT_NAME}GenerateSystemKeys
@@ -24,7 +24,7 @@ target_link_libraries(${PROJECT_NAME}GenerateSystemKeys
 
 find_package(SQLite3 REQUIRED)
 add_cli_install_executable(${PROJECT_NAME}DumpShadowAdministration DumpShadowAdministration.cpp)
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_sources(${PROJECT_NAME}DumpShadowAdministration PRIVATE DumpShadowAdministration.VersionInfo.rc)
 endif()
 target_link_libraries(${PROJECT_NAME}DumpShadowAdministration
@@ -35,7 +35,7 @@ target_link_libraries(${PROJECT_NAME}DumpShadowAdministration
 
 
 add_cli_install_executable(${PROJECT_NAME}ClientTest ClientTest.cpp)
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_sources(${PROJECT_NAME}ClientTest PRIVATE ClientTest.VersionInfo.rc)
 endif()
 target_link_libraries(${PROJECT_NAME}ClientTest
@@ -46,7 +46,7 @@ configure_debug_command_line_parameter(${PROJECT_NAME}ClientTest ${CMAKE_CURRENT
 
 
 add_cli_install_executable(${PROJECT_NAME}Token Token.cpp)
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_sources(${PROJECT_NAME}Token PRIVATE Token.VersionInfo.rc)
 endif()
 target_link_libraries(${PROJECT_NAME}Token
@@ -80,7 +80,7 @@ configure_executable_companion(${PEP_INFRA_DIR}/../OAuthTokenSecret.json OPTIONA
 # TODO configure_executable_config_version(Something infra) but only once
 
 # Only copy generated PKI file if predefined one does not exist for this infrastructure
-if (NOT EXISTS "${PEP_INFRA_DIR}/rootCA.cert")
+if(NOT EXISTS "${PEP_INFRA_DIR}/rootCA.cert")
   include(${PROJECT_SOURCE_DIR}/pki/pki.cmake)
   copy_pki_files(TARGET apps_pki FILES rootCA.cert)
   add_dependencies(${PROJECT_NAME}Enrollment apps_pki)

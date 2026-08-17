@@ -6,9 +6,7 @@
 namespace pep {
 namespace commandline {
 
-/*!
- * \brief The key with which a parameter with explicit name may be specified on the command line (e.g. --loglevel).
- */
+/// \brief The key with which a parameter with explicit name may be specified on the command line (e.g. --loglevel).
 class SwitchAnnouncement {
 private:
   std::string prefix_;

@@ -80,17 +80,13 @@ class Autocomplete final {
   }
 
 public:
-  /*!
-   * \brief Insert completion for '--'
-   */
+  /// \brief Insert completion for '--'
   void stopProcessingMarker() {
     entries_.push_back({ "end subcommand", "", {{{SwitchAnnouncement::StopProcessing}, "", "End subcommand arguments"}}, {} });
   }
 
-  /*!
-   * \brief Insert completions for child commands
-   * \tparam Range Range of `Command` pointers
-   */
+  /// \brief Insert completions for child commands
+  /// \tparam Range Range of `Command` pointers
   template <typename Range>
   void childCommands(const Range& commands) {
     std::vector<CompletionValue> values;
@@ -104,10 +100,8 @@ public:
     entries_.push_back({ "subcommands", "", values, {} });
   }
 
-  /*!
-   * \brief Insert completions for parameter names
-   * \tparam Range Range of `Parameter` pointers
-   */
+  /// \brief Insert completions for parameter names
+  /// \tparam Range Range of `Parameter` pointers
   template <typename Range>
   void parameters(const Range& params) {
     std::vector<CompletionValue> switches;
@@ -134,9 +128,7 @@ public:
     entries_.push_back({ "parameters", "", switches, {} });
   }
 
-  /*!
-   * \brief Insert completions for values of this parameter
-   */
+  /// \brief Insert completions for values of this parameter
   void parameterValues(const Parameter& param) {
     const auto valueSpec = param.getValueSpecification();
     assert(valueSpec && "Parameter without value passed to Autocomplete::parameterValues");
@@ -164,9 +156,7 @@ public:
     entries_.push_back({ "values", std::move(key), std::move(values), formatType(valueSpec->getType()) });
   }
 
-  /*!
-   * \brief Write out accumulated completions in machine-readable format
-   */
+  /// \brief Write out accumulated completions in machine-readable format
   void write(std::ostream& out) const {
     for (const CompletionEntry& e : entries_) {
       out << e << '\n'; // Also end with newline to ease parsing in scripts

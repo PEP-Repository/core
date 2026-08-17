@@ -185,7 +185,7 @@ class RskProof {
   // Stores the RSKed version of ElgamalEncryption in to out and
   // returns a zero-knowledge proof of correctness.
   //
-  // XXX Add optimised version to EGCache
+  // TODO Add optimised version to EGCache
   static RskProof CertifiedRsk(
     const ElgamalEncryption& in,
     ElgamalEncryption& out,

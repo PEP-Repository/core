@@ -75,8 +75,8 @@ template <std::integral T>
   return distribution(urbg);
 }
 
-/// @brief Stream buffer that produces (infinite) random data.
-/// @remark Allows creation of std::istream instances that produce random data.
+/// \brief Stream buffer that produces (infinite) random data.
+/// \remark Allows creation of std::istream instances that produce random data.
 class RandomIStreamBuf : public std::streambuf {
 protected:
   std::streamsize xsgetn(char* s, std::streamsize count) override;

@@ -18,22 +18,14 @@ public:
 
     const std::optional<X509Identity>& getClientCa() const { return clientCa_; }
 
-    /*!
-     * \return The oauth token secret, shared with the authentication server
-     */
+    /// \return The oauth token secret, shared with the authentication server
     const std::string& getOauthTokenSecret() const;
-    /*!
-     * \param oauthTokenSecret The oauth token secret, shared with the authentication server
-     */
+    /// \param oauthTokenSecret The oauth token secret, shared with the authentication server
     void setOauthTokenSecret(const std::string& oauthTokenSecret);
 
-    /*!
-     * \return The path where the blocklist of the keyserver is stored on disk
-     */
+    /// \return The path where the blocklist of the keyserver is stored on disk
     const std::filesystem::path& getBlocklistStoragePath() const;
-    /*!
-     * \param path The path where the blocklist of the keyserver is stored on disk
-     */
+    /// \param path The path where the blocklist of the keyserver is stored on disk
     void setBlocklistStoragePath(const std::filesystem::path& path);
 
   protected:

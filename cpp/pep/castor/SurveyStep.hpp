@@ -17,12 +17,10 @@ class SurveyStep : public SimpleCastorChildObject<SurveyStep, Survey>, public Sh
   std::shared_ptr<Survey> getSurvey() const { return this->getParent(); }
 
  protected:
-  /*!
-   * \brief construct a Step
-   *
-   * \param survey The Survey this step belongs to
-   * \param json The %Json response from the Castor API for this step
-   */
+  /// \brief construct a Step
+  ///
+  /// \param survey The Survey this step belongs to
+  /// \param json The %Json response from the Castor API for this step
    SurveyStep(std::shared_ptr<Survey> survey, JsonPtr json);
 
  private:

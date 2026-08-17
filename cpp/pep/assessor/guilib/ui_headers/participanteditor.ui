@@ -15,9 +15,9 @@
   </property>
   <property name="styleSheet">
    <string notr="true">QLabel {
-	border: 0.05em solid transparent;
-	padding: 0.25em;
-	font-size: 14pt;
+  border: 0.05em solid transparent;
+  padding: 0.25em;
+  font-size: 14pt;
 }
 
 QLineEdit {

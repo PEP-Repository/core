@@ -53,7 +53,7 @@ public:
             std::rethrow_exception(std::move(ex)); //NOLINT(performance-move-const-arg) libc++ doesn't support moving exception_ptr
           } catch (...) {
             // Listener should decrement exception reference count when handled
-            //XXX Uses internal API, see https://github.com/emscripten-core/emscripten/issues/25963
+            //TODO(workaround) Uses internal API, see https://github.com/emscripten-core/emscripten/issues/25963
             controller_.call<void>("error", val::take_ownership(emscripten::internal::_emval_from_current_cxa_exception()));
           }
           *deleted = true;
@@ -93,7 +93,7 @@ EMSCRIPTEN_BINDINGS(ObservableStream) {
 
 val pep::weblib::CreateReadableStream(rxcpp::observable<val> data) {
   // See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/ReadableStream
-  //XXX `new` is workaround to not copy, see https://github.com/emscripten-core/emscripten/issues/25412
+  //TODO(workaround) `new` is workaround to not copy, see https://github.com/emscripten-core/emscripten/issues/25412
   val underlyingSource(new StreamSource(std::move(data)), allow_raw_pointers{});
   underlyingSource.as<StreamSource*>(allow_raw_pointers{})->self = underlyingSource;
   // We need this, because the ReadableStream will call the functions originally present on the object

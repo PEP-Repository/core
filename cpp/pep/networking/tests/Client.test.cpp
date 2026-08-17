@@ -123,8 +123,8 @@ private:
     // To prevent our test from failing (as it e.g. did in https://gitlab.pep.cs.ru.nl/pep/core/-/jobs/359703#L570), we subtract some msec
     // from the (expected/required) latency. E.g. if the client (connection) needed to wait 200 msec before reconnecting, it's acceptable if it
     // re-invokes our callback after 190 msec.
-    constexpr auto MAX_INVOCATION_OVERHEAD = 10ms;
-    ASSERT_GE(pep::testing::MillisecondsSince(*lastAttempt_), latencyMsec - MAX_INVOCATION_OVERHEAD) << "Client didn't observe latency during reconnect attempt";
+    constexpr auto MaxInvocationOverhead = 10ms;
+    ASSERT_GE(pep::testing::MillisecondsSince(*lastAttempt_), latencyMsec - MaxInvocationOverhead) << "Client didn't observe latency during reconnect attempt";
   }
 
   explicit ClientConnectivityHandler(const pep::ExponentialBackoff::Parameters& backoffParameters) // TODO: don't require separate reconnect parameters
@@ -182,26 +182,26 @@ TEST_F(Client, Reconnects) { // TODO: simplify
 }
 
 
-const std::vector<std::string> LINES_TO_DELIMIT = {
+const std::vector<std::string> LinesToDelimit = {
   "The clock struck one, the mouse ran down.",
   "The clock struck two, the mouse went WOO.",
   "The clock struck three, the mouse went WEEEEEE.",
   "The clock struck four, the mouse said 'NO MORE'."
 };
 const char* const LINE_DELIMITER = "\r\n";
-const std::string DELIMITED_CONTENT = boost::algorithm::join(LINES_TO_DELIMIT, LINE_DELIMITER);
+const std::string DelimitedContent = boost::algorithm::join(LinesToDelimit, LINE_DELIMITER);
 
 void ReadClientLine(std::shared_ptr<pep::networking::Client> client, std::shared_ptr<pep::networking::Connection> connection, unsigned index) {
   connection->asyncReadUntil(LINE_DELIMITER, [client, connection, index](const pep::networking::DelimitedTransfer::Result& result) {
     if (!result) {
       client->shutdown(); // Ensure that we don't keep scheduling work on the I/O context even if the assertion fails
       // Last line doesn't have a trailing delimiter, so the read is expected to fail for that index
-      ASSERT_EQ(index, LINES_TO_DELIMIT.size() - 1U) << "Receiving non-last client line " << index << " failed";
+      ASSERT_EQ(index, LinesToDelimit.size() - 1U) << "Receiving non-last client line " << index << " failed";
     }
     else {
-      EXPECT_EQ(*result, LINES_TO_DELIMIT[index] + LINE_DELIMITER) << "Delimited read didn't receive expected data";
+      EXPECT_EQ(*result, LinesToDelimit[index] + LINE_DELIMITER) << "Delimited read didn't receive expected data";
       auto next = index + 1U;
-      if (next < LINES_TO_DELIMIT.size()) {
+      if (next < LinesToDelimit.size()) {
         ReadClientLine(client, connection, next);
       }
       else {
@@ -221,7 +221,7 @@ TEST_F(Client, ReadUntil) {
     PEP_ON_FATAL_TEST_FAILURE(serverConnectionAttempt->cancel();  server->shutdown());
     ASSERT_TRUE(result) << "Server connection failed";
 
-    (*result)->asyncWrite(DELIMITED_CONTENT.c_str(), DELIMITED_CONTENT.size(), [server, serverConnectionAttempt](const pep::networking::SizedTransfer::Result& result) {
+    (*result)->asyncWrite(DelimitedContent.c_str(), DelimitedContent.size(), [server, serverConnectionAttempt](const pep::networking::SizedTransfer::Result& result) {
       serverConnectionAttempt->cancel();
       server->shutdown(); // Ensure that we don't keep scheduling work on the I/O context, even if the assertion fails
       ASSERT_TRUE(result) << "Sending server content failed";

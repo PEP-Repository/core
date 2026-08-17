@@ -40,31 +40,29 @@ public:
 
 }
 
-/*! \brief Exhausts a finisher observable after the primary observable has been exhausted.
- *         Propagates items from the primary observable, ignoring any items the finisher produces.
- * \tparam TCreateFinisher A callable type that accepts no parameters and returns the finisher observable.
- * \param subscribeOn The coordination on which the finisher observable should be subscribed.
- * \param create A callable that returns the finisher observable.
- *
- * \remark Intended for RX-based cleanup jobs, the finisher isn't created until the primary observable
- *         has been unsubscribed, allowing for e.g.
- *            auto items = obj->getItems().op(RxFinallyExhaust([obj]() { return obj->disconnect(); }, myCoordination));
- */
+/// \brief Exhausts a finisher observable after the primary observable has been exhausted.
+///         Propagates items from the primary observable, ignoring any items the finisher produces.
+/// \tparam TCreateFinisher A callable type that accepts no parameters and returns the finisher observable.
+/// \param subscribeOn The coordination on which the finisher observable should be subscribed.
+/// \param create A callable that returns the finisher observable.
+///
+/// \remark Intended for RX-based cleanup jobs, the finisher isn't created until the primary observable
+///         has been unsubscribed, allowing for e.g.
+///            auto items = obj->getItems().op(RxFinallyExhaust([obj]() { return obj->disconnect(); }, myCoordination));
 template <typename TCreateFinisher>
 auto RxFinallyExhaust(rxcpp::observe_on_one_worker subscribeOn, TCreateFinisher&& create) {
   return detail::RxFinallyExhaustOperator<decltype(create())>(std::forward<TCreateFinisher>(create), subscribeOn);
 }
 
-/*! \brief Exhausts a finisher observable after the primary observable has been exhausted.
- *         Propagates items from the primary observable, ignoring any items the finisher produces.
- * \tparam TCreateFinisher A callable type that accepts no parameters and returns the finisher observable.
- * \param io_context The I/O context for the coordination on which the finisher observable should be subscribed.
- * \param create A callable that returns the finisher observable.
- *
- * \remark Intended for RX-based cleanup jobs, the finisher isn't created until the primary observable
- *         has been unsubscribed, allowing for e.g.
- *            auto items = obj->getItems().op(RxFinallyExhaust([obj]() { return obj->disconnect(); }, myIoContext));
- */
+/// \brief Exhausts a finisher observable after the primary observable has been exhausted.
+///         Propagates items from the primary observable, ignoring any items the finisher produces.
+/// \tparam TCreateFinisher A callable type that accepts no parameters and returns the finisher observable.
+/// \param io_context The I/O context for the coordination on which the finisher observable should be subscribed.
+/// \param create A callable that returns the finisher observable.
+///
+/// \remark Intended for RX-based cleanup jobs, the finisher isn't created until the primary observable
+///         has been unsubscribed, allowing for e.g.
+///            auto items = obj->getItems().op(RxFinallyExhaust([obj]() { return obj->disconnect(); }, myIoContext));
 template <typename TCreateFinisher>
 auto RxFinallyExhaust(boost::asio::io_context& io_context, TCreateFinisher&& create) {
   return RxFinallyExhaust(ObserveOnAsio(io_context), std::forward<TCreateFinisher>(create));

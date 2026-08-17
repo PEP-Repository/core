@@ -32,10 +32,12 @@ using namespace std::ranges;
 
 namespace pep {
 
+namespace {
 const std::string LogTag ("Transcryptor");
-const Severity TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY = Severity::Debug;
-const Severity LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY = Severity::Debug;
-const Severity CHECKSUM_CHAIN_CALCULATION_LOGGING_SEVERITY = Severity::Debug;
+constexpr Severity TranscryptorRequestLoggingSeverity = Severity::Debug;
+constexpr Severity LogIssuedTicketRequestLoggingSeverity = Severity::Debug;
+constexpr Severity ChecksumChainCalculationLoggingSeverity = Severity::Debug;
+}
 
 Transcryptor::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   RegisteredMetrics(registry),
@@ -126,7 +128,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
   auto start_time = std::chrono::steady_clock::now();
   auto requestNumber = nextTranscryptorRequestNumber_++;
 
-  PEP_LOG(LogTag, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << requestNumber << " received";
+  PEP_LOG(LogTag, TranscryptorRequestLoggingSeverity) << "Transcryptor request " << requestNumber << " received";
 
   if (!pseudonymKey_)
     throw Error("Transcryptor has not been enrolled with a PseudonymKey.");
@@ -185,7 +187,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     Results results;
   };
 
-  PEP_LOG(LogTag, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << requestNumber << " constructing observable";
+  PEP_LOG(LogTag, TranscryptorRequestLoggingSeverity) << "Transcryptor request " << requestNumber << " constructing observable";
 
   messaging::MessageBatches result =
     userVerifiersObs
@@ -202,7 +204,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       })
     .concat_map([server, ctx](std::shared_ptr<Batch> batch) {
     std::vector<size_t> is(batch->requestEntries.size());
-    PEP_LOG(LogTag, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << ctx->requestNumber << " processing " << batch->requestEntries.size() << "-entry batch";
+    PEP_LOG(LogTag, TranscryptorRequestLoggingSeverity) << "Transcryptor request " << ctx->requestNumber << " processing " << batch->requestEntries.size() << "-entry batch";
     //NOLINTNEXTLINE(modernize-use-ranges) std::ranges::iota needs libc++ 23; unavailable on our Emscripten/Apple Clang floor
     std::iota(is.begin(), is.end(), 0);
     return server->workerPool_->batched_map<8>(std::move(is),
@@ -287,7 +289,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
         return results;
       })
     .map([server, ctx, start_time](std::shared_ptr<Results> results) {
-      PEP_LOG(LogTag, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << ctx->requestNumber << " finishing up";
+      PEP_LOG(LogTag, TranscryptorRequestLoggingSeverity) << "Transcryptor request " << ctx->requestNumber << " finishing up";
       // Compute hash of encrypted local pseudonyms to check later that the AM
       // didn't change them.
       auto pseudonymHash = ComputePseudonymHash(results->responseEntries);
@@ -302,7 +304,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       );
       auto result = rxcpp::observable<>::just(std::make_shared<std::string>(Serialization::ToString(std::move(response)))).as_dynamic();
       server->lpMetrics_->transcryptorRequestDuration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count()); // in seconds
-      PEP_LOG(LogTag, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << ctx->requestNumber << " returning result to requestor";
+      PEP_LOG(LogTag, TranscryptorRequestLoggingSeverity) << "Transcryptor request " << ctx->requestNumber << " returning result to requestor";
       return result;
     });
     });
@@ -312,11 +314,11 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       [](auto) { /*ignore */},
       [](std::exception_ptr) { /*ignore */},
       [ctx]() {
-        PEP_LOG(LogTag, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << ctx->requestNumber << " starting asynchronous processing";
+        PEP_LOG(LogTag, TranscryptorRequestLoggingSeverity) << "Transcryptor request " << ctx->requestNumber << " starting asynchronous processing";
       })
     .concat(result);
 
-  PEP_LOG(LogTag, TRANSCRYPTOR_REQUEST_LOGGING_SEVERITY) << "Transcryptor request " << requestNumber << " returning observable";
+  PEP_LOG(LogTag, TranscryptorRequestLoggingSeverity) << "Transcryptor request " << requestNumber << " returning observable";
   return result;
 }
 
@@ -342,14 +344,14 @@ messaging::MessageBatches
 Transcryptor::handleLogIssuedTicketRequest(
     std::shared_ptr<LogIssuedTicketRequest> request) {
   auto requestNumber = nextLogIssuedTicketRequestNumber_++;
-  PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " received";
+  PEP_LOG(LogTag, LogIssuedTicketRequestLoggingSeverity) << "LogIssuedTicket request " << requestNumber << " received";
 
   std::string serialized;
   auto ticket = request->ticket.openForLogging(*getRootCAs(), serialized);
-  PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " opened ticket";
+  PEP_LOG(LogTag, LogIssuedTicketRequestLoggingSeverity) << "LogIssuedTicket request " << requestNumber << " opened ticket";
 
   auto hash = ComputePseudonymHash(ticket.accessSubjects);
-  PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " calculated hash";
+  PEP_LOG(LogTag, LogIssuedTicketRequestLoggingSeverity) << "LogIssuedTicket request " << requestNumber << " calculated hash";
 
   storage_->logIssuedTicket(
     request->id,
@@ -360,7 +362,7 @@ Transcryptor::handleLogIssuedTicketRequest(
     ticket.timestamp
   );
 
-  PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " finishing up";
+  PEP_LOG(LogTag, LogIssuedTicketRequestLoggingSeverity) << "LogIssuedTicket request " << requestNumber << " finishing up";
   auto result = messaging::BatchSingleMessage(
       LogIssuedTicketResponse(
         Signature::Make(
@@ -370,7 +372,7 @@ Transcryptor::handleLogIssuedTicketRequest(
       )
     );
 
-  PEP_LOG(LogTag, LOG_ISSUED_TICKET_REQUEST_LOGGING_SEVERITY) << "LogIssuedTicket request " << requestNumber << " returning result to requestor";
+  PEP_LOG(LogTag, LogIssuedTicketRequestLoggingSeverity) << "LogIssuedTicket request " << requestNumber << " returning result to requestor";
   return result;
 }
 
@@ -445,9 +447,9 @@ void Transcryptor::computeChecksumChainChecksum(
   if (maxCheckpoint.has_value()) {
     when = " at checkpoint " + std::to_string(*maxCheckpoint);
   }
-  PEP_LOG(LogTag, CHECKSUM_CHAIN_CALCULATION_LOGGING_SEVERITY) << "Starting calculation for checksum chain " << chain << when;
+  PEP_LOG(LogTag, ChecksumChainCalculationLoggingSeverity) << "Starting calculation for checksum chain " << chain << when;
   storage_->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
-  PEP_LOG(LogTag, CHECKSUM_CHAIN_CALCULATION_LOGGING_SEVERITY) << "Finished calculation for checksum chain " << chain << when;
+  PEP_LOG(LogTag, ChecksumChainCalculationLoggingSeverity) << "Finished calculation for checksum chain " << chain << when;
 }
 
 }

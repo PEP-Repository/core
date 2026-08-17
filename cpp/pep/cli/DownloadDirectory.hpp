@@ -73,9 +73,9 @@ public:
     // Writes the given chunk to the stream. Automatically commits this stream once signaled filesize is reached.
     void write(const std::string& part, std::shared_ptr<GlobalConfiguration> globalConfig);
 
-    /*\brief Completes the process of downloading a cell. Optional pseudonymisation or extracting of archived data is done here, after all network traffic is done.
-     * The resulting file is hashed again and checked against a hash that was calculated during the writing of the file, to check for any errors in I/O.
-     */
+    /// \brief Completes the process of downloading a cell.
+    /// \details Optional pseudonymisation or extracting of archived data is done here, after all network traffic is done.
+    /// The resulting file is hashed again and checked against a hash that was calculated during the writing of the file, to check for any errors in I/O.
     void commit(std::shared_ptr<GlobalConfiguration> globalConfig);
 
     bool isCommitted() const noexcept;

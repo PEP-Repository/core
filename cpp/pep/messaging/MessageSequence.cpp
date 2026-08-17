@@ -6,10 +6,10 @@ namespace pep::messaging {
 
 namespace {
 
-/// @brief Produces a MessageSequence ("batch") containing (some) data from an input stream.
-/// @param stream The input stream to read from
-/// @return A MessageSequence containing at most a single string ("page").
-/// @remark Postpones reading data from the input stream until someone .subscribe()s to the MessageSequence
+/// \brief Produces a MessageSequence ("batch") containing (some) data from an input stream.
+/// \param stream The input stream to read from
+/// \return A MessageSequence containing at most a single string ("page").
+/// \remark Postpones reading data from the input stream until someone .subscribe()s to the MessageSequence
 MessageSequence MakeBatch(std::shared_ptr<std::istream> stream) {
   assert(stream->good());
 

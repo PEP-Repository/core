@@ -7,9 +7,7 @@
 namespace pep {
 namespace castor {
 
-/*!
-  * \brief Pulls Castor CRF (Clinical Research Form or "STUDY") data for a single Castor study.
-  */
+/// \brief Pulls Castor CRF (Clinical Research Form or "STUDY") data for a single Castor study.
 class CrfAspectPuller : public TypedStudyAspectPuller<CrfAspectPuller, CastorStudyType::Crf>, private SharedConstructor<CrfAspectPuller> {
   friend class StudyAspectPuller;
   friend class SharedConstructor<CrfAspectPuller>;
@@ -32,11 +30,9 @@ private:
   rxcpp::observable<std::shared_ptr<StorableColumnContent>> loadFormContentFromCastor(std::shared_ptr<CastorParticipant> participant, const std::string& formId, std::shared_ptr<FieldValues> dps);
 
 public:
-  /*!
-  * \brief Produces (an observable emitting) the Castor content to store for the specified participant.
-  * \param participant The CastorParticipant instance representing the participant to process.
-  * \return Entries representing the Castor CRF data that should be stored in PEP for the specified Castor participant.
-  */
+  /// \brief Produces (an observable emitting) the Castor content to store for the specified participant.
+  /// \param participant The CastorParticipant instance representing the participant to process.
+  /// \return Entries representing the Castor CRF data that should be stored in PEP for the specified Castor participant.
   rxcpp::observable<std::shared_ptr<StorableColumnContent>> getStorableContent(std::shared_ptr<CastorParticipant> participant) override;
 };
 

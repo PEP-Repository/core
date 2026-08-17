@@ -37,7 +37,7 @@ set(ASSESSOR_SRCS
   ButtonBar.cpp ButtonBar.hpp
   UserRole.cpp UserRole.hpp
 )
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(ASSESSOR_SRCS ${ASSESSOR_SRCS} guilib/Icon.rc guilib/VersionInfo.rc)
 elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
   set(ASSESSOR_SRCS ${ASSESSOR_SRCS} SparkleUpdater.mm SparkleUpdater.h)
@@ -49,17 +49,16 @@ qt_add_resources(RES_SOURCES
 
 # Executable target must differ from any directory names
 # Windows targets
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_cli_install_executable(${PROJECT_NAME}Assessor WIN32)
   add_dependencies(${PROJECT_NAME}Assessor ${PROJECT_NAME}Elevate)
 
-# macOS targets
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin") # macOS targets
 
   find_package(Sparkle REQUIRED)
 
   if(NOT SPARKLE_LIBRARY)
-      message(FATAL_ERROR "Sparkle library not found")
+    message(FATAL_ERROR "Sparkle library not found")
   endif()
 
   set(OSX_APP_ICON ${CMAKE_CURRENT_SOURCE_DIR}/guilib/appicon.icns)
@@ -83,8 +82,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     COMMAND install_name_tool -change @rpath/Sparkle.framework/Versions/B/Sparkle @executable_path/../Frameworks/Sparkle.framework/Versions/B/Sparkle $<TARGET_FILE:${PROJECT_NAME}Assessor>
     )
 
-# Linux / BSD targets
-else()
+else() # Linux / BSD targets
   add_cli_install_executable(${PROJECT_NAME}Assessor)
 endif()
 
@@ -116,7 +114,7 @@ target_link_libraries(${PROJECT_NAME}Assessor PRIVATE
 
 include(${PROJECT_SOURCE_DIR}/pki/pki.cmake)
 
-if (NOT DEFINED CLIENT_SUBDIR)
+if(NOT DEFINED CLIENT_SUBDIR)
   set(CLIENT_SUBDIR .)
 endif()
 

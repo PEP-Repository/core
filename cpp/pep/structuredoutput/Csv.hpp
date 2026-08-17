@@ -18,7 +18,7 @@ struct Config final {
 std::ostream& append(std::ostream&, const Table&, Config = {});
 
 /// Converts a table to string.
-/// @details This is a small wrapper around append for convenience.
+/// \details This is a small wrapper around append for convenience.
 std::string to_string(const Table&, Config = {});
 
 } // namespace pep::structuredOutput::csv

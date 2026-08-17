@@ -18,12 +18,10 @@ class Visit : public SimpleCastorChildObject<Visit, Study>, public SharedConstru
   std::string getName() const { return name_; }
 
  protected:
-  /*!
-   * \brief construct a Visit
-   *
-   * \param study The Study this visit belongs to
-   * \param json The %Json response from the Castor API for this visit
-   */
+  /// \brief construct a Visit
+  ///
+  /// \param study The Study this visit belongs to
+  /// \param json The %Json response from the Castor API for this visit
    Visit(std::shared_ptr<Study> study, JsonPtr json);
 
  private:

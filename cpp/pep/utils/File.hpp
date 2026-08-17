@@ -19,9 +19,9 @@ void WriteFile(const std::filesystem::path& path, const std::string& content);
 /// Is valid file name for all supported platforms?
 [[nodiscard]] bool IsValidPortableFileName(std::string_view name);
 
-/* \brief Reads a std::istream, iteratively filling a buffer. The writeToDestination lambda function can take this buffer (as char* and its length) and
- * define what should be done with it.
- */
+/// \brief Reads a std::istream, iteratively filling a buffer.
+/// \details The writeToDestination lambda function can take this buffer (as char* and its length) and
+/// define what should be done with it.
 void IstreamToDestination(std::istream& in, std::function<void(const char* c, const std::streamsize len)> writeToDestination);
 
 /// Returns if \p path is a relative path not outside the reference folder.

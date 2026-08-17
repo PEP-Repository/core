@@ -24,7 +24,7 @@ struct BlocklistEntry final {
   bool operator!= (const BlocklistEntry&) const = default;
 };
 
-/// Returns true iff the target of the @p entry supersedes the @p token.
+/// Returns true iff the target of the \p entry supersedes the \p token.
 inline bool IsBlocking(const BlocklistEntry& entry, const TokenIdentifier& token, Timestamp at=TimeNow()) {
   return (!entry.metadata.blockStartDateTime || *entry.metadata.blockStartDateTime <= at)
     && Supersedes(entry.target, token);

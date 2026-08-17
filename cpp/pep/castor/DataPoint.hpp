@@ -23,11 +23,9 @@ class DataPointBase : public CastorObject {
  protected:
   static const std::string EmbeddedApiNodeName;
 
-  /*!
-   * \brief Construct a new DataPointBase
-   *
-   * \param json The %Json response from the Castor API for this DataPointBase
-   */
+  /// \brief Construct a new DataPointBase
+  ///
+  /// \param json The %Json response from the Castor API for this DataPointBase
   DataPointBase(JsonPtr json);
 
   static std::string GetApiRoot(std::shared_ptr<Study> study, const std::string& relative);
@@ -39,19 +37,15 @@ class DataPointBase : public CastorObject {
   }
 };
 
-/*!
- * \brief Utility base for data point types.
- *
- * \remark Inheritors must define static const strings RelativeApiEndpoint for their data point type.
- */
+/// \brief Utility base for data point types.
+///
+/// \remark Inheritors must define static const strings RelativeApiEndpoint for their data point type.
 template<class ChildType, class ParentType>
 class DataPoint : public ParentedCastorObject<ParentType, DataPointBase> {
 public:
-  /*!
-   * \brief Retrieves all data point instances belonging to the specified parent.
-   *
-   * \param parent The parent to retrieve data points for.
-   */
+  /// \brief Retrieves all data point instances belonging to the specified parent.
+  ///
+  /// \param parent The parent to retrieve data points for.
   static rxcpp::observable<std::shared_ptr<ChildType>> RetrieveForParent(std::shared_ptr<ParentType> parent) {
     return CastorObject::RetrieveList<ChildType, ParentType>(
       parent,
@@ -61,12 +55,10 @@ public:
 
 private:
   friend ChildType;
-  /*!
-   * \brief Construct a new DataPoint
-   *
-   * \param parent The parent this data point belongs to
-   * \param json The %Json response from the Castor API for this DataPoint
-   */
+  /// \brief Construct a new DataPoint
+  ///
+  /// \param parent The parent this data point belongs to
+  /// \param json The %Json response from the Castor API for this DataPoint
   DataPoint(std::shared_ptr<ParentType> parent, JsonPtr json)
     : ParentedCastorObject<ParentType, DataPointBase>(parent, json) {}
 };

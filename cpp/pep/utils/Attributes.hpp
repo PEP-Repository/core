@@ -1,7 +1,7 @@
 #pragma once
 
-/// @def PEP_ATTRIBUTE_FLAG_ENUM
-/// @brief Defines a compiler specific attribute to mark a enum type as a flag type.
+/// \def PEP_ATTRIBUTE_FLAG_ENUM
+/// \brief Defines a compiler specific attribute to mark a enum type as a flag type.
 ///
 /// Normally the compiler assumes that the only valid enum values are those that are explicitly included in
 /// its definition. This is not true for flag types, where any bitwise combination of enum values is valid, even if it

@@ -33,10 +33,9 @@ public:
 }
 
 
-/*! \brief Invokes a callback when an observable has finished emitting items: either because it's done, or because an error occurred.
- * \tparam THandle The callback type, which must be convertible to a function<> accepting an std::optional<std::exception_ptr> parameter and returning void.
- * \remark The callback is invoked _before_ the observable is fully exhausted and its resources released. Also see \c RxSubsequently .
- */
+/// \brief Invokes a callback when an observable has finished emitting items: either because it's done, or because an error occurred.
+/// \tparam THandle The callback type, which must be convertible to a function<> accepting an std::optional<std::exception_ptr> parameter and returning void.
+/// \remark The callback is invoked _before_ the observable is fully exhausted and its resources released. Also see \c RxSubsequently .
 template <typename THandle>
 detail::RxBeforeTerminationOperator RxBeforeTermination(const THandle& handle) {
   return detail::RxBeforeTerminationOperator(detail::RxBeforeTerminationOperator::Handler(handle)); // Conversion to Handler ensures our handler has the correct signature
