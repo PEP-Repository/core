@@ -29,7 +29,7 @@ public:
   }
   /// Serialize
   static WireType toWireType(Vec &&vec, rvp::default_tag t) {
-    //XXX This does not actually move elements yet, see https://github.com/emscripten-core/emscripten/issues/25412
+    //TODO(workaround) This does not actually move elements yet, see https://github.com/emscripten-core/emscripten/issues/25412
     return ValBinding::toWireType(val::array(
       std::move_iterator(vec.begin()),
       std::move_iterator(vec.end())), t);

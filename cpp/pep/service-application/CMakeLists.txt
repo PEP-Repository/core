@@ -1,6 +1,6 @@
 # Library providing boilerplate for applications hosting (a) PEP service(s).
 
-add_library(${PROJECT_NAME}ServiceApplicationlib STATIC
+add_library(${PROJECT_NAME}ServiceApplicationlib
     ServiceApplication.cpp ServiceApplication.hpp
 )
 

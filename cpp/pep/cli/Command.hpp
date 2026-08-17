@@ -4,12 +4,10 @@
 
 namespace pep::cli {
 
-/*!
- * \brief Helper base for ChildCommandOf<> class (below).
- * \remark Provides "executeEventLoopFor" methods supporting callbacks that accept (a shared_ptr<> to) either a CoreClient or a (full) Client instance.
- *         Because this class performs the upcast from Client to CoreClient, derived classes that require only the CoreClient interface can
- *         #include CoreClient.hpp instead of having to #include the full Client.hpp.
- */
+/// \brief Helper base for ChildCommandOf<> class (below).
+/// \remark Provides "executeEventLoopFor" methods supporting callbacks that accept (a shared_ptr<> to) either a CoreClient or a (full) Client instance.
+///         Because this class performs the upcast from Client to CoreClient, derived classes that require only the CoreClient interface can
+///         #include CoreClient.hpp instead of having to #include the full Client.hpp.
 class ChildCommand {
 private:
   int executeEventLoopForClient(bool ensureEnrolled, std::function<rxcpp::observable<pep::FakeVoid>(std::shared_ptr<pep::CoreClient> client)> callback);
@@ -20,12 +18,10 @@ protected:
 public:
   virtual ~ChildCommand() noexcept = default;
 
-  /*!
-   * \brief Provides a Client or CoreClient instance to a callback, and exhausts the observable that the callback returns.
-   * \tparam TCallback The callback type, which must be a function-like object that returns an observable<FakeVoid> and accepts a shared_ptr<> to either a CoreClient or a Client instance.
-   * \param ensureEnrolled Whether the (Core)Client should be enrolled before providing it to the callback.
-   * \param callback The callback function to invoke.
-   */
+  /// \brief Provides a Client or CoreClient instance to a callback, and exhausts the observable that the callback returns.
+  /// \tparam TCallback The callback type, which must be a function-like object that returns an observable<FakeVoid> and accepts a shared_ptr<> to either a CoreClient or a Client instance.
+  /// \param ensureEnrolled Whether the (Core)Client should be enrolled before providing it to the callback.
+  /// \param callback The callback function to invoke.
   template <typename TCallback>
   int executeEventLoopFor(bool ensureEnrolled, TCallback callback) {
     constexpr bool CallbackAcceptsCoreClient = std::is_invocable_v<TCallback, std::shared_ptr<pep::CoreClient>>; // Check if the callback can be invoked with (a shared_ptr to) a CoreClient instance
@@ -34,11 +30,9 @@ public:
     return this->executeEventLoopForClient(ensureEnrolled, Function(callback)); // Invoke a method overload depending on the std::function's type (i.e. signature).
   }
 
-  /*!
-   * \brief Provides an enrolled Client or CoreClient instance to a callback, and exhausts the observable that the callback returns.
-   * \tparam TCallback The callback type, which must be a function-like object that returns an observable<FakeVoid> and accepts a shared_ptr<> to either a CoreClient or a Client instance.
-   * \param callback The callback function to invoke.
-   */
+  /// \brief Provides an enrolled Client or CoreClient instance to a callback, and exhausts the observable that the callback returns.
+  /// \tparam TCallback The callback type, which must be a function-like object that returns an observable<FakeVoid> and accepts a shared_ptr<> to either a CoreClient or a Client instance.
+  /// \param callback The callback function to invoke.
   template <typename TCallback>
   int executeEventLoopFor(TCallback callback) {
     return this->executeEventLoopFor(true, callback);
@@ -46,10 +40,8 @@ public:
 };
 
 
-/*!
- * \brief Utility base for commands supported by the pepcli application.
- * \tparam TParent The parent command type. Should be either CliApplication or a(nother) ChildCommandOf<> specialization.
- */
+/// \brief Utility base for commands supported by the pepcli application.
+/// \tparam TParent The parent command type. Should be either CliApplication or a(nother) ChildCommandOf<> specialization.
 template <typename TParent>
 class ChildCommandOf : public pep::commandline::ChildCommandOf<TParent>, public ChildCommand {
 protected:

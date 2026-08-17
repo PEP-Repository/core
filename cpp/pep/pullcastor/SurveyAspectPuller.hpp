@@ -8,9 +8,7 @@
 namespace pep {
 namespace castor {
 
-/*!
-  * \brief Pulls Castor survey ("SURVEY") data for a single Castor study.
-  */
+/// \brief Pulls Castor survey ("SURVEY") data for a single Castor study.
 class SurveyAspectPuller : public TypedStudyAspectPuller<SurveyAspectPuller, CastorStudyType::Survey>, private SharedConstructor<SurveyAspectPuller> {
   friend class StudyAspectPuller;
   friend class SharedConstructor<SurveyAspectPuller>;
@@ -36,11 +34,9 @@ private:
   rxcpp::observable<std::shared_ptr<SdpsBySpi>> getDataPoints(std::shared_ptr<Spis> spis);
 
 public:
-  /*!
-  * \brief Produces (an observable emitting) the Castor content to store for the specified participant.
-  * \param participant The CastorParticipant instance representing the participant to process.
-  * \return Entries representing the Castor survey data that should be stored in PEP for the specified Castor participant.
-  */
+  /// \brief Produces (an observable emitting) the Castor content to store for the specified participant.
+  /// \param participant The CastorParticipant instance representing the participant to process.
+  /// \return Entries representing the Castor survey data that should be stored in PEP for the specified Castor participant.
   rxcpp::observable<std::shared_ptr<StorableColumnContent>> getStorableContent(std::shared_ptr<CastorParticipant> participant) override;
 };
 

@@ -359,21 +359,21 @@ static void BM_KeyRequestCopy(benchmark::State& state) {
 }
 BENCHMARK(BM_KeyRequestCopy);
 
-const std::string SAMPLE_SHA256_DIGEST = "abcdefghijklmnopqrstuvwxyz123456"; // Digest length of 256 bits = 32 bytes
+const std::string SampleSha256Digest = "abcdefghijklmnopqrstuvwxyz123456"; // Digest length of 256 bits = 32 bytes
 
 static void BM_SignDigest(benchmark::State& state) {
   pep::AsymmetricKeyPair keypair = pep::AsymmetricKeyPair::GenerateKeyPair();
   for (auto _ : state)
-    benchmark::DoNotOptimize(keypair.getPrivateKey().signDigestSha256(SAMPLE_SHA256_DIGEST));
+    benchmark::DoNotOptimize(keypair.getPrivateKey().signDigestSha256(SampleSha256Digest));
   state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_SignDigest);
 
 static void BM_VerifyDigest(benchmark::State& state) {
   pep::AsymmetricKeyPair keypair = pep::AsymmetricKeyPair::GenerateKeyPair();
-  auto sig = keypair.getPrivateKey().signDigestSha256(SAMPLE_SHA256_DIGEST);
+  auto sig = keypair.getPrivateKey().signDigestSha256(SampleSha256Digest);
   for (auto _ : state)
-    benchmark::DoNotOptimize(keypair.getPublicKey().verifyDigestSha256(SAMPLE_SHA256_DIGEST, sig));
+    benchmark::DoNotOptimize(keypair.getPublicKey().verifyDigestSha256(SampleSha256Digest, sig));
   state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_VerifyDigest);

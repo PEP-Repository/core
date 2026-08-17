@@ -32,44 +32,44 @@
   </property>
   <property name="styleSheet">
    <string notr="true">QStatusBar {
-	min-height: 14pt;
+  min-height: 14pt;
 }
 QStatusBar::item {
-	border: none;
+  border: none;
 }
 QStatusBar QLabel {
-	font-size: 14pt;
-	color: white;
+  font-size: 14pt;
+  color: white;
 }
 QStatusBar QPushButton {
-	border: 0.1em solid white;
-	border-radius: 0.25em;
-	outline: none;
-	font-size: 13pt;
-	min-height: 13pt;
-	background-color: rgba(0,0,0,0);
-	color: white;
+  border: 0.1em solid white;
+  border-radius: 0.25em;
+  outline: none;
+  font-size: 13pt;
+  min-height: 13pt;
+  background-color: rgba(0,0,0,0);
+  color: white;
 }
 QStatusBar QPushButton:hover {
-	background-color: rgba(255,255,255,0.9);
+  background-color: rgba(255,255,255,0.9);
 }
 QStatusBar.info {
-	background-color: #5587A9;
+  background-color: #5587A9;
 }
 QStatusBar.info QPushButton:hover {
-	color: #5587A9;
+  color: #5587A9;
 }
 QStatusBar.warning {
-	background-color: rgba(177,104,31,0.8);
+  background-color: rgba(177,104,31,0.8);
 }
 QStatusBar.warning QPushButton:hover {
-	color: rgba(177,104,31,0.8);
+  color: rgba(177,104,31,0.8);
 }
 QStatusBar.error {
-	background-color: rgba(202,11,94,0.8);
+  background-color: rgba(202,11,94,0.8);
 }
 QStatusBar.error QPushButton:hover {
-	color: rgba(202,11,94,0.8);
+  color: rgba(202,11,94,0.8);
 }</string>
   </property>
   <widget class="QWidget" name="root">
@@ -182,7 +182,7 @@ QStatusBar.error QPushButton:hover {
          </property>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayoutLogonState" stretch="1">
-		
+
            <item>
             <widget class="QLabel" name="user">
              <property name="sizePolicy">
@@ -205,31 +205,31 @@ background-color: transparent;</string>
              </property>
             </widget>
            </item>
-		   
+
            <item>
             <widget class="QComboBox" name="contextComboBox">
              <property name="styleSheet">
               <string notr="true">QWidget {
-	border: 0.1em solid white;
-	border-radius: 0.25em;
-	color: white;
-	padding: 0.5em;
-	outline: none;
-	font-size: 13pt;
+  border: 0.1em solid white;
+  border-radius: 0.25em;
+  color: white;
+  padding: 0.5em;
+  outline: none;
+  font-size: 13pt;
 }
 QWidget:focus {
-	border: 0.2em solid white;
+  border: 0.2em solid white;
 }
 QWidget:hover {
-	background-color: rgba(255,255,255,0.9);
-	color: #8DB6D3;
+  background-color: rgba(255,255,255,0.9);
+  color: #8DB6D3;
 }
 QWidget:disabled {
-	color: grey;
-	border-color: grey;
+  color: grey;
+  border-color: grey;
 }
 QComboBox {
-	background-color: transparent;
+  background-color: transparent;
 }
 QComboBox QAbstractItemView {
     background-color: grey;
@@ -246,7 +246,7 @@ QComboBox::item:selected
              </property>
             </widget>
            </item>
-		  
+
           </layout>
          </item>
         </layout>

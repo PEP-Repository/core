@@ -3,7 +3,21 @@
 #include <functional>
 #include <numeric>
 #include <ranges>
+#include <string>
 
+// For implementors:
+// Constant-time functions cannot use branching (if, ternary, short-circuit logic, ...) on secrets.
+// They can also not index memory depending on secrets (lookup tables),
+// because of caching (reads accessing memory that wasn't cached take more time).
+// They can also not use operations that may not be constant time, like division.
+// See https://github.com/veorq/cryptocoding.
+// Smart compilers may still mess with this, however:
+// see https://discourse.llvm.org/t/rfc-constant-time-coding-support/87781 and https://eprint.iacr.org/2025/435.
+
+/// Constant-time functions for operations on secrets.
+///
+/// The running time of these functions does not depend on the value of a secret input.
+/// This protects against timing attacks.
 namespace pep::const_time {
 
 /// Check if all elements are zero in constant time (only depending on the length)
@@ -31,5 +45,15 @@ requires (std::same_as<std::ranges::range_value_t<decltype(lhs)>, std::ranges::r
   }
   return inequalBits == Type{};
 }
+
+/// Convert \p bytes to hexadecimal in constant time (only depending on the length).
+/// \returns Hexadecimal string. Length is always a multiple of 2.
+std::string ToHex(std::string_view bytes);
+
+/// Convert \p hex to bytes from hexadecimal in constant time (only depending on the length).
+/// \throws std::invalid_argument for length not divisible by 2.
+/// \throws std::invalid_argument for invalid hex character. For invalid characters, the execution time may depend on the value.
+/// \returns String of bytes.
+std::string FromHex(std::string_view hex);
 
 } // namespace pep::const_time

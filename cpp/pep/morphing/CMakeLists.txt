@@ -1,7 +1,7 @@
 # Library implementing PEP RSK for PEP repo.
 
 
-add_library(${PROJECT_NAME}Morphinglib STATIC
+add_library(${PROJECT_NAME}Morphinglib
   EnrolledPartyKeys.hpp
   MorphingPropertySerializers.hpp MorphingPropertySerializers.cpp
   Metadata.hpp Metadata.cpp # TODO: move to different lib?

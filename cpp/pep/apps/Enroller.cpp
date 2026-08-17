@@ -1,4 +1,5 @@
 #include <pep/apps/Enroller.hpp>
+#include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>

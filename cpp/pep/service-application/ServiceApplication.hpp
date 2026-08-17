@@ -2,6 +2,7 @@
 
 #include <pep/application/Application.hpp>
 #include <pep/server/NetworkedServer.hpp>
+#include <pep/utils/Configuration.hpp>
 
 namespace pep {
 

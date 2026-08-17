@@ -17,12 +17,12 @@ public:
 };
 
 void TestClientServerBasics(TestServerFactory& factory) {
-  const size_t MESSAGE_SIZE = 1024;
+  constexpr size_t MessageSize = 1024;
 
   boost::asio::io_context context;
 
-  auto sent = std::make_shared<std::string>(MESSAGE_SIZE, '\0'),
-    received = std::make_shared<std::string>(MESSAGE_SIZE, '\0');
+  auto sent = std::make_shared<std::string>(MessageSize, '\0'),
+    received = std::make_shared<std::string>(MessageSize, '\0');
   std::iota(sent->begin(), sent->end(), '\0');
 
   auto protocol = factory.protocol().name();
@@ -31,7 +31,7 @@ void TestClientServerBasics(TestServerFactory& factory) {
   auto server = pep::networking::Server::Create(*serverParameters);
   auto started = pep::MakeSharedCopy(false), stopped = pep::MakeSharedCopy(false);
   auto serverConnectionAttempt = std::make_shared<pep::EventSubscription>();
-  *serverConnectionAttempt = server->onConnectionAttempt.subscribe([MESSAGE_SIZE, sent, server, serverConnectionAttempt, started, stopped, protocol](const pep::networking::Connection::Attempt::Result& result) {
+  *serverConnectionAttempt = server->onConnectionAttempt.subscribe([MessageSize, sent, server, serverConnectionAttempt, started, stopped, protocol](const pep::networking::Connection::Attempt::Result& result) {
     ASSERT_FALSE(*started) << protocol << " server produced multiple ConnectResults";
     *started = true;
 
@@ -49,7 +49,7 @@ void TestClientServerBasics(TestServerFactory& factory) {
     ASSERT_TRUE(connection->isConnected()) << protocol << " server produced non-connected connection";
     ASSERT_FALSE(*stopped) << protocol << " server cannot be stopped multiple times";
 
-    connection->asyncWrite(sent->data(), MESSAGE_SIZE, [MESSAGE_SIZE, server, serverConnectionAttempt, stopped, protocol, connection](const pep::networking::SizedTransfer::Result& result) {
+    connection->asyncWrite(sent->data(), MessageSize, [MessageSize, server, serverConnectionAttempt, stopped, protocol, connection](const pep::networking::SizedTransfer::Result& result) {
       ASSERT_FALSE(*stopped) << protocol << " server cannot be stopped multiple times";
       // Ensure that our server stops (and hence the process exits) even if a test assertion (below) fails
       serverConnectionAttempt->cancel();
@@ -57,7 +57,7 @@ void TestClientServerBasics(TestServerFactory& factory) {
       *stopped = true;
 
       ASSERT_TRUE(result) << protocol << " async write produced an error: " << pep::GetExceptionMessage(result.exception());
-      ASSERT_EQ(MESSAGE_SIZE, *result) << protocol << " async write didn't write expected number of bytes";
+      ASSERT_EQ(MessageSize, *result) << protocol << " async write didn't write expected number of bytes";
       });
     });
   server->start();
@@ -66,20 +66,20 @@ void TestClientServerBasics(TestServerFactory& factory) {
   auto client = pep::networking::Client::Create(*clientParameters);
   auto connected = pep::MakeSharedCopy(false);
   auto clientConnectionAttempt = std::make_shared<pep::EventSubscription>();
-  *clientConnectionAttempt = client->onConnectionAttempt.subscribe([MESSAGE_SIZE, &client, clientConnectionAttempt, received, connected, protocol](const pep::networking::Connection::Attempt::Result& result) {
+  *clientConnectionAttempt = client->onConnectionAttempt.subscribe([MessageSize, &client, clientConnectionAttempt, received, connected, protocol](const pep::networking::Connection::Attempt::Result& result) {
     ASSERT_TRUE(result) << protocol << " client connection failed: " << pep::GetExceptionMessage(result.exception());
     auto connection = *result;
     ASSERT_TRUE(connection != nullptr) << protocol << " client produced NULL connection";
     *connected = connection->isConnected();
     ASSERT_TRUE(*connected) << protocol << " client produced non-connected connection";
 
-    connection->asyncRead(received->data(), received->size(), [MESSAGE_SIZE, &client, clientConnectionAttempt, protocol](const pep::networking::SizedTransfer::Result& result) {
+    connection->asyncRead(received->data(), received->size(), [MessageSize, &client, clientConnectionAttempt, protocol](const pep::networking::SizedTransfer::Result& result) {
       // Ensure that the client is discarded (and hence the process exits) even if a test assertion (below) fails
       clientConnectionAttempt->cancel();
       client.reset();
 
       ASSERT_TRUE(result) << protocol << " async read produced an error: " << pep::GetExceptionMessage(result.exception());
-      ASSERT_EQ(MESSAGE_SIZE, *result) << protocol << " async read didn't write expected number of bytes";
+      ASSERT_EQ(MessageSize, *result) << protocol << " async read didn't write expected number of bytes";
       });
     });
   client->start();

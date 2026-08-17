@@ -25,36 +25,29 @@ namespace pep {
 template <typename T>
 inline const T Default;
 
-/*
-* \brief Converts a weak_ptr<> to one type to a weak_ptr<> to another type.
-* \remark Named in snake_case so it matches the corresponding std function.
-*/
+/// \brief Converts a weak_ptr<> to one type to a weak_ptr<> to another type.
+/// \remark Named in snake_case so it matches the corresponding std function.
 template <typename TDest, typename TSource>
 std::weak_ptr<TDest> static_pointer_cast(std::weak_ptr<TSource> p) {
   // https://stackoverflow.com/a/26534120
   return std::static_pointer_cast<TDest>(p.lock());
 }
 
-/*
-* \brief Converts a boolean to a string representation.
-* \param value The boolean to convert.
-* \return The specified boolean's string representation.
-*/
+/// \brief Converts a boolean to a string representation.
+/// \param value The boolean to convert.
+/// \return The specified boolean's string representation.
 std::string BoolToString(bool value);
 
-/*
-* \brief Converts a string representation to a boolean.
-* \param value The string to convert.
-* \return The boolean written out in the specified string.
-*/
+/// \brief Converts a string representation to a boolean.
+/// \param value The string to convert.
+/// \return The boolean written out in the specified string.
 bool StringToBool(std::string_view value);
 
-//XXX This may be removed in favor of optional::transform when we move to C++23
-/* \brief Gets an optional<Value> from an optional<Owner>.
- * \param owner The (possibly nullopt) value from which to retrieve a value.
- * \param getValue A function that returns a value when invoked with an Owner instance.
- * \return std::nullopt if owner is nullopt; otherwise the result of invoking the the getValue function on the owner.
- */
+//TODO(workaround) This may be removed in favor of optional::transform when we move to C++23
+/// \brief Gets an optional<Value> from an optional<Owner>.
+/// \param owner The (possibly nullopt) value from which to retrieve a value.
+/// \param getValue A function that returns a value when invoked with an Owner instance.
+/// \return std::nullopt if owner is nullopt; otherwise the result of invoking the the getValue function on the owner.
 template <DerivedFromSpecialization<std::optional> TOptional>
 auto GetOptionalValue(TOptional&& owner, auto&& getValue)
     -> std::optional<std::decay_t<decltype(std::forward<decltype(getValue)>(getValue)(*owner))>> {
@@ -103,10 +96,10 @@ boost::property_tree::path RawPtreePath(const std::string& path);
 // U+00B5 (micro symbol) encoded in UTF-8, plus NULterminator
 const inline std::string MicroSymbol = "\xc2\xb5";
 
-/// @brief Returns the SI prefix for the specified power
-/// @tparam T The (integral) type used to express the power
-/// @param power The power to express as a unit prefix
-/// @return The unit prefix for the specified power, or nullopt if no prefix applies to it
+/// \brief Returns the SI prefix for the specified power
+/// \tparam T The (integral) type used to express the power
+/// \param power The power to express as a unit prefix
+/// \return The unit prefix for the specified power, or nullopt if no prefix applies to it
 template <std::integral T>
 std::optional<std::string> SiPrefix(T power) {
   if constexpr (std::is_signed_v<T>) {
@@ -144,11 +137,11 @@ std::optional<std::string> SiPrefix(T power) {
   }
 }
 
-/// @brief Returns the binary prefix for the specified power
-/// @tparam T The (unsigned integral) type used to express the power
-/// @param power The power to express as a unit prefix
-/// @return The unit prefix for the specified power, or nullopt if no prefix applies to it
-/// @remark Return values (that are not nullopt) include the 'i' indicator that it's a binary (as opposed to SI) prefix.
+/// \brief Returns the binary prefix for the specified power
+/// \tparam T The (unsigned integral) type used to express the power
+/// \param power The power to express as a unit prefix
+/// \return The unit prefix for the specified power, or nullopt if no prefix applies to it
+/// \remark Return values (that are not nullopt) include the 'i' indicator that it's a binary (as opposed to SI) prefix.
 template <std::unsigned_integral T>
 std::optional<std::string> BinaryPrefix(T power) {
   // Binary prefixes are (only) defined for powers that are multiples of 1024 (i.e. 2^10): see https://en.wikipedia.org/wiki/Binary_prefix .

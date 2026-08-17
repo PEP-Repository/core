@@ -5,10 +5,8 @@
 
 namespace pep {
 
-/*!
- * \brief Debug helper: encapsulate a `const InstanceTracker<MyType>` in your class to assign a unique ID to every instance.
- *        The ID can then be e.g. included in logging or inspected by a debugger.
- */
+/// \brief Debug helper: encapsulate a `const InstanceTracker<MyType>` in your class to assign a unique ID to every instance.
+///        The ID can then be e.g. included in logging or inspected by a debugger.
 template <typename T>
 class InstanceTracker : boost::noncopyable {
 private:

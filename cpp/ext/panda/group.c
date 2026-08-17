@@ -373,7 +373,7 @@ void group_ge_scalarmult_base(group_ge *r, const group_scalar *s)
 
 void group_ge_multiscalarmult(group_ge *r, const group_ge *x, const group_scalar *s, unsigned long long xlen)
 {
-  //XXX: Use Strauss
+  //TODO: Use Strauss
   unsigned long long i;
   group_ge t;
   *r = group_ge_neutral;
@@ -503,7 +503,7 @@ void group_ge_scalarmult_base_publicinputs(group_ge *r, const group_scalar *s)
 
 void group_ge_multiscalarmult_publicinputs(group_ge *r, const group_ge *x, const group_scalar *s, unsigned long long xlen)
 {
-  //XXX: Use Bos-Coster (and something else for small values of xlen)
+  //TODO: Use Bos-Coster (and something else for small values of xlen)
   group_ge_multiscalarmult(r,x,s,xlen);
 }
 

@@ -6,12 +6,10 @@
 
 namespace pep {
 
-  /**
-   * A worker thread that work can be added to, multiple times.
-   * If the thread is not running, it will be started
-   * If all work is finished, the thread will stop
-   * If the thread is running, extra work will be queued
-   */
+  /// A worker thread that work can be added to, multiple times.
+  /// If the thread is not running, it will be started
+  /// If all work is finished, the thread will stop
+  /// If the thread is running, extra work will be queued
 class SingleWorker : private boost::noncopyable {
 private:
   std::thread thread_;

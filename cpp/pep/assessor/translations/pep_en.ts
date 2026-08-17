@@ -108,7 +108,7 @@
     <message>
         <source>Export</source>
     </message>
-	<message>
+    <message>
         <source>Expand Details</source>
     </message>
     <message>
@@ -117,10 +117,10 @@
     <message>
         <source>Comma-separated values (*.csv);;All Files (%1)</source>
     </message>
-	<message>
+    <message>
         <source>Device history</source>
     </message>
-	 <message>
+     <message>
         <source>Visit %1</source>
     </message>
 </context>
@@ -389,7 +389,7 @@
         <source>No participant with ID %1 found</source>
         <translation type="unfinished"></translation>
     </message>
-	<message>
+    <message>
         <source>deviceRegisteredOn</source>
         <translation>registered on</translation>
     </message>
@@ -451,7 +451,7 @@
       <source>device-history-header</source>
       <translation>Serial numbers</translation>
     </message>
-	<message>
+    <message>
         <source>deviceRegisteredOn</source>
         <translation>registered on</translation>
     </message>

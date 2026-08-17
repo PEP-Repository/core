@@ -167,11 +167,12 @@ provide-binaries:
                                                        --force-rebuild "$FORCE_REBUILD"
   artifacts:
     paths:
-      # Mark the pepBinaries.wixlib, pep.flatpak and macOS_bins.zip as artifacts so we can (easily) retrieve them by depending on this job
+      # Mark the pepBinaries.wixlib, pep.flatpak, macOS_bins.zip and pep-repo-client-lib.tgz as artifacts so we can (easily) retrieve them by depending on this job
       - pepBinaries.wixlib
       - pep.flatpak
       - macOS_x86_64_bins.zip
       - macOS_arm64_bins.zip
+      - pep-repo-client-lib.tgz
 
 ##########################################
 # Configuration for the build stage      #

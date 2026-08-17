@@ -1,6 +1,6 @@
 # Functionality related to auth[entication|orization].
 
-add_library(${PROJECT_NAME}Authlib STATIC
+add_library(${PROJECT_NAME}Authlib
   Certificate.cpp Certificate.hpp
   EnrolledParty.cpp EnrolledParty.hpp
   OAuthError.cpp OAuthError.hpp

@@ -5,9 +5,7 @@
 
 namespace pep::networking {
 
-/*!
-* \brief Frontend for StreamSocket instances that deals with excess data produced by StreamSocket::asyncReadUntil.
-*/
+/// \brief Frontend for StreamSocket instances that deals with excess data produced by StreamSocket::asyncReadUntil.
 class SocketReadBuffer : public std::enable_shared_from_this<SocketReadBuffer>, public SharedConstructor<SocketReadBuffer> { // TODO: don't require shared_ptr use for consuming code that maintains lifetime itself
   friend class SharedConstructor<SocketReadBuffer>;
 
@@ -35,38 +33,30 @@ private:
   void asyncAppendRemaining(std::shared_ptr<std::string> buffer, StreamSocket& source, const DelimitedReadHandler& handle);
 
 public:
-  /*!
-  * \brief Asynchronously reads (receives) data from the socket until it contains a specified delimiter.
-  * \param source The StreamSocket from which to read the data.
-  * \param delimiter Data will be placed into the buffer until it contains this byte sequence.
-  * \param handle A callback function that's invoked when data (including the delimiter) has been received, or when the operation has failed.
-  * \remark Caller must ensure that the "source" and "delimiter" parameters remain valid for the duration of the operation, i.e. until the "handler" has been invoked.
-  * \remark If the operation completes successfully, the received data will end with the first occurrence of the delimiter.
-  *         Any excess data received from the "source" will be buffered and provided to subsequent calls to asyncRead and/or asyncReadUntil.
-  */
+  /// \brief Asynchronously reads (receives) data from the socket until it contains a specified delimiter.
+  /// \param source The StreamSocket from which to read the data.
+  /// \param delimiter Data will be placed into the buffer until it contains this byte sequence.
+  /// \param handle A callback function that's invoked when data (including the delimiter) has been received, or when the operation has failed.
+  /// \remark Caller must ensure that the "source" and "delimiter" parameters remain valid for the duration of the operation, i.e. until the "handler" has been invoked.
+  /// \remark If the operation completes successfully, the received data will end with the first occurrence of the delimiter.
+  ///         Any excess data received from the "source" will be buffered and provided to subsequent calls to asyncRead and/or asyncReadUntil.
   void asyncReadUntil(StreamSocket& source, const char* delimiter, const DelimitedReadHandler& handle);
 
-  /*!
-  * \brief Asynchronously reads (receives) data from the socket, placing it into a caller-provided buffer.
-  * \param source The StreamSocket from which to read the data.
-  * \param destination The buffer into which received data are copied.
-  * \param bytes The number of bytes to write into the buffer. Caller must ensure that the buffer provides sufficient capacity.
-  * \param handle A callback function that's invoked when the data has been received, or when the operation has failed.
-  * \remark Caller must ensure that the "source" and "buffer" parameters remain valid for the duration of the operation, i.e. until the "handler" has been invoked.
-  */
+  /// \brief Asynchronously reads (receives) data from the socket, placing it into a caller-provided buffer.
+  /// \param source The StreamSocket from which to read the data.
+  /// \param destination The buffer into which received data are copied.
+  /// \param bytes The number of bytes to write into the buffer. Caller must ensure that the buffer provides sufficient capacity.
+  /// \param handle A callback function that's invoked when the data has been received, or when the operation has failed.
+  /// \remark Caller must ensure that the "source" and "buffer" parameters remain valid for the duration of the operation, i.e. until the "handler" has been invoked.
   void asyncRead(StreamSocket& source, void* destination, size_t bytes, const RawReadHandler& handle);
 
-  /*!
-  * \brief Asynchronously reads (receives) all data from the socket (until EOF is encountered)
-  * \param source The StreamSocket from which to read the data.
-  * \param handle A callback function that's invoked when all data has been received, or when the operation has failed.
-  * \remark Caller must ensure that the "source" parameter remains valid for the duration of the operation, i.e. until the "handler" has been invoked.
-  */
+  /// \brief Asynchronously reads (receives) all data from the socket (until EOF is encountered)
+  /// \param source The StreamSocket from which to read the data.
+  /// \param handle A callback function that's invoked when all data has been received, or when the operation has failed.
+  /// \remark Caller must ensure that the "source" parameter remains valid for the duration of the operation, i.e. until the "handler" has been invoked.
   void asyncReadAll(StreamSocket& source, const DelimitedReadHandler& handle);
 
-  /*!
-   * \brief Clears the SocketReadBuffer of any remaining data that was buffered from earlier socket reads.
-   */
+  /// \brief Clears the SocketReadBuffer of any remaining data that was buffered from earlier socket reads.
   void clear();
 };
 

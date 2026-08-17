@@ -22,7 +22,7 @@ LocalPseudonym LocalPseudonym::Random() {
 }
 
 LocalPseudonym LocalPseudonym::FromText(std::string_view text) {
-  return LocalPseudonym(CurvePoint::FromText(std::string(text))); //TODO? eliminate string allocation
+  return LocalPseudonym(CurvePoint::FromText(text));
 }
 
 size_t LocalPseudonym::TextLength() {

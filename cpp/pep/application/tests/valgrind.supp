@@ -1,0 +1,11 @@
+## Last updated for gtest 1.17.0 ##
+# Only occurred after updating to ubuntu 26.04.
+# Seems to be a false positive, I think gtest actually restores the original non-captured stream.
+# See https://github.com/google/googletest/blob/52eb8108c5bdec04579160ae17225d66034bd723/googletest/src/gtest-port.cc#L1161-L1162
+{
+   GoogleTestGetCapturedStringFdNotClosed
+   CoreError:FdNotClosed
+   fun:dup2
+   fun:_ZN7testing8internal14CapturedStream17GetCapturedStringB5cxx11Ev
+}
+####

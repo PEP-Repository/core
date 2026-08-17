@@ -19,7 +19,7 @@ namespace pep {
 
 namespace {
 
-const std::streamsize DISK_IO_BUFFERSIZE{ 4096 };
+constexpr std::streamsize DiskIoBuffersize{ 4096 };
 
 const std::array<std::string, 28> globalWindowsDeviceNames{
   "CON", "PRN", "AUX", "NUL",
@@ -127,7 +127,7 @@ void IstreamToDestination(std::istream& in, std::function<void(const char * c, c
     if (in.fail()) {
       throw std::runtime_error("Reading from stream failed"); // Exception meant to be rethrown with more information.
     }
-    std::array<char, DISK_IO_BUFFERSIZE> buffer{};
+    std::array<char, DiskIoBuffersize> buffer{};
     in.read(buffer.data(), buffer.size());
     if (in.gcount() > 0) {
       writeToDestination(buffer.data(), in.gcount());

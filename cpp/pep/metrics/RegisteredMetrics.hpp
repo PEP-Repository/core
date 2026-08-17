@@ -4,9 +4,7 @@
 
 namespace pep {
 
-/*!
-  * \brief Base class for (Prometheus) metrics. Ensures the Registry stays alive for as long as the metrics (instance) exists.
-  */
+/// \brief Base class for (Prometheus) metrics. Ensures the Registry stays alive for as long as the metrics (instance) exists.
 class RegisteredMetrics {
 private:
   std::shared_ptr<prometheus::Registry> registry_;

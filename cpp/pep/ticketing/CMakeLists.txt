@@ -1,6 +1,6 @@
 # Library providing code w.r.t. PEP's (data) tickets.
 
-add_library(${PROJECT_NAME}Ticketinglib STATIC
+add_library(${PROJECT_NAME}Ticketinglib
   TicketingMessages.cpp TicketingMessages.hpp
   TicketingSerializers.cpp TicketingSerializers.hpp
 )

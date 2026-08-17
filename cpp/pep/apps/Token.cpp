@@ -1,15 +1,17 @@
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Timestamp.hpp>
 #include <pep/application/CommandLineUtility.hpp>
 #include <pep/auth/OAuthToken.hpp>
 
 #include <iostream>
+#include <stdexcept>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 using namespace std::chrono;
+using namespace std::literals;
 
 namespace pt = boost::property_tree;
 
@@ -81,15 +83,9 @@ class TokenApplication : public pep::commandline::Utility {
     }
 
     try {
-      secret = boost::algorithm::unhex(secret);
-    }
-    catch (const boost::algorithm::non_hex_input&) {
-      throw std::runtime_error("The secret key '"
-        + secret + "' is not hex-encoded.");
-    }
-    catch (const boost::algorithm::not_enough_input&) {
-      throw std::runtime_error("The hex - encoded secret key '"
-        + secret + "' has odd length.");
+      secret = pep::const_time::FromHex(secret);
+    } catch (const std::invalid_argument& ex) {
+      throw std::invalid_argument("Error parsing secret key: "s + ex.what());
     }
 
     if (secret.length() != 32) {

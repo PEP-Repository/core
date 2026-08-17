@@ -8,23 +8,19 @@
 
 namespace pep::messaging {
 
-/**
- * @brief Schedules outgoing request and response messages into a single queue(-like interface).
- * @remark Most importantly, this class ensures that outgoing MessageBatches are processed at the right time and
- *         that errors are propagated properly.
- * @remark Message senders (i.e. "Connection" instances) will want to "pop" a message from the Scheduler when they're
- *         ready to send the next message. They'll want to check the "available" method before to "pop"ping a new
- *         message, and do so
- *         - when they're done sending a previous message, and
- *         - when a new message has been scheduled, i.e. when the "onAvailable" event is notified.
- */
+/// \brief Schedules outgoing request and response messages into a single queue(-like interface).
+/// \remark Most importantly, this class ensures that outgoing MessageBatches are processed at the right time and
+///         that errors are propagated properly.
+/// \remark Message senders (i.e. "Connection" instances) will want to "pop" a message from the Scheduler when they're
+///         ready to send the next message. They'll want to check the "available" method before to "pop"ping a new
+///         message, and do so
+///         - when they're done sending a previous message, and
+///         - when a new message has been scheduled, i.e. when the "onAvailable" event is notified.
 class Scheduler : public std::enable_shared_from_this<Scheduler>, public SharedConstructor<Scheduler> {
   friend class SharedConstructor<Scheduler>;
 
 public:
-  /**
-   * @brief A scheduled message that's ready to be sent.
-   */
+  /// \brief A scheduled message that's ready to be sent.
   struct OutgoingMessage {
     MessageProperties properties;
     std::shared_ptr<std::string> content;
@@ -32,61 +28,45 @@ public:
     OutgoingMessage(MessageProperties properties, std::shared_ptr<std::string> content);
   };
 
-  /**
-   * @brief Schedules a request message and associated tail entries for sending.
-   * @param id the stream ID to associate with the request. Must be unique.
-   * @param request the main message representing the request
-   * @param tail optional followup messages associated with the request
-   * @return the message ID assigned to the request
-   */
+  /// \brief Schedules a request message and associated tail entries for sending.
+  /// \param id the stream ID to associate with the request. Must be unique.
+  /// \param request the main message representing the request
+  /// \param tail optional followup messages associated with the request
+  /// \return the message ID assigned to the request
   MessageId push(const StreamId& id, std::shared_ptr<std::string> request, std::optional<MessageBatches> tail = std::nullopt);
 
-  /**
-   * @brief Schedules response message(s) for sending.
-   * @param id the stream ID associated with (the request to which this is) the response
-   * @param responses the messages to send
-   * @return the message ID assigned to the response
-   */
+  /// \brief Schedules response message(s) for sending.
+  /// \param id the stream ID associated with (the request to which this is) the response
+  /// \param responses the messages to send
+  /// \return the message ID assigned to the response
   MessageId push(const StreamId& id, MessageBatches responses);
 
-  /**
-   * @brief Retrieves the next message to be sent, removing it from the queue(-like interface)
-   * @return the message to be sent next
-   * @remark only call when the "available" method returns TRUE.
-   */
+  /// \brief Retrieves the next message to be sent, removing it from the queue(-like interface)
+  /// \return the message to be sent next
+  /// \remark only call when the "available" method returns TRUE.
   OutgoingMessage pop();
 
-  /**
-   * @brief Determines if there's at least one message ready to be sent.
-   * @return TRUE if there's a message ready to be sent; FALSE if not
-   * @remark indicates whether the "pop" method may be invoked
-   */
+  /// \brief Determines if there's at least one message ready to be sent.
+  /// \return TRUE if there's a message ready to be sent; FALSE if not
+  /// \remark indicates whether the "pop" method may be invoked
   bool available() const noexcept;
 
-  /**
-   * @brief Determines if there's a response pending for a specific stream (ID).
-   * @param streamId the ID of the stream
-   * @return TRUE if there's (a) response message(s) and/or batch(es) pending; FALSE if not
-   */
+  /// \brief Determines if there's a response pending for a specific stream (ID).
+  /// \param streamId the ID of the stream
+  /// \return TRUE if there's (a) response message(s) and/or batch(es) pending; FALSE if not
   bool hasPendingResponseFor(const StreamId& streamId) const;
 
-  /**
-   * @brief Discards all messages from the scheduler, bringing it back to its initial (pristine) state.
-   */
+  /// \brief Discards all messages from the scheduler, bringing it back to its initial (pristine) state.
   void clear();
 
-  /**
-   * @brief Occurs when a message becomes available (for sending) and none were available before.
-   */
+  /// \brief Occurs when a message becomes available (for sending) and none were available before.
   const Event<Scheduler> onAvailable;
 
-  /**
-   * @brief Occurs when an error message is scheduled to be sent.
-   * @remark The error message (is put at the back of the queue, so) may not be the next one that will be "pop"ped.
-   * @remark The exception_ptr represents the actual error, but the outgoing message (which will be produced by the
-   *         "pop" method) will lack details if the exception is not an instance of (a class that inherits from) the
-   *         network-portable "Error" class.
-   */
+  /// \brief Occurs when an error message is scheduled to be sent.
+  /// \remark The error message (is put at the back of the queue, so) may not be the next one that will be "pop"ped.
+  /// \remark The exception_ptr represents the actual error, but the outgoing message (which will be produced by the
+  ///         "pop" method) will lack details if the exception is not an instance of (a class that inherits from) the
+  ///         network-portable "Error" class.
   const Event<Scheduler, MessageId, std::exception_ptr> onError;
 
 private:

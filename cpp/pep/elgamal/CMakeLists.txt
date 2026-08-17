@@ -1,7 +1,7 @@
 # Library implementing ElGamal operations.
 
 
-add_library(${PROJECT_NAME}Elgamallib STATIC
+add_library(${PROJECT_NAME}Elgamallib
   CryptoAssert.cpp CryptoAssert.hpp
   CurvePoint.cpp CurvePoint.hpp
   ElgamalPropertySerializers.cpp ElgamalPropertySerializers.hpp

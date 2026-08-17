@@ -1,5 +1,6 @@
 .update-published-branch-base:
   stage: publish
+  dependencies: [] # Don't download artifacts
   allow_failure: true
   rules:
     - if: '$CI_COMMIT_REF_NAME =~ $PEP_FOSS_PUBLISHED_BRANCH_PATTERN'

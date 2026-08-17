@@ -15,11 +15,11 @@ inline std::ostream& append(std::ostream& stream, const Table& table, const Yaml
 }
 
 /// Converts a tree to string.
-/// @details This is a small wrapper around append for convenience.
+/// \details This is a small wrapper around append for convenience.
 std::string to_string(const Tree&, const YamlConfig& = {});
 
 /// Converts a table to string.
-/// @details This is a small wrapper around append for convenience.
+/// \details This is a small wrapper around append for convenience.
 inline std::string to_string(const Table& table, const YamlConfig& config = {}) { return to_string(TreeFromTable(table), config); }
 
 } // namespace pep::structuredOutput::yaml

@@ -319,8 +319,7 @@ export default class Pep {
           }
         });
 
-        const fullLandUrl = new URL(landingPage);
-        oauthClient = this.#client.authenticate(fullLandUrl.href,
+        oauthClient = this.#client.authenticate(landingPage.href,
             authChan.name,
             (authUrl: string) => {
               open(authUrl, '_blank', 'popup,top=100,left=100,width=600,height=900');
@@ -368,7 +367,7 @@ export default class Pep {
    *  `stream.values({preventCancel: true})` and iterating again to delete remaining objects.
    */
   list(query: ListQuery) : ReadableStream<CellEntry> {
-    //XXX Cast to Required<ListQuery> because of https://github.com/emscripten-core/emscripten/issues/25978,
+    //TODO(workaround) Cast to Required<ListQuery> because of https://github.com/emscripten-core/emscripten/issues/25978,
     // remove it with EMSDK 5.0.0+
     return this.#wrapExec(() => this.#client.list(query as Required<ListQuery>));
   }

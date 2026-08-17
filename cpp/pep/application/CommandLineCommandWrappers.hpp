@@ -10,13 +10,11 @@
 
 namespace pep::commandline {
 
-/*!
- * \brief Base class for a deprecated command that still executes normally, printing a warning on invocation.
- * \details Derive from this instead of ChildCommandOf when the command is deprecated but still functional.
- * Override getSupportedParameters() and execute() (or createChildCommands()) as usual.
- * The deprecation warning is printed on actual invocation; it is suppressed when --help is requested.
- * \tparam TParent The parent command type. Must inherit from Command.
- */
+/// \brief Base class for a deprecated command that still executes normally, printing a warning on invocation.
+/// \details Derive from this instead of ChildCommandOf when the command is deprecated but still functional.
+/// Override getSupportedParameters() and execute() (or createChildCommands()) as usual.
+/// The deprecation warning is printed on actual invocation; it is suppressed when --help is requested.
+/// \tparam TParent The parent command type. Must inherit from Command.
 template <typename TParent>
 class DeprecatedChildCommandOf : public ChildCommandOf<TParent> {
 protected:

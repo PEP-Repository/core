@@ -37,13 +37,12 @@ public:
 }
 
 
-/*! \brief Exhausts a source observable, then emits a single (specified) item.
+/// \brief Exhausts a source observable, then emits a single (specified) item.
 /// \code
 ///   myObs.op(RxInstead(justThisItem))
 /// \endcode
- * \param item The item to emit instead of the source observable's items.
- * \remark Mainly intended to help with collections that cannot (easily) be constructed by means of .reduce.
- */
+/// \param item The item to emit instead of the source observable's items.
+/// \remark Mainly intended to help with collections that cannot (easily) be constructed by means of .reduce.
 template <typename T>
 detail::RxInsteadOperator<T> RxInstead(const T& item) {
   return detail::RxInsteadOperator<T>(item);

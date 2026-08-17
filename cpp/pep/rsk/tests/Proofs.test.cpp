@@ -1,4 +1,3 @@
-#include <boost/algorithm/hex.hpp>
 #include <gtest/gtest.h>
 
 #include <pep/rsk/Proofs.hpp>

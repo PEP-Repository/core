@@ -25,12 +25,10 @@ private:
   std::vector<std::shared_ptr<std::string>> bodyparts_;
 
 protected:
-  /*!
-    * \brief Construct a message
-    *
-    * \param body Body of the message
-    * \param headers HTTP headers of the message
-    */
+  /// \brief Construct a message
+  ///
+  /// \param body Body of the message
+  /// \param headers HTTP headers of the message
   HTTPMessage(std::string body, HeaderMap headers);
 
   HTTPMessage(
@@ -74,26 +72,22 @@ private:
 public:
   //! Construct an empty response 
   HTTPResponse() = default;
-  /*!
-   * \brief construct a new response
-   * 
-   * \param status String containing the status code and message, e.g. "404 Not Found"
-   * \param body Body of the Request
-   * \param headers HTTP headers of the request
-   * \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
-   */
+  /// \brief construct a new response
+  ///
+  /// \param status String containing the status code and message, e.g. "404 Not Found"
+  /// \param body Body of the Request
+  /// \param headers HTTP headers of the request
+  /// \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
   HTTPResponse(const std::string& status, std::string body = "",
           HeaderMap headers = {},
           bool completeHeaders=true);
-  /*!
-   * \brief construct a new response
-   * 
-   * \param statuscode The status code, e.g. 404
-   * \param statusMessage The status message e.g. "Not Found"
-   * \param body Body of the Request
-   * \param headers HTTP headers of the request
-   * \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
-   */
+  /// \brief construct a new response
+  ///
+  /// \param statuscode The status code, e.g. 404
+  /// \param statusMessage The status message e.g. "Not Found"
+  /// \param body Body of the Request
+  /// \param headers HTTP headers of the request
+  /// \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
   HTTPResponse(unsigned int statuscode, std::string statusMessage, std::string body = "",
           HeaderMap headers = {},
           bool completeHeaders=true);
@@ -125,16 +119,14 @@ public:
 //! A HTTP Request
 class HTTPRequest : public HTTPMessage {
 public:
-  /*!
-    * \brief Construct a new Request
-    *
-    * \param host header to use for the Request
-    * \param method HTTP Method of the Request
-    * \param uri URI to request
-    * \param body Body of the Request
-    * \param headers HTTP headers of the request
-    * \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
-    */
+  /// \brief Construct a new Request
+  ///
+  /// \param host header to use for the Request
+  /// \param method HTTP Method of the Request
+  /// \param uri URI to request
+  /// \param body Body of the Request
+  /// \param headers HTTP headers of the request
+  /// \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
   HTTPRequest(
     std::string host,
     networking::HttpMethod method,
@@ -143,15 +135,13 @@ public:
     HeaderMap headers = {},
     bool completeHeaders = true);
 
-  /*!
-    * \brief Construct a new Request
-    *
-    * \param method HTTP Method of the Request
-    * \param uri URI to request
-    * \param body Body of the Request
-    * \param headers HTTP headers of the request
-    * \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
-    */
+  /// \brief Construct a new Request
+  ///
+  /// \param method HTTP Method of the Request
+  /// \param uri URI to request
+  /// \param body Body of the Request
+  /// \param headers HTTP headers of the request
+  /// \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
   HTTPRequest(
     networking::HttpMethod method,
     boost::urls::url uri,
@@ -159,16 +149,14 @@ public:
     HeaderMap headers = {},
     bool completeHeaders = true);
 
-  /*!
-    * \brief Construct a new Request
-    *
-    * \param host header to use for the Request
-    * \param method HTTP Method of the Request
-    * \param uri URI to request
-    * \param bodyparts Body of the Request
-    * \param headers HTTP headers of the request
-    * \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
-    */
+  /// \brief Construct a new Request
+  ///
+  /// \param host header to use for the Request
+  /// \param method HTTP Method of the Request
+  /// \param uri URI to request
+  /// \param bodyparts Body of the Request
+  /// \param headers HTTP headers of the request
+  /// \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
   HTTPRequest(
     std::string host,
     networking::HttpMethod method,

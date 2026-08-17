@@ -1,5 +1,5 @@
 /**
- * @file XXX Workarounds for missing types
+ * @file TODO(workaround) Workarounds for missing types
  */
 
 declare namespace WebAssembly {

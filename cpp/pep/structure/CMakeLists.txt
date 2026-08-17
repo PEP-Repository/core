@@ -1,7 +1,7 @@
 # Library related to the structure of PEP's storage.
 
 
-add_library(${PROJECT_NAME}Structurelib STATIC
+add_library(${PROJECT_NAME}Structurelib
   ColumnName.cpp ColumnName.hpp
   ColumnNameSerializers.cpp ColumnNameSerializers.hpp
   GlobalConfiguration.cpp GlobalConfiguration.hpp

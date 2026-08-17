@@ -1,6 +1,6 @@
 # Library providing versioning.
 
-add_library(${PROJECT_NAME}Versioninglib STATIC
+add_library(${PROJECT_NAME}Versioninglib
     GitlabVersion.cpp GitlabVersion.hpp
     SemanticVersion.cpp SemanticVersion.hpp
     Version.cpp Version.hpp

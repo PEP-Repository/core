@@ -4,9 +4,7 @@
 
 namespace pep::networking {
 
-/*!
-* \brief The TCP networking protocol.
-*/
+/// The TCP networking protocol.
 class Tcp : public TcpBasedProtocolImplementor<Tcp> {
 private:
   std::shared_ptr<Socket> createSocket(boost::asio::io_context& context) const;

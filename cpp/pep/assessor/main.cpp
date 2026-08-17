@@ -183,8 +183,7 @@ class PepAssessorApplication : public pep::Application {
 
 }
 
-/*! \brief Main(s). Program entry point(s)
- *
- * \return int exit code.
- */
+/// \brief Main(s). Program entry point(s)
+///
+/// \return int exit code.
 PEP_DEFINE_MAIN_FUNCTION(PepAssessorApplication)

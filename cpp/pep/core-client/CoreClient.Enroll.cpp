@@ -3,7 +3,6 @@
 #include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/utils/Log.hpp>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 

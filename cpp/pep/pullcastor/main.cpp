@@ -1,5 +1,6 @@
 #include <pep/application/Application.hpp>
 #include <pep/pullcastor/EnvironmentPuller.hpp>
+#include <pep/utils/Configuration.hpp>
 
 namespace {
 

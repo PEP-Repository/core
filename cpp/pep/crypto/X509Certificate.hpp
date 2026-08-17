@@ -136,10 +136,8 @@ inline X509CertificateChain operator/(X509CertificateChain chain, X509Certificat
 
 class X509CertificateSigningRequest {
  public:
-  /*!
-   * \brief Construct a CSR for the provided key pair, common name and organizational unit.
-   * \warning No check is performed on the provided data.
-   */
+  /// \brief Construct a CSR for the provided key pair, common name and organizational unit.
+  /// \warning No check is performed on the provided data.
   X509CertificateSigningRequest(AsymmetricKeyPair& keyPair, const std::string& commonName, const std::string& organizationalUnit);
   X509CertificateSigningRequest(const X509CertificateSigningRequest& other);
   X509CertificateSigningRequest& operator=(X509CertificateSigningRequest other);
@@ -159,13 +157,11 @@ class X509CertificateSigningRequest {
 
   static X509CertificateSigningRequest CreateWithSubjectFromExistingCertificate(AsymmetricKeyPair& keyPair, const X509Certificate& certificate);
 
-  /*!
-   * \brief Generate a X509 certificate based on the CSR. As subject it will contain the common name returned by getCommonName() and the organizational unit returned by getOrganizationUnit(). Other fields will be ignored.
-   * \param caCert The issuer's certificate
-   * \param caPrivateKey Private key of the CA used to sign the certificate
-   * \param validityPeriod Period in seconds that certificate should be valid
-   * \return X509Certificate Newly generated certificate
-   */
+  /// \brief Generate a X509 certificate based on the CSR. As subject it will contain the common name returned by getCommonName() and the organizational unit returned by getOrganizationUnit(). Other fields will be ignored.
+  /// \param caCert The issuer's certificate
+  /// \param caPrivateKey Private key of the CA used to sign the certificate
+  /// \param validityPeriod Period in seconds that certificate should be valid
+  /// \return X509Certificate Newly generated certificate
   X509Certificate signCertificate(const X509Certificate& caCert, const AsymmetricKey& caPrivateKey, const std::chrono::seconds validityPeriod) const;
 
  private:

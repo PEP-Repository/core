@@ -108,6 +108,20 @@ download_foss_package() {
   fi
 }
 
+download_foss_npm_package() {
+  package_name="$1"
+  if ! "$SCRIPTPATH"/../scripts/gitlab-packages.sh "$foss_root" "$api_key" \
+      download-npm "$package_name" "$foss_sha"; then
+    echo "Running a FOSS pipeline to (re-)produce npm package '$package_name' for SHA $foss_sha..."
+    ensure_pipeline_triggered
+    "$SCRIPTPATH"/../scripts/gitlab-packages.sh "$foss_root" "$api_key" \
+      download-npm "$package_name" "$foss_sha" || {
+      >&2 echo "FOSS pipeline did not produce expected npm package '$package_name' for SHA $foss_sha"
+      return 1
+    }
+  fi
+}
+
 if [ "$force_rebuild" = "true" ]; then
   ensure_pipeline_triggered
 fi
@@ -126,3 +140,4 @@ download_foss_package wixlibrary pepBinaries.wixlib
 download_foss_package macos-x86_64-bins macOS_x86_64_bins.zip
 download_foss_package macos-arm64-bins macOS_arm64_bins.zip
 download_foss_package flatpak pep.flatpak
+download_foss_npm_package pep-repo-client-lib

@@ -11,9 +11,9 @@
 
 namespace pep {
 
-/// @brief Context values to help interpret values being deserialized.
+/// Context values to help interpret values being deserialized.
 using DeserializationContext = TaggedValues;
-/// @brief TaggedValue indicating a directory that should be used as the base for interpretation of relative paths.
+/// TaggedValue indicating a directory that should be used as the base for interpretation of relative paths.
 using TaggedBaseDirectory = TaggedValue<std::filesystem::path, struct BaseDirectoryTag>;
 
 /*

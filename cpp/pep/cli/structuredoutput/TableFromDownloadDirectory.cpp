@@ -95,7 +95,7 @@ bool AllColumnFilesAreSmaller(const Table& table, std::size_t columnNr, std::siz
 }
 
 /// Returns true iff every entry in column \p columnNr is a file containing only printable chars
-/// @warning Avoid calling this on columns with large files
+/// \warning Avoid calling this on columns with large files
 bool AllColumnFilesArePrintable(const Table& table, std::size_t columnNr, const FileReadFunction& readFile) {
   return AllOfFieldsInColumn(table, columnNr, [&readFile](const std::string& field) {
     if (field.empty()) return true;

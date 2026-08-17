@@ -1,5 +1,6 @@
 #include <pep/storagefacility/StorageFacility.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
@@ -19,7 +20,6 @@
 #include <pep/utils/Defer.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -45,8 +45,8 @@ namespace pep {
 
 namespace {
 
-constexpr size_t ENUMERATION_RESPONSE_MAX_ENTRIES = 2500;
-constexpr size_t PAYLOAD_PAGES_MAX_CONCURRENCY = 1000; // Prevent excessive memory use: see https://gitlab.pep.cs.ru.nl/pep/ppp-config/-/issues/166#note_50515
+constexpr size_t EnumerationResponseMaxEntries = 2500;
+constexpr size_t PayloadPagesMaxConcurrency = 1000; // Prevent excessive memory use: see https://gitlab.pep.cs.ru.nl/pep/ppp-config/-/issues/166#note_50515
 
 class TicketIndices {
 public:
@@ -181,7 +181,6 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   : SigningServer::Parameters(io_context, config) {
   std::filesystem::path keysFile;
   std::filesystem::path encIdKeyFile;
-  auto pageStoreConfig = std::make_shared<Configuration>();
 
   try {
     keysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
@@ -221,7 +220,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     boost::property_tree::ptree root;
     root.add<std::string>(
       "Key",
-      boost::algorithm::hex(encIdKey)
+      const_time::ToHex(encIdKey)
     );
     std::ofstream os(encIdKeyFile);
     std::filesystem::permissions(encIdKeyFile, std::filesystem::perms::owner_read);
@@ -229,7 +228,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
   }
   else {
     Configuration encIdKeyConfig = Configuration::FromFile(encIdKeyFile);
-    encIdKey = boost::algorithm::unhex(encIdKeyConfig.get<std::string>("Key"));
+    encIdKey = const_time::FromHex(encIdKeyConfig.get<std::string>("Key"));
   }
 
   setEncIdKey(encIdKey);
@@ -440,7 +439,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
         // We use index_ to lookup the primary key in ids when serving data below.
         // The client should not learn index_, so we clear it.
         responseMsgs.back().entries.back().index = 0;
-        if (++i == ENUMERATION_RESPONSE_MAX_ENTRIES) {
+        if (++i == EnumerationResponseMaxEntries) {
           i = 0;
           responseMsgs.back().hasMore = true;
           responseMsgs.emplace_back();
@@ -516,7 +515,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       response->entries.push_back(std::move(entry));
 
       // Prevent individual DataEnumerationResponse2 messages from becoming too large
-      if (response->entries.size() >= ENUMERATION_RESPONSE_MAX_ENTRIES) {
+      if (response->entries.size() >= EnumerationResponseMaxEntries) {
         response->hasMore = true;
         sendResponse();
       }
@@ -644,15 +643,15 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
 
       subscriber_ = subscriber;
       /* We queue a batch of pages to be sent out "immediately" (i.e. as soon as possible),
-       * but we don't queue more than PAYLOAD_PAGES_MAX_CONCURRENCY at the same time.
+       * but we don't queue more than PayloadPagesMaxConcurrency at the same time.
        * If there are more pages than the initial batch, a new page is scheduled only when
        * (the contents of) a previous page have been fully processed.
        * This keeps the the number of pages being processed under (or at)
-       * PAYLOAD_PAGES_MAX_CONCURRENCY at all times.
+       * PayloadPagesMaxConcurrency at all times.
        */
-      for (size_t i = 0; i < PAYLOAD_PAGES_MAX_CONCURRENCY; ++i) {
+      for (size_t i = 0; i < PayloadPagesMaxConcurrency; ++i) {
         if (!this->emitNextPage()) {
-          break; // The number of pages to send out is less than PAYLOAD_PAGES_MAX_CONCURRENCY
+          break; // The number of pages to send out is less than PayloadPagesMaxConcurrency
         }
       }
     }

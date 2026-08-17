@@ -33,11 +33,11 @@ using namespace pep;
 #pragma message("BinaryVersion::MessagesProtoFileChecksum() = " MESSAGES_PROTO_CHECKSUM)
 
 namespace {
-  const uint8_t MANUAL_PROTOCOL_CHECKSUM_COMPONENT = 2U; // Increase when client+server software need to be upgraded in a big bang. Cycle back to 1 (or 0) if necessary
+  constexpr uint8_t ManualProtocolChecksumComponent = 2U; // Increase when client+server software need to be upgraded in a big bang. Cycle back to 1 (or 0) if necessary
 
   std::string GetCurrentProtocolChecksum() {
     // Convert manual checksum component to hex string
-    auto manual = boost::algorithm::hex_lower(std::string(reinterpret_cast<const char*>(&MANUAL_PROTOCOL_CHECKSUM_COMPONENT), 1));
+    auto manual = boost::algorithm::hex_lower(std::string(reinterpret_cast<const char*>(&ManualProtocolChecksumComponent), 1));
     // Append calculated checksum for Messages.proto
     auto complete = manual + MESSAGES_PROTO_CHECKSUM;
     // Crop result for readability

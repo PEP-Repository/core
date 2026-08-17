@@ -19,43 +19,35 @@ public:
   //! Request a new authentication token from Castor
   void reauthenticate();
 
-  /*!
-   * \brief Make a GET Request
-   *
-   * \param path Path to the resource to get
-   * \param useBasePath Whether \p path should be relative to the \ref setBasePath "base path" or not
-   * \return The created Request
-   */
+  /// \brief Make a GET Request
+  ///
+  /// \param path Path to the resource to get
+  /// \param useBasePath Whether \p path should be relative to the \ref setBasePath "base path" or not
+  /// \return The created Request
   std::shared_ptr<HTTPRequest> makeGet(const std::string& path, const bool& useBasePath = true);
 
-  /*!
-   * \brief Make a POST Request
-   *
-   * \param path Path to the resource to post
-   * \param body Body of the Request
-   * \param useBasePath Whether \p path should be relative to the \ref setBasePath "base path" or not
-   * \return The created Request
-   */
+  /// \brief Make a POST Request
+  ///
+  /// \param path Path to the resource to post
+  /// \param body Body of the Request
+  /// \param useBasePath Whether \p path should be relative to the \ref setBasePath "base path" or not
+  /// \return The created Request
   std::shared_ptr<HTTPRequest> makePost(const std::string& path,
     const std::string& body,
     const bool& useBasePath = true);
 
   const Event<CastorClient, std::shared_ptr<const HTTPRequest>> onRequest;
 
-  /*!
-   * \brief Send a request to the Castor API and parse the response as %Json
-   *
-   * Authorization header will always be added.
-   *
-   * \param request The request to send
-   * \return Observable that, if no error occurs, emits a JsonPtr, or multiple in case of a paged response
-   */
+  /// \brief Send a request to the Castor API and parse the response as %Json
+  ///
+  /// Authorization header will always be added.
+  ///
+  /// \param request The request to send
+  /// \return Observable that, if no error occurs, emits a JsonPtr, or multiple in case of a paged response
   rxcpp::observable<JsonPtr> sendCastorRequest(std::shared_ptr<HTTPRequest> request);
 
-  /*!
-   * \brief Get the status of the authentication to castor
-   * \return Observable that immediately emits the current AuthenticationStatus and will emit updates to the status
-   */
+  /// \brief Get the status of the authentication to castor
+  /// \return Observable that immediately emits the current AuthenticationStatus and will emit updates to the status
   rxcpp::observable<AuthenticationStatus> authenticationStatus() {
     return authenticationSubject_.get_observable();
   };
