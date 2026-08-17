@@ -104,13 +104,16 @@ TEST_F(Server, DiscardsUnopenedSocket) {
 
 TEST_F(Server, UnschedulesOnDestruction) {
   constexpr auto ShortTime = 100ms;
-  constexpr auto LongTime = 200ms;
+  constexpr auto LongTime = 2 * ShortTime;
 
   boost::asio::io_context context;
 
   auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(context, pep::networking::Tcp::ServerParameters::RandomPort));
   // Don't subscribe to server->onConnectionAttempt: this test just wants to verify what happens when the server is destroyed
   server->start();
+
+  // Start measuring before we set the timer: see https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/2970
+  auto started = pep::testing::Clock::now();
 
   // Release our shared_ptr to the server after SHORT_DURATION
   boost::asio::steady_timer timer(context);
@@ -120,8 +123,10 @@ TEST_F(Server, UnschedulesOnDestruction) {
     ASSERT_FALSE(error) << "Timer produced an error: " << error;
     });
 
+  // Change the value of `ShortTime` if this condition fails (often)
+  ASSERT_LT(pep::testing::MillisecondsSince(started), ShortTime) << "Timer setup was too slow for good measurements";
+
   // Have the I/O context run for at most LONG_DURATION, and measure how long it runs
-  auto started = pep::testing::Clock::now();
   context.run_for(LongTime);
   auto duration = pep::testing::MillisecondsSince(started);
 
