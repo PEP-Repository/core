@@ -120,7 +120,7 @@ func (c *SigningCertificateChain) UnmarshalText(text []byte) error {
 		if block == nil {
 			return fmt.Errorf("%v is not a PEM block", text)
 		}
-		// XXX should we check the Type?
+		// TODO should we check the Type?
 		new_data = append(new_data, block.Bytes)
 	}
 	c.data = new_data

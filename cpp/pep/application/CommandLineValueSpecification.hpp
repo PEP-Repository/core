@@ -38,9 +38,7 @@ public:
   inline bool eatsAll() const noexcept { return eatAll_; }
 
   virtual ArgValueType getType() const noexcept { return ArgValueType::String; }
-  /*!
-   * \brief Get string representation of default value and its description
-   */
+  /// \brief Get string representation of default value and its description
   virtual std::optional<std::pair<std::string, std::optional<std::string>>> getDefault() const noexcept { return {}; }
   virtual std::vector<std::string> getSuggested() const noexcept { return {}; }
 

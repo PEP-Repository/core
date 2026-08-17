@@ -1,2 +1,2 @@
-Directory to store temporary files, such as integration test configuration, doxygen output, etc.
+Directory to store temporary files, such as integration test configuration, etc.
 Further ignored by Git.

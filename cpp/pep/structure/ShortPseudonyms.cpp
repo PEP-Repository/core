@@ -8,28 +8,28 @@
 
 namespace {
 
-const char SHORT_PSEUDONYM_SECTION_DELIMITER = '.';
-const std::string SHORT_PSEUDONYM_PREFIX = "ShortPseudonym";
-const std::string SHORT_PSEUDONYM_VISIT_PREFIX = "Visit";
-const size_t SHORT_PSEUDONYM_VISIT_PREFIX_LENGTH = SHORT_PSEUDONYM_VISIT_PREFIX.size();
+const char ShortPseudonymSectionDelimiter = '.';
+const std::string ShortPseudonymPrefix = "ShortPseudonym";
+const std::string ShortPseudonymVisitPrefix = "Visit";
+const size_t ShortPseudonymVisitPrefixLength = ShortPseudonymVisitPrefix.size();
 
-const std::string SHORT_PSEUDONYM_PREAMBLE = SHORT_PSEUDONYM_PREFIX + SHORT_PSEUDONYM_SECTION_DELIMITER;
-const size_t SHORT_PSEUDONYM_PREAMBLE_LENGTH = SHORT_PSEUDONYM_PREAMBLE.size();
+const std::string ShortPseudonymPreamble = ShortPseudonymPrefix + ShortPseudonymSectionDelimiter;
+const size_t ShortPseudonymPreambleLength = ShortPseudonymPreamble.size();
 
 }
 
 namespace pep {
 
 std::string GenerateShortPseudonym(std::string_view prefix, const std::size_t len) {
-  static constexpr std::string_view SP_CHARS = "0123456789";
+  static constexpr std::string_view SpChars = "0123456789";
   std::string pseudonym;
   pseudonym.reserve(prefix.length() + len + 2);
   pseudonym += prefix;
 
-  std::uniform_int_distribution sp_distribution(std::size_t{}, SP_CHARS.size() - 1);
+  std::uniform_int_distribution sp_distribution(std::size_t{}, SpChars.size() - 1);
   CryptoUrbg urbg;
   std::generate_n(std::back_inserter(pseudonym), len, [&sp_distribution, &urbg] {
-    return SP_CHARS[sp_distribution(urbg)];
+    return SpChars[sp_distribution(urbg)];
   });
 
   pseudonym += Mod97::ComputeCheckDigits(pseudonym);
@@ -42,15 +42,15 @@ bool ShortPseudonymIsValid(const std::string& shortPseudonym) {
 }
 
 ShortPseudonymColumn ShortPseudonymColumn::Parse(const std::string& studyContext, const std::string& column) {
-  if (!column.starts_with(SHORT_PSEUDONYM_PREAMBLE)) {
+  if (!column.starts_with(ShortPseudonymPreamble)) {
     throw std::runtime_error("Invalid short pseudonym column name");
   }
 
   ShortPseudonymColumn result;
-  auto remaining = column.substr(SHORT_PSEUDONYM_PREAMBLE_LENGTH);
+  auto remaining = column.substr(ShortPseudonymPreambleLength);
 
   if (!studyContext.empty()) {
-    auto prefix = studyContext + SHORT_PSEUDONYM_SECTION_DELIMITER;
+    auto prefix = studyContext + ShortPseudonymSectionDelimiter;
     if (!boost::istarts_with(remaining, prefix)) {
       throw std::runtime_error("Invalid short pseudonym column name for study context " + studyContext);
     }
@@ -58,8 +58,8 @@ ShortPseudonymColumn ShortPseudonymColumn::Parse(const std::string& studyContext
     remaining = remaining.substr(prefix.length());
   }
 
-  if (remaining.starts_with(SHORT_PSEUDONYM_VISIT_PREFIX)) {
-    remaining = remaining.substr(SHORT_PSEUDONYM_VISIT_PREFIX_LENGTH);
+  if (remaining.starts_with(ShortPseudonymVisitPrefix)) {
+    remaining = remaining.substr(ShortPseudonymVisitPrefixLength);
     auto visit_start = remaining.data();
     if (isdigit(*visit_start) == 0) { // Also catches end-of-string
       throw std::runtime_error("Invalid short pseudonym column name: missing visit number");
@@ -72,7 +72,7 @@ ShortPseudonymColumn ShortPseudonymColumn::Parse(const std::string& studyContext
     if (visit_end == visit_start) {
       throw std::runtime_error("Invalid short pseudonym column name");
     }
-    if (*visit_end != SHORT_PSEUDONYM_SECTION_DELIMITER) {
+    if (*visit_end != ShortPseudonymSectionDelimiter) {
       throw std::runtime_error("Invalid short pseudonym column name");
     }
     result.coreName_ = visit_end + 1;
@@ -88,12 +88,12 @@ ShortPseudonymColumn ShortPseudonymColumn::Parse(const std::string& studyContext
 }
 
 std::string ShortPseudonymColumn::getFullName() const {
-  auto result = SHORT_PSEUDONYM_PREAMBLE;
+  auto result = ShortPseudonymPreamble;
   if (!studyContext_.empty()) {
-    result += studyContext_ + SHORT_PSEUDONYM_SECTION_DELIMITER;
+    result += studyContext_ + ShortPseudonymSectionDelimiter;
   }
   if (visit_) {
-    result += SHORT_PSEUDONYM_VISIT_PREFIX + std::to_string(*visit_) + SHORT_PSEUDONYM_SECTION_DELIMITER;
+    result += ShortPseudonymVisitPrefix + std::to_string(*visit_) + ShortPseudonymSectionDelimiter;
   }
   result += coreName_;
   return result;

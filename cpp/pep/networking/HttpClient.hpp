@@ -65,49 +65,35 @@ private:
 public:
   ~HttpClient() noexcept override { this->shutdown(); }
 
-  /**
-   * @brief Determines if the HttpClient can be used to send requests.
-   * @return TRUE if requests can be sent; FALSE if not.
-   */
+  /// \brief Determines if the HttpClient can be used to send requests.
+  /// \return TRUE if requests can be sent; FALSE if not.
   bool isRunning() const noexcept;
 
-  /**
-   * @brief Starts the HttpClient, allowing requests to be sent.
-   */
+  /// \brief Starts the HttpClient, allowing requests to be sent.
   void start();
 
-  /**
-   * @brief Stops the HttpClient, preventing further requests from being sent.
-   */
+  /// \brief Stops the HttpClient, preventing further requests from being sent.
   void shutdown();
 
-  /**
-   * @brief Creates a request that can be sent later using the "sendRequest" method.
-   * @param method The HTTP method associated with the request.
-   * @param path The path (relative to the client's base URI) that the request will access. Specify std::nullopt to access the HttpClient's base URI.
-   * @return The HTTP request.
-   */
+  /// \brief Creates a request that can be sent later using the "sendRequest" method.
+  /// \param method The HTTP method associated with the request.
+  /// \param path The path (relative to the client's base URI) that the request will access. Specify std::nullopt to access the HttpClient's base URI.
+  /// \return The HTTP request.
   HTTPRequest makeRequest(HttpMethod method = HttpMethod::Get, const std::optional<std::string>& path = std::nullopt) const;
 
-  /*!
-   * \brief Converts a full URL to a path relative to the HttpClient's base URL
-   * \param full The (full) URL to extract the path from
-   * \return Path relative to the client's base URL
-   * \remark Raises an exception for URLs that don't start with the HttpClient's base URL
-   */
+  /// \brief Converts a full URL to a path relative to the HttpClient's base URL
+  /// \param full The (full) URL to extract the path from
+  /// \return Path relative to the client's base URL
+  /// \remark Raises an exception for URLs that don't start with the HttpClient's base URL
   std::string pathFromUrl(const boost::urls::url& full);
 
-  /**
-   * @brief Sends an HTTP request, returning the response asynchronously.
-   * @param request The request to send.
-   * @return An observable that emits the server's HTTP response once it's received.
-   * @remark The request's URI must match the HttpClient's base URI. For best results, pass HTTPRequest instances produced by the HttpClient's "makeRequest" method.
-   */
+  /// \brief Sends an HTTP request, returning the response asynchronously.
+  /// \param request The request to send.
+  /// \return An observable that emits the server's HTTP response once it's received.
+  /// \remark The request's URI must match the HttpClient's base URI. For best results, pass HTTPRequest instances produced by the HttpClient's "makeRequest" method.
   rxcpp::observable<HTTPResponse> sendRequest(HTTPRequest request);
 
-  /**
-   * @brief Event that is notified when a request is (about to be) sent.
-   */
+  /// \brief Event that is notified when a request is (about to be) sent.
   const Event<HttpClient, std::shared_ptr<const HTTPRequest>> onRequest;
 
 private:

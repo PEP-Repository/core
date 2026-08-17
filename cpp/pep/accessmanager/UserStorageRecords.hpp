@@ -62,9 +62,7 @@ struct UserGroupRecord {
 
 struct LegacyUserGroupUserRecord;
 
-/**
- * @brief A record for storing user membership of a user group
- */
+/// A record for storing user membership of a user group
 struct UserGroupUserRecord {
   UserGroupUserRecord() = default;
   UserGroupUserRecord(

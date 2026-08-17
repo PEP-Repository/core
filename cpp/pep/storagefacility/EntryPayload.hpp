@@ -12,9 +12,7 @@ namespace pep {
 
 using PageId = uint64_t;
 
-/*!
- * \brief Base class for entry payloads: sequences of pages containing (encrypted) cell data.
- */
+/// Base class for entry payloads: sequences of pages containing (encrypted) cell data.
 class EntryPayload {
 protected:
   size_t validatedPageIndex(size_t index) const;
@@ -56,10 +54,8 @@ public:
   static std::shared_ptr<EntryPayload> Load(PersistedEntryProperties& properties, std::vector<PageId>& pages);
 };
 
-/*!
- * \brief An entry payload consisting of a single small page stored on the FileStore (i.e. without using the PageStore).
- * \remark The size limit is determined by the InlinePageThreshold constant.
- */
+/// \brief An entry payload consisting of a single small page stored on the FileStore (i.e. without using the PageStore).
+/// \remark The size limit is determined by the InlinePageThreshold constant.
 class InlinedEntryPayload : public EntryPayload {
 private:
   std::string content_;
@@ -86,9 +82,7 @@ public:
   static std::shared_ptr<InlinedEntryPayload> Load(PersistedEntryProperties& properties, std::vector<PageId>& pages);
 };
 
-/*!
- * \brief An entry payload whose pages are stored in a PageStore.
- */
+/// An entry payload whose pages are stored in a PageStore.
 class PagedEntryPayload : public EntryPayload {
 private:
   std::vector<PageId> pages_;

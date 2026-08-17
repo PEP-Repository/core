@@ -40,13 +40,12 @@ void ClearStackedWidget(QStackedWidget& stacked) {
 QFont* MainWindow::tooltipFont = new QFont();
 const int MainWindow::StatusMessageDuration = 3000;
 
-/*! \brief Mainwindow holds all widgets within the client and manages data passing between them.
- *
- * When mainwindow closes the client will terminate.
- *
- * \param client The shared pointer to the pep::Client object which mediates all network IO. This is passed to all children which need to interface with the network.
- * \param config_tree The boost::property_tree::ptree which contains the working configuration that this client instance should use. This too is passed to the children as needed.
- */
+/// \brief Mainwindow holds all widgets within the client and manages data passing between them.
+///
+/// When mainwindow closes the client will terminate.
+///
+/// \param client The shared pointer to the pep::Client object which mediates all network IO. This is passed to all children which need to interface with the network.
+/// \param config_tree The boost::property_tree::ptree which contains the working configuration that this client instance should use. This too is passed to the children as needed.
 MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& branding, const pep::Configuration& config_tree, unsigned spareStickerCount, const VisitCaptionsByContext& visitCaptionsByContext)
   : QMainWindow(nullptr), config_(config_tree), branding_(branding), spareStickerCount_(spareStickerCount), visitCaptionsByContext_(visitCaptionsByContext), ui_(new Ui::MainWindow) {
   pepClient_ = client;
@@ -115,42 +114,38 @@ MainWindow::MainWindow(std::shared_ptr<pep::Client> client, const Branding& bran
   QObject::connect(ui_->contextComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::contextComboIndexChanged);
 }
 
-/*! \brief Mainwindows destructor
- *
- * Simple destructor which clears out the working ui_ object.
- */
+/// \brief Mainwindows destructor
+///
+/// Simple destructor which clears out the working ui_ object.
 MainWindow::~MainWindow() {
   delete ui_;
 }
 
-/*! \brief Show a widget in the register content display
- *
- * Adds a widget and sets it to be the current widget on display.
- *
- * \param widget Pointer to the QWidget which should be displayed.
- */
+/// \brief Show a widget in the register content display
+///
+/// Adds a widget and sets it to be the current widget on display.
+///
+/// \param widget Pointer to the QWidget which should be displayed.
 void MainWindow::showRegistrationWidget(QWidget* widget) {
   auto target = ui_->register_content;
   target->setCurrentIndex(target->addWidget(widget));
 }
 
-/*! \brief Show a widget in the specified content display
- *
- * Adds a widget and sets it to be the current widget on display.
- *
- * \param widget Pointer to the QWidget which should be displayed.
- * \param target Pointer to the QStackedWidget on which the widget should be displayed. Can be nullptr, on which it'll use the register_content Widget.
- */
+/// \brief Show a widget in the specified content display
+///
+/// Adds a widget and sets it to be the current widget on display.
+///
+/// \param widget Pointer to the QWidget which should be displayed.
+/// \param target Pointer to the QStackedWidget on which the widget should be displayed. Can be nullptr, on which it'll use the register_content Widget.
 void MainWindow::showWidget(QStackedWidget* target, QWidget* widget) {
   target->setCurrentIndex(target->addWidget(widget));
 }
 
-/*! \brief Close and delete widget
- *
- * Removes a widget from the display and sets it to be deleted.
- *
- * \param widget Pointer to the QWidget which should be removed.
- */
+/// \brief Close and delete widget
+///
+/// Removes a widget from the display and sets it to be deleted.
+///
+/// \param widget Pointer to the QWidget which should be removed.
 void MainWindow::closeWidget(QWidget* widget) {
   auto target = qobject_cast<QStackedWidget*>(widget->parentWidget());
   if (target != nullptr) {
@@ -159,10 +154,9 @@ void MainWindow::closeWidget(QWidget* widget) {
   }
 }
 
-/*! \brief Runs selection query for the user
- *
- * Selects a participant for display based on the SID input by the user. SID is set in the ParticipantSelector widget.
- */
+/// \brief Runs selection query for the user
+///
+/// Selects a participant for display based on the SID input by the user. SID is set in the ParticipantSelector widget.
 void MainWindow::initializeOpenPatientContent(bool setFocus) {
   //Remove old layout and child widgets that might be hanging around
   auto currentStackedWidget = ui_->open_content;
@@ -338,10 +332,9 @@ void MainWindow::showForToken(QString token) {
           });
 }
 
-/*! \brief Notify the user that some time consuming process is taking place
-*
-* Clears the screen and displays a message.
-*/
+/// \brief Notify the user that some time consuming process is taking place
+///
+/// Clears the screen and displays a message.
 void MainWindow::showPatienceWidget(QStackedWidget* target, const QString& text) {
   QLabel* infiniteProgress = new QLabel(this);
   infiniteProgress->setText(text);
@@ -349,13 +342,12 @@ void MainWindow::showPatienceWidget(QStackedWidget* target, const QString& text)
   clearAndSetWidget(target, infiniteProgress);
 }
 
-/*! \brief Query for participant data and display
-*
-* Accepts a std::string as input from a previously validated field and attempts to match it against known short pseudonyms. If successful then the participant's data are loaded and the user can work.
-* In the event of an error the main area is cleared and user is informed.
-*
-* \param shortPseudonym Short pseudonym which is the key for the lookup query.
-*/
+/// \brief Query for participant data and display
+///
+/// Accepts a std::string as input from a previously validated field and attempts to match it against known short pseudonyms. If successful then the participant's data are loaded and the user can work.
+/// In the event of an error the main area is cleared and user is informed.
+///
+/// \param shortPseudonym Short pseudonym which is the key for the lookup query.
 void MainWindow::handleOpenByShortPseudonym(std::string shortPseudonym) {
   auto currentStackedWidget = ui_->open_content;
   showPatienceWidget(currentStackedWidget, "Searching...");
@@ -385,13 +377,12 @@ void MainWindow::handleOpenByShortPseudonym(std::string shortPseudonym) {
     });
 }
 
-/*! \brief Query for participant data and display
-*
-* Accepts a std::string as input from a previously validated field and attempts to select based on this. If successful then the main widget is set and the user can work.
-* In the event of an error the main area is cleared and user is informed.
-*
-* \param participantIdentifier Participant ID which is the key for the lookup query.
-*/
+/// \brief Query for participant data and display
+///
+/// Accepts a std::string as input from a previously validated field and attempts to select based on this. If successful then the main widget is set and the user can work.
+/// In the event of an error the main area is cleared and user is informed.
+///
+/// \param participantIdentifier Participant ID which is the key for the lookup query.
 void MainWindow::showParticipantData(std::string participantIdentifier) {
   auto currentStackedWidget = ui_->register_content;
   if (!currentPepRole_) {
@@ -478,10 +469,9 @@ void MainWindow::on_participantLookupError(QString str, pep::Severity sev) {
   ensureFocus(0);
 }
 
-/*! \brief Begins the enrollment process for a new participant
- *
- * Run when the enroll button is pressed this ensures that the current user has the privilage to enroll a new participant and begins the process.
- */
+/// \brief Begins the enrollment process for a new participant
+///
+/// Run when the enroll button is pressed this ensures that the current user has the privilage to enroll a new participant and begins the process.
 void MainWindow::initializeRegisterPatientContent(bool setFocus) {
   auto currentStackedWidget = ui_->register_content;
 
@@ -509,10 +499,9 @@ void MainWindow::initializeRegisterPatientContent(bool setFocus) {
   }
 }
 
-/*! \brief Parameters language (NO LONGER USED).
- *
- * This toggles active language between dutch and english (NO LONGER USED).
- */
+/// \brief Parameters language (NO LONGER USED).
+///
+/// This toggles active language between dutch and english (NO LONGER USED).
 void MainWindow::applyLanguage(QLocale::Language language) {
   // Construct new locale
   auto currentLocale = QLocale();
@@ -547,13 +536,12 @@ void MainWindow::applyLanguage(QLocale::Language language) {
   emit translation();
 }
 
-/*! \brief Makes connection status known to the user
- *
- * It's possible for the client to drop connection with one or more of the pep servers and in that event the user will be unable to work.
- * This function informs the user that there is a problem and prevents further work until the connection is restored.
- *
- * \param expired True if the user has an expired session. Default = false.
- */
+/// \brief Makes connection status known to the user
+///
+/// It's possible for the client to drop connection with one or more of the pep servers and in that event the user will be unable to work.
+/// This function informs the user that there is a problem and prevents further work until the connection is restored.
+///
+/// \param expired True if the user has an expired session. Default = false.
 void MainWindow::updateConnectionStatus(bool expired /* = false */) {
   if (!this->isVisible())
     return;
@@ -582,10 +570,9 @@ void MainWindow::initializeTabsIfConnected() {
   }
 }
 
-/*! \brief Helper function for an expired login session.
- *
- * Calls MainWindow::updateConnectionStatus with a boolean value of true to disable the session.
- */
+/// \brief Helper function for an expired login session.
+///
+/// Calls MainWindow::updateConnectionStatus with a boolean value of true to disable the session.
 
 void MainWindow::loginExpired() {
   assert(enrollmentToken_.isEmpty());
@@ -602,12 +589,11 @@ void MainWindow::updateStatus(QString message, pep::Severity mode) {
   updateStatusBar();
 }
 
-/*! \brief Update the status bar
- *
- * It can be helpful to pass status information to the UI and this function does that.
- *
- * \param manuallyCalled If true and statusTimer is working then this function does nothing. Useful should statusTimer ever fail.
- */
+/// \brief Update the status bar
+///
+/// It can be helpful to pass status information to the UI and this function does that.
+///
+/// \param manuallyCalled If true and statusTimer is working then this function does nothing. Useful should statusTimer ever fail.
 void MainWindow::updateStatusBar(bool manuallyCalled /* = true */) {
   if (manuallyCalled && statusTimer_->isActive()) {
     return; // Just wait till the timer fires
@@ -652,12 +638,11 @@ void MainWindow::updateStatusBar(bool manuallyCalled /* = true */) {
   }
 }
 
-/*! \brief Set client UI title
- *
- * Takes a string and sets the client UI title with it and build information.
- *
- * \param newTitle Text that should be displayed along with build information.
- */
+/// \brief Set client UI title
+///
+/// Takes a string and sets the client UI title with it and build information.
+///
+/// \param newTitle Text that should be displayed along with build information.
 void MainWindow::setTitle(const std::string& newTitle) {
   auto version = pep::ConfigVersion::Current();
   if (version != std::nullopt && version->isGitlabBuild()) {
@@ -668,10 +653,9 @@ void MainWindow::setTitle(const std::string& newTitle) {
   }
 }
 
-/*! \brief Clears the currently active widget
- *
- * The main window should only have a single widget active at a time. This function facilitates that by allowing for easy removal of whatever is currently active.
- */
+/// \brief Clears the currently active widget
+///
+/// The main window should only have a single widget active at a time. This function facilitates that by allowing for easy removal of whatever is currently active.
 void MainWindow::clearActiveWidget(QStackedWidget* contentToClear) {
   if (QWidget* oldWidget = contentToClear->currentWidget()) {
     oldWidget->setVisible(false);
@@ -679,12 +663,11 @@ void MainWindow::clearActiveWidget(QStackedWidget* contentToClear) {
   }
 }
 
-/*! \brief Clears active widget and sets a new one to be active
- *
- * Boths clears the current widget from the main window and sets a new widget to be active.
- *
- * \param newActiveWidget The new widget to be set as active.
- */
+/// \brief Clears active widget and sets a new one to be active
+///
+/// Boths clears the current widget from the main window and sets a new widget to be active.
+///
+/// \param newActiveWidget The new widget to be set as active.
 void MainWindow::clearAndSetWidget(QStackedWidget* contentToClear, QWidget* newActiveWidget) {
   if (contentToClear->widget(contentToClear->currentIndex()) == newActiveWidget) {
     // Same widget

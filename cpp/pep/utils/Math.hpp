@@ -35,11 +35,11 @@ constexpr To CheckedCast(std::integral auto from) {
   return static_cast<To>(from);
 }
 
-/// @brief Calculates the logarithm of an (unsigned) integral value.
-/// @tparam T The unsigned integral type
-/// @param value The operand (value)
-/// @param base The base for the logarithm
-/// @return The value's logarithm in the specified base, or std::nullopt if the value has no (exact) integral logarithm in the specified base
+/// \brief Calculates the logarithm of an (unsigned) integral value.
+/// \tparam T The unsigned integral type
+/// \param value The operand (value)
+/// \param base The base for the logarithm
+/// \return The value's logarithm in the specified base, or std::nullopt if the value has no (exact) integral logarithm in the specified base
 template <std::unsigned_integral T>
 constexpr std::optional<T> IntegralLog(T value, T base) {
   if (value == 0U) {

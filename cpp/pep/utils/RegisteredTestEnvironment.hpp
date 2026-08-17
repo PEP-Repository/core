@@ -27,11 +27,10 @@ protected:
   RegisteredTestEnvironment(int, char**) noexcept {}
 
 public:
-  /*\brief Creates a test environment if a type has been registered.
-  * \param argc The number of command line arguments
-  * \param argv The values of command line arguments
-  * \return A pointer to a newly create test environment instance, or nullptr if no type has been registered.
-  */
+  /// \brief Creates a test environment if a type has been registered.
+  /// \param argc The number of command line arguments
+  /// \param argv The values of command line arguments
+  /// \return A pointer to a newly create test environment instance, or nullptr if no type has been registered.
   static RegisteredTestEnvironment* Create(int argc, char* argv[]); //NOLINT(modernize-avoid-c-arrays)
 };
 

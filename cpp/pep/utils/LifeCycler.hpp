@@ -7,30 +7,28 @@
 
 namespace pep {
 
-/*!
- * \brief (Base) class that progresses through a life cycle and provides status change notifications.
- */
+/// (Base) class that progresses through a life cycle and provides status change notifications.
 class LifeCycler : boost::noncopyable {
 public:
-  /// \brief Supported status(valu)es
+  /// Supported status(valu)es
   enum class Status {
-    /// \brief The instance (has been created but) requires further initialization
+    /// The instance (has been created but) requires further initialization
     Uninitialized,
-    /// \brief Initialization is being _re_started
+    /// Initialization is being _re_started
     Reinitializing,
-    /// \brief The instance is being initialized
+    /// The instance is being initialized
     Initializing,
-    /// \brief The instance (has been initialized and) is fully usable
+    /// The instance (has been initialized and) is fully usable
     Initialized,
-    /// \brief The instance is shutting down without a chance of reinitialization
+    /// The instance is shutting down without a chance of reinitialization
     Finalizing,
-    /// \brief Shutdown is complete: the instance won't become usable again
+    /// Shutdown is complete: the instance won't become usable again
     Finalized
   };
 
   [[nodiscard]] static std::string_view StatusToString(Status status);
 
-  /// \brief Parameter for the onStatusChange event
+  /// Parameter for the onStatusChange event
   struct StatusChange {
     Status previous;
     Status updated;
@@ -44,16 +42,14 @@ private:
 protected:
   LifeCycler() noexcept = default;
 
-  /* !
-   * \brief Assigns the specified status to this instance.
-   * \param status: The status to assign.
-   * \return The previous status.
-   * \remark Setting an initialized instance to "initializing" will emit two notifications: (1) from "initialized" to "reinitializing" and (2) from "reinitializing" to "initializing".
-   */
+  /// \brief Assigns the specified status to this instance.
+  /// \param status The status to assign.
+  /// \return The previous status.
+  /// \remark Setting an initialized instance to "initializing" will emit two notifications: (1) from "initialized" to "reinitializing" and (2) from "reinitializing" to "initializing".
   Status setStatus(Status status);
 
 public:
-  /// \brief Destructor
+  /// Destructor
   virtual ~LifeCycler() noexcept;
 
   /// \brief Event that is notified when the instance's life cycle status changes from one value to another

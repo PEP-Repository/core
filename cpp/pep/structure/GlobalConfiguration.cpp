@@ -3,6 +3,8 @@
 
 #include <boost/algorithm/string/predicate.hpp>
 
+#include <algorithm>
+
 namespace pep {
 
 UserPseudonymFormat::UserPseudonymFormat(const std::string &prefix, size_t length)
@@ -68,11 +70,11 @@ PseudonymFormat::PseudonymFormat(std::string prefix, size_t digits)
   }
 
   // Require as many digits as configured, plus those for the checksum
-  regexPattern_ += "[0-9]{" + std::to_string(*getTotalNumberOfDigits()) + "}";
+  regexPattern_ += "[0-9]{" + std::to_string(*getTotalNumberOfDigits()) + "}"; //NOLINT(clang-analyzer-core.CallAndMessage) False positive (Clang-Tidy 21)
 }
 
 PseudonymFormat::PseudonymFormat(std::string regexPattern)
-  : prefix_(), digits_(0U), regexPattern_(std::move(regexPattern)) {
+  : regexPattern_(std::move(regexPattern)) {
   if (regexPattern_.empty()) {
     throw std::runtime_error("No pattern specified for pseudonym format");
   }
@@ -218,10 +220,10 @@ GlobalConfiguration::GlobalConfiguration(
 std::vector<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonyms(const std::string& studyContext, const std::optional<uint32_t>& visitNumber) const {
   std::vector<ShortPseudonymDefinition> result;
   auto inserter = std::back_inserter(result);
-  std::copy_if(shortPseudonyms_.cbegin(), shortPseudonyms_.cend(), inserter, [studyContext, visitNumber](const ShortPseudonymDefinition& candidate) {return candidate.getStudyContext() == studyContext && candidate.getColumn().getVisitNumber() == visitNumber; });
+  std::ranges::copy_if(shortPseudonyms_, inserter, [studyContext, visitNumber](const ShortPseudonymDefinition& candidate) {return boost::iequals(candidate.getStudyContext(), studyContext) && candidate.getColumn().getVisitNumber() == visitNumber; });
 
   for (const auto& entry : additionalStickers_) {
-    if (entry.studyContext == studyContext && entry.visit == visitNumber) {
+    if (boost::iequals(entry.studyContext, studyContext) && entry.visit == visitNumber) {
       auto defined = *getShortPseudonym(entry.column);
       result.emplace_back(entry.column, defined.getPrefix(), defined.getLength(), defined.getCastor(),
         entry.stickers, entry.suppressAdditionalStickers, defined.getConfiguredDescription(),

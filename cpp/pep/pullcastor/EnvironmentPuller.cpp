@@ -27,7 +27,7 @@ namespace castor {
 
 namespace {
 
-const int STOREDATA_WINDOW_SIZE = 100;
+constexpr int StoredataWindowSize = 100;
 
 std::shared_ptr<CoreClient> Upcast(std::shared_ptr<Client> client) {
   return client;
@@ -200,7 +200,7 @@ rxcpp::observable<size_t> EnvironmentPuller::pull() {
     ++*read;
     return self->getStorageUpdate(castor);
     })
-    .buffer(STOREDATA_WINDOW_SIZE) // Process StoreData2Entry items in batches
+    .buffer(StoredataWindowSize) // Process StoreData2Entry items in batches
     .flat_map([self](const std::vector<StoreData2Entry>& batch) {return self->processBatchToStore(batch); }) // Store the items
     .tap( // Perform housekeeping
       [self, written](size_t count) {

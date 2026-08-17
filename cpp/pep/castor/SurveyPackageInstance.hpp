@@ -65,12 +65,10 @@ class SurveyPackageInstance : public ParentedCastorObject<Participant>, public S
   static rxcpp::observable<std::shared_ptr<SurveyPackageInstance>> BulkRetrieve(std::shared_ptr<Study> study, rxcpp::observable<std::shared_ptr<Participant>> participants);
 
  protected:
-  /*!
-   * \brief Construct a new SurveyPackageInstance
-   *
-   * \param participant The Participant this SurveyPackageInstance belongs to
-   * \param json The %Json response from the Castor API for this SurveyPackageInstance
-   */
+  /// \brief Construct a new SurveyPackageInstance
+  ///
+  /// \param participant The Participant this SurveyPackageInstance belongs to
+  /// \param json The %Json response from the Castor API for this SurveyPackageInstance
   SurveyPackageInstance(std::shared_ptr<Participant> participant, JsonPtr json);
 
  private:

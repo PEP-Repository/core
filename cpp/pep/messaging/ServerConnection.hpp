@@ -8,9 +8,7 @@
 
 namespace pep::messaging {
 
-/**
- * @brief A (client) connection to a PEP server.
- */
+/// \brief A (client) connection to a PEP server.
 class ServerConnection : public std::enable_shared_from_this<ServerConnection> {
 private:
   struct PendingRequest {
@@ -39,42 +37,32 @@ private:
   void finalize();
 
 public:
-  /**
-   * @brief Creates a new instance.
-   * @param io_context The I/O context associated with the connection.
-   * @param endPoint The endpoint at which the server lives.
-   * @param caCertFilepath The path to the file containing the (PEM-encoded) CA certificate.
-   * @return A freshly created ServerConnection instance.
-   */
+  /// \brief Creates a new instance.
+  /// \param io_context The I/O context associated with the connection.
+  /// \param endPoint The endpoint at which the server lives.
+  /// \param caCertFilepath The path to the file containing the (PEM-encoded) CA certificate.
+  /// \return A freshly created ServerConnection instance.
   static std::shared_ptr<ServerConnection> Create(std::shared_ptr<boost::asio::io_context> io_context, const EndPoint& endPoint, const std::filesystem::path& caCertFilepath);
 
-  /**
-   * @brief Creates a new instance if the endpoint's host name is set.
-   * @param io_context The I/O context associated with the connection.
-   * @param endPoint The endpoint at which the server lives. If the host name is not set, no connection will be created (and a NULL pointer returned).
-   * @param caCertFilepath The path to the file containing the (PEM-encoded) CA certificate.
-   * @return A freshly created ServerConnection instance, or NULL if the endPoint didn't contain a host name.
-   */
+  /// \brief Creates a new instance if the endpoint's host name is set.
+  /// \param io_context The I/O context associated with the connection.
+  /// \param endPoint The endpoint at which the server lives. If the host name is not set, no connection will be created (and a NULL pointer returned).
+  /// \param caCertFilepath The path to the file containing the (PEM-encoded) CA certificate.
+  /// \return A freshly created ServerConnection instance, or NULL if the endPoint didn't contain a host name.
   static std::shared_ptr<ServerConnection> TryCreate(std::shared_ptr<boost::asio::io_context> io_context, const EndPoint& endPoint, const std::filesystem::path& caCertFilepath);
 
-  /**
-   * @brief An observable representing the connection's current status.
-   * @return An observable representing the connection's current status.
-   */
+  /// \brief An observable representing the connection's current status.
+  /// \return An observable representing the connection's current status.
   rxcpp::observable<ConnectionStatus> connectionStatus();
 
-  /**
-   * @brief Sends a serialized request to the server.
-   * @param message The (serialized) request to send.
-   * @param tail Any followup messages associated with the request. Pass std::nullopt if the request consists of a single (head) message.
-   * @return An observable that emits the server's serialized response messages.
-   */
+  /// \brief Sends a serialized request to the server.
+  /// \param message The (serialized) request to send.
+  /// \param tail Any followup messages associated with the request. Pass std::nullopt if the request consists of a single (head) message.
+  /// \return An observable that emits the server's serialized response messages.
   rxcpp::observable<std::string> sendRequest(std::shared_ptr<std::string> message, std::optional<messaging::MessageBatches> tail = {});
 
-  /**
-   * @brief Shuts down the connection.
-   * @return An observable that finishes when shutdown is complete.
-   */
+  /// \brief Shuts down the connection.
+  /// \return An observable that finishes when shutdown is complete.
   rxcpp::observable<FakeVoid> shutdown();
 };
 

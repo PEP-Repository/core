@@ -310,7 +310,7 @@ std::filesystem::path Application::getConfigDirectory() {
 }
 
 Configuration Application::loadMainConfigFile() {
-  //NOLINTNEXTLINE(bugprone-unused-local-non-trivial-variable) XXX False positive in older Clang-Tidy
+  //NOLINTNEXTLINE(bugprone-unused-local-non-trivial-variable) TODO(workaround) False positive in older Clang-Tidy
   [[maybe_unused]] auto dir = this->getConfigDirectory(); // Logs version info (if required) at this time
   auto file = this->getMainConfigPath();
   assert(dir == file.parent_path());

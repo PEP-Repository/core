@@ -6,9 +6,7 @@
 
 namespace pep::networking {
 
-/**
- * @brief A party that engages in network communications.
- */
+/// \brief A party that engages in network communications.
 class Node : public LifeCycler, public std::enable_shared_from_this<Node> {
 private:
   std::shared_ptr<Protocol::NodeComponent> component_;
@@ -27,28 +25,20 @@ protected:
 public:
   ~Node() noexcept override { Node::shutdown(); } // Explicitly scoped to avoid dynamic dispatch
 
-  /**
-   * @brief Produces a human-readable description of this networking node.
-   * @return A string describing this node.
-   */
+  /// \brief Produces a human-readable description of this networking node.
+  /// \return A string describing this node.
   std::string describe() const;
 
   /// Get human-readable description of a connection to this networking node.
   std::string describeConnection(const Connection& connection) const;
 
-  /**
-   * @brief Makes the node start its networking.
-   */
+  /// \brief Makes the node start its networking.
   void start();
 
-  /**
-   * @brief Makes the node stop its networking, causing all associated sockets (and hence connections) to be(come) closed.
-   */
+  /// \brief Makes the node stop its networking, causing all associated sockets (and hence connections) to be(come) closed.
   virtual void shutdown();
 
-  /**
-   * @brief Event that is notified when the node has attempted to establish a network connection.
-   */
+  /// \brief Event that is notified when the node has attempted to establish a network connection.
   const Event<Node, const Connection::Attempt::Result> onConnectionAttempt;
 };
 
