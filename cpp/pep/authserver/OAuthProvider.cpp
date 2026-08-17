@@ -235,7 +235,7 @@ OAuthProvider::OAuthProvider(const Parameters& params, std::shared_ptr<Authserve
     PEP_LOG(LogTag, Severity::Debug) << "Cleaning up expired grants";
 
     auto now = std::chrono::steady_clock::now();
-    auto removed = std::erase_if(activeGrants_, [this, now](const auto& entry) {
+    auto removed = std::erase_if(activeGrants_, [&](const auto& entry) {
       return now - entry.second.createdAt > activeGrantExpiration_;
     });
     if (removed != 0U) {

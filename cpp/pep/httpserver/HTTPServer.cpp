@@ -86,7 +86,8 @@ int requestHandler(struct mg_connection *conn, void *cbdata)
   PEP_LOG(LogTag, Severity::Debug) << "Request handler matches request. Start handling the request";
   try {
     std::map<std::string, std::string, CaseInsensitiveCompare> headers;
-    for (const auto& header : std::span(requestInfo->http_headers, static_cast<size_t>(requestInfo->num_headers))) {
+    std::span rawHeaders(requestInfo->http_headers, static_cast<size_t>(requestInfo->num_headers));
+    for (const auto& header : rawHeaders) {
       const auto& [it, isNew] = headers.try_emplace(header.name, header.value);
       if(!isNew) {
         it->second = it->second + "," + header.value; //Multiple occurrences of the same header can be combined, separated by comma's see https://tools.ietf.org/html/rfc2616#section-4.2
