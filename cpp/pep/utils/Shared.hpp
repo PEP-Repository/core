@@ -30,7 +30,7 @@ std::shared_ptr<T> SharedFrom(T& instance){
 /// \param instance The instance for which to retrieve a weak_ptr.
 #if defined(__GNUC__) && !defined(__clang__)
 # pragma GCC diagnostic push
-// GCC (15.2, -O3) reports uninitialized use of its own scalar-replacement temporaries ("SR.<number>") in the
+// GCC (15.2, -O3) in Flatpak reports uninitialized use of its own scalar-replacement temporaries ("SR.<number>") in the
 // std::weak_ptr copy constructor that it inlines here. The weak_ptr produced by weak_from_this() is always
 // initialized, so these diagnostics are false positives.
 # pragma GCC diagnostic ignored "-Wuninitialized"

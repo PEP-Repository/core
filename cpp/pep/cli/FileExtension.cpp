@@ -396,7 +396,7 @@ protected:
 
 #if defined(__GNUC__) && !defined(__clang__)
 # pragma GCC diagnostic push
-// GCC (15.2, -O3) reports uninitialized use of its own scalar-replacement temporaries ("SR.<number>") in the
+// GCC (15.2, -O3) in Flatpak reports uninitialized use of its own scalar-replacement temporaries ("SR.<number>") in the
 // std::shared_ptr copy constructors that it inlines into the lambda captures below. The captured values are
 // always initialized, so these diagnostics are false positives.
 # pragma GCC diagnostic ignored "-Wuninitialized"

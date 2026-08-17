@@ -237,7 +237,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
 
 #if defined(__GNUC__) && !defined(__clang__)
 # pragma GCC diagnostic push
-// GCC (15.2, -O3) reports uninitialized use of its own scalar-replacement temporaries ("SR.<number>") in the
+// GCC (15.2, -O3) in Flatpak reports uninitialized use of its own scalar-replacement temporaries ("SR.<number>") in the
 // std::shared_ptr copy constructors that it inlines into the rxcpp pipeline below. The copied observables and
 // captured values are always initialized, so these diagnostics are false positives.
 # pragma GCC diagnostic ignored "-Wuninitialized"
