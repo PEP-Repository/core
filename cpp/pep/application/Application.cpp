@@ -238,10 +238,6 @@ void Application::initializeLoggingOnce() {
     std::optional<Severity> consoleLevel = this->consoleLogMinimumSeverityLevel();
     if (auto consoleLevelStr = values.getOptional<std::string>("loglevel")) {
       consoleLevel = Logging::ParseSeverity(*consoleLevelStr);
-      if (consoleLevel < Logging::compiledMinimumSeverity) {
-        PEP_LOG(LogTag, Severity::Warning)
-          << "Logs with severity below <" << Logging::FormatSeverity(Logging::compiledMinimumSeverity) << "> are not enabled for this build";
-      }
     }
     if (consoleLevel) {
       logging.push_back(std::make_shared<ConsoleLogging>(*consoleLevel));
@@ -257,6 +253,11 @@ void Application::initializeLoggingOnce() {
     }
 
     Logging::Initialize(logging);
+
+    if (consoleLevel < Logging::compiledMinimumSeverity) {
+      PEP_LOG(LogTag, Severity::Warning)
+        << "Logs with severity below <" << Logging::FormatSeverity(Logging::compiledMinimumSeverity) << "> are not enabled for this build";
+    }
   }
 
   showVersionInfo_ = !values.has("suppress-version-info");
