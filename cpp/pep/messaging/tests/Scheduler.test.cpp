@@ -142,10 +142,9 @@ void TestStreams(const std::vector<size_t> sizes) {
   boost::asio::io_context ioContext;
   auto streamId = pep::messaging::StreamId::BeforeFirst();
 
-  std::vector<Stream> streams;
-  for (auto size : sizes) {
-    streams.emplace_back(ioContext, streamId, size);
-  }
+  auto streams = sizes
+    | views::transform([&](std::size_t size) { return Stream(ioContext, streamId, size); })
+    | to<std::vector>();
 
   size_t items = std::accumulate(streams.cbegin(), streams.cend(), size_t{}, [](size_t total, const Stream& stream) {return total + stream.itemCount(); });
 

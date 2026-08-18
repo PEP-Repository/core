@@ -206,8 +206,9 @@ namespace authorization_header {
       std::vector<std::string> keys;
       keys.reserve(encodedQueries.size());
 
-      for (auto query : encodedQueries)
+      for (auto query : encodedQueries) {
         keys.push_back(std::string(query.key));
+      }
 
       sort(keys);
 

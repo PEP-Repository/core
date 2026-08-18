@@ -123,9 +123,7 @@ void Node::vetConnectionWith(const std::string& description, const std::string& 
 }
 
 void Node::handleConnectionEstablishing(std::shared_ptr<Connection> connection, const LifeCycler::StatusChange& change) {
-  auto existing = find_if(existingConnections_, [connection](const ExistingConnection& candidate) {
-    return candidate.own == connection;
-    });
+  auto existing = find(existingConnections_, connection, &ExistingConnection::own);
   if (existing == existingConnections_.end()) {
     // This messaging::Connection is sending a notification but we've already discarded it from our existingConnections_, i.e. the associated
     // (binary) networking::Connection has already been destroyed, and we've already run the cleanup code in (the lambda in) Node::start.

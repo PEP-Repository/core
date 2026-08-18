@@ -280,9 +280,7 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
     "StudyContexts"
   };
 
-  for (const auto& device : globalConfig_.getDevices()) {
-    cols.push_back(device.columnName);
-  }
+  cols.append_range(globalConfig_.getDevices() | views::transform(&pep::DeviceRegistrationDefinition::columnName));
 
   if (currentPepRole_.canSeeParticipantPersonalia()) {
     cols.push_back("ParticipantInfo");
@@ -853,18 +851,17 @@ void ParticipantWidget::processData() {
 
   releaseParticipantButton_->setEnabled(currentPepRole_.canSetParticipantContext() && participantStudyContexts_.getItems().size() > 1);
 
-  for (auto i = 0U; i < deviceWidgets_.size(); ++i) {
-    auto widget = deviceWidgets_[i];
+  for (auto [widget, deviceDefinition] : views::zip(deviceWidgets_, globalConfig_.getDevices())) {
     auto columnName = widget->getColumnName();
 
     const auto& history = participantData_.participantDeviceHistory[columnName.toStdString()];
     auto current = history.getCurrent();
     widget->setDeviceId(current ? QString::fromStdString(current->serial) : QString());
 
-    auto historyWidget = find_if(deviceHistoryWidgets_, [&columnName](DeviceHistoryWidget *candidate) {return candidate->getColumnName() == columnName; });
+    auto historyWidget = std::ranges::find(deviceHistoryWidgets_, columnName, &DeviceHistoryWidget::getColumnName); // Qualified: unqualified "find" would resolve to QWidget::find
     (*historyWidget)->setHistory(history);
 
-    if (studyContext_.matches(globalConfig_.getDevices()[i].studyContext)) {
+    if (studyContext_.matches(deviceDefinition.studyContext)) {
       std::string historyInvalidReason;
       if (!history.isValid(&historyInvalidReason)) {
         emit statusMessage(tr("Device history for column %1 is invalid: %2. Please correct the device history.").arg(columnName, historyInvalidReason.c_str()), pep::Severity::Error);
@@ -1308,8 +1305,8 @@ ParticipantWidget::~ParticipantWidget() {
 
 const pep::ShortPseudonymDefinition *ParticipantDataAggregator::getShortPseudonymDefinition(const std::string& shortPseudonymTag) const {
   const auto& spDefinitions = globalConfig_.getShortPseudonyms();
-  auto position = find_if(std::begin(spDefinitions), std::end(spDefinitions), [shortPseudonymTag](pep::ShortPseudonymDefinition definition) {
-    return definition.getColumn().getFullName() == shortPseudonymTag;
+  auto position = find(spDefinitions, shortPseudonymTag, [](const pep::ShortPseudonymDefinition& definition) {
+    return definition.getColumn().getFullName();
   });
   if (position == std::end(spDefinitions)) {
     return nullptr;

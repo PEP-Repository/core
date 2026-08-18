@@ -476,9 +476,9 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       response = std::make_shared<DataEnumerationResponse2>();
     };
 
-    for (size_t i = 0; i < request.ids.size(); i++) {
+    for (auto [id, i] : views::zip(request.ids, views::iota(0uz))) {
       // TODO execute decryption in WorkerPool
-      auto sfid = server->decryptId(request.ids[i]);
+      auto sfid = server->decryptId(id);
       auto sfentry = server->fileStore_->lookup(EntryName::Parse(sfid.path), sfid.time);
       if (sfentry == nullptr) {
         throw Error("openExistingDataEntry failed");
@@ -498,7 +498,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       // TODO execute rerandomization in WorkerPool
       entry.polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey());
       entry.fileSize = sfcontent->payload()->size();
-      entry.id = request.ids[i];
+      entry.id = id;
       entry.index = static_cast<uint32_t>(i);
       entry.columnIndex = indices.getColumnIndex(column);
       entry.pseudonymIndex = indices.getPseudonymIndex(pseud);
@@ -538,18 +538,16 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   entries.resize(request.ids.size());
 
   // open files
-  for (size_t i = 0; i < request.ids.size(); i++) {
+  for (auto [entry, id] : views::zip(entries, request.ids)) {
     // TODO execute decryption in WorkerPool
-    auto sfid = decryptId(request.ids[i]);
-    auto entry = fileStore_->lookup(EntryName::Parse(sfid.path), sfid.time);
+    auto sfid = decryptId(id);
+    entry = fileStore_->lookup(EntryName::Parse(sfid.path), sfid.time);
     if (entry == nullptr) {
       throw Error("openExistingDataEntry failed");
     }
     if (entry->isTombstone()) {
       throw Error("Cannot read data of a deleted entry");
     }
-
-    entries[i] = entry;
 
     // Check permission
     indices.verifyColumnAccess(entry->getName().column());
@@ -783,16 +781,15 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
             },
             [this, server, subscriber, ctx, hasher, getResponse]() { // file close
               auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
-              for (size_t i = 0; i < ctx->entries.size(); i++) {
-                auto& entry = ctx->entries[i];
+              for (auto [entry, entryId, i] : views::zip(ctx->entries, ctx->ids, views::iota(0uz))) {
                 try {
                   auto id = encryptId(entry->getName().string(), time);
                   std::move(*entry).commit(time);
-                  ctx->ids[i] = id;
+                  entryId = id;
                 }
                 catch (std::exception& e) {
                   std::move(*entry).cancel();
-                  ctx->ids[i].clear();
+                  entryId.clear();
                   std::ostringstream ss;
                   ss << "File " << i << " is not sane: " << e.what();
                   PEP_LOG(LogTag, Severity::Warning) << ss.str();
@@ -961,19 +958,16 @@ std::vector<std::optional<LocalPseudonym>> StorageFacility::decryptLocalPseudony
   }
 
   // TODO execute in WorkerPool
-  std::vector<std::optional<LocalPseudonym>> result;
-  result.reserve(source.size());
-  for (size_t i = 0; i < source.size(); ++i) {
-    if (includePseudonym[i]) { // Caller wants/needs this pseudonym: decrypt it
-      result.emplace_back(source[i].storageFacility.decrypt(pseudonymKey_));
-    }
-    else { // Caller doesn't need this pseudonym: don't decrypt
-      result.emplace_back(std::nullopt);
-    }
-  }
-
-  assert(result.size() == source.size()); // Return value indices correspond with "source" parameter indices
-  return result;
+  // Return value indices correspond with "source" parameter indices
+  return views::zip(source, includePseudonym)
+    | views::transform([&](const auto& pseudonymAndInclude) -> std::optional<LocalPseudonym> {
+        const auto& [pseudonyms, include] = pseudonymAndInclude;
+        if (!include) { // Caller doesn't need this pseudonym: don't decrypt
+          return std::nullopt;
+        }
+        return pseudonyms.storageFacility.decrypt(pseudonymKey_);
+      })
+    | to<std::vector>();
 }
 
 messaging::MessageBatches

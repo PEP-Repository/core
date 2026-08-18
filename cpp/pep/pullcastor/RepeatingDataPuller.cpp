@@ -66,9 +66,7 @@ rxcpp::observable<FakeVoid> RepeatingDataPuller::addMatchingInstancesTo(std::sha
     }
 
     // Add repeating data instances in deterministic order so that ptrees from different runs can be compared
-    sort(instances->begin(), instances->end(), [](std::shared_ptr<RepeatingDataInstance> lhs, std::shared_ptr<RepeatingDataInstance> rhs) {
-      return lhs->getId().compare(rhs->getId()) < 0;
-    });
+    sort(*instances, {}, &RepeatingDataInstance::getId);
 
     return RxIterate(std::move(*instances)) // Iterate over repeating data instances
       .concat_map([self, sp, destination](std::shared_ptr<RepeatingDataInstance> rdi) { // Get a ptree for each repeating data instance

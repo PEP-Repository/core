@@ -251,9 +251,7 @@ int Command::routeToDescendant(CommandPath childPath, NamedValues leafValues, st
   if (childPath.segments.size() > 1U) {
     remaining.segments.assign(childPath.segments.begin() + 1, childPath.segments.end());
   }
-  auto child = find_if(children, [&childName](const std::shared_ptr<Command>& c) {
-    return c->getName() == childName;
-  });
+  auto child = find(children, childName, &Command::getName);
 
   assert(child != children.cend() && "Programmer error: a command is forwarded to an invalid child path.");
   
@@ -368,9 +366,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
     }
     std::string command = arguments.front();
     arguments.pop();
-    auto child = find_if(children, [&command](const std::shared_ptr<Command>& child) {
-      return child->getName() == command;
-    });
+    auto child = find(children, command, &Command::getName);
     if (child == children.cend()) {
       return this->issueCommandLineHelp("Unsupported command '" + command + "' issued to " + this->getName() + GetGlobWarning(command));
     }

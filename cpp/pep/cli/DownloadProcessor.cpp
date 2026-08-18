@@ -10,6 +10,8 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 
+#include <ranges>
+
 using namespace pep;
 using namespace pep::cli;
 using namespace std::ranges;
@@ -57,7 +59,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<Timestamp>>>> GetPay
         }
         auto result = std::make_shared<std::vector<std::optional<Timestamp>>>();
         result->resize(metaCount);
-        for (auto [metaIndex, timestamp] : std::views::zip(*metaIndices, *payloadTimestamps)) {
+        for (auto [metaIndex, timestamp] : views::zip(*metaIndices, *payloadTimestamps)) {
           (*result)[metaIndex] = timestamp;
         }
         return result;

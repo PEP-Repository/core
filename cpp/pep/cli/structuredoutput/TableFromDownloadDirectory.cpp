@@ -58,7 +58,7 @@ std::vector<std::string> Concat(std::string lhs, const std::vector<std::string_v
   std::vector<std::string> combined;
   combined.reserve(rhs.size() + 1);
   combined.emplace_back(std::move(lhs));
-  for (auto r: rhs) { combined.emplace_back(r); }
+  combined.append_range(rhs | views::transform([](std::string_view part) { return std::string(part); })); // string_view converts to string only explicitly
   return combined;
 }
 
@@ -71,7 +71,7 @@ Table TableFrom(const TableTripletsAndPools& pooled, std::string idColumnName) {
   const auto participants = pooled.participants.all();
   auto table = PreAllocatedTable(Concat(std::move(idColumnName), pooled.columns.all()), participants.size());
   auto allRecords = table.records();
-  for (std::size_t i = 0; i < participants.size(); ++i) { allRecords[i][0] = participants[i]; }
+  copy(participants, views::transform(allRecords, &std::span<std::string>::front).begin());
   for (auto& t : pooled.triplets) { allRecords[t.participant.index()][t.column.index() + 1] = t.value; }
   return table;
 }

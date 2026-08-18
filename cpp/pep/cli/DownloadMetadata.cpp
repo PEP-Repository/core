@@ -165,7 +165,7 @@ void DownloadMetadata::ensureFormatUpToDate() {
 
           RecordDescriptor descriptor(id, column, timestamp);
 
-          auto position = std::ranges::find_if(states, [&descriptor](const RecordState& candidate) {return candidate.descriptor == descriptor; });
+          auto position = std::ranges::find(states, descriptor, &RecordState::descriptor);
           if (position == states.cend()) {
             throw std::runtime_error("Could not find pristine state for participant " + local.text()
                 + ", column " + column

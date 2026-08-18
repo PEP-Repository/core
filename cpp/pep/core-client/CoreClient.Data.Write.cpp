@@ -93,9 +93,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
   ctx->request->entries.reserve(entries.size());
   ctx->data.reserve(entries.size());
 
-  for (size_t i=0; i<entries.size(); i++) {
-    const auto& entry = entries.at(i);
-
+  for (auto [entry, key] : views::zip(entries, ctx->keys)) {
     DataStoreEntry2 entry2;
     entry2.columnIndex = ctx->columns[entry.column];
     entry2.pseudonymIndex = ctx->pps[*entry.polymorphicPseudonym];
@@ -105,7 +103,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     // set extra metadata entries, encrypting them with the entry's key
     // when requested.
     for (auto&& [name, xentry] : entry.xMetadata) {
-      entry2.metadata.extra()[name] = xentry.prepareForStore(ctx->keys[i].bytes);
+      entry2.metadata.extra()[name] = xentry.prepareForStore(key.bytes);
     }
 
     ctx->request->entries.emplace_back(entry2);

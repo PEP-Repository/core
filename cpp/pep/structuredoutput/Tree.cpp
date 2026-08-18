@@ -3,6 +3,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <algorithm>
+#include <ranges>
 #include <tuple>
 
 using namespace std::ranges;
@@ -24,7 +25,7 @@ json ObjectFromHeaderAndRecord(ConstRecordRef header, ConstRecordRef record) {
   assert(header.size() == record.size());
 
   auto object = json::object();
-  for (std::size_t i = 0; i < record.size(); ++i) { object.emplace(header[i], record[i]); }
+  for (auto [name, field] : views::zip(header, record)) { object.emplace(name, field); }
   return object;
 }
 

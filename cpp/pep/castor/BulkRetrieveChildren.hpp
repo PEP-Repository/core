@@ -32,7 +32,7 @@ rxcpp::observable<std::shared_ptr<ChildType>> BulkRetrieveChildren(
   // Get the (first parent's) CastorConnection instance so we can send requests over it
   auto connection = parentsById->cbegin()->second->getConnection();
   // All parent instances must/should belong to the same CastorConnection
-  assert(std::ranges::all_of(parentsById->cbegin(), parentsById->cend(), [connection](const auto& entry) {return entry.second->getConnection() == connection; }));
+  assert(std::ranges::all_of(*parentsById | std::views::values, [&](const auto& parent) {return parent->getConnection() == connection; }));
 
   return connection->getJsonEntries(apiPath, embeddedItemsNodeName) // Retrieve JSON entries for children
     .map([parentsById, parentIdNodeName](JsonPtr json) -> std::shared_ptr<ChildType> {

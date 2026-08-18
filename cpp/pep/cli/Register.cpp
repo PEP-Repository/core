@@ -323,7 +323,7 @@ private:
             .concat_map([](auto participants) { return RxIterate(std::move(*participants)); }) // Iterate over participants
             .map([](const std::pair<const uint32_t, std::shared_ptr<std::vector<pep::EnumerateAndRetrieveResult>>>& pair) {return pair.second; }) // Keep only (shared_ptr to) vector of fields
             .concat_map([client, id, spCount](std::shared_ptr<std::vector<pep::EnumerateAndRetrieveResult>> fields) -> rxcpp::observable<pep::FakeVoid> {
-            auto idField = std::ranges::find_if(fields->cbegin(), fields->cend(), [](const pep::EnumerateAndRetrieveResult& ear) {return ear.column == "ParticipantIdentifier"; });
+            auto idField = std::ranges::find(*fields, "ParticipantIdentifier", &pep::EnumerateAndRetrieveResult::column);
             if (idField == fields->cend()) {
               assert(spCount >= fields->size());
               auto spsToGenerate = spCount - fields->size();

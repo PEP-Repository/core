@@ -2,6 +2,8 @@
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/utils/Math.hpp>
 
+#include <ranges>
+
 using namespace std::literals;
 
 namespace pep {
@@ -15,11 +17,9 @@ void LocalPseudonyms::ensurePacked() const {
 }
 
 std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<LocalPseudonyms>& lps) {
-  std::vector<PolymorphicPseudonym> pps;
-  pps.reserve(lps.size());
-  for (const auto& p : lps)
-    pps.push_back(p.polymorphic);
-  return pps;
+  return lps
+    | std::views::transform(&LocalPseudonyms::polymorphic)
+    | std::ranges::to<std::vector>();
 }
 
 bool Ticket2::hasMode(const std::string& mode) const {

@@ -14,6 +14,9 @@ namespace {
 
 const std::string LogTag = "Messaging scheduler";
 
+/// Projection that lets a range algorithm look an outgoing message up by its message ID
+const MessageId& MessageIdOf(const Scheduler::OutgoingMessage& message) noexcept { return message.properties.messageId(); }
+
 }
 
 Scheduler::Batch::Batch(MessageSequence messages)
@@ -68,7 +71,7 @@ Scheduler::OutgoingMessage Scheduler::pop() {
     assert(!this->isScheduledMessageId(messageId));
   } else {
     auto closeLater = any_of(outgoing_, [&messageId](const OutgoingMessage& candidate) {
-      return candidate.properties.messageId() == messageId && candidate.properties.flags().has(Flags::Close);
+      return MessageIdOf(candidate) == messageId && candidate.properties.flags().has(Flags::Close);
       });
     // check if the stream is closed in a later packet in the queue
     // or that there is an observable
@@ -138,7 +141,7 @@ void Scheduler::activateGenerator(const MessageId& messageId, MessageBatches bat
 
 void Scheduler::queueNextBatch(const MessageId& messageId) {
   // if there are messages queued for this message id, wait with requesting the next batch
-  if (any_of(outgoing_, [&messageId](const OutgoingMessage& entry) { return entry.properties.messageId() == messageId; }))
+  if (contains(outgoing_, messageId, MessageIdOf))
     return;
   auto it = generators_.find(messageId);
   // if not found, do nothing
@@ -203,9 +206,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
 
           // try to reuse a packet already in the outgoing_ queue
           auto queuedLast = self->outgoing_ | views::reverse;
-          auto queued = find_if(queuedLast, [&messageId](const OutgoingMessage& candidate) {
-            return candidate.properties.messageId() == messageId;
-          });
+          auto queued = find(queuedLast, messageId, MessageIdOf);
           if (queued != queuedLast.end()) {
             queued->properties = MessageProperties(queued->properties.messageId(), queued->properties.flags().withClose());
           }
@@ -229,7 +230,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
 
 void Scheduler::finalizeBatches(const MessageId& messageId, const std::optional<MessageSequence>& last) {
   auto& queue = generators_[messageId].batches;
-  assert(none_of(queue, [](const Batch& existing) { return existing.final; }));
+  assert(none_of(queue, &Batch::final));
 
   // only change inline if we are not processing the stream already
   if (last || queue.empty() || queue.back().active) {
@@ -240,7 +241,7 @@ void Scheduler::finalizeBatches(const MessageId& messageId, const std::optional<
 }
 
 bool Scheduler::isScheduledMessageId(const MessageId& messageId) const {
-  return any_of(outgoing_, [&messageId](const OutgoingMessage& candidate) { return candidate.properties.messageId() == messageId; })
+  return contains(outgoing_, messageId, MessageIdOf)
     || generators_.contains(messageId);
 }
 

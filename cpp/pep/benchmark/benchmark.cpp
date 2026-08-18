@@ -4,6 +4,7 @@
 
 #include <openssl/rand.h>
 
+#include <algorithm>
 #include <random>
 #include <vector>
 
@@ -269,8 +270,7 @@ static void BM_PageSerialize(benchmark::State& state) {
   for (auto _ : state) {
     if (i == pages.size()) {
       state.PauseTiming();
-      for (size_t j = 0; j < pages.size(); j++)
-        pages[j] = page;
+      fill(pages, page);
       i = 0;
       state.ResumeTiming();
     }

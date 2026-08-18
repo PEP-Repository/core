@@ -308,12 +308,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::string>>> EnvironmentPuller::
     .flat_map([client = client_](std::shared_ptr<std::vector<std::string>> prefixes) {
     return GetReadWritableColumnNames(client)
       .filter([prefixes](const std::string& column) {
-        for (const auto& prefix : *prefixes) {
-          if (column.starts_with(prefix)) {
-            return true;
-          }
-        }
-        return false;
+        return any_of(*prefixes, [&](const std::string& prefix) { return column.starts_with(prefix); });
       })
       .op(RxToVector());
     });

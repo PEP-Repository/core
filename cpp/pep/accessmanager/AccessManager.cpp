@@ -655,14 +655,14 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     if (ctx->ticket.userGroup == UserGroup::DataAdministrator && !ctx->ticket.accessSubjects.empty()) {
       PEP_LOG(LogTag, Severity::Info) << "Granting " << ctx->ticket.userGroup << " unchecked access to " << ctx->ticket.accessSubjects.size() << " participant(s)";
     }
-    for (size_t i = 0; i < ctx->ticket.accessSubjects.size(); i++) {
-      LocalPseudonym localPseudonym = ctx->ticket.accessSubjects[i].accessManager.decrypt(ctx->server->pseudonymKey_);
+    for (auto [accessSubject, pp] : views::zip(ctx->ticket.accessSubjects, ctx->pps)) {
+      LocalPseudonym localPseudonym = accessSubject.accessManager.decrypt(ctx->server->pseudonymKey_);
       if (ctx->ticket.userGroup != UserGroup::DataAdministrator) {
         ctx->server->backend_->checkParticipantAccess(ctx->ticket.userGroup, localPseudonym, ctx->participantModes, ctx->ticket.timestamp);
       }
-      if (ctx->pps[i].isClientProvided && !ctx->server->backend_->hasLocalPseudonym(localPseudonym)) {
+      if (pp.isClientProvided && !ctx->server->backend_->hasLocalPseudonym(localPseudonym)) {
         if (ctx->ticket.hasMode("write")) {
-          ctx->server->backend_->storeLocalPseudonymAndPP(localPseudonym, ctx->ticket.accessSubjects[i].polymorphic);
+          ctx->server->backend_->storeLocalPseudonymAndPP(localPseudonym, accessSubject.polymorphic);
         }
       }
     }
@@ -756,10 +756,9 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     };
     TranscryptorRequestEntries tsRequestEntries;
     tsRequestEntries.entries.resize(list.size());  // TODO: chunk according to TsRequestBatchSize
-    for (size_t i = 0; i < list.size(); i++) {
-      TranscryptorRequestEntry& entry = tsRequestEntries.entries[i];
-      entry.polymorphic = list[i];
-          FillTranscryptorRequestEntry(entry, self->pseudonymTranslator());
+    for (auto [entry, polymorphic] : views::zip(tsRequestEntries.entries, list)) {
+      entry.polymorphic = polymorphic;
+      FillTranscryptorRequestEntry(entry, self->pseudonymTranslator());
     }
     return self->transcryptorProxy_.requestTranscryption(std::move(tsRequest), messaging::MakeSingletonTail(tsRequestEntries))
       .map([server = SharedFrom(*self), participantGroup, performRemove](const TranscryptorResponse& resp) -> FakeVoid {

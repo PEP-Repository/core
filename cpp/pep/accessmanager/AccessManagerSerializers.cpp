@@ -82,10 +82,7 @@ void Serializer<EncryptionKeyResponse>::moveIntoProtocolBuffer(proto::Encryption
 
 ColumnAccessRequest Serializer<ColumnAccessRequest>::fromProtocolBuffer(proto::ColumnAccessRequest&& source) const {
   auto result = ColumnAccessRequest{ source.include_implicitly_granted(), {} };
-  result.requireModes.reserve(static_cast<size_t>(source.require_modes_size()));
-  for (auto mode : source.require_modes()) {
-    result.requireModes.push_back(mode);
-  }
+  result.requireModes.append_range(source.require_modes());
   return result;
 }
 
@@ -112,18 +109,12 @@ ColumnAccessResponse Serializer<ColumnAccessResponse>::fromProtocolBuffer(proto:
     auto indices = source.column_group_columns(i);
 
     ColumnAccess::GroupProperties properties;
-    properties.modes.reserve(static_cast<unsigned>(entry.modes_size()));
-    for (const auto& mode : entry.modes()) {
-      properties.modes.push_back(mode);
-    }
+    properties.modes.append_range(entry.modes());
     properties.columns = Serialization::FromProtocolBuffer(std::move(indices));
     result.columnGroups[entry.name()] = properties;
   }
 
-  result.columns.reserve(static_cast<unsigned>(source.columns_size()));
-  for (auto column : source.columns()) {
-    result.columns.push_back(std::move(column));
-  }
+  result.columns.append_range(*source.mutable_columns() | views::as_rvalue);
 
   return result;
 }

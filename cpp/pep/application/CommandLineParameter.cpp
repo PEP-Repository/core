@@ -295,7 +295,7 @@ Parameters Parameters::operator +(const std::vector<Parameter>& parameters) cons
 }
 
 const Parameter* Parameters::find(const std::string& name) const {
-  auto pos = find_if(entries_, [&name](const Parameter& candidate) {return candidate.getName() == name; });
+  auto pos = std::ranges::find(entries_, name, &Parameter::getName);
   if (pos == entries_.cend()) {
     return nullptr;
   }
@@ -463,11 +463,11 @@ std::vector<const Parameter*> Parameters::getSwitchesToAutocomplete(const LexedV
 }
 
 bool Parameters::hasRequired() const {
-  return any_of(entries_, [](const Parameter& s) {return s.isRequired(); });
+  return any_of(entries_, &Parameter::isRequired);
 }
 
 bool Parameters::hasInfinitePositional() const noexcept {
-  return any_of(entries_, [](const Parameter& s) {return s.allowsMultiple(); });
+  return any_of(entries_, &Parameter::allowsMultiple);
 }
 
 std::vector<std::string> Parameters::getInvocationSummary() const {

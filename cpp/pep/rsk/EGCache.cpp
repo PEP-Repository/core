@@ -53,6 +53,7 @@
 // "load" and "store" methods.
 
 using namespace std::literals;
+using namespace std::ranges;
 
 namespace pep {
 
@@ -161,14 +162,13 @@ private:
       }
 
       size_t toEvict = data_.size() - Options::PrunedSize;
-      std::vector<std::pair<uint64_t, Key>> entries;
-      entries.reserve(data_.size());
-      for (const auto& pair : data_)
-        entries.emplace_back(pair.second.getLastUse(), pair.first);
-      std::ranges::sort(entries, [](auto& a, auto& b) { return a.first < b.first; });
+      auto entries = data_
+        | views::transform([](const auto& entry) { return std::pair(entry.second.getLastUse(), entry.first); })
+        | to<std::vector>();
+      sort(entries, {}, [](const auto& entry) -> decltype(auto) { return entry.first; });
       auto evictKeys = entries
-        | std::views::take(static_cast<std::ptrdiff_t>(toEvict))
-        | std::views::values;
+        | views::take(static_cast<std::ptrdiff_t>(toEvict))
+        | views::values;
       for (const auto& key : evictKeys) {
         data_.erase(key);
       }

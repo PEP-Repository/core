@@ -2,6 +2,7 @@
 #include <pep/storagefacility/S3Client.hpp>
 #include <pep/storagefacility/S3Credentials.PropertySerializer.hpp>
 
+#include <algorithm>
 #include <cassert>
 #include <filesystem>
 
@@ -119,14 +120,9 @@ namespace {
     unsigned int conn_count = config.get<unsigned int>("Connections", 5);
     std::string writeBucket = config.get<std::string>("WriteToBucket");
 
-    std::vector<std::string> buckets;
+    auto buckets = config.get<std::vector<std::string>>("ReadFromBuckets");
 
-    for (const std::string& bucket
-        : config.get<std::vector<std::string>>("ReadFromBuckets")) {
-      buckets.push_back(bucket);
-    }
-
-    if (buckets.begin() == buckets.end())
+    if (buckets.empty())
       throw std::runtime_error("S3PageStore configuration error: "
           "no buckets_ to read from!");
 
@@ -186,22 +182,8 @@ namespace {
 
 
   size_t S3PageStore::getQuietestConn() {
-    size_t candidate = 0;
-
-    unsigned int candidate_count = this->openRequestsCounts_->at(candidate);
-
-    for (size_t contender=1;
-        contender < this->openRequestsCounts_->size(); contender++) {
-
-      unsigned int contender_count = this->openRequestsCounts_->at(contender);
-
-      if (contender_count < candidate_count) {
-        candidate = contender;
-        candidate_count = contender_count;
-      }
-    }
-
-    return candidate;
+    const auto& counts = *this->openRequestsCounts_;
+    return static_cast<size_t>(std::ranges::min_element(counts) - counts.begin());
   }
 
 

@@ -85,9 +85,7 @@ TEST(ColumnNameMappingsTest, GetEntriesReturnsAllMappings) {
   auto entries = mappings.getEntries();
   EXPECT_EQ(entries.size(), 2U);
   auto findOriginal = [&entries](const std::string& original) {
-    return std::ranges::find_if(entries, [&original](const pep::ColumnNameMapping& entry) {
-      return entry.original.getValue() == original;
-    });
+    return std::ranges::find(entries, original, [](const pep::ColumnNameMapping& entry) -> decltype(auto) { return entry.original.getValue(); });
   };
   auto first = findOriginal("Daily_survey_4_consecutive_days_in_one_week");
   ASSERT_NE(first, entries.cend());

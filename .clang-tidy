@@ -76,6 +76,7 @@ Checks:
 
   - modernize-avoid-c-arrays
   - modernize-deprecated-headers
+  - modernize-loop-convert
   - modernize-replace-auto-ptr
   - modernize-shrink-to-fit
   - modernize-use-bool-literals
@@ -88,6 +89,7 @@ Checks:
   - modernize-use-starts-ends-with
   - modernize-use-std-numbers
 
+  - performance-inefficient-vector-operation
   - performance-move-const-arg
   - performance-move-constructor-init
   - performance-no-automatic-move
@@ -108,6 +110,7 @@ Checks:
   - readability-string-compare
   - readability-redundant-string-cstr
   - readability-suspicious-call-argument
+  - readability-use-anyofallof
 
 CheckOptions:
   # Ignore empty catch when it contains a comment with the word 'ignore'

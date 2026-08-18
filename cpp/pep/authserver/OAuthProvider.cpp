@@ -410,7 +410,7 @@ rxcpp::observable<HTTPResponse> OAuthProvider::handleAuthorizationRequest(HTTPRe
       auto groupQuery = formData.find("user_group");
       if(groupQuery != formData.end()) {
         const auto& selectedGroup = groupQuery->second;
-        auto foundGroup = find_if(*groups, [&selectedGroup](const UserGroup& group){ return group.name == selectedGroup; });
+        auto foundGroup = find(*groups, selectedGroup, &UserGroup::name);
         if(foundGroup == groups->end()) {
           PEP_LOG(LogTag, Severity::Warning) << "Trying to login with group '" << selectedGroup << "', but user is not a member of that group.";
           return MakeErrorRedirect(redirectUri, ErrorAccessDenied, "User is not a member of selected group");

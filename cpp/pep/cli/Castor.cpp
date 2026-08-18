@@ -293,7 +293,7 @@ private:
               [[maybe_unused]] auto emplaced = config->existing.emplace(column.name);
               assert(emplaced.second);
             }
-            const auto& castorGroup = find_if(response.columnGroups, [](const pep::AmaQRColumnGroup& group) {return group.name == "Castor"; });
+            const auto& castorGroup = find(response.columnGroups, "Castor", &pep::AmaQRColumnGroup::name);
             if (castorGroup != response.columnGroups.cend()) {
               for (const auto& column : castorGroup->columns) {
                 [[maybe_unused]] auto emplaced = config->grouped.emplace(column);
@@ -435,7 +435,7 @@ private:
     private:
       static pep::FakeVoid ReportColumnNameMappings(const pep::ColumnNameMappings& mappings) {
         auto entries = mappings.getEntries();
-        sort(entries, [](const pep::ColumnNameMapping& lhs, const pep::ColumnNameMapping& rhs) { return lhs.original.getValue() < rhs.original.getValue(); });
+        sort(entries, {}, [](const pep::ColumnNameMapping& entry) -> decltype(auto) { return entry.original.getValue(); });
         for (const auto& entry : entries) {
           std::cout << std::quoted(entry.original.getValue()) << " --> " << std::quoted(entry.mapped.getValue()) << std::endl;
         }

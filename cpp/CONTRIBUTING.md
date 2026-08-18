@@ -92,6 +92,10 @@ We use `std::ranges` algorithms and views throughout. Not every C++23 range feat
 - Replace a "set a flag and break" search loop with `any_of`/`all_of`/`none_of`.
 - Remove elements with [`std::erase`/`std::erase_if`](https://en.cppreference.com/w/cpp/container/vector/erase2) rather than the erase-remove idiom.
 
+#### Hand-written loops
+
+Most remaining hand-written loops are a range algorithm or view in disguise. Even when you think you need an index to index into multiple lists, you may be able to use [`std::views::zip`](https://en.cppreference.com/w/cpp/ranges/zip_view) instead, which produces tuples of references (just use `for (auto [a, b] : views::zip(...))`). If you actually need the index, consider zipping with `views::iota(0uz)` (`views::enumerate` is not available yet on all platforms).
+
 #### Building containers
 
 - Build a container with a view pipeline terminated by [`std::ranges::to`](https://en.cppreference.com/w/cpp/ranges/to), rather than `reserve` plus `std::transform` into a `std::back_inserter`. For a longer chain, put each operation on its own line:
@@ -109,12 +113,13 @@ We use `std::ranges` algorithms and views throughout. Not every C++23 range feat
   - a trailing `| to<C>()` when there is a pipeline;
   - `C c(std::from_range, r)` or `= {std::from_range, r}` is also an option when constructing a named container from a plain range;
   - a prefix `to<C>(r)` when the range is a single expression that you're already passing as an argument.
-- Append or insert whole ranges with `vec.append_range(r)` and `set.insert_range(r)` instead of looping over `push_back`/`insert`.
+- Append or insert whole ranges with `vec.append_range(r)` and `set.insert_range(r)` instead of looping over `push_back`/`insert`. These need the element type to be *implicitly* convertible, so appending `string_view`s to a `vector<string>` still needs a `views::transform`.
 
 #### Mechanics
 
 - For conciseness, put `using namespace std::ranges;` at the top of a `.cpp` file when using multiple ranged functions. Never put it in a header: instead spell out `std::ranges::`/`std::views::`, or scope the using-directive to a function body.
-- Boost algorithms may not accept C++20 ranges, so materialize first: `boost::algorithm::join(items | views::transform(...) | to<std::vector>(), ",")`.
+- Boost algorithms may not accept C++20 ranges, so materialize first: `boost::algorithm::join(items | views::transform(...) | to<std::vector>(), ",")`. The converse also holds: several third-party collection types (`boost::urls::params_encoded_view`, sqlite_orm's `mapped_view`) work with a range-based `for` but do *not* satisfy `std::ranges::input_range`, so they can't start a view pipeline.
+- A view constructed over an lvalue is lazy and does not own its source. Don't return one, store one, or hand one to Rx: materialize with `| to<std::vector>()` first if the source will not outlive the iteration.
 
 ### On Lambdas
 
