@@ -1,7 +1,6 @@
 #include <pep/weblib/EmscriptenMapBinding.hpp>
 
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/weblib/tests/PromiseHelpers.hpp>
 
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
@@ -15,7 +14,6 @@
 #include <vector>
 
 using namespace emscripten;
-using namespace pep::weblib::tests;
 
 namespace {
 
@@ -42,20 +40,12 @@ std::string DescribeMapJs(const val& value) {
   keys.call<val>("sort");
 
   std::string result;
-  for (auto i = 0U; i < keys["length"].as<unsigned>(); ++i) {
+  const auto size = keys["length"].as<unsigned>();
+  for (auto i = 0U; i < size; ++i) {
     const val key = keys[i];
-    result += key.as<std::string>() + '=' + value.call<val>("get", key).as<std::string>() + ';';
+    result += key.as<std::string>() + '=' + value.call<std::string>("get", key) + ';';
   }
   return result;
-}
-
-/// Bound: takes and returns a map, so that it is both deserialized and serialized by our binding.
-template <pep::AnyMap Map>
-Map EchoMap(Map map) { return map; }
-
-EMSCRIPTEN_BINDINGS(EmscriptenMapBindingTest) {
-  function("pepTestEchoMap", &EchoMap<StringMap>);
-  function("pepTestEchoUnorderedMap", &EchoMap<UnorderedStringMap>);
 }
 
 /// Creates a JS Map containing \p entries.
@@ -68,28 +58,21 @@ val MakeJsMap(const std::vector<std::pair<std::string, std::string>>& entries) {
 }
 
 /// Pass a JS Map containing \p entries to C++, and return how it arrived there.
-/// Runs on the main thread, where our binding and the Embind type registry live.
 template <pep::AnyMap Map>
-std::string PassJsMapToCpp(std::vector<std::pair<std::string, std::string>> entries) {
-  return PromiseTest([entries = std::move(entries)] {
-    return val::global("Promise").call<val>("resolve", DescribeMapCpp(MakeJsMap(entries).as<Map>()));
-  });
+std::string PassJsMapToCpp(const std::vector<std::pair<std::string, std::string>>& entries) {
+  return DescribeMapCpp(MakeJsMap(entries).as<Map>());
 }
 
 /// Pass \p map to JS as an rvalue, which selects the rvalue overload of toWireType.
 template <pep::AnyMap Map>
 std::string PassCppMapToJs(Map map) {
-  return PromiseTest([map = std::move(map)]() mutable {
-    return val::global("Promise").call<val>("resolve", DescribeMapJs(val(std::move(map))));
-  });
+  return DescribeMapJs(val(std::move(map)));
 }
 
 /// Pass \p map to JS as an lvalue, which selects the const reference overload of toWireType.
 template <pep::AnyMap Map>
 std::string PassCppMapCopyToJs(const Map& map) {
-  return PromiseTest([&map] {
-    return val::global("Promise").call<val>("resolve", DescribeMapJs(val(map)));
-  });
+  return DescribeMapJs(val(map));
 }
 
 TEST(EmscriptenMapBinding, fromWireType) {
@@ -125,21 +108,27 @@ TEST(EmscriptenMapBinding, toWireTypeCopy) {
   EXPECT_EQ(PassCppMapCopyToJs(map), "a=1;b=2;");
 }
 
+/// Bound: takes and returns a map, so that it is both deserialized and serialized by our binding.
+template <pep::AnyMap Map>
+Map EchoMap(Map map) { return map; }
+
+EMSCRIPTEN_BINDINGS(EmscriptenMapBindingTest) {
+  function("pepTestEchoMap", &EchoMap<StringMap>);
+  function("pepTestEchoUnorderedMap", &EchoMap<UnorderedStringMap>);
+}
+
+/// Pass a JS Map containing \p entries through a bound function, and return how it arrived back in JS.
+std::string PassThroughBoundFunction(const char* name, const std::vector<std::pair<std::string, std::string>>& entries) {
+  return DescribeMapJs(val::module_property(name)(MakeJsMap(entries)));
+}
+
 TEST(EmscriptenMapBinding, boundFunctionSignature) {
-  // The whole chain runs inside PromiseTest, because a val must be used on the main thread, and the test body is not on it.
-  const std::string described = PromiseTest([] {
-    const val echoed = val::module_property("pepTestEchoMap")(MakeJsMap({{"b", "2"}, {"a", "1"}}));
-    return val::global("Promise").call<val>("resolve", DescribeMapJs(echoed));
-  });
-  EXPECT_EQ(described, "a=1;b=2;") << "A bound function should be able to take and return a map";
+  EXPECT_EQ(PassThroughBoundFunction("pepTestEchoMap", {{"b", "2"}, {"a", "1"}}), "a=1;b=2;")
+      << "A bound function should be able to take and return a map";
 }
 
 TEST(EmscriptenMapBinding, boundFunctionSignatureUnorderedMap) {
-  const std::string described = PromiseTest([] {
-    const val echoed = val::module_property("pepTestEchoUnorderedMap")(MakeJsMap({{"b", "2"}, {"a", "1"}}));
-    return val::global("Promise").call<val>("resolve", DescribeMapJs(echoed));
-  });
-  EXPECT_EQ(described, "a=1;b=2;");
+  EXPECT_EQ(PassThroughBoundFunction("pepTestEchoUnorderedMap", {{"b", "2"}, {"a", "1"}}), "a=1;b=2;");
 }
 
 }
