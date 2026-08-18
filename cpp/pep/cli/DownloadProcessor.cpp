@@ -57,9 +57,8 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<Timestamp>>>> GetPay
         }
         auto result = std::make_shared<std::vector<std::optional<Timestamp>>>();
         result->resize(metaCount);
-        for (size_t i = 0U; i < payloadTimestamps->size(); ++i) {
-          auto metaIndex = (*metaIndices)[i];
-          (*result)[metaIndex] = (*payloadTimestamps)[i];
+        for (auto [metaIndex, timestamp] : std::views::zip(*metaIndices, *payloadTimestamps)) {
+          (*result)[metaIndex] = timestamp;
         }
         return result;
       });
