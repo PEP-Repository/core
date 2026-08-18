@@ -262,7 +262,7 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
 }
 
 void ParticipantWidget::disablePrinting() {
-  printButtons_->setEnabled(false);
+  printButtons_->setButtonsEnabled(false);
 
   for (auto visit : visitWidgets_) {
     visit->disablePrinting();

@@ -40,7 +40,7 @@ VisitWidget::~VisitWidget()
 }
 
 void VisitWidget::disablePrinting() {
-  printButtons_->setEnabled(false); 
+  printButtons_->setButtonsEnabled(false);
 }
 
 void VisitWidget::disableAssessorSelection() {
