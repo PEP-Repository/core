@@ -35,15 +35,14 @@ public:
 
   /// Deserialize
   static Map fromWireType(WireType value) {
-    using namespace std::ranges;
-    return pep::RangeToCollection<Map>(
-        ValBinding::fromWireType(value)
-        | views::transform([](const val& entry) {
-          return std::pair{
-            entry[0].as<typename Map::key_type>(),
-            entry[1].as<typename Map::mapped_type>(allow_raw_pointers{})};
-        })
-    );
+    // Note that we cant (yet) use std::ranges, as val::iterator fails https://en.cppreference.com/cpp/iterator/input_or_output_iterator requirements
+    Map map;
+    for (const val& entry : ValBinding::fromWireType(value)) {
+      map.emplace(
+          entry[0].as<typename Map::key_type>(),
+          entry[1].as<typename Map::mapped_type>(allow_raw_pointers{}));
+    }
+    return map;
   }
 };
 
