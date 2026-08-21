@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/TypeTraits.hpp>
 
 namespace pep {
@@ -47,21 +48,20 @@ bool IsSubset(std::ranges::input_range auto&& sub, std::ranges::forward_range au
   return all_of(sub, [&](const auto& value) { return superset.contains(&value); });
 }
 
-/// Returns a value that's included multiple times in the vector, or std::nullopt if it contains unique values.
-auto TryFindDuplicateValue(std::ranges::forward_range auto&& values)
--> std::optional<std::ranges::range_value_t<decltype(values)>> {
+/// Returns a value that's included multiple times in the vector, or nullptr if it contains unique values.
+auto TryFindDuplicateValue(std::ranges::forward_range auto&& values) -> QualifiedRangeValue<decltype(values)>* {
   using namespace std::ranges;
-  using T = range_value_t<decltype(values)>;
-  UnorderedPointerSet<const T> set;
+  UnorderedPointerSet<const range_value_t<decltype(values)>> set;
   if constexpr (sized_range<decltype(values)>) {
     set.reserve(size(values));
   }
-  for (const T& value : values) {
-    if (!set.insert(std::addressof(value)).second) {
-      return std::optional<T>{value};
+  for (auto& value : values) {
+    auto ptr = std::addressof(value);
+    if (!set.insert(ptr).second) {
+      return ptr;
     }
   }
-  return std::nullopt;
+  return nullptr;
 }
 
 /// Returns whether a vector contains unique values.

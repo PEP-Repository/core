@@ -5,6 +5,9 @@
 
 namespace {
 
+template <typename T>
+auto CopyPointerToOptional(T* ptr) -> std::optional<T> { return ptr ? std::optional{*ptr} : std::nullopt; }
+
 TEST(MapUtils, IsSubset) {
   // empty set is subset of every other set
   EXPECT_TRUE(pep::IsSubset(std::vector<int>{}, std::vector<int>{}));
@@ -23,11 +26,15 @@ TEST(MapUtils, IsSubset) {
 }
 
 TEST(MapUtils, TryFindDuplicateValue) {
-  EXPECT_EQ(pep::TryFindDuplicateValue(std::vector<int>{}), std::nullopt);
-  EXPECT_EQ(pep::TryFindDuplicateValue(std::vector<int>{1 }), std::nullopt);
-  EXPECT_EQ(pep::TryFindDuplicateValue(std::vector<int>{1, 1}), 1);
-  EXPECT_EQ(pep::TryFindDuplicateValue(std::vector<int>{1, 2, 1}), 1);
-  EXPECT_THAT(pep::TryFindDuplicateValue(std::vector<int>{1, 2, 2,1}), testing::AnyOf(1, 2));
+  EXPECT_EQ(CopyPointerToOptional(pep::TryFindDuplicateValue(std::vector<int>{})), std::nullopt);
+  EXPECT_EQ(CopyPointerToOptional(pep::TryFindDuplicateValue(std::vector<int>{1 })), std::nullopt);
+  EXPECT_EQ(CopyPointerToOptional(pep::TryFindDuplicateValue(std::vector<int>{1, 1})), 1);
+  EXPECT_EQ(CopyPointerToOptional(pep::TryFindDuplicateValue(std::vector<int>{1, 2, 1})), 1);
+  EXPECT_THAT(CopyPointerToOptional(pep::TryFindDuplicateValue(std::vector<int>{1, 2, 2,1})), testing::AnyOf(1, 2));
+
+  // Make sure it supports const values
+  std::vector<int> constVec{1, 1};
+  EXPECT_EQ(CopyPointerToOptional(pep::TryFindDuplicateValue(constVec)), 1);
 }
 
 TEST(MapUtils, ContainsUniqueValues) {

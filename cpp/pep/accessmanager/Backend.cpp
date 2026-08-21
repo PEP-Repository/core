@@ -375,7 +375,7 @@ void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
   }
 
   auto duplicate = TryFindDuplicateValue(request.accessSubjects);
-  if (duplicate != std::nullopt) {
+  if (duplicate) {
     PEP_LOG(LogTag, Severity::Error) << "Failing ticket request due to duplicate PP " << duplicate->text();
     throw Error("Ticket request failed due to duplicate polymorphic pseudonym. Please request access to unique "
                 "polymorphic pseudonyms");

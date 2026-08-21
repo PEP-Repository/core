@@ -17,6 +17,11 @@
 
 namespace pep {
 
+/// \brief Get possible-const range value.
+// \note Like \c range_value_t , which does not retain const.
+template <std::ranges::range R>
+using QualifiedRangeValue = std::remove_reference_t<std::ranges::range_reference_t<R>>;
+
 /// \brief Fills a destination range with strings from a source range without exceeding the specified destination capacity.
 ///
 /// \tparam TDest the type of destination iterator
@@ -66,16 +71,14 @@ template<size_t Extent>
       throw std::invalid_argument("Argument has incorrect number of elements");
     }
   }
-  // range_value_t does not retain const
-  using Elem = std::remove_reference_t<std::ranges::range_reference_t<decltype(span)>>;
+  using Elem = QualifiedRangeValue<decltype(span)>;
   return std::span<Elem, Extent>{reinterpret_cast<Elem*>(std::ranges::data(span)), std::ranges::size(span)};
 }
 
 template<ByteLike To>
 [[nodiscard]] auto ConvertBytes(Slice auto&& span)
   requires(ByteLike<std::ranges::range_value_t<decltype(span)>>) {
-  // range_value_t does not retain const
-  using From = std::remove_reference_t<std::ranges::range_reference_t<decltype(span)>>;
+  using From = QualifiedRangeValue<decltype(span)>;
   return std::span<CopyConstness<To, From>>{reinterpret_cast<CopyConstness<To, From>*>(std::ranges::data(span)), std::ranges::size(span)};
 }
 
