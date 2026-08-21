@@ -456,10 +456,8 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                       // workerPool_->batched_map() does not tell us which index we're handling,
                       // so we let it process indices to work around this.  If we need this
                       // more often, it's better to change batched_map()
-                      std::vector<size_t> is(request->entries.size());
-                      //NOLINTNEXTLINE(modernize-use-ranges) std::ranges::iota needs libc++ 23; unavailable on our Emscripten/Apple Clang floor
-                      std::iota(is.begin(), is.end(), std::size_t{});
-                      return server->workerPool_->batched_map<8>(is,
+                      return server->workerPool_->batched_map<8>(
+                            views::iota(0uz, request->entries.size()) | to<std::vector>(),
                             ObserveOnAsio(*server->getIoContext()),
                             [server, request, lpResponse, transResp, rkIndices, localPseudonyms, recipient
                             ](size_t i) {
