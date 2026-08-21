@@ -71,7 +71,9 @@ Table TableFrom(const TableTripletsAndPools& pooled, std::string idColumnName) {
   const auto participants = pooled.participants.all();
   auto table = PreAllocatedTable(Concat(std::move(idColumnName), pooled.columns.all()), participants.size());
   auto allRecords = table.records();
-  copy(participants, views::transform(allRecords, &std::span<std::string>::front).begin());
+  for (auto [participant, record] : views::zip(participants, allRecords)) {
+    record.front() = participant;
+  }
   for (auto& t : pooled.triplets) { allRecords[t.participant.index()][t.column.index() + 1] = t.value; }
   return table;
 }

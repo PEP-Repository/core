@@ -58,7 +58,7 @@ void ExportWidget::WriteParticipantData(const QList<std::shared_ptr<ExportableIt
     if (expandDetails && expander) {
       (*expander)(table, cellContent);
       assert(!table.empty());
-      assert(none_of(table, &ExportDataRow::empty));
+      assert(none_of(table, [](const ExportDataRow& row) { return row.empty(); }));
     }
     else {
       auto& row = table.emplace_back();
