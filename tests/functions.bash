@@ -244,7 +244,6 @@ pepcli() {
 write_registration_server_cell() {
   column="$1"
   shift
-  parameters="$@"
 
   # (Ab)using column group "ParticipantInfo" to temporarily grant write privileges to "Research Assessor"
   pepcli --oauth-token-group "Data Administrator" ama column addTo "${column}" ParticipantInfo

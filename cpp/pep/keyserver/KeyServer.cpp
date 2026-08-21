@@ -26,7 +26,7 @@ tokenBlocking::TokenIdentifier Identifiers(const OAuthToken& token) {
 }
 
 void EnsureTokenBlockingAdminAccess(const std::string& organizationalUnit) {
-  UserGroup::EnsureAccess({UserGroup::AccessAdministrator}, organizationalUnit, "token blocklist management");
+  UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::AccessManager}, organizationalUnit, "token blocklist management");
 }
 
 } // namespace
@@ -114,7 +114,7 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
     std::shared_ptr<SignedTokenBlockingCreateRequest> signedRequest) {
 
   auto certified = signedRequest->open(*this->getRootCAs());
-  UserGroup::EnsureAccess({UserGroup::AccessAdministrator, UserGroup::AccessManager}, certified.signatory.organizationalUnit(), "token blocklist management");
+  EnsureTokenBlockingAdminAccess(certified.signatory.organizationalUnit());
   const auto& request = certified.message;
 
   assert(blocklist_ != nullptr);
@@ -125,7 +125,8 @@ messaging::MessageBatches KeyServer::handleTokenBlockingCreateRequest(
       .metadata{
           .note = request.note,
           .issuer = certified.signatory.commonName(),
-          .creationDateTime = TimeNow()}};
+          .creationDateTime = TimeNow(),
+          .blockStartDateTime = request.blockStartDateTime}};
   entry.id = blocklist_->add(entry.target, entry.metadata);
   return messaging::BatchSingleMessage(TokenBlockingCreateResponse{std::move(entry)});
 }

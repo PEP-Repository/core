@@ -97,14 +97,14 @@ protected:
     uint64_t& checkpoint) override;
 
 private:
-  messaging::MessageBatches handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumerationRequest2> request);
-  messaging::MessageBatches handleDataStoreRequest2(std::shared_ptr<SignedDataStoreRequest2> lpRequest, messaging::MessageSequence tail);
-  messaging::MessageBatches handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdateRequest2> lpRequest);
-  messaging::MessageBatches handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRequest2> lpRequest);
-  messaging::MessageBatches handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> lpRequest);
-  messaging::MessageBatches handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteRequest2> lpRequest);
-  messaging::MessageBatches handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> lpRequest);
-  messaging::MessageBatches handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> lpRequest);
+  messaging::MessageBatches handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumerationRequest2> signedRequest);
+  messaging::MessageBatches handleDataStoreRequest2(std::shared_ptr<SignedDataStoreRequest2> signedRequest, messaging::MessageSequence tail);
+  messaging::MessageBatches handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdateRequest2> signedRequest);
+  messaging::MessageBatches handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRequest2> signedRequest);
+  messaging::MessageBatches handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> signedRequest);
+  messaging::MessageBatches handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteRequest2> signedRequest);
+  messaging::MessageBatches handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> signedRequest);
+  messaging::MessageBatches handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> signedRequest);
 
   std::string encryptId(std::string path, Timestamp time);
   SFId decryptId(std::string_view encId);

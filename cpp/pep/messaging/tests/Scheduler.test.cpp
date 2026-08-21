@@ -31,7 +31,7 @@ private:
       auto& stream = streams_[outgoing.properties.messageId()];
 
       ASSERT_FALSE(stream.closed) << "Scheduler produced message after CLOSE";
-      if (outgoing.properties.flags().close()) {
+      if (outgoing.properties.flags().has(pep::messaging::Flags::Close)) {
         stream.closed = true;
       }
       ++stream.items;

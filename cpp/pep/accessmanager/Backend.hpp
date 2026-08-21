@@ -131,6 +131,12 @@ private:
   void createParticipantGroupAccessRulesForRequest(const AmaMutationRequest& amRequest);
   void removeParticipantGroupAccessRulesForRequest(const AmaMutationRequest& amRequest);
 
+  rxcpp::observable<std::shared_ptr<std::set<int64_t>>> addBlockEntries(int64_t internalUserId, const std::string& group, Timestamp issueDateTime, std::string note,
+                                                                    std::optional<Timestamp> blockStartDateTime);
+  rxcpp::observable<FakeVoid> removeBlockEntries(int64_t internalUserId, std::string group, std::set<int64_t> excludeBlockEntries = {});
+  rxcpp::observable<FakeVoid> updateTokenBlocking (int64_t internalUserId, std::string group, std::optional<Timestamp> issueDateTime,
+    std::string note, std::optional<Timestamp> blockStartDateTime);
+
   std::shared_ptr<AccessManager::Backend::Storage> storage_;
   //We want to assign this pointer from within the constructor of access manager. shared_from_this doesn't work there, so we use a raw pointer. Should be safe, because without access manager there is also no backend.
   AccessManager* accessManager_ = nullptr;

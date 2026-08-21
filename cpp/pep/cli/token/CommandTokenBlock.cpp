@@ -11,7 +11,7 @@ namespace {
 
 std::ostream& appendTable(std::ostream& stream, const std::vector<pep::tokenBlocking::BlocklistEntry>& entries) {
   auto table = pep::structuredOutput::Table::EmptyWithHeader(
-      {"id", "targetSubject", "targetUserGroup", "targetIssueDateTime", "note", "issuer", "creationDateTime"});
+      {"id", "targetSubject", "targetUserGroup", "targetIssueDateTime", "note", "issuer", "creationDateTime", "blockStartDateTime"});
   table.reserve(entries.size());
 
   for (const auto& e : entries) {
@@ -22,7 +22,8 @@ std::ostream& appendTable(std::ostream& stream, const std::vector<pep::tokenBloc
          pep::TimestampToXmlDateTime(e.target.issueDateTime),
          e.metadata.note,
          e.metadata.issuer,
-         pep::TimestampToXmlDateTime(e.metadata.creationDateTime)});
+         pep::TimestampToXmlDateTime(e.metadata.creationDateTime),
+         e.metadata.blockStartDateTime ? pep::TimestampToXmlDateTime(*e.metadata.blockStartDateTime) : ""});
   }
 
   return pep::structuredOutput::csv::append(stream, table) << std::endl;
@@ -33,6 +34,7 @@ namespace cliParameterNames {
 constexpr auto subject = "subject";
 constexpr auto userGroup = "user-group";
 constexpr auto issuedBefore = "issuedBefore";
+constexpr auto blockStart = "block-start";
 constexpr auto message = "message";
 
 } // namespace cliParameterNames
@@ -65,15 +67,21 @@ protected:
               .shorthand('b')
               .value(pep::commandline::Value<Timestamp>())
         + pep::commandline::Parameter(
+              param::blockStart,
+              "date at which the blocklist entry should go into effect. Before that date, tokens will not yet be blocked. If omitted, the blocklist entry goes into effect immediately.")
+              .value(pep::commandline::Value<Timestamp>())
+        + pep::commandline::Parameter(
               param::message,
               "explanatory text stored together with the created blocklist entry")
               .shorthand('m')
-              .value(pep::commandline::Value<std::string>().required());
+              .value(pep::commandline::Value<std::string>().required())
+        ;
   }
 
   struct Configuration final {
     pep::tokenBlocking::TokenIdentifier target;
     std::string message;
+    std::optional<Timestamp> blockStartDateTime;
 
     static Configuration From(const pep::commandline::NamedValues& values) {
       namespace param = cliParameterNames;
@@ -83,7 +91,9 @@ protected:
               .userGroup = values.get<std::string>(param::userGroup),
               .issueDateTime = values.getOptional<Timestamp>(param::issuedBefore).value_or(TimeNow())
           },
-          .message = values.get<std::string>(param::message)};
+          .message = values.get<std::string>(param::message),
+          .blockStartDateTime = values.getOptional<Timestamp>(param::blockStart)
+      };
     }
   };
 
@@ -96,7 +106,7 @@ protected:
 
     return executeEventLoopFor(
         [&, config = Configuration::From(this->getParameterValues())](std::shared_ptr<pep::Client> client) {
-        return client->getKeyServerProxy()->requestTokenBlockingCreate(TokenBlockingCreateRequest{ config.target, config.message }).map(printResponse);
+        return client->getKeyServerProxy()->requestTokenBlockingCreate(TokenBlockingCreateRequest{ config.target, config.message, config.blockStartDateTime }).map(printResponse);
         });
   }
 };

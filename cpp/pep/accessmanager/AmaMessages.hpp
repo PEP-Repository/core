@@ -129,13 +129,13 @@ struct AmaQRColumnGroup {
   * If the capacity is smaller than the name of the source AmaQRColumnGroup, a 0 will be returned indicating that no copying has occurred.
   *
   * \param dest: destination AmaQRColumnGroup
-  * \param source: source AmaQRColumnGroup
   * \param cap: The max capacity of the destination AmaQRColumnGroup in bytes
+  * \param source: source AmaQRColumnGroup
   * \param offset: The source index from which to start filling. Must not exceed the size of the source.
   * \param padding: Padding granting room for protobuf serialization.
   * \return The size of the destination AmaQRColumnGroup in bytes.
   */
-  static size_t FillToProtobufSerializationCapacity(AmaQRColumnGroup& dest, const AmaQRColumnGroup& source, const size_t& cap, const size_t& offset = 0, const size_t& padding = 2);
+  static size_t FillToProtobufSerializationCapacity(AmaQRColumnGroup& dest, size_t cap, const AmaQRColumnGroup& source, size_t offset = 0, size_t padding = 2);
 };
 
 struct AmaQRColumnGroupAccessRule {

@@ -101,7 +101,7 @@ public:
       auto internalId = storage->createUser(user.displayId);
       storage->addIdentifierForUser(internalId, user.primaryId, UserIdFlags::IsPrimaryId);
       for (auto& usergroup : user.userGroups) {
-        storage->addUserToGroup(internalId, usergroup);
+        storage->addUserToGroup(internalId, usergroup, {});
       }
     }
 
