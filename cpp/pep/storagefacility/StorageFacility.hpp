@@ -46,13 +46,9 @@ public:
   public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 
-    /*!
-    * \return The pseudonym key
-    */
+    /// \return The pseudonym key
     const ElgamalPrivateKey& getPseudonymKey() const;
-    /*!
-    * \param pseudonymKey The pseudonym key
-    */
+    /// \param pseudonymKey The pseudonym key
     void setPseudonymKey(const ElgamalPrivateKey& pseudonymKey);
 
     const std::string& getEncIdKey() const;
@@ -105,6 +101,7 @@ private:
   messaging::MessageBatches handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteRequest2> signedRequest);
   messaging::MessageBatches handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequest2> signedRequest);
   messaging::MessageBatches handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> signedRequest);
+  messaging::MessageBatches handlePagePathRequest(std::shared_ptr<SignedPagePathRequest> signedRequest);
 
   std::string encryptId(std::string path, Timestamp time);
   SFId decryptId(std::string_view encId);

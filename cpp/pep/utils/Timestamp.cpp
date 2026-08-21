@@ -1,4 +1,4 @@
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <pep/utils/StringStream.hpp>
 
@@ -133,7 +133,7 @@ private:
   /// Takes a Boost local_date_time object where the base_utc_offset is inverted
   /// and returns the UTC time as if the offset was set correctly.
   /// See https://github.com/boostorg/date_time/issues/240
-  /// @note This function was added as a workaround for a bug in bpt::posix_time_zone, where
+  /// \note This function was added as a workaround for a bug in bpt::posix_time_zone, where
   ///   after parsing a posix timezone string, the base utc offset is set to the inverse of the expected value.
   static bpt::ptime UtcTimeFromIncorrectPTime(blt::local_date_time time) {
     // TODO: Remove this workaround when Boost has been fixed and then

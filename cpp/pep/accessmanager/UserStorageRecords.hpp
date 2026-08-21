@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <optional>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <pep/accessmanager/UserIdFlags.hpp>
 #include <pep/database/Record.hpp>
 
@@ -62,9 +62,7 @@ struct UserGroupRecord {
 
 struct LegacyUserGroupUserRecord;
 
-/**
- * @brief A record for storing user membership of a user group
- */
+/// A record for storing user membership of a user group
 struct UserGroupUserRecord {
   UserGroupUserRecord() = default;
   UserGroupUserRecord(

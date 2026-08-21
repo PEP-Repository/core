@@ -4,22 +4,27 @@
 
 if((CMAKE_BUILD_TYPE STREQUAL "Release") OR
    (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
-    message("Note: log statements with severity less than Info are left out")
-    set(DEFAULT_LOGGING Info)
+  set(DEFAULT_LOGGING info)
+  message("Note: log statements with severity less than ${DEFAULT_LOGGING} are left out")
 else()
-    set(DEFAULT_LOGGING Verbose)
+  set(DEFAULT_LOGGING verbose)
 endif()
+# Supports with capitalized and lowercase names
 set(LOGGING ${DEFAULT_LOGGING} CACHE STRING
-        "Logging stataments to compile into binaries.  (Note: there are also runtime filters.)")
-add_definitions(-DPEP_COMPILED_MIN_LOG_SEVERITY=${LOGGING})
+        "Logging statements to compile into binaries.  (Note: there are also runtime filters.)")
 
-add_library(${PROJECT_NAME}Utilslib STATIC
+# Change first letter to uppercase for enum member
+capitalize_only_first_letter("${LOGGING}" logging_enum)
+
+add_definitions(-DPEP_COMPILED_MIN_LOG_SEVERITY=${logging_enum})
+
+add_library(${PROJECT_NAME}Utilslib
     ApplicationMetrics.cpp ApplicationMetrics.hpp
     Attributes.hpp
     Base64.cpp Base64.hpp
     Bitpacking.cpp Bitpacking.hpp
-    BoostHexUtil.hpp
     BuildFlavor.hpp
+    CheckedPath.cpp CheckedPath.hpp
     ChronoUtil.hpp
     CollectionUtils.hpp CollectionUtils.cpp
     Compare.hpp
@@ -40,6 +45,7 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     Math.hpp
     MiscUtil.cpp MiscUtil.hpp
     Mod97.cpp Mod97.hpp
+    NormalizedTypeNaming.cpp NormalizedTypeNaming.hpp
     OpenSSLHasher.hpp OpenSSLHasher.cpp
     OpensslUtils.hpp OpensslUtils.cpp
     OperationResult.hpp
@@ -51,7 +57,6 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     PropertySerializer.hpp
     Random.cpp Random.hpp
     Raw.cpp Raw.hpp
-        CheckedPath.cpp CheckedPath.hpp
     SelfRegistering.hpp
     Shared.hpp
     Singleton.hpp
@@ -59,12 +64,13 @@ add_library(${PROJECT_NAME}Utilslib STATIC
     StringStream.cpp StringStream.hpp
     TaggedValue.hpp
     ThreadUtil.cpp ThreadUtil.hpp
+    Timestamp.cpp Timestamp.hpp
     TypeTraits.hpp
     VariantUtils.hpp
     VectorOfVectors.hpp
     XxHasher.cpp XxHasher.hpp
 )
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_sources(${PROJECT_NAME}Utilslib PRIVATE
     Win32Api.cpp Win32Api.hpp
   )
@@ -92,14 +98,13 @@ target_link_libraries(${PROJECT_NAME}Utilslib
 
 verify_headers_standalone(${PROJECT_NAME}Utilslib)
 
-if (WITH_TESTS)
+if(WITH_TESTS)
   # Testing library: provides support for (unit) test executables
 
-  add_library(${PROJECT_NAME}Testinglib STATIC
+  add_library(${PROJECT_NAME}Testinglib
     OnFatalTestFailure.hpp
     RegisteredTestEnvironment.cpp RegisteredTestEnvironment.hpp
     TestApplicationMainFunction.cpp
-    VerifyBackwardCompatibleSerialization.hpp
     TestError.hpp
     TestTiming.hpp
   )
@@ -112,7 +117,7 @@ if (WITH_TESTS)
 endif()
 
 function(add_unit_tests libname)
-  if (WITH_TESTS)
+  if(WITH_TESTS)
     cmake_parse_arguments(
       AUT          # Prefix for variables filled by "cmake_parse_arguments"
       ""           # This function doesn't accept any flag arguments
@@ -120,7 +125,7 @@ function(add_unit_tests libname)
       "LINK_LIBS"  # Pass multiple in separate values: add_unit_tests(myLib LINK_LIBS libOne libTwo libThree)
       "${ARGN}"    # Parse all excess parameters (beyond those in the function signature)
     )
-    if (DEFINED AUT_UNPARSED_ARGUMENTS)
+    if(DEFINED AUT_UNPARSED_ARGUMENTS)
       message(FATAL_ERROR "Unrecognized parameter(s) to 'add_unit_tests' function: ${AUT_UNPARSED_ARGUMENTS}")
     endif()
 
@@ -131,26 +136,26 @@ function(add_unit_tests libname)
         FOLDER pep-UnitTests
     )
     target_link_libraries(${PROJECT_NAME}${libname}UnitTests ${PROJECT_NAME}${libname}lib ${PROJECT_NAME}Testinglib)
-    if (DEFINED AUT_LINK_LIBS)
+    if(DEFINED AUT_LINK_LIBS)
       foreach(lib ${AUT_LINK_LIBS}) # Unquoted to prevent the semicolon-delimited list from being considered a single value
         target_link_libraries(${PROJECT_NAME}${libname}UnitTests ${lib})
       endforeach()
     endif()
 
-    if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       target_compile_definitions(${PROJECT_NAME}${libname}UnitTests PRIVATE "PEP_EXE_FILENAME=\"pep${libname}UnitTests\"" "PEP_EXE_DESCRIPTION=\"PEP ${libname} library test executable\"")
       target_sources(${PROJECT_NAME}${libname}UnitTests PRIVATE ${PROJECT_SOURCE_DIR}/cpp/pep/Windows.Exe.VersionInfo.rc)
       add_windows_manifest(${PROJECT_NAME}${libname}UnitTests)
     endif()
 
-    if (ENABLE_TEST_DISCOVERY)
+    if(ENABLE_TEST_DISCOVERY)
       include(GoogleTest)
-      if (DEFINED AUT_EXTRA_ARGS)
+      if(DEFINED AUT_EXTRA_ARGS)
         gtest_discover_tests(${PROJECT_NAME}${libname}UnitTests DISCOVERY_TIMEOUT 60 EXTRA_ARGS "${AUT_EXTRA_ARGS}")
       else()
         gtest_discover_tests(${PROJECT_NAME}${libname}UnitTests DISCOVERY_TIMEOUT 60)
       endif()
-    endif ()
+    endif()
   endif()
 endfunction()
 

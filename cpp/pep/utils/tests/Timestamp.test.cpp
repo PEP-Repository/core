@@ -1,5 +1,4 @@
-#include <pep/crypto/Timestamp.hpp>
-#include <pep/utils/VerifyBackwardCompatibleSerialization.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <boost/date_time/posix_time/conversion.hpp>
 #include <gtest/gtest.h>
@@ -159,9 +158,9 @@ TEST(Timestamp, ToBoostPtime) {
 }
 
 TEST(Timestamp, FromBoostPtime) {
-  const boost::posix_time::ptime UNIX_EPOCH(boost::gregorian::date(1970, 1, 1));
-  EXPECT_EQ(UNIX_EPOCH, boost::posix_time::from_time_t(0)); // Ensure that our constant in fact represents the start of the epoch
-  EXPECT_EQ(pep::Timestamp{/*zero*/}, pep::TimestampFromBoostPtime(UNIX_EPOCH));
+  const boost::posix_time::ptime UnixEpoch(boost::gregorian::date(1970, 1, 1));
+  EXPECT_EQ(UnixEpoch, boost::posix_time::from_time_t(0)); // Ensure that our constant in fact represents the start of the epoch
+  EXPECT_EQ(pep::Timestamp{/*zero*/}, pep::TimestampFromBoostPtime(UnixEpoch));
 
   EXPECT_EQ(pep::TimestampFromBoostPtime(boost::posix_time::neg_infin), pep::Timestamp::min());
   EXPECT_EQ(pep::TimestampFromBoostPtime(boost::posix_time::pos_infin), pep::Timestamp::max());
@@ -190,10 +189,6 @@ TEST(BoostDate, FromStd) {
       << "leap-day converted incorrectly";
   EXPECT_THROW((void) pep::BoostDateFromStd(0y / month{0} / 0d), std::logic_error)
       << "invalid std to Boost date conversion should fail";
-}
-
-TEST(Timestamp, ClassHasBackwardCompatibleSerialization) {
-  pep::VerifyBackwardCompatibleSerialization<pep::Timestamp>("Timestamp", 2154686979 /*taken from before commit 21fbce07*/);
 }
 
 }

@@ -1,9 +1,8 @@
 #include <pep/application/Application.hpp>
 #include <pep/auth/ServerTraits.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Random.hpp>
-
-#include <boost/algorithm/hex.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -18,7 +17,7 @@ class GenerateSystemKeysApplication : public pep::Application {
   class GenerateKeysFileCommand : public pep::commandline::ChildCommandOf<GenerateSystemKeysApplication> {
   private:
     static std::string GenerateHMACKey() {
-      return boost::algorithm::hex(RandomString(HmacBytes));
+      return const_time::ToHex(RandomString(HmacBytes));
     }
 
   protected:

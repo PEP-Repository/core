@@ -17,19 +17,17 @@
 
 namespace pep {
 
-/*!
- * \brief Fills a destination range with strings from a source range without exceeding the specified destination capacity.
-
- * \tparam TDest the type of destination iterator
- * \tparam TSrc the type of source range
-
- * \param dest destination iterator
- * \param cap The max capacity of the destination in bytes
- * \param src the source range
- * \param padding bytes of overhead associated with each string. Specify a non-zero value to take destination storage overhead into account; add one to take the strings' NULterminators into account.
-
- * \return The number of bytes written to the destination.
-*/
+/// \brief Fills a destination range with strings from a source range without exceeding the specified destination capacity.
+///
+/// \tparam TDest the type of destination iterator
+/// \tparam TSrc the type of source range
+///
+/// \param dest destination iterator
+/// \param cap The max capacity of the destination in bytes
+/// \param src the source range
+/// \param padding bytes of overhead associated with each string. Specify a non-zero value to take destination storage overhead into account; add one to take the strings' NULterminators into account.
+///
+/// \return The number of bytes written to the destination.
 template <std::output_iterator<std::string> TDest, std::ranges::input_range TSrc>
   requires std::same_as<std::remove_cvref_t<std::ranges::range_value_t<TSrc>>, std::string>
 size_t FillToCapacity(TDest dest, size_t cap, const TSrc& src, size_t padding = 0) {
@@ -45,18 +43,16 @@ size_t FillToCapacity(TDest dest, size_t cap, const TSrc& src, size_t padding = 
   return bytesWritten;
 }
 
-/*
-* \brief Determines if a character sequence ends with starting character(s) of another sequence.
-* \param haystack The content that may end with (starting characters of) the sought-after sequence.
-* \param needle The character sequence to find at the end of the haystack.
-* \return The number of starting characters from the needle that occur at the end of the haystack.
-*/
+/// \brief Determines if a character sequence ends with starting character(s) of another sequence.
+/// \param haystack The content that may end with (starting characters of) the sought-after sequence.
+/// \param needle The character sequence to find at the end of the haystack.
+/// \return The number of starting characters from the needle that occur at the end of the haystack.
 size_t FindLongestPrefixAtEnd(std::string_view haystack, std::string_view needle);
 
 template<typename R>
 concept Slice = std::ranges::contiguous_range<R> && std::ranges::sized_range<R>;
 
-//XXX This may be removed when we move to C++23, where one can construct a string_view with a range
+//TODO(workaround) This may be removed when we move to C++23, where one can construct a string_view with a range
 [[nodiscard]] std::string_view SpanToString(const Slice auto& span)
 requires(ByteLike<std::ranges::range_value_t<decltype(span)>>) {
   return {reinterpret_cast<const char*>(std::ranges::data(span)), std::ranges::size(span)};
@@ -105,7 +101,7 @@ concept CanReserve = requires(C c, std::size_t size) {
 
 }
 
-//XXX This should be removed in C++23 with std::ranges::to, std::from_range, assign/insert_range
+//TODO(workaround) This should be removed in C++23 with std::ranges::to, std::from_range, assign/insert_range
 template <typename ResultCollection, std::ranges::input_range Range>
 //NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward) We just want to bind to anything
 [[nodiscard]] auto RangeToCollection(Range&& range) {
@@ -129,7 +125,7 @@ template <template <typename...> class ResultCollection>
   return RangeToCollection<std::vector>(range);
 }
 
-//XXX This should be removed in C++23 with std::views::as_rvalue
+//TODO(workaround) This should be removed in C++23 with std::views::as_rvalue
 /// Range adapter to make all elements in a range rvalue references.
 /// \details Example usage:
 /// \code

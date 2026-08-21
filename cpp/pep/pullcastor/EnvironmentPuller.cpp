@@ -27,7 +27,7 @@ namespace castor {
 
 namespace {
 
-const int STOREDATA_WINDOW_SIZE = 100;
+constexpr int StoredataWindowSize = 100;
 
 std::shared_ptr<CoreClient> Upcast(std::shared_ptr<Client> client) {
   return client;
@@ -98,7 +98,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
     clientBuilder.setCaCertFilepath(clientConfig.get<std::filesystem::path>("CaCertificateFile"));
     clientBuilder.setSystemPublicKeys(clientConfig.get<SystemPublicKeys>("SystemPublicKeys"));
 
-    auto serverEndPoints = config.get_child("ServerEndPoints");
+    auto serverEndPoints = clientConfig.get_child("ServerEndPoints");
     clientBuilder.setAccessManagerEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode()));
     clientBuilder.setStorageFacilityEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::StorageFacility().configNode()));
     clientBuilder.setKeyServerEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::KeyServer().configNode()));
@@ -200,7 +200,7 @@ rxcpp::observable<size_t> EnvironmentPuller::pull() {
     ++*read;
     return self->getStorageUpdate(castor);
     })
-    .buffer(STOREDATA_WINDOW_SIZE) // Process StoreData2Entry items in batches
+    .buffer(StoredataWindowSize) // Process StoreData2Entry items in batches
     .flat_map([self](const std::vector<StoreData2Entry>& batch) {return self->processBatchToStore(batch); }) // Store the items
     .tap( // Perform housekeeping
       [self, written](size_t count) {

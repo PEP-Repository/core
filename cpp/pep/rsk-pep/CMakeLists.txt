@@ -1,7 +1,7 @@
 # Library implementing PEP RSK operations not specific to PEP repo.
 
 
-add_library(${PROJECT_NAME}RskPeplib STATIC
+add_library(${PROJECT_NAME}RskPeplib
   DataTranslationKeys.hpp
   DataTranslator.cpp DataTranslator.hpp
   KeyDomain.hpp

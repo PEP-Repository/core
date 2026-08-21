@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/auth/Signed.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 
 namespace pep {
@@ -120,21 +120,19 @@ struct AmaQRColumnGroup {
   std::string name;
   std::vector<std::string> columns;
 
-  /*
-  *\brief Given a source AmaQRColumnGroup and a byte size capacity, fill a destination AmaQRColumnGroup with the name and items of the source until the capacity is reached.
-  * The size is calculated by iteratively adding the lengths of all variables within the source columngroup (i.e. its name and the names of the columns) with a padding added
-  * for each of those variables. The default of this padding is 2, based on the protobuf encoding described here: https://protobuf.dev/programming-guides/encoding/#length-types.
-  * When this number is about to exceed the capacity, filling the destination will stop. The resulting size of the destination is returned.
-  * An offset can be set to start filling from that index in the source.
-  * If the capacity is smaller than the name of the source AmaQRColumnGroup, a 0 will be returned indicating that no copying has occurred.
-  *
-  * \param dest: destination AmaQRColumnGroup
-  * \param cap: The max capacity of the destination AmaQRColumnGroup in bytes
-  * \param source: source AmaQRColumnGroup
-  * \param offset: The source index from which to start filling. Must not exceed the size of the source.
-  * \param padding: Padding granting room for protobuf serialization.
-  * \return The size of the destination AmaQRColumnGroup in bytes.
-  */
+  /// \brief Given a source AmaQRColumnGroup and a byte size capacity, fill a destination AmaQRColumnGroup with the name and items of the source until the capacity is reached.
+  /// \details The size is calculated by iteratively adding the lengths of all variables within the source columngroup (i.e. its name and the names of the columns) with a padding added
+  /// for each of those variables. The default of this padding is 2, based on the protobuf encoding described here: https://protobuf.dev/programming-guides/encoding/#length-types.
+  /// When this number is about to exceed the capacity, filling the destination will stop. The resulting size of the destination is returned.
+  /// An offset can be set to start filling from that index in the source.
+  /// If the capacity is smaller than the name of the source AmaQRColumnGroup, a 0 will be returned indicating that no copying has occurred.
+  ///
+  /// \param dest destination AmaQRColumnGroup
+  /// \param cap The max capacity of the destination AmaQRColumnGroup in bytes
+  /// \param source source AmaQRColumnGroup
+  /// \param offset The source index from which to start filling. Must not exceed the size of the source.
+  /// \param padding Padding granting room for protobuf serialization.
+  /// \return The size of the destination AmaQRColumnGroup in bytes.
   static size_t FillToProtobufSerializationCapacity(AmaQRColumnGroup& dest, size_t cap, const AmaQRColumnGroup& source, size_t offset = 0, size_t padding = 2);
 };
 

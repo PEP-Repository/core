@@ -1,18 +1,18 @@
 cmake_minimum_required(VERSION 3.20...4.2)
 
 if(CMAKE_HOST_SYSTEM_NAME MATCHES "Windows")
-    set(PATH_DELIMITER ";")
+  set(PATH_DELIMITER ";")
 else()
-    set(PATH_DELIMITER ":")
+  set(PATH_DELIMITER ":")
 endif()
 
 set(GO_EXTRA_BUILD_FLAGS "" CACHE STRING "Extra go build flags such as -race or -msan")
 set(PEP_GO_ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 
 if("$ENV{GOPATH}" STREQUAL "")
-set(GOPATH ${PEP_GO_ROOT_PATH})
+  set(GOPATH ${PEP_GO_ROOT_PATH})
 else()
-set(GOPATH $ENV{GOPATH}${PATH_DELIMITER}${PEP_GO_ROOT_PATH})
+  set(GOPATH $ENV{GOPATH}${PATH_DELIMITER}${PEP_GO_ROOT_PATH})
 endif()
 
 set(PEP_GOPATH ${CMAKE_CURRENT_BINARY_DIR})

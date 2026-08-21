@@ -9,6 +9,8 @@
 
 namespace {
 
+// Reduces a raw (externally provided) name to characters that more easy to type.
+// Whitespace becomes underscores and other special characters are dropped.
 std::string Mangle(const std::string& columnNameSection) {
   const std::string tmp = std::regex_replace(columnNameSection, std::regex("\\s"), "_");
   return std::regex_replace(tmp, std::regex("[^a-zA-Z0-9_]+"), "");

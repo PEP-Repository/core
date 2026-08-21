@@ -10,6 +10,9 @@
 
 - core#2488: Added command `pepcli pseudonym convert`, which converts a pseudonym of any form into a polymorphic, local, or brief-local pseudonym.
 
+- core#2941: Study context ids are now validated (only alphanumerics and underscores are allowed) and compared case insensitively everywhere.
+  Duplicate ids are rejected. Generated names (columns, participant groups) keep using the casing as configured, so existing data is unaffected.
+
 - core#2928: Unified timestamp input for pepcli. The `at` parameter for `pepcli user query` and `pepcli ama query` has been renamed to `point-in-time`.
   These, as well as the `expiration` parameter of `pepcli token request`, and `issued-before` of `pepcli token block create` now all take the same format. This can be either:
     - `<YYYY>-<MM>-<DD>`
@@ -22,7 +25,11 @@
     - `pepcli user query`
     - `pepcli query data-size`
 
-- #2954: Fixed `pepLogon` failure in sandbox image.
+- core#2954: Fixed `pepLogon` failure in sandbox image.
+
+- core#2945: Added command `pepcli query page-paths`, which lists the paths of the current data set's pages in Storage Facility's backing storage.
+
+- docker-build#31: PEP Docker images were upgraded to be based on Ubuntu 26.04.
 
 ---------------
 *Past changes, do not edit (except by person doing release):*

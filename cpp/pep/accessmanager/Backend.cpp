@@ -46,7 +46,7 @@ AccessManager::Backend::Backend(const std::filesystem::path& path, std::shared_p
   : Backend(std::make_shared<AccessManager::Backend::Storage>(path, globalConf)) {
 }
 
-/********** START AMA Operations For Requests **********/
+// ********** START AMA Operations For Requests **********
 void AccessManager::Backend::createColumnsForRequest(const AmaMutationRequest& amRequest) {
   for (auto& mutation : amRequest.createColumn) {
     this->storage_->createColumn(mutation.name);

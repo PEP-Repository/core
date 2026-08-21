@@ -200,8 +200,7 @@ LoginWidget::~LoginWidget() {
   delete ui_;
 }
 
-/*! \brief Run surfconext login
- */
+/// \brief Run surfconext login
 void LoginWidget::onLoginButtonClicked() {
   if (ui_->updateButton->isVisible() && ui_->updateButton->isEnabled()) {
     auto reply = QMessageBox::warning(this, tr("Update Available"),
@@ -232,10 +231,9 @@ void LoginWidget::onLoginButtonClicked() {
       });
 }
 
-/*! \brief Run client update
- *
- * Runs the client update helper and terminates pep client.
- */
+/// \brief Run client update
+///
+/// Runs the client update helper and terminates pep client.
 void LoginWidget::onUpdateStarted(std::exception_ptr error) {
   if (error == nullptr) {
     // At this point, the update has been initiated. Terminate pepAssessor so that the .exe can be replaced
@@ -285,22 +283,20 @@ void LoginWidget::onUpdateStarted(std::exception_ptr error) {
   ui_->loginButton->setEnabled(true);
 }
 
-/*! \brief Code run once a login has been confirmed
- *
- * When a user has logged in via surfconext a token is received and needs to be passed to the rest of the program. This code passes the token and uses it to log the user into the pep infrastructure.
- *
- * \param token to use for pep login.
- */
+/// \brief Code run once a login has been confirmed
+///
+/// When a user has logged in via surfconext a token is received and needs to be passed to the rest of the program. This code passes the token and uses it to log the user into the pep infrastructure.
+///
+/// \param token to use for pep login.
 void LoginWidget::onUserLoggedin(QString token) {
   //Put actual login auth code here
   qDebug() << "OAuth token in use: " << token;
   emit loginSuccess(token);
 }
 
-/*! \brief Visually identify failed/terminated login
- *
- * Changes the UI background to red. This is done to make it immediately clear to the user that something has gone wrong.
- */
+/// \brief Visually identify failed/terminated login
+///
+/// Changes the UI background to red. This is done to make it immediately clear to the user that something has gone wrong.
 void LoginWidget::onLoginFailure(QString announcement, std::exception_ptr error) {
   //Change color to alert user of error
   this->setStyleSheet(QStringLiteral("background-color: #d36358;"));

@@ -29,7 +29,6 @@
 #include <sstream>
 #include <chrono>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -256,16 +255,12 @@ std::shared_ptr<GlobalConfiguration> AccessManager::Parameters::getGlobalConfigu
   return globalConf_;
 }
 
-/*!
-  * \return The pseudonym key
-  */
+/// \return The pseudonym key
 const ElgamalPrivateKey& AccessManager::Parameters::getPseudonymKey() const {
   return pseudonymKey_.value();
 }
 
-/*!
-  * \param pseudonymKey The pseudonym key
-  */
+/// \param pseudonymKey The pseudonym key
 void AccessManager::Parameters::setPseudonymKey(const ElgamalPrivateKey& pseudonymKey) {
   pseudonymKey_ = pseudonymKey;
 }
@@ -786,7 +781,7 @@ std::vector<AmaQueryResponse> AccessManager::ExtractPartialColumnGroupQueryRespo
     responses.emplace_back();
   }
   size_t responseSize{0U};
-  const size_t limitedMessageSize = static_cast<size_t>(0.9 * static_cast<double>(maxSize)); // allow for some padding by serialisation.
+  const size_t limitedMessageSize = static_cast<size_t>(messaging::NetMessageCapacityFactor * static_cast<double>(maxSize)); // allow for some padding by serialisation.
 
   auto sourceColumnGroup = columnGroups.cbegin();
   size_t firstColumn = 0U;

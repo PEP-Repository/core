@@ -25,12 +25,10 @@ class Form : public SimpleCastorChildObject<Form, Study>, public SharedConstruct
   std::shared_ptr<Visit> getVisit() const { return visit_; }
 
  protected:
-  /*!
-   * \brief construct a Form
-   *
-   * \param study The Study this form belongs to
-   * \param json The %Json response from the Castor API for this form
-   */
+  /// \brief construct a Form
+  ///
+  /// \param study The Study this form belongs to
+  /// \param json The %Json response from the Castor API for this form
    Form(std::shared_ptr<Study> study, JsonPtr json);
 };
 

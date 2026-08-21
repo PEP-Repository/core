@@ -71,9 +71,44 @@ download_generic() {
   echo "Downloaded FOSS package file $file_id from packages/generic/$package_name/$sha/$file_name."
 }
 
+get_npm_package_version() {
+  package_name="$1"
+  sha="$2"
+
+  metadata=$(gitlab_api get "packages/npm/$package_name" 2>/dev/null) || true
+  if [ -z "$metadata" ]; then
+    >&2 echo "FOSS npm package '$package_name' not found for SHA $sha."
+    return
+  fi
+  version=$(echo "$metadata" | jq -r --arg sha "$sha" '."dist-tags"[$sha] // empty')
+  if [ -z "$version" ]; then
+    >&2 echo "FOSS npm package '$package_name' has no dist-tag for SHA $sha."
+    return
+  fi
+  echo "$version"
+}
+
+download_npm() {
+  package_name="${1:?Expected package name}"
+  sha="${2:?Expected SHA}"
+
+  version=$(get_npm_package_version "$package_name" "$sha")
+  if [ -z "$version" ]; then
+    >&2 echo "FOSS npm package '$package_name' not available for SHA $sha."
+    return 1
+  fi
+
+  file_name="${package_name}-${version}.tgz"
+  gitlab_api get "packages/npm/$package_name/-/$file_name" --output "${package_name}.tgz"
+  echo "Downloaded FOSS npm package '$package_name@$version'."
+}
+
 case $command in
   download-generic)
     download_generic "$@"
+    ;;
+  download-npm)
+    download_npm "$@"
     ;;
   *)
     >&2 echo "Unsupported command: $command"

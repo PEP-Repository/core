@@ -1,6 +1,6 @@
 # Library providing client connectivity to (a full constellation of) PEP servers.
 
-add_library(${PROJECT_NAME}Clientlib STATIC
+add_library(${PROJECT_NAME}Clientlib
     Client.cpp Client.hpp Client_fwd.hpp
 )
 

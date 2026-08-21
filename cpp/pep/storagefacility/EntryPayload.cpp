@@ -10,9 +10,9 @@ namespace pep {
 
 namespace {
 
-const std::string FILE_SIZE_KEY = "filesize";
-const std::string PAGE_SIZE_KEY = "pagesize";
-const std::string INLINE_PAGE_KEY = "inline-page";
+const std::string FileSizeKey = "filesize";
+const std::string PageSizeKey = "pagesize";
+const std::string InlinePageKey = "inline-page";
 
 std::string GetPagePath(const EntryName& entry, XXH64_hash_t xxhash) {
   return entry.string() + EntryName::Delimiter + std::to_string(xxhash) + ".page";
@@ -21,21 +21,21 @@ std::string GetPagePath(const EntryName& entry, XXH64_hash_t xxhash) {
 }
 
 void EntryPayload::save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const {
-  SetPersistedEntryProperty(properties, FILE_SIZE_KEY, this->size());
+  SetPersistedEntryProperty(properties, FileSizeKey, this->size());
   auto pagesize = this->pageSize();
   if (pagesize.has_value()) {
-    SetPersistedEntryProperty(properties, PAGE_SIZE_KEY, *pagesize);
+    SetPersistedEntryProperty(properties, PageSizeKey, *pagesize);
   }
 }
 
 void EntryPayload::Save(std::shared_ptr<EntryPayload> payload, PersistedEntryProperties& properties, std::vector<PageId>& pages) {
   if (payload == nullptr) {
-    SetPersistedEntryProperty(properties, FILE_SIZE_KEY, uint64_t{0});
+    SetPersistedEntryProperty(properties, FileSizeKey, uint64_t{0});
   }
   else {
     payload->save(properties, pages);
-    assert(properties.count(FILE_SIZE_KEY) != 0U);
-    // Don't assert(properties.count(PAGE_SIZE_KEY) != 0U) since it doesn't hold for an empty PagedEntryPayload
+    assert(properties.count(FileSizeKey) != 0U);
+    // Don't assert(properties.count(PageSizeKey) != 0U) since it doesn't hold for an empty PagedEntryPayload
   }
 }
 
@@ -69,12 +69,12 @@ std::string InlinedEntryPayload::getEtag() const {
 void InlinedEntryPayload::save(PersistedEntryProperties& properties, std::vector<PageId>& pages) const {
   assert(pages.empty());
 
-  SetPersistedEntryProperty(properties, INLINE_PAGE_KEY, content_);
+  SetPersistedEntryProperty(properties, InlinePageKey, content_);
   EntryPayload::save(properties, pages);
 }
 
 std::shared_ptr<InlinedEntryPayload> InlinedEntryPayload::Load(PersistedEntryProperties& properties, std::vector<PageId>& pages) {
-  auto content = TryExtractPersistedEntryProperty<std::string>(properties, INLINE_PAGE_KEY);
+  auto content = TryExtractPersistedEntryProperty<std::string>(properties, InlinePageKey);
   if (!content.has_value()) {
     return nullptr;
   }
@@ -125,13 +125,13 @@ std::string EntryPayload::XxHashToString(XXH64_hash_t xxhash) {
 }
 
 uint64_t EntryPayload::ExtractFileSize(PersistedEntryProperties& properties) {
-  return ExtractPersistedEntryProperty<uint64_t>(properties, FILE_SIZE_KEY);
+  return ExtractPersistedEntryProperty<uint64_t>(properties, FileSizeKey);
 }
 
 uint64_t EntryPayload::ExtractPageSize(PersistedEntryProperties& properties) {
   // Backward compatible: the "pagesize" property was added later, i.e. old entries don't have it.
   // See https://gitlab.pep.cs.ru.nl/pep/core/-/commit/8de467f1ddda2d0672e0a78fb670b0d9a70c976b#6aef02059815e8f42707322e6f46f5cfcb14ea65_609_568
-  auto result = TryExtractPersistedEntryProperty<uint64_t>(properties, PAGE_SIZE_KEY);
+  auto result = TryExtractPersistedEntryProperty<uint64_t>(properties, PageSizeKey);
   return result.value_or(uint64_t{0});
 }
 
@@ -177,6 +177,14 @@ std::optional<uint64_t> PagedEntryPayload::pageSize() const {
     return std::nullopt;
   }
   return pageSize_;
+}
+
+std::set<std::string> PagedEntryPayload::getPagePaths(const EntryName& name) const {
+  std::set<std::string> result;
+  InsertNonDuplicates(result, pages_ | std::ranges::views::transform([&name](PageId hash) {
+    return GetPagePath(name, hash);
+    }));
+  return result;
 }
 
 messaging::MessageSequence PagedEntryPayload::readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const {

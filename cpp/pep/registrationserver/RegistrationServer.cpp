@@ -17,7 +17,6 @@
 #include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
@@ -161,55 +160,39 @@ RegistrationServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_conte
 #endif
 }
 
-/*!
-  * \return PEP client used to store data
-  */
+/// \return PEP client used to store data
 std::shared_ptr<CoreClient> RegistrationServer::Parameters::getClient() const {
   return client_;
 }
-/*!
-  * \param client PEP client used to store data
-  */
+/// \param client PEP client used to store data
 void RegistrationServer::Parameters::setClient(const std::shared_ptr<CoreClient> client) {
   client_ = client;
 }
 
-/*!
-  * \return Path to the shadow storage file
-  */
+/// \return Path to the shadow storage file
 const std::filesystem::path& RegistrationServer::Parameters::getShadowStorageFile() const {
   return shadowStorageFile_;
 }
-/*!
-  * \param shadowStorageFile Path to the shadow storage file
-  */
+/// \param shadowStorageFile Path to the shadow storage file
 void RegistrationServer::Parameters::setShadowStorageFile(const std::filesystem::path& shadowStorageFile) {
   shadowStorageFile_ = std::filesystem::weakly_canonical(shadowStorageFile);
 }
 
-/*!
-  * \return Public key of the shadow storage
-  */
+/// \return Public key of the shadow storage
 const AsymmetricKey& RegistrationServer::Parameters::getShadowPublicKey() const {
   return shadowPublicKey_;
 }
-/*!
-  * \param shadowPublicKey Public key of the shadow storage
-  */
+/// \param shadowPublicKey Public key of the shadow storage
 void RegistrationServer::Parameters::setShadowPublicKey(const AsymmetricKey& shadowPublicKey) {
   shadowPublicKey_ = shadowPublicKey;
 }
 
 #ifdef WITH_CASTOR
-/*!
-  * \return The Castor client connection
-  */
+/// \return The Castor client connection
 std::shared_ptr<castor::CastorConnection> RegistrationServer::Parameters::getCastorConnection() const {
   return castorConnection_;
 }
-/*!
-  * \param castorConnection The Castor client connection
-  */
+/// \param castorConnection The Castor client connection
 void RegistrationServer::Parameters::setCastorConnection(std::shared_ptr <castor::CastorConnection> castorConnection) {
   castorConnection_ = castorConnection;
 }
@@ -410,10 +393,9 @@ size_t RegistrationServer::countShadowStoredEntries() const {
   return result;
 }
 
-  /*! \brief constructor for registration server
-   *
-   * \param parameters Parameters for a RegistrationServer::Connection
-   */
+  /// \brief constructor for registration server
+  ///
+  /// \param parameters Parameters for a RegistrationServer::Connection
 RegistrationServer::RegistrationServer(std::shared_ptr<Parameters> parameters)
   : SigningServer(parameters),
   client_(parameters->getClient()),
@@ -439,13 +421,11 @@ RegistrationServer::~RegistrationServer() {
   closeDatabase();
 }
 
-/*!
-  * \brief Store the tag and short pseudonym encrypted in the shadow SQLite database together with the encrypted identifier. It returns the SQLite return code for the query.
-  *
-  * \param encryptedIdentifier The encrypted identifier provided by the client
-  * \param tag The tag of short pseudonym to be stored
-  * \param shortPseudonym The short pseudonym to be stored
-  */
+/// \brief Store the tag and short pseudonym encrypted in the shadow SQLite database together with the encrypted identifier. It returns the SQLite return code for the query.
+///
+/// \param encryptedIdentifier The encrypted identifier provided by the client
+/// \param tag The tag of short pseudonym to be stored
+/// \param shortPseudonym The short pseudonym to be stored
 void RegistrationServer::storeShortPseudonymShadow(const std::string& encryptedIdentifier, const std::string& tag, const std::string& shortPseudonym) {
   std::string encryptedShortPseudonym = shadowPublicKey_.encrypt(tag + ":" + shortPseudonym);
 

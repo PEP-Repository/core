@@ -36,7 +36,7 @@ concept FlagEnum = FlagEnumCandidate<T> && detail::MarkedAsFlagEnumType<T>;
 template<typename T, typename Ref>
 using CopyConstness = std::conditional_t<std::is_const_v<Ref>, const T, T>;
 
-//XXX Replace by auto(v) in C++23
+//TODO(workaround) Replace by auto(v) in C++23
 [[nodiscard]] auto decay_copy(auto v) { return v; }
 
 // See https://stackoverflow.com/a/70130881
@@ -65,7 +65,7 @@ constexpr const FieldType Class::* FieldAsConst(FieldType Class::* field) {
 ///
 /// Requires `FlagEnumCandidate<T>`
 ///
-/// @warning This macro must be invoked from the `::pep` namespace or global namespace;
+/// \warning This macro must be invoked from the `::pep` namespace or global namespace;
 ///          it does not work from nested namespaces within `::pep`.
 #define PEP_MARK_AS_FLAG_ENUM_TYPE(T) \
   static_assert(::pep::FlagEnumCandidate<T>); \

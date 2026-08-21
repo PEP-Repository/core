@@ -27,7 +27,7 @@
      */
     pepMayBeWasmException(ex) {
       return ex instanceof WebAssembly.Exception
-          || (typeof ex === 'number' && ex > 0) //XXX Remove with EMSDK 5.0.5+, also in WasmException typedefs
+          || (typeof ex === 'number' && ex > 0) //TODO(workaround) Remove with EMSDK 5.0.5+, also in WasmException typedefs
           || (ex instanceof Error && Object.getPrototypeOf(ex).constructor.name === 'CppException');
     },
 

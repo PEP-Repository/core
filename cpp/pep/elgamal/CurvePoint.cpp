@@ -1,13 +1,9 @@
 #include <pep/elgamal/CurvePoint.hpp>
 
-#include <cassert>
 #include <stdexcept>
 
 #include <pep/crypto/ConstTime.hpp>
-#include <pep/utils/BoostHexUtil.hpp>
 #include <pep/utils/Random.hpp>
-
-#include <boost/algorithm/hex.hpp>
 
 using namespace std::string_literals;
 
@@ -69,24 +65,22 @@ CurvePoint::CurvePoint() : state_{State::GotBoth} {}
 CurvePoint::CurvePoint(BaseT) : CurvePoint(BasePoint) {}
 
 
-/*! \brief Add a CurvePoint to this CurvePoint.
- *
- * This CurvePoint remains unaltered.
- * \param p The CurvePoint to add.
- * \return The resulting CurvePoint.
- */
+/// \brief Add a CurvePoint to this CurvePoint.
+///
+/// This CurvePoint remains unaltered.
+/// \param p The CurvePoint to add.
+/// \return The resulting CurvePoint.
 CurvePoint CurvePoint::operator+(const CurvePoint& p) const {
   CurvePoint r(State::GotUnpacked);
   group_ge_add(&r.unpacked_, unpack(), p.unpack());
   return r;
 }
 
-/*! \brief Subtract a CurvePoint from this CurvePoint.
- *
- * This CurvePoint remains unaltered.
- * \param p The CurvePoint to subtract.
- * \return The resulting CurvePoint.
- */
+/// \brief Subtract a CurvePoint from this CurvePoint.
+///
+/// This CurvePoint remains unaltered.
+/// \param p The CurvePoint to subtract.
+/// \return The resulting CurvePoint.
 CurvePoint CurvePoint::operator-(const CurvePoint& p) const {
   CurvePoint r(State::GotUnpacked);
   group_ge t;
@@ -95,11 +89,10 @@ CurvePoint CurvePoint::operator-(const CurvePoint& p) const {
   return r;
 }
 
-/*! \brief Double this CurvePoint
- *
- * This CurvePoint remains unaltered.
- * \return The resulting CurvePoint.
- */
+/// \brief Double this CurvePoint
+///
+/// This CurvePoint remains unaltered.
+/// \return The resulting CurvePoint.
 CurvePoint CurvePoint::dbl() const {
   CurvePoint r(State::GotUnpacked);
   group_ge_double(&r.unpacked_, unpack());
@@ -118,13 +111,12 @@ CurvePoint CurvePoint::mult(const PublicCurveScalar& s) const {
   return r;
 }
 
-/*! \brief Derive CurvePoint from a string
- *
- * The string is hashed using SHA512 and then embedded into the group
- * using the Ristretto variant of Elligator2.
- *
- * \return The derived CurvePoint.
- */
+/// \brief Derive CurvePoint from a string
+///
+/// The string is hashed using SHA512 and then embedded into the group
+/// using the Ristretto variant of Elligator2.
+///
+/// \return The derived CurvePoint.
 CurvePoint CurvePoint::Hash(std::string_view s) {
   CurvePoint r(State::GotUnpacked);
   group_ge_hashfromstr(&r.unpacked_, reinterpret_cast<const unsigned char*>(s.data()), s.length());
@@ -163,20 +155,18 @@ bool CurvePoint::isZero() const {
 }
 
 size_t CurvePoint::TextLength() {
-  return BoostHexLength(CurvePoint::PackedBytes);
+  return PackedBytes * 2;
 }
 
 std::string CurvePoint::text() const {
-  std::string result = boost::algorithm::hex(std::string(pack()));
-  assert(result.size() == TextLength());
-  return result;
+  return const_time::ToHex(pack());
 }
 
-CurvePoint CurvePoint::FromText(const std::string& text) {
+CurvePoint CurvePoint::FromText(std::string_view text) {
   try {
-    return CurvePoint(boost::algorithm::unhex(text));
-  } catch (const boost::algorithm::hex_decode_error& ex) {
-    throw std::invalid_argument("CurvePoint text representation is not valid hexadecimal\n"s + ex.what());
+    return CurvePoint(const_time::FromHex(text));
+  } catch (const std::invalid_argument& ex) {
+    throw std::invalid_argument("Error parsing CurvePoint: "s + ex.what());
   }
 }
 
