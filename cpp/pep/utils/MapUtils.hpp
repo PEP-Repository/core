@@ -13,6 +13,7 @@
 
 namespace pep {
 
+/// Hash pointees.
 template <typename T>
 class DereferenceHash {
   std::hash<std::remove_cv_t<T>> inner_;
@@ -22,6 +23,7 @@ public:
   }
 };
 
+/// Compare pointees for equality.
 template <typename T>
 class DereferenceEquals {
 public:
@@ -30,12 +32,12 @@ public:
   }
 };
 
+/// unordered_set of pointers that hashes/compares the pointees.
 template <typename T>
 using UnorderedPointerSet = std::unordered_set<T*, DereferenceHash<T>, DereferenceEquals<T>>;
 
-/// Returns whether \p sub is a subset of \p super .
-///
-/// Ignores duplicate values.
+/// \brief Returns whether \p sub is a subset of \p super .
+/// \details Ignores duplicate values.
 bool IsSubset(std::ranges::input_range auto&& sub, std::ranges::forward_range auto&& super) {
   using namespace std::ranges;
   UnorderedPointerSet<const range_value_t<decltype(super)>> superset;
