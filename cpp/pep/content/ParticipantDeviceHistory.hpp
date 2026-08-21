@@ -20,8 +20,6 @@ struct ParticipantDeviceRecord {
   bool isSet() const { return time != Timestamp{/*zero*/}; }
   inline bool isActive() const { return type == "start"; }
 
-  [[nodiscard]] auto operator<=>(const ParticipantDeviceRecord& rhs) const = default;
-
   void serialize(boost::property_tree::ptree& destination) const;
 
   static ParticipantDeviceRecord Parse(const std::string& json);

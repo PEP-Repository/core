@@ -57,7 +57,7 @@ bool ParticipantDeviceHistory::isValid(std::string* invalidReason) const {
 
 ParticipantDeviceHistory::ParticipantDeviceHistory(const std::vector<ParticipantDeviceRecord>& records, bool throwIfInvalid)
   : records_(records) {
-  sort(records_);
+  sort(records_, {}, [](const ParticipantDeviceRecord& r) { return std::tie(r.time, r.type); });
   const ParticipantDeviceRecord *active = nullptr;
   std::optional<Timestamp> lastTimestamp;
   for (auto i = begin(); i != end(); ++i) {
