@@ -77,7 +77,6 @@ Checks:
   - modernize-avoid-c-arrays
   - modernize-deprecated-headers
   - modernize-loop-convert
-  - modernize-replace-auto-ptr
   - modernize-shrink-to-fit
   - modernize-use-bool-literals
   - modernize-use-constraints
