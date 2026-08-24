@@ -27,7 +27,7 @@ namespace detail {
 template <typename TSource, typename TResult, typename Selector>
 class ConcatMapState : public std::enable_shared_from_this<ConcatMapState<TSource, TResult, Selector>>,
                        public SharedConstructor<ConcatMapState<TSource, TResult, Selector>> {
-  friend class SharedConstructor<ConcatMapState>; // Template argument is required: an unqualified friend name would declare a new pep::detail::SharedConstructor
+  friend SharedConstructor<ConcatMapState>;
 
 private:
   Selector mSelector;
