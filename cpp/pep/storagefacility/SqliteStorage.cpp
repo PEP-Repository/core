@@ -147,16 +147,12 @@ PurgeCycle StorageFacility::SqliteStorage::getPurgeCycle(PurgeCycle::Id id) cons
   return RecordToPurgeCycle(implementor_->raw.get<PurgeCycleRecord>(id));
 }
 
-void StorageFacility::SqliteStorage::updatePurgeCycle(PurgeCycle cycle) {
+void StorageFacility::SqliteStorage::updatePurgeCycle(const PurgeCycle& cycle) {
   implementor_->raw.update(PurgeCycleToRecord(cycle));
 }
 
-PurgeCycle::Id StorageFacility::SqliteStorage::createPurgeCycle(PurgeCycle::Definition definition) {
-  auto id = implementor_->raw.insert(PurgeCycleToRecord(PurgeCycle{
-    .id = 0,
-    .definition = std::move(definition),
-    .announced = TimeNow(),
-    }));
+PurgeCycle::Id StorageFacility::SqliteStorage::createPurgeCycle(const PurgeCycle& cycle) {
+  auto id = implementor_->raw.insert(PurgeCycleToRecord(cycle));
 
   PurgeCycle::Id result;
   try {

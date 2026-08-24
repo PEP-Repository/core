@@ -1225,7 +1225,11 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
     throw Error("Unsupported purge cycle name \"" + definition.name() + '"');
   }
 
-  auto id = sqlite_->createPurgeCycle(std::move(definition));
+  auto id = sqlite_->createPurgeCycle(PurgeCycle{
+    .id = 0,
+    .definition = std::move(definition),
+    .announced = TimeNow(),
+    });
 
   try {
     for (const FileStore::Participant* participant : fileStore_->participants()) {
