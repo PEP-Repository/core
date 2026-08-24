@@ -209,7 +209,7 @@ public:
   /// \return A string describing the client.
   std::string describe() const override;
 
-  /// Get human-readable description of the client.
+  /// Get human-readable description of the connection.
   std::string describeConnection(const Connection& connection) const override;
 
   /// \brief Downcasts this instance to a client component for the specified protocol type.
