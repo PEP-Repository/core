@@ -1050,9 +1050,10 @@ if should_run_test s3-multi-host; then
     verify_multi_host_file multi-host-participant-b "$file_b"
 
     printGreen "s3-multi-host phase 3: copy the pages of the first S3 host to the second one"
+    pages_on_b_before=$(count_pages "$bucket_on_host_b")
     cp -a -- "$bucket_on_host_a/." "$bucket_on_host_b"
-    if [ "$(count_pages "$bucket_on_host_a")" -eq "$(count_pages "$bucket_on_host_b")" ]; then
-      fail "Expected the second S3 host to have as many pages as the first host"
+    if [ "$(count_pages "$bucket_on_host_b")" != "$((pages_on_b_before + "$(count_pages "$bucket_on_host_a")"))" ]; then
+      fail "Expected the second S3 host contain all pages of the first host"
     fi
     verify_multi_host_file multi-host-participant-a "$file_a"
     verify_multi_host_file multi-host-participant-b "$file_b"
