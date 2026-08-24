@@ -16,7 +16,7 @@ namespace pep::messaging {
 ServerConnection::ServerConnection(std::shared_ptr<Node> node) noexcept
   : node_(std::move(node)) {
   assert(node_ != nullptr);
-  description_ = node_->describe();
+  nodeDescription_ = node_->describe();
 }
 
 void ServerConnection::handleConnectivityChange(const LifeCycler::StatusChange& change) {
@@ -35,7 +35,7 @@ void ServerConnection::handleConnectivityChange(const Connection::Attempt::Resul
     this->onConnected(*result);
     // status already indicates connected/success
   } else {
-    PEP_LOG(LogTag, Severity::Debug) << description_ << ": Disconnected: " << GetExceptionMessage(result.exception());
+    PEP_LOG(LogTag, Severity::Debug) << nodeDescription_ << ": Disconnected: " << GetExceptionMessage(result.exception());
     status.connected = false;
     try {
       std::rethrow_exception(result.exception());
@@ -53,7 +53,7 @@ void ServerConnection::handleConnectivityChange(const Connection::Attempt::Resul
 
 void ServerConnection::onConnected(std::shared_ptr<Connection> connection) {
   assert(connection_ == nullptr || connection_ == connection);
-  PEP_LOG(LogTag, Severity::Debug) << description_ << ": Connected";
+  PEP_LOG(LogTag, Severity::Debug) << nodeDescription_ << ": Connected";
 
   if (connection_ == nullptr) {
     connection_ = connection;
@@ -67,7 +67,7 @@ void ServerConnection::onConnected(std::shared_ptr<Connection> connection) {
     // Send pending requests now
     auto send = std::exchange(pendingRequests_, Default<decltype(pendingRequests_)>);
     if (!send.empty()) {
-      PEP_LOG(LogTag, Severity::Debug) << description_ << ": Sending " << send.size() << " previously pending requests";
+      PEP_LOG(LogTag, Severity::Debug) << nodeDescription_ << ": Sending " << send.size() << " previously pending requests";
     }
     for (const auto& request: send) {
       rxcpp::observable<std::string> obs;
@@ -135,8 +135,8 @@ rxcpp::observable<std::string> ServerConnection::sendRequest(std::shared_ptr<std
     return connection_->sendRequest(message, tail);
   }
 
-  PEP_LOG(LogTag, Severity::Debug) << description_ << ": Waiting for connection before sending request";
-  return CreateObservable<std::string>([weak = WeakFrom(*this), message, tail, description = description_](rxcpp::subscriber<std::string> subscriber) {
+  PEP_LOG(LogTag, Severity::Debug) << nodeDescription_ << ": Waiting for connection before sending request";
+  return CreateObservable<std::string>([weak = WeakFrom(*this), message, tail, description = nodeDescription_](rxcpp::subscriber<std::string> subscriber) {
       auto self = weak.lock();
       if (self == nullptr) {
         PEP_LOG(LogTag, Severity::Debug) << description << ": Discarding pending request: server connection was destroyed";

@@ -18,7 +18,7 @@ private:
   };
 
   std::shared_ptr<Node> node_;
-  std::string description_; ///< Cached node description, even after \c finalize() has been called.
+  std::string nodeDescription_; ///< Cached node description, even after \c finalize() has been called.
   std::vector<PendingRequest> pendingRequests_;
   std::shared_ptr<Connection> connection_;
   EventSubscription connectionStatusSubscription_;
