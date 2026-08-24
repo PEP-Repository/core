@@ -53,7 +53,7 @@ add_library(${PROJECT_NAME}Utilslib
     Platform.cpp Platform.hpp
     Progress.cpp Progress.hpp
     PropertyBasedContainer.hpp
-    PropertySerializer.hpp
+    PropertySerializer.cpp PropertySerializer.hpp
     Random.cpp Random.hpp
     Raw.cpp Raw.hpp
     SelfRegistering.hpp

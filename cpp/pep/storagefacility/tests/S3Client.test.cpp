@@ -26,7 +26,7 @@ namespace {
     auto io_context = std::make_shared<boost::asio::io_context>();
     sftest::Envs envs; // fills itself with environment variables PEP_*
 
-    std::shared_ptr<Client> client = envs.CreateS3Client(io_context);
+    std::shared_ptr<Client> client = sftest::CreateS3Client(io_context, envs.hostA);
     client->start();
     PEP_DEFER(client->shutdown(); io_context->run(););
 
