@@ -1229,6 +1229,8 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
     .id = 0,
     .definition = std::move(definition),
     .announced = TimeNow(),
+    .confirmed{},
+    .completed{}
     });
 
   try {
