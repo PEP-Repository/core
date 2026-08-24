@@ -1242,11 +1242,14 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
           --end;
         }
         for (auto i = versions.begin(); i != end; ++i) {
-          // TODO: throw if this version is already included in a pending purge request
           sqlite_->addToPurgeCycle(id, participant->name(), cell->columnName(), i->validFrom);
         }
       }
     }
+  }
+  catch (const SqliteStorage::ConstraintViolation&) {
+    sqlite_->deletePurgeCycle(id);
+    throw Error("Storage Facility entries may only be included in a single purge cycle");
   }
   catch (...) {
     sqlite_->deletePurgeCycle(id);

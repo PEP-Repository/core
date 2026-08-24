@@ -14,6 +14,8 @@ private:
   void deletePurgeCycleRecord(int64_t id);
 
 public:
+  class ConstraintViolation;
+
   explicit SqliteStorage(std::filesystem::path file);
   ~SqliteStorage() noexcept; // Can't be defined here because the destructor for Implementor is unknown
 
@@ -24,6 +26,11 @@ public:
   void deletePurgeCycle(PurgeCycle::Id id);
 
   void addToPurgeCycle(PurgeCycle::Id id, const std::string& row, const std::string& column, Timestamp timestamp);
+};
+
+class StorageFacility::SqliteStorage::ConstraintViolation : public std::runtime_error {
+public:
+  ConstraintViolation();
 };
 
 }

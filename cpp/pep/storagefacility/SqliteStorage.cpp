@@ -43,10 +43,12 @@ auto MakeRawStorage(std::string path) {
       make_column("seqno", &RowRecord::seqno,
         primary_key().autoincrement()),
       make_column("pseudonym", &RowRecord::pseudonym)),
+
     make_table("Column",
       make_column("seqno", &ColumnRecord::seqno,
         primary_key().autoincrement()),
       make_column("name", &ColumnRecord::name)),
+
     make_table("PurgeCycle",
       make_column("id", &PurgeCycleRecord::id,
         primary_key().autoincrement()),
@@ -54,6 +56,11 @@ auto MakeRawStorage(std::string path) {
       make_column("announced", &PurgeCycleRecord::announced),
       make_column("confirmed", &PurgeCycleRecord::confirmed),
       make_column("completed", &PurgeCycleRecord::completed)),
+
+    make_unique_index("idx_PurgeEntry",
+      &PurgeEntryRecord::row,
+      &PurgeEntryRecord::column,
+      &PurgeEntryRecord::timestamp),
     make_table("PurgeEntry",
       make_column("cycle", &PurgeEntryRecord::cycle),
       make_column("row", &PurgeEntryRecord::row),
@@ -94,6 +101,10 @@ PurgeCycleRecord PurgeCycleToRecord(const PurgeCycle& cycle) {
 }
 
 } // End anonymous namespace
+
+StorageFacility::SqliteStorage::ConstraintViolation::ConstraintViolation()
+  : std::runtime_error("SQLite constraint violation") {
+}
 
 struct StorageFacility::SqliteStorage::Implementor : public pep::database::Storage<MakeRawStorage> {
   using pep::database::Storage<MakeRawStorage>::Storage;
@@ -172,12 +183,21 @@ void StorageFacility::SqliteStorage::deletePurgeCycle(PurgeCycle::Id id) {
 }
 
 void StorageFacility::SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const std::string& row, const std::string& column, Timestamp timestamp) {
-  implementor_->raw.insert(PurgeEntryRecord{
-    .cycle = id,
-    .row = this->getRowId(row),
-    .column = this->getColumnId(column),
-    .timestamp = TicksSinceEpoch<std::chrono::milliseconds>(timestamp),
-    });
+  try {
+    implementor_->raw.insert(PurgeEntryRecord{
+      .cycle = id,
+      .row = this->getRowId(row),
+      .column = this->getColumnId(column),
+      .timestamp = TicksSinceEpoch<std::chrono::milliseconds>(timestamp),
+      });
+  }
+  catch (const std::system_error& error) {
+    auto condition = error.code().default_error_condition();
+    if (condition.category() == sqlite_orm::get_sqlite_error_category() && condition.value() == SQLITE_CONSTRAINT) {
+      throw ConstraintViolation();
+    }
+    throw;
+  }
 }
 
 }
