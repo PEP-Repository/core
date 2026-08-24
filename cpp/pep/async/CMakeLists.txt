@@ -13,7 +13,6 @@ add_library(${PROJECT_NAME}Asynclib STATIC
     RxButFirst.hpp
     RxCache.hpp
     RxCartesianProduct.hpp
-    RxConcatMap.hpp
     RxConcatenateStrings.hpp
     RxConcatenateVectors.hpp
     RxDistinct.hpp
