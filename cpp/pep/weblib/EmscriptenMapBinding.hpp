@@ -27,7 +27,7 @@ public:
   static WireType toWireType(Map &&map, rvp::default_tag t) {
     val jsMap = val::global("Map").new_();
     for (auto& [key, value] : map) {
-      //XXX This does not actually move elements yet, see https://github.com/emscripten-core/emscripten/issues/25412
+      //TODO(workaround) This does not actually move elements yet, see https://github.com/emscripten-core/emscripten/issues/25412
       jsMap.call<void>("set", key, std::move(value));
     }
     return ValBinding::toWireType(std::move(jsMap), t);
@@ -35,15 +35,14 @@ public:
 
   /// Deserialize
   static Map fromWireType(WireType value) {
-    using namespace std::ranges;
-    return pep::RangeToCollection<Map>(
-        ValBinding::fromWireType(value)
-        | views::transform([](const val& entry) {
-          return std::pair{
-            entry[0].as<typename Map::key_type>(),
-            entry[1].as<typename Map::mapped_type>(allow_raw_pointers{})};
-        })
-    );
+    // Note that we cant (yet) use std::ranges, as val::iterator fails https://en.cppreference.com/cpp/iterator/input_or_output_iterator requirements
+    Map map;
+    for (const val& entry : ValBinding::fromWireType(value)) {
+      map.emplace(
+          entry[0].as<typename Map::key_type>(),
+          entry[1].as<typename Map::mapped_type>(allow_raw_pointers{}));
+    }
+    return map;
   }
 };
 

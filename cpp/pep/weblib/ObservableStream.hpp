@@ -26,7 +26,7 @@ requires (!std::same_as<TChunk, emscripten::val>)
 emscripten::val CreateReadableStreamOnMain(rxcpp::observable<TChunk, TSourceOperator> data) {
   return CreateReadableStream(data
     .observe_on(observe_on_emscripten_main_thread())
-    //XXX `new` is workaround to not copy chunk, see https://github.com/emscripten-core/emscripten/issues/25412
+    //TODO(workaround) `new` is workaround to not copy chunk, see https://github.com/emscripten-core/emscripten/issues/25412
     .map([](TChunk chunk) { return emscripten::val(new TChunk(std::move(chunk)), emscripten::allow_raw_pointers{}); }));
 }
 

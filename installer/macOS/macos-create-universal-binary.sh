@@ -77,17 +77,12 @@ lipo_app_files() {
 
     export -f merge_dylibs
 
-    # Search for executable files in the MacOS directory, execute a merge function using bash command strings, in this case $0 refers to the first argument passed
-    for dir in "$app_dir1/Contents/Plugins" "$app_dir1/Contents/Resources" "$app_dir1/Contents/MacOS"; do
+    # Search for executable files, execute a merge function using bash command strings, in this case $0 refers to the first argument passed.
+    for dir in "$app_dir1/Contents/Plugins" "$app_dir1/Contents/Resources" "$app_dir1/Contents/MacOS" "$app_dir1/Contents/Frameworks"; do
         if [[ -d "$dir" ]]; then
             find "$dir" -type f -exec bash -c 'file "$0" | grep -q "Mach-O" && ! file "$0" | grep -q "universal binary"' {} \; -exec bash -c 'merge_dylibs "$0" "$1" "$2" "$3"' {} "$app_dir1" "$app_dir2" "$target_dir" \;
         fi
     done
-
-    # The depth is set to 1 to avoid merging any frameworks themselves, as they need some manual consideration
-    if [[ -d "$app_dir1/Contents/Frameworks" ]]; then
-        find "$app_dir1/Contents/Frameworks" -maxdepth 1 -type f -exec bash -c 'file "$0" | grep -q "Mach-O" && ! file "$0" | grep -q "universal binary"' {} \; -exec bash -c 'merge_dylibs "$0" "$1" "$2" "$3"' {} "$app_dir1" "$app_dir2" "$target_dir" \;
-    fi
   }
 
 # Call the function with the app directories, for PEPAssessor

@@ -8,21 +8,17 @@
 
 namespace pep {
 
-/*!
-  * \brief Generate a short pseudonym with the provided prefix, followed by len characters taken from chars, '-' and two check digits
-  *
-  * \param prefix Prefix for the short pseudonym to be generated
-  * \param len Length of random part of the short pseudonym to be generated
-  * \return The generated short pseudonym
-  */
+/// \brief Generate a short pseudonym with the provided prefix, followed by len characters taken from chars, '-' and two check digits
+///
+/// \param prefix Prefix for the short pseudonym to be generated
+/// \param len Length of random part of the short pseudonym to be generated
+/// \return The generated short pseudonym
 std::string GenerateShortPseudonym(std::string_view prefix, std::size_t len);
 
-/*!
-  * \brief Verify whether the check digits (last two characters) of the provided short pseudonym are valid.
-  *
-  * \param shortPseudonym p_shortPseudonym:...
-  * \return bool
-  */
+/// \brief Verify whether the check digits (last two characters) of the provided short pseudonym are valid.
+///
+/// \param shortPseudonym p_shortPseudonym:...
+/// \return bool
 bool ShortPseudonymIsValid(const std::string& shortPseudonym);
 
 enum class CastorStudyType {

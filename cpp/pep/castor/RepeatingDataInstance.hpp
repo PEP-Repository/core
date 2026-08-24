@@ -8,10 +8,8 @@ namespace castor {
 class RepeatingDataPoint;
 class RepeatingData;
 
-/*!
-  * \brief A filled in instance of a repeating data (definition).
-  * \remark Corresponds to Castor API's "repeating data instance" concept: see https://data.castoredc.com/api#/repeating-data-instance
-  */
+/// \brief A filled in instance of a repeating data (definition).
+/// \remark Corresponds to Castor API's "repeating data instance" concept: see https://data.castoredc.com/api#/repeating-data-instance
 class RepeatingDataInstance : public SimpleCastorChildObject<RepeatingDataInstance, Participant>, public SharedConstructor<RepeatingDataInstance> {
  private:
   std::string participantId_;
@@ -41,23 +39,19 @@ class RepeatingDataInstance : public SimpleCastorChildObject<RepeatingDataInstan
 
   static rxcpp::observable<std::shared_ptr<RepeatingDataInstance>> BulkRetrieve(std::shared_ptr<Study> study, rxcpp::observable<std::shared_ptr<Participant>> participants);
 
-  /*!
-   * \brief Helper function to convert API "404 Not Found" results to an empty observable.
-   *
-   * \param ep An exception thrown during RX pipeline processing.
-   * \return An empty observable if the exception indicates that the API returned a "404 Not Found" error. Re-raises the exception otherwise
-   *
-   * \remark Use as myObs.on_error_resume_next(&RepeatingDataInstance::ConvertNotFoundToEmpty)
-   */
+  /// \brief Helper function to convert API "404 Not Found" results to an empty observable.
+  ///
+  /// \param ep An exception thrown during RX pipeline processing.
+  /// \return An empty observable if the exception indicates that the API returned a "404 Not Found" error. Re-raises the exception otherwise
+  ///
+  /// \remark Use as myObs.on_error_resume_next(&RepeatingDataInstance::ConvertNotFoundToEmpty)
   static rxcpp::observable<std::shared_ptr<RepeatingDataInstance>> ConvertNotFoundToEmpty(std::exception_ptr ep);
 
  protected:
-  /*!
-   * \brief Construct a new RepeatingDataInstance
-   *
-   * \param participant The Participant this RepeatingDataInstance belongs to
-   * \param json The %Json response from the Castor API for this RepeatingDataInstance
-   */
+  /// \brief Construct a new RepeatingDataInstance
+  ///
+  /// \param participant The Participant this RepeatingDataInstance belongs to
+  /// \param json The %Json response from the Castor API for this RepeatingDataInstance
   RepeatingDataInstance(std::shared_ptr<Participant> participant, JsonPtr json);
 
  private:

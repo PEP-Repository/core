@@ -1,7 +1,7 @@
 # Library implementing RSK operations not specific to PEP.
 
 
-add_library(${PROJECT_NAME}Rsklib STATIC
+add_library(${PROJECT_NAME}Rsklib
   EGCache.cpp EGCache.hpp
   Proofs.cpp Proofs.hpp
   RskKeys.cpp RskKeys.hpp

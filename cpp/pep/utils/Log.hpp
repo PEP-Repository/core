@@ -8,9 +8,7 @@
 
 namespace pep {
 
-/*!
- * \brief Severity levels used for logging.
- */
+/// \brief Severity levels used for logging.
 enum class Severity {
   Verbose,
   Debug,
@@ -45,9 +43,7 @@ public:
   // Gets string representations of supported Severity values
   static std::vector<std::string> SeverityNames();
 
-  /*!
-   * \brief Returns a logging-safe representation of in
-   */
+  /// \brief Returns a logging-safe representation of in
   static std::string Escape(const std::string& in);
 
   // Stuff below is for implementing classes (i.e. specific logging output channels)

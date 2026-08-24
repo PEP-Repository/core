@@ -10,7 +10,7 @@ Checks:
   - -bugprone-crtp-constructor-accessibility
   - -bugprone-easily-swappable-parameters
   - -bugprone-exception-escape
-  #XXX Enable when IgnoreConstantIntExpr becomes generally available
+  #TODO(workaround) Enable when IgnoreConstantIntExpr becomes generally available
   - -bugprone-implicit-widening-of-multiplication-result
   - -bugprone-reserved-identifier # Disable as it's slow and we have -Wreserved-identifier
   - -bugprone-signed-bitwise # Signed bitwise behavior is well-defined in C++20
