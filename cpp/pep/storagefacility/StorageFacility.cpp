@@ -1158,6 +1158,32 @@ messaging::MessageBatches StorageFacility::handlePurgeCancelRequest(std::shared_
   return messaging::BatchSingleMessage(std::move(result));
 }
 
+messaging::MessageBatches StorageFacility::handlePurgeConfirmationRequest(std::shared_ptr<SignedPurgeConfirmationRequest> signedRequest) {
+  const auto& rootCAs = this->getRootCAs();
+  auto certified = signedRequest->open(*rootCAs);
+
+  auto accessGroup = certified.signatory.organizationalUnit();
+  UserGroup::EnsureAccess({ UserGroup::RepositoryManager }, accessGroup);
+
+  auto result = sqlite_->getPurgeCycle(certified.message.id);
+  if (result.confirmed) {
+    throw Error("Purge cycle has already been confirmed");
+  }
+
+  // (Overly) defensive programming: each purge cycle must have a unique 'confirmed' timestamp to ensure history consistency
+  auto existing = sqlite_->getPurgeCycles();
+  auto timestamp = TimeNow();
+  while (ContainsWhere(existing, [timestamp](const PurgeCycle& cycle) { return cycle.confirmed == timestamp; })) {
+    timestamp = TimeNow();
+  }
+
+  result.confirmed = timestamp;
+  sqlite_->updatePurgeCycle(result);
+  // TODO: update in-memory state
+  // TODO: start updating files
+  return messaging::BatchSingleMessage(result);
+}
+
 std::string StorageFacility::encryptId(std::string path, Timestamp time) {
   return Serialization::ToString(
     EncryptedSFId(
@@ -1269,7 +1295,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
                           &StorageFacility::handlePagePathRequest,
                           &StorageFacility::handlePurgeListRequest,
                           &StorageFacility::handlePurgeAnnounceRequest,
-                          &StorageFacility::handlePurgeCancelRequest);
+                          &StorageFacility::handlePurgeCancelRequest,
+                          &StorageFacility::handlePurgeConfirmationRequest);
 
   this->updateFileStoreMetrics();
   statsTimer({});

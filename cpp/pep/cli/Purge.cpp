@@ -31,6 +31,7 @@ private:
   class List;
   class BackCatalog;
   class Cancel;
+  class Confirm;
 };
 
 class CommandPurge::List : public ChildCommandOf<CommandPurge> {
@@ -59,6 +60,15 @@ protected:
   int execute() override;
 };
 
+class CommandPurge::Confirm : public ChildCommandOf<CommandPurge> {
+public:
+  explicit Confirm(CommandPurge& parent);
+  commandline::Parameters getSupportedParameters() const override;
+
+protected:
+  int execute() override;
+};
+
 CommandPurge::CommandPurge(CliApplication& parent)
   : ChildCommandOf<CliApplication>("purge", "Remove entries from the repository history", parent) {
 }
@@ -68,6 +78,7 @@ std::vector<std::shared_ptr<commandline::Command>> CommandPurge::createChildComm
   result.emplace_back(std::make_shared<List>(*this));
   result.emplace_back(std::make_shared<BackCatalog>(*this));
   result.emplace_back(std::make_shared<Cancel>(*this));
+  result.emplace_back(std::make_shared<Confirm>(*this));
   return result;
 }
 
@@ -120,6 +131,30 @@ int CommandPurge::Cancel::execute() {
   return this->executeEventLoopForClient(true, [id](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
     return client->getStorageFacilityProxy()->cancelPurgeCycle(id)
       .map([](PurgeCycle) {return FakeVoid(); });
+    });
+}
+
+CommandPurge::Confirm::Confirm(CommandPurge& parent)
+  : ChildCommandOf<CommandPurge>("confirm", "Confirm and start a purge cycle", parent) {}
+
+commandline::Parameters CommandPurge::Confirm::getSupportedParameters() const {
+  return ChildCommandOf<CommandPurge>::getSupportedParameters()
+    + commandline::Parameter("id", "Purge cycle identifier").value(commandline::Value<PurgeCycle::Id>().positional().required());
+}
+
+int CommandPurge::Confirm::execute() {
+  auto id = this->getParameterValues().get<PurgeCycle::Id>("id");
+  return this->executeEventLoopForClient(true, [id](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
+    return client->getStorageFacilityProxy()->confirmPurgeCycle(id)
+      .map([](PurgeCycle cycle) {
+          assert(cycle.confirmed.has_value());
+          std::cout << "Purge cycle " << cycle.id
+            << " for " << cycle.definition.name()
+            << " applied at " << cycle.confirmed->time_since_epoch().count()
+            << ", i.e. " << TimestampToXmlDateTime(*cycle.confirmed)
+            << std::endl;
+          return FakeVoid();
+        });
     });
 }
 

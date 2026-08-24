@@ -24,6 +24,7 @@ public:
   rxcpp::observable<PurgeCycle> listPurgeCycles() const;
   rxcpp::observable<PurgeCycle> createPurgeCycle(PurgeCycle::Definition definition) const;
   rxcpp::observable<PurgeCycle> cancelPurgeCycle(PurgeCycle::Id id) const;
+  rxcpp::observable<PurgeCycle> confirmPurgeCycle(PurgeCycle::Id id) const;
 };
 
 }

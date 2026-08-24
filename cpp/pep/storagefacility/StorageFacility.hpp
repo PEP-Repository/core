@@ -114,6 +114,7 @@ private:
   messaging::MessageBatches handlePurgeListRequest(std::shared_ptr<SignedPurgeListRequest> signedRequest);
   messaging::MessageBatches handlePurgeAnnounceRequest(std::shared_ptr<SignedPurgeAnnounceRequest> signedRequest);
   messaging::MessageBatches handlePurgeCancelRequest(std::shared_ptr<SignedPurgeCancelRequest> signedRequest);
+  messaging::MessageBatches handlePurgeConfirmationRequest(std::shared_ptr<SignedPurgeConfirmationRequest> signedRequest);
 
   std::string encryptId(std::string path, Timestamp time);
   SFId decryptId(std::string_view encId);

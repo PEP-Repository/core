@@ -25,6 +25,8 @@ struct PurgeCycleRecord {
   PurgeCycle::Id id{};
   std::string name;
   database::UnixMillis announced;
+  database::UnixMillis confirmed{};
+  database::UnixMillis completed{};
 };
 
 struct PurgeEntryRecord {
@@ -49,7 +51,9 @@ auto MakeRawStorage(std::string path) {
       make_column("id", &PurgeCycleRecord::id,
         primary_key().autoincrement()),
       make_column("name", &PurgeCycleRecord::name),
-      make_column("announced", &PurgeCycleRecord::announced)),
+      make_column("announced", &PurgeCycleRecord::announced),
+      make_column("confirmed", &PurgeCycleRecord::confirmed),
+      make_column("completed", &PurgeCycleRecord::completed)),
     make_table("PurgeEntry",
       make_column("cycle", &PurgeEntryRecord::cycle),
       make_column("row", &PurgeEntryRecord::row),
@@ -58,11 +62,34 @@ auto MakeRawStorage(std::string path) {
   );
 }
 
+std::optional<Timestamp> OptionalTimestampFromUnixMillis(database::UnixMillis millis) {
+  if (millis != 0) {
+    return database::TimestampFromUnixMillis(millis);
+  }
+  return std::nullopt;
+}
+
+database::UnixMillis OptionalTimestampToUnixMillis(const std::optional<Timestamp>& timestamp) {
+  return database::TimestampToUnixMillis(timestamp.value_or(Timestamp{ /* zero */}));
+}
+
 PurgeCycle RecordToPurgeCycle(PurgeCycleRecord record) {
   return PurgeCycle{
     .id = record.id,
     .definition = PurgeCycle::Definition(std::move(record.name)),
     .announced = database::TimestampFromUnixMillis(record.announced),
+    .confirmed = OptionalTimestampFromUnixMillis(record.confirmed),
+    .completed = OptionalTimestampFromUnixMillis(record.completed),
+  };
+}
+
+PurgeCycleRecord PurgeCycleToRecord(const PurgeCycle& cycle) {
+  return PurgeCycleRecord{
+    .id = cycle.id,
+    .name = cycle.definition.name(),
+    .announced = database::TimestampToUnixMillis(cycle.announced),
+    .confirmed = OptionalTimestampToUnixMillis(cycle.confirmed),
+    .completed = OptionalTimestampToUnixMillis(cycle.completed),
   };
 }
 
@@ -120,11 +147,16 @@ PurgeCycle StorageFacility::SqliteStorage::getPurgeCycle(PurgeCycle::Id id) cons
   return RecordToPurgeCycle(implementor_->raw.get<PurgeCycleRecord>(id));
 }
 
+void StorageFacility::SqliteStorage::updatePurgeCycle(PurgeCycle cycle) {
+  implementor_->raw.update(PurgeCycleToRecord(cycle));
+}
+
 PurgeCycle::Id StorageFacility::SqliteStorage::createPurgeCycle(PurgeCycle::Definition definition) {
-  auto id = implementor_->raw.insert(PurgeCycleRecord{
-    .name = std::move(definition).name(),
-    .announced = database::TimestampToUnixMillis(TimeNow()),
-    });
+  auto id = implementor_->raw.insert(PurgeCycleToRecord(PurgeCycle{
+    .id = 0,
+    .definition = std::move(definition),
+    .announced = TimeNow(),
+    }));
 
   PurgeCycle::Id result;
   try {

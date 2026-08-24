@@ -104,4 +104,11 @@ rxcpp::observable<PurgeCycle> StorageFacilityProxy::cancelPurgeCycle(PurgeCycle:
     .op(RxGetOne());
 }
 
+rxcpp::observable<PurgeCycle> StorageFacilityProxy::confirmPurgeCycle(PurgeCycle::Id id) const {
+  return this->sendRequest<PurgeCycle>(this->sign(PurgeConfirmationRequest{
+      .id = id,
+    }))
+    .op(RxGetOne());
+}
+
 }

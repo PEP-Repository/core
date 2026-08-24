@@ -802,6 +802,8 @@ message PurgeCycle {
   uint32 id = 1;
   string name = 2;
   Timestamp announced = 3;
+  Timestamp confirmed = 4;
+  Timestamp completed = 5;
 }
 
 message PurgeListRequest {}
