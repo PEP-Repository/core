@@ -101,9 +101,10 @@ public:
     static const std::string FileExtension;
 
     Timestamp validFrom_;
+    std::optional<Timestamp> purgedAt_;
 
     Entry(EntryChange&& source, Timestamp validFrom);
-    Entry(Cell& cell, Timestamp validFrom, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
+    Entry(Cell& cell, Timestamp validFrom, std::optional<Timestamp> purgedAt, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
 
     CheckedPath getFilePath(const std::string& extension) const;
 
@@ -111,6 +112,9 @@ public:
     std::unique_ptr<EntryContent> cloneContent() const;
 
     Timestamp getValidFrom() const noexcept { return validFrom_; }
+    std::optional<Timestamp> getPurgedAt() const { return purgedAt_; }
+    void markPurged(Timestamp at);
+
     messaging::MessageSequence readPage(size_t index);
 
     void save() const;

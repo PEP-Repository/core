@@ -22,6 +22,7 @@ namespace pep {
 namespace {
 
 const std::string ChecksumSubstituteKey = "checksum-substitute";
+const std::string PurgedAtKey = "purged-at";
 
 uint64_t GenerateChecksumSubstitute() {
   return RandomInteger<uint64_t>();
@@ -263,11 +264,14 @@ void FileStore::Cell::processPendingPurgeCycle(const storagefacility::SqliteStor
   CellVersions updated;
 
   auto timestamps = sqlite.getPurgedTimestamps(cycle.id, this->participant().name(), this->columnName());
-  auto end = timestamps.end();
+
   for (auto version : versions_) {
     if (!version.purgedAt.has_value()) {
-      if (timestamps.find(version.validFrom) != end) {
+      if (timestamps.contains(version.validFrom)) {
         version.purgedAt = cycle.confirmed;
+        if (version.validFrom == latest_->getValidFrom()) {
+          latest_->markPurged(*version.purgedAt);
+        }
       }
     }
     auto emplaced = updated.emplace(std::move(version)).second;
@@ -360,6 +364,11 @@ messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
   return payload->readPage(cell.participant().fileStore().pagestore_, cell.entryName(), index);
 }
 
+void FileStore::Entry::markPurged(Timestamp at) {
+  assert(!purgedAt_.has_value() && "Entry is already purged");
+  purgedAt_ = at;
+}
+
 void FileStore::Entry::save() const {
   std::ostringstream out;
 
@@ -370,6 +379,9 @@ void FileStore::Entry::save() const {
   std::vector<PageId> pages;
   PersistedEntryProperties properties;
   SetPersistedEntryProperty(properties, ChecksumSubstituteKey, this->getChecksumSubstitute());
+  if (auto purgedAt = this->getPurgedAt()) {
+    SetPersistedEntryProperty(properties, PurgedAtKey, *purgedAt);
+  }
 
   EntryContent::Save(this->content(), properties, pages);
 
@@ -491,6 +503,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
   auto properties = ReadBinary(infile, PersistedEntryProperties());
 
   auto checksumSubstitute = ExtractPersistedEntryProperty<uint64_t>(properties, ChecksumSubstituteKey);
+  auto purgedAt = TryExtractPersistedEntryProperty<Timestamp>(properties, PurgedAtKey);
   auto entryContent = EntryContent::Load(cell.participant().fileStore(), properties, pages);
 
   // Read content hash from (end of) file
@@ -514,7 +527,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
   if (calculatedHash != expectedHash)
     throw std::invalid_argument("hash did not match for file " + path.string());
 
-  return Entry::Create(cell, validFrom, checksumSubstitute, std::move(entryContent));
+  return Entry::Create(cell, validFrom, purgedAt, checksumSubstitute, std::move(entryContent));
 }
 
 FileStore::Entry::Entry(EntryChange&& source, Timestamp validFrom)
@@ -522,8 +535,8 @@ FileStore::Entry::Entry(EntryChange&& source, Timestamp validFrom)
   assert(this->content() == nullptr || this->content()->payload() != nullptr);
 }
 
-FileStore::Entry::Entry(Cell& cell, Timestamp validFrom, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content)
-  : EntryBase(cell, checksumSubstitute, std::move(content)), validFrom_(validFrom) {
+FileStore::Entry::Entry(Cell& cell, Timestamp validFrom, std::optional<Timestamp> purgedAt, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content)
+  : EntryBase(cell, checksumSubstitute, std::move(content)), validFrom_(validFrom), purgedAt_(purgedAt) {
 }
 
 rxcpp::observable<std::string> FileStore::EntryChange::appendPage(std::shared_ptr<std::string> rawPage, uint64_t payloadSize, uint64_t pagenr) {
