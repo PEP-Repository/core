@@ -1,8 +1,9 @@
 # Coding guidelines for contributing
 
-# Goal
+## Goal
 
 Produce code that
+
 - is easy to debug and understand;
 - is modular;
 - is maintainable;
@@ -10,6 +11,7 @@ Produce code that
 - has been implemented for the long run (maintenaince can be done by different parties).
 
 For this, we require:
+
 - restrictive use of external libraries (see below);
 - use of simple mechanisms;
 - everything is in C++ (except when an exception is granted by the whole team).
@@ -18,7 +20,7 @@ C++ code is subject to guidelines [documented separately](cpp/CONTRIBUTING.md).
 
 ---
 
-# Workflow
+## Workflow
 
 - all code and associated stuff is version controlled using git and Gitlab.
 - when adjusting spacing or trivial name changes, please commit it seperate from other changes (to ease the release process);
@@ -30,7 +32,7 @@ C++ code is subject to guidelines [documented separately](cpp/CONTRIBUTING.md).
 
 ---
 
-# Project structure
+## Project structure
 
 We aim to implement the supposedly [canonical C++ project structure](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1204r0.html) (for reasons discussed [here](https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2167)). Most notably, this project structure puts our C++ code in a (nested sub)directory named "pep", allowing headers to be found using `#include <pep/subdir/blah.hpp>`. But our project structure does deviate from canon in multiple ways, a.o.
 
@@ -47,25 +49,25 @@ We aim to implement the supposedly [canonical C++ project structure](https://www
 - Use two spaces per indentation level, do not use tabs. Exceptions: Python (4 spaces).
 - (See C++ docs for its style guidelines.)
 
-## Shell scripts
+### Shell scripts
 
 - Script-local variable names are written in `lower_snake_case`.
 - Environment variable names are written in `SCREAMING_SNAKE_CASE`.
 
-## CMake
+### CMake
 
 - Local variable names are written in `lower_snake_case`.
 - Global/cache variable names are written in `SCREAMING_SNAKE_CASE`.
 - CMake builtins (functions, macros, control keywords) are called in lowercase, e.g. `if(my_var)`, and without space between name and arguments.
 
-## CLI subcommands & switches
+### CLI subcommands & switches
 
 - CLI subcommand and switch names are written in `kebab-case`.
 
-# Documentation
+## Documentation
 
 - when simpler parts of the repository may be described by a single `README.md` file, place it in the respective directory.
-- all other documentation, e.g. on parts of the `core` library, is stored in the `/docs/` folder, using Markdown files. 
-- [Mermaid-js](https://mermaid.live) can be used to insert diagrams in gitlab markdown files. 
+- all other documentation, e.g. on parts of the `core` library, is stored in the `/docs/` folder, using Markdown files.
+- [Mermaid-js](https://mermaid.live) can be used to insert diagrams in gitlab markdown files.
 - Refer to documentation in the comments of source files, this helps keeping documentation up to date when changing structures.
 - Procedures (e.g. on incident handling, support, administration etc.) are published at the wiki.
