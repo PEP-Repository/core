@@ -213,6 +213,16 @@ std::set<std::string> FileStore::pagePaths() const {
   return result;
 }
 
+void FileStore::processPendingPurgeCycles(storagefacility::SqliteStorage& sqlite) {
+  for (const auto& cycle: sqlite.getPurgeCycles()) {
+    if (cycle.confirmed && !cycle.completed) {
+      for (auto& participant : participants_) {
+        participant->processPendingPurgeCycle(sqlite, cycle);
+      }
+    }
+  }
+}
+
 std::shared_ptr<FileStore::Entry> FileStore::lookup(const EntryName& name, Timestamp validAt) {
   auto participant = this->getParticipant(name.participant());
   if (participant == nullptr) {
@@ -243,6 +253,28 @@ std::shared_ptr<FileStore::Entry> FileStore::Cell::lookup(Timestamp validAt) {
 
 std::set<std::string> FileStore::Cell::pagePaths() const {
   return latest_->pagePaths();
+}
+
+void FileStore::Cell::processPendingPurgeCycle(const storagefacility::SqliteStorage& sqlite, const PurgeCycle& cycle) {
+  assert(cycle.confirmed);
+
+  // A set<> only provides read-only access to its items, so we can't update (entries in) our versions_ in place.
+  // So instead we create a new set<> with updated items and overwrite our entire versions_ member.
+  CellVersions updated;
+
+  auto timestamps = sqlite.getPurgedTimestamps(cycle.id, this->participant().name(), this->columnName());
+  auto end = timestamps.end();
+  for (auto version : versions_) {
+    if (!version.purgedAt.has_value()) {
+      if (timestamps.find(version.validFrom) != end) {
+        version.purgedAt = cycle.confirmed;
+      }
+    }
+    auto emplaced = updated.emplace(std::move(version)).second;
+    assert(emplaced);
+  }
+
+  versions_ = std::move(updated);
 }
 
 std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool createIfNeeded) {
@@ -610,6 +642,12 @@ std::set<std::string> FileStore::Participant::pagePaths() const {
     InsertNonDuplicates(result, cell->pagePaths());
   }
   return result;
+}
+
+void FileStore::Participant::processPendingPurgeCycle(const storagefacility::SqliteStorage& sqlite, const PurgeCycle& cycle) {
+  for (auto& cell : cells_) {
+    cell->processPendingPurgeCycle(sqlite, cycle);
+  }
 }
 
 }

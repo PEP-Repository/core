@@ -9,8 +9,11 @@ private:
   struct Implementor;
   std::unique_ptr<Implementor> implementor_;
 
-  int64_t getRowId(const std::string& name);
-  int64_t getColumnId(const std::string& name);
+  std::optional<int64_t> getRowId(const std::string& name) const;
+  std::optional<int64_t> getColumnId(const std::string& name) const;
+  int64_t ensureRowId(const std::string& name);
+  int64_t ensureColumnId(const std::string& name);
+
   void deletePurgeCycleRecord(int64_t id);
 
 public:
@@ -26,6 +29,7 @@ public:
   void deletePurgeCycle(PurgeCycle::Id id);
 
   void addToPurgeCycle(PurgeCycle::Id id, const std::string& row, const std::string& column, Timestamp timestamp);
+  std::set<Timestamp> getPurgedTimestamps(PurgeCycle::Id id, const std::string& row, const std::string& column) const;
 };
 
 class SqliteStorage::ConstraintViolation : public std::runtime_error {

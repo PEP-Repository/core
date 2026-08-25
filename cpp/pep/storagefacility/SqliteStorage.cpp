@@ -110,12 +110,25 @@ struct SqliteStorage::Implementor : public pep::database::Storage<MakeRawStorage
   using pep::database::Storage<MakeRawStorage>::Storage;
 };
 
-int64_t SqliteStorage::getRowId(const std::string& name) {
+std::optional<int64_t> SqliteStorage::getRowId(const std::string& name) const {
   using namespace sqlite_orm;
-  auto result = RangeToOptional(
+  return RangeToOptional(
     implementor_->raw.select(&RowRecord::seqno,
       where(c(&RowRecord::pseudonym) == name),
       limit(1)));
+}
+
+std::optional<int64_t> SqliteStorage::getColumnId(const std::string& name) const {
+  using namespace sqlite_orm;
+  return RangeToOptional(
+    implementor_->raw.select(&ColumnRecord::seqno,
+      where(c(&ColumnRecord::name) == name),
+      limit(1)));
+}
+
+int64_t SqliteStorage::ensureRowId(const std::string& name) {
+  using namespace sqlite_orm;
+  auto result = this->getRowId(name);
   if (!result.has_value()) {
     result = implementor_->raw.insert(RowRecord{
       .pseudonym = name,
@@ -124,12 +137,9 @@ int64_t SqliteStorage::getRowId(const std::string& name) {
   return *result;
 }
 
-int64_t SqliteStorage::getColumnId(const std::string& name) {
+int64_t SqliteStorage::ensureColumnId(const std::string& name) {
   using namespace sqlite_orm;
-  auto result = RangeToOptional(
-    implementor_->raw.select(&ColumnRecord::seqno,
-      where(c(&ColumnRecord::name) == name),
-      limit(1)));
+  auto result = this->getColumnId(name);
   if (!result.has_value()) {
     result = implementor_->raw.insert(ColumnRecord{
       .name = name,
@@ -150,8 +160,10 @@ SqliteStorage::SqliteStorage(std::filesystem::path file)
 SqliteStorage::~SqliteStorage() noexcept = default;
 
 std::vector<PurgeCycle> SqliteStorage::getPurgeCycles() const {
-  return RangeToVector(implementor_->raw.get_all<PurgeCycleRecord>()
-    | std::ranges::views::transform(&RecordToPurgeCycle));
+  return RangeToVector(
+    RangeToVector(implementor_->raw.iterate<PurgeCycleRecord>(sqlite_orm::order_by(&PurgeCycleRecord::id).asc()))
+    | std::ranges::views::transform(&RecordToPurgeCycle)
+  );
 }
 
 PurgeCycle SqliteStorage::getPurgeCycle(PurgeCycle::Id id) const {
@@ -186,8 +198,8 @@ void SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const std::string& row, c
   try {
     implementor_->raw.insert(PurgeEntryRecord{
       .cycle = id,
-      .row = this->getRowId(row),
-      .column = this->getColumnId(column),
+      .row = this->ensureRowId(row),
+      .column = this->ensureColumnId(column),
       .timestamp = TicksSinceEpoch<std::chrono::milliseconds>(timestamp),
       });
   }
@@ -199,5 +211,26 @@ void SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const std::string& row, c
     throw;
   }
 }
+
+std::set<Timestamp> SqliteStorage::getPurgedTimestamps(PurgeCycle::Id id, const std::string& row, const std::string& column) const {
+  std::set<Timestamp> result;
+
+  using namespace sqlite_orm;
+  auto rowId = this->getRowId(row);
+  auto columnId = this->getColumnId(column);
+
+  if (rowId.has_value() && columnId.has_value()) {
+    for (auto millis : implementor_->raw.select(&PurgeEntryRecord::timestamp,
+      where(c(&PurgeEntryRecord::row) == *rowId
+        && c(&PurgeEntryRecord::column) == *columnId),
+      order_by(&PurgeEntryRecord::timestamp))) {
+      [[maybe_unused]] auto emplaced = result.emplace(database::TimestampFromUnixMillis(millis)).second;
+      assert(emplaced);
+    }
+  }
+
+  return result;
+}
+
 
 }

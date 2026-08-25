@@ -1179,7 +1179,7 @@ messaging::MessageBatches StorageFacility::handlePurgeConfirmationRequest(std::s
 
   result.confirmed = timestamp;
   sqlite_->updatePurgeCycle(result);
-  // TODO: update in-memory state
+  fileStore_->processPendingPurgeCycles(*sqlite_);
   // TODO: start updating files
   return messaging::BatchSingleMessage(result);
 }

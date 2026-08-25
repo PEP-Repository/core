@@ -3,6 +3,7 @@
 #include <pep/utils/CheckedPath.hpp>
 #include <pep/utils/Shared.hpp>
 #include <pep/storagefacility/EntryContent.hpp>
+#include <pep/storagefacility/SqliteStorage.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 
 #include <filesystem>
@@ -121,6 +122,7 @@ public:
     Timestamp validFrom;
     uint64_t checksumSubstitute{};
     uint64_t payloadSize{};
+    std::optional<Timestamp> purgedAt;
     bool isOriginalPayloadOwner{};
     bool isTombstone{};
 
@@ -151,6 +153,7 @@ public:
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
 
     std::set<std::string> pagePaths() const; // for latest version
+    void processPendingPurgeCycle(const storagefacility::SqliteStorage& sqlite, const PurgeCycle& cycle);
   };
 
   class Participant {
@@ -178,6 +181,7 @@ public:
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
 
     std::set<std::string> pagePaths() const; // for latest version
+    void processPendingPurgeCycle(const storagefacility::SqliteStorage& sqlite, const PurgeCycle& cycle);
   };
 
 private:
@@ -205,6 +209,8 @@ private:
 
 public:
   PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;
+
+  void processPendingPurgeCycles(storagefacility::SqliteStorage& sqlite);
 
   std::shared_ptr<Entry> lookup(const EntryName& name, Timestamp validAt = Timestamp::max());
   std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool createIfNeeded = false);
