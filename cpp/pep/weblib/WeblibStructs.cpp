@@ -19,12 +19,15 @@ using namespace pep::weblib;
 
 // Add Embind serialization for weblib structures
 
+#define PEP_STRINGIZE_IMPL(x) #x
+#define PEP_STRINGIZE(x) PEP_STRINGIZE_IMPL(x)
+
 #define PEP_FIELD(r, type, member) \
-    .field(#member, &type::member)
+    .field(PEP_STRINGIZE(member), &type::member)
 
 #define PEP_BINDINGS(type, ...) \
     EMSCRIPTEN_BINDINGS(type) { \
-        value_object<type>(#type) \
+        value_object<type>(PEP_STRINGIZE(type)) \
             BOOST_PP_SEQ_FOR_EACH( \
                 PEP_FIELD, \
                 type, \
