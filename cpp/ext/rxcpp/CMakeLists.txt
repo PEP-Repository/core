@@ -2,7 +2,7 @@ include(FetchContent)
 FetchContent_Declare(
   rxcpp
   GIT_REPOSITORY https://gitlab.pep.cs.ru.nl/mirror/RxCpp.git
-  GIT_TAG        91722d3601da2c5de9040c94eb5fde55e55d4f9b
+  GIT_TAG        337cd6cfc619b14c8ea2aaf49c1714e6b2e7aee6
   GIT_SUBMODULES ""
   SOURCE_DIR     ../../cache/rxcpp
   EXCLUDE_FROM_ALL
