@@ -19,8 +19,8 @@ using namespace pep::weblib;
 
 // Add Embind serialization for weblib structures
 
-#define PEP_FIELD(r, type, field) \
-    .field(#field, &type::field)
+#define PEP_FIELD(r, type, member) \
+    .field(#member, &type::member)
 
 #define PEP_BINDINGS(type, ...) \
     EMSCRIPTEN_BINDINGS(type) { \
