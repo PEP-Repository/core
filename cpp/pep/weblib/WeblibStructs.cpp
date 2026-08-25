@@ -21,17 +21,17 @@ using namespace pep::weblib;
 // Add Embind serialization for weblib structures
 
 #define PEP_FIELD(r, type, member) \
-    .field(BOOST_PP_STRINGIZE(member), &type::member)
+  .field(BOOST_PP_STRINGIZE(member), &type::member)
 
-#define PEP_BINDINGS(type, ...)                       \
-    EMSCRIPTEN_BINDINGS(type) {                       \
-        value_object<type>(BOOST_PP_STRINGIZE(type))  \
-            BOOST_PP_SEQ_FOR_EACH(                    \
-                PEP_FIELD,                            \
-                type,                                 \
-                BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__) \
-            );                                        \
-    }
+#define PEP_BINDINGS(type, ...)                  \
+  EMSCRIPTEN_BINDINGS(type) {                    \
+    value_object<type>(BOOST_PP_STRINGIZE(type)) \
+      BOOST_PP_SEQ_FOR_EACH(                     \
+        PEP_FIELD,                               \
+        type,                                    \
+        BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)    \
+      );                                         \
+  }
 
 EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(ListQuery::subjectGroups)::value_type>();
@@ -42,31 +42,31 @@ EMSCRIPTEN_BINDINGS(optionals) {
 }
 
 PEP_BINDINGS(ListQuery,
-    subjectGroups,
-    subjects,
-    columnGroups,
-    columns
+  subjectGroups,
+  subjects,
+  columnGroups,
+  columns
 )
 
 PEP_BINDINGS(ColumnGroup,
-    name,
-    columns
+  name,
+  columns
 )
 
 PEP_BINDINGS(EnrolledUser,
-    userGroup,
-    user
+  userGroup,
+  user
 )
 
 PEP_BINDINGS(SubjectGroup,
-    name
+  name
 )
 
 PEP_BINDINGS(ParticipantPersonalia,
-    firstName,
-    middleName,
-    lastName,
-    dateOfBirth
+  firstName,
+  middleName,
+  lastName,
+  dateOfBirth
 )
 
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {
