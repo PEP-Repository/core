@@ -1,6 +1,9 @@
+#include <iostream>
 #include <pep/networking/CertificateVerification.hpp>
 #include <pep/utils/Log.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <pep/utils/Defer.hpp>
+#include <pep/utils/OpensslUtils.hpp>
 
 #ifdef _WIN32
 #include <wincrypt.h>
@@ -58,9 +61,41 @@ void TrustSystemRootCAs(boost::asio::ssl::context& ctx) {
 bool VerifyCertificateBasedOnExpectedCommonName(const std::string& expectedCommonName, bool preverified, boost::asio::ssl::verify_context& verifyCtx) {
   PEP_LOG(LogTag, Severity::Debug) << "Checking certificate for expected commonName " << expectedCommonName;
 
+  X509* cert = X509_STORE_CTX_get_current_cert(verifyCtx.native_handle());
+
   if (!preverified) {
-    int err = X509_STORE_CTX_get_error(verifyCtx.native_handle());
-    PEP_LOG(LogTag, Severity::Warning) << "Preverification of certificate failed with error " << err << " (" << X509_verify_cert_error_string(err) << ")";
+    if (cert) {
+      std::string subjectNameStr, issuerNameStr;
+      {
+        BIO *bio = BIO_new(BIO_s_mem());
+        if (!bio) {
+          throw pep::OpenSSLError("Failed to create IO buffer (BIO) in VerifyCertificateBasedOnExpectedCommonName.");
+        }
+        PEP_DEFER(BIO_free(bio));
+
+        if (X509_NAME_print_ex(bio, X509_get_subject_name(cert), 0, XN_FLAG_ONELINE) <= 0) {
+          throw pep::OpenSSLError("Failed format certificate subject name in VerifyCertificateBasedOnExpectedCommonName.");
+        }
+        subjectNameStr = OpenSSLBIOToString(bio);
+        if (BIO_reset(bio) <= 0) {
+          throw pep::OpenSSLError("Failed reset name BIO in VerifyCertificateBasedOnExpectedCommonName.");
+        }
+
+        if (X509_NAME_print_ex(bio, X509_get_issuer_name(cert), 0, XN_FLAG_ONELINE) <= 0) {
+          throw pep::OpenSSLError("Failed format certificate issuer name in VerifyCertificateBasedOnExpectedCommonName.");
+        }
+        issuerNameStr = OpenSSLBIOToString(bio);
+      }
+
+      int err = X509_STORE_CTX_get_error(verifyCtx.native_handle());
+      std::string errorStr = X509_verify_cert_error_string(err);
+      if (err == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY) {
+        errorStr += " (connecting to server of different environment with different PKI?)";
+      }
+      PEP_LOG(LogTag, Severity::Warning) << "Preverification of certificate for ["
+        << subjectNameStr << "] issued by [" << issuerNameStr << "] failed: " << errorStr;
+    }
+
     return false;
   }
 
@@ -70,8 +105,6 @@ bool VerifyCertificateBasedOnExpectedCommonName(const std::string& expectedCommo
   if (depth > 0) {
     return true;
   }
-
-  X509* cert = X509_STORE_CTX_get_current_cert(verifyCtx.native_handle());
 
   // Check for the TLS Server extended key usage field.  See #674
   bool foundWebServerEKU = false;
