@@ -1,10 +1,10 @@
 #pragma once
 
-#include <pep/storagefacility/StorageFacility.hpp>
+#include <pep/storagefacility/PurgeCycle.hpp>
 
-namespace pep {
+namespace pep::storagefacility {
 
-class StorageFacility::SqliteStorage final {
+class SqliteStorage final {
 private:
   struct Implementor;
   std::unique_ptr<Implementor> implementor_;
@@ -28,7 +28,7 @@ public:
   void addToPurgeCycle(PurgeCycle::Id id, const std::string& row, const std::string& column, Timestamp timestamp);
 };
 
-class StorageFacility::SqliteStorage::ConstraintViolation : public std::runtime_error {
+class SqliteStorage::ConstraintViolation : public std::runtime_error {
 public:
   ConstraintViolation();
 };

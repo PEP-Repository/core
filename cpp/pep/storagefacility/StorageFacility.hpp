@@ -5,6 +5,7 @@
 #include <pep/utils/XxHasher.hpp>
 #include <pep/storagefacility/FileStore.hpp>
 #include <pep/storagefacility/PurgeMessages.hpp>
+#include <pep/storagefacility/SqliteStorage.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>
 #include <pep/storagefacility/SFId.hpp>
 
@@ -16,8 +17,6 @@ namespace pep {
 
 class StorageFacility : public SigningServer {
 private:
-  class SqliteStorage;
-
   class Metrics : public RegisteredMetrics {
   public:
     Metrics(std::shared_ptr<prometheus::Registry> registry);
@@ -141,7 +140,7 @@ private:
   std::shared_ptr<WorkerPool> workerPool_;
   std::shared_ptr<FileStore> fileStore_;
   std::shared_ptr<Metrics> metrics_;
-  std::unique_ptr<SqliteStorage> sqlite_;
+  std::unique_ptr<storagefacility::SqliteStorage> sqlite_;
   boost::asio::steady_timer timer_;
   const uint8_t parallelisationWidth_ = 0; // passed to RxParallelConcat
   const uint64_t dataSizeResolution_;

@@ -1247,7 +1247,7 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
       }
     }
   }
-  catch (const SqliteStorage::ConstraintViolation&) {
+  catch (const storagefacility::SqliteStorage::ConstraintViolation&) {
     sqlite_->deletePurgeCycle(id);
     throw Error("Storage Facility entries may only be included in a single purge cycle");
   }
@@ -1290,7 +1290,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()) {
 
-  sqlite_ = std::make_unique<SqliteStorage>(parameters->getStorageFile());
+  sqlite_ = std::make_unique<storagefacility::SqliteStorage>(parameters->getStorageFile());
 
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,

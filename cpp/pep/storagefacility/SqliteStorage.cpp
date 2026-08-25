@@ -5,7 +5,7 @@
 #include <boost/numeric/conversion/cast.hpp>
 #include <sqlite_orm/sqlite_orm.h>
 
-namespace pep {
+namespace pep::storagefacility {
 
 namespace {
 
@@ -102,15 +102,15 @@ PurgeCycleRecord PurgeCycleToRecord(const PurgeCycle& cycle) {
 
 } // End anonymous namespace
 
-StorageFacility::SqliteStorage::ConstraintViolation::ConstraintViolation()
+SqliteStorage::ConstraintViolation::ConstraintViolation()
   : std::runtime_error("SQLite constraint violation") {
 }
 
-struct StorageFacility::SqliteStorage::Implementor : public pep::database::Storage<MakeRawStorage> {
+struct SqliteStorage::Implementor : public pep::database::Storage<MakeRawStorage> {
   using pep::database::Storage<MakeRawStorage>::Storage;
 };
 
-int64_t StorageFacility::SqliteStorage::getRowId(const std::string& name) {
+int64_t SqliteStorage::getRowId(const std::string& name) {
   using namespace sqlite_orm;
   auto result = RangeToOptional(
     implementor_->raw.select(&RowRecord::seqno,
@@ -124,7 +124,7 @@ int64_t StorageFacility::SqliteStorage::getRowId(const std::string& name) {
   return *result;
 }
 
-int64_t StorageFacility::SqliteStorage::getColumnId(const std::string& name) {
+int64_t SqliteStorage::getColumnId(const std::string& name) {
   using namespace sqlite_orm;
   auto result = RangeToOptional(
     implementor_->raw.select(&ColumnRecord::seqno,
@@ -138,31 +138,31 @@ int64_t StorageFacility::SqliteStorage::getColumnId(const std::string& name) {
   return *result;
 }
 
-void StorageFacility::SqliteStorage::deletePurgeCycleRecord(int64_t id) {
+void SqliteStorage::deletePurgeCycleRecord(int64_t id) {
   implementor_->raw.remove<PurgeCycleRecord>(id);
 }
 
-StorageFacility::SqliteStorage::SqliteStorage(std::filesystem::path file)
+SqliteStorage::SqliteStorage(std::filesystem::path file)
   : implementor_(std::make_unique<Implementor>(file.string())) {
   implementor_->syncSchema();
 }
 
-StorageFacility::SqliteStorage::~SqliteStorage() noexcept = default;
+SqliteStorage::~SqliteStorage() noexcept = default;
 
-std::vector<PurgeCycle> StorageFacility::SqliteStorage::getPurgeCycles() const {
+std::vector<PurgeCycle> SqliteStorage::getPurgeCycles() const {
   return RangeToVector(implementor_->raw.get_all<PurgeCycleRecord>()
     | std::ranges::views::transform(&RecordToPurgeCycle));
 }
 
-PurgeCycle StorageFacility::SqliteStorage::getPurgeCycle(PurgeCycle::Id id) const {
+PurgeCycle SqliteStorage::getPurgeCycle(PurgeCycle::Id id) const {
   return RecordToPurgeCycle(implementor_->raw.get<PurgeCycleRecord>(id));
 }
 
-void StorageFacility::SqliteStorage::updatePurgeCycle(const PurgeCycle& cycle) {
+void SqliteStorage::updatePurgeCycle(const PurgeCycle& cycle) {
   implementor_->raw.update(PurgeCycleToRecord(cycle));
 }
 
-PurgeCycle::Id StorageFacility::SqliteStorage::createPurgeCycle(const PurgeCycle& cycle) {
+PurgeCycle::Id SqliteStorage::createPurgeCycle(const PurgeCycle& cycle) {
   auto id = implementor_->raw.insert(PurgeCycleToRecord(cycle));
 
   PurgeCycle::Id result;
@@ -176,13 +176,13 @@ PurgeCycle::Id StorageFacility::SqliteStorage::createPurgeCycle(const PurgeCycle
   return result;
 }
 
-void StorageFacility::SqliteStorage::deletePurgeCycle(PurgeCycle::Id id) {
+void SqliteStorage::deletePurgeCycle(PurgeCycle::Id id) {
   using namespace sqlite_orm;
   implementor_->raw.remove_all<PurgeEntryRecord>(where(c(&PurgeEntryRecord::cycle) == id));
   this->deletePurgeCycleRecord(id);
 }
 
-void StorageFacility::SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const std::string& row, const std::string& column, Timestamp timestamp) {
+void SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const std::string& row, const std::string& column, Timestamp timestamp) {
   try {
     implementor_->raw.insert(PurgeEntryRecord{
       .cycle = id,
