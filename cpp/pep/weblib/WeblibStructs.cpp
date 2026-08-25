@@ -8,6 +8,7 @@
 #include <pep/weblib/ObservableStream.hpp>
 
 #include <boost/algorithm/hex.hpp>
+#include <boost/preprocessor/stringize.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/variadic/to_seq.hpp>
 
@@ -19,15 +20,12 @@ using namespace pep::weblib;
 
 // Add Embind serialization for weblib structures
 
-#define PEP_STRINGIZE_IMPL(x) #x
-#define PEP_STRINGIZE(x) PEP_STRINGIZE_IMPL(x)
-
 #define PEP_FIELD(r, type, member) \
-    .field(PEP_STRINGIZE(member), &type::member)
+    .field(BOOST_PP_STRINGIZE(member), &type::member)
 
 #define PEP_BINDINGS(type, ...) \
     EMSCRIPTEN_BINDINGS(type) { \
-        value_object<type>(PEP_STRINGIZE(type)) \
+        value_object<type>(BOOST_PP_STRINGIZE(type)) \
             BOOST_PP_SEQ_FOR_EACH( \
                 PEP_FIELD, \
                 type, \
