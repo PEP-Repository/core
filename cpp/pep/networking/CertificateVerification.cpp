@@ -1,4 +1,3 @@
-#include <iostream>
 #include <pep/networking/CertificateVerification.hpp>
 #include <pep/utils/Log.hpp>
 #include <boost/algorithm/string/predicate.hpp>
