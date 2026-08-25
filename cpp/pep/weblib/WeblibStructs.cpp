@@ -23,14 +23,14 @@ using namespace pep::weblib;
 #define PEP_FIELD(r, type, member) \
     .field(BOOST_PP_STRINGIZE(member), &type::member)
 
-#define PEP_BINDINGS(type, ...) \
-    EMSCRIPTEN_BINDINGS(type) { \
-        value_object<type>(BOOST_PP_STRINGIZE(type)) \
-            BOOST_PP_SEQ_FOR_EACH( \
-                PEP_FIELD, \
-                type, \
+#define PEP_BINDINGS(type, ...)                       \
+    EMSCRIPTEN_BINDINGS(type) {                       \
+        value_object<type>(BOOST_PP_STRINGIZE(type))  \
+            BOOST_PP_SEQ_FOR_EACH(                    \
+                PEP_FIELD,                            \
+                type,                                 \
                 BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__) \
-            ); \
+            );                                        \
     }
 
 EMSCRIPTEN_BINDINGS(optionals) {
