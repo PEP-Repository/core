@@ -64,6 +64,7 @@ bool VerifyCertificateBasedOnExpectedCommonName(const std::string& expectedCommo
   X509* cert = X509_STORE_CTX_get_current_cert(verifyCtx.native_handle());
 
   if (!preverified) {
+    std::string certificateDescription = "certificate";
     if (cert) {
       std::string subjectNameStr, issuerNameStr;
       {
@@ -87,14 +88,16 @@ bool VerifyCertificateBasedOnExpectedCommonName(const std::string& expectedCommo
         issuerNameStr = OpenSSLBIOToString(bio);
       }
 
-      int err = X509_STORE_CTX_get_error(verifyCtx.native_handle());
-      std::string errorStr = X509_verify_cert_error_string(err);
-      if (err == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY) {
-        errorStr += " (connecting to server of different environment with different PKI?)";
-      }
-      PEP_LOG(LogTag, Severity::Warning) << "Preverification of certificate for ["
-        << subjectNameStr << "] issued by [" << issuerNameStr << "] failed: " << errorStr;
+      certificateDescription = "certificate for [" + subjectNameStr + "] issued by [" + issuerNameStr + "]";
     }
+
+    const auto err = X509_STORE_CTX_get_error(verifyCtx.native_handle());
+    std::string errorStr = X509_verify_cert_error_string(err);
+    if (err == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY) {
+      errorStr += " (connecting to server of different environment with different PKI?)";
+    }
+    PEP_LOG(LogTag, Severity::Warning)
+      << "Preverification of " << certificateDescription << " failed: " << errorStr;
 
     return false;
   }
