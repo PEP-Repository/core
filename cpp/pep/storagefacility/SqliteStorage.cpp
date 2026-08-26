@@ -232,5 +232,25 @@ std::set<Timestamp> SqliteStorage::getPurgedTimestamps(PurgeCycle::Id id, const 
   return result;
 }
 
+std::optional<Timestamp> SqliteStorage::pendingPurgeTimestamp(const std::string& row, const std::string& column, Timestamp timestamp) const {
+  auto rowId = this->getRowId(row);
+  auto columnId = this->getColumnId(column);
+  if (!rowId.has_value() || !columnId.has_value()) {
+    return std::nullopt;
+  }
+
+  using namespace sqlite_orm;
+  auto millis = database::TimestampToUnixMillis(timestamp);
+
+  auto confirmed = implementor_->raw.select(&PurgeCycleRecord::confirmed,
+    inner_join<PurgeEntryRecord>(on(c(&PurgeEntryRecord::cycle) == c(&PurgeCycleRecord::id))),
+    where(c(&PurgeEntryRecord::row) == rowId && c(&PurgeEntryRecord::column) == columnId && c(&PurgeEntryRecord::timestamp) == millis
+      && c(&PurgeCycleRecord::confirmed) != 0 && c(&PurgeCycleRecord::completed) == 0));
+  if (confirmed.empty()) {
+    return std::nullopt;
+  }
+  assert(confirmed.size() == 1U);
+  return database::TimestampFromUnixMillis(confirmed.front());
+}
 
 }

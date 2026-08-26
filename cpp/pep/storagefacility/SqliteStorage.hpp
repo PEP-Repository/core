@@ -30,6 +30,7 @@ public:
 
   void addToPurgeCycle(PurgeCycle::Id id, const std::string& row, const std::string& column, Timestamp timestamp);
   std::set<Timestamp> getPurgedTimestamps(PurgeCycle::Id id, const std::string& row, const std::string& column) const;
+  std::optional<Timestamp> pendingPurgeTimestamp(const std::string& row, const std::string& column, Timestamp timestamp) const;
 };
 
 class SqliteStorage::ConstraintViolation : public std::runtime_error {

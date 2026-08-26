@@ -190,10 +190,13 @@ public:
 
 private:
   FileStore(
+    const storagefacility::SqliteStorage& sqlite,
     const std::filesystem::path& metadatapath,
     const Configuration& pageStoreConfig,
     std::shared_ptr<boost::asio::io_context> io_context,
     std::shared_ptr<prometheus::Registry> metrics_registry);
+
+  const storagefacility::SqliteStorage& sqlite_;
 
   // Keep collections of unique strings to save memory: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2322 .
   // Note that "No iterators or references are invalidated" when an std::set or std::map changes, so

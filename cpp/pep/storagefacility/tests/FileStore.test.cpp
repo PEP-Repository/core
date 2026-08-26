@@ -1,6 +1,7 @@
 #include <pep/storagefacility/FileStore.hpp>
 
 #include <pep/storagefacility/Constants.hpp>
+#include <pep/storagefacility/SqliteStorage.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/async/tests/RxTestUtils.hpp>
@@ -10,6 +11,7 @@
 
 using pep::EntryContent;
 using pep::FileStore;
+using pep::storagefacility::SqliteStorage;
 
 namespace {
 
@@ -24,7 +26,9 @@ struct Context {
   std::filesystem::path path = std::filesystem::temp_directory_path() / "pep-sf-tests";
   std::string bucket = "myBucket";
   std::shared_ptr<FileStore> store;
+  std::unique_ptr<SqliteStorage> sqlite;
 
+  std::filesystem::path sqlitepath() { return this->path / "sf.sqlite"; }
   std::filesystem::path metapath() { return this->path / "meta"; }
   std::filesystem::path datapath() { return this->path / "data"; }
   std::filesystem::path bucketpath() {
@@ -46,7 +50,9 @@ struct Context {
     boost::property_tree::ptree pageStoreConf;
     pageStoreConf.put_child("Local", localConf);
 
+    this->sqlite = std::make_unique<SqliteStorage>(this->sqlitepath());
     this->store = FileStore::Create(
+        *this->sqlite,
         this->metapath().string(), pep::Configuration::FromPtree(pageStoreConf), this->io_context,
         std::shared_ptr<prometheus::Registry>() // intentionally null
     );

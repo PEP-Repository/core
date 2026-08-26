@@ -138,9 +138,9 @@ private:
   ElgamalPrivateKey pseudonymKey_;
   std::string encIdKey_;
   std::shared_ptr<WorkerPool> workerPool_;
+  std::unique_ptr<storagefacility::SqliteStorage> sqlite_;
   std::shared_ptr<FileStore> fileStore_;
   std::shared_ptr<Metrics> metrics_;
-  std::unique_ptr<storagefacility::SqliteStorage> sqlite_;
   boost::asio::steady_timer timer_;
   const uint8_t parallelisationWidth_ = 0; // passed to RxParallelConcat
   const uint64_t dataSizeResolution_;

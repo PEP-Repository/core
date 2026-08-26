@@ -1280,7 +1280,9 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   : SigningServer(parameters),
   pseudonymKey_(parameters->getPseudonymKey()), encIdKey_(parameters->getEncIdKey()),
   workerPool_(WorkerPool::getShared()),
+  sqlite_(std::make_unique<storagefacility::SqliteStorage>(parameters->getStorageFile())),
   fileStore_(FileStore::Create(
+    *sqlite_,
     parameters->getStoragePath().string(),
     *parameters->getPageStoreConfig(),
     parameters->getIoContext(),
@@ -1290,7 +1292,6 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()) {
 
-  sqlite_ = std::make_unique<storagefacility::SqliteStorage>(parameters->getStorageFile());
 
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,

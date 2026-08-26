@@ -104,11 +104,13 @@ const std::string& FileStore::getColumnString(const std::string& value) {
 }
 
 FileStore::FileStore(
+  const storagefacility::SqliteStorage& sqlite,
   const std::filesystem::path& metadatapath,
   const Configuration& pageStoreConfig,
   std::shared_ptr<boost::asio::io_context> io_context,
   std::shared_ptr<prometheus::Registry> metrics_registry)
-  : path_(CheckedPath::FromTrusted(metadatapath)),
+  : sqlite_(sqlite),
+  path_(CheckedPath::FromTrusted(metadatapath)),
   pagestore_(PageStore::Create(io_context, metrics_registry, pageStoreConfig))
 {
   // throws when an error occurs while creating any of the given directories in the supplied path
@@ -157,6 +159,7 @@ FileStore::CellVersion FileStore::CellVersion::FromEntry(const Entry& entry) {
     .validFrom = entry.getValidFrom(),
     .checksumSubstitute = entry.getChecksumSubstitute(),
     .payloadSize = entry.payloadSize(),
+    .purgedAt = entry.getPurgedAt(),
     .isOriginalPayloadOwner = entry.isOriginalPayloadOwner(),
     .isTombstone = entry.isTombstone(),
   };
@@ -504,6 +507,9 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
 
   auto checksumSubstitute = ExtractPersistedEntryProperty<uint64_t>(properties, ChecksumSubstituteKey);
   auto purgedAt = TryExtractPersistedEntryProperty<Timestamp>(properties, PurgedAtKey);
+  if (!purgedAt) {
+    purgedAt = cell.participant().fileStore().sqlite_.pendingPurgeTimestamp(cell.participant().name(), cell.columnName(), validFrom);
+  }
   auto entryContent = EntryContent::Load(cell.participant().fileStore(), properties, pages);
 
   // Read content hash from (end of) file
