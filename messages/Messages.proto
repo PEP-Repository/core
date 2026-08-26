@@ -628,6 +628,9 @@ message DataEnumerationEntry2 {
   // If this message is sent as response to a MetadataReadRequest2, this will
   // include the index of the file in the ids field of the request.
   uint32 index = 8;
+
+  // If the entry has been purged: the moment at which the purge cycle was confirmed
+  Timestamp purged_at = 9;
 }
 
 // Requests retrieval of Metadata and keys of the given files,
@@ -777,6 +780,9 @@ message DataHistoryEntry2 {
 
   // (Encrypted) storage facility ID. If empty, this history entry represents a deletion
   bytes id = 4;
+
+  // If the entry is purged: the timestamp at which the cycle was confirmed
+  Timestamp purged_at = 5;
 }
 
 message DataHistoryResponse2 {

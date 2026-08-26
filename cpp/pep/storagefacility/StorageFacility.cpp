@@ -393,6 +393,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       re.entry.metadata = this->compileMetadata(col, *entry);
       re.entry.fileSize = entry->content()->payload()->size();
       re.entry.polymorphicKey = content->getPolymorphicKey(); // will be rerandomized later
+      re.entry.purgedAt = entry->getPurgedAt();
       re.entry.columnIndex = colIndexIt->second;
       re.entry.pseudonymIndex = static_cast<uint32_t>(pseud_index);
     }
@@ -508,6 +509,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
         .metadata = server->compileMetadata(column, *sfentry),
         // TODO execute rerandomization in WorkerPool
         .polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey()),
+        .purgedAt = sfentry->getPurgedAt(),
         .fileSize = sfcontent->payload()->size(),
         .columnIndex = indices.getColumnIndex(column),
         .pseudonymIndex = indices.getPseudonymIndex(pseud),
@@ -1058,6 +1060,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
           .pseudonymIndex = static_cast<uint32_t>(pseud_index),
           .timestamp = version.validFrom,
           .id = !version.isTombstone ? encryptId(entryName, version.validFrom) : "",
+          .purgedAt = version.purgedAt,
           });
       }
     }
