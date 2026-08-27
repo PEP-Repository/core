@@ -92,6 +92,8 @@ bool VerifyCertificateBasedOnExpectedCommonName(const std::string& expectedCommo
 
     const auto err = X509_STORE_CTX_get_error(verifyCtx.native_handle());
     std::string errorStr = X509_verify_cert_error_string(err);
+    // The server does not include the root CA,
+    // so the error will be that the issuer of the intermediate CA cannot be found.
     if (err == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY) {
       errorStr += " (connecting to server of different environment with different PKI?)";
     }
