@@ -280,7 +280,7 @@ void FileStore::Cell::processPendingPurgeCycle(const storagefacility::SqliteStor
         }
       }
     }
-    auto emplaced = updated.emplace(std::move(version)).second;
+    [[maybe_unused]] auto emplaced = updated.emplace(std::move(version)).second;
     assert(emplaced);
   }
 
