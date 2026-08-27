@@ -351,6 +351,8 @@ services:
     environment:
       - S3PROXY_IDENTITY=${S3PROXY_IDENTITY}
       - S3PROXY_CREDENTIAL=${S3PROXY_CREDENTIAL}
+      # You can set LOG_LEVEL=debug & JETTY_LOG_LEVEL=debug for detailed logging
+
     volumes:
       - "${DATA_DIR_BASE}/storagefacility/data:/data"
       - /etc/localtime:/etc/localtime:ro
