@@ -231,6 +231,7 @@ DataHistoryEntry2 Serializer<DataHistoryEntry2>::fromProtocolBuffer(proto::DataH
     .pseudonymIndex = source.pseudonym_index(),
     .timestamp = Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp())),
     .id = std::move(*source.mutable_id()),
+    .purgedAt{},
   };
   if (source.has_purged_at()) {
     result.purgedAt = Serialization::FromProtocolBuffer(std::move(*source.mutable_purged_at()));
