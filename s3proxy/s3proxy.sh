@@ -73,6 +73,14 @@ stage() {
   mkdir -p "${DATADIR}/myBucket1" # for pepStorageFacilityUnitTests
   mkdir -p "${DATADIR}/myBucket2"
 
+  # The second S3 host (s3proxy2) has its own storage, so that tests can tell the two hosts apart
+  # even when they serve buckets with the same name.
+  DATADIR2=$(rel_to_abs data2 "$destination")
+  >&2 echo "Creating bucket directories for s3proxy2 under $DATADIR2"
+  mkdir -p "${DATADIR2}/myBucket"
+  mkdir -p "${DATADIR2}/myBucket1" # for pepStorageFacilityUnitTests
+  mkdir -p "${DATADIR2}/myBucket2"
+
   >&2 echo "Creating configuration directories for s3proxyproxy"
   cp -r "$(rel_to_abs s3proxyproxy_etc_nginx)" "$destination"
 
@@ -96,8 +104,13 @@ start_containers() {
 
   export S3_ACCESS_KEY=MyAccessKey
   export S3_SECRET_KEY=MySecret
+  # Deliberately different from the credentials of the first host, so that a request that is sent
+  # to the wrong host is rejected instead of being silently served.
+  export S3_ACCESS_KEY2=MyAccessKey2
+  export S3_SECRET_KEY2=MySecret2
 
   DATADIR=$(rel_to_abs data)
+  DATADIR2=$(rel_to_abs data2)
   etc_nginx_dir=$(rel_to_abs s3proxyproxy_etc_nginx)
 
   # Create "--net" clause for s3proxyproxy's docker command if the pep Docker network was passed,
@@ -117,10 +130,17 @@ start_containers() {
   # shellcheck disable=SC2086 # Don't quote possibly empty $network_switch variable so Docker won't interpret them as an empty image spec, causing "invalid reference format" errors
   "$docker" run --rm --detach --name s3proxyproxy $network_switch --add-host=host.docker.internal:host-gateway -p 9000:9000 -v /"${etc_nginx_dir}":/etc/nginx -v /"${SCRIPTDIR}"/s3certs:/s3cert:ro nginx
 
+  # The second S3 host is accessed over plaintext HTTP, so (unlike the first one) it needs no
+  # TLS terminator and is bound to the PEP network directly.
+  >&2 printf "Starting s3proxy2 container..."
+  # shellcheck disable=SC2086 # See above
+  "$docker" run --rm --detach --name s3proxy2 $network_switch -e S3PROXY_IDENTITY=${S3_ACCESS_KEY2} -e S3PROXY_CREDENTIAL=${S3_SECRET_KEY2} -e LOG_LEVEL=TRACE -p 9003:80 -v /"${DATADIR2}":/data "${S3PROXY_IMAGE}"
+
   # Set ENABLE_S3PROXY_LOG envvar to enable logging
   if [ -n "${ENABLE_S3PROXY_LOG-}" ]; then
     "$docker" logs --follow s3proxy 2> >(sed -u "s/^/[s3proxy]: /" >&2) > >(sed -u "s/^/[s3proxy]: /") &
     "$docker" logs --follow s3proxyproxy 2> >(sed -u "s/^/[s3proxyproxy]: /" >&2) > >(sed -u "s/^/[s3proxyproxy]: /") &
+    "$docker" logs --follow s3proxy2 2> >(sed -u "s/^/[s3proxy2]: /" >&2) > >(sed -u "s/^/[s3proxy2]: /") &
   fi
 }
 
@@ -142,6 +162,7 @@ stop_container() {
 stop_containers() {
   stop_container s3proxyproxy
   stop_container s3proxy
+  stop_container s3proxy2
 }
 
 run_containers_interactively() {

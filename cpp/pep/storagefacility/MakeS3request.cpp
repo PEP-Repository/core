@@ -49,6 +49,8 @@ public:
     if (values.has("curl")) {
       std::vector<std::string> parts;
       parts.emplace_back("curl -v -X PUT");
+      // curl defaults to application/x-www-form-urlencoded
+      request.setHeader("Content-Type", "application/octet-stream");
       for (const auto& header : request.getHeaders()) {
         parts.emplace_back("--header " + Quote(header.first + ": " + header.second));
       }

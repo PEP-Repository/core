@@ -121,9 +121,8 @@ if should_run_test basic; then
   pepcli --oauth-token-group "Research Assessor" store -p "$TEST_PARTICIPANT" -c Visit1.MRI.Func -i "$SYMLINK_TEST_DATA" &&
       fail "Storing a directory structure with symlinks withOUT the -resolve-symlinks flag unexpectedly succeeded."
 
-  # Store something so large that it will be sent to the page store, i.e. larger than INLINE_PAGE_THRESHOLD ( = 4*1024 bytes ).
-  readonly RANDOM_DATA_FILE="$DEST_DIR/random-data.bin"
-  execute . dd if=/dev/urandom of="$RANDOM_DATA_FILE" bs=1024 count=6
+  RANDOM_DATA_FILE=$(make_non_inline_file "random-data.bin")
+  readonly RANDOM_DATA_FILE
   pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -i "$RANDOM_DATA_FILE"
   # Download the data we just stored and compare it to the original data.
   pepcli pull --output-directory "$DEST_DIR/pulled" -p "$TEST_PARTICIPANT" -c DeviceHistory
@@ -847,13 +846,15 @@ if should_run_test s3-roundtrip; then
   test_setup "$S3_ROUNDTRIP_CONFIG"
 
   # Store a large (i.e. stored in S3) file with some participants
-  readonly LARGE_RANDOM_DATA_FILE=$(make_large_random_data_file "large-random-data.bin")
+  LARGE_RANDOM_DATA_FILE=$(make_large_random_data_file "large-random-data.bin")
+  readonly LARGE_RANDOM_DATA_FILE
   for i in {1..50}; do
     pepcli --oauth-token-group "Research Assessor" store -p "participant$i" -c LargeColumn -i "$LARGE_RANDOM_DATA_FILE"
   done
 
   # Download the (large) files that we stored
-  pepcli --oauth-token-group "Research Assessor" pull -P \* -c LargeColumn -o "$DEST_DIR/s3-backed-files"
+  # Increase timeout because this may take long, especially when using Podman for some reason
+  PEPCLI_TIMEOUT=200s pepcli --oauth-token-group "Research Assessor" pull -P \* -c LargeColumn -o "$DEST_DIR/s3-backed-files"
   # We'd like to diff/compare the downloaded files to the original LARGE_RANDOM_DATA_FILE, but
   # that's not easily done because "find" doesn't propagate exit codes and we can't pipe within the
   # container. So we just count the downloaded files instead of (also) inspecting their contents.
@@ -893,7 +894,8 @@ if should_run_test page-paths; then
   before=$(echo "$before" | wc -l)
   
   # Store a large (i.e. stored in S3) file
-  readonly PAGED_RANDOM_DATA_FILE=$(make_large_random_data_file "paged-random-data.bin")
+  PAGED_RANDOM_DATA_FILE=$(make_large_random_data_file "paged-random-data.bin")
+  readonly PAGED_RANDOM_DATA_FILE
   pepcli --oauth-token-group "Research Assessor" store -p "some-participant" -c PagedColumn -i "$PAGED_RANDOM_DATA_FILE"
   
   # Count number of pages after storing
@@ -915,6 +917,179 @@ if should_run_test page-paths; then
   # Clean up
   execute . rm "$PAGED_RANDOM_DATA_FILE"
   test_cleanup "$PAGE_PATHS_CONFIG"
+fi
+
+####################
+
+# Walks the Storage Facility through the migration to a different S3 host: adding a host, writing
+# to it, moving the pages of the old host over, and finally dropping the old host. Storing and
+# downloading files must keep working during every step.
+if should_run_test s3-multi-host; then
+  if [ "$USE_DOCKER" = false ]; then
+    printGreen "(Not running tests: s3-multi-host, which needs the S3 servers that run in Docker)"
+  else
+    S3_MULTI_HOST_CONFIG='{
+      "columnGroups": [{
+        "name": "MultiHostColumns",
+        "columns": [ "MultiHostColumn" ],
+        "cgars": { "Research Assessor": [ "read", "write" ] }
+      }]
+    }'
+
+    test_setup "$S3_MULTI_HOST_CONFIG"
+
+    storage_facility_config="$DATA_DIR/storagefacility/StorageFacility.json"
+    # Keep the original configuration around, to restore when we're done.
+    trace cp -- "$storage_facility_config" "$storage_facility_config.before-multi-host"
+
+    # The bucket that the Storage Facility uses. Both S3 hosts serve a bucket with this name.
+    s3_bucket=$(jq --exit-status --raw-output '.PageStore.S3.WriteToBucket.Name' -- "$storage_facility_config")
+    if [ -z "$s3_bucket" ]; then
+      fail "Could not determine the bucket that the Storage Facility writes to"
+    fi
+    bucket_on_host_a="$S3PROXY_RUNTIME_DIR/data/$s3_bucket"
+    bucket_on_host_b="$S3PROXY_RUNTIME_DIR/data2/$s3_bucket"
+
+    # The Storage Facility talks to the first S3 host ("s3proxyproxy") over TLS, and to the second
+    # one ("s3proxy2") over plaintext HTTP: see s3proxy.sh. Inside Docker the servers reach the
+    # second host by container name; locally they reach it on a published port.
+    if [ "$LOCAL" = true ]; then
+      s3_host_b_address="$PEP_S3_B_HOST"
+      s3_host_b_port="$PEP_S3_B_PORT"
+    else
+      s3_host_b_address="s3proxy2"
+      s3_host_b_port=80
+    fi
+
+    # Applies the specified jq filter to the Storage Facility's configuration file, and restarts
+    # the servers so that they use the updated configuration.
+    reconfigure_page_store() {
+      jq "$@" -- "$storage_facility_config" >"$storage_facility_config.tmp" ||
+        fail "Could not rewrite $storage_facility_config"
+      mv -f -- "$storage_facility_config.tmp" "$storage_facility_config"
+      restart_servers
+    }
+
+    count_pages() {
+      local bucket_dir="$1"
+      find "$bucket_dir" -type f | wc -l
+    }
+
+    store_multi_host_file() {
+      local participant="$1"
+      local file="$2"
+      pepcli --oauth-token-group "Research Assessor" store -p "$participant" -c MultiHostColumn --input-path "$file"
+    }
+
+    # Downloads the participant's file and verifies that it's identical to the file that was
+    # stored for them. A page that cannot be retrieved from S3 makes this fail: the integration
+    # setup stores pages both locally and in S3, and the Storage Facility raises an error when
+    # those two disagree.
+    verify_multi_host_file() {
+      local participant="$1"
+      local file="$2"
+
+      local output_dir="$DEST_DIR/multi-host-pulled"
+      execute . rm -rf "$output_dir"
+      pepcli --oauth-token-group "Research Assessor" pull -p "$participant" -c MultiHostColumn -o "$output_dir"
+
+      local pulled expected actual
+      pulled=$(execute . find "$output_dir" -type f -name MultiHostColumn.bin)
+      if [ -z "$pulled" ]; then
+        fail "Did not download a file for participant $participant"
+      fi
+      expected=$(execute . sha256sum "$file" | cut -d' ' -f1)
+      actual=$(execute . sha256sum "$pulled" | cut -d' ' -f1)
+      if [ "$actual" != "$expected" ]; then
+        fail "Downloaded file for participant $participant differs from the file that was stored"
+      fi
+      execute . rm -rf "$output_dir"
+    }
+
+    printGreen "s3-multi-host phase 1: a single S3 host, which is both read from and written to"
+    file_a=$(make_non_inline_file multi-host-a.bin)
+    pages_on_a_before=$(count_pages "$bucket_on_host_a")
+    store_multi_host_file multi-host-participant-a "$file_a"
+    pages_on_a=$(count_pages "$bucket_on_host_a")
+    if [ "$pages_on_a" -le "$pages_on_a_before" ]; then
+      fail "Expected the stored file to add pages to the first S3 host"
+    fi
+    verify_multi_host_file multi-host-participant-a "$file_a"
+
+    printGreen "s3-multi-host phase 2: add a second S3 host, and write to that one"
+    # shellcheck disable=SC2016 # We substitute variables via jq's `--arg`
+    reconfigure_page_store \
+      --arg address "$s3_host_b_address" \
+      --argjson port "$s3_host_b_port" \
+      --arg accessKey "$PEP_S3_B_ACCESS_KEY" \
+      --arg secret "$PEP_S3_B_SECRET_KEY" \
+      --arg bucket "$s3_bucket" \
+      '.PageStore.S3.Hosts.s3proxy2 = {
+         EndPoint: { Address: $address, Port: $port },
+         Credentials: { AccessKey: $accessKey, Secret: $secret },
+         UseHttps: false
+       }
+       | .PageStore.S3.WriteToBucket = { Name: $bucket, HostId: "s3proxy2" }
+       | .PageStore.S3.ReadFromBuckets = [
+         { Name: $bucket, HostId: "s3proxy2" },
+         { Name: $bucket, HostId: "s3proxyproxy" }
+       ]'
+
+    file_b=$(make_non_inline_file multi-host-b.bin)
+    pages_on_b_before=$(count_pages "$bucket_on_host_b")
+    store_multi_host_file multi-host-participant-b "$file_b"
+    if [ "$(count_pages "$bucket_on_host_b")" -le "$pages_on_b_before" ]; then
+      fail "Expected the stored file to add pages to the second S3 host"
+    fi
+    if [ "$(count_pages "$bucket_on_host_a")" -ne "$pages_on_a" ]; then
+      fail "Expected no pages to be added to the first S3 host anymore"
+    fi
+    # The first file's pages are still on the first host, so they can only be found by reading
+    # from both hosts.
+    verify_multi_host_file multi-host-participant-a "$file_a"
+    verify_multi_host_file multi-host-participant-b "$file_b"
+
+    printGreen "s3-multi-host phase 3: copy the pages of the first S3 host to the second one"
+    pages_on_b_before=$(count_pages "$bucket_on_host_b")
+    cp -a -- "$bucket_on_host_a/." "$bucket_on_host_b"
+    if [ "$(count_pages "$bucket_on_host_b")" != "$((pages_on_b_before + "$(count_pages "$bucket_on_host_a")"))" ]; then
+      fail "Expected the second S3 host contain all pages of the first host"
+    fi
+    verify_multi_host_file multi-host-participant-a "$file_a"
+    verify_multi_host_file multi-host-participant-b "$file_b"
+
+    printGreen "s3-multi-host phase 4: remove the pages of the first S3 host"
+    rm -rf -- "${bucket_on_host_a:?}/"*
+    if [ "$(count_pages "$bucket_on_host_a")" -ne 0 ]; then
+      fail "Expected the first S3 host to have no pages left"
+    fi
+    verify_multi_host_file multi-host-participant-a "$file_a"
+    verify_multi_host_file multi-host-participant-b "$file_b"
+
+    printGreen "s3-multi-host phase 5: remove the first S3 host from the configuration"
+    # shellcheck disable=SC2016 # We substitute variables via jq's `--arg`
+    reconfigure_page_store --arg bucket "$s3_bucket" \
+      'del(.PageStore.S3.Hosts.s3proxyproxy)
+       | .PageStore.S3.ReadFromBuckets = [ { Name: $bucket, HostId: "s3proxy2" } ]'
+
+    file_c=$(make_non_inline_file multi-host-c.bin)
+    store_multi_host_file multi-host-participant-c "$file_c"
+    verify_multi_host_file multi-host-participant-a "$file_a"
+    verify_multi_host_file multi-host-participant-b "$file_b"
+    verify_multi_host_file multi-host-participant-c "$file_c"
+
+    # Clean up: remove the data that we stored, put the pages back on the S3 host that the
+    # (restored) configuration reads from, and leave the servers running as we found them.
+    for participant in a b c; do
+      pepcli --oauth-token-group "Research Assessor" delete -p "multi-host-participant-$participant" -c MultiHostColumn
+    done
+    mv -- "${bucket_on_host_b?:}/"* "$bucket_on_host_a"
+    trace mv -f -- "$storage_facility_config.before-multi-host" "$storage_facility_config"
+    restart_servers
+
+    execute . rm -- "$file_a" "$file_b" "$file_c"
+    test_cleanup "$S3_MULTI_HOST_CONFIG"
+  fi
 fi
 
 ####################

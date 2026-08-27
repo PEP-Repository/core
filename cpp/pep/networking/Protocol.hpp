@@ -7,6 +7,7 @@
 #include <pep/async/IoContext_fwd.hpp>
 
 namespace pep::networking {
+class Connection;
 
 /// \brief (Abstract) base class for specific network protocol types. Inherit through the ProtocolImplementor<> helper (defined below).
 /// \remark If/since your implementation requires specific state for sockets and/or clients and/or servers, inherit the nested classes
@@ -178,6 +179,9 @@ public:
   /// \return A string describing the node (component).
   virtual std::string describe() const = 0;
 
+  /// Get human-readable description of a connection to this node.
+  virtual std::string describeConnection(const Connection& connection) const = 0;
+
   /// Releases the node component's resources.
   virtual void close() = 0;
 
@@ -203,7 +207,10 @@ public:
 
   /// \brief Produces a (human-readable) description of the client.
   /// \return A string describing the client.
-  std::string describe() const override { return "client to " + this->connectionAddress(); }
+  std::string describe() const override;
+
+  /// Get human-readable description of the connection.
+  std::string describeConnection(const Connection& connection) const override;
 
   /// \brief Downcasts this instance to a client component for the specified protocol type.
   /// \param protocol The protocol instance with which this object must be associated.
@@ -238,7 +245,10 @@ public:
 
   /// \brief Produces a (human-readable) description of the server.
   /// \return A string describing the server.
-  std::string describe() const override { return "server listening at " + this->connectionAddress(); }
+  std::string describe() const override;
+
+  /// Get human-readable description of the server connection.
+  std::string describeConnection(const Connection& connection) const override;
 
   /// \brief Downcasts this instance to a server component for the specified protocol type.
   /// \param protocol The protocol instance with which this object must be associated.

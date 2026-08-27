@@ -2,6 +2,9 @@
 
 #include <pep/utils/Event.hpp>
 
+#include <string>
+#include <string_view>
+
 namespace pep {
 
 /// (Base) class that progresses through a life cycle and provides status change notifications.
@@ -23,10 +26,14 @@ public:
     Finalized
   };
 
+  [[nodiscard]] static std::string_view StatusToString(Status status);
+
   /// Parameter for the onStatusChange event
   struct StatusChange {
     Status previous;
     Status updated;
+
+    [[nodiscard]] std::string toString() const;
   };
 
 private:
