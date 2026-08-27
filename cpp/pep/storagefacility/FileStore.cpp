@@ -160,6 +160,7 @@ FileStore::CellVersion FileStore::CellVersion::FromEntry(const Entry& entry) {
     .checksumSubstitute = entry.getChecksumSubstitute(),
     .payloadSize = entry.payloadSize(),
     .purgedAt = entry.getPurgedAt(),
+    .purgeIsPersisted = entry.purgeIsPersisted(),
     .isOriginalPayloadOwner = entry.isOriginalPayloadOwner(),
     .isTombstone = entry.isTombstone(),
   };
@@ -510,9 +511,6 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
 
   auto checksumSubstitute = ExtractPersistedEntryProperty<uint64_t>(properties, ChecksumSubstituteKey);
   auto purgedAt = TryExtractPersistedEntryProperty<Timestamp>(properties, PurgedAtKey);
-  if (!purgedAt) {
-    purgedAt = cell.participant().fileStore().sqlite_.pendingPurgeTimestamp(cell.participant().name(), cell.columnName(), validFrom);
-  }
   auto entryContent = EntryContent::Load(cell.participant().fileStore(), properties, pages);
 
   // Read content hash from (end of) file
@@ -536,7 +534,15 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
   if (calculatedHash != expectedHash)
     throw std::invalid_argument("hash did not match for file " + path.string());
 
-  return Entry::Create(cell, validFrom, purgedAt, checksumSubstitute, std::move(entryContent));
+  auto result = Entry::Create(cell, validFrom, purgedAt, checksumSubstitute, std::move(entryContent));
+
+  if (!result->getPurgedAt()) { // The *.entry file does not contain a "purged-at" timestamp
+    if (purgedAt = cell.participant().fileStore().sqlite_.pendingPurgeTimestamp(cell.participant().name(), cell.columnName(), validFrom)) {
+      // This entry is included in a pending (i.e. confirmed but not yet completed) purge cycle
+      result->markPurged(*purgedAt);
+    }
+  }
+  return result;
 }
 
 FileStore::Entry::Entry(EntryChange&& source, Timestamp validFrom)
@@ -545,7 +551,7 @@ FileStore::Entry::Entry(EntryChange&& source, Timestamp validFrom)
 }
 
 FileStore::Entry::Entry(Cell& cell, Timestamp validFrom, std::optional<Timestamp> purgedAt, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content)
-  : EntryBase(cell, checksumSubstitute, std::move(content)), validFrom_(validFrom), purgedAt_(purgedAt) {
+  : EntryBase(cell, checksumSubstitute, std::move(content)), validFrom_(validFrom), purgedAt_(purgedAt), purgeIsPersisted_(purgedAt_.has_value()) {
 }
 
 rxcpp::observable<std::string> FileStore::EntryChange::appendPage(std::shared_ptr<std::string> rawPage, uint64_t payloadSize, uint64_t pagenr) {

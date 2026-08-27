@@ -102,6 +102,7 @@ public:
 
     Timestamp validFrom_;
     std::optional<Timestamp> purgedAt_;
+    bool purgeIsPersisted_ = false;
 
     Entry(EntryChange&& source, Timestamp validFrom);
     Entry(Cell& cell, Timestamp validFrom, std::optional<Timestamp> purgedAt, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
@@ -112,7 +113,9 @@ public:
     std::unique_ptr<EntryContent> cloneContent() const;
 
     Timestamp getValidFrom() const noexcept { return validFrom_; }
+
     std::optional<Timestamp> getPurgedAt() const { return purgedAt_; }
+    bool purgeIsPersisted() const noexcept { return purgeIsPersisted_; }
     void markPurged(Timestamp at);
 
     messaging::MessageSequence readPage(size_t index);
@@ -127,6 +130,7 @@ public:
     uint64_t checksumSubstitute{};
     uint64_t payloadSize{};
     std::optional<Timestamp> purgedAt;
+    bool purgeIsPersisted{};
     bool isOriginalPayloadOwner{};
     bool isTombstone{};
 
