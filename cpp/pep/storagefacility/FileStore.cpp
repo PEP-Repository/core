@@ -262,11 +262,14 @@ std::set<std::string> FileStore::Cell::pagePaths() const {
 void FileStore::Cell::processPendingPurgeCycle(const storagefacility::SqliteStorage& sqlite, const PurgeCycle& cycle) {
   assert(cycle.confirmed);
 
+  auto timestamps = sqlite.getPurgedTimestamps(cycle.id, this->participant().name(), this->columnName());
+  if (timestamps.empty()) { // Nothing to do: no need to iterate over our versions_
+    return;
+  }
+
   // A set<> only provides read-only access to its items, so we can't update (entries in) our versions_ in place.
   // So instead we create a new set<> with updated items and overwrite our entire versions_ member.
   CellVersions updated;
-
-  auto timestamps = sqlite.getPurgedTimestamps(cycle.id, this->participant().name(), this->columnName());
 
   for (auto version : versions_) {
     if (!version.purgedAt.has_value()) {
