@@ -1,6 +1,8 @@
 #pragma once
 
 #include <pep/storagefacility/PurgeCycle.hpp>
+#include <filesystem>
+#include <set>
 
 namespace pep::storagefacility {
 
