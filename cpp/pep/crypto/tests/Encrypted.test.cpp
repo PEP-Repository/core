@@ -18,34 +18,34 @@ TEST(Encrypted, basic) {
   const std::string plaintext = "Tuna the cat";
 
   Encrypted enc(key, Bytes{plaintext});
-  EXPECT_NE(enc.ciphertext, plaintext);
+  EXPECT_NE(enc.mCiphertext, plaintext);
   // We currently rely on this in other parts of the code.
-  EXPECT_EQ(enc.ciphertext.size(), Serialization::ToString(Bytes{plaintext}).size())
+  EXPECT_EQ(enc.mCiphertext.size(), Serialization::ToString(Bytes{plaintext}).size())
     << "Cipher text should be the same length as the plaintext serialization";
-  EXPECT_EQ(enc.tag.size(), 16) << "Tag should not be short";
-  EXPECT_EQ(enc.decrypt(key).data, plaintext);
+  EXPECT_EQ(enc.mTag.size(), 16) << "Tag should not be short";
+  EXPECT_EQ(enc.decrypt(key).mData, plaintext);
 
   {
     Encrypted enc2(key, Bytes{plaintext});
-    EXPECT_NE(enc2.ciphertext, enc.ciphertext) << "Encryption should be nondeterministic";
+    EXPECT_NE(enc2.mCiphertext, enc.mCiphertext) << "Encryption should be nondeterministic";
   }
   {
     Encrypted enc2 = enc;
     // Modify in the middle: avoid modifying Protobuf stuff & MessageMagic.
-    enc2.ciphertext[enc2.ciphertext.size() / 2] ^= 1;
-    EXPECT_THAT([&] { return enc2.decrypt(key).data; }, ThrowsButNotBecauseOfSerialization)
+    enc2.mCiphertext[enc2.mCiphertext.size() / 2] ^= 1;
+    EXPECT_THAT([&] { return enc2.decrypt(key).mData; }, ThrowsButNotBecauseOfSerialization)
       << "Modified ciphertext should not be accepted";
   }
   {
     Encrypted enc2 = enc;
-    enc2.iv.front() ^= 1;
-    EXPECT_THAT([&] { return enc2.decrypt(key).data; }, ThrowsButNotBecauseOfSerialization)
+    enc2.mIv.front() ^= 1;
+    EXPECT_THAT([&] { return enc2.decrypt(key).mData; }, ThrowsButNotBecauseOfSerialization)
       << "Modified IV should not be accepted";
   }
   {
     Encrypted enc2 = enc;
-    enc2.tag.front() ^= 1;
-    EXPECT_THAT([&] { return enc2.decrypt(key).data; }, ThrowsButNotBecauseOfSerialization)
+    enc2.mTag.front() ^= 1;
+    EXPECT_THAT([&] { return enc2.decrypt(key).mData; }, ThrowsButNotBecauseOfSerialization)
       << "Modified tag should not be accepted";
   }
 }
@@ -54,21 +54,21 @@ TEST(Encrypted, decryptShortTag) {
   const std::string key = "abcdefghijklmnopqrstuvwxyz012345";
   const std::string plaintext = "Tuna the cat";
   Encrypted enc(key, Bytes{plaintext});
-  ASSERT_EQ(enc.decrypt(key).data, plaintext) << "Decryption sanity check failed";
+  ASSERT_EQ(enc.decrypt(key).mData, plaintext) << "Decryption sanity check failed";
 
-  enc.tag.pop_back();
-  EXPECT_THAT([&] { return enc.decrypt(key).data; }, ThrowsButNotBecauseOfSerialization) << "Shorter tag should not be accepted";
-  enc.tag.resize(1);
-  EXPECT_THAT([&] { return enc.decrypt(key).data; }, ThrowsButNotBecauseOfSerialization) << "1-byte tag should not be accepted";
+  enc.mTag.pop_back();
+  EXPECT_THAT([&] { return enc.decrypt(key).mData; }, ThrowsButNotBecauseOfSerialization) << "Shorter tag should not be accepted";
+  enc.mTag.resize(1);
+  EXPECT_THAT([&] { return enc.decrypt(key).mData; }, ThrowsButNotBecauseOfSerialization) << "1-byte tag should not be accepted";
 
   // Now actually modify the ciphertext and forge an encryption.
   // Modify in the middle: avoid modifying Protobuf stuff & MessageMagic.
-  enc.ciphertext[enc.ciphertext.size() / 2] ^= 1;
-  enc.tag.resize(1);
+  enc.mCiphertext[enc.mCiphertext.size() / 2] ^= 1;
+  enc.mTag.resize(1);
   for (unsigned char tag = 0;;) {
     if (++tag == 0) { break; }
-    enc.tag.front() = static_cast<char>(tag);
-    EXPECT_THAT([&] { return enc.decrypt(key).data; }, ThrowsButNotBecauseOfSerialization)
+    enc.mTag.front() = static_cast<char>(tag);
+    EXPECT_THAT([&] { return enc.decrypt(key).mData; }, ThrowsButNotBecauseOfSerialization)
       << "Forged encryption with short tag should not be accepted";
   }
 }

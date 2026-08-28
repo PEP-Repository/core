@@ -70,7 +70,7 @@ std::string EncryptedBase::baseDecrypt(const std::string& key) const {
   if (key.size() != 32)
     throw std::runtime_error("keys should be 32 bytes");
   // Reject truncated tag.
-  if (tag.size() != 16)
+  if (mTag.size() != 16)
     throw std::runtime_error("tag should be 16 bytes");
 
   ret = EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr);
