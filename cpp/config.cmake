@@ -18,13 +18,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(BUILD_SHARED_LIBS)
+  message(STATUS "BUILD_SHARED_LIBS is ON. This requires dependencies to be shared as well, to prevent ODR-violations.")
   if(MSVC)
     # MSVC doesn't export any symbols from a DLL unless explicitly annotated with __declspec(dllexport).
     # For functions, there is CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS, but this does not work for global/static variables.
     # See https://cmake.org/cmake/help/latest/prop_tgt/WINDOWS_EXPORT_ALL_SYMBOLS.html
-    message(FATAL_ERROR "BUILD_SHARED_LIBS is currently not supported with MSVC")
+    message(SEND_ERROR "BUILD_SHARED_LIBS is currently not supported with MSVC")
   endif()
-  message(STATUS "BUILD_SHARED_LIBS is ON. This requires dependencies to be shared as well, to prevent ODR-violations.")
 else()
   # Prevent symbols from ending up in final executable.
   # Do not enable when using shared libraries, as in that case we would need to export specific symbols in code.
