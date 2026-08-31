@@ -368,5 +368,6 @@ rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipa
         return std::move(entry.second);
       })
       // Exclude (std::nullopt) entries for participants that didn't match the user's context
+      // or didn't have (data for) the requested item(s).
       .op(pep::RxFilterNullopt());
 }
