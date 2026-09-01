@@ -62,7 +62,7 @@ TEST(MiscUtil, TryFindCommonValue) {
   EXPECT_EQ(CopyPointerToOptional(pep::TryFindCommonValue(std::vector{1, 1}, std::vector{2, 2})), std::nullopt);
   EXPECT_EQ(CopyPointerToOptional(pep::TryFindCommonValue(std::vector{3, 4, 5}, std::vector{4, 6, 7})), 4);
   EXPECT_EQ(CopyPointerToOptional(pep::TryFindCommonValue(std::vector{1, 1 ,3, 2}, std::vector{2, 4, 4, 5})), 2);
-  EXPECT_THAT(CopyPointerToOptional(pep::TryFindCommonValue(std::vector{2, 3, 1}, std::vector{2, 4, 3})), testing::AnyOf(2, 3)); // expect the smallest common value
+  EXPECT_THAT(CopyPointerToOptional(pep::TryFindCommonValue(std::vector{2, 3, 1}, std::vector{2, 4, 3})), testing::AnyOf(2, 3));
 
   // edge cases: passing an empty list as argument
   EXPECT_EQ(CopyPointerToOptional(pep::TryFindCommonValue(std::vector{1, 1}, std::vector<int>{})), std::nullopt);
