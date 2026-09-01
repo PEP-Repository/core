@@ -54,6 +54,10 @@ gitlab_api() {
   "$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" "$@"
 }
 
+urlencode() {
+  "$SCRIPTPATH"/url.sh encode "$1"
+}
+
 is_outdated() {
   raw_echo "$1" | "$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" get-outdated-creation-timestamp
 }
@@ -63,7 +67,7 @@ get_generic_file_id() {
   sha="$2"
   file_name="$3"
 
-  package=$(gitlab_api get "packages?package_name=$package_name&package_type=generic&package_version=$sha" | jq first)
+  package=$(gitlab_api get "packages?package_name=$(urlencode "$package_name")&package_type=generic&package_version=$sha" | jq first)
   if [ -z "$package" ] || [ "$package" = "null" ]; then
     >&2 echo "FOSS package '$package_name' not found for SHA $sha."
     return
@@ -205,7 +209,7 @@ list_packages() {
   path="packages?package_type=$package_type"
   if [ -n "$package_name" ]; then
     # The package_name filter is fuzzy; we select on the exact name below
-    path="$path&package_name=$package_name"
+    path="$path&package_name=$(urlencode "$package_name")"
   fi
   if [ -n "$version" ]; then
     path="$path&package_version=$version"
