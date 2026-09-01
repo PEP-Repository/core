@@ -74,7 +74,8 @@ get_generic_file_id() {
   fi
 
   package_id=$(raw_echo "$package" | jq ".id")
-  files=$(gitlab_api get-multipage "packages/$package_id/package_files" \
+  package_files=$(gitlab_api get-multipage "packages/$package_id/package_files")
+  files=$(raw_echo "$package_files" \
     | jq --arg file_name "$file_name" --compact-output '.[] | select( .file_name == $file_name ) | { created_at, id }' \
     | sort -r)
 
@@ -133,7 +134,8 @@ get_package_npm_dist_tags() {
 }
 
 get_all_npm_dist_tags() {
-  names=$(list_packages npm | jq --raw-output '.[].name' | sort -u)
+  npm_packages=$(list_packages npm)
+  names=$(raw_echo "$npm_packages" | jq --raw-output '.[].name' | sort -u)
   all_dist_tags='{}'
   for name in $names; do
     dist_tags=$(get_package_npm_dist_tags "$name")
@@ -215,8 +217,9 @@ list_packages() {
     path="$path&package_version=$version"
   fi
 
+  packages_json=$(gitlab_api get-multipage "$path")
   # Also filter locally, in case e.g. the package_version filter is not supported
-  gitlab_api get-multipage "$path" \
+  raw_echo "$packages_json" \
     | jq --arg name "$package_name" --arg version "$version" \
         '[ .[] | select( ($name == "" or .name == $name) and ($version == "" or .version == $version) ) ]'
 }
