@@ -17,7 +17,7 @@ readonly api_key="${1:?Expected API key}"; shift
 readonly command="${1:?Expected command}"; shift
 
 gitlab_api() {
-  "$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" "$@"
+  "$SCRIPTPATH"/gitlab-api.sh --git-dir "$git_dir" --api-key "$api_key" "$@"
 }
 
 get_pipeline_id() {

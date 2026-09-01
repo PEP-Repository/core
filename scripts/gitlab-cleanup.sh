@@ -73,7 +73,7 @@ fi
 gitlab_dir_api() {
   local dir="$1"
   shift
-  "$scriptdir/gitlab-api.sh" "$dir" "${api_key:?Pass --api-key}" "$@"
+  "$scriptdir/gitlab-api.sh" --git-dir "$dir" --api-key "${api_key:?Pass --api-key}" "$@"
 }
 
 gitlab_foss_packages() {

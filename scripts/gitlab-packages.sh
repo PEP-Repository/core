@@ -13,7 +13,7 @@ readonly SCRIPTPATH
 . "$SCRIPTPATH/sh-utils.sh"
 
 usage() {
-  echo "Usage: '$0' --git-dir <dir> --api-key <key> [--dry-run] <command> [args...]"
+  echo "Usage: '$0' --git-dir <dir> (--api-key <key> | --job-token <token>) [--dry-run] <command> [args...]"
   echo "Commands:"
   echo "  download <package-type> <package-name> <sha> [<file-name>]"
   echo "  delete <package-type> <package-name> <version (the sha for generic packages)>"
@@ -23,12 +23,15 @@ usage() {
 
 git_dir=''
 api_key=''
+token_opt='--api-key'
 while [ "$#" != 0 ]; do
   case "$1" in
     --git-dir)
       shift; git_dir="${1:?Expected value for --git-dir}" ;;
     --api-key)
       shift; api_key="${1:?Expected value for --api-key}" ;;
+    --job-token)  # Authenticate with a CI job token ($CI_JOB_TOKEN) instead of an access token
+      shift; api_key="${1:?Expected value for --job-token}"; token_opt='--job-token' ;;
     --dry-run)  # Only print what would be deleted, without actually deleting
       export DRY_DELETE=yes ;;
     --help|-h)
@@ -47,11 +50,11 @@ while [ "$#" != 0 ]; do
 done
 
 readonly git_dir="${git_dir:?Expected --git-dir}"
-readonly api_key="${api_key:?Expected --api-key}"
+readonly api_key="${api_key:?Expected --api-key or --job-token}"
 readonly command="${1:?Expected command}"; shift
 
 gitlab_api() {
-  "$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" "$@"
+  "$SCRIPTPATH"/gitlab-api.sh --git-dir "$git_dir" "$token_opt" "$api_key" "$@"
 }
 
 urlencode() {
@@ -59,7 +62,7 @@ urlencode() {
 }
 
 is_outdated() {
-  raw_echo "$1" | "$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" get-outdated-creation-timestamp
+  raw_echo "$1" | gitlab_api get-outdated-creation-timestamp
 }
 
 get_generic_file_id() {
