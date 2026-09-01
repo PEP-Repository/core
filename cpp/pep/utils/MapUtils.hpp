@@ -1,10 +1,13 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <map>
+#include <memory>
 #include <optional>
 #include <ranges>
 #include <set>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -43,58 +46,44 @@ void ReserveToMatch(std::ranges::sized_range auto& container, std::ranges::forwa
   }
 }
 
+auto MakeUnorderedPointerSet(std::ranges::forward_range auto&& values)
+    -> std::tuple<UnorderedPointerSet<QualifiedRangeValue<decltype(values)>>,
+        std::vector<QualifiedRangeValue<decltype(values)>*>> {
+  UnorderedPointerSet<QualifiedRangeValue<decltype(values)>> set;
+  std::vector<QualifiedRangeValue<decltype(values)>*> duplicates;
+
+  ReserveToMatch(set, values);
+  for (auto& value : values) {
+    auto ptr = std::addressof(value);
+    if (!set.insert(ptr).second) { duplicates.emplace_back(ptr); }
+  }
+
+  return std::make_tuple(std::move(set), std::move(duplicates));
+}
+
 /// \brief Returns whether \p sub is a subset of \p super .
 /// \details Ignores duplicate values.
 bool IsSubset(std::ranges::input_range auto&& sub, std::ranges::forward_range auto&& super) {
   using namespace std::ranges;
-  UnorderedPointerSet<const range_value_t<decltype(super)>> superset;
-  ReserveToMatch(superset, super);
-  // O(super*log(super))
-  for (const auto& value : super) { superset.insert(&value); }
-  // O(sub*log(super))
-  return all_of(sub, [&](const auto& value) { return superset.contains(&value); });
+  const auto superset = std::get<0>(MakeUnorderedPointerSet(super)); // O(super*log(super))
+  return all_of(sub, [&](auto& value) { return superset.contains(&value); }); // O(sub*log(super))
 }
 
 /// Returns a value that's included multiple times in the vector, or nullptr if it contains unique values.
 auto TryFindDuplicateValue(std::ranges::forward_range auto&& values) -> QualifiedRangeValue<decltype(values)>* {
   using namespace std::ranges;
-  UnorderedPointerSet<const range_value_t<decltype(values)>> set;
-  ReserveToMatch(set, values);
-  for (auto& value : values) {
-    auto ptr = std::addressof(value);
-    if (!set.insert(ptr).second) {
-      return ptr;
-    }
-  }
-  return nullptr;
+  const auto duplicates = std::get<1>(MakeUnorderedPointerSet(values));
+  return duplicates.empty() ? nullptr : duplicates.front();
 }
 
 /// \brief Returns a value that's included in both vectors, or std::nullopt if no such value exists.
 /// \details Equality is determined by the specified Compare object.
 auto TryFindCommonValue(std::ranges::forward_range auto&& valuesA, std::ranges::forward_range auto&& valuesB) -> QualifiedRangeValue<decltype(valuesA)>* {
   using namespace std::ranges;
-  UnorderedPointerSet<QualifiedRangeValue<decltype(valuesA)>> setA;
-  ReserveToMatch(setA, valuesA);
-  for (auto& value : valuesA) {
-    auto ptr = std::addressof(value);
-    setA.insert(ptr);
-  }
-
-  UnorderedPointerSet<QualifiedRangeValue<decltype(valuesB)>> setB;
-  ReserveToMatch(setB, valuesB);
-  for (auto& value : valuesB) {
-    auto ptr = std::addressof(value);
-    setB.insert(ptr);
-  }
-
-  setA.reserve(setA.size() + setB.size());
-  for (auto ptr : setB) {
-    if (!setA.insert(ptr).second) {
-      return ptr;
-    }
-  }
-
-  return nullptr;
+  const auto setA = std::get<0>(MakeUnorderedPointerSet(valuesA));
+  const auto setB = std::get<0>(MakeUnorderedPointerSet(valuesB));
+  const auto commonVal = find_if(setB, [&](auto ptr) { return setA.contains(ptr); });
+  return (commonVal != setB.end()) ? *commonVal : nullptr;
 }
 
 /// Returns whether a vector contains unique values.
