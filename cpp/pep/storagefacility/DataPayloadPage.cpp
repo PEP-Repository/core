@@ -103,6 +103,9 @@ std::string DataPayloadPage::decrypt(
   std::string plaintext(mPayloadData.size(), '\0');
   if (key.size() != 32)
     throw std::runtime_error("keys should be 32 bytes");
+  // Reject truncated tag.
+  if (mCryptoMac.size() != 16)
+    throw std::runtime_error("tag should be 16 bytes");
   std::string ad = computeAdditionalData(metadata);
 
   ret = EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr);
