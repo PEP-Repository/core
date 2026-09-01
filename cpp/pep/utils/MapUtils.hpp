@@ -36,14 +36,19 @@ public:
 template <typename T>
 using UnorderedPointerSet = std::unordered_set<T*, DereferenceHash<T>, DereferenceEquals<T>>;
 
+/// Allocates capacity in \p container to match the size of \p source, if \p source is a sized range.
+void ReserveToMatch(std::ranges::sized_range auto& container, std::ranges::forward_range auto&& source) {
+  if constexpr (std::ranges::sized_range<decltype(source)>) {
+    container.reserve(source.size());
+  }
+}
+
 /// \brief Returns whether \p sub is a subset of \p super .
 /// \details Ignores duplicate values.
 bool IsSubset(std::ranges::input_range auto&& sub, std::ranges::forward_range auto&& super) {
   using namespace std::ranges;
   UnorderedPointerSet<const range_value_t<decltype(super)>> superset;
-  if constexpr (sized_range<decltype(super)>) {
-    superset.reserve(super.size());
-  }
+  ReserveToMatch(superset, super);
   // O(super*log(super))
   for (const auto& value : super) { superset.insert(&value); }
   // O(sub*log(super))
@@ -54,9 +59,7 @@ bool IsSubset(std::ranges::input_range auto&& sub, std::ranges::forward_range au
 auto TryFindDuplicateValue(std::ranges::forward_range auto&& values) -> QualifiedRangeValue<decltype(values)>* {
   using namespace std::ranges;
   UnorderedPointerSet<const range_value_t<decltype(values)>> set;
-  if constexpr (sized_range<decltype(values)>) {
-    set.reserve(size(values));
-  }
+  ReserveToMatch(set, values);
   for (auto& value : values) {
     auto ptr = std::addressof(value);
     if (!set.insert(ptr).second) {
@@ -71,23 +74,20 @@ auto TryFindDuplicateValue(std::ranges::forward_range auto&& values) -> Qualifie
 auto TryFindCommonValue(std::ranges::forward_range auto&& valuesA, std::ranges::forward_range auto&& valuesB) -> QualifiedRangeValue<decltype(valuesA)>* {
   using namespace std::ranges;
   UnorderedPointerSet<QualifiedRangeValue<decltype(valuesA)>> setA;
-  if constexpr (sized_range<decltype(valuesA)>) {
-    setA.reserve(size(valuesA));
-  }
+  ReserveToMatch(setA, valuesA);
   for (auto& value : valuesA) {
     auto ptr = std::addressof(value);
     setA.insert(ptr);
   }
 
   UnorderedPointerSet<QualifiedRangeValue<decltype(valuesB)>> setB;
-  if constexpr (sized_range<decltype(valuesB)>) {
-    setB.reserve(size(valuesB));
-  }
+  ReserveToMatch(setB, valuesB);
   for (auto& value : valuesB) {
     auto ptr = std::addressof(value);
     setB.insert(ptr);
   }
 
+  setA.reserve(setA.size() + setB.size());
   for (auto ptr : setB) {
     if (!setA.insert(ptr).second) {
       return ptr;

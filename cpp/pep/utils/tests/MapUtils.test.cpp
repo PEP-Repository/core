@@ -8,6 +8,26 @@ namespace {
 template <typename T>
 auto CopyPointerToOptional(T* ptr) -> std::optional<T> { return ptr ? std::optional{*ptr} : std::nullopt; }
 
+TEST(MapUtils, ReserveToMatch) {
+    std::vector<int> container;
+    {
+      const auto property = "capacity increases to match source";
+      pep::ReserveToMatch(container, std::vector<int>());
+      EXPECT_GE(container.capacity(), 0) << property; // edge case
+      pep::ReserveToMatch(container, std::vector<char>(10));
+      EXPECT_GE(container.capacity(), 10) << property;
+      pep::ReserveToMatch(container, std::vector<bool>(100));
+      EXPECT_GE(container.capacity(), 100) << property;
+    }
+    {
+      const auto property = "capacity never decreases";
+      pep::ReserveToMatch(container, std::vector<int>(1));
+      EXPECT_GE(container.capacity(), 100) << property;
+      pep::ReserveToMatch(container, std::vector<int>()); // edge case
+      EXPECT_GE(container.capacity(), 100) << property;
+    }
+}
+
 TEST(MapUtils, IsSubset) {
   // empty set is subset of every other set
   EXPECT_TRUE(pep::IsSubset(std::vector<int>{}, std::vector<int>{}));
