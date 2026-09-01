@@ -67,6 +67,7 @@ get_generic_file_id() {
   sha="$2"
   file_name="$3"
 
+  # https://docs.gitlab.com/api/packages/#for-a-project
   package=$(gitlab_api get "packages?package_name=$(urlencode "$package_name")&package_type=generic&package_version=$sha" | jq first)
   if [ -z "$package" ] || [ "$package" = "null" ]; then
     >&2 echo "FOSS package '$package_name' not found for SHA $sha."
@@ -74,6 +75,7 @@ get_generic_file_id() {
   fi
 
   package_id=$(raw_echo "$package" | jq ".id")
+  # https://docs.gitlab.com/api/packages/#list-package-files
   package_files=$(gitlab_api get-multipage "packages/$package_id/package_files")
   files=$(raw_echo "$package_files" \
     | jq --arg file_name "$file_name" --compact-output '.[] | select( .file_name == $file_name ) | { created_at, id }' \
@@ -106,9 +108,9 @@ download_generic() {
   fi
 
   # Unfortunately there doesn't seem to be an API endpoint to retrieve (download) the file by ID.
-  # But according to https://docs.gitlab.com/ee/user/packages/generic_packages/#download-package-file ,
-  # "the most recent one is retrieved" when retrieving by name (as we do below), which should be
-  # the one with the file_id that we determined.
+  # But according to (a previous version of the) documentation, "the most recent one is retrieved" when
+  # retrieving by name (as we do below), which should be the one with the file_id that we determined.
+  # https://docs.gitlab.com/user/packages/generic_packages/#download-a-single-file
   gitlab_api get "packages/generic/$package_name/$sha/$file_name" --output "$file_name"
   echo "Downloaded FOSS package file $file_id from packages/generic/$package_name/$sha/$file_name."
 }
@@ -117,6 +119,7 @@ download_generic() {
 get_package_npm_dist_tags() {
   package_name="${1:?Expected package name}"
 
+  # https://docs.gitlab.com/api/packages/npm/#retrieve-package-metadata
   metadata=$(gitlab_api get "packages/npm/$package_name" 2>/dev/null) || true
   # A missing package yields an empty response, since curl --fail suppresses the error body
   if [ -z "$metadata" ]; then
@@ -184,6 +187,7 @@ download_npm() {
   fi
 
   file_name="${package_name}-${version}.tgz"
+  # https://docs.gitlab.com/api/packages/npm/#download-a-package
   gitlab_api get "packages/npm/$package_name/-/$file_name" --output "${package_name}.tgz"
   echo "Downloaded FOSS npm package '$package_name@$version'."
 }
@@ -236,6 +240,7 @@ delete_package() {
     | while read -r package; do
         package_id=$(raw_echo "$package" | jq ".id")
         >&2 echo "${DRY_DELETE:+(dry run) }Deleting $package_type package '$package_name@$version' (id $package_id, status $(raw_echo "$package" | jq -r ".status"))."
+        # https://docs.gitlab.com/api/packages/#delete-a-project-package
         gitlab_api delete "packages/$package_id"
       done
 }
