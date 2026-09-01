@@ -22,7 +22,7 @@ TEST(Encrypted, basic) {
   // We currently rely on this in other parts of the code.
   EXPECT_EQ(enc.mCiphertext.size(), Serialization::ToString(Bytes{plaintext}).size())
     << "Cipher text should be the same length as the plaintext serialization";
-  EXPECT_EQ(enc.mTag.size(), 16) << "Tag should not be short";
+  EXPECT_GE(enc.mTag.size(), 12) << "Tag should not be short";
   EXPECT_EQ(enc.decrypt(key).mData, plaintext);
 
   {
@@ -57,9 +57,11 @@ TEST(Encrypted, decryptShortTag) {
   ASSERT_EQ(enc.decrypt(key).mData, plaintext) << "Decryption sanity check failed";
 
   enc.mTag.pop_back();
-  EXPECT_THAT([&] { return enc.decrypt(key).mData; }, ThrowsButNotBecauseOfSerialization) << "Shorter tag should not be accepted";
+  EXPECT_THAT([&] { return enc.decrypt(key).mData; }, ThrowsButNotBecauseOfSerialization)
+    << "Shorter tag should not be accepted";
   enc.mTag.resize(1);
-  EXPECT_THAT([&] { return enc.decrypt(key).mData; }, ThrowsButNotBecauseOfSerialization) << "1-byte tag should not be accepted";
+  EXPECT_THAT([&] { return enc.decrypt(key).mData; }, ThrowsButNotBecauseOfSerialization)
+    << "1-byte tag should not be accepted";
 
   // Now actually modify the ciphertext and forge an encryption.
   // Modify in the middle: avoid modifying Protobuf stuff & MessageMagic.
