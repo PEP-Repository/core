@@ -122,7 +122,6 @@ default_image() {
   echo "$IMAGE_REPOSITORY:$commit_sha"
 }
 
-
 make_absolute() {
   (cd "$1" && pwd)
 }

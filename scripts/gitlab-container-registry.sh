@@ -19,7 +19,7 @@ api_key="$2"
 command="$3"
 
 gitlab_api() {
-  "$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" "$@"
+  "$SCRIPTPATH"/gitlab-api.sh --git-dir "$git_dir" --api-key "$api_key" "$@"
 }
 
 list_repositories() {
@@ -80,7 +80,7 @@ get_image_location() {
     return
   fi
 
-  created_at=$(printf '%s' "$details" | "$SCRIPTPATH"/gitlab-api.sh "$git_dir" "$api_key" get-outdated-creation-timestamp)
+  created_at=$(printf '%s' "$details" | gitlab_api get-outdated-creation-timestamp)
   if [ -n "$created_at" ]; then
     >&2 echo "FOSS Docker image $imgname for SHA $sha is outdated (created at $created_at)."
     return
