@@ -129,13 +129,11 @@ get_package_npm_dist_tags() {
     return
   fi
   # gitlab answers requests for unknown packages with a redirect notice pointing to registry.npmjs.org instead of a 404, also treat that as missing
-  if raw_echo "$metadata" | jq --exit-status 'type == "string" and test("registry\\.npmjs\\.org")' >/dev/null 2>&1; then
+  if contains "$metadata" "This resource has been moved temporarily to https://registry.npmjs.org"; then
     return
   fi
-  dist_tags=$(raw_echo "$metadata" | jq --raw-input --slurp 'fromjson? | select(type == "object") | ."dist-tags" // {}')
-  if [ -z "$dist_tags" ]; then
-    fail "Invalid response for npm package '$package_name': $metadata"
-  fi
+  dist_tags=$(raw_echo "$metadata" | jq --exit-status '."dist-tags" // {}' 2>/dev/null) \
+    || fail "Invalid response for npm package '$package_name': $metadata"
   raw_echo_trailing_newline "$dist_tags"
 }
 
