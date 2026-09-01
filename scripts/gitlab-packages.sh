@@ -235,7 +235,7 @@ delete_package() {
     | jq --compact-output '.[]' \
     | while read -r package; do
         package_id=$(raw_echo "$package" | jq ".id")
-        echo "${DRY_DELETE:+(dry run) }Deleting $package_type package '$package_name@$version' (id $package_id, status $(raw_echo "$package" | jq -r ".status"))."
+        >&2 echo "${DRY_DELETE:+(dry run) }Deleting $package_type package '$package_name@$version' (id $package_id, status $(raw_echo "$package" | jq -r ".status"))."
         gitlab_api delete "packages/$package_id"
       done
 }
