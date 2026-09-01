@@ -59,7 +59,6 @@ if exist "%BUILD_DIR%" (
 echo Installing Conan packages.
 
 REM `__` will be replaced by `:` in script. Workaround for https://github.com/PowerShell/PowerShell/issues/16432.
-REM TODO(temp) Remove shared_libs again
 pwsh -ExecutionPolicy Bypass -File ".\docker-build\scripts\windows-ci-conan.ps1" ^
   install .\docker-build\builder\conan\conanfile.py ^
   --lockfile=.\docker-build\builder\conan\conan-ci.lock ^
@@ -72,7 +71,6 @@ pwsh -ExecutionPolicy Bypass -File ".\docker-build\scripts\windows-ci-conan.ps1"
   -o "&:with_tests=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:with_benchmark=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:custom_build_folder=True" ^
-  -o "&:shared_libs=dependencies" ^
   --output-folder=.\%BUILD_DIR%\ ^
   || exit /B 1
 
