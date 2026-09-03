@@ -28,6 +28,38 @@ TEST(MapUtils, ReserveToMatch) {
     }
 }
 
+TEST(MapUtils, MakeUnorderedPointerSet) {
+    using namespace std::ranges;
+    const auto original = std::vector{1, 2, 3, 2, 3, 4};
+    const auto pointsToOriginalValue = [&original](const auto& ptr) {
+      return &original.front() <= ptr && ptr <= &original.back();
+    };
+
+    const auto result = pep::MakeUnorderedPointerSet(original);
+    {
+      const auto property = "returns (first) a pointer to each unique value";
+      EXPECT_TRUE(all_of(result.first, pointsToOriginalValue)) << property;
+      EXPECT_EQ(result.first.size(), 4) << property;
+    }
+    {
+      const auto property = "returns (second) a pointer to each duplicate value";
+      const auto pointsToOriginal =
+          [&original](auto ptr) { return &original.front() <= ptr && ptr <= &original.back(); };
+      EXPECT_TRUE(all_of(result.second, pointsToOriginal)) << property;
+      EXPECT_EQ(result.second.size(), 2) << property;
+    }
+    {
+      const auto property = "every original value is accounted for";
+      const auto containsPtrTo = [](const auto& range, auto& value) {
+        return find_if(range, [&value](auto* ptr) { return ptr == std::addressof(value); }) != range.end();
+      };
+      const auto isInResult = [&](auto& value) {
+        return containsPtrTo(result.first, value) || containsPtrTo(result.second, value);
+      };
+      EXPECT_TRUE(all_of(original, isInResult)) << property;
+    }
+}
+
 TEST(MapUtils, IsSubset) {
   // empty set is subset of every other set
   EXPECT_TRUE(pep::IsSubset(std::vector<int>{}, std::vector<int>{}));
