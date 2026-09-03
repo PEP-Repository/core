@@ -2,6 +2,7 @@
 
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
+#include <ranges>
 
 namespace {
 
@@ -30,33 +31,38 @@ TEST(MapUtils, ReserveToMatch) {
 
 TEST(MapUtils, MakeUnorderedPointerSet) {
     using namespace std::ranges;
-    const auto original = std::vector{1, 2, 3, 2, 3, 4};
+    const auto original = std::vector{1, 2, 3, 2, 3, 3, 4};
     const auto pointsToOriginalValue = [&original](const auto& ptr) {
       return &original.front() <= ptr && ptr <= &original.back();
     };
+    const auto pointsToAddress = [](auto* address) { return [address](auto* ptr) { return ptr == address; }; };
+    const auto pointsToValue = [](auto value) { return [value](auto* ptr) { return *ptr == value; }; };
+    const auto pointsInto = [](const std::ranges::contiguous_range auto& range) {
+      return [&range](auto* ptr) { return &range.front() <= ptr && ptr <= &range.back(); };
+    };
 
     const auto result = pep::MakeUnorderedPointerSet(original);
+
     {
       const auto property = "returns (first) a pointer to each unique value";
       EXPECT_TRUE(all_of(result.first, pointsToOriginalValue)) << property;
-      EXPECT_EQ(result.first.size(), 4) << property;
+      EXPECT_EQ(count_if(result.first, pointsToValue(1)), 1) << property;
+      EXPECT_EQ(count_if(result.first, pointsToValue(2)), 1) << property;
+      EXPECT_EQ(count_if(result.first, pointsToValue(3)), 1) << property;
+      EXPECT_EQ(count_if(result.first, pointsToValue(4)), 1) << property;
     }
     {
       const auto property = "returns (second) a pointer to each duplicate value";
-      const auto pointsToOriginal =
-          [&original](auto ptr) { return &original.front() <= ptr && ptr <= &original.back(); };
-      EXPECT_TRUE(all_of(result.second, pointsToOriginal)) << property;
-      EXPECT_EQ(result.second.size(), 2) << property;
+      EXPECT_TRUE(all_of(result.second, pointsInto(original))) << property;
+      EXPECT_EQ(count_if(result.second, pointsToValue(2)), 1) << property;
+      EXPECT_EQ(count_if(result.second, pointsToValue(3)), 2) << property;
     }
     {
-      const auto property = "every original value is accounted for";
-      const auto containsPtrTo = [](const auto& range, auto& value) {
-        return find_if(range, [&value](auto* ptr) { return ptr == std::addressof(value); }) != range.end();
+      const auto property = "returns exactly one pointer to each value";
+      const auto isReturnedOnce = [&](auto& value) {
+        return count_if(result.first, pointsToAddress(&value)) + count_if(result.second, pointsToAddress(&value)) == 1;
       };
-      const auto isInResult = [&](auto& value) {
-        return containsPtrTo(result.first, value) || containsPtrTo(result.second, value);
-      };
-      EXPECT_TRUE(all_of(original, isInResult)) << property;
+      EXPECT_TRUE(all_of(original, isReturnedOnce)) << property;
     }
 }
 
