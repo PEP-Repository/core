@@ -40,9 +40,7 @@ using UnorderedPointerSet = std::unordered_set<T*, DereferenceHash<T>, Dereferen
 
 /// Allocates capacity in \p container to match the size of \p source, if \p source is a sized range.
 void ReserveToMatch(std::ranges::sized_range auto& container, std::ranges::forward_range auto&& source) {
-  if constexpr (std::ranges::sized_range<decltype(source)>) {
-    container.reserve(source.size());
-  }
+  if constexpr (std::ranges::sized_range<decltype(source)>) { container.reserve(source.size()); }
 }
 
 /// \brief Builds a pointer set from a range, collecting duplicates separately.
