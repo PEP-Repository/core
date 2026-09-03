@@ -71,16 +71,16 @@ bool IsSubset(std::ranges::input_range auto const& sub, std::ranges::forward_ran
 
 /// Returns a value that's included multiple times in the vector, or nullptr if it contains unique values.
 auto TryFindDuplicateValue(std::ranges::forward_range auto&& values) -> QualifiedRangeValue<decltype(values)>* {
-  const auto duplicates = MakeUnorderedPointerSet(values).second;
+  const auto duplicates = MakeUnorderedPointerSet(values).second; // O(values*log(values))
   return duplicates.empty() ? nullptr : duplicates.front();
 }
 
 /// \brief Returns a value that's included in both vectors, or std::nullopt if no such value exists.
 /// \details Equality is determined by the specified Compare object.
 auto TryFindCommonValue(std::ranges::forward_range auto&& valuesA, std::ranges::forward_range auto&& valuesB) -> QualifiedRangeValue<decltype(valuesA)>* {
-  const auto setA = MakeUnorderedPointerSet(valuesA).first;
-  const auto setB = MakeUnorderedPointerSet(valuesB).first;
-  const auto commonVal = std::ranges::find_if(setB, [&](auto ptr) { return setA.contains(ptr); });
+  const auto setA = MakeUnorderedPointerSet(valuesA).first; // O(valuesA*log(valuesA))
+  const auto setB = MakeUnorderedPointerSet(valuesB).first; // O(valuesB*log(valuesB))
+  const auto commonVal = std::ranges::find_if(setB, [&](auto ptr) { return setA.contains(ptr); }); // O(valuesB)
   return (commonVal == setB.end()) ? nullptr : *commonVal;
 }
 
