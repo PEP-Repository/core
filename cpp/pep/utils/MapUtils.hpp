@@ -75,8 +75,7 @@ auto TryFindDuplicateValue(std::ranges::forward_range auto&& values) -> Qualifie
   return duplicates.empty() ? nullptr : duplicates.front();
 }
 
-/// \brief Returns a value that's included in both vectors, or std::nullopt if no such value exists.
-/// \details Equality is determined by the specified Compare object.
+/// Returns a value that's included in both vectors, or std::nullopt if no such value exists.
 auto TryFindCommonValue(std::ranges::forward_range auto&& valuesA, std::ranges::forward_range auto&& valuesB) -> QualifiedRangeValue<decltype(valuesA)>* {
   const auto setA = MakeUnorderedPointerSet(valuesA).first; // O(valuesA*log(valuesA))
   const auto setB = MakeUnorderedPointerSet(valuesB).first; // O(valuesB*log(valuesB))
