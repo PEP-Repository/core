@@ -27,9 +27,11 @@ for FILE in $(git --no-pager grep -l -I -E '^#\!'); do
     fi
 done
 
+mapfile -t SH_FILES < <(git ls-files | grep "\.sh$")
+
 # Run shellcheck on all .sh files
-for FILE in $(git ls-files | grep "\.sh$"); do
-    if ! shellcheck "$FILE" --external-sources --severity=warning; then
+for FILE in "${SH_FILES[@]}"; do
+    if ! shellcheck "$FILE" --external-sources --severity=info; then
         exitcode=1
     fi
 done
