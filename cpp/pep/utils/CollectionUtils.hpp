@@ -17,7 +17,7 @@
 
 namespace pep {
 
-/// \brief Get possible-const range value.
+/// \brief Get possible-const range value type.
 /// \note Like \c range_value_t , which does not retain const.
 template <std::ranges::range R>
 using QualifiedRangeValue = std::remove_reference_t<std::ranges::range_reference_t<R>>;
