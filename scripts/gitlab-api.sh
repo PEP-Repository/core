@@ -16,12 +16,23 @@ readonly SCRIPTPATH
 . "$SCRIPTPATH/sh-utils.sh"
 
 no_project=false
+git_dir=''
+api_key=''
+token_header='PRIVATE-TOKEN'
 while [ "$#" != 0 ]; do
   case "$1" in
     --no-project) # Do not prefix API URL with project
       no_project=true ;;
+    # Authenticate with a CI job token ($CI_JOB_TOKEN), which is only accepted in its own header:
+    # https://docs.gitlab.com/ci/jobs/ci_job_token/#rest-api-authentication
+    --job-token)
+      shift; api_key="${1:?Expected value for --job-token}"; token_header='JOB-TOKEN' ;;
+    --api-key)
+      shift; api_key="${1:?Expected value for --api-key}" ;;
+    --git-dir)
+      shift; git_dir="${1:?Expected value for --git-dir}" ;;
     --help|-h)
-      echo "Usage: '$0' [--no-project] <git-dir> <api-key> <command> <rel-path> [curl args...]"
+      echo "Usage: '$0' [--no-project] --git-dir <dir> (--api-key <key> | --job-token <token>) <command> <rel-path> [curl args...]"
       exit ;;
     --)
       shift
@@ -34,8 +45,8 @@ while [ "$#" != 0 ]; do
   shift
 done
 
-readonly git_dir="${1:?Expected git dir}"; shift
-readonly api_key="${1:?Expected API key}"; shift
+readonly git_dir="${git_dir:?Expected --git-dir}"
+readonly api_key="${api_key:?Expected --api-key or --job-token}"
 readonly command="${1:?Expected command}"; shift
 
 # Commands that don't require a project URL or API connection
@@ -48,8 +59,8 @@ case $command in
     # If the ".created_at" is older than the (hard-coded) threshold, this function prints
     # the value of that ".created_at" property (so that the caller can report its value), otherwise print nothing. Exit 0 in both cases.
     entry=$(cat)
-    created_at=$(printf '%s' "$entry" | jq --raw-output ".created_at")
-    seconds=$(( $(date +%s) - $(date -d "$created_at" +%s) ))
+    created_at=$(raw_echo "$entry" | jq --raw-output ".created_at")
+    seconds=$(( $(date +%s) - $(gnu_date -d "$created_at" +%s) ))
     days=$(( seconds / 60 / 60 / 24 ))
     if [ "$days" -ge 6 ]; then
       echo "$created_at"
@@ -89,7 +100,7 @@ request() {
             --fail \
             --retry 7 \
             --request "$method" \
-            --header "PRIVATE-TOKEN: $api_key" \
+            --header "$token_header: $api_key" \
             --header "Cache-Control: no-cache" \
             "$url" "$@"; then
     >&2 echo "Error while sending $method request to $url" "$@"
@@ -106,14 +117,17 @@ get_multipage() {
     delim="&"
   fi
 
-  # Use printf '%s' instead of echo to prevent character escapes from being interpreted
-
   joined=""
   ipage=1
   while [ "$ipage" -ne 0 ]; do
     # per_page=100 is the maximum allowed, so like this we minimize the number of requests
     page=$(request get "${rel_path}${delim}per_page=100&page=$ipage" "$@")
-    if [ "$(printf '%s' "$page" | jq length)" -eq 0 ]; then
+    # jq length would fail on anything not a json array, and treating that as a nonempty page would loop over pages forever
+    page_length=$(raw_echo "$page" | jq 'if type == "array" then length else null end' 2>/dev/null) || page_length=null
+    if [ "$page_length" = null ]; then
+      fail "Expected a JSON array from $rel_path (page $ipage), got: $page"
+    fi
+    if [ "$page_length" -eq 0 ]; then
       ipage=0
     else
       # Join with newline (string escapes are not a thing in sh)
@@ -123,7 +137,7 @@ $page"
     fi
   done
   
-  printf '%s' "$joined" | jq ".[]" | jq -s
+  raw_echo "$joined" | jq ".[]" | jq -s
 }
 
 case $command in

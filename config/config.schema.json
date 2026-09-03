@@ -264,29 +264,18 @@
         "S3": {
           "type": "object",
           "properties": {
-            "EndPoint": { "$ref": "#/$defs/EndPoint" },
-            "Credentials": {
+            "Hosts": {
               "type": "object",
-              "properties": {
-                "Include": { "type": "string" },
-                "AccessKey": { "type": "string" },
-                "Secret": { "type": "string" },
-                "Service": { "type": "string" },
-                "Region": { "type": "string" }
-              }
+              "additionalProperties": { "$ref": "#/$defs/S3Host" }
             },
-            "CaCertificateFile": { "type": "string" },
-            "UseHttps": { "type": "boolean" },
-            "Connections": { "type": "integer" },
-            "WriteToBucket": { "type": "string" },
+            "WriteToBucket": { "$ref": "#/$defs/S3Bucket" },
             "ReadFromBuckets": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": { "$ref": "#/$defs/S3Bucket" }
             }
           },
           "required": [
-            "EndPoint",
-            "Credentials",
+            "Hosts",
             "WriteToBucket",
             "ReadFromBuckets"
           ],
@@ -294,6 +283,46 @@
           "patternProperties": { "^//": {} }
         }
       }
+    },
+    "S3Host": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": { "^//": {} },
+      "properties": {
+        "EndPoint": { "$ref": "#/$defs/EndPoint" },
+        "Credentials": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": { "^//": {} },
+          "properties": {
+            "Include": { "type": "string" },
+            "AccessKey": { "type": "string" },
+            "Secret": { "type": "string" },
+            "Service": { "type": "string" },
+            "Region": { "type": "string" }
+          }
+        },
+        "CaCertificateFile": { "type": "string" },
+        "UseHttps": { "type": "boolean" },
+        "Connections": { "type": "integer" }
+      },
+      "required": [
+        "EndPoint",
+        "Credentials"
+      ]
+    },
+    "S3Bucket": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": { "^//": {} },
+      "properties": {
+        "Name": { "type": "string" },
+        "HostId": { "type": "string" }
+      },
+      "required": [
+        "Name",
+        "HostId"
+      ]
     },
 
     "TranscryptorConfig": {

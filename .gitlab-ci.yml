@@ -1394,8 +1394,27 @@ upload-weblib-npm:
     - npm version --no-git-tag-version "${PACKAGE_VERSION}"
     - npm install
     - npm pack
-    # Tag with commit SHA so provide-binaries.sh can find this version by SHA
-    - npm publish ./pep-repo-client-lib-*.tgz --tag "${CI_COMMIT_SHA}" --registry "${PEP_NPM_REGISTRY}"
+    # The package version is derived from the pipeline ID, so a rerun of this job republishes the same
+    # version, which GitLab rejects with "You cannot publish over the previously published versions".
+    # Deleting the previously published version needs a maintainer token, which we don't want to expose
+    # to this job.
+    # The dist-tags map the commit SHA to the published version, so they tell us whether a previous
+    # run of this job already published this version under the tag that provide-binaries.sh looks for.
+    - |
+      foss_packages() {
+        "${CI_PROJECT_DIR}/scripts/gitlab-packages.sh" --git-dir "${CI_PROJECT_DIR}" \
+          --job-token "${CI_JOB_TOKEN}" "$@"
+      }
+      tagged_version="$(foss_packages npm-dist-tags pep-repo-client-lib \
+        | jq --raw-output --arg sha "${CI_COMMIT_SHA}" '.[$sha] // empty')"
+      if [ "$tagged_version" = "${PACKAGE_VERSION}" ]; then
+        echo "pep-repo-client-lib@${PACKAGE_VERSION} is already published and tagged ${CI_COMMIT_SHA}, skipping"
+      elif [ "$(foss_packages list npm pep-repo-client-lib "${PACKAGE_VERSION}" | jq length)" -gt 0 ]; then
+        # The version is published but the SHA tag is missing or points elsewhere, so only set the tag
+        npm dist-tag add "pep-repo-client-lib@${PACKAGE_VERSION}" "${CI_COMMIT_SHA}" --registry "${PEP_NPM_REGISTRY}"
+      else
+        npm publish ./pep-repo-client-lib-*.tgz --tag "${CI_COMMIT_SHA}" --registry "${PEP_NPM_REGISTRY}"
+      fi
 
 retag-pep-docker-images:
   extends:
