@@ -35,6 +35,8 @@ while [ $# -gt 0 ]; do
       pepcli_bin="$1" ;;
     --pep-enrollment-bin) shift
       pep_enrollment_bin="$1" ;;
+    --loglevel) shift
+      loglevel="$1" ;;
     -?*)
       >&2 echo "WARN: Unknown option: $1"
       exit 2 ;;
@@ -46,6 +48,11 @@ done
 if [ $# -gt 0 ]; then
   >&2 printGreen "No positional arguments expected: $*"
   exit 2
+fi
+
+bin_args=()
+if [ -n "${loglevel-}" ]; then
+  bin_args=(--loglevel "$loglevel")
 fi
 
 finish() {
@@ -61,38 +68,38 @@ finish() {
 trap finish EXIT
 
 cd "$data_dir/storagefacility"
-"$storage_facility_bin" "$data_dir/storagefacility/StorageFacility.json" 2> >(sed -u "s/^/[StorageFacility] /" >&2) > >(sed -u "s/^/[StorageFacility] /") &
+"$storage_facility_bin" "${bin_args[@]}" "$data_dir/storagefacility/StorageFacility.json" 2> >(sed -u "s/^/[StorageFacility] /" >&2) > >(sed -u "s/^/[StorageFacility] /") &
 SFPID=$!
 cd "$data_dir/keyserver"
-"$key_server_bin" "$data_dir/keyserver/KeyServer.json" 2> >(sed -u "s/^/[KeyServer] /" >&2) > >(sed -u "s/^/[KeyServer] /") &
+"$key_server_bin" "${bin_args[@]}" "$data_dir/keyserver/KeyServer.json" 2> >(sed -u "s/^/[KeyServer] /" >&2) > >(sed -u "s/^/[KeyServer] /") &
 KSPID=$!
 cd "$data_dir/accessmanager"
-"$access_manager_bin" "$data_dir/accessmanager/AccessManager.json" 2> >(sed -u "s/^/[AccessManager] /" >&2) > >(sed -u "s/^/[AccessManager] /") &
+"$access_manager_bin" "${bin_args[@]}" "$data_dir/accessmanager/AccessManager.json" 2> >(sed -u "s/^/[AccessManager] /" >&2) > >(sed -u "s/^/[AccessManager] /") &
 AMPID=$!
 cd "$data_dir/authserver"
-"$authserver_bin" "$data_dir/authserver/Authserver.json" 2> >(sed -u "s/^/[Authserver] /" >&2) > >(sed -u "s/^/[Authserver] /") &
+"$authserver_bin" "${bin_args[@]}" "$data_dir/authserver/Authserver.json" 2> >(sed -u "s/^/[Authserver] /" >&2) > >(sed -u "s/^/[Authserver] /") &
 ASPID=$!
 
 sleep 4
 
 echo "Requesting verifiers"
 
-(cd "$data_dir/transcryptor"; "$pepcli_bin" --client-working-directory ../client verifiers > Verifiers.json)
+(cd "$data_dir/transcryptor"; "$pepcli_bin" "${bin_args[@]}" --client-working-directory ../client verifiers > Verifiers.json)
 
 cat "$data_dir/transcryptor/Verifiers.json"
 
 sleep 2
 
 cd "$data_dir/transcryptor"
-"$transcryptor_bin" "$data_dir/transcryptor/Transcryptor.json" 2> >(sed -u "s/^/[Transcryptor] /" >&2) > >(sed -u "s/^/[Transcryptor] /") &
+"$transcryptor_bin" "${bin_args[@]}" "$data_dir/transcryptor/Transcryptor.json" 2> >(sed -u "s/^/[Transcryptor] /" >&2) > >(sed -u "s/^/[Transcryptor] /") &
 TSPID=$!
 
 cd "$data_dir/registrationserver"
-"$registration_server_bin" "$data_dir/registrationserver/RegistrationServer.json" 2> >(sed -u "s/^/[RegistrationServer] /" >&2) > >(sed -u "s/^/[RegistrationServer] /") &
+"$registration_server_bin" "${bin_args[@]}" "$data_dir/registrationserver/RegistrationServer.json" 2> >(sed -u "s/^/[RegistrationServer] /" >&2) > >(sed -u "s/^/[RegistrationServer] /") &
 RSPID=$!
 
 echo "Enrolling Transcryptor"
-(cd "$data_dir/transcryptor"; "$pep_enrollment_bin" Transcryptor.json 4 "$pki_dir/PEPTranscryptor.key" "$pki_dir/PEPTranscryptor.chain" "$data_dir"/transcryptor/TranscryptorKeys.json)
+(cd "$data_dir/transcryptor"; "$pep_enrollment_bin" "${bin_args[@]}" Transcryptor.json 4 "$pki_dir/PEPTranscryptor.key" "$pki_dir/PEPTranscryptor.chain" "$data_dir"/transcryptor/TranscryptorKeys.json)
 cat "$data_dir/transcryptor/TranscryptorKeys.json"
 
 
@@ -100,19 +107,19 @@ echo "Restarting Transcryptor"
 kill $TSPID
 sleep 2 # Give OS time to release the port, preventing "Address already in use". See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2471#note_39395
 cd "$data_dir/transcryptor"
-"$transcryptor_bin" "$data_dir/transcryptor/Transcryptor.json" 2> >(sed -u "s/^/[Transcryptor2] /" >&2) > >(sed -u "s/^/[Transcryptor2] /") &
+"$transcryptor_bin" "${bin_args[@]}" "$data_dir/transcryptor/Transcryptor.json" 2> >(sed -u "s/^/[Transcryptor2] /" >&2) > >(sed -u "s/^/[Transcryptor2] /") &
 TSPID=$!
 
 sleep 2
 
 echo "Enrolling Access Manager"
-(cd "$data_dir/accessmanager"; "$pep_enrollment_bin" AccessManager.json 3 "$pki_dir/PEPAccessManager.key" "$pki_dir/PEPAccessManager.chain" "$data_dir"/accessmanager/AccessManagerKeys.json)
+(cd "$data_dir/accessmanager"; "$pep_enrollment_bin" "${bin_args[@]}" AccessManager.json 3 "$pki_dir/PEPAccessManager.key" "$pki_dir/PEPAccessManager.chain" "$data_dir"/accessmanager/AccessManagerKeys.json)
 cat "$data_dir/accessmanager/AccessManagerKeys.json"
 
 echo "Enrolling Storage Facility"
-(cd "$data_dir/storage_facility_bin"; "$pep_enrollment_bin" storage_facility_bin.json 2 "$pki_dir/PEPstorage_facility_bin.key" "$pki_dir/PEPstorage_facility_bin.chain" "$data_dir"/storage_facility_bin/storage_facility_binKeys.json)
+(cd "$data_dir/storage_facility_bin"; "$pep_enrollment_bin" "${bin_args[@]}" storage_facility_bin.json 2 "$pki_dir/PEPstorage_facility_bin.key" "$pki_dir/PEPstorage_facility_bin.chain" "$data_dir"/storage_facility_bin/storage_facility_binKeys.json)
 cat "$data_dir/storage_facility_bin/storage_facility_binKeys.json"
 
 echo "Enrolling Registration Server"
-(cd "$data_dir/registrationserver"; "$pep_enrollment_bin" RegistrationServer.json 5 "$pki_dir/PEPRegistrationServer.key" "$pki_dir/PEPRegistrationServer.chain" "$data_dir"/registrationserver/RegistrationServerKeys.json)
+(cd "$data_dir/registrationserver"; "$pep_enrollment_bin" "${bin_args[@]}" RegistrationServer.json 5 "$pki_dir/PEPRegistrationServer.key" "$pki_dir/PEPRegistrationServer.chain" "$data_dir"/registrationserver/RegistrationServerKeys.json)
 cat "$data_dir/registrationserver/RegistrationServerKeys.json"
