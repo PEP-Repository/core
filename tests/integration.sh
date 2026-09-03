@@ -406,16 +406,16 @@ if [ "$LOCAL" = true ]; then
   trace "$CORE_DIR/docker/init_keys.sh" "$REUSE_SECRETS_AND_DATA" "$DATA_DIR" "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE"
   if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
     trace "$CORE_DIR/docker/config_servers.sh" \
-      "$DATA_DIR" \
-      "$PKI_DIR_ON_HOST" \
-      "$BUILD_DIR/cpp/pep/storagefacility/$BUILD_MODE/pepStorageFacility" \
-      "$BUILD_DIR/cpp/pep/keyserver/$BUILD_MODE/pepKeyServer" \
-      "$BUILD_DIR/cpp/pep/accessmanager/$BUILD_MODE/pepAccessManager" \
-      "$BUILD_DIR/cpp/pep/transcryptor/$BUILD_MODE/pepTranscryptor" \
-      "$BUILD_DIR/cpp/pep/registrationserver/$BUILD_MODE/pepRegistrationServer" \
-      "$BUILD_DIR/cpp/pep/authserver/$BUILD_MODE/pepAuthserver" \
-      "$BUILD_DIR/cpp/pep/cli/$BUILD_MODE/pepcli" \
-      "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepEnrollment"
+      --data-dir "$DATA_DIR" \
+      --pki-dir "$PKI_DIR_ON_HOST" \
+      --storage-facility-bin "$BUILD_DIR/cpp/pep/storagefacility/$BUILD_MODE/pepStorageFacility" \
+      --key-server-bin "$BUILD_DIR/cpp/pep/keyserver/$BUILD_MODE/pepKeyServer" \
+      --access-manager-bin "$BUILD_DIR/cpp/pep/accessmanager/$BUILD_MODE/pepAccessManager" \
+      --transcryptor-bin "$BUILD_DIR/cpp/pep/transcryptor/$BUILD_MODE/pepTranscryptor" \
+      --registration-server-bin "$BUILD_DIR/cpp/pep/registrationserver/$BUILD_MODE/pepRegistrationServer" \
+      --authserver-bin "$BUILD_DIR/cpp/pep/authserver/$BUILD_MODE/pepAuthserver" \
+      --pepcli-bin "$BUILD_DIR/cpp/pep/cli/$BUILD_MODE/pepcli" \
+      --pep-enrollment-bin "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepEnrollment"
   fi
   printGreen "\$ $BUILD_DIR/cpp/pep/servers/$BUILD_MODE/pepServers &"
   trace start_servers_locally
