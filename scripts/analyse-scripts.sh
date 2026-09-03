@@ -7,7 +7,7 @@ exitcode=0
 # Check all files with shebang headers
 for FILE in $(git --no-pager grep -l -I -E '^#\!'); do
     # Skip files that do not have a shebang at the start of the first line
-    if ! [[ $(head -n 1 $FILE) =~ ^"#!" ]]; then
+    if ! [[ $(head -n 1 "$FILE") =~ ^"#!" ]]; then
         continue;
     fi
 
