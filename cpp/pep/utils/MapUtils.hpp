@@ -45,33 +45,37 @@ void ReserveToMatch(std::ranges::sized_range auto& container, std::ranges::forwa
   }
 }
 
+/// \brief Builds a pointer set from a range, collecting duplicates separately.
+/// \details Inserts pointers to each element into an unordered set; elements that
+/// are already present are appended to the duplicates vector instead.
+/// \returns A pair with (first) a set of unique element pointers, and
+/// (second) a vector of pointers to the duplicate elements.
 auto MakeUnorderedPointerSet(std::ranges::forward_range auto&& values)
-    -> std::tuple<UnorderedPointerSet<QualifiedRangeValue<decltype(values)>>,
+    -> std::pair<
+        UnorderedPointerSet<QualifiedRangeValue<decltype(values)>>,
         std::vector<QualifiedRangeValue<decltype(values)>*>> {
-  UnorderedPointerSet<QualifiedRangeValue<decltype(values)>> set;
-  std::vector<QualifiedRangeValue<decltype(values)>*> duplicates;
-
+  auto result = decltype(MakeUnorderedPointerSet(values)){};
+  auto& [set, duplicates] = result;
   ReserveToMatch(set, values);
   for (auto& value : values) {
     auto ptr = std::addressof(value);
     if (!set.insert(ptr).second) { duplicates.emplace_back(ptr); }
   }
-
-  return std::make_tuple(std::move(set), std::move(duplicates));
+  return result;
 }
 
 /// \brief Returns whether \p sub is a subset of \p super .
 /// \details Ignores duplicate values.
 bool IsSubset(std::ranges::input_range auto const& sub, std::ranges::forward_range auto const& super) {
   using namespace std::ranges;
-  const auto superset = std::get<0>(MakeUnorderedPointerSet(super)); // O(super*log(super))
+  const auto superset = MakeUnorderedPointerSet(super).first; // O(super*log(super))
   return all_of(sub, [&](const auto& value) { return superset.contains(&value); }); // O(sub*log(super))
 }
 
 /// Returns a value that's included multiple times in the vector, or nullptr if it contains unique values.
 auto TryFindDuplicateValue(std::ranges::forward_range auto&& values) -> QualifiedRangeValue<decltype(values)>* {
   using namespace std::ranges;
-  const auto duplicates = std::get<1>(MakeUnorderedPointerSet(values));
+  const auto duplicates = MakeUnorderedPointerSet(values).second;
   return duplicates.empty() ? nullptr : duplicates.front();
 }
 
@@ -79,8 +83,8 @@ auto TryFindDuplicateValue(std::ranges::forward_range auto&& values) -> Qualifie
 /// \details Equality is determined by the specified Compare object.
 auto TryFindCommonValue(std::ranges::forward_range auto&& valuesA, std::ranges::forward_range auto&& valuesB) -> QualifiedRangeValue<decltype(valuesA)>* {
   using namespace std::ranges;
-  const auto setA = std::get<0>(MakeUnorderedPointerSet(valuesA));
-  const auto setB = std::get<0>(MakeUnorderedPointerSet(valuesB));
+  const auto setA = MakeUnorderedPointerSet(valuesA).first;
+  const auto setB = MakeUnorderedPointerSet(valuesB).first;
   const auto commonVal = find_if(setB, [&](auto ptr) { return setA.contains(ptr); });
   return (commonVal != setB.end()) ? *commonVal : nullptr;
 }
