@@ -12,7 +12,7 @@ FILES=""
 # Function to display usage. Specify exit code as a parameter: 0 for success or a different value for failure
 usage() {
   echo "Usage: $0 --source-prefix <source_prefix> --dest-prefix <destination_path> --build-mode <build_mode> --append-extension <extension> <files...>"
-  exit $1
+  exit "$1"
 }
 
 # Function to get size of a path in KB
