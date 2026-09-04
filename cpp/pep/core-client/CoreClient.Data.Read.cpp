@@ -1,5 +1,4 @@
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
 #include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/async/RxFilterNullopt.hpp>
 #include <pep/async/RxIndexed.hpp>

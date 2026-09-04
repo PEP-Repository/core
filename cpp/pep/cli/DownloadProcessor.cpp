@@ -1,6 +1,6 @@
 #include <pep/cli/DownloadProcessor.hpp>
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxDrain.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxToVector.hpp>
@@ -96,7 +96,7 @@ rxcpp::observable<FakeVoid> DownloadProcessor::update(std::shared_ptr<CoreClient
     .flat_map([self, progress, ctx](std::shared_ptr<VectorOfVectors<std::shared_ptr<EnumerateResult>>> metas) { return self->locateFileContents(progress, ctx, metas); })
     .tap([self, progress, ctx](std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads) { self->prepareLocalData(progress, downloads, ctx->options.assumePristine); })
     .flat_map([self, progress, ctx](std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads) {return self->retrieveFromServer(progress, ctx, downloads); })
-    .op(RxBeforeCompletion([progress]() {progress->advanceToCompletion(); }))
+    .op(RxSubsequently([progress]() {progress->advanceToCompletion(); }))
     .op(RxInstead(FakeVoid())); // Return a single FakeVoid for the entire operation
 }
 
@@ -247,7 +247,7 @@ rxcpp::observable<FakeVoid> DownloadProcessor::retrieveFromServer(
             return FakeVoid{};
           });
       })
-      .op(RxBeforeCompletion([self, ctx, retrieveProgress]() {
+      .op(RxSubsequently([self, ctx, retrieveProgress]() {
         retrieveProgress->advanceToCompletion();
       }));
 }
