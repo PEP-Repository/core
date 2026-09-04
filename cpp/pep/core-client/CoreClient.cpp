@@ -197,10 +197,6 @@ void CoreClient::Builder::initialize(
   assert(io_context != nullptr && "Caller must provide an I/O context");
 
   try {
-    // See #1797: the keys file must be (read from and) written to the cwd
-    // because the config's directory may be read-only (e.g. on Windows installations).
-    auto keysFile = std::filesystem::current_path() / config.get<std::string>("EnrolledPartyKeysFile");
-
     this->setCaCertFilepath(config.get<std::filesystem::path>("CaCertificateFile"));
     this->setSystemPublicKeys(config.get<SystemPublicKeys>("SystemPublicKeys"));
 
@@ -219,10 +215,18 @@ void CoreClient::Builder::initialize(
     }
 
     if (persistKeysFile) {
+      // See #1797: the keys file must be (read from and) written to the cwd
+      // because the config's directory may be read-only (e.g. on Windows installations).
+      // However, fall back to keys file at config dir, if it exists.
+      // This is useful for the RegistrationServer for an integration test on base data with pepServers, for example.
+      const auto workingDirKeysFile = std::filesystem::current_path() / config.get<std::string>("EnrolledPartyKeysFile");
+      const auto configDirKeysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
+      auto keysFile = !exists(workingDirKeysFile) && exists(configDirKeysFile) ? configDirKeysFile : workingDirKeysFile;
+
       // Ensure that CoreClient writes future enrollment data to file...
       this->setKeysFilePath(keysFile);
       // ...and try to load previously persisted keys from it
-      if (std::filesystem::exists(keysFile)) {
+      if (exists(keysFile)) {
         Configuration keysConfig = Configuration::FromFile(keysFile);
         try {
           EnrolledPartyKeys enrolledPartyKeys = keysConfig.get<EnrolledPartyKeys>("");
