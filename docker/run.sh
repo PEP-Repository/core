@@ -14,7 +14,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ $# -gt 0 ]; then
-  >&2 printGreen "No positional arguments expected: $*"
+  >&2 echo "No positional arguments expected: $*"
   exit 2
 fi
 
