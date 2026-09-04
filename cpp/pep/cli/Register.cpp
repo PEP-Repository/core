@@ -12,6 +12,7 @@
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 using namespace pep::cli;
 
