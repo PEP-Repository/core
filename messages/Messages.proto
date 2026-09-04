@@ -297,7 +297,7 @@ message SignedKeyComponentRequest {
 message KeyComponentResponse {
   reserved 1, 4;
   CurveScalar pseudonymisation_key_component = 2;
-  CurveScalar encryption_key_component = 3;
+  CurveScalar encryption_key_component = 3; // optional
 }
 
 message RekeyRequest {
