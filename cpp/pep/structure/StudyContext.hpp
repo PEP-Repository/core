@@ -74,7 +74,7 @@ public:
 
   bool contains(const StudyContext& context) const;
   /// All contexts in effect, including the default one that was synthesized if none were configured. Not suitable as constructor input
-    const std::vector<StudyContext>& getItems() const noexcept { return items_; }
+  const std::vector<StudyContext>& getItems() const noexcept { return items_; }
   /// The contexts as configured: like getItems, but without a synthesized default context. Suitable as constructor input
   std::vector<StudyContext> getConfigured() const;
 
