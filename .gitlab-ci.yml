@@ -1252,6 +1252,7 @@ build-sandbox-docker-image:
     - docker buildx build --pull
                           --push --file "docker/pep-sandbox.Dockerfile"
                           --tag "$IMAGE_PEP_SANDBOX:$IMAGE_TAG_TEST"
+                          --label "nl.ru.cs.pep.release-branch=$CI_COMMIT_BRANCH"
                           --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
                           --build-arg "BASE_IMAGE=$RUNTIME_IMAGE_UBUNTU_LTS" .
 
@@ -1446,8 +1447,14 @@ publish-sandbox-image:
   stage: publish
   extends: .upload-base
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  # Manual, because we shouldnt publish when we first create the release branch, only after OKing. Scheduled pipelines are only set when branch is already OK
   rules:
-    - if: $CI_COMMIT_BRANCH == $PEP_FOSS_DEVELOPMENT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
+        && $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
+      when: manual
+      allow_failure: true
+    - when: never
   needs:
     - job: build-sandbox-docker-image
       artifacts: false
@@ -1466,7 +1473,25 @@ publish-sandbox-image:
         exit 1
       fi
     - echo "$PEP_GROUP_API_TOKEN" | docker login "${CI_REGISTRY}" --username "-" --password-stdin
-    - docker buildx imagetools create "$IMAGE_PEP_SANDBOX:$IMAGE_TAG_TEST" --tag "${CI_REGISTRY}/pep-public/core/pep-sandbox:latest"
+
+    # Which branch was the currently published latest built from? Empty if unpublished.
+    - |
+      published_branch="$(
+        docker buildx imagetools inspect "$IMAGE_PEP_SANDBOX_LATEST" --format '{{json .Image}}' 2>/dev/null \
+        | jq -r '[.. | objects | .Labels? // empty | ."nl.ru.cs.pep.release-branch"? // empty] | first // ""'
+      )"
+
+    # An older branch's leftover schedule must not overwrite a newer one's latest
+    - |
+      if [ -n "$published_branch" ]; then
+        newest="$(printf '%s\n%s\n' "$published_branch" "$CI_COMMIT_BRANCH" | sort -V | tail -n1)"
+        if [ "$newest" != "$CI_COMMIT_BRANCH" ]; then
+          echo "$CI_COMMIT_BRANCH is older than the published $published_branch, skipping"
+          exit 0
+        fi
+      fi
+
+    - docker buildx imagetools create "$IMAGE_PEP_SANDBOX:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SANDBOX_LATEST"
 
 ##########################################
 # Configuration for the trigger stage    #
