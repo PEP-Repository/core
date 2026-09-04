@@ -386,7 +386,7 @@
           "properties": {
             "BaseUrl": {
               "type": "string",
-              "description": "Qt URL template: %1 is replaced with the study slug and %2 with the participant, so this is not a valid URI",
+              "description": "Qt URL template: %1 is replaced with the study slug and %2 with the participant",
               "pattern": "^https?://.*%1.*%2"
             }
           },
