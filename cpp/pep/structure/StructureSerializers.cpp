@@ -200,7 +200,7 @@ void Serializer<GlobalConfiguration>::moveIntoProtocolBuffer(proto::GlobalConfig
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_column_specifications(), value.getColumnSpecifications());
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_user_pseudonym_format(), value.getUserPseudonymFormat());
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_assessors(), value.getAssessors());
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_study_contexts(), value.getStudyContexts().getItems());
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_study_contexts(), value.getStudyContexts().getConfigured());
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_short_pseudonym_errata(), value.getShortPseudonymErrata());
 }
 

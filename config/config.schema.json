@@ -384,7 +384,11 @@
         "Castor": {
           "type": "object",
           "properties": {
-            "BaseUrl": { "type": "string", "format": "uri" }
+            "BaseUrl": {
+              "type": "string",
+              "description": "Qt URL template: %1 is replaced with the study slug and %2 with the participant",
+              "pattern": "^https?://.*%1.*%2"
+            }
           },
           "required": ["BaseUrl"],
           "additionalProperties": false,

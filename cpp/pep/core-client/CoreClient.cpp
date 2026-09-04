@@ -2,7 +2,6 @@
 #include <pep/async/RxCache.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxRequireCount.hpp>
-#include <pep/async/RxToSet.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/key-components/KeyComponentSerializers.hpp>
@@ -13,7 +12,7 @@
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/utils/CollectionUtils.hpp>
+#include <pep/utils/MapUtils.hpp>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/json_parser.hpp>

@@ -61,6 +61,8 @@ private:
 private:
   std::vector<StudyContext>::const_iterator getPositionOf(const StudyContext& context) const;
   std::vector<StudyContext>::const_iterator findById(const std::string& id) const;
+  /// Whether any containing StudyContext is flagged as the default context.
+  bool hasDefault() const noexcept;
 
 public:
   StudyContexts() = default;
@@ -71,7 +73,10 @@ public:
   explicit StudyContexts(std::vector<StudyContext> items);
 
   bool contains(const StudyContext& context) const;
+  /// All contexts in effect, including the default one that was synthesized if none were configured. Not suitable as constructor input
   const std::vector<StudyContext>& getItems() const noexcept { return items_; }
+  /// The contexts as configured: like getItems, but without a synthesized default context. Suitable as constructor input
+  std::vector<StudyContext> getConfigured() const;
 
   /// \throws std::runtime_error if a context with the same id already exists
   /// (compared case-insensitively).
