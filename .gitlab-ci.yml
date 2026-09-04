@@ -1428,6 +1428,7 @@ publish-sandbox-image:
   stage: publish
   extends: .upload-base
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  # Manual, because we shouldnt publish when we first create the release branch, only after OKing. Scheduled pipelines are only set when branch is already OK
   rules:
     - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
         && $CI_PIPELINE_SOURCE == "schedule"
