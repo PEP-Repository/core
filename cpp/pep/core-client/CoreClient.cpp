@@ -100,7 +100,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
       .reduce(
         std::make_shared<std::unordered_map<std::string, PolymorphicPseudonym>>(),
         [this](std::shared_ptr<std::unordered_map<std::string, PolymorphicPseudonym>> all, const LocalPseudonyms& entry) {
-          auto decrypted = entry.accessGroup->decrypt(privateKeyPseudonyms_);
+          auto decrypted = decryptLocalPseudonym(entry.accessGroup.value());
           all->emplace(decrypted.text(), entry.polymorphic); // Don't assert that it's emplaced; we may be processing idsAndOrPps that refer to the same participant
           return all;
         }
@@ -180,7 +180,7 @@ PolymorphicPseudonym CoreClient::generateParticipantPolymorphicPseudonym(const s
 }
 
 LocalPseudonym CoreClient::decryptLocalPseudonym(const EncryptedLocalPseudonym& encrypted) const {
-  return encrypted.decrypt(privateKeyPseudonyms_);
+  return encrypted.decrypt(privateKeyPseudonyms());
 }
 
 std::shared_ptr<CoreClient> CoreClient::OpenClient(const Configuration& config,
@@ -265,6 +265,14 @@ bool CoreClient::AddServerProxy(ServerProxies& destination, const ServerTraits& 
   }
 
   return false;
+}
+
+const ElgamalPrivateKey& CoreClient::privateKeyPseudonyms() const {
+  return privateKeyPseudonyms_ ? *privateKeyPseudonyms_ : throw std::runtime_error("Private pseudonym key not set");
+}
+
+const ElgamalPrivateKey& CoreClient::privateKeyData() const {
+  return privateKeyData_ ? *privateKeyData_ : throw std::runtime_error("Private data key not set");
 }
 
 std::shared_ptr<const StorageFacilityProxy> CoreClient::getStorageFacilityProxy(bool require) const {

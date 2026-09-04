@@ -108,7 +108,7 @@ CoreClient::unblindAndDecryptKeys(
     return getWorkerPool()->batched_map<8>(std::move(encKeys),
            ObserveOnAsio(*ioContext_),
         [this](EncryptedKey encKey) {
-      auto point = encKey.decrypt(privateKeyData_);
+      auto point = encKey.decrypt(privateKeyData());
       return AESKey(point);
     });
   });
