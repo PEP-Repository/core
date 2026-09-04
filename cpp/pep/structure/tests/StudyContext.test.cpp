@@ -2,7 +2,9 @@
 
 #include <pep/structure/StudyContext.hpp>
 
+#include <algorithm>
 #include <stdexcept>
+#include <vector>
 
 namespace {
 
@@ -144,6 +146,30 @@ TEST(StudyContextsTest, GetById) {
   EXPECT_EQ(contexts.getById("second").getId(), "second");
   EXPECT_EQ(contexts.getById("SECOND").getId(), "second"); // case-insensitive lookup returns the configured casing
   EXPECT_THROW(contexts.getById("nonexistent"), std::runtime_error);
+}
+
+TEST(StudyContextsTest, GetConfiguredOmitsSynthesizedDefault) {
+  EXPECT_TRUE(pep::StudyContexts(std::vector<pep::StudyContext>{}).getConfigured().empty());
+}
+
+TEST(StudyContextsTest, GetConfiguredUnflagsTheDefault) {
+  auto configured = MakeContexts().getConfigured();
+  ASSERT_EQ(configured.size(), 2U);
+  EXPECT_TRUE(std::ranges::none_of(configured, &pep::StudyContext::isDefault));
+}
+
+TEST(StudyContextsTest, GetConfiguredIsValidConstructorInputWhenNothingConfigured) {
+  pep::StudyContexts original(std::vector<pep::StudyContext>{});
+  pep::StudyContexts reconstructed(original.getConfigured());
+  EXPECT_EQ(reconstructed.toString(), original.toString()); // Same ids, in the same order and casing
+  EXPECT_TRUE(reconstructed.contains(*original.getDefault())); // Same default context
+}
+
+TEST(StudyContextsTest, GetConfiguredIsValidConstructorInputWhenContextsConfigured) {
+  auto original = MakeContexts();
+  pep::StudyContexts reconstructed(original.getConfigured());
+  EXPECT_EQ(reconstructed.toString(), original.toString()); // Same ids, in the same order and casing
+  EXPECT_TRUE(reconstructed.contains(*original.getDefault())); // Same default context
 }
 
 TEST(StudyContextsTest, ToStringJoinsIdsWithCommas) {
