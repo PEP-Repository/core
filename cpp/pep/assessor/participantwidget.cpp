@@ -724,7 +724,7 @@ void ParticipantWidget::locateBartender() {
         std::string data(sizeWithNull - 1, '\0');
         // Then query value
         if (::RegGetValueA(key, nullptr, valueName, stringTypes, nullptr, data.data(), &sizeWithNull) == ERROR_SUCCESS) {
-          assert(sizeWithNull = data.size() + 1);
+          assert(sizeWithNull == data.size() + 1);
           bestDir = std::move(data);
         }
       }
