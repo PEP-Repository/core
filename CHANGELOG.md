@@ -28,6 +28,8 @@
 
 - docker-build#31: PEP Docker images were upgraded to be based on Ubuntu 26.04.
 
+- core#2974: Building PEP now requires a more recent compiler & stdlib with C++23 features, see README.md.
+
 ---------------
 *Past changes, do not edit (except by person doing release):*
 
