@@ -715,18 +715,7 @@ void ParticipantWidget::locateBartender() {
     if (::RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Seagull Scientific\\BarTender", 0, KEY_READ, &key) == ERROR_SUCCESS) {
       PEP_DEFER(RegCloseKey(key));
 
-      const auto valueName = "Last Execution Directory";
-      const DWORD stringTypes = RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ;
-      DWORD sizeWithNull{};
-      // First query size
-      if (::RegGetValueA(key, nullptr, valueName, stringTypes, nullptr, nullptr, &sizeWithNull) == ERROR_SUCCESS) {
-        std::string data(sizeWithNull - 1, '\0');
-        // Then query value
-        if (::RegGetValueA(key, nullptr, valueName, stringTypes, nullptr, data.data(), &sizeWithNull) == ERROR_SUCCESS) {
-          assert(sizeWithNull == data.size() + 1);
-          bestDir = std::move(data);
-        }
-      }
+      bestDir = GetRegistryString(key, "Last Execution Directory");
     }
   }
 
