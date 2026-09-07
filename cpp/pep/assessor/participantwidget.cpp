@@ -717,7 +717,6 @@ void ParticipantWidget::locateBartender() {
 
       const auto valueName = "Last Execution Directory";
       const DWORD stringTypes = RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ;
-      DWORD dwType{};
       DWORD sizeWithNull{};
       // First query size
       if (::RegGetValueA(key, nullptr, valueName, stringTypes, nullptr, nullptr, &sizeWithNull) == ERROR_SUCCESS) {
