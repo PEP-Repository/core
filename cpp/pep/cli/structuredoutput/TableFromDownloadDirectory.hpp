@@ -46,8 +46,8 @@ struct TableFromDownloadDirectoryConfig final {
   IdTextFunction idText = [](const cli::ParticipantIdentifier& id) { return id.getLocalPseudonym().text(); };
 };
 
-/// @brief Converts a DownloadDirectory to a Table
-/// @return A Table with the following properties:
+/// \brief Converts a DownloadDirectory to a Table
+/// \return A Table with the following properties:
 ///   - The first column contains identifiers for the participants.
 ///   - Every other column in the table matches a column represented in the DownloadDirectory.
 ///     Individual individual fields contain either an absolute path to a file in the DownloadDirectory,

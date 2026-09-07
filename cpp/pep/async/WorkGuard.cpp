@@ -8,7 +8,7 @@ struct WorkGuard::Implementor {
 };
 
 WorkGuard::WorkGuard(boost::asio::io_context& context)
-  : mImplementor(std::make_unique<Implementor>(Implementor{ .boost = boost::asio::make_work_guard(context) })) {
+  : implementor_(std::make_unique<Implementor>(Implementor{ .boost = boost::asio::make_work_guard(context) })) {
 }
 
 WorkGuard::~WorkGuard() noexcept = default;

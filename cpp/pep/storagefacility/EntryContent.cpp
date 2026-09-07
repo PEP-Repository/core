@@ -6,20 +6,20 @@ namespace pep {
 
 namespace {
 
-const std::string X_ENTRY_PREFIX = "x-";
-const std::string POLYMORPHIC_KEY_KEY = "polymorphic-key";
-const std::string BLINDING_TIMESTAMP_KEY = "blinding-timestamp";
-const std::string ENCRYPTION_SCHEME_KEY = "encryption-scheme";
-const std::string ORIGINAL_PAYLOAD_TIMESTAMP_KEY = "original-payload-timestamp";
+const std::string XEntryPrefix = "x-";
+const std::string PolymorphicKeyKey = "polymorphic-key";
+const std::string BlindingTimestampKey = "blinding-timestamp";
+const std::string EncryptionSchemeKey = "encryption-scheme";
+const std::string OriginalPayloadTimestampKey = "original-payload-timestamp";
 
 } // anonymous namespace
 
 EntryContent::EntryContent( Metadata metadata, PayloadData payload, std::optional<Timestamp> originalPayloadEntryTimestamp)
-  : mMetadata(std::move(metadata)),
-  mPayload(std::move(payload)) {
+  : metadata_(std::move(metadata)),
+  payload_(std::move(payload)) {
   if (originalPayloadEntryTimestamp.has_value()) {
-    assert(*originalPayloadEntryTimestamp != NO_PREVIOUS_PAYLOAD_ENTRY);
-    mOriginalPayloadEntryTimestamp = *originalPayloadEntryTimestamp;
+    assert(*originalPayloadEntryTimestamp != NoPreviousPayloadEntry);
+    originalPayloadEntryTimestamp_ = *originalPayloadEntryTimestamp;
   }
 }
 
@@ -32,40 +32,40 @@ EntryContent::PayloadData& EntryContent::PayloadData::operator= (const PayloadDa
 }
 
 EntryContent::EntryContent(const EntryContent& other, Timestamp originalEntryValidFrom)
-  : EntryContent(other.mMetadata,
-      other.mPayload,
+  : EntryContent(other.metadata_,
+      other.payload_,
       other.getOriginalPayloadEntryTimestamp().value_or(originalEntryValidFrom)) {}
 
 std::optional<Timestamp> EntryContent::getOriginalPayloadEntryTimestamp() const {
-  if (mOriginalPayloadEntryTimestamp == NO_PREVIOUS_PAYLOAD_ENTRY) {
+  if (originalPayloadEntryTimestamp_ == NoPreviousPayloadEntry) {
     return std::nullopt;
   }
-  return mOriginalPayloadEntryTimestamp;
+  return originalPayloadEntryTimestamp_;
 }
 
 void EntryContent::setPayload(std::shared_ptr<EntryPayload> payload) {
-  assert(mPayload.ptr == nullptr);
-  mPayload.ptr = payload;
-  mOriginalPayloadEntryTimestamp = NO_PREVIOUS_PAYLOAD_ENTRY;
+  assert(payload_.ptr == nullptr);
+  payload_.ptr = payload;
+  originalPayloadEntryTimestamp_ = NoPreviousPayloadEntry;
 }
 
 void EntryContent::Save(const std::unique_ptr<EntryContent>& content, PersistedEntryProperties& properties, std::vector<PageId>& pages) {
   std::shared_ptr<EntryPayload> payload;
 
   if (content != nullptr) {
-    SetPersistedEntryProperty(properties, POLYMORPHIC_KEY_KEY, content->getPolymorphicKey());
-    SetPersistedEntryProperty(properties, BLINDING_TIMESTAMP_KEY, content->getBlindingTimestamp());
-    SetPersistedEntryProperty(properties, ENCRYPTION_SCHEME_KEY, content->getEncryptionScheme());
+    SetPersistedEntryProperty(properties, PolymorphicKeyKey, content->getPolymorphicKey());
+    SetPersistedEntryProperty(properties, BlindingTimestampKey, content->getBlindingTimestamp());
+    SetPersistedEntryProperty(properties, EncryptionSchemeKey, content->getEncryptionScheme());
     auto original = content->getOriginalPayloadEntryTimestamp();
     if (original.has_value()) {
-      SetPersistedEntryProperty(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY, *original);
+      SetPersistedEntryProperty(properties, OriginalPayloadTimestampKey, *original);
     }
 
-    std::transform(content->mMetadata.cbegin(), content->mMetadata.cend(), std::inserter(properties, properties.end()), [](const auto& entry) {
-      auto key = X_ENTRY_PREFIX + *entry.first;
+    std::transform(content->metadata_.cbegin(), content->metadata_.cend(), std::inserter(properties, properties.end()), [](const auto& entry) {
+      auto key = XEntryPrefix + *entry.first;
       return std::make_pair(key, *entry.second);
       });
-    payload = content->mPayload.ptr;
+    payload = content->payload_.ptr;
   }
 
   // Backward compatible: save (absent/empty) payload properties even if there's no content
@@ -73,9 +73,9 @@ void EntryContent::Save(const std::unique_ptr<EntryContent>& content, PersistedE
 }
 
 std::unique_ptr<EntryContent> EntryContent::Load(FileStore& fileStore, PersistedEntryProperties& properties, std::vector<PageId>& pages) {
-  auto polymorphicKey = TryExtractPersistedEntryProperty<EncryptedKey>(properties, POLYMORPHIC_KEY_KEY);
-  auto blindingTimestamp = TryExtractPersistedEntryProperty<Timestamp>(properties, BLINDING_TIMESTAMP_KEY);
-  auto encryptionScheme = TryExtractPersistedEntryProperty<EncryptionScheme>(properties, ENCRYPTION_SCHEME_KEY);
+  auto polymorphicKey = TryExtractPersistedEntryProperty<EncryptedKey>(properties, PolymorphicKeyKey);
+  auto blindingTimestamp = TryExtractPersistedEntryProperty<Timestamp>(properties, BlindingTimestampKey);
+  auto encryptionScheme = TryExtractPersistedEntryProperty<EncryptionScheme>(properties, EncryptionSchemeKey);
 
   assert(polymorphicKey.has_value() == blindingTimestamp.has_value());
   assert(polymorphicKey.has_value() == encryptionScheme.has_value());
@@ -84,14 +84,14 @@ std::unique_ptr<EntryContent> EntryContent::Load(FileStore& fileStore, Persisted
     return nullptr;
   }
 
-  auto originalPayloadTimestamp = TryExtractPersistedEntryProperty<Timestamp>(properties, ORIGINAL_PAYLOAD_TIMESTAMP_KEY);
+  auto originalPayloadTimestamp = TryExtractPersistedEntryProperty<Timestamp>(properties, OriginalPayloadTimestampKey);
   auto payload = EntryPayload::Load(properties, pages);
   assert(pages.empty());
 
   Metadata storableMetadata;
   std::transform(properties.cbegin(), properties.cend(), std::inserter(storableMetadata, storableMetadata.begin()), [&fileStore](const auto& entry) {
-    assert(entry.first.starts_with(X_ENTRY_PREFIX));
-    return fileStore.makeMetadataEntry(entry.first.substr(X_ENTRY_PREFIX.size()), entry.second);
+    assert(entry.first.starts_with(XEntryPrefix));
+    return fileStore.makeMetadataEntry(entry.first.substr(XEntryPrefix.size()), entry.second);
     });
 
   return std::make_unique<EntryContent>(

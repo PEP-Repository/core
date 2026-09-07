@@ -1,7 +1,7 @@
 #include <pep/structuredoutput/Tree.hpp>
 #include <pep/structuredoutput/Yaml.hpp>
 
-#include <gmock/gmock.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 namespace {

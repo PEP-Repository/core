@@ -3,18 +3,18 @@
 
 namespace {
 struct PathEncapsulator {
-  std::filesystem::path mPath;
+  std::filesystem::path path;
 };
 }
 
 template <> struct pep::PropertySerializer<PathEncapsulator> : public PropertySerializerByValue<PathEncapsulator> {
   void write(boost::property_tree::ptree& destination, const PathEncapsulator& value) const override {
-    SerializeProperties(destination, value.mPath);
+    SerializeProperties(destination, value.path);
   }
 
   PathEncapsulator read(const boost::property_tree::ptree& source, const pep::DeserializationContext& context) const override {
     return PathEncapsulator{
-      .mPath = DeserializeProperties<std::filesystem::path>(source, context)
+      .path = DeserializeProperties<std::filesystem::path>(source, context)
     };
   }
 };
@@ -22,17 +22,17 @@ template <> struct pep::PropertySerializer<PathEncapsulator> : public PropertySe
 
 namespace {
 struct PathEncapsulator2 {
-  std::filesystem::path mPath;
+  std::filesystem::path path;
 };
 }
 
 template <> struct pep::PropertySerializer<PathEncapsulator2> : public PropertySerializerByReference<PathEncapsulator2> {
   void write(boost::property_tree::ptree& destination, const PathEncapsulator2& value) const override {
-    SerializeProperties(destination, value.mPath);
+    SerializeProperties(destination, value.path);
   }
 
   void read(PathEncapsulator2& destination, const boost::property_tree::ptree& source, const pep::DeserializationContext& context) const override {
-    destination.mPath = DeserializeProperties<std::filesystem::path>(source, context);
+    destination.path = DeserializeProperties<std::filesystem::path>(source, context);
   }
 };
 
@@ -44,8 +44,8 @@ void TestContextApplication() {
   using namespace pep;
 
   // A reference value
-  const TEncapsulator expected{ .mPath = "relative.txt" };
-  ASSERT_TRUE(expected.mPath.is_relative());
+  const TEncapsulator expected{ .path = "relative.txt" };
+  ASSERT_TRUE(expected.path.is_relative());
 
   // Store value in a ptree
   boost::property_tree::ptree ptree;
@@ -54,14 +54,14 @@ void TestContextApplication() {
   // Deserialization should produce the original value (or our test code is no good)
   DeserializationContext context;
   auto deserialized = DeserializeProperties<TEncapsulator>(ptree, context);
-  EXPECT_EQ(expected.mPath, deserialized.mPath);
+  EXPECT_EQ(expected.path, deserialized.path);
 
   // With context, deserialization should produce an absolute path
   const auto base = absolute(std::filesystem::current_path());
   context.add(TaggedBaseDirectory(base));
   deserialized = DeserializeProperties<TEncapsulator>(ptree, context);
-  EXPECT_NE(expected.mPath, deserialized.mPath);
-  EXPECT_TRUE(deserialized.mPath.is_absolute());
+  EXPECT_NE(expected.path, deserialized.path);
+  EXPECT_TRUE(deserialized.path.is_absolute());
 }
 
 

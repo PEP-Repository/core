@@ -122,12 +122,12 @@ public:
   static_assert(std::is_enum<ProtocolBufferType>::value, "Protocol buffer type must be an enum");
 
 private:
-  const ::google::protobuf::EnumDescriptor* mDescriptor;
+  const ::google::protobuf::EnumDescriptor* descriptor_;
 
 protected:
   ProtocolBufferedEnumSerializer(std::function<const ::google::protobuf::EnumDescriptor*()> getDescriptor)
-    : mDescriptor(getDescriptor()) {
-    if (mDescriptor == nullptr) {
+    : descriptor_(getDescriptor()) {
+    if (descriptor_ == nullptr) {
       throw std::runtime_error("Serializer could not find EnumDescriptor");
     }
   }
@@ -142,7 +142,7 @@ public:
   }
 
   T parse(const std::string& name) const {
-    auto valueDescriptor = mDescriptor->FindValueByName(name);
+    auto valueDescriptor = descriptor_->FindValueByName(name);
     if (valueDescriptor == nullptr) {
       throw std::runtime_error("Unknown enumerator name " + name);
     }
@@ -150,7 +150,7 @@ public:
   }
 
   std::string_view toEnumString(T value) const {
-    auto valueDescriptor = mDescriptor->FindValueByNumber(static_cast<int>(value));
+    auto valueDescriptor = descriptor_->FindValueByNumber(static_cast<int>(value));
     if (valueDescriptor == nullptr) {
       throw std::runtime_error("Unknown enumerator value " + std::to_string(static_cast<int>(value)));
     }

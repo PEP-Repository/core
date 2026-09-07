@@ -1,6 +1,13 @@
 #include <pep/structure/StudyContext.hpp>
 
+#include <pep/utils/Compare.hpp>
+
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
+
+#include <algorithm>
+#include <set>
+#include <stdexcept>
 
 namespace pep {
 
@@ -11,6 +18,23 @@ namespace {
       boost::split(result, value, std::bind_front(std::equal_to{}, ','));
     }
     return result;
+  }
+
+  bool IsValidIdCharacter(char c) {
+    return (c >= 'a' && c <= 'z')
+        || (c >= 'A' && c <= 'Z')
+        || (c >= '0' && c <= '9')
+        || c == '_';
+  }
+}
+
+StudyContext::StudyContext(std::string id)
+  : StudyContext(std::move(id), false) {
+  if (id_.empty()) {
+    throw std::runtime_error("Study context id must not be empty");
+  }
+  if (!std::ranges::all_of(id_, IsValidIdCharacter)) {
+    throw std::runtime_error("Study context id \"" + id_ + "\" is invalid: only alphanumerics and underscores are allowed");
   }
 }
 
@@ -23,7 +47,7 @@ bool StudyContext::matches(const std::string& contexts) const {
     return isDefault();
   }
   auto ids = ContextStringToIds(contexts);
-  return std::find(ids.cbegin(), ids.cend(), getId()) != ids.cend();
+  return std::ranges::any_of(ids, [this](const std::string& id) { return boost::iequals(id, getId()); });
 }
 
 bool StudyContext::matchesShortPseudonym(const pep::ShortPseudonymDefinition& sp) const {
@@ -41,60 +65,84 @@ std::string StudyContext::getAdministeringAssessorColumnName(uint32_t visitNumbe
 }
 
 bool StudyContext::operator ==(const StudyContext& other) const {
-  return (mId == other.mId) && (mIsDefault == other.mIsDefault);
+  return boost::iequals(id_, other.id_) && (isDefault_ == other.isDefault_);
 }
 
 std::vector<StudyContext>::const_iterator StudyContexts::getPositionOf(const StudyContext& context) const {
-  return std::find(mItems.cbegin(), mItems.cend(), context);
+  return std::find(items_.cbegin(), items_.cend(), context);
+}
+
+std::vector<StudyContext>::const_iterator StudyContexts::findById(const std::string& id) const {
+  return std::ranges::find_if(items_, [&id](const StudyContext& candidate) { return boost::iequals(candidate.getId(), id); });
+}
+
+bool StudyContexts::hasDefault() const noexcept {
+  return getDefault() != nullptr;
 }
 
 StudyContexts::StudyContexts(std::vector<StudyContext> items)
-  : mItems(std::move(items)) {
-  if (!mItems.empty()) {
-    if (getDefault() != nullptr) {
+  : items_(std::move(items)) {
+  if (!items_.empty()) {
+    if (hasDefault()) {
       throw std::runtime_error("Don't specify a default when initializing StudyContexts");
     }
-    mItems.front().mIsDefault = true;
+    std::set<std::string, CaseInsensitiveCompare> ids;
+    for (const auto& item : items_) {
+      if (!ids.insert(item.getId()).second) {
+        throw std::runtime_error("Duplicate study context id \"" + item.getId() + "\"");
+      }
+    }
+    items_.front().isDefault_ = true;
   }
   else {
-    mItems.push_back(StudyContext(std::string(), true));
+    items_.push_back(StudyContext(std::string(), true));
   }
+}
+
+std::vector<StudyContext> StudyContexts::getConfigured() const {
+  std::vector<StudyContext> result;
+  for (const auto& item : items_) {
+    if (!item.getId().empty()) { // Omit any empty id
+      result.push_back(item);
+      result.back().isDefault_ = false; // Remove any defaults, as the constructor will synthesize a default context
+    }
+  }
+  return result;
 }
 
 bool StudyContexts::contains(const StudyContext& context) const {
-  return getPositionOf(context) != mItems.cend();
+  return getPositionOf(context) != items_.cend();
 }
 
 void StudyContexts::add(const StudyContext& context) {
-  if (contains(context)) {
-    throw std::runtime_error("Attempt to add duplicate study context");
+  if (findById(context.getId()) != items_.cend()) {
+    throw std::runtime_error("Attempted to add duplicate study context");
   }
-  if (context.isDefault() && (getDefault() != nullptr)) {
-    throw std::runtime_error("Attempt to add duplicate default study context");
+  if (context.isDefault() && hasDefault()) {
+    throw std::runtime_error("Attempted to add duplicate default study context");
   }
-  mItems.push_back(context);
+  items_.push_back(context);
 }
 
 void StudyContexts::remove(const StudyContext& context) {
   auto position = getPositionOf(context);
-  if (position == mItems.end()) {
+  if (position == items_.end()) {
     throw std::runtime_error("Study context not found");
   }
-  mItems.erase(position);
+  items_.erase(position);
 }
 
 const StudyContext& StudyContexts::getById(const std::string& id) const {
-  auto end = mItems.cend();
-  auto position = std::find_if(mItems.cbegin(), end, [id](const StudyContext& candidate) { return candidate.getId() == id; });
-  if (position == end) {
+  auto position = findById(id);
+  if (position == items_.cend()) {
     throw std::runtime_error("Study context " + id + " not found");
   }
   return *position;
 }
 
 const StudyContext* StudyContexts::getDefault() const noexcept {
-  auto end = mItems.cend();
-  auto position = std::find_if(mItems.cbegin(), end, [](const StudyContext& candidate) { return candidate.isDefault(); });
+  auto end = items_.cend();
+  auto position = std::find_if(items_.cbegin(), end, [](const StudyContext& candidate) { return candidate.isDefault(); });
   if (position == end) {
     return nullptr;
   }
@@ -107,11 +155,11 @@ StudyContexts StudyContexts::parse(const std::string& value) const {
   if (value.empty()) {
     auto defaultContext = getDefault();
     if (defaultContext == nullptr) throw std::runtime_error("No default study context found");
-    result.mItems.push_back(*defaultContext);
+    result.items_.push_back(*defaultContext);
   }
   else {
     for (auto& id : ContextStringToIds(value)) {
-      result.mItems.push_back(getById(id));
+      result.items_.push_back(getById(id));
     }
   }
 
@@ -120,7 +168,7 @@ StudyContexts StudyContexts::parse(const std::string& value) const {
 
 std::string StudyContexts::toString() const {
   std::string result;
-  for (const auto& item : mItems) {
+  for (const auto& item : items_) {
     if (!result.empty()) {
       result += ',';
     }

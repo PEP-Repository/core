@@ -1,16 +1,17 @@
 #include <pep/application/Application.hpp>
 #include <pep/pullcastor/EnvironmentPuller.hpp>
+#include <pep/utils/Configuration.hpp>
 
 namespace {
 
 class CastorPullApplication : public pep::Application {
 protected:
-  std::optional<pep::severity_level> consoleLogMinimumSeverityLevel() const override {
-    return pep::severity_level::info;
+  std::optional<pep::Severity> consoleLogMinimumSeverityLevel() const override {
+    return pep::Severity::Info;
   }
 
-  std::optional<pep::severity_level> fileLogMinimumSeverityLevel() const override {
-    return pep::severity_level::debug;
+  std::optional<pep::Severity> fileLogMinimumSeverityLevel() const override {
+    return pep::Severity::Debug;
   }
 
   std::string getDescription() const override {

@@ -14,20 +14,20 @@ public:
   using OnCreation = std::function<void(std::shared_ptr<const Progress>)>;
 
 private:
-  uintmax_t mTotalSteps;
-  std::optional<uintmax_t> mCurrentStep;
-  std::optional<std::string> mCurrentStepName;
-  std::weak_ptr<const Progress> mCurrentStepChild;
-  EventSubscription mCurrentStepChildOnChangeSubscription;
+  uintmax_t totalSteps_;
+  std::optional<uintmax_t> currentStep_;
+  std::optional<std::string> currentStepName_;
+  std::weak_ptr<const Progress> currentStepChild_;
+  EventSubscription currentStepChildOnChangeSubscription_;
 
-  inline explicit Progress(uintmax_t totalSteps) noexcept : mTotalSteps(totalSteps) {}
-  inline uintmax_t getCompletedSteps() const { return mCurrentStep.value_or(0U); }
+  inline explicit Progress(uintmax_t totalSteps) noexcept : totalSteps_(totalSteps) {}
+  inline uintmax_t getCompletedSteps() const { return currentStep_.value_or(0U); }
 
 protected:
   void onChildChange(const Progress& child);
 
 public:
-  inline bool done() const { return this->getCompletedSteps() >= mTotalSteps; }
+  inline bool done() const { return this->getCompletedSteps() >= totalSteps_; }
 
   void advance(uintmax_t steps = 1U, const std::optional<std::string>& newStepName = std::nullopt);
   inline void advance(const std::string& newStepName) { this->advance(1U, newStepName); }

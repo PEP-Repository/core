@@ -9,7 +9,7 @@
 
 // import means that we only include the file once
 #import <Sparkle/Sparkle.h>
-#import <SPUUpdater.h>
+#import <Sparkle/SPUUpdater.h>
 
 @interface AppUpdaterDelegate : NSObject <SPUUpdaterDelegate>
 

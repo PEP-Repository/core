@@ -16,12 +16,12 @@ namespace pep {
 
 class ActionAlreadyFinishedException : public std::exception {
  public:
-  ActionAlreadyFinishedException(const std::string& what) : mWhat(what) {}
+  ActionAlreadyFinishedException(const std::string& what) : what_(what) {}
   const char* what() const noexcept override {
-    return mWhat.c_str();
+    return what_.c_str();
   }
  private:
-  std::string mWhat;
+  std::string what_;
 };
 
 // A WaitGroup waits for a collection of actions to finish.
@@ -36,13 +36,13 @@ class WaitGroup : public std::enable_shared_from_this<WaitGroup>, public SharedC
     void done() const;
 
    private:
-    size_t mId;
-    std::string mDescription;
-    std::shared_ptr<WaitGroup> mWg;
+    size_t id_;
+    std::string description_;
+    std::shared_ptr<WaitGroup> wg_;
 
     Action(std::shared_ptr<WaitGroup> wg,
       size_t id, const std::string& description) :
-      mId(id), mDescription(description), mWg(wg) { }
+      id_(id), description_(description), wg_(wg) { }
   };
 
   // Add a new action to wait for.  Call Action.done() to signal the action
@@ -58,11 +58,11 @@ class WaitGroup : public std::enable_shared_from_this<WaitGroup>, public SharedC
 
  private:
   WaitGroup() = default;
-  std::vector<std::function<void(void)>> mWaiters;
-  std::unordered_map<size_t,std::string> mUnfinishedActions;
-  std::mutex mLock;
-  size_t mNextActionId = 0;
-  bool mWaited = false;
+  std::vector<std::function<void(void)>> waiters_;
+  std::unordered_map<size_t,std::string> unfinishedActions_;
+  std::mutex lock_;
+  size_t nextActionId_ = 0;
+  bool waited_ = false;
 };
 
 }

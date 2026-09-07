@@ -13,7 +13,7 @@ namespace pep {
 class LocalPseudonym final {
   friend std::hash<LocalPseudonym>;
 
-  CurvePoint mPoint;
+  CurvePoint point_;
 
 public:
   /// Construct invalid pseudonym
@@ -62,7 +62,7 @@ public:
 class EncryptedPseudonym {
   friend std::hash<EncryptedPseudonym>;
 
-  ElgamalEncryption mEncryption;
+  ElgamalEncryption encryption_;
 
 protected:
   /// Parse printable (hex) representation from text()

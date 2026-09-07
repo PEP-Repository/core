@@ -115,6 +115,7 @@ function build_pdf {
 
   case $PDF_TYPE in
     "default")
+      # shellcheck disable=SC2086 # $PAGE_GEOMETRY is empty or holds several options, which we want split
       pandoc -s --pdf-engine=xelatex -V mainfont="Liberation Serif" $PAGE_GEOMETRY -f markdown-implicit_figures -t pdf -V colorlinks=true -V linkcolor=blue -V urlcolor=red -V toccolor=gray "$INFILE" -o "$OUTFILE"
       ;;
     "beamer")

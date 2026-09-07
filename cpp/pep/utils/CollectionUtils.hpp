@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <functional>
 #include <iterator>
 #include <optional>
 #include <vector>
@@ -18,80 +17,47 @@
 
 namespace pep {
 
-/*!
- * \brief Returns whether a is a subset of b.
- */
-template<typename T>
-bool IsSubset(std::vector<T> a, std::vector<T> b) {
-  std::sort(a.begin(), a.end());
-  std::sort(b.begin(), b.end());
-  return std::includes(b.begin(), b.end(), a.begin(), a.end());
-}
+/// \brief Get possible-const range value type.
+/// \note Like \c range_value_t , which does not retain const.
+template <std::ranges::range R>
+using QualifiedRangeValue = std::remove_reference_t<std::ranges::range_reference_t<R>>;
 
-/*!
- * \brief Returns a value that's included multiple times in the vector, or std::nullopt if it contains unique values. Uniqueness is determined by the specified Compare object.
- */
-template <typename T, typename TCompare>
-std::optional<T> TryFindDuplicateValue(std::vector<T> vec, const TCompare& comp) {
-  std::sort(vec.begin(), vec.end(), comp);
-  auto position = std::adjacent_find(vec.cbegin(), vec.cend());
-  if (position != vec.cend()) {
-    return *position;
+/// \brief Fills a destination range with strings from a source range without exceeding the specified destination capacity.
+///
+/// \tparam TDest the type of destination iterator
+/// \tparam TSrc the type of source range
+///
+/// \param dest destination iterator
+/// \param cap The max capacity of the destination in bytes
+/// \param src the source range
+/// \param padding bytes of overhead associated with each string. Specify a non-zero value to take destination storage overhead into account; add one to take the strings' NULterminators into account.
+///
+/// \return The number of bytes written to the destination.
+template <std::output_iterator<std::string> TDest, std::ranges::input_range TSrc>
+  requires std::same_as<std::remove_cvref_t<std::ranges::range_value_t<TSrc>>, std::string>
+size_t FillToCapacity(TDest dest, size_t cap, const TSrc& src, size_t padding = 0) {
+  size_t bytesWritten{ 0 };
+  for (const auto& item: src) {
+    auto add = item.length() + padding;
+    if (bytesWritten + add > cap) {
+      break;
+    }
+    *dest++ = item;
+    bytesWritten += add;
   }
-  return std::nullopt;
+  return bytesWritten;
 }
 
-/*!
- * \brief Returns a value that's included multiple times in the vector, or std::nullopt if it contains unique values. Uniqueness is determined by (a default-constructed instance of) the specified Compare type.
- */
-template <typename T, typename TCompare = std::less<T>>
-std::optional<T> TryFindDuplicateValue(std::vector<T> vec) {
-  return TryFindDuplicateValue(vec, TCompare());
-}
-
-/*!
- * \brief Returns whether a vector contains unique values, with uniqueness determined by the specified Compare object.
- */
-template <typename T, typename TCompare>
-bool ContainsUniqueValues(std::vector<T> vec, const TCompare& comp) {
-  return TryFindDuplicateValue(vec, comp) == std::nullopt;
-}
-
-/*!
- * \brief Returns whether a vector contains unique values, with uniqueness determined by (a default-constructed instance of) the specified Compare type.
- */
-template <typename T, typename TCompare = std::less<T>>
-bool ContainsUniqueValues(const std::vector<T>& vec) {
-  return TryFindDuplicateValue(vec) == std::nullopt;
-}
-
-/*!
- * \brief Given a source vector and a capacity, fill a destination vector with the items of the source until the capacity is reached. An offset can be set to start filling from that index in the source.
- * The size is calculated by iteratively adding the lengths of all items within the source vector with a optional padding added for each of those items. When this number is about to exceed the capacity, filling the destination vector will stop.
- * The resulting size of the destination vector is returned.
-
- * \param dest destination vector
- * \param source source vector
- * \param cap The max capacity of the destination vector in bytes
- * \param offset The source index from which to start filling.
- * \param padding The amount added to the length of each item.
-
- * \return The size of the destination vector in bytes.
-*/
-size_t FillVectorToCapacity(std::vector<std::string>& dest, const std::vector<std::string>& source, const size_t& cap, const size_t& offset = 0, const size_t& padding = 0);
-
-/*
-* \brief Determines if a character sequence ends with starting character(s) of another sequence.
-* \param haystack The content that may end with (starting characters of) the sought-after sequence.
-* \param needle The character sequence to find at the end of the haystack.
-* \return The number of starting characters from the needle that occur at the end of the haystack.
-*/
+/// \brief Determines if a character sequence ends with starting character(s) of another sequence.
+/// \param haystack The content that may end with (starting characters of) the sought-after sequence.
+/// \param needle The character sequence to find at the end of the haystack.
+/// \return The number of starting characters from the needle that occur at the end of the haystack.
 size_t FindLongestPrefixAtEnd(std::string_view haystack, std::string_view needle);
 
 template<typename R>
 concept Slice = std::ranges::contiguous_range<R> && std::ranges::sized_range<R>;
 
-//XXX This may be removed when we move to C++23, where one can construct a string_view with a range
+//TODO(workaround) This may be removed when we move to C++23, where one can construct a string_view with a range
 [[nodiscard]] std::string_view SpanToString(const Slice auto& span)
 requires(ByteLike<std::ranges::range_value_t<decltype(span)>>) {
   return {reinterpret_cast<const char*>(std::ranges::data(span)), std::ranges::size(span)};
@@ -105,16 +71,14 @@ template<size_t Extent>
       throw std::invalid_argument("Argument has incorrect number of elements");
     }
   }
-  // range_value_t does not retain const
-  using Elem = std::remove_reference_t<std::ranges::range_reference_t<decltype(span)>>;
+  using Elem = QualifiedRangeValue<decltype(span)>;
   return std::span<Elem, Extent>{reinterpret_cast<Elem*>(std::ranges::data(span)), std::ranges::size(span)};
 }
 
 template<ByteLike To>
 [[nodiscard]] auto ConvertBytes(Slice auto&& span)
   requires(ByteLike<std::ranges::range_value_t<decltype(span)>>) {
-  // range_value_t does not retain const
-  using From = std::remove_reference_t<std::ranges::range_reference_t<decltype(span)>>;
+  using From = QualifiedRangeValue<decltype(span)>;
   return std::span<CopyConstness<To, From>>{reinterpret_cast<CopyConstness<To, From>*>(std::ranges::data(span)), std::ranges::size(span)};
 }
 
@@ -132,13 +96,15 @@ template<typename Elem, size_t Extent> requires(Extent != std::dynamic_extent)
 }
 
 namespace detail {
-  template <typename C>
-  concept CanReserve = requires(C c, std::size_t size) {
-      c.reserve({size});
-  };
+
+template <typename C>
+concept CanReserve = requires(C c, std::size_t size) {
+    c.reserve({size});
+};
+
 }
 
-//XXX This should be removed in C++23 with std::ranges::to, std::from_range, assign/insert_range
+//TODO(workaround) This should be removed in C++23 with std::ranges::to, std::from_range, assign/insert_range
 template <typename ResultCollection, std::ranges::input_range Range>
 //NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward) We just want to bind to anything
 [[nodiscard]] auto RangeToCollection(Range&& range) {
@@ -162,7 +128,7 @@ template <template <typename...> class ResultCollection>
   return RangeToCollection<std::vector>(range);
 }
 
-//XXX This should be removed in C++23 with std::views::as_rvalue
+//TODO(workaround) This should be removed in C++23 with std::views::as_rvalue
 /// Range adapter to make all elements in a range rvalue references.
 /// \details Example usage:
 /// \code
@@ -184,6 +150,26 @@ requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<de
     begin(std::forward<decltype(src)>(src)),
     copySize,
     begin(std::forward<decltype(dst)>(dst)));
+}
+
+/// Copy src to dst, checking that it fits
+/// \param exact If \p dst should be required to be the exact same size as \p src
+constexpr auto CheckedCopy(
+  std::ranges::input_range auto&& src,
+  std::ranges::output_range<std::ranges::range_value_t<decltype(src)>> auto& dst,
+  bool exact = false)
+requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<decltype(dst)>) {
+  using namespace std::ranges;
+  if (exact) {
+    if (std::cmp_not_equal(size(dst), size(src))) {
+      throw std::out_of_range("src range is not the same size as dst");
+    }
+  } else {
+    if (std::cmp_less(size(dst), size(src))) {
+      throw std::out_of_range("dst range is smaller than src");
+    }
+  }
+  return copy(std::forward<decltype(src)>(src), begin(dst));
 }
 
 /// Returns optional with the single element in the range, if any.

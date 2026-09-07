@@ -24,6 +24,18 @@
       "file": "/usr/include/c++/13/tuple",
       "procedure_name": "_Tuple_impl",
       "comment": "Why does infer even look at cpp internals?"
+    },
+    {
+      "bug_type": "USE_AFTER_DELETE",
+      "file": "cpp/pep/castor/RepeatingDataInstance.cpp",
+      "procedure_name": "getRepeatingDataPoints",
+      "comment": "FP: shared_ptr copy in DataPoint::RetrieveForParent trace"
+    },
+    {
+      "bug_type": "USE_AFTER_DELETE",
+      "file": "cpp/pep/castor/SurveyPackageInstance.cpp",
+      "procedure_name": "getSurveyDataPoints",
+      "comment": "FP: shared_ptr copy in DataPoint::RetrieveForParent trace"
     }
   ]
 }

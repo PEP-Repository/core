@@ -6,21 +6,31 @@
 
 namespace pep::messaging {
 
-const size_t MAX_SIZE_OF_MESSAGE =
+namespace {
+
+/// Aggressive guesstimate of the overhead capacity needed when serializing a business object
+constexpr double SerializationCapacityOverheadFactor = 0.1;
+
+}
+
+const size_t MaxSizeOfMessage =
 // #1156: use larger message size in release builds so things will fail in debug builds (on dev boxes) before they bring prod down
-#if BUILD_HAS_RELEASE_FLAVOR()
+#if PEP_BUILD_HAS_RELEASE_FLAVOR()
   2 *
 #endif
   // TODO: reduce (back) to 1 Mb (i.e. remove multiplier by 2).
   // Value was increased as a temporary fix for (production) problems: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2238#note_30480
   2 * 1024 * 1024 - 4;
 
+const double NetMessageCapacityFactor = 1 - SerializationCapacityOverheadFactor;
+const size_t NetMessageCapacity = static_cast<size_t>(NetMessageCapacityFactor * MaxSizeOfMessage);
+
 
 MessageHeader::MessageHeader(MessageLength length, MessageProperties properties)
-  : mLength(length), mProperties(properties) {
-  if (mProperties.messageId().type().value() == MessageType::CONTROL) {
-    if (mLength != 0U) {
-      throw std::runtime_error(std::format("Control messages must have zero length, length is {}", mLength));
+  : length_(length), properties_(properties) {
+  if (properties_.messageId().type().value() == MessageType::Control) {
+    if (length_ != 0U) {
+      throw std::runtime_error(std::format("Control messages must have zero length, length is {}", length_));
     }
   }
 }
@@ -35,8 +45,8 @@ MessageHeader MessageHeader::MakeForControlMessage() noexcept {
 
 EncodedMessageHeader MessageHeader::encode() const noexcept {
   return EncodedMessageHeader{
-    .length = htonl(mLength),
-    .properties = htonl(mProperties.encode())
+    .length = htonl(length_),
+    .properties = htonl(properties_.encode())
   };
 }
 

@@ -11,8 +11,6 @@ std::string Quote(const std::string& value) {
 }
 
 class MakeS3request : public pep::Application {
-private:
-
 public:
   std::string getName() const override { return "MakeS3request"; }
   std::string getDescription() const override { return "Produces an S3 HTTP PUT request"; }
@@ -39,7 +37,7 @@ public:
     }
     auto data = values.get<std::string>("data");
 
-    HttpRequest request(host.host(), networking::HttpMethod::PUT, boost::urls::url(relative), data);
+    HttpRequest request(host.host(), networking::HttpMethod::Put, boost::urls::url(relative), data);
     request.completeHeaders();
     Credentials credentials{
       .accessKey = values.get<std::string>("identity"),
@@ -51,6 +49,8 @@ public:
     if (values.has("curl")) {
       std::vector<std::string> parts;
       parts.emplace_back("curl -v -X PUT");
+      // curl defaults to application/x-www-form-urlencoded
+      request.setHeader("Content-Type", "application/octet-stream");
       for (const auto& header : request.getHeaders()) {
         parts.emplace_back("--header " + Quote(header.first + ": " + header.second));
       }

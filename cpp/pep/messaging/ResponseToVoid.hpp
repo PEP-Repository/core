@@ -5,11 +5,11 @@
 
 namespace pep::messaging {
 
-template <bool lossy = false>
+template <bool allow_lossy = false>
 struct ResponseToVoid {
   template <typename TResponse, typename SourceOperator>
   rxcpp::observable<FakeVoid> operator()(rxcpp::observable<TResponse, SourceOperator> items) const {
-    static_assert(lossy || sizeof(TResponse) == sizeof(FakeVoid), "Losing information from non-empty response message");
+    static_assert(allow_lossy || sizeof(TResponse) == sizeof(FakeVoid), "Losing information from non-empty response message");
 
     return items
       .op(RxGetOne())

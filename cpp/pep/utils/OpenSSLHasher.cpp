@@ -10,21 +10,21 @@ namespace pep {
 
 OpenSSLHasher::OpenSSLHasher(const EVP_MD* type) {
   assert(type && "Cannot construct OpenSSLHasher with nullptr as hash algorithm");
-  mCtx = EVP_MD_CTX_new();
-  if (!mCtx) {
+  ctx_ = EVP_MD_CTX_new();
+  if (!ctx_) {
     throw pep::OpenSSLError("Failed to create context in OpenSSLHasher constructor");
   }
-  if (EVP_DigestInit_ex(mCtx, type, nullptr) <= 0) {
+  if (EVP_DigestInit_ex(ctx_, type, nullptr) <= 0) {
     throw pep::OpenSSLError("Failed to initialize context in OpenSSLHasher constructor");
   }
 }
 
 OpenSSLHasher::~OpenSSLHasher() noexcept {
-  EVP_MD_CTX_free(mCtx);
+  EVP_MD_CTX_free(ctx_);
 }
 
 std::size_t OpenSSLHasher::blockSize() const {
-  auto size = EVP_MD_CTX_get_block_size(mCtx);
+  auto size = EVP_MD_CTX_get_block_size(ctx_);
   if (size <= 0) {
     throw pep::OpenSSLError("Failed to get block size for OpenSSLHasher");
   }
@@ -32,7 +32,7 @@ std::size_t OpenSSLHasher::blockSize() const {
 }
 
 std::size_t OpenSSLHasher::digestSize() const {
-  auto size = EVP_MD_CTX_get_size(mCtx);
+  auto size = EVP_MD_CTX_get_size(ctx_);
   if (size <= 0) {
     throw pep::OpenSSLError("Failed to get digest size for OpenSSLHasher");
   }
@@ -40,7 +40,7 @@ std::size_t OpenSSLHasher::digestSize() const {
 }
 
 void OpenSSLHasher::process(const void* block, size_t size) {
-  if (EVP_DigestUpdate(mCtx, block, size) <= 0) {
+  if (EVP_DigestUpdate(ctx_, block, size) <= 0) {
     throw pep::OpenSSLError("Failed to update digest in OpenSSLHasher::process");
   }
 }
@@ -48,7 +48,7 @@ void OpenSSLHasher::process(const void* block, size_t size) {
 auto OpenSSLHasher::finish() -> Hash {
   std::string digest(digestSize(), '\0');
   unsigned written{};
-  if (EVP_DigestFinal_ex(mCtx, ConvertBytes<unsigned char>(digest).data(), &written) <= 0) {
+  if (EVP_DigestFinal_ex(ctx_, ConvertBytes<unsigned char>(digest).data(), &written) <= 0) {
     throw pep::OpenSSLError("Failed to finalize digest in OpenSSLHasher::finish");
   }
   assert(written == digest.size());

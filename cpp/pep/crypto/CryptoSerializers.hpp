@@ -1,7 +1,6 @@
 #pragma once
 
 #include <pep/crypto/Encrypted.hpp>
-#include <pep/crypto/Timestamp.hpp>
 #include <pep/crypto/X509Certificate.hpp>
 #include <Messages.pb.h>
 
@@ -9,8 +8,6 @@
   PEP_DEFINE_PROTOCOL_BUFFER_SERIALIZATION(Encrypted<t>, proto::BOOST_PP_CAT(Encrypted, t))
 
 namespace pep {
-
-PEP_DEFINE_CODED_SERIALIZER(Timestamp);
 
 PEP_DEFINE_CODED_SERIALIZER(X509Certificate);
 PEP_DEFINE_CODED_SERIALIZER(X509CertificateChain);
@@ -30,9 +27,9 @@ public:
 template <typename T>
 void Serializer<Encrypted<T> >::moveIntoProtocolBuffer(
   EncryptedProtocolBufferType& dest, Encrypted<T> value) const {
-  dest.set_ciphertext(std::move(value.mCiphertext));
-  dest.set_iv(std::move(value.mIv));
-  dest.set_tag(std::move(value.mTag));
+  dest.set_ciphertext(std::move(value.ciphertext));
+  dest.set_iv(std::move(value.iv));
+  dest.set_tag(std::move(value.tag));
 }
 
 template <typename T>

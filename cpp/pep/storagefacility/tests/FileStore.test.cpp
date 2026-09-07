@@ -71,7 +71,7 @@ TEST(FileStore, Basic) {
   pep::EncryptedKey polymorphicKey(pep::CurvePoint::Random(), pep::CurvePoint::Random(), pep::CurvePoint::Random());
 
   std::string page;
-  for (size_t i = 0; page.size() < pep::INLINE_PAGE_THRESHOLD; i++)
+  for (size_t i = 0; page.size() < pep::InlinePageThreshold; i++)
     page += " " + std::to_string(i);
 
   auto change = store->modifyEntry(name, true);
@@ -125,6 +125,22 @@ TEST(FileStore, Basic) {
     EXPECT_EQ(results->size(), 1);
     EXPECT_EQ(*((*results)[0]), page);
   }
+}
+
+TEST(FileStore, PathTraversal) {
+  Context context;
+  auto store = context.store;
+
+  auto dummyLp = pep::LocalPseudonym::Random();
+
+  ASSERT_NO_THROW(store->modifyEntry({dummyLp, "test"}, true));
+
+  EXPECT_THROW(store->modifyEntry({dummyLp, ".."}, true),
+    std::invalid_argument);
+  EXPECT_THROW(store->modifyEntry({dummyLp, "/test"}, true),
+    std::runtime_error);
+  EXPECT_THROW(store->modifyEntry({dummyLp, ""}, true),
+    std::runtime_error);
 }
 
 }

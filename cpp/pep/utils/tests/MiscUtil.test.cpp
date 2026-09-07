@@ -32,7 +32,7 @@ TEST(MiscUtil, UnitPrefix) {
   EXPECT_EQ(pep::SiPrefix(-1), "d");
   EXPECT_EQ(pep::SiPrefix(-2), "c");
   EXPECT_EQ(pep::SiPrefix(-3), "m");
-  EXPECT_EQ(pep::SiPrefix(-6), pep::micro_symbol);
+  EXPECT_EQ(pep::SiPrefix(-6), pep::MicroSymbol);
   EXPECT_EQ(pep::SiPrefix(-9), "n");
   EXPECT_EQ(pep::SiPrefix(-12), "p");
   EXPECT_EQ(pep::SiPrefix(-15), "f");

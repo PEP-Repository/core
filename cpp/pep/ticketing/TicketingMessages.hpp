@@ -5,12 +5,11 @@
 
 namespace pep {
 
-class LocalPseudonyms {
-public:
-  EncryptedLocalPseudonym mAccessManager;
-  EncryptedLocalPseudonym mStorageFacility;
-  PolymorphicPseudonym mPolymorphic;
-  std::optional<EncryptedLocalPseudonym> mAccessGroup{};
+struct LocalPseudonyms {
+  EncryptedLocalPseudonym accessManager;
+  EncryptedLocalPseudonym storageFacility;
+  PolymorphicPseudonym polymorphic;
+  std::optional<EncryptedLocalPseudonym> accessGroup{};
 
   // Ensures the underlying CurvePoint's are pre-packed for serialization.
   // See CurvePoint::ensurePacked().
@@ -20,13 +19,12 @@ public:
 /// Utility function to convert a vector of LocalPseudonyms to a vector of PolymorphicPseudonyms
 std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<LocalPseudonyms>&);
 
-class Ticket2 {
-public:
-  Timestamp mTimestamp{/*zero*/};
-  std::vector<std::string> mModes;
-  std::vector<LocalPseudonyms> mAccessSubjects;  ///< identifiers for subjects that will be accessed
-  std::vector<std::string> mColumns;
-  std::string mUserGroup;
+struct Ticket2 {
+  Timestamp timestamp{/*zero*/};
+  std::vector<std::string> modes;
+  std::vector<LocalPseudonyms> accessSubjects;  ///< identifiers for subjects that will be accessed
+  std::vector<std::string> columns;
+  std::string userGroup;
 
   bool hasMode(const std::string& mode) const;
 };
@@ -36,9 +34,9 @@ class Signed<Ticket2> {
   friend class Serializer<Signed<Ticket2>>;
 
 private:
-  std::optional<Signature> mSignature;
-  std::optional<Signature> mTranscryptorSignature;
-  std::string mData;
+  std::optional<Signature> signature_;
+  std::optional<Signature> transcryptorSignature_;
+  std::string data_;
 
 public:
   Signed() = default;
@@ -46,12 +44,12 @@ public:
     Ticket2 ticket,
     const X509Identity& identity);
   Signed(
-    std::optional<Signature> mSignature,
-    std::optional<Signature> mTranscryptorSignature,
-    std::string mData)
-    : mSignature(std::move(mSignature)),
-    mTranscryptorSignature(std::move(mTranscryptorSignature)),
-    mData(std::move(mData)) { }
+    std::optional<Signature> signature_,
+    std::optional<Signature> transcryptorSignature_,
+    std::string data_)
+    : signature_(std::move(signature_)),
+    transcryptorSignature_(std::move(transcryptorSignature_)),
+    data_(std::move(data_)) { }
 
   void addTranscryptorSignature(Signature signature);
 
@@ -70,19 +68,17 @@ public:
     : DeserializableDerivedError<SignedTicket2ValidityPeriodError>(description) { }
 };
 
-class ClientSideTicketRequest2 {
-public:
-  std::vector<std::string> mModes;
-  std::vector<std::string> mParticipantGroups;
-  std::vector<PolymorphicPseudonym> mAccessSubjects;
-  std::vector<std::string> mColumnGroups;
-  std::vector<std::string> mColumns;
-  bool mIncludeUserGroupPseudonyms = false;
+struct ClientSideTicketRequest2 {
+  std::vector<std::string> modes;
+  std::vector<std::string> participantGroups;
+  std::vector<PolymorphicPseudonym> accessSubjects;
+  std::vector<std::string> columnGroups;
+  std::vector<std::string> columns;
+  bool includeUserGroupPseudonyms = false;
 };
 
-class TicketRequest2 : public ClientSideTicketRequest2 {
-public:
-  bool mRequestIndexedTicket{};
+struct TicketRequest2 : public ClientSideTicketRequest2 {
+  bool requestIndexedTicket{};
 };
 
 template <>
@@ -90,22 +86,22 @@ class Signed<TicketRequest2> {
   friend class Serializer<Signed<TicketRequest2>>;
 
 private:
-  std::optional<Signature> mSignature;
-  std::optional<Signature> mLogSignature;
-  std::string mData;
+  std::optional<Signature> signature_;
+  std::optional<Signature> logSignature_;
+  std::string data_;
 
 public:
   Signed(TicketRequest2 ticketRequest,
     const X509Identity& identity);
   Signed(
-    std::optional<Signature> mSignature,
-    std::optional<Signature> mLogSignature,
-    std::string mData)
-    : mSignature(std::move(mSignature)),
-    mLogSignature(std::move(mLogSignature)),
-    mData(std::move(mData)) { }
+    std::optional<Signature> signature_,
+    std::optional<Signature> logSignature_,
+    std::string data_)
+    : signature_(std::move(signature_)),
+    logSignature_(std::move(logSignature_)),
+    data_(std::move(data_)) { }
 
-  const std::optional<Signature>& logSignature() const noexcept { return mLogSignature; }
+  const std::optional<Signature>& logSignature() const noexcept { return logSignature_; }
   Signature extractSignature();
 
   Certified<TicketRequest2> openAsAccessManager(const X509RootCertificates& rootCAs);

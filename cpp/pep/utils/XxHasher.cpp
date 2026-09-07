@@ -5,25 +5,25 @@
 namespace pep {
 
 void XxHasher::verifyActive() const {
-  if (mState == nullptr) {
+  if (state_ == nullptr) {
     throw std::runtime_error("Hashing has already been completed");
   }
 }
 
 void XxHasher::discardState() noexcept {
-  if (mState != nullptr) {
-    [[maybe_unused]] auto error = XXH64_freeState(mState);
+  if (state_ != nullptr) {
+    [[maybe_unused]] auto error = XXH64_freeState(state_);
     assert(error == XXH_OK); // Documented as such
 
-    mState = nullptr;
+    state_ = nullptr;
   }
 }
 
-XxHasher::XxHasher(XXH64_hash_t seed) : mState(XXH64_createState()) {
-  if (mState == nullptr) {
+XxHasher::XxHasher(XXH64_hash_t seed) : state_(XXH64_createState()) {
+  if (state_ == nullptr) {
     throw std::runtime_error("Could not create XXH64 state");
   }
-  if (XXH64_reset(mState, seed) != XXH_OK) {
+  if (XXH64_reset(state_, seed) != XXH_OK) {
     discardState();
     throw std::runtime_error("Error resetting XXH64 state");
   }
@@ -31,7 +31,7 @@ XxHasher::XxHasher(XXH64_hash_t seed) : mState(XXH64_createState()) {
 
 void XxHasher::process(const void* block, size_t size) {
   verifyActive();
-  if (XXH64_update(mState, block, size) != XXH_OK) {
+  if (XXH64_update(state_, block, size) != XXH_OK) {
     discardState();
     throw std::runtime_error("Error processing XXH64 block");
   }
@@ -39,7 +39,7 @@ void XxHasher::process(const void* block, size_t size) {
 
 XxHasher::Hash XxHasher::finish() {
   verifyActive();
-  auto result = XXH64_digest(mState);
+  auto result = XXH64_digest(state_);
   discardState();
   return result;
 }

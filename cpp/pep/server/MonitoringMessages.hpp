@@ -4,42 +4,26 @@
 
 namespace pep {
 
-class MetricsRequest {
+struct MetricsRequest {};
+
+struct MetricsResponse {
+  std::string metrics;
 };
 
-class MetricsResponse {
-public:
-  MetricsResponse() = default;
-  explicit inline MetricsResponse(const std::string& metrics) : mMetrics(metrics) { }
-  std::string mMetrics;
+struct ChecksumChainNamesRequest {};
+
+struct ChecksumChainNamesResponse {
+  std::vector<std::string> names;
 };
 
-class ChecksumChainNamesRequest {
+struct ChecksumChainRequest {
+  std::string name;
+  std::string checkpoint;
 };
 
-class ChecksumChainNamesResponse {
-public:
-  ChecksumChainNamesResponse() = default;
-  explicit inline ChecksumChainNamesResponse(const std::vector<std::string>& names) : mNames(names) { }
-
-  std::vector<std::string> mNames;
-};
-
-class ChecksumChainRequest {
-public:
-  std::string mName;
-  std::string mCheckpoint;
-};
-
-class ChecksumChainResponse {
-public:
-  ChecksumChainResponse() = default;
-  inline ChecksumChainResponse(const std::string& xorredChecksums,
-    const std::string& checkpoint)
-    : mXorredChecksums(xorredChecksums),
-    mCheckpoint(checkpoint) { }
-  std::string mXorredChecksums;
-  std::string mCheckpoint;
+struct ChecksumChainResponse {
+  std::string xorredChecksums;
+  std::string checkpoint;
 };
 
 using SignedChecksumChainNamesRequest = Signed<ChecksumChainNamesRequest>;

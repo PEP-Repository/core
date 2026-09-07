@@ -11,7 +11,7 @@ public:
   using Hash = XXH64_hash_t;
 
 private:
-  XXH64_state_t* mState;
+  XXH64_state_t* state_;
 
 private:
   void verifyActive() const;

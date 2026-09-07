@@ -24,5 +24,6 @@ if [ -f "$supp" ]; then
 fi
 
 # Increase num-callers so we capture the bottom stack frames as well, making suppressions with wildcards work for long traces
+# shellcheck disable=SC2086 # $supp_clause is empty or holds one option, so we want it split away when empty
 run_cmd valgrind --num-callers=50 --error-exitcode=1 --track-origins=yes --track-fds=yes --leak-check=full \
   --gen-suppressions=all --suppressions="$scriptdir/../cpp/pep/valgrind-global.supp" $supp_clause -v "$exe" "$@"

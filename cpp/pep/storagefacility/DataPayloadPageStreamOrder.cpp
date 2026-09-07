@@ -4,22 +4,22 @@
 #include <stdexcept>
 
 void pep::DataPayloadPageStreamOrder::check(const DataPayloadPage& page) {
-  if (page.mIndex < mLatestFileIndex) {
+  if (page.index < latestFileIndex_) {
     throw std::runtime_error(std::format(
         "Received out-of-order file: expected {}+ but got {}, page {}",
-        mLatestFileIndex, page.mIndex, page.mPageNumber));
+        latestFileIndex_, page.index, page.pageNumber));
   }
   // Next file?
   // Note: skipping (empty) files is allowed
-  if (page.mIndex > mLatestFileIndex) {
-    mNextPageNumber = 0;
-    mLatestFileIndex = page.mIndex;
+  if (page.index > latestFileIndex_) {
+    nextPageNumber_ = 0;
+    latestFileIndex_ = page.index;
   }
 
-  if (mNextPageNumber != page.mPageNumber) {
+  if (nextPageNumber_ != page.pageNumber) {
     throw std::runtime_error(std::format(
         "Received out-of-order page for file {}: expected {} but got {}",
-        page.mIndex, mNextPageNumber, page.mPageNumber));
+        page.index, nextPageNumber_, page.pageNumber));
   }
-  ++mNextPageNumber;
+  ++nextPageNumber_;
 }

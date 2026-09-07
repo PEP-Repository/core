@@ -3,13 +3,13 @@
 namespace pep::networking {
 
 Transport::Transport() {
-  mLifeCycleStatusForwarding = LifeCycler::onStatusChange.subscribe([this](const StatusChange& change) {
+  lifeCycleStatusForwarding_ = LifeCycler::onStatusChange.subscribe([this](const StatusChange& change) {
     this->handleLifeCycleStatusChanged(change);
     });
 }
 
 Transport::~Transport() noexcept {
-  mLifeCycleStatusForwarding.cancel();
+  lifeCycleStatusForwarding_.cancel();
 }
 
 Transport::ConnectivityStatus Transport::status() const noexcept {

@@ -126,3 +126,21 @@ TEST(EntryPayload, paged_payloads_are_not_strictly_equal_if_their_contents_diffe
   EXPECT_FALSE(paged_AA->isStrictlyEqualTo(*paged_BA));
   EXPECT_FALSE(paged_AA->isStrictlyEqualTo(*paged_BB));
 }
+
+TEST(EntryPayload, payloads_report_correct_number_of_page_paths) {
+  const std::string Row = pep::LocalPseudonym::Random().text();
+  const std::string Column = "SomeColumn";
+  const EntryName entryName(Row, Column);
+
+  const auto inlined = MakeEntryPayload<InlinedEntryPayload>("1 2", 3);
+  EXPECT_EQ(0, inlined->getPagePaths(entryName).size()) << "Inlined payload should not report page paths";
+
+  auto props = AsPersistentEntryProperties({ .filesize = 11, .pagesize = 11 });
+  const auto empty = MakeEntryPayload<PagedEntryPayload>(props, std::vector<PageId>{});
+  EXPECT_EQ(0, empty->getPagePaths(entryName).size()) << "Empty paged payload should not report page paths";
+
+  props = AsPersistentEntryProperties({ .filesize = 11, .pagesize = 11 });
+  const std::vector<PageId> pageIds{ 12, 13, 14 };
+  const auto nonempty = MakeEntryPayload<PagedEntryPayload>(props, pageIds);
+  EXPECT_EQ(nonempty->getPagePaths(entryName).size(), pageIds.size()) << "Non-empty paged payload should report all its page paths";
+}

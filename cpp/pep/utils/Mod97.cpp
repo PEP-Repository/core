@@ -26,9 +26,9 @@ std::string Mod97::ComputeCheckDigits(const std::string& in) {
   // Convert all characters to their numeric values
   std::string numberstring;
   for (const auto c: working) {
-    if (std::isdigit(c)) {
+    if (std::isdigit(c) != 0) {
       numberstring += c  ;
-    } else if (std::isupper(c)) {
+    } else if (std::isupper(c) != 0) {
       numberstring += std::to_string(static_cast<int>(c) - 55);
     }
   }
@@ -62,14 +62,14 @@ std::string Mod97::ComputeCheckDigits(const std::string& in) {
 
 bool Mod97::Verify(const std::string& in) {
   // The last two characters of the string should contain the checkdigits
-  const size_t CHECK_DIGIT_COUNT = 2;
+  constexpr size_t CheckDigitCount = 2;
   auto inLength = in.length();
-  if (inLength < CHECK_DIGIT_COUNT) {
+  if (inLength < CheckDigitCount) {
     return false;
   }
-  auto checkDigitProvided = in.substr(inLength - CHECK_DIGIT_COUNT, CHECK_DIGIT_COUNT);
+  auto checkDigitProvided = in.substr(inLength - CheckDigitCount, CheckDigitCount);
 
-  auto toCheck = in.substr(0, inLength - CHECK_DIGIT_COUNT);
+  auto toCheck = in.substr(0, inLength - CheckDigitCount);
   std::string checkDigitComputed;
   try {
     checkDigitComputed = ComputeCheckDigits(toCheck);

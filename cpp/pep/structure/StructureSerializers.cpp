@@ -76,20 +76,20 @@ UserPseudonymFormat Serializer<UserPseudonymFormat>::fromProtocolBuffer(proto::U
 
 
 void Serializer<AdditionalStickerDefinition>::moveIntoProtocolBuffer(proto::AdditionalStickerDefinition& dest, AdditionalStickerDefinition value) const {
-  *dest.mutable_column() = std::move(value.mColumn);
-  dest.set_visit(value.mVisit);
-  dest.set_stickers(value.mStickers);
-  dest.set_suppress_additional_stickers(value.mSuppressAdditionalStickers);
-  dest.set_study_context(std::move(value.mStudyContext));
+  *dest.mutable_column() = std::move(value.column);
+  dest.set_visit(value.visit);
+  dest.set_stickers(value.stickers);
+  dest.set_suppress_additional_stickers(value.suppressAdditionalStickers);
+  dest.set_study_context(std::move(value.studyContext));
 }
 
 AdditionalStickerDefinition Serializer<AdditionalStickerDefinition>::fromProtocolBuffer(proto::AdditionalStickerDefinition&& source) const {
   AdditionalStickerDefinition result;
-  result.mVisit = source.visit();
-  result.mColumn = std::move(*source.mutable_column());
-  result.mStickers = source.stickers();
-  result.mSuppressAdditionalStickers = source.suppress_additional_stickers();
-  result.mStudyContext = std::move(*source.mutable_study_context());
+  result.visit = source.visit();
+  result.column = std::move(*source.mutable_column());
+  result.stickers = source.stickers();
+  result.suppressAdditionalStickers = source.suppress_additional_stickers();
+  result.studyContext = std::move(*source.mutable_study_context());
   return result;
 }
 
@@ -200,7 +200,7 @@ void Serializer<GlobalConfiguration>::moveIntoProtocolBuffer(proto::GlobalConfig
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_column_specifications(), value.getColumnSpecifications());
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_user_pseudonym_format(), value.getUserPseudonymFormat());
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_assessors(), value.getAssessors());
-  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_study_contexts(), value.getStudyContexts().getItems());
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_study_contexts(), value.getStudyContexts().getConfigured());
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_short_pseudonym_errata(), value.getShortPseudonymErrata());
 }
 

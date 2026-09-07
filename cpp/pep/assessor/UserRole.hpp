@@ -7,22 +7,22 @@ namespace pep {
 
 class UserRole {
 private:
-  bool mHasAssessorAccess = false;
-  bool mCanCrossTabulate = false;
+  bool hasAssessorAccess_ = false;
+  bool canCrossTabulate_ = false;
 
   UserRole() noexcept = default;
 
 public:
-  bool canSeeParticipantPersonalia() const noexcept { return mHasAssessorAccess; }
-  bool canEditParticipantPersonalia() const noexcept { return mHasAssessorAccess; }
-  bool canSetParticipantContext() const noexcept { return mHasAssessorAccess; }
-  bool canManageDevices() const noexcept { return mHasAssessorAccess; }
-  bool canRegisterParticipants() const noexcept { return mHasAssessorAccess; }
-  bool canUpgradeStorage() const noexcept { return mHasAssessorAccess; }
-  bool canPrintStickers() const noexcept { return mHasAssessorAccess; }
-  bool canPrintSummary() const noexcept { return mHasAssessorAccess; }
-  bool canCrossTabulate() const noexcept { return mCanCrossTabulate; }
-  bool canEditVisitAdministeringAssessor() const noexcept { return mHasAssessorAccess; }
+  bool canSeeParticipantPersonalia() const noexcept { return hasAssessorAccess_; }
+  bool canEditParticipantPersonalia() const noexcept { return hasAssessorAccess_; }
+  bool canSetParticipantContext() const noexcept { return hasAssessorAccess_; }
+  bool canManageDevices() const noexcept { return hasAssessorAccess_; }
+  bool canRegisterParticipants() const noexcept { return hasAssessorAccess_; }
+  bool canUpgradeStorage() const noexcept { return hasAssessorAccess_; }
+  bool canPrintStickers() const noexcept { return hasAssessorAccess_; }
+  bool canPrintSummary() const noexcept { return hasAssessorAccess_; }
+  bool canCrossTabulate() const noexcept { return canCrossTabulate_; }
+  bool canEditVisitAdministeringAssessor() const noexcept { return hasAssessorAccess_; }
 
   static std::optional<UserRole> GetForOAuthRole(const std::string& oauthRole);
 };

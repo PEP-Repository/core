@@ -6,11 +6,12 @@ variables:
 
   # This tag can be overwritten by the trigger in docker-build
   # Plus it may be changed in a commit from docker-build, so keep in this format
-  RUNNER_IMAGE_TAG: sha-0bbd71d070209b71d340bc014ab3c72dd6a8c71f
+  RUNNER_IMAGE_TAG: sha-5d6d33869c01976913a35a1f3dbca12e3b08059b
 
   DOCKER_BUILD_PROJECT: pep/docker-build
 
   BUILDER_IMAGE_UBUNTU_LTS:     ${CI_REGISTRY}/${DOCKER_BUILD_PROJECT}/builder-ubuntu-lts:${RUNNER_IMAGE_TAG}
   RUNTIME_IMAGE_UBUNTU_LTS:     ${CI_REGISTRY}/${DOCKER_BUILD_PROJECT}/runtime-ubuntu-lts:${RUNNER_IMAGE_TAG}
   BUILDER_IMAGE_UBUNTU_ROLLING: ${CI_REGISTRY}/${DOCKER_BUILD_PROJECT}/builder-ubuntu-rolling:${RUNNER_IMAGE_TAG}
+  BUILDER_IMAGE_WEBLIB:         ${CI_REGISTRY}/${DOCKER_BUILD_PROJECT}/builder-weblib:${RUNNER_IMAGE_TAG}
   BUILDER_IMAGE_FLATPAK:        ${CI_REGISTRY}/${DOCKER_BUILD_PROJECT}/builder-flatpak:${RUNNER_IMAGE_TAG}

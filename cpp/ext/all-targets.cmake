@@ -5,11 +5,11 @@
 # and not just in this file.
 
 set(EXT_PROJECTS_DIR ${CMAKE_CURRENT_LIST_DIR})
-INCLUDE_DIRECTORIES(SYSTEM ${EXT_PROJECTS_DIR}) # Allow header inclusion using #include <some-lib/blah.hpp>
+include_directories(SYSTEM ${EXT_PROJECTS_DIR}) # Allow header inclusion using #include <some-lib/blah.hpp>
 
 # Use PEP compiler flags for external projects
-SET(BASE_C_FLAGS "${CMAKE_C_FLAGS}")
-SET(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+set(BASE_C_FLAGS "${CMAKE_C_FLAGS}")
+set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 add_subdirectory(${EXT_PROJECTS_DIR}/entities)
 add_subdirectory(${EXT_PROJECTS_DIR}/panda)

@@ -15,24 +15,24 @@ namespace pep {
 
 class ActivityMonitor : public std::enable_shared_from_this<ActivityMonitor>, private boost::noncopyable {
 private:
-  const std::string mDescription;
-  boost::asio::steady_timer mTimer;
-  bool mTimerRunning = false;
-  const decltype(mTimer)::duration mMaxInactive;
-  std::mutex mMutex;
-  std::optional<std::string> mLastActivityWhat;
-  std::optional<decltype(mTimer)::time_point> mLastActivityWhen;
+  const std::string description_;
+  boost::asio::steady_timer timer_;
+  bool timerRunning_ = false;
+  const decltype(timer_)::duration maxInactive_;
+  std::mutex mutex_;
+  std::optional<std::string> lastActivityWhat_;
+  std::optional<decltype(timer_)::time_point> lastActivityWhen_;
 
-  ActivityMonitor(boost::asio::io_context& io_context, const std::string& jobDescription, decltype(mTimer)::duration maxInactive);
-  void startTimer(decltype(mTimer)::duration alreadyElapsed = {});
+  ActivityMonitor(boost::asio::io_context& io_context, const std::string& jobDescription, decltype(timer_)::duration maxInactive);
+  void startTimer(decltype(timer_)::duration alreadyElapsed = {});
   void handleTimerExpired();
 
 public:
-  static const std::chrono::seconds DEFAULT_MAX_INACTIVE; // 1 minute
+  static const std::chrono::seconds DefaultMaxInactive; // 1 minute
 
   ~ActivityMonitor() noexcept;
 
-  static std::shared_ptr<ActivityMonitor> Create(boost::asio::io_context& io_context, const std::string& jobDescription, decltype(mTimer)::duration maxInactive = DEFAULT_MAX_INACTIVE);
+  static std::shared_ptr<ActivityMonitor> Create(boost::asio::io_context& io_context, const std::string& jobDescription, decltype(timer_)::duration maxInactive = DefaultMaxInactive);
 
   void activityOccurred(const std::string& what);
 };

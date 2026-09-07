@@ -3,30 +3,30 @@
 namespace pep {
 
 ExponentialBackoff::Parameters::Parameters(Timeout minTimeout, Timeout maxTimeout, BackoffFactor backoffFactor) noexcept
-  : mMinTimeout(minTimeout), mMaxTimeout(maxTimeout), mBackoffFactor(backoffFactor) {
-  assert(mMinTimeout > Timeout(0));
-  assert(mMaxTimeout > mMinTimeout);
-  assert(mBackoffFactor > 1);
+  : minTimeout_(minTimeout), maxTimeout_(maxTimeout), backoffFactor_(backoffFactor) {
+  assert(minTimeout_ > Timeout(0));
+  assert(maxTimeout_ > minTimeout_);
+  assert(backoffFactor_ > 1);
 }
 
 std::optional<ExponentialBackoff::Timeout> ExponentialBackoff::retry(ExponentialBackoff::RetryHandler handler) {
-  if (mTimer.expiry() > Timer::clock_type::now()) { //Do not retry if a retry is already queued
+  if (timer_.expiry() > Timer::clock_type::now()) { //Do not retry if a retry is already queued
     return {};
   }
-  auto timeout = std::exchange(mNextTimeout,
-    std::min(mNextTimeout * mParameters.backoffFactor(), mParameters.maxTimeout()));
-  mTimer.expires_after(timeout);
-  mTimer.async_wait(handler);
+  auto timeout = std::exchange(nextTimeout_,
+    std::min(nextTimeout_ * parameters_.backoffFactor(), parameters_.maxTimeout()));
+  timer_.expires_after(timeout);
+  timer_.async_wait(handler);
   return timeout;
 }
 
 void ExponentialBackoff::success() {
-  mNextTimeout = mParameters.minTimeout(); // Everything went fine, so no need to further blow up reconnection times
+  nextTimeout_ = parameters_.minTimeout(); // Everything went fine, so no need to further blow up reconnection times
 }
 
 void ExponentialBackoff::stop() {
-  mTimer.cancel();
-  mNextTimeout = mParameters.minTimeout();
+  timer_.cancel();
+  nextTimeout_ = parameters_.minTimeout();
 }
 
 }

@@ -7,7 +7,9 @@ set -o nounset
 set -o pipefail
 
 SCRIPTSELF=$(command -v "$0")
+readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+readonly SCRIPTPATH
 git_root="$SCRIPTPATH/.."
 
 # import functions
@@ -79,7 +81,7 @@ test_cleanup() {
   declpep_wrapper cleanup "$@"
 }
 
-readonly default_skip=''
+readonly default_skip='weblib'
 
 usage() {
   echo "Usage:"
@@ -94,11 +96,14 @@ usage() {
   echo "                                this directory should have the /cpp/pep/ sub dirs. Default: CORE_DIR/build"
   echo " --build-mode <MODE>          - Only relevant when building with Visual Studio. Used to indicate sub directories of the build directory, e.g 'Debug' or 'Release'. Default: ."
   echo " --tests-to-run \"<TEST> [<TEST> [...]]\""
-  echo "                              - Subset of tests to run, separated by spaces, see integration.sh & pepcli_tests.bash. Default all"
+  echo "                              - Subset of tests to run, separated by spaces, see integration.sh & pepcli_tests.bash."
+  echo "                                --tests-to-skip takes precedence over this option. Default all (except --tests-to-skip)"
   echo " --tests-to-skip \"<TEST> [<TEST> [...]]\""
-  echo "                              - Subset of tests to skip, separated by spaces, see --tests-to-run. Default \"$default_skip\" unless included in --tests-to-run"
+  echo "                              - Subset of tests to skip, separated by spaces, see --tests-to-run. Takes precedence over --tests-to-run."
+  echo "                                Default \"$default_skip\" unless explicitly included in --tests-to-run"
   echo " --local                      - Run the tests using your local build. Expects the working directory to be your build directory."
   echo " --no-docker                  - Run tests without using Docker at all (i.e. without s3proxy). Only possible in local mode; some unit tests will be skipped."
+  echo " --publish-ports              - Publish Docker container ports to host, implied with --tests-to-run weblib."
   echo " --reuse-secrets-and-data     - Reuse the secrets and data already present in --generated-data-dir. Configuration is still copied over."
   echo " -h|--help|-?                 - Display this help"
   exit 2
@@ -113,6 +118,7 @@ check_option_has_value() {
 
 LOCAL=false
 USE_DOCKER=true
+PUBLISH_PORTS=false
 REUSE_SECRETS_AND_DATA=false
 while [ ${#} -gt 0 ];
 do
@@ -155,6 +161,7 @@ do
     -h|--help|-\?) usage ;;
     --local) LOCAL=true ;;
     --no-docker) USE_DOCKER=false ;;
+    --publish-ports) PUBLISH_PORTS=true ;;
     --inline-server-log) ;; # Legacy: this is the only option now
     --reuse-secrets-and-data) REUSE_SECRETS_AND_DATA=true ;;
     -?*)
@@ -240,6 +247,10 @@ done
 readonly TESTS_TO_SKIP="$TESTS_TO_SKIP"
 echo "TESTS_TO_RUN: ${TESTS_TO_RUN:-<all>}; except TESTS_TO_SKIP: ${TESTS_TO_SKIP:-<none>}"
 
+if is_test_included weblib; then
+  PUBLISH_PORTS=true
+fi
+
 # Settings for pepStorageFacilityUnitTests
 export PEP_ROOT_CA=../pki/rootCA.cert
 export PEP_S3_ACCESS_KEY="MyAccessKey"
@@ -248,6 +259,15 @@ export PEP_S3_EXPECT_COMMON_NAME="S3"
 export PEP_S3_TEST_BUCKET=TestBucket1
 export PEP_S3_TEST_BUCKET2=TestBucket2
 export PEP_USE_CURRENT_PATH="1"
+# Settings for the second S3 host ("host B", i.e. the s3proxy2 container), which is accessed over
+# plaintext HTTP and therefore needs no TLS terminator: see s3proxy.sh. It serves buckets with the
+# same names as the first host, so that tests can verify that requests are sent to the right host.
+# Host and port are overridden for runs inside Docker, where the container is reachable by name.
+export PEP_S3_B_HOST="localhost"
+export PEP_S3_B_PORT=9003
+export PEP_S3_B_USE_HTTPS="0"
+export PEP_S3_B_ACCESS_KEY="MyAccessKey2"
+export PEP_S3_B_SECRET_KEY="MySecret2"
 
 cleanup() {
   if [ "$LOCAL" = false ]; then
@@ -360,8 +380,12 @@ if [ "$USE_DOCKER" = true ]; then
   # Create test buckets for pepStorageFacilityUnitTests, preventing 'NoSuchBucket' error code from s3proxy.
   # Specifying "--parents" to prevent failure when directories already exist, e.g. if
   # this script is run multiple times.
+  # Both S3 hosts get buckets with the same names, so that tests can only tell them apart by
+  # their contents (and credentials), i.e. by the host that a request was actually sent to.
   mkdir -p "$S3PROXY_RUNTIME_DIR/data/$PEP_S3_TEST_BUCKET"
   mkdir -p "$S3PROXY_RUNTIME_DIR/data/$PEP_S3_TEST_BUCKET2"
+  mkdir -p "$S3PROXY_RUNTIME_DIR/data2/$PEP_S3_TEST_BUCKET"
+  mkdir -p "$S3PROXY_RUNTIME_DIR/data2/$PEP_S3_TEST_BUCKET2"
   trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" pull
 
   trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" start pep-network
@@ -400,7 +424,18 @@ else
   if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
     trace docker run --rm --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" "$IMAGE" bash /app/config_servers.sh
   fi
-  trace docker run --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" -v "$TESTS_DIR/test_input:/test_input" --name pepservertest -d "$IMAGE"
+
+  publish_ports_flags=()
+  if $PUBLISH_PORTS; then
+    readarray -t publish_ports_flags < <(
+      docker inspect --format='{{json .Config.ExposedPorts}}' "$IMAGE" |
+      jq --raw-output 'keys[]' | sed 's/\(.*\)\/.*/--publish=\1:\0/')
+    if [ "${#publish_ports_flags[@]}" -eq 0 ]; then
+      fail "Failed to get exposed ports for Docker image"
+    fi
+  fi
+
+  trace docker run --net pep-network "${publish_ports_flags[@]}" -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" -v "$TESTS_DIR/test_input:/test_input" --name pepservertest -d "$IMAGE"
   docker logs --follow pepservertest 2> >(sed -u "s/^/[pep-services]: /" >&2) > >(sed -u "s/^/[pep-services]: /") &
 fi
 
@@ -417,10 +452,25 @@ if should_run_test storage-facility-unit; then
   if [ "$USE_DOCKER" = true ]; then
     TEST_FILTERS=""
   else
-    TEST_FILTERS="--gtest_filter=-S3Client.putObject:PageStore.basic"
+    # Without Docker there are no S3 hosts to talk to, so we skip the test suites that need one.
+    # (The "S3PageStoreConfig" suite only checks configuration handling and does run here.)
+    TEST_FILTERS="--gtest_filter=-S3Client.*:S3PageStore.*:S3PageStoreMultiHost.*"
   fi
   # Note that line below invokes pepStorageFacilityUnitTests (and sets the DOCKER_EXEC_ARGS variable only for that invocation).
-  DOCKER_EXEC_ARGS="-e PEP_ROOT_CA -e PEP_S3_ACCESS_KEY -e PEP_S3_SECRET_KEY -e PEP_USE_CURRENT_PATH -e PEP_S3_HOST=s3proxyproxy -e PEP_S3_EXPECT_COMMON_NAME -e PEP_S3_TEST_BUCKET -e PEP_S3_TEST_BUCKET2" \
+  DOCKER_EXEC_ARGS="\
+    -e PEP_ROOT_CA \
+    -e PEP_S3_ACCESS_KEY \
+    -e PEP_S3_SECRET_KEY \
+    -e PEP_USE_CURRENT_PATH \
+    -e PEP_S3_HOST=s3proxyproxy \
+    -e PEP_S3_EXPECT_COMMON_NAME \
+    -e PEP_S3_TEST_BUCKET \
+    -e PEP_S3_TEST_BUCKET2 \
+    -e PEP_S3_B_HOST=s3proxy2 \
+    -e PEP_S3_B_PORT=80 \
+    -e PEP_S3_B_USE_HTTPS \
+    -e PEP_S3_B_ACCESS_KEY \
+    -e PEP_S3_B_SECRET_KEY" \
     execute . "$BUILD_DIR/cpp/pep/storagefacility/$BUILD_MODE/pepStorageFacilityUnitTests" --gtest_color=yes "$TEST_FILTERS"
 fi
 
@@ -449,6 +499,9 @@ else
   CONFIG_DIR="/data"
 fi
 
+readonly DEST_DIR="$CONFIG_DIR/test_output"
+execute . mkdir -p "$DEST_DIR"
+
 # shellcheck source=SCRIPTDIR/pepcli_tests.bash
 . "$TESTS_DIR/pepcli_tests.bash"
 
@@ -465,3 +518,68 @@ if should_run_test watchdog; then
 fi
 
 ####################
+
+# Requires pepWeblibJs target to be built
+if should_run_test weblib; then
+  trace cd "$CORE_DIR/weblib/pep-repo-client-lib/"
+
+  WASM_CONFIG='{
+    "columnGroups": [{
+      "name": "WasmTestColumnGroup",
+      "columns": [ "WasmTestColumn" ],
+      "cgars": { "Research Assessor": [ "read", "write" ] }
+    }],
+    "subjectGroups": [{
+      "name": "WasmTestSubjectGroup",
+      "pgars": { "Research Assessor": [ "enumerate", "access" ] }
+    }]
+  }'
+
+  test_setup "$WASM_CONFIG"
+
+  pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectSmall -c WasmTestColumn \
+    -d 'Some small test data!' --metadataxentry "$(pepcli xentry --name fileExtension --payload .small)"
+
+  # Around 2MB
+  # Ignore SIGPIPE (141) because output is cut off
+  (yes 'Larger test data!' || [ $? = 141 ]) | head -120000 >"$DATA_DIR/file.large"
+  pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectLarge -c WasmTestColumn \
+    --input-path "$CONFIG_DIR/file.large"
+  rm "$DATA_DIR/file.large"
+
+  pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectSmall
+  pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectLarge
+
+  trace mkdir -p ./dist-test/
+  trace cp "$DATA_DIR"/{client/{ClientConfig.json,ShadowAdministration.pub},keyserver/OAuthTokenSecret.json} "$PKI_DIR_ON_HOST/rootCA.cert" ./dist-test/
+
+  start_websocket_proxy_flags=()
+  if [ -n "${CI-}" ]; then
+    # Connect to docker:dind service container, see https://stackoverflow.com/a/48288560
+    start_websocket_proxy_flags+=(docker)
+  fi
+  printGreen "\$ ./start_websocket_proxy.sh ${start_websocket_proxy_flags[*]} &"
+  ./start_websocket_proxy.sh "${start_websocket_proxy_flags[@]}" &
+
+  # If this fails, you may need to source the EMSDK activation script and forward the Node.js PATH when using sudo via 'sudo \"PATH=\$PATH\" ...'
+  trace npm install
+
+  # Run "test" script from package.json
+  # This will run the *.spec.mts tests listed in .mocharc.yaml
+  trace npm test
+
+  trace kill % || true
+  trace wait -f % || true
+
+  test_cleanup "$WASM_CONFIG"
+fi
+
+####################
+
+for test in $TESTS_TO_RUN $TESTS_TO_SKIP; do
+  is_known_test "$test" || fail "Test $test does not exist"
+done
+
+if [ "${#known_enabled_tests[@]}" == 0 ]; then
+  fail "Did not run any tests"
+fi

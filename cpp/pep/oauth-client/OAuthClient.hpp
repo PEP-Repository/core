@@ -16,13 +16,14 @@ using AuthorizationResult = OperationResult<std::string>;
 
 class OAuthClient : public std::enable_shared_from_this<OAuthClient>, public SharedConstructor<OAuthClient>  {
 public:
+  using GetAuthorizeUriFn = std::function<std::string (std::string redirectUri, std::optional<std::string_view>)>;
   using AuthorizationMethod = std::function<rxcpp::observable<AuthorizationResult> (
     std::shared_ptr<boost::asio::io_context> io_context,
-    std::function<std::string (std::string redirectUri)> getAuthorizeUri)>;
+    GetAuthorizeUriFn getAuthorizeUri)>;
 
   struct Parameters {
     /// The io_context to run on
-    std::shared_ptr<boost::asio::io_context> io_context;
+    std::shared_ptr<boost::asio::io_context> ioContext;
     /// The "OAuthServer" part of the client config
     const Configuration& config;
     /// Method to retrieve the authorization code, see e.g. BrowserAuthorization & ConsoleAuthorization
@@ -40,20 +41,20 @@ public:
   rxcpp::observable<AuthorizationResult> run();
 
 private:
-  boost::urls::url getAuthorizationUri() const;
-  rxcpp::observable<std::string> doTokenRequest(const std::string& code);
+  boost::urls::url getAuthorizationUri(std::optional<std::string_view> state) const;
+  rxcpp::observable<std::string> doTokenRequest(std::string_view code);
 
-  std::shared_ptr<boost::asio::io_context> mIoContext;
-  AuthorizationMethod mAuthorizationMethod;
-  std::string mRequestUrl;
-  std::string mTokenUrl;
-  std::string mCodeVerifier;
-  std::string mRedirectUrl;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
+  AuthorizationMethod authorizationMethod_;
+  std::string requestUrl_;
+  std::string tokenUrl_;
+  std::string codeVerifier_;
+  std::string redirectUrl_;
   //For local testing we use a self-signed HTTPS certificate for the authserver. We need to tell the HTTPS client to trust this certificate, so we need to know the path to the used certificate.
   //If this is left unset, the system CA store is used.
-  std::optional<std::filesystem::path> mCaCertFilepath;
-  bool mLongLived;
-  std::optional<std::chrono::seconds> mValidityDuration;
+  std::optional<std::filesystem::path> caCertFilepath_;
+  bool longLived_;
+  std::optional<std::chrono::seconds> validityDuration_;
 
 
   friend class SharedConstructor<OAuthClient>;

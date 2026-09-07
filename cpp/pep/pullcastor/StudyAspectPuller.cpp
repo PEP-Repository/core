@@ -12,7 +12,7 @@ namespace pep {
 namespace castor {
 
 StudyAspectPuller::StudyAspectPuller(std::shared_ptr<StudyPuller> study, const StudyAspect& aspect)
-  : mStudy(study), mSpColumn(aspect.getShortPseudonymColumn()), mColumnNamePrefix(aspect.getStorage()->getDataColumn()) {
+  : study_(study), spColumn_(aspect.getShortPseudonymColumn()), columnNamePrefix_(aspect.getStorage()->getDataColumn()) {
 }
 
 rxcpp::observable<std::shared_ptr<StudyAspectPuller>> StudyAspectPuller::CreateChildrenFor(std::shared_ptr<StudyPuller> study) {
@@ -20,15 +20,15 @@ rxcpp::observable<std::shared_ptr<StudyAspectPuller>> StudyAspectPuller::CreateC
     .map([study](const StudyAspect& aspect) -> std::shared_ptr<StudyAspectPuller> {
       auto type = aspect.getStorage()->getStudyType();
       switch (type) {
-      case CastorStudyType::STUDY:
+      case CastorStudyType::Crf:
         return CrfAspectPuller::Create(study, aspect);
-      case CastorStudyType::REPEATING_DATA:
+      case CastorStudyType::RepeatingData:
         return RepeatingDataAspectPuller::Create(study, aspect);
-      case CastorStudyType::SURVEY:
+      case CastorStudyType::Survey:
         return SurveyAspectPuller::Create(study, aspect);
       }
-      auto msg = "Unsupported study type " + std::to_string(type);
-      PULLCASTOR_LOG(debug) << msg;
+      auto msg = "Unsupported study type " + std::to_string(ToUnderlying(type));
+      PEP_PULLCASTOR_LOG(Severity::Debug) << msg;
       throw std::runtime_error(msg);
     });
 }

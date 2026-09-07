@@ -4,9 +4,6 @@
 
 # This script is meant to only be run from within integration.sh.
 
-readonly DEST_DIR="$CONFIG_DIR/test_output"
-execute . mkdir -p "$DEST_DIR"
-
 readonly ACCESS_ADMINISTRATOR_TOKEN="ewogICAgInN1YiI6ICJBY2Nlc3MgQWRtaW5pc3RyYXRvciIsCiAgICAiZ3JvdXAiOiAiQWNjZXNzIEFkbWluaXN0cmF0b3IiLAogICAgImlhdCI6ICIxNTcyMzU0MjI4IiwKICAgICJleHAiOiAiMjA3MzY1NDEyMiIKfQo.DYnQyvtpvj2OozTnC6MUMJKW7G-ckzber0q0kRnjwHQ"
 
 # MacOS doesn't support the date command with nanosecond precision, so we need to use GNU coreutils gdate instead.
@@ -30,6 +27,17 @@ TEST_PARTICIPANT="$(openssl rand -base64 12)"
 ####################
 
 if should_run_test basic; then
+  # Test --loglevel
+  # `|&` redirects both stdout & stderr
+  # `tee /dev/stderr` is to print message to console as well as grepping. We need `|| true` because of SIGPIPE.
+  if ! execute . "$PEPCLI_COMMAND" query --help |& (tee /dev/stderr || true) | grep -qF '<info>'; then
+    # pepcli prints info message with version
+    fail 'Default loglevel should include info log messages'
+  fi
+  if execute . "$PEPCLI_COMMAND" --loglevel warning query --help |& grep -qF '<info>'; then
+    fail 'warning loglevel should should not include info messages'
+  fi
+
   # Store a PEP ID...
   id=$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')
   # ... then verify that we can read it back (see #2750)
@@ -113,9 +121,8 @@ if should_run_test basic; then
   pepcli --oauth-token-group "Research Assessor" store -p "$TEST_PARTICIPANT" -c Visit1.MRI.Func -i "$SYMLINK_TEST_DATA" &&
       fail "Storing a directory structure with symlinks withOUT the -resolve-symlinks flag unexpectedly succeeded."
 
-  # Store something so large that it will be sent to the page store, i.e. larger than INLINE_PAGE_THRESHOLD ( = 4*1024 bytes ).
-  readonly RANDOM_DATA_FILE="$DEST_DIR/random-data.bin"
-  execute . dd if=/dev/urandom of="$RANDOM_DATA_FILE" bs=1024 count=6
+  RANDOM_DATA_FILE=$(make_non_inline_file "random-data.bin")
+  readonly RANDOM_DATA_FILE
   pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -i "$RANDOM_DATA_FILE"
   # Download the data we just stored and compare it to the original data.
   pepcli pull --output-directory "$DEST_DIR/pulled" -p "$TEST_PARTICIPANT" -c DeviceHistory
@@ -222,17 +229,31 @@ fi
 
 if should_run_test structure-history; then
 
-  # Create a user group, remove it later and then verify that we can query the group that was removed through the --at option
+  # Create a user group, remove it later and then verify that we can query the group that was removed through the --point-in-time option
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user group create onceUponATimeGroup
-  UTC_TIMESTAMP=$($DATE_CMD +%s%N | cut -b1-13)
+  UTC_TIMESTAMP_MS=$($DATE_CMD +%s%N | cut -b1-13)
+  sleep 1s
+  UTC_TIMESTAMP=$($DATE_CMD +%s)
+  UTC_ISO_DATETIME=$($DATE_CMD -u +%FT%TZ)
+  DIFFERENT_TZ_ISO_DATETIME=$(TZ="<-07>+7" $DATE_CMD --date="$UTC_ISO_DATETIME" +%FT%T%:z)
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user group remove onceUponATimeGroup
-  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --at "$UTC_TIMESTAMP" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "unix-ms:$UTC_TIMESTAMP_MS" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "unix:$UTC_TIMESTAMP" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "$UTC_ISO_DATETIME" | grep 'onceUponATimeGroup'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user query --point-in-time "$DIFFERENT_TZ_ISO_DATETIME" | grep 'onceUponATimeGroup'
 
-  # Create a column, remove it later and then verify that we can still query the column that was removed through the --at option
+  # Create a column, remove it later and then verify that we can still query the column that was removed through the --point-in-time option
   pepcli --oauth-token-group "Data Administrator" ama column create onceUponATimeColumn
-  UTC_TIMESTAMP=$($DATE_CMD +%s%N | cut -b1-13)
+  UTC_TIMESTAMP_MS=$($DATE_CMD +%s%N | cut -b1-13)
+  sleep 1s
+  UTC_TIMESTAMP=$($DATE_CMD +%s)
+  UTC_ISO_DATETIME=$($DATE_CMD -u +%FT%TZ)
+  DIFFERENT_TZ_ISO_DATETIME=$(TZ="<-07>+7" $DATE_CMD --date="$UTC_ISO_DATETIME" +%FT%T%:z)
   pepcli --oauth-token-group "Data Administrator" ama column remove onceUponATimeColumn
-  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --at "$UTC_TIMESTAMP" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "unix-ms:$UTC_TIMESTAMP_MS" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "unix:$UTC_TIMESTAMP" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "$UTC_ISO_DATETIME" | grep 'onceUponATimeColumn'
+  pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" ama query --point-in-time "$DIFFERENT_TZ_ISO_DATETIME" | grep 'onceUponATimeColumn'
 
 fi
 
@@ -370,7 +391,7 @@ if should_run_test token-block; then
   # Add a new user to integrationGroup and generate token for that user
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user create userWithFreshToken
   pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" user addTo userWithFreshToken integrationGroup
-  TOKEN_TEST_USER_TOKEN=$(pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" token request userWithFreshToken integrationGroup "$($DATE_CMD -d '2 days' +%s)")
+  TOKEN_TEST_USER_TOKEN=$(pepcli --oauth-token "$ACCESS_ADMINISTRATOR_TOKEN" token request userWithFreshToken integrationGroup "unix:$($DATE_CMD -d '2 days' +%s)")
 
   # Attempt to do a query with the generated token
   pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access
@@ -502,6 +523,57 @@ if should_run_test user-query; then
   done
 
   pepcli --oauth-token-group "Access Administrator" user remove "$userPrimaryId"
+fi
+
+####################
+
+if should_run_test user-removal-and-expiration; then
+  USER_REMOVAL_AND_EXPIRATION_CONFIG='{
+    "userGroups": [{
+      "name": "test-group",
+      "users": ["test-user"]
+    }]
+  }'
+
+  test_setup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
+
+  token="$(pepcli token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
+  pepcli --oauth-token-group "Access Administrator" user removeFrom test-user test-group
+  pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid when the user is removed from the group"
+  trace sleep 1s
+
+  expiration="$($DATE_CMD -d "now+5 seconds" +%s)"
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
+  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  while [ "$($DATE_CMD -d "now+1 second" +%s)" -lt "$expiration" ]; do # We compare with now+1 second, so the following doesn't fail if in the meantime the current time increased to the next second
+    pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
+    trace sleep 1s
+  done
+  trace sleep 1s
+  pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid after group membership expiration"
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+10 years" +%s)" test-user test-group \
+    && fail "Shouldn't be able to update expiration for a user group membership that already expired"
+  original_expiration_seconds="15"
+  expiration="$($DATE_CMD -d "now+$original_expiration_seconds seconds" +%s)"
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
+  pepcli --oauth-token "$token" query enrollment && fail "Token that was once blocked should not get unblocked by updating the expiration"
+  newToken="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$newToken" query enrollment || fail "New token, requested after the issueDateTime of the block entry, should be valid"
+
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+10 years" +%s)" test-user test-group
+  trace sleep "${original_expiration_seconds}s"
+  pepcli --oauth-token "$newToken" query enrollment || fail "Token should still be valid after original expiration has passed, but updated expiration has not yet passed"
+
+  blocked_token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should be valid"
+  pepcli --oauth-token-group "Access Administrator" token block create --issuedBefore "unix:$($DATE_CMD -d "now" +%s)" --block-start "unix:$($DATE_CMD -d "now+5 seconds" +%s)" --message "Manually blocked" test-user test-group
+  pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should still be valid, before block-start timestamp"
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+20 years" +%s)" test-user test-group
+  trace sleep 5s
+  pepcli --oauth-token "$blocked_token" query enrollment && fail "Manually blocked token should not be unblocked by updating the expiration of the group membership"
+
+  test_cleanup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
 fi
 
 ####################
@@ -671,6 +743,70 @@ fi
 
 ####################
 
+if should_run_test pseudonym-conversion; then
+  PC_CONFIG='{
+    "userGroups": [{ "name": "pcUsers" }],
+    "columnGroups": [{
+      "name": "pcData",
+      "columns": [ "pcData.id" ],
+      "cgars": {
+        "pcUsers": [ "read" ],
+        "Data Administrator": [ "read", "write" ]
+      }
+    }],
+    "subjectGroups": [{
+      "name": "pcSubjects",
+      "subjects": [
+        { "pcData.id": "ID_0" },
+        { "pcData.id": "ID_1" }
+      ],
+      "pgars": { "pcUsers": [ "enumerate", "access" ] }
+    }]
+  }'
+
+  test_setup "$PC_CONFIG"
+
+  PSEUDONYM_LIST_JSON="$DATA_DIR/test_output/pc-local-pseudonyms.json"
+
+  pepcli --oauth-token-group pcUsers list\
+      -P pcSubjects -C pcData --show-dataless --local-pseudonyms\
+      > "$PSEUDONYM_LIST_JSON"
+
+  pcLookup() {
+    local -r fromId=$1
+    local -r toType=$2
+    jq -r ".[] | select(.data.\"pcData.id\"== \"$fromId\") | .$toType" "$PSEUDONYM_LIST_JSON"
+  }
+
+  assert_equivalent_pp() {
+    public_key() { echo "$1" | cut -d: -f3; }
+    stable_id() { pepcli pseudonym convert "$1" user; }
+
+    assert_equal "$(public_key "$1")" "$(public_key "$2")"
+    assert_equal "$(stable_id "$1")" "$(stable_id "$2")"
+  }
+
+  PP=$(pcLookup ID_1 pp)
+  LP=$(pcLookup ID_1 lp)
+  UP=$(pcLookup ID_1 blp)
+
+  assert_equal "$(pepcli pseudonym convert "$PP" local-pseudonym)" "$LP"
+  assert_equal "$(pepcli pseudonym convert "$LP" local-pseudonym)" "$LP"
+  assert_equal "$(pepcli pseudonym convert "$UP" local-pseudonym)" "$LP"
+
+  assert_equal "$(pepcli pseudonym convert "$PP" brief-local-pseudonym)" "$UP"
+  assert_equal "$(pepcli pseudonym convert "$LP" brief-local-pseudonym)" "$UP"
+  assert_equal "$(pepcli pseudonym convert "$UP" brief-local-pseudonym)" "$UP"
+
+  assert_equal "$(pepcli pseudonym convert "$PP" polymorphic-pseudonym)" "$PP"
+  assert_equivalent_pp "$(pepcli pseudonym convert "$LP" polymorphic-pseudonym)" "$PP"
+  assert_equivalent_pp "$(pepcli pseudonym convert "$UP" polymorphic-pseudonym)" "$PP"
+
+  test_cleanup "$PC_CONFIG"
+fi
+
+####################
+
 if should_run_test user-id-collision; then
   pepcli --oauth-token-group "Access Administrator" user create "Aart.Appel@fake.ru.nl"
 
@@ -710,15 +846,15 @@ if should_run_test s3-roundtrip; then
   test_setup "$S3_ROUNDTRIP_CONFIG"
 
   # Store a large (i.e. stored in S3) file with some participants
-  readonly LARGE_RANDOM_DATA_FILE="$DEST_DIR/large-random-data.bin"
-  # 10 blocks @ 1048576 bytes each = 10MiB
-  execute . dd if=/dev/urandom of="$LARGE_RANDOM_DATA_FILE" bs=1048576 count=10
+  LARGE_RANDOM_DATA_FILE=$(make_large_random_data_file "large-random-data.bin")
+  readonly LARGE_RANDOM_DATA_FILE
   for i in {1..50}; do
     pepcli --oauth-token-group "Research Assessor" store -p "participant$i" -c LargeColumn -i "$LARGE_RANDOM_DATA_FILE"
   done
 
   # Download the (large) files that we stored
-  pepcli --oauth-token-group "Research Assessor" pull -P \* -c LargeColumn -o "$DEST_DIR/s3-backed-files"
+  # Increase timeout because this may take long, especially when using Podman for some reason
+  PEPCLI_TIMEOUT=200s pepcli --oauth-token-group "Research Assessor" pull -P \* -c LargeColumn -o "$DEST_DIR/s3-backed-files"
   # We'd like to diff/compare the downloaded files to the original LARGE_RANDOM_DATA_FILE, but
   # that's not easily done because "find" doesn't propagate exit codes and we can't pipe within the
   # container. So we just count the downloaded files instead of (also) inspecting their contents.
@@ -735,6 +871,225 @@ if should_run_test s3-roundtrip; then
   done
 
   test_cleanup "$S3_ROUNDTRIP_CONFIG"
+fi
+
+####################
+
+if should_run_test page-paths; then
+  PAGE_PATHS_CONFIG='{
+    "columnGroups": [{
+      "name": "PagedColumns",
+      "columns": [ "PagedColumn" ],
+      "cgars": {  "Research Assessor": [ "read", "write" ] }
+    }]
+  }'
+  
+  test_setup "$PAGE_PATHS_CONFIG"
+  
+  pepcli --oauth-token-group "Research Assessor" query page-paths &&
+      fail "Research Assessor should not be able to query page paths"
+
+  # Count number of pages before storing
+  before=$(pepcli --oauth-token-group "System Administrator" query page-paths)
+  before=$(echo "$before" | wc -l)
+  
+  # Store a large (i.e. stored in S3) file
+  PAGED_RANDOM_DATA_FILE=$(make_large_random_data_file "paged-random-data.bin")
+  readonly PAGED_RANDOM_DATA_FILE
+  pepcli --oauth-token-group "Research Assessor" store -p "some-participant" -c PagedColumn -i "$PAGED_RANDOM_DATA_FILE"
+  
+  # Count number of pages after storing
+  after=$(pepcli --oauth-token-group "System Administrator" query page-paths)
+  after=$(echo "$after" | wc -l)
+  if [ ! "$after" -gt "$before" ]; then
+    fail "Page path count should increase after storage (before = $before; after = $after)"
+  fi
+
+  # Remove paged entry from current data set, then count number of pages once again
+  # (This also clears the stored data for a followup invocation of the test.)
+  pepcli --oauth-token-group "Research Assessor" delete -p "some-participant" -c PagedColumn
+  after=$(pepcli --oauth-token-group "System Administrator" query page-paths)
+  after=$(echo "$after" | wc -l)
+  if [ "$after" -ne "$before" ]; then
+    fail "Page path count should revert to previous after deletion (before = $before; after = $after)"
+  fi
+
+  # Clean up
+  execute . rm "$PAGED_RANDOM_DATA_FILE"
+  test_cleanup "$PAGE_PATHS_CONFIG"
+fi
+
+####################
+
+# Walks the Storage Facility through the migration to a different S3 host: adding a host, writing
+# to it, moving the pages of the old host over, and finally dropping the old host. Storing and
+# downloading files must keep working during every step.
+if should_run_test s3-multi-host; then
+  if [ "$USE_DOCKER" = false ]; then
+    printGreen "(Not running tests: s3-multi-host, which needs the S3 servers that run in Docker)"
+  else
+    S3_MULTI_HOST_CONFIG='{
+      "columnGroups": [{
+        "name": "MultiHostColumns",
+        "columns": [ "MultiHostColumn" ],
+        "cgars": { "Research Assessor": [ "read", "write" ] }
+      }]
+    }'
+
+    test_setup "$S3_MULTI_HOST_CONFIG"
+
+    storage_facility_config="$DATA_DIR/storagefacility/StorageFacility.json"
+    # Keep the original configuration around, to restore when we're done.
+    trace cp -- "$storage_facility_config" "$storage_facility_config.before-multi-host"
+
+    # The bucket that the Storage Facility uses. Both S3 hosts serve a bucket with this name.
+    s3_bucket=$(jq --exit-status --raw-output '.PageStore.S3.WriteToBucket.Name' -- "$storage_facility_config")
+    if [ -z "$s3_bucket" ]; then
+      fail "Could not determine the bucket that the Storage Facility writes to"
+    fi
+    bucket_on_host_a="$S3PROXY_RUNTIME_DIR/data/$s3_bucket"
+    bucket_on_host_b="$S3PROXY_RUNTIME_DIR/data2/$s3_bucket"
+
+    # The Storage Facility talks to the first S3 host ("s3proxyproxy") over TLS, and to the second
+    # one ("s3proxy2") over plaintext HTTP: see s3proxy.sh. Inside Docker the servers reach the
+    # second host by container name; locally they reach it on a published port.
+    if [ "$LOCAL" = true ]; then
+      s3_host_b_address="$PEP_S3_B_HOST"
+      s3_host_b_port="$PEP_S3_B_PORT"
+    else
+      s3_host_b_address="s3proxy2"
+      s3_host_b_port=80
+    fi
+
+    # Applies the specified jq filter to the Storage Facility's configuration file, and restarts
+    # the servers so that they use the updated configuration.
+    reconfigure_page_store() {
+      jq "$@" -- "$storage_facility_config" >"$storage_facility_config.tmp" ||
+        fail "Could not rewrite $storage_facility_config"
+      mv -f -- "$storage_facility_config.tmp" "$storage_facility_config"
+      restart_servers
+    }
+
+    count_pages() {
+      local bucket_dir="$1"
+      find "$bucket_dir" -type f | wc -l
+    }
+
+    store_multi_host_file() {
+      local participant="$1"
+      local file="$2"
+      pepcli --oauth-token-group "Research Assessor" store -p "$participant" -c MultiHostColumn --input-path "$file"
+    }
+
+    # Downloads the participant's file and verifies that it's identical to the file that was
+    # stored for them. A page that cannot be retrieved from S3 makes this fail: the integration
+    # setup stores pages both locally and in S3, and the Storage Facility raises an error when
+    # those two disagree.
+    verify_multi_host_file() {
+      local participant="$1"
+      local file="$2"
+
+      local output_dir="$DEST_DIR/multi-host-pulled"
+      execute . rm -rf "$output_dir"
+      pepcli --oauth-token-group "Research Assessor" pull -p "$participant" -c MultiHostColumn -o "$output_dir"
+
+      local pulled expected actual
+      pulled=$(execute . find "$output_dir" -type f -name MultiHostColumn.bin)
+      if [ -z "$pulled" ]; then
+        fail "Did not download a file for participant $participant"
+      fi
+      expected=$(execute . sha256sum "$file" | cut -d' ' -f1)
+      actual=$(execute . sha256sum "$pulled" | cut -d' ' -f1)
+      if [ "$actual" != "$expected" ]; then
+        fail "Downloaded file for participant $participant differs from the file that was stored"
+      fi
+      execute . rm -rf "$output_dir"
+    }
+
+    printGreen "s3-multi-host phase 1: a single S3 host, which is both read from and written to"
+    file_a=$(make_non_inline_file multi-host-a.bin)
+    pages_on_a_before=$(count_pages "$bucket_on_host_a")
+    store_multi_host_file multi-host-participant-a "$file_a"
+    pages_on_a=$(count_pages "$bucket_on_host_a")
+    if [ "$pages_on_a" -le "$pages_on_a_before" ]; then
+      fail "Expected the stored file to add pages to the first S3 host"
+    fi
+    verify_multi_host_file multi-host-participant-a "$file_a"
+
+    printGreen "s3-multi-host phase 2: add a second S3 host, and write to that one"
+    # shellcheck disable=SC2016 # We substitute variables via jq's `--arg`
+    reconfigure_page_store \
+      --arg address "$s3_host_b_address" \
+      --argjson port "$s3_host_b_port" \
+      --arg accessKey "$PEP_S3_B_ACCESS_KEY" \
+      --arg secret "$PEP_S3_B_SECRET_KEY" \
+      --arg bucket "$s3_bucket" \
+      '.PageStore.S3.Hosts.s3proxy2 = {
+         EndPoint: { Address: $address, Port: $port },
+         Credentials: { AccessKey: $accessKey, Secret: $secret },
+         UseHttps: false
+       }
+       | .PageStore.S3.WriteToBucket = { Name: $bucket, HostId: "s3proxy2" }
+       | .PageStore.S3.ReadFromBuckets = [
+         { Name: $bucket, HostId: "s3proxy2" },
+         { Name: $bucket, HostId: "s3proxyproxy" }
+       ]'
+
+    file_b=$(make_non_inline_file multi-host-b.bin)
+    pages_on_b_before=$(count_pages "$bucket_on_host_b")
+    store_multi_host_file multi-host-participant-b "$file_b"
+    if [ "$(count_pages "$bucket_on_host_b")" -le "$pages_on_b_before" ]; then
+      fail "Expected the stored file to add pages to the second S3 host"
+    fi
+    if [ "$(count_pages "$bucket_on_host_a")" -ne "$pages_on_a" ]; then
+      fail "Expected no pages to be added to the first S3 host anymore"
+    fi
+    # The first file's pages are still on the first host, so they can only be found by reading
+    # from both hosts.
+    verify_multi_host_file multi-host-participant-a "$file_a"
+    verify_multi_host_file multi-host-participant-b "$file_b"
+
+    printGreen "s3-multi-host phase 3: copy the pages of the first S3 host to the second one"
+    pages_on_b_before=$(count_pages "$bucket_on_host_b")
+    cp -a -- "$bucket_on_host_a/." "$bucket_on_host_b"
+    if [ "$(count_pages "$bucket_on_host_b")" != "$((pages_on_b_before + "$(count_pages "$bucket_on_host_a")"))" ]; then
+      fail "Expected the second S3 host contain all pages of the first host"
+    fi
+    verify_multi_host_file multi-host-participant-a "$file_a"
+    verify_multi_host_file multi-host-participant-b "$file_b"
+
+    printGreen "s3-multi-host phase 4: remove the pages of the first S3 host"
+    rm -rf -- "${bucket_on_host_a:?}/"*
+    if [ "$(count_pages "$bucket_on_host_a")" -ne 0 ]; then
+      fail "Expected the first S3 host to have no pages left"
+    fi
+    verify_multi_host_file multi-host-participant-a "$file_a"
+    verify_multi_host_file multi-host-participant-b "$file_b"
+
+    printGreen "s3-multi-host phase 5: remove the first S3 host from the configuration"
+    # shellcheck disable=SC2016 # We substitute variables via jq's `--arg`
+    reconfigure_page_store --arg bucket "$s3_bucket" \
+      'del(.PageStore.S3.Hosts.s3proxyproxy)
+       | .PageStore.S3.ReadFromBuckets = [ { Name: $bucket, HostId: "s3proxy2" } ]'
+
+    file_c=$(make_non_inline_file multi-host-c.bin)
+    store_multi_host_file multi-host-participant-c "$file_c"
+    verify_multi_host_file multi-host-participant-a "$file_a"
+    verify_multi_host_file multi-host-participant-b "$file_b"
+    verify_multi_host_file multi-host-participant-c "$file_c"
+
+    # Clean up: remove the data that we stored, put the pages back on the S3 host that the
+    # (restored) configuration reads from, and leave the servers running as we found them.
+    for participant in a b c; do
+      pepcli --oauth-token-group "Research Assessor" delete -p "multi-host-participant-$participant" -c MultiHostColumn
+    done
+    mv -- "${bucket_on_host_b?:}/"* "$bucket_on_host_a"
+    trace mv -f -- "$storage_facility_config.before-multi-host" "$storage_facility_config"
+    restart_servers
+
+    execute . rm -- "$file_a" "$file_b" "$file_c"
+    test_cleanup "$S3_MULTI_HOST_CONFIG"
+  fi
 fi
 
 ####################

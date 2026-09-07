@@ -11,7 +11,7 @@ COPY \
     ${STAGING_DIRECTORY}/cpp/pep/apps/pepEnrollment \
     ${STAGING_DIRECTORY}/cpp/pep/apps/pepGenerateSystemKeys \
     ${STAGING_DIRECTORY}/cpp/pep/apps/pepToken \
-    
+
     # EXECUTABLES_PEP_SERVICES
     ${STAGING_DIRECTORY}/cpp/pep/accessmanager/pepAccessManager \
     ${STAGING_DIRECTORY}/cpp/pep/authserver/pepAuthserver \

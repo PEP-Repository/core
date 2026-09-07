@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import subprocess
-import json
 import logging
-from typing import Literal
+from pydantic import BaseModel, Field, ConfigDict, FilePath
+from typing import Literal, Any
 from logging.handlers import RotatingFileHandler
 
 # Try to get version from package metadata
@@ -11,6 +13,24 @@ try:
 except (ImportError, ModuleNotFoundError):
     # If package metadata not available, fallback to hardcoded version
         __version__ = "1.0.0-dev"
+
+class PEPConfig(BaseModel):
+    """Configuration for PEP Repository connection."""
+
+    model_config = ConfigDict(validate_assignment=True)
+
+    pepcli_path: FilePath
+    tokens: dict[str, FilePath] = Field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, repo_config: dict[str, Any]) -> PEPConfig:
+        """Create PEPConfig from repo configuration dictionary.
+
+        Args:
+            repo_config: Dictionary with 'pepcli_path' and 'tokens'
+        """
+        return cls(**repo_config)
+
 
 # Custom colored formatter for console output
 class ColoredFormatter(logging.Formatter):
@@ -41,25 +61,30 @@ class PEPRepository:
     VERSION = __version__
     LOG_TAG = "PEPRepository"
 
-    def __init__(self, config_path: str = None, config = None, logging_level = "INFO", logger_name = "pep_connector"):
-        if not config_path and not config:
-            raise ValueError("Either config_path or config must be provided")
-        if config_path and config:
-            raise ValueError("Only one of config_path or config must be provided")
-        if config_path:
-            self.config = self.load_config(config_path)
-        else:
-            self.config = config
+    def __init__(
+        self, 
+        pep_config: PEPConfig,
+        logging_level: str = "INFO", 
+        logger_name: str = "pep_connector"
+    ):
+        """
+        Initialize PEPRepository with configuration.
+
+        Args:
+            pep_config: PEPConfig object with repository configuration
+            logging_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            logger_name: Name for the logger
+        """
+        if not isinstance(pep_config, PEPConfig):
+            raise ValueError("pep_config must be an instance of PEPConfig")
+
         self.logger_name = logger_name
         self.logger = self.configure_logging(logging_level)
-        self.token = None
-        self.pepcli_path = self.config["repo"]["pepcli_path"]
-        self.log(f"PEPRepository version: {self.VERSION}")
-        self.log(f"Configuration version: {self.config.get('config_version', 'unknown')}")
 
-    def load_config(self, config_path):
-        with open(config_path, "r") as config_file:
-            return json.load(config_file)
+        self.pep_config = pep_config
+        self.current_token = None
+
+        self.log(f"PEPRepository version: {self.VERSION}")
 
     def configure_logging(self, logging_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"):
         level = getattr(logging, logging_level, logging.INFO)
@@ -95,8 +120,8 @@ class PEPRepository:
 
     def authenticate(self, target, extra_token=None):
         self.log("Authenticating user")
-        if target in self.config["repo"]["tokens"]:
-            self.token = self.config["repo"]["tokens"][target]
+        if target in self.pep_config.tokens:
+            self.current_token = self.pep_config.tokens[target]
         else:
             raise ValueError(f"Invalid target {target}, missing token in configuration")
 
@@ -110,11 +135,11 @@ class PEPRepository:
             raise ValueError("Invalid token")
 
     def __get_base_cmd(self):
-        cmd = [self.pepcli_path, "--oauth-token", self.token]
+        cmd = [str(self.pep_config.pepcli_path), "--oauth-token", str(self.current_token)]
         return cmd
 
     def run_command(self, command, input_data=None):
-        if not self.token:
+        if not self.current_token:
             raise ValueError("Token not set. Authenticate first.")
         cmd = self.__get_base_cmd() + command
         try:

@@ -122,15 +122,15 @@
     font-size: 13pt;
 }
 QWidget:focus {
-	border: 0.2em solid white;
+  border: 0.2em solid white;
 }
 QWidget:hover {
-	background-color: rgba(255,255,255,0.9);
-	color: #8DB6D3;
+  background-color: rgba(255,255,255,0.9);
+  color: #8DB6D3;
 }
 QWidget:disabled {
-	color: grey;
-	border-color: grey;
+  color: grey;
+  border-color: grey;
 }
 </string>
          </property>

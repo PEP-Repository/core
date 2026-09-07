@@ -23,7 +23,7 @@ namespace pep::testutils
     auto results = std::make_shared<std::vector<T>>();
 
     obs
-      .op(RxAsioTimeout(std::chrono::seconds(1), io_context, observe_on_asio(io_context)))
+      .op(RxAsioTimeout(std::chrono::seconds(1), io_context, ObserveOnAsio(io_context)))
       .subscribe(
       [&shouldBeDone, results](T item) {
         EXPECT_FALSE(shouldBeDone);

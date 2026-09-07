@@ -1,13 +1,13 @@
 #pragma once
 
 #include <pep/crypto/Encrypted.hpp>
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 namespace pep {
 
 struct SFId {
-  std::string mPath;
-  Timestamp mTime;
+  std::string path;
+  Timestamp time;
 };
 
 using EncryptedSFId = Encrypted<SFId>;

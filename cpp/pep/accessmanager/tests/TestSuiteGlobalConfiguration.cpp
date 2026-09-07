@@ -3,7 +3,7 @@
 // Contents were copied from core/config/projects/gum/accessmanager/GlobalConfiguration.json
 
 //language=json
-const std::string pep::tests::TEST_SUITE_GLOBAL_CONFIGURATION = R"JSON(
+const std::string pep::tests::TestSuiteGlobalConfiguration = R"JSON(
 {
   "participant_identifier_formats": [
     {"generable" : {"prefix" : "GUM", "digits" : 10}},

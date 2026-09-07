@@ -7,9 +7,9 @@
 namespace pep {
 class Pseudonymiser {
 public:
-  explicit Pseudonymiser(const std::string& oldValue, const std::string& newValue = "") : mOldValue(oldValue), mNewValue(newValue) {
+  explicit Pseudonymiser(const std::string& oldValue, const std::string& newValue = "") : oldValue_(oldValue), newValue_(newValue) {
     if (newValue.empty()) {
-      mNewValue = GetDefaultPlaceholder().substr(0, oldValue.length());
+      newValue_ = GetDefaultPlaceholder().substr(0, oldValue.length());
     }
   }
   void pseudonymise(std::istream& in, std::function<void(const char*, const std::streamsize)> writeToDestination);
@@ -17,7 +17,7 @@ public:
   static const std::string& GetDefaultPlaceholder();
 
 private:
-  std::string mOldValue;
-  std::string mNewValue;
+  std::string oldValue_;
+  std::string newValue_;
 };
 }

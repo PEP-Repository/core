@@ -15,19 +15,19 @@ public:
 private:
   struct Metrics;
 
-  std::shared_ptr<PseudonymTranslator> mPseudonymTranslator;
-  std::shared_ptr<DataTranslator> mDataTranslator;
-  std::shared_ptr<Metrics> mMetrics;
-  SystemPublicKeys mSystemPublicKeys;
+  std::shared_ptr<PseudonymTranslator> pseudonymTranslator_;
+  std::shared_ptr<DataTranslator> dataTranslator_;
+  std::shared_ptr<Metrics> metrics_;
+  SystemPublicKeys systemPublicKeys_;
 
   messaging::MessageBatches handleKeyComponentRequest(std::shared_ptr<SignedKeyComponentRequest> signedRequest);
 
 protected:
   explicit KeyComponentServer(std::shared_ptr<Parameters> parameters);
 
-  const PseudonymTranslator& pseudonymTranslator() const { return *mPseudonymTranslator; }
-  const DataTranslator& dataTranslator() const { return *mDataTranslator; }
-  const SystemPublicKeys& systemPublicKeys() const { return mSystemPublicKeys; }
+  const PseudonymTranslator& pseudonymTranslator() const { return *pseudonymTranslator_; }
+  const DataTranslator& dataTranslator() const { return *dataTranslator_; }
+  const SystemPublicKeys& systemPublicKeys() const { return systemPublicKeys_; }
 };
 
 
@@ -35,7 +35,7 @@ class KeyComponentServer::Parameters : public SigningServer::Parameters {
 public:
   std::shared_ptr<PseudonymTranslator> getPseudonymTranslator() const;
   std::shared_ptr<DataTranslator> getDataTranslator() const;
-  const SystemPublicKeys& getSystemPublicKeys() const { return systemPublicKeys; }
+  const SystemPublicKeys& getSystemPublicKeys() const { return systemPublicKeys_; }
   void setPseudonymTranslator(std::shared_ptr<PseudonymTranslator> pseudonymTranslator);
   void setDataTranslator(std::shared_ptr<DataTranslator> dataTranslator);
 
@@ -44,9 +44,9 @@ protected:
   void check() const override;
 
 private:
-  std::shared_ptr<PseudonymTranslator> pseudonymTranslator;
-  std::shared_ptr<DataTranslator> dataTranslator;
-  SystemPublicKeys systemPublicKeys;
+  std::shared_ptr<PseudonymTranslator> pseudonymTranslator_;
+  std::shared_ptr<DataTranslator> dataTranslator_;
+  SystemPublicKeys systemPublicKeys_;
 };
 
 }

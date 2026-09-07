@@ -10,21 +10,21 @@ namespace pep {
 
 namespace {
 
-const std::string LOG_TAG = "I/O context thread";
+const std::string LogTag = "I/O context thread";
 
 void RunIoContext(const std::string& name, std::shared_ptr<boost::asio::io_context> io_context, std::stop_token stop) noexcept {
   try {
     ThreadName::Set(name);
-    LOG(LOG_TAG, debug) << "starting io_context " << io_context << " on thread " << std::this_thread::get_id();
+    PEP_LOG(LogTag, Severity::Debug) << "starting io_context " << io_context << " on thread " << std::this_thread::get_id();
     std::stop_callback onStop(std::move(stop), [io_context] {
-      LOG(LOG_TAG, debug) << "stopping io_context...";
+      PEP_LOG(LogTag, Severity::Debug) << "stopping io_context...";
       io_context->stop();
       });
     io_context->run();
-    LOG(LOG_TAG, debug) << "io_context stopped";
+    PEP_LOG(LogTag, Severity::Debug) << "io_context stopped";
     return;
   } catch (...) {
-    LOG(LOG_TAG, severity_level::critical) << "Terminating application due to uncaught exception on I/O context thread: "
+    PEP_LOG(LogTag, Severity::Critical) << "Terminating application due to uncaught exception on I/O context thread: "
       << GetExceptionMessage(std::current_exception());
   }
   //NOLINTNEXTLINE(concurrency-mt-unsafe) There's currently not a better way to handle this

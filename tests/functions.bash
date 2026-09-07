@@ -107,12 +107,20 @@ fail() {
   exit 1
 }
 
+assert_equal() {
+  local -r lhs=$1
+  local -r rhs=$2
+  local -r message=${3:-"\"$lhs\" does not equal \"$rhs\""}
+  if [ "$lhs" != "$rhs" ]; then
+    fail "$message"
+  fi
+}
+
 readonly IMAGE_REPOSITORY="gitlabregistry.pep.cs.ru.nl/pep/core/pep-services"
 default_image() {
   commit_sha=$("$1/scripts/gitdir.sh" commit-sha "$1")
   echo "$IMAGE_REPOSITORY:$commit_sha"
 }
-
 
 make_absolute() {
   (cd "$1" && pwd)
@@ -125,9 +133,20 @@ contains() {
   [ "${string#*"$substring"}" != "$string" ] && true
 }
 
-should_run_test() {
+is_test_included() {
   test="$1"
-  if ([ -z "$TESTS_TO_RUN" ] || contains " $TESTS_TO_RUN " " $test ") && ! contains " $TESTS_TO_SKIP " " $test "; then
+  ([ -z "$TESTS_TO_RUN" ] || contains " $TESTS_TO_RUN " " $test ") && ! contains " $TESTS_TO_SKIP " " $test " && true
+}
+
+known_tests=()
+known_enabled_tests=()
+
+# Prints & returns if test will be ran
+should_run_test() {
+  local test="$1"
+  known_tests+=("$test")
+  if is_test_included "$test"; then
+    known_enabled_tests+=("$test")
     echo
     printGreen "==== Running tests: $test ===="
   else
@@ -135,6 +154,18 @@ should_run_test() {
     printGreen "(Skipping tests: $test)"
     return 1
   fi
+}
+
+# Only works for tests for which should_run_test has been called
+is_known_test() {
+  local test="$1"
+  local test2
+  for test2 in "${known_tests[@]}"; do
+    if [ "$test2" = "$test" ]; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 url_encode() {
@@ -193,7 +224,7 @@ restart_servers() {
   trace sleep 10
 }
 
-readonly PEPCLI_TIMEOUT=60s
+PEPCLI_TIMEOUT=60s
 # Executes the given pepcli command. It should always be possible to simply copy a used pepcli command (e.g. during Access Administration) and execute it here.
 pepcli() {
   if [ "$LOCAL" = true ]; then
@@ -212,10 +243,25 @@ pepcli() {
 write_registration_server_cell() {
   column="$1"
   shift
-  parameters="$@"
 
   # (Ab)using column group "ParticipantInfo" to temporarily grant write privileges to "Research Assessor"
   pepcli --oauth-token-group "Data Administrator" ama column addTo "${column}" ParticipantInfo
   pepcli --oauth-token-group "Research Assessor" "$@" -c "${column}"
   pepcli --oauth-token-group "Data Administrator" ama column removeFrom "${column}" ParticipantInfo
+}
+
+make_large_random_data_file() {
+  path="$DEST_DIR/$1"
+  # 10 blocks @ 1048576 bytes each = 10MiB
+  execute . dd if=/dev/urandom of="$path" bs=1048576 count=10
+  echo "$path"
+}
+
+# Store something so large that it will be sent to the page store.
+make_non_inline_file() {
+  path="$DEST_DIR/$1"
+  # Anything over 4 kB (the InlinePageThreshold) is stored in the page store instead of
+  # alongside the entry's metadata, which is what we're after here.
+  execute . dd if=/dev/urandom of="$path" bs=1024 count=6
+  echo "$path"
 }

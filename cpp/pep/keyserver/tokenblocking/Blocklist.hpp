@@ -38,13 +38,18 @@ public:
   virtual int64_t add(const TokenIdentifier&, const Entry::Metadata&) = 0;
 
   /// Removes an existing entry if it exists.
-  /// @return The entry that was removed or \c std::nullopt if nothing was removed.
+  /// \return The entry that was removed or \c std::nullopt if nothing was removed.
   virtual std::optional<Entry> removeById(int64_t) = 0;
 };
 
-/// Convenience function that returns true iff the @p token is matched by one or more entries on the @p list.
-inline bool IsBlocking(const Blocklist& list, const TokenIdentifier& token) {
-  return !list.allEntriesMatching(token).empty();
+/// Convenience function that returns true iff the \p token is matched by one or more entries on the \p list.
+inline bool IsBlocking(const Blocklist& list, const TokenIdentifier& token, Timestamp at=TimeNow()) {
+  auto matches = list.allEntriesMatching(token);
+  auto found = std::ranges::find_if(matches,
+    [at](const Blocklist::Entry& entry) {
+      return !entry.metadata.blockStartDateTime || entry.metadata.blockStartDateTime <= at;
+    });
+  return found != matches.end();
 }
 
 } // namespace pep::tokenBlocking

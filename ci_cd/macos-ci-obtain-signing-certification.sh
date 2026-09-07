@@ -114,6 +114,7 @@ if [[ "${CI:-false}" == "true" ]]; then
   install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_DEV_ID_CA_FILE" "$PEP_KEYCHAIN" certificate "Developer ID Certification Authority" -A
   install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_APP_FILE" "$PEP_KEYCHAIN" identity "$GITLAB_CI_MACOS_CERTIFICATE_APP_NAME" -P "$GITLAB_CI_MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
   install_cert_if_missing "$GITLAB_CI_MACOS_CERTIFICATE_INSTALL_FILE" "$PEP_KEYCHAIN" identity "$GITLAB_CI_MACOS_CERTIFICATE_INSTALL_NAME" -P "$GITLAB_CI_MACOS_CERTIFICATE_PWD" -T /usr/bin/productsign -T /usr/bin/pkgbuild -T /usr/bin/productbuild
+
   # refresh trustd cache (to prevent problem where trustd could sometimes not resolve CERTIFICATE_INSTALL to DEV_ID_CA)
   killall trustd || true
 

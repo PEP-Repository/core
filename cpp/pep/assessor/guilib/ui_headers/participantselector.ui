@@ -55,23 +55,23 @@
           </property>
           <property name="styleSheet">
            <string notr="true">QWidget {
-	border: 0.05em solid #CA0B5E;
-	border-radius: 0.25em;
-	color: #CA0B5E;
-	padding: 0.5em;
-	font-size: 13pt;
-	outline: none;
+  border: 0.05em solid #CA0B5E;
+  border-radius: 0.25em;
+  color: #CA0B5E;
+  padding: 0.5em;
+  font-size: 13pt;
+  outline: none;
 }
 QWidget:focus {
-	border: 0.1em solid #CA0B5E;
+  border: 0.1em solid #CA0B5E;
 }
 QWidget:hover {
-	background-color: rgba(202,11,94,0.8);
-	color: white;
+  background-color: rgba(202,11,94,0.8);
+  color: white;
 }
 QWidget:disabled {
-	color: grey;
-	border-color: grey;
+  color: grey;
+  border-color: grey;
 }
 </string>
           </property>
@@ -84,23 +84,23 @@ QWidget:disabled {
          <widget class="QPushButton" name="cancelButton">
           <property name="styleSheet">
            <string notr="true">QWidget {
-	border: 0.05em solid #CA0B5E;
-	border-radius: 0.25em;
-	color: #CA0B5E;
-	padding: 0.5em;
-	font-size: 13pt;
-	outline: none;
+  border: 0.05em solid #CA0B5E;
+  border-radius: 0.25em;
+  color: #CA0B5E;
+  padding: 0.5em;
+  font-size: 13pt;
+  outline: none;
 }
 QWidget:focus {
-	border: 0.1em solid #CA0B5E;
+  border: 0.1em solid #CA0B5E;
 }
 QWidget:hover {
-	background-color: rgba(202,11,94,0.8);
-	color: white;
+  background-color: rgba(202,11,94,0.8);
+  color: white;
 }
 QWidget:disabled {
-	color: grey;
-	border-color: grey;
+  color: grey;
+  border-color: grey;
 }
 </string>
           </property>
@@ -116,23 +116,23 @@ QWidget:disabled {
           </property>
           <property name="styleSheet">
            <string notr="true">QWidget {
-	border: 0.05em solid #CA0B5E;
-	border-radius: 0.25em;
-	color: #CA0B5E;
-	padding: 0.5em;
-	font-size: 13pt;
-	outline: none;
+  border: 0.05em solid #CA0B5E;
+  border-radius: 0.25em;
+  color: #CA0B5E;
+  padding: 0.5em;
+  font-size: 13pt;
+  outline: none;
 }
 QWidget:focus {
-	border: 0.1em solid #CA0B5E;
+  border: 0.1em solid #CA0B5E;
 }
 QWidget:hover {
-	background-color: rgba(202,11,94,0.8);
-	color: white;
+  background-color: rgba(202,11,94,0.8);
+  color: white;
 }
 QWidget:disabled {
-	color: grey;
-	border-color: grey;
+  color: grey;
+  border-color: grey;
 }
 </string>
           </property>
@@ -154,18 +154,18 @@ QWidget:disabled {
           </property>
           <property name="styleSheet">
            <string notr="true">QLineEdit {
-	border: 0.05em solid black;
-	border-radius: 0.25em;
-	padding: 0.25em;
-	font-size: 14pt;
-	outline: none;
+  border: 0.05em solid black;
+  border-radius: 0.25em;
+  padding: 0.25em;
+  font-size: 14pt;
+  outline: none;
 }
 QLineEdit:focus {
-	border: 0.05em solid #CA0B5E;
+  border: 0.05em solid #CA0B5E;
 }
 QLineEdit[error=true] {
-	color: black;
-	background-color: rgb(255, 230, 230);
+  color: black;
+  background-color: rgb(255, 230, 230);
 }</string>
           </property>
           <property name="frame">
@@ -180,10 +180,10 @@ QLineEdit[error=true] {
          <widget class="QLabel" name="shortPseudonymLabel">
           <property name="styleSheet">
            <string notr="true">QWidget {
-	border: 0.05em solid transparent
+  border: 0.05em solid transparent
 ;
-	padding: 0.25em;
-	font-size: 14pt;
+  padding: 0.25em;
+  font-size: 14pt;
 }</string>
           </property>
           <property name="text">
@@ -195,10 +195,10 @@ QLineEdit[error=true] {
          <widget class="QLabel" name="openParticipantLabel">
           <property name="styleSheet">
            <string notr="true">QWidget {
-	border: 0.05em solid transparent
+  border: 0.05em solid transparent
 ;
-	padding: 0.25em;
-	font-size: 14pt;
+  padding: 0.25em;
+  font-size: 14pt;
 }</string>
           </property>
           <property name="text">
@@ -219,18 +219,18 @@ QLineEdit[error=true] {
           </property>
           <property name="styleSheet">
            <string notr="true">QLineEdit {
-	border: 0.05em solid black;
-	border-radius: 0.25em;
-	padding: 0.25em;
-	font-size: 14pt;
-	outline: none;
+  border: 0.05em solid black;
+  border-radius: 0.25em;
+  padding: 0.25em;
+  font-size: 14pt;
+  outline: none;
 }
 QLineEdit:focus {
-	border: 0.05em solid #CA0B5E;
+  border: 0.05em solid #CA0B5E;
 }
 QLineEdit[error=true] {
-	color: black;
-	background-color: rgb(255, 230, 230);
+  color: black;
+  background-color: rgb(255, 230, 230);
 }</string>
           </property>
           <property name="maxLength">

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>pep-repo-client-lib Web Tests</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Keep version numbers consistent with package.json -->
+    <link rel="stylesheet" href="https://unpkg.com/mocha@11/mocha.css" />
+    <!-- keep consistent with externals in webpack.config.mjs -->
+    <script src="https://unpkg.com/mocha@11/mocha.js" data-webpack="pep-repo-client-lib:mocha"></script>
+</head>
+<body>
+
+<div id="mocha"></div>
+
+<script class="mocha-init">
+    mocha.setup("bdd");
+    mocha.checkLeaks();
+    mocha.timeout(0);
+</script>
+<script src="./dist-test/tests.js"></script>
+<script class="mocha-exec">
+    mocha.run();
+</script>
+
+</body>
+</html>

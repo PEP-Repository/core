@@ -12,7 +12,7 @@ namespace detail {
 template <typename TGetKey>
 class RxToUnorderedMapOperator {
 private:
-  std::shared_ptr<TGetKey> mGetKey;
+  std::shared_ptr<TGetKey> getKey_;
 
 public:
   template <typename TItem>
@@ -21,7 +21,7 @@ public:
   };
 
   explicit RxToUnorderedMapOperator(const TGetKey& getKey)
-    : mGetKey(std::make_shared<TGetKey>(getKey)) {
+    : getKey_(std::make_shared<TGetKey>(getKey)) {
   }
 
   template <typename TItem, typename SourceOperator>
@@ -30,7 +30,7 @@ public:
     using Map = std::unordered_map<Key, TItem>;
     return items.reduce(
       std::make_shared<Map>(),
-      [getKey = mGetKey](std::shared_ptr<Map> map, TItem item) {
+      [getKey = getKey_](std::shared_ptr<Map> map, TItem item) {
       auto key = (*getKey)(std::as_const(item));
       if (!map->emplace(std::move(key), std::move(item)).second) {
         throw std::runtime_error("Could not insert duplicate key into unordered map");

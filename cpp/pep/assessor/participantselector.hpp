@@ -23,5 +23,5 @@ class ParticipantSelector : public QWidget {
   void participantShortPseudonymSelected(std::string shortPseudonym);
 
  private:
-  Ui::ParticipantSelector* ui;
+  Ui::ParticipantSelector* ui_;
 };

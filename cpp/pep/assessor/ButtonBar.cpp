@@ -1,9 +1,9 @@
 #include <pep/assessor/ButtonBar.hpp>
 
 ButtonBar::ButtonBar(QWidget* parent) {
-  flowlayout = new FlowLayout();
-  flowlayout->setContentsMargins(0, 0, 0, 0);
-  this->setLayout(flowlayout);
+  flowlayout_ = new FlowLayout();
+  flowlayout_->setContentsMargins(0, 0, 0, 0);
+  this->setLayout(flowlayout_);
 }
 
 // Adds a button to the button bar and puts the button in a vector that is labeled with the description of the button
@@ -30,11 +30,11 @@ QPushButton* ButtonBar::addButton(const QString& description, ButtonClickSlot sl
       "  border-color: grey;\n"
       "}\n");
   button->setText(description);
-  flowlayout->addWidget(button);
+  flowlayout_->addWidget(button);
 
   if (button_enabled) {
     QObject::connect(button, &QPushButton::clicked, slot);
-    enabled_buttons.push_back(button);
+    enabledButtons_.push_back(button);
   }
   else
     button->setEnabled(false);
@@ -44,13 +44,13 @@ QPushButton* ButtonBar::addButton(const QString& description, ButtonClickSlot sl
 
 // enables or disables all the buttons in the button bar
 void ButtonBar::setEnabled(bool enable) {
-  for(QPushButton* button : enabled_buttons)
+  for(QPushButton* button : enabledButtons_)
     button->setEnabled(enable);
 }
 
 // a helperfunction to make void ClearLayout(QLayout *layout) a recursive function
 void ButtonBar::clear() {
-  ClearLayout(flowlayout);
+  ClearLayout(flowlayout_);
 }
 
 // Adapted (ahem!) from https://stackoverflow.com/a/4857631

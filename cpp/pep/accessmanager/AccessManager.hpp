@@ -27,26 +27,15 @@ public:
     void setGlobalConfiguration(std::shared_ptr<GlobalConfiguration> gc);
     std::shared_ptr<GlobalConfiguration> getGlobalConfiguration() const;
 
-    /*!
-    * \return The pseudonym key
-    */
+    /// \return The pseudonym key
     const ElgamalPrivateKey& getPseudonymKey() const;
-    /*!
-    * \param pseudonymKey The pseudonym key
-    */
+    /// \param pseudonymKey The pseudonym key
     void setPseudonymKey(const ElgamalPrivateKey& pseudonymKey);
 
-    const ElgamalPublicKey& getPublicKeyPseudonyms() const;
-    void setPublicKeyPseudonyms(const ElgamalPublicKey& pk);
-
-    /*!
-    * \return The endpoint of the transcryptor
-    */
+    /// \return The endpoint of the transcryptor
     const EndPoint& getTranscryptorEndPoint() const;
 
-    /*!
-    * \return The endpoint of the keyserver
-    */
+    /// \return The endpoint of the keyserver
     const EndPoint& getKeyServerEndPoint() const;
 
     std::shared_ptr<Backend> getBackend() const;
@@ -56,25 +45,21 @@ public:
     void check() const override;
 
   private:
-    std::shared_ptr<GlobalConfiguration> globalConf;
-    std::optional<ElgamalPrivateKey> pseudonymKey;
-    EndPoint transcryptorEndPoint;
-    EndPoint keyServerEndPoint;
-    std::shared_ptr<Backend> backend;
+    std::shared_ptr<GlobalConfiguration> globalConf_;
+    std::optional<ElgamalPrivateKey> pseudonymKey_;
+    EndPoint transcryptorEndPoint_;
+    EndPoint keyServerEndPoint_;
+    std::shared_ptr<Backend> backend_;
   };
-private:
 
+private:
   class Metrics : public RegisteredMetrics {
   public:
     Metrics(std::shared_ptr<prometheus::Registry> registry);
 
-    prometheus::Summary& enckey_request_duration;
-    prometheus::Summary& ticket_request2_duration;
-    prometheus::Summary& ticket_request_duration;
+    prometheus::Summary& enckeyRequestDuration;
+    prometheus::Summary& ticketRequest2Duration;
   };
-
-
-
 
 public:
   explicit AccessManager(std::shared_ptr<Parameters> parameters);
@@ -106,36 +91,32 @@ private:
   messaging::MessageBatches handleStructureMetadataRequest(std::shared_ptr<SignedStructureMetadataRequest> request);
   messaging::MessageBatches handleSetStructureMetadataRequest(std::shared_ptr<SignedSetStructureMetadataRequest> request, messaging::MessageSequence chunks);
 
-  /*!
-  * A single method that performs both the adding and the removal of participants in pgroups for a given AmaMutationRequest.
-  * \param amRequest a request that contains the information for the addition or removal of participants (their identifiers and groups).
-  * \param performRemove a boolean that tells wether to remove the participant from a pgroup (value true) or to add a participant to a group (value false).
-  * \return An observable without an effective return value (FakeVoid)
-  * \remark These methods are defined here and not in Backend due to the quick interactions with Transcryptor.
-  */
+  /// A single method that performs both the adding and the removal of participants in pgroups for a given AmaMutationRequest.
+  /// \param amRequest a request that contains the information for the addition or removal of participants (their identifiers and groups).
+  /// \param performRemove a boolean that tells wether to remove the participant from a pgroup (value true) or to add a participant to a group (value false).
+  /// \return An observable without an effective return value (FakeVoid)
+  /// \remark These methods are defined here and not in Backend due to the quick interactions with Transcryptor.
   rxcpp::observable<FakeVoid> removeOrAddParticipantsInGroupsForRequest(const AmaMutationRequest& amRequest, bool performRemove);
   rxcpp::observable<FakeVoid> addParticipantsToGroupsForRequest(const AmaMutationRequest& amRequest);
   rxcpp::observable<FakeVoid> removeParticipantsFromGroupsForRequest(const AmaMutationRequest& amRequest);
 
 
 public:
-  /* !
-   * \brief Splits up the given columnGroups over multiple responses to make sure the response message lengths do not exceed their max size.
-   * \param columnGroups: The column groups that need to be devided into multiple response messages.
-   * \param maxSize: The size at which to cut up responses. For testing purposes, this can be set to a lower number. For most purposes it should be left at the default.
-   * \return An observable emitting iterated AmaQueryResponses
-   */
-  static std::vector<AmaQueryResponse> ExtractPartialColumnGroupQueryResponse(const std::vector<AmaQRColumnGroup>& columnGroups, const size_t maxSize = messaging::MAX_SIZE_OF_MESSAGE); // TODO: move out of AM's (public even!) interface
+  /// \brief Splits up the given columnGroups over multiple responses to make sure the response message lengths do not exceed their max size.
+  /// \param columnGroups The column groups that need to be devided into multiple response messages.
+  /// \param maxSize The size at which to cut up responses. For testing purposes, this can be set to a lower number. For most purposes it should be left at the default.
+  /// \return An observable emitting iterated AmaQueryResponses
+  static std::vector<AmaQueryResponse> ExtractPartialColumnGroupQueryResponse(const std::vector<AmaQRColumnGroup>& columnGroups, const size_t maxSize = messaging::MaxSizeOfMessage); // TODO: move out of AM's (public even!) interface
 
 private:
-  ElgamalPrivateKey mPseudonymKey;
-  TranscryptorProxy mTranscryptorProxy;
-  KeyServerProxy mKeyServerProxy;
-  std::shared_ptr<Backend> backend;
-  std::shared_ptr<GlobalConfiguration> globalConf;
-  std::shared_ptr<Metrics> lpMetrics;
-  std::shared_ptr<WorkerPool> mWorkerPool;
-  uintmax_t mNextTicketRequestNumber = 1U;
+  ElgamalPrivateKey pseudonymKey_;
+  TranscryptorProxy transcryptorProxy_;
+  KeyServerProxy keyServerProxy_;
+  std::shared_ptr<Backend> backend_;
+  std::shared_ptr<GlobalConfiguration> globalConf_;
+  std::shared_ptr<Metrics> lpMetrics_;
+  std::shared_ptr<WorkerPool> workerPool_;
+  uintmax_t nextTicketRequestNumber_ = 1U;
 };
 
 }

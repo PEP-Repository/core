@@ -8,9 +8,8 @@
 
 namespace pep {
 
-// Convenience class for serialization routines
-class Serialization {
-public:
+// Convenience struct for serialization routines
+struct Serialization {
   // You should only use this function for tiny objects.
   template <typename T>
   static typename Serializer<T>::ProtocolBufferType

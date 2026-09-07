@@ -5,10 +5,8 @@
 namespace pep {
 
 // just a wrapper to conform to the serialization formalism
-class Bytes {
-public:
-  Bytes(std::string data) : mData(std::move(data)) {}
-  std::string mData;
+struct Bytes {
+  std::string data;
 };
 
 using EncryptedBytes = Encrypted<Bytes>;

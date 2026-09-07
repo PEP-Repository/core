@@ -50,16 +50,16 @@ TEST(Event, Basics) {
 }
 
 
-// Segfaults if Event<>::Contract::notify invokes the handler directly from (a reference to) its mHandler.
+// Segfaults if Event<>::Contract::notify invokes the handler directly from (a reference to) its handler_.
 TEST(Event, UnsubscribeDuringNotification) {
   class Forwarder {
   private:
-    pep::EventSubscription mSubscription;
+    pep::EventSubscription subscription_;
   public:
-    explicit Forwarder(const Notifier& notifier, const Notifier::Handler& handler) {  // If Event<>::Contract::notify invokes its mHandler directly...
-      mSubscription = notifier.onDoing.subscribe(                                     // ... then (the Event<>::Contract's copy of) the lambda...
+    explicit Forwarder(const Notifier& notifier, const Notifier::Handler& handler) {  // If Event<>::Contract::notify invokes its handler_ directly...
+      subscription_ = notifier.onDoing.subscribe(                                     // ... then (the Event<>::Contract's copy of) the lambda...
         [this, handler]() {                                                           // ... that we define here...
-          mSubscription.cancel();                                                     // ... is destroyed here, corrupting the captured "handler" variable...
+          subscription_.cancel();                                                     // ... is destroyed here, corrupting the captured "handler" variable...
           handler();                                                                  // ... causing a segfault here.
         });
     }
@@ -74,16 +74,16 @@ TEST(Event, UnsubscribeDuringNotification) {
 }
 
 
-// Reads outside (formally) accessible memory if Event<>::notify iterates directly over its mContracts
+// Reads outside (formally) accessible memory if Event<>::notify iterates directly over its contracts_
 TEST(Event, NotificationReentrancy) {
   Notifier notifier;
   auto subscription = std::make_shared<pep::EventSubscription>();
   *subscription = notifier.onDoing.subscribe([&notifier, subscription]() {
     subscription->cancel();  // Makes the contract inactive...
-    notifier.doIt();         // ... causing it to be removed from the Event<>'s mContracts here...
+    notifier.doIt();         // ... causing it to be removed from the Event<>'s contracts_ here...
     });
 
-  notifier.doIt();           // ... causing (memcheck to detect) an "Invalid read" during this notification if Event<>::notify iterates directly over its mContracts
+  notifier.doIt();           // ... causing (memcheck to detect) an "Invalid read" during this notification if Event<>::notify iterates directly over its contracts_
 }
 
 

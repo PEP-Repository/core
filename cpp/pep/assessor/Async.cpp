@@ -7,14 +7,14 @@
 #include <QtConcurrent/QtConcurrent>
 class AsyncException : public QException {
 private:
-  std::exception_ptr mOriginal;
+  std::exception_ptr original_;
 
 public:
   //NOLINTNEXTLINE(bugprone-throw-keyword-missing)
-  explicit AsyncException(std::exception_ptr original) : mOriginal(std::move(original)) {}
-  std::exception_ptr toExceptionPtr() const { return mOriginal; }
+  explicit AsyncException(std::exception_ptr original) : original_(std::move(original)) {}
+  std::exception_ptr toExceptionPtr() const { return original_; }
 
-  QException* clone() const override { return new AsyncException(mOriginal); }
+  QException* clone() const override { return new AsyncException(original_); }
   void raise() const override { throw *this; }
 };
 
