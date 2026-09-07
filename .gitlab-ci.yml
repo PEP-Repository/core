@@ -1252,6 +1252,7 @@ build-sandbox-docker-image:
     - docker buildx build --pull
                           --push --file "docker/pep-sandbox.Dockerfile"
                           --tag "$IMAGE_PEP_SANDBOX:$IMAGE_TAG_TEST"
+                          --label "nl.ru.cs.pep.release-branch=$CI_COMMIT_BRANCH"
                           --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
                           --build-arg "BASE_IMAGE=$RUNTIME_IMAGE_UBUNTU_LTS" .
 
@@ -1394,8 +1395,27 @@ upload-weblib-npm:
     - npm version --no-git-tag-version "${PACKAGE_VERSION}"
     - npm install
     - npm pack
-    # Tag with commit SHA so provide-binaries.sh can find this version by SHA
-    - npm publish ./pep-repo-client-lib-*.tgz --tag "${CI_COMMIT_SHA}" --registry "${PEP_NPM_REGISTRY}"
+    # The package version is derived from the pipeline ID, so a rerun of this job republishes the same
+    # version, which GitLab rejects with "You cannot publish over the previously published versions".
+    # Deleting the previously published version needs a maintainer token, which we don't want to expose
+    # to this job.
+    # The dist-tags map the commit SHA to the published version, so they tell us whether a previous
+    # run of this job already published this version under the tag that provide-binaries.sh looks for.
+    - |
+      foss_packages() {
+        "${CI_PROJECT_DIR}/scripts/gitlab-packages.sh" --git-dir "${CI_PROJECT_DIR}" \
+          --job-token "${CI_JOB_TOKEN}" "$@"
+      }
+      tagged_version="$(foss_packages npm-dist-tags pep-repo-client-lib \
+        | jq --raw-output --arg sha "${CI_COMMIT_SHA}" '.[$sha] // empty')"
+      if [ "$tagged_version" = "${PACKAGE_VERSION}" ]; then
+        echo "pep-repo-client-lib@${PACKAGE_VERSION} is already published and tagged ${CI_COMMIT_SHA}, skipping"
+      elif [ "$(foss_packages list npm pep-repo-client-lib "${PACKAGE_VERSION}" | jq length)" -gt 0 ]; then
+        # The version is published but the SHA tag is missing or points elsewhere, so only set the tag
+        npm dist-tag add "pep-repo-client-lib@${PACKAGE_VERSION}" "${CI_COMMIT_SHA}" --registry "${PEP_NPM_REGISTRY}"
+      else
+        npm publish ./pep-repo-client-lib-*.tgz --tag "${CI_COMMIT_SHA}" --registry "${PEP_NPM_REGISTRY}"
+      fi
 
 retag-pep-docker-images:
   extends:
@@ -1427,8 +1447,14 @@ publish-sandbox-image:
   stage: publish
   extends: .upload-base
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
+  # Manual, because we shouldnt publish when we first create the release branch, only after OKing. Scheduled pipelines are only set when branch is already OK
   rules:
-    - if: $CI_COMMIT_BRANCH == $PEP_FOSS_DEVELOPMENT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
+        && $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
+      when: manual
+      allow_failure: true
+    - when: never
   needs:
     - job: build-sandbox-docker-image
       artifacts: false
@@ -1447,7 +1473,25 @@ publish-sandbox-image:
         exit 1
       fi
     - echo "$PEP_GROUP_API_TOKEN" | docker login "${CI_REGISTRY}" --username "-" --password-stdin
-    - docker buildx imagetools create "$IMAGE_PEP_SANDBOX:$IMAGE_TAG_TEST" --tag "${CI_REGISTRY}/pep-public/core/pep-sandbox:latest"
+
+    # Which branch was the currently published latest built from? Empty if unpublished.
+    - |
+      published_branch="$(
+        docker buildx imagetools inspect "$IMAGE_PEP_SANDBOX_LATEST" --format '{{json .Image}}' 2>/dev/null \
+        | jq -r '[.. | objects | .Labels? // empty | ."nl.ru.cs.pep.release-branch"? // empty] | first // ""'
+      )"
+
+    # An older branch's leftover schedule must not overwrite a newer one's latest
+    - |
+      if [ -n "$published_branch" ]; then
+        newest="$(printf '%s\n%s\n' "$published_branch" "$CI_COMMIT_BRANCH" | sort -V | tail -n1)"
+        if [ "$newest" != "$CI_COMMIT_BRANCH" ]; then
+          echo "$CI_COMMIT_BRANCH is older than the published $published_branch, skipping"
+          exit 0
+        fi
+      fi
+
+    - docker buildx imagetools create "$IMAGE_PEP_SANDBOX:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SANDBOX_LATEST"
 
 ##########################################
 # Configuration for the trigger stage    #

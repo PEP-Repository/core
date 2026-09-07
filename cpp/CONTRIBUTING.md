@@ -50,7 +50,7 @@ This section lists our own coding guidelines, which we apply on top of the more 
 - Prefer `std::unordered_map` and `std::unordered_set` over `std::map` and `std::set` when the order of elements is not important while lookup and insertion performance is.
 - Pre-allocate STL containers wherever possible by calling (for example) [`std::vector::reserve(new_cap)`](https://en.cppreference.com/w/cpp/container/vector/reserve) [Per.14](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#per14-minimize-the-number-of-allocations-and-deallocations)
 - Avoid casts. If you must use a cast, use a type initializer like `int64{1}` when the value can be safely converted or a named cast like `static_cast<T>` if it can not [ES.49](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#es49-if-you-must-use-a-cast-use-a-named-cast)
-- Prefer `using` over `typedef` for defining aliases [T.43](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#t43-prefer-using-over-typedef-for-defining-aliases
+- Prefer `using` over `typedef` for defining aliases [T.43](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#t43-prefer-using-over-typedef-for-defining-aliases)
 
 ### On Lambdas
 
@@ -136,7 +136,7 @@ This section lists our own coding guidelines, which we apply on top of the more 
   - Use interfaces (I-prefixed) using multiple inheritance to ensure compatibity of different objects.
     - Use virtual functions only
     - Do not add attributes via interfaces
-    - Example at  https://stackoverflow.com/a/1216758
+    - Example at  <https://stackoverflow.com/a/1216758>
   </details>
 
 ### Use of libraries
@@ -210,13 +210,13 @@ This section lists our own coding guidelines, which we apply on top of the more 
 - Names of `const` variables are written in `PascalCase`, starting with an `U`ppercase `L`etter (since they are so similar to `constexpr` constants).
 - Prefer proper encapsulation and state management over publically accessible state.
 - Properly encapsulating user-defined (non-alias) types are defined using the `class` keyword.
-    - Non-const fields of such types are all `private`.
-    - Private field names are written in `camelCase_`, starting with a `l`owerase `l`etter, and ending with an underscore `_` character. (The suffix prevents naming collisions with similarly named instance methods, such as getter methods.)
-    - Access a private field by its plain name (e.g. `memberVariable_`), not `this->memberVariable_`.
+  - Non-const fields of such types are all `private`.
+  - Private field names are written in `camelCase_`, starting with a `l`owerase `l`etter, and ending with an underscore `_` character. (The suffix prevents naming collisions with similarly named instance methods, such as getter methods.)
+  - Access a private field by its plain name (e.g. `memberVariable_`), not `this->memberVariable_`.
 - Property bags (i.e. user-defined aggregate types with public fields) are defined using the `struct` keyword.
-    - Such types do not contain instance methods, putting state management responsibilities firmly into the caller's hands.
-    - Field names are written in `camelCase`, starting with a `l`owerase `l`etter. Note that these names lack the trailing underscore `_` character that's used for non-public fields.
-    - Access a public field by its plain name (e.g. `memberVariable`); use `this->memberVariable` only when the plain name would be ambiguous or less clear (developer discretion).
+  - Such types do not contain instance methods, putting state management responsibilities firmly into the caller's hands.
+  - Field names are written in `camelCase`, starting with a `l`owerase `l`etter. Note that these names lack the trailing underscore `_` character that's used for non-public fields.
+  - Access a public field by its plain name (e.g. `memberVariable`); use `this->memberVariable` only when the plain name would be ambiguous or less clear (developer discretion).
 - Call methods by their plain name (e.g. `name()`); use `this->name()` only when the plain name would be ambiguous or less clear (developer discretion), and `Class::name()` only when actually necessary (e.g. to call a base class implementation).
 - Use explicit comparison instead of implicit conversion for integers.
 - Implement functions inside the namespace block rather than qualifying the definition, e.g.:
@@ -236,14 +236,13 @@ This section lists our own coding guidelines, which we apply on top of the more 
     ...
   }
   ```
-- Mark future work with `TODO`, use `TODO(workaround)` for temporary workarounds, e.g. waiting for an upstream fix.
 
+- Mark future work with `TODO`, use `TODO(workaround)` for temporary workarounds, e.g. waiting for an upstream fix.
 - Names of Protobuf `message` and `enum` types are written in `PascalCase`, starting with an `U`ppercase `L`etter.
 - Names of Protobuf fields are written in `snake_case`, i.e. fully lowercase with underscores between words.
-
 - Use curly braces `{}` for loop code and condition branches:
 
-```
+```c++
 if (extinctionLevelEvent) {
   while (stillAlive) {
     doPanic();

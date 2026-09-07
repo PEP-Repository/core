@@ -6,9 +6,14 @@
 
 ## Changes in upcoming release (1.8)
 
+- core#2958: parameter `expiration` for `pepcli token request` is now marked as required.
+
 - #2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
 
 - core#2488: Added command `pepcli pseudonym convert`, which converts a pseudonym of any form into a polymorphic, local, or brief-local pseudonym.
+
+- core#2941: Study context ids are now validated (only alphanumerics and underscores are allowed) and compared case insensitively everywhere.
+  Duplicate ids are rejected. Generated names (columns, participant groups) keep using the casing as configured, so existing data is unaffected.
 
 - core#2928: Unified timestamp input for pepcli. The `at` parameter for `pepcli user query` and `pepcli ama query` has been renamed to `point-in-time`.
   These, as well as the `expiration` parameter of `pepcli token request`, and `issued-before` of `pepcli token block create` now all take the same format. This can be either:
@@ -27,6 +32,55 @@
 - core#2945: Added command `pepcli query page-paths`, which lists the paths of the current data set's pages in Storage Facility's backing storage.
 
 - docker-build#31: PEP Docker images were upgraded to be based on Ubuntu 26.04.
+
+- core#2961: Added support for buckets on different S3 hosts for the StorageFacility. In the config file, hosts are given an ID (JSON key) which buckets reference:
+  <details><summary>Config example</summary>
+
+  ```json
+  {"S3": {
+    "Hosts": {
+      "my-host-1": {
+        "EndPoint": {
+          "Address": "foo.pep.cs.ru.nl",
+          "Port": 9000
+        },
+        "Credentials": {
+          "Include": "/data/storagefacility/secrets/S3Credentials1.json"
+        }
+      },
+      "my-host-2": {
+        "EndPoint": {
+          "Address": "bar.pep.cs.ru.nl",
+          "Port": 9000
+        },
+        "Credentials": {
+          "Include": "/data/storagefacility/secrets/S3Credentials2.json"
+        }
+      }
+    },
+    "WriteToBucket": {
+      "Name": "myBucket",
+      "HostId": "my-host-1"
+    },
+    "ReadFromBuckets": [
+      {
+        "Name": "myBucket",
+        "HostId": "my-host-1"
+      },
+      {
+        "Name": "myBucket",
+        "HostId": "my-host-2"
+      }
+    ]
+  }}
+  ```
+  </details>
+
+- ppp-config#217: The pepAssessor GUI application no longer produces empty lines in export files.
+
+**MANUAL CHANGES REQUIRED**:
+
+- core#2961: The `StorageFacility.json` config needs to be changed to the new format (see changes above). Extract `EndPoint`, `Credentials`, `CaCertificateFile`, `UseHttps`, and `Connections` (or the subset that is used) into an object under a new `Hosts` key and give it an ID. Then change all buckets into objects with `Name` and `HostId` properties, the latter of which references the host ID.
 
 ---------------
 *Past changes, do not edit (except by person doing release):*

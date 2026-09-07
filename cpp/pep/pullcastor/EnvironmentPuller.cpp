@@ -98,7 +98,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
     clientBuilder.setCaCertFilepath(clientConfig.get<std::filesystem::path>("CaCertificateFile"));
     clientBuilder.setSystemPublicKeys(clientConfig.get<SystemPublicKeys>("SystemPublicKeys"));
 
-    auto serverEndPoints = config.get_child("ServerEndPoints");
+    auto serverEndPoints = clientConfig.get_child("ServerEndPoints");
     clientBuilder.setAccessManagerEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::AccessManager().configNode()));
     clientBuilder.setStorageFacilityEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::StorageFacility().configNode()));
     clientBuilder.setKeyServerEndPoint(serverEndPoints.get<EndPoint>(ServerTraits::KeyServer().configNode()));

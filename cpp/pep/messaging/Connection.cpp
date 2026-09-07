@@ -240,7 +240,7 @@ Connection::Connection(std::shared_ptr<Node> node, std::shared_ptr<networking::C
   assert(binary_->status() == networking::Transport::ConnectivityStatus::Connected);
   assert(node != nullptr);
 
-  description_ = node->describe() + " connected to " + binary_->remoteAddress();
+  description_ = node->describeConnection(*this);
 
   if (node->reconnectParameters().has_value()) {
     versionCheckBackoff_.emplace(ioContext_, *node->reconnectParameters());

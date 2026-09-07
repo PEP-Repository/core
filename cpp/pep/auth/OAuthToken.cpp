@@ -29,9 +29,6 @@ namespace pep {
 const std::string OAuthToken::DefaultJsonFileName = "OAuthToken.json";
 
 bool OAuthToken::verify(const std::string& secret, const std::string& requiredSubject, const std::string& requiredGroup) const {
-  PEP_LOG("OAuthToken::verify", Severity::Debug) << "Verifying OAuth token " << serialized_;
-  PEP_LOG("OAuthToken::verify", Severity::Debug) << "EncodeBase64Url(remoteJSON): " << EncodeBase64Url(data_);
-
   auto result = true;
 
   // Compute the HMAC on the json using the shared secret

@@ -259,6 +259,15 @@ export PEP_S3_EXPECT_COMMON_NAME="S3"
 export PEP_S3_TEST_BUCKET=TestBucket1
 export PEP_S3_TEST_BUCKET2=TestBucket2
 export PEP_USE_CURRENT_PATH="1"
+# Settings for the second S3 host ("host B", i.e. the s3proxy2 container), which is accessed over
+# plaintext HTTP and therefore needs no TLS terminator: see s3proxy.sh. It serves buckets with the
+# same names as the first host, so that tests can verify that requests are sent to the right host.
+# Host and port are overridden for runs inside Docker, where the container is reachable by name.
+export PEP_S3_B_HOST="localhost"
+export PEP_S3_B_PORT=9003
+export PEP_S3_B_USE_HTTPS="0"
+export PEP_S3_B_ACCESS_KEY="MyAccessKey2"
+export PEP_S3_B_SECRET_KEY="MySecret2"
 
 cleanup() {
   if [ "$LOCAL" = false ]; then
@@ -371,8 +380,12 @@ if [ "$USE_DOCKER" = true ]; then
   # Create test buckets for pepStorageFacilityUnitTests, preventing 'NoSuchBucket' error code from s3proxy.
   # Specifying "--parents" to prevent failure when directories already exist, e.g. if
   # this script is run multiple times.
+  # Both S3 hosts get buckets with the same names, so that tests can only tell them apart by
+  # their contents (and credentials), i.e. by the host that a request was actually sent to.
   mkdir -p "$S3PROXY_RUNTIME_DIR/data/$PEP_S3_TEST_BUCKET"
   mkdir -p "$S3PROXY_RUNTIME_DIR/data/$PEP_S3_TEST_BUCKET2"
+  mkdir -p "$S3PROXY_RUNTIME_DIR/data2/$PEP_S3_TEST_BUCKET"
+  mkdir -p "$S3PROXY_RUNTIME_DIR/data2/$PEP_S3_TEST_BUCKET2"
   trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" pull
 
   trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" start pep-network
@@ -439,10 +452,25 @@ if should_run_test storage-facility-unit; then
   if [ "$USE_DOCKER" = true ]; then
     TEST_FILTERS=""
   else
-    TEST_FILTERS="--gtest_filter=-S3Client.putObject:PageStore.basic"
+    # Without Docker there are no S3 hosts to talk to, so we skip the test suites that need one.
+    # (The "S3PageStoreConfig" suite only checks configuration handling and does run here.)
+    TEST_FILTERS="--gtest_filter=-S3Client.*:S3PageStore.*:S3PageStoreMultiHost.*"
   fi
   # Note that line below invokes pepStorageFacilityUnitTests (and sets the DOCKER_EXEC_ARGS variable only for that invocation).
-  DOCKER_EXEC_ARGS="-e PEP_ROOT_CA -e PEP_S3_ACCESS_KEY -e PEP_S3_SECRET_KEY -e PEP_USE_CURRENT_PATH -e PEP_S3_HOST=s3proxyproxy -e PEP_S3_EXPECT_COMMON_NAME -e PEP_S3_TEST_BUCKET -e PEP_S3_TEST_BUCKET2" \
+  DOCKER_EXEC_ARGS="\
+    -e PEP_ROOT_CA \
+    -e PEP_S3_ACCESS_KEY \
+    -e PEP_S3_SECRET_KEY \
+    -e PEP_USE_CURRENT_PATH \
+    -e PEP_S3_HOST=s3proxyproxy \
+    -e PEP_S3_EXPECT_COMMON_NAME \
+    -e PEP_S3_TEST_BUCKET \
+    -e PEP_S3_TEST_BUCKET2 \
+    -e PEP_S3_B_HOST=s3proxy2 \
+    -e PEP_S3_B_PORT=80 \
+    -e PEP_S3_B_USE_HTTPS \
+    -e PEP_S3_B_ACCESS_KEY \
+    -e PEP_S3_B_SECRET_KEY" \
     execute . "$BUILD_DIR/cpp/pep/storagefacility/$BUILD_MODE/pepStorageFacilityUnitTests" --gtest_color=yes "$TEST_FILTERS"
 fi
 

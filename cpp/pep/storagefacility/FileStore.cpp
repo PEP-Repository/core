@@ -3,6 +3,7 @@
 #include <pep/utils/BuildFlavor.hpp>
 #include <pep/storagefacility/Constants.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/utils/MapUtils.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Raw.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>

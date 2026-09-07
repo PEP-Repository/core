@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <utility>
 #include <pep/utils/CollectionUtils.hpp>
+#include <pep/utils/MiscUtil.hpp>
 
 #ifdef _WIN32
 #include <sstream>
@@ -226,13 +227,11 @@ void Application::initializeLoggingOnce() {
   { // initialize logging sinks
     std::vector<std::shared_ptr<Logging>> logging;
 
+    std::optional<Severity> userProvidedConsoleLevel =
+      GetOptionalValue(values.getOptional<std::string>("loglevel"), Logging::ParseSeverity);
     std::optional<Severity> consoleLevel = this->consoleLogMinimumSeverityLevel();
-    if (auto consoleLevelStr = values.getOptional<std::string>("loglevel")) {
-      consoleLevel = Logging::ParseSeverity(*consoleLevelStr);
-      if (consoleLevel < Logging::compiledMinimumSeverity) {
-        PEP_LOG(LogTag, Severity::Warning)
-          << "Logs with severity below <" << Logging::FormatSeverity(Logging::compiledMinimumSeverity) << "> are not enabled for this build";
-      }
+    if (userProvidedConsoleLevel) {
+      consoleLevel = userProvidedConsoleLevel;
     }
     if (consoleLevel) {
       logging.push_back(std::make_shared<ConsoleLogging>(*consoleLevel));
@@ -248,6 +247,12 @@ void Application::initializeLoggingOnce() {
     }
 
     Logging::Initialize(logging);
+
+    // Only log this after initializing logging (otherwise style is inconsistent etc.)
+    if (userProvidedConsoleLevel && userProvidedConsoleLevel < Logging::compiledMinimumSeverity) {
+      PEP_LOG(LogTag, Severity::Warning)
+        << "Logs with severity below <" << Logging::FormatSeverity(Logging::compiledMinimumSeverity) << "> are not enabled for this build";
+    }
   }
 
   showVersionInfo_ = !values.has("suppress-version-info");

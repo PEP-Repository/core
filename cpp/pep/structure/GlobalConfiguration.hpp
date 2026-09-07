@@ -2,9 +2,10 @@
 
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/structure/StudyContext.hpp>
+#include <pep/utils/Compare.hpp>
 
 #include <cstdint>
-#include <unordered_map>
+#include <map>
 #include <optional>
 
 namespace pep {
@@ -101,7 +102,7 @@ class GlobalConfiguration {
   UserPseudonymFormat userPseudonymFormat_;
   std::vector<AdditionalStickerDefinition> additionalStickers_;
   std::vector<DeviceRegistrationDefinition> devices_;
-  std::unordered_map<std::string, uint32_t> numberOfVisits_;
+  std::map<std::string, uint32_t, CaseInsensitiveCompare> numberOfVisits_;
   std::vector<AssessorDefinition> assessors_;
   std::vector<ColumnSpecification> columnSpecifications_;
   std::vector<ShortPseudonymErratum> spErrata_;

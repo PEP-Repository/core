@@ -66,6 +66,10 @@ public:
     const std::string& bucket) = 0;
 
   virtual void start() = 0;
+
+  /// Stops the client, preventing further requests from being sent.
+  ///
+  /// Calling this multiple times has no effect.
   virtual void shutdown() = 0;
 
 protected:

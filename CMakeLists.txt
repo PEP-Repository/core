@@ -307,7 +307,7 @@ function(make_js_file_executable target)
     get_target_property(skip ${target} PEP_SKIP_DEFAULT_EMSCRIPTEN_CLI_CONFIG)
     if(NOT skip)
       find_program(SED_PROGRAM sed)
-      if(SED_PROGRAM AND NOT APPLE) # We filter out macOS because it doesn't support this syntax
+      if(SED_PROGRAM AND NOT CMAKE_HOST_APPLE) # We filter out macOS because it doesn't support this syntax
         add_custom_command(
             TARGET ${target} POST_BUILD
             # Add node shebang

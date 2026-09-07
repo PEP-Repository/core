@@ -5,58 +5,22 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <functional>
 #include <iterator>
-#include <map>
 #include <optional>
 #include <vector>
 #include <ranges>
-#include <set>
 #include <span>
 #include <stdexcept>
 #include <string_view>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
 
 namespace pep {
 
-/// Returns whether a is a subset of b.
-template<typename T>
-bool IsSubset(std::vector<T> a, std::vector<T> b) {
-  std::sort(a.begin(), a.end());
-  std::sort(b.begin(), b.end());
-  return std::includes(b.begin(), b.end(), a.begin(), a.end());
-}
-
-/// Returns a value that's included multiple times in the vector, or std::nullopt if it contains unique values. Uniqueness is determined by the specified Compare object.
-template <typename T, typename TCompare>
-std::optional<T> TryFindDuplicateValue(std::vector<T> vec, const TCompare& comp) {
-  std::sort(vec.begin(), vec.end(), comp);
-  auto position = std::adjacent_find(vec.cbegin(), vec.cend());
-  if (position != vec.cend()) {
-    return *position;
-  }
-  return std::nullopt;
-}
-
-/// Returns a value that's included multiple times in the vector, or std::nullopt if it contains unique values. Uniqueness is determined by (a default-constructed instance of) the specified Compare type.
-template <typename T, typename TCompare = std::less<T>>
-std::optional<T> TryFindDuplicateValue(std::vector<T> vec) {
-  return TryFindDuplicateValue(vec, TCompare());
-}
-
-/// Returns whether a vector contains unique values, with uniqueness determined by the specified Compare object.
-template <typename T, typename TCompare>
-bool ContainsUniqueValues(std::vector<T> vec, const TCompare& comp) {
-  return TryFindDuplicateValue(vec, comp) == std::nullopt;
-}
-
-/// Returns whether a vector contains unique values, with uniqueness determined by (a default-constructed instance of) the specified Compare type.
-template <typename T, typename TCompare = std::less<T>>
-bool ContainsUniqueValues(const std::vector<T>& vec) {
-  return TryFindDuplicateValue(vec) == std::nullopt;
-}
+/// \brief Get possible-const range value type.
+/// \note Like \c range_value_t , which does not retain const.
+template <std::ranges::range R>
+using QualifiedRangeValue = std::remove_reference_t<std::ranges::range_reference_t<R>>;
 
 /// \brief Fills a destination range with strings from a source range without exceeding the specified destination capacity.
 ///
@@ -107,16 +71,14 @@ template<size_t Extent>
       throw std::invalid_argument("Argument has incorrect number of elements");
     }
   }
-  // range_value_t does not retain const
-  using Elem = std::remove_reference_t<std::ranges::range_reference_t<decltype(span)>>;
+  using Elem = QualifiedRangeValue<decltype(span)>;
   return std::span<Elem, Extent>{reinterpret_cast<Elem*>(std::ranges::data(span)), std::ranges::size(span)};
 }
 
 template<ByteLike To>
 [[nodiscard]] auto ConvertBytes(Slice auto&& span)
   requires(ByteLike<std::ranges::range_value_t<decltype(span)>>) {
-  // range_value_t does not retain const
-  using From = std::remove_reference_t<std::ranges::range_reference_t<decltype(span)>>;
+  using From = QualifiedRangeValue<decltype(span)>;
   return std::span<CopyConstness<To, From>>{reinterpret_cast<CopyConstness<To, From>*>(std::ranges::data(span)), std::ranges::size(span)};
 }
 
@@ -223,33 +185,6 @@ requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<de
     throw std::out_of_range("range contains multiple elements");
   }
   return result;
-}
-
-template <typename T>
-concept AnyMap = DerivedFromSpecialization<T, std::map> || DerivedFromSpecialization<T, std::unordered_map>;
-
-/// \brief Adds items from a range to an \ref std::set, throwing an exception if an item could not be inserted because it's a duplicate
-/// \tparam T the type of item in the \ref std::set
-/// \tparam TSrc the type of the input range
-/// \param dst the destination \ref std::set
-/// \param src the source range
-/// \return a pair of (1) an iterator at the last insertion position and (2) the number of items inserted into the set
-/// \throws whatever dst throws when an insertion fails, or an \ref std::runtime_error if one of \p src 's items is a duplicate.
-/// \remark Provides a basic (as opposed to strong) exception guarantee: if an exception is raised because of a duplicate item, \p dst may have been partially updated.
-template <typename T, std::ranges::input_range TSrc>
-auto InsertNonDuplicates(std::set<T>& dst, const TSrc& src)
-  requires (std::same_as<T, std::remove_cvref_t<std::ranges::range_value_t<TSrc>>>) {
-  auto last = dst.end();
-  size_t count = 0U;
-  for (const auto& item : src) {
-    auto sizeBeforeInsertion = dst.size();
-    last = dst.insert(last, item);
-    if (dst.size() == sizeBeforeInsertion) { // https://cppreference.com/cpp/container/set/insert: "One way to check success of a hinted insert is to compare size() before and after."
-      throw std::runtime_error("Can't insert duplicate item into set");
-    }
-    ++count;
-  }
-  return std::make_pair(last, count);
 }
 
 }
