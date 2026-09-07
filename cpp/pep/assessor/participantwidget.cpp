@@ -715,7 +715,7 @@ void ParticipantWidget::locateBartender() {
     if (::RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Seagull Scientific\\BarTender", 0, KEY_READ, &key) == ERROR_SUCCESS) {
       PEP_DEFER(RegCloseKey(key));
 
-      bestDir = GetRegistryString(key, "Last Execution Directory");
+      bestDir = win32api::GetRegistryString(key, "Last Execution Directory");
     }
   }
 
