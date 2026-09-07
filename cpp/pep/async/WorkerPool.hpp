@@ -77,6 +77,14 @@ class WorkerPool : private boost::noncopyable {
     // xsPtr would go out of scope after this return, which frees it and
     // thus invalidates the iterators into it.  To keep xsPtr alive, we
     // capture it in the final callback.
+#if defined(__GNUC__) && !defined(__clang__)
+# pragma GCC diagnostic push
+// GCC (15.2, -O3) in Flatpak reports uninitialized use of its own scalar-replacement temporaries ("SR.<number>") in the
+// std::shared_ptr copy constructors that it inlines into the lambda captures below. The captured values are
+// always initialized, so these diagnostics are false positives.
+# pragma GCC diagnostic ignored "-Wuninitialized"
+# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
     return rxcpp::observable<>::iterate(std::move(batches))
     .map([this, f, accWorker](Batch batch) -> rxcpp::observable<bool> {
       // Handle each batch on separate worker
@@ -98,6 +106,9 @@ class WorkerPool : private boost::noncopyable {
     .map([xsPtr /* keep xsPtr alive, see above */, ys](bool) {
       return std::move(*ys);
     });
+#if defined(__GNUC__) && !defined(__clang__)
+# pragma GCC diagnostic pop
+#endif
   }
 };
 

@@ -235,6 +235,14 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     enumRequest.pseudonyms->indices.reserve(ctx->pps.size());
     std::transform(ctx->pps.cbegin(), ctx->pps.cend(), std::back_inserter(enumRequest.pseudonyms->indices), [](const std::pair<const PolymorphicPseudonym, uint32_t>& pair) {return pair.second; });
 
+#if defined(__GNUC__) && !defined(__clang__)
+# pragma GCC diagnostic push
+// GCC (15.2, -O3) in Flatpak reports uninitialized use of its own scalar-replacement temporaries ("SR.<number>") in the
+// std::shared_ptr copy constructors that it inlines into the rxcpp pipeline below. The copied observables and
+// captured values are always initialized, so these diagnostics are false positives.
+# pragma GCC diagnostic ignored "-Wuninitialized"
+# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
     return this->getStorageFacilityProxy(true)->requestDataEnumeration(std::move(enumRequest))
       .map([ctx](const DataEnumerationResponse2& response) { return response.entries; })
       .op(RxConcatenateVectors())
@@ -340,6 +348,9 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
             }).as_dynamic();
           }).as_dynamic(); // Reduce compiler memory usage
         }).as_dynamic(); // Reduce compiler memory usage
+#if defined(__GNUC__) && !defined(__clang__)
+# pragma GCC diagnostic pop
+#endif
       });
 }
 
