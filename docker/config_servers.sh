@@ -4,8 +4,8 @@ set -eu -o pipefail
 
 data_dir=/data
 pki_dir=/pki
-storage_facility_bin=/app/pepstorage_facility_bin
-key_server_bin=/app/pepkey_server_bin
+storage_facility_bin=/app/pepStorageFacility
+key_server_bin=/app/pepKeyServer
 access_manager_bin=/app/pepAccessManager
 transcryptor_bin=/app/pepTranscryptor
 registration_server_bin=/app/pepRegistrationServer
@@ -117,8 +117,8 @@ echo "Enrolling Access Manager"
 cat "$data_dir/accessmanager/AccessManagerKeys.json"
 
 echo "Enrolling Storage Facility"
-(cd "$data_dir/storage_facility_bin"; "$pep_enrollment_bin" "${bin_args[@]}" storage_facility_bin.json 2 "$pki_dir/PEPstorage_facility_bin.key" "$pki_dir/PEPstorage_facility_bin.chain" "$data_dir"/storage_facility_bin/storage_facility_binKeys.json)
-cat "$data_dir/storage_facility_bin/storage_facility_binKeys.json"
+(cd "$data_dir/storagefacility"; "$pep_enrollment_bin" "${bin_args[@]}" StorageFacility.json 2 "$pki_dir/PEPStorageFacility.key" "$pki_dir/PEPStorageFacility.chain" "$data_dir"/storagefacility/StorageFacilityKeys.json)
+cat "$data_dir/storagefacility/StorageFacilityKeys.json"
 
 echo "Enrolling Registration Server"
 (cd "$data_dir/registrationserver"; "$pep_enrollment_bin" "${bin_args[@]}" RegistrationServer.json 5 "$pki_dir/PEPRegistrationServer.key" "$pki_dir/PEPRegistrationServer.chain" "$data_dir"/registrationserver/RegistrationServerKeys.json)
