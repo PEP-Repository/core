@@ -383,7 +383,7 @@ if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
     trace cd "$PKI_DIR_ON_HOST"
     trace "$CORE_DIR/pki/pki.sh"
   else
-    trace docker run --pull=always --rm -v "$PKI_DIR_ON_HOST:$PKI_DIR" -w="$PKI_DIR" "$IMAGE" --entrypoint=/bin/bash /app/pki.sh all /app/ca_ext.cnf
+    trace docker run --pull=always --rm -v "$PKI_DIR_ON_HOST:$PKI_DIR" -w="$PKI_DIR" --entrypoint=/bin/bash "$IMAGE" /app/pki.sh all /app/ca_ext.cnf
   fi
 fi
 
@@ -435,9 +435,9 @@ if [ "$LOCAL" = true ]; then
   printGreen "\$ $BUILD_DIR/cpp/pep/servers/$BUILD_MODE/pepServers &"
   trace start_servers_locally
 else
-  trace docker run --rm --net pep-network -v "$DATA_DIR:/data" "$IMAGE" --entrypoint=/bin/bash /app/init_keys.sh "$REUSE_SECRETS_AND_DATA"
+  trace docker run --rm --net pep-network -v "$DATA_DIR:/data" --entrypoint=/bin/bash "$IMAGE" /app/init_keys.sh "$REUSE_SECRETS_AND_DATA"
   if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
-    trace docker run --rm --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" "$IMAGE" --entrypoint=/bin/bash /app/config_servers.sh \
+    trace docker run --rm --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" --entrypoint=/bin/bash "$IMAGE" /app/config_servers.sh \
       --loglevel "$SERVERS_LOGLEVEL"
   fi
 
