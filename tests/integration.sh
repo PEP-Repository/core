@@ -383,7 +383,7 @@ if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
     trace cd "$PKI_DIR_ON_HOST"
     trace "$CORE_DIR/pki/pki.sh"
   else
-    trace docker run --pull=always --rm -v "$PKI_DIR_ON_HOST:$PKI_DIR" -w="$PKI_DIR" "$IMAGE" bash /app/pki.sh all /app/ca_ext.cnf
+    trace docker run --pull=always --rm -v "$PKI_DIR_ON_HOST:$PKI_DIR" -w="$PKI_DIR" "$IMAGE" --entrypoint=/bin/bash /app/pki.sh all /app/ca_ext.cnf
   fi
 fi
 
