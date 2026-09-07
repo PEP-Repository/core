@@ -156,10 +156,15 @@ class PepAssessorApplication : public pep::Application {
   int execute() override {
     // QApplication must be instantiated before being used to pass in the client config.
     // Pass empty arguments because if we want to support Qt arguments we'd probably need to parse these *first*.
-    std::vector<char*> argv;
+    // Qt does want the program name, though.
+    std::vector<std::string> args{getName()};
+    auto argv = pep::RangeToVector(args | std::views::transform([](std::string& arg) { return arg.data(); }));
     int argc = static_cast<int>(argv.size());
     argv.emplace_back(); // argv[argc] must be nullptr, see https://eel.is/c++draft/basic.start.main#2.2
     QApplication pepAssessor(argc, argv.data());
+    args.resize(static_cast<std::size_t>(argc));
+    argv.resize(args.size() + 1);
+    argv.back() = nullptr;
 
     // Terminate if there's another PEP Assessor running to prevent later failure, e.g. w.r.t. the port receiving the OAuth token after logon
     if (!EnsureOnlyInstance(&pepAssessor)) {
