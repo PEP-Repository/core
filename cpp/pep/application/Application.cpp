@@ -346,7 +346,7 @@ int Application::InvokeWithArgs(HINSTANCE hInstance, HINSTANCE hPrevInstance, LP
 
   std::span<const LPCWSTR> wideArgs(wideArgv, static_cast<std::size_t>(argc));
   return invoke(RangeToVector(wideArgs | std::views::transform([](LPCWSTR wstr) {
-    return std::string(win32api::WideStringToUtf8(wstr));
+    return win32api::WideStringToUtf8(wstr);
   })));
 }
 
