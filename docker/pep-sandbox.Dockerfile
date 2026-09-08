@@ -24,7 +24,8 @@ COPY ${STAGING_DIRECTORY}/cpp/pep/servers/accessmanager /app/accessmanager/
 RUN echo '{\
   "participant_identifier_formats": [{"generable": {"prefix": "OID", "digits": 10}}],\
   "user_pseudonym_format": {"prefix": "BLPS", "minLength": 1, "length": 16},\
-  "short_pseudonyms": [{"column": "ShortPseudonym.History", "prefix": "RIDHI", "length": 5}]\
+  "short_pseudonyms": [{"column": "ShortPseudonym.History", "prefix": "RIDHI", "length": 5}],\
+  "study_contexts": [{"id": "Workshop"}] \
 }' > /app/accessmanager/GlobalConfiguration.json
 
 COPY ${STAGING_DIRECTORY}/cpp/pep/cli/pepcli /app/
