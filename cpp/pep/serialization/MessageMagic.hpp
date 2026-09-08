@@ -1,11 +1,9 @@
 #pragma once
 
 #include <pep/utils/NormalizedTypeNaming.hpp>
-#include <pep/utils/SelfRegistering.hpp>
 
 #include <optional>
 #include <ostream>
-#include <unordered_map>
 
 namespace pep {
 
@@ -27,25 +25,12 @@ class BasicMessageMagician {
   template <typename TMessage>
   friend struct MessageMagician;
 
-  template <class TDerived, class TRegistrar, bool registerDerived>
-  friend class SelfRegistering;
-
 private:
-  template <typename T>
-  struct MessageOfMagician;
+  static MessageMagic EnsureRegistered(const std::string& crossPlatformName);
 
-  template <typename T>
-  struct MessageOfMagician<MessageMagician<T>> {
-    using type = T;
-  };
-
-  static std::unordered_map<MessageMagic, std::string>& Mappings();
-  static MessageMagic RegisterMessageName(const std::string& crossPlatformName);
-
-  template <typename TMagician>
-  static MessageMagic RegisterType() {
-    using MessageType = typename MessageOfMagician<TMagician>::type;
-    return RegisterMessageName(GetNormalizedTypeName<MessageType>());
+  template <typename TMessage>
+  static MessageMagic EnsureRegistered() {
+    return EnsureRegistered(GetNormalizedTypeName<TMessage>());
   }
 
   static void WriteMagicTo(std::ostream& destination, MessageMagic magic);
@@ -56,10 +41,19 @@ public:
 };
 
 template <typename TMessage>
-struct MessageMagician : public SelfRegistering<MessageMagician<TMessage>, BasicMessageMagician> {
-  static inline MessageMagic GetMagic() { return SelfRegistering<MessageMagician<TMessage>, BasicMessageMagician>::TheRegistrationId; }
+struct MessageMagician : public BasicMessageMagician {
+  static inline MessageMagic GetMagic();
   static inline void WriteMagicTo(std::ostream& destination) { BasicMessageMagician::WriteMagicTo(destination, GetMagic()); }
   static inline std::string_view SkipMessageMagic(std::string_view szMessage) { return BasicMessageMagician::SkipMessageMagic(szMessage, GetMagic()); }
 };
+
+template <typename TMessage>
+MessageMagic MessageMagician<TMessage>::GetMagic() {
+  // Use a static variable to prevent run time overhead when this function is called.
+  // Use a function-scoped (as opposed to class-scoped) static so that BasicMessageMagician::EnsureRegistered<> doesn't run at static initialization time,
+  // when its assert()ion would presumably wreak havoc.
+  static const MessageMagic result = BasicMessageMagician::EnsureRegistered<TMessage>();
+  return result;
+}
 
 }
