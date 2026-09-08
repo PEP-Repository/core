@@ -168,7 +168,7 @@ TEST_F(Client, Reconnects) { // TODO: simplify
     });
   server->start();
 
-  auto backoffParams = pep::ExponentialBackoff::Parameters(200ms, 1s);
+  auto backoffParams = pep::ExponentialBackoff::Parameters(500ms, 1s);
   auto clientParameters = server->createClientParameters();
   auto client = pep::networking::Client::Create(*clientParameters, backoffParams);
 
