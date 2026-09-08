@@ -36,4 +36,10 @@ for FILE in "${SH_FILES[@]}"; do
     fi
 done
 
+# Check for non portable invocations of the cli tools we call, which shellcheck does not cover
+# docker/ runs in our own images and the macOS installer only ever runs on macOS
+if ! "$(dirname -- "$0")/check-portability.sh" --ignore-dir docker --ignore-dir installer/macOS; then
+    exitcode=1
+fi
+
 exit $exitcode
