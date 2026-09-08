@@ -51,7 +51,7 @@ template <typename TMessage>
 MessageMagic MessageMagician<TMessage>::GetMagic() {
   // Use a static variable to prevent run time overhead when this function is called.
   // Use a function-scoped (as opposed to class-scoped) static so that BasicMessageMagician::EnsureRegistered<> doesn't run at static initialization time,
-  // when its assert()ion would presumably wreak havoc.
+  // when its assert()ion and logging would presumably wreak havoc.
   static const MessageMagic result = BasicMessageMagician::EnsureRegistered<TMessage>();
   return result;
 }
