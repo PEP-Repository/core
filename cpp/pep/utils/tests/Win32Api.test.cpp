@@ -6,15 +6,15 @@
 
 #ifdef _WIN32
 
-using namespace pep::win32api;
+using namespace pep;
 
 namespace {
 
-TEST(GetRegistryString, REG_SZ) {
+TEST(GetRegistryString, normalString) {
   HKEY key;
   ASSERT_EQ(::RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", 0, KEY_READ, &key), ERROR_SUCCESS);
   PEP_DEFER(RegCloseKey(key));
-  EXPECT_EQ(GetRegistryString(key, "BuildBranch"), "ge_release");
+  EXPECT_EQ(win32api::GetRegistryString(key, "BuildBranch"), "ge_release");
 }
 
 }
