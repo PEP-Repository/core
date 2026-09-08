@@ -52,6 +52,17 @@ gnu_date() {
   fi
 }
 
+# GNU stat, for the -c format option that the BSD stat of macOS does not have.
+# macOS needs gstat from GNU coreutils instead.
+gnu_stat() {
+  if [ "$(uname)" = "Darwin" ]; then
+    command -v gstat >/dev/null || fail 'gstat could not be found, please install coreutils using Homebrew.'
+    gstat "$@"
+  else
+    stat "$@"
+  fi
+}
+
 # Convert special characters in name just like GitLab does for e.g. $CI_COMMIT_REF_SLUG.
 # Based on slugify from GitLab https://gitlab.com/gitlab-org/gitlab/-/blob/9e379cc4edba7fbe4777b6b7267c43eb81cd04cd/gems/gitlab-utils/lib/gitlab/utils.rb#L56-67
 slugify() {

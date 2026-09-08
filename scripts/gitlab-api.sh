@@ -60,7 +60,7 @@ case $command in
     # the value of that ".created_at" property (so that the caller can report its value), otherwise print nothing. Exit 0 in both cases.
     entry=$(cat)
     created_at=$(raw_echo "$entry" | jq --raw-output ".created_at")
-    seconds=$(( $(date +%s) - $(gnu_date -d "$created_at" +%s) ))
+    seconds=$(( $(gnu_date +%s) - $(gnu_date -d "$created_at" +%s) ))
     days=$(( seconds / 60 / 60 / 24 ))
     if [ "$days" -ge 6 ]; then
       echo "$created_at"
