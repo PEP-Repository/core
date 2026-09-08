@@ -3,6 +3,7 @@
 #include <pep/utils/Timestamp.hpp>
 #include <pep/crypto/X509Certificate.hpp>
 #include <pep/serialization/Error.hpp>
+#include <pep/serialization/Serializer.hpp>
 
 namespace pep {
 
@@ -69,10 +70,9 @@ public:
       bool expectLogCopy=false) const;
 };
 
-class SignatureValidityPeriodError : public DeserializableDerivedError<SignatureValidityPeriodError> {
+class SignatureValidityPeriodError : public Error {
 public:
-  explicit inline SignatureValidityPeriodError(const std::string& description)
-    : DeserializableDerivedError<SignatureValidityPeriodError>(description) { }
+  using Error::Error;
 };
 
 }
