@@ -90,7 +90,7 @@ is_suppressed() {
     if grep -qE "portability-disable-file=($name|all)([^-a-z]|$)" -- "$file"; then
         return 0
     # Match the directive anywhere in a comment on the line above (if it is not followed by - or a letter)
-    elif [[ "$prev" =~ ^[[:space:]]*#.*portability-disable=($name|all)([^-a-z]|$) ]]; then
+    elif [[ "$prev" =~ ^[[:space:]]*#[[:space:]]*portability-disable=($name|all)([[:space:]]|$) ]]; then
         return 0
     fi
     return 1
