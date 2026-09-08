@@ -190,6 +190,9 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     userVerifiersObs
     .flat_map([server, ctx, entriesObservable, start_time](const std::optional<ReshuffleRekeyVerifiers>& userVerifiers) {
     ctx->userVerifiers = userVerifiers;
+    if (ctx->userVerifiers) {
+      ctx->userVerifiers->ensureThreadSafe();
+    }
     return entriesObservable
     .map([](std::shared_ptr<std::string> serializedEntries) {
     auto deserialized = Serialization::FromString<TranscryptorRequestEntries>(*serializedEntries);
