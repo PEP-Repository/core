@@ -715,15 +715,7 @@ void ParticipantWidget::locateBartender() {
     if (::RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Seagull Scientific\\BarTender", 0, KEY_READ, &key) == ERROR_SUCCESS) {
       PEP_DEFER(RegCloseKey(key));
 
-      DWORD dwType;
-      constexpr size_t BufferSize = 256U;
-      BYTE regvalue[BufferSize];
-      DWORD size = BufferSize;
-      if (::RegQueryValueExA(key, "Last Execution Directory", 0, &dwType, regvalue, &size) == ERROR_SUCCESS) { // TODO: deal with ERROR_MORE_DATA: see https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regqueryvalueexa
-        if (dwType == REG_SZ) { // TODO: support other string types as well
-          bestDir = std::string((char*)regvalue, size - 1);
-        }
-      }
+      bestDir = pep::win32api::GetRegistryString(key, "Last Execution Directory");
     }
   }
 
