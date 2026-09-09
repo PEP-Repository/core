@@ -59,8 +59,8 @@ Magics PredefinedMagics() {
     MakeMagicEntry("ChecksumChainNamesResponse"),
     MakeMagicEntry("ChecksumChainRequest"),
     MakeMagicEntry("ChecksumChainResponse"),
+    MakeMagicEntry("ColumnAccess"), // Aliased as ColumnAccessResponse
     MakeMagicEntry("ColumnAccessRequest"),
-    MakeMagicEntry("ColumnAccessResponse"),
     MakeMagicEntry("ColumnGroupAccess"),
     MakeMagicEntry("ColumnNameMapping"),
     MakeMagicEntry("ColumnNameMappingRequest"),
