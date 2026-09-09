@@ -15,8 +15,16 @@ void OutputPurgeCycle(const PurgeCycle& cycle) {
   std::cout
     << "Purge cycle " << cycle.id
     << " for " << cycle.definition.name()
-    << " announced at " << TimestampToXmlDateTime(cycle.announced)
-    << '\n';
+    << " announced at " << TimestampToXmlDateTime(cycle.announced);
+  if (cycle.confirmed) {
+    std::cout << "; confirmed at " << TimestampToXmlDateTime(*cycle.confirmed);
+  }
+  if (cycle.completed) {
+    assert(cycle.confirmed);
+    std::cout << "; completed at " << TimestampToXmlDateTime(*cycle.completed);
+  }
+
+  std::cout << '\n';
 }
 
 class CommandPurge : public ChildCommandOf<CliApplication> {
