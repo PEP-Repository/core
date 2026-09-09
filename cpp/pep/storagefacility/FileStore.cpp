@@ -96,6 +96,11 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
   return **participants_.emplace(std::make_unique<Participant>(*this, name)).first;
 }
 
+void FileStore::persistPurgedItems() {
+  // TODO: implement
+  std::cerr << "Persisting purged items" << std::endl;
+}
+
 const std::string& FileStore::getColumnString(const std::string& value) {
   if (value.find(EntryName::Delimiter) != std::string::npos) {
     throw std::runtime_error("Cell name may not contain an entry name delimiter");
@@ -116,11 +121,18 @@ FileStore::FileStore(
   // throws when an error occurs while creating any of the given directories in the supplied path
   std::filesystem::create_directories(path_);
 
+  bool has_unpersisted_purges = false;
+
   auto start_time = steady_clock::now();
   for (const auto& p : std::filesystem::directory_iterator(path_)) {
     auto name = p.path().filename().string();
     if (std::filesystem::is_directory(p.path()) && name.size() == LocalPseudonym::TextLength()) {
-      participants_.emplace(std::make_unique<Participant>(*this, name, true));
+      auto emplaced = participants_.emplace(std::make_unique<Participant>(*this, name, true));
+      assert(emplaced.second);
+
+      if (!has_unpersisted_purges) { // Skip check if we already know that we need to start persisting
+        has_unpersisted_purges = (*emplaced.first)->hasUnpersistedPurgedEntries();
+      }
     }
   }
 
@@ -137,6 +149,10 @@ FileStore::FileStore(
     message << " (" << (static_cast<double>(entryCount) / seconds.count()) << " entries per second)";
   }
   PEP_LOG(LogTag, Severity::Info) << message.str();
+
+  if (has_unpersisted_purges) {
+    this->persistPurgedItems();
+  }
 }
 
 FileStore::Participant::Participant(FileStore& store, std::string name, bool load)
@@ -223,7 +239,7 @@ void FileStore::applyPurgeCycle(const PurgeCycle& cycle) {
   for (auto& participant : participants_) {
     participant->applyPurgeCycle(cycle);
   }
-  // TODO: ensure that we're updating files
+  this->persistPurgedItems();
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::lookup(const EntryName& name, Timestamp validAt) {
@@ -284,6 +300,15 @@ void FileStore::Cell::applyPurgeCycle(const PurgeCycle& cycle) {
   }
 
   versions_ = std::move(updated);
+}
+
+bool FileStore::Cell::hasUnpersistedPurgedEntries() const noexcept {
+  for (const auto& version : versions_) {
+    if (version.purgedAt.has_value() && !version.purgeIsPersisted) {
+      return true;
+    }
+  }
+  return false;
 }
 
 std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool createIfNeeded) {
@@ -675,5 +700,15 @@ void FileStore::Participant::applyPurgeCycle(const PurgeCycle& cycle) {
     cell->applyPurgeCycle(cycle);
   }
 }
+
+bool FileStore::Participant::hasUnpersistedPurgedEntries() const noexcept {
+  for (const auto& cell : cells_) {
+    if (cell->hasUnpersistedPurgedEntries()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 
 }

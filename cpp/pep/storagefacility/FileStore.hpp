@@ -162,6 +162,7 @@ public:
 
     std::set<std::string> pagePaths() const; // for latest version
     void applyPurgeCycle(const PurgeCycle& cycle);
+    bool hasUnpersistedPurgedEntries() const noexcept;
   };
 
   class Participant {
@@ -190,6 +191,7 @@ public:
 
     std::set<std::string> pagePaths() const; // for latest version
     void applyPurgeCycle(const PurgeCycle& cycle);
+    bool hasUnpersistedPurgedEntries() const noexcept;
   };
 
 private:
@@ -217,6 +219,8 @@ private:
 
   Participant* getParticipant(const std::string& name) const;
   Participant& provideParticipant(const std::string& name);
+
+  void persistPurgedItems();
 
 public:
   PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;
