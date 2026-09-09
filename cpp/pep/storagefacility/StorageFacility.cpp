@@ -1295,6 +1295,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()) {
 
+  fileStore_->persistPendingPurges();
 
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,

@@ -96,9 +96,15 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
   return **participants_.emplace(std::make_unique<Participant>(*this, name)).first;
 }
 
-void FileStore::persistPurgedItems() {
-  // TODO: implement
-  std::cerr << "Persisting purged items" << std::endl;
+void FileStore::ensurePurgePersistenceRunning() {
+  std::scoped_lock lock(purgePersistenceMux_);
+  if (!purgePersistence_.joinable()) {
+    purgePersistence_ = std::thread([self = SharedFrom(*this)]() { self->persistPurgedItemsAsync(); });
+  }
+}
+
+void FileStore::persistPurgedItemsAsync() {
+  std::cerr << "Persisting purged items on a separate thread" << std::endl;
 }
 
 const std::string& FileStore::getColumnString(const std::string& value) {
@@ -121,18 +127,12 @@ FileStore::FileStore(
   // throws when an error occurs while creating any of the given directories in the supplied path
   std::filesystem::create_directories(path_);
 
-  bool has_unpersisted_purges = false;
-
   auto start_time = steady_clock::now();
   for (const auto& p : std::filesystem::directory_iterator(path_)) {
     auto name = p.path().filename().string();
     if (std::filesystem::is_directory(p.path()) && name.size() == LocalPseudonym::TextLength()) {
-      auto emplaced = participants_.emplace(std::make_unique<Participant>(*this, name, true));
-      assert(emplaced.second);
-
-      if (!has_unpersisted_purges) { // Skip check if we already know that we need to start persisting
-        has_unpersisted_purges = (*emplaced.first)->hasUnpersistedPurgedEntries();
-      }
+      [[maybe_unused]] auto emplaced = participants_.emplace(std::make_unique<Participant>(*this, name, true)).second;
+      assert(emplaced);
     }
   }
 
@@ -149,10 +149,6 @@ FileStore::FileStore(
     message << " (" << (static_cast<double>(entryCount) / seconds.count()) << " entries per second)";
   }
   PEP_LOG(LogTag, Severity::Info) << message.str();
-
-  if (has_unpersisted_purges) {
-    this->persistPurgedItems();
-  }
 }
 
 FileStore::Participant::Participant(FileStore& store, std::string name, bool load)
@@ -234,12 +230,21 @@ std::set<std::string> FileStore::pagePaths() const {
   return result;
 }
 
+void FileStore::persistPendingPurges() {
+  for (const auto& participant : participants_) {
+    if (participant->hasUnpersistedPurgedEntries()) {
+      this->ensurePurgePersistenceRunning();
+      return; // No need to check further participants
+    }
+  }
+}
+
 void FileStore::applyPurgeCycle(const PurgeCycle& cycle) {
   assert(cycle.confirmed && !cycle.completed);
   for (auto& participant : participants_) {
     participant->applyPurgeCycle(cycle);
   }
-  this->persistPurgedItems();
+  this->ensurePurgePersistenceRunning();
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::lookup(const EntryName& name, Timestamp validAt) {

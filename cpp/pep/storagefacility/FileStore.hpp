@@ -15,7 +15,7 @@ namespace pep {
 /// directory structure:
 /// - .1, .2, .3 are pages
 /// - name.mtime.entry is a snapshot of all the metadata and pages that are used
-class FileStore : public SharedConstructor<FileStore> {
+class FileStore : public SharedConstructor<FileStore>, public std::enable_shared_from_this<FileStore> {
   friend class SharedConstructor<FileStore>;
   friend class EntryContent;
 
@@ -203,6 +203,8 @@ private:
     std::shared_ptr<prometheus::Registry> metrics_registry);
 
   const storagefacility::SqliteStorage& sqlite_;
+  std::thread purgePersistence_;
+  std::mutex purgePersistenceMux_;
 
   // Keep collections of unique strings to save memory: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2322 .
   // Note that "No iterators or references are invalidated" when an std::set or std::map changes, so
@@ -220,7 +222,8 @@ private:
   Participant* getParticipant(const std::string& name) const;
   Participant& provideParticipant(const std::string& name);
 
-  void persistPurgedItems();
+  void ensurePurgePersistenceRunning();
+  void persistPurgedItemsAsync();
 
 public:
   PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;
@@ -240,6 +243,7 @@ public:
   }
 
   std::set<std::string> pagePaths() const; // for latest version
+  void persistPendingPurges();
 };
 
 }
