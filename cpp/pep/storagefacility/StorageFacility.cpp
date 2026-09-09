@@ -1183,8 +1183,7 @@ messaging::MessageBatches StorageFacility::handlePurgeConfirmationRequest(std::s
 
   result.confirmed = timestamp;
   sqlite_->updatePurgeCycle(result);
-  fileStore_->processPendingPurgeCycles(*sqlite_);
-  // TODO: start updating files
+  fileStore_->applyPurgeCycle(result);
   return messaging::BatchSingleMessage(result);
 }
 

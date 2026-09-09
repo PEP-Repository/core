@@ -218,14 +218,12 @@ std::set<std::string> FileStore::pagePaths() const {
   return result;
 }
 
-void FileStore::processPendingPurgeCycles(storagefacility::SqliteStorage& sqlite) {
-  for (const auto& cycle: sqlite.getPurgeCycles()) {
-    if (cycle.confirmed && !cycle.completed) {
-      for (auto& participant : participants_) {
-        participant->processPendingPurgeCycle(sqlite, cycle);
-      }
-    }
+void FileStore::applyPurgeCycle(const PurgeCycle& cycle) {
+  assert(cycle.confirmed && !cycle.completed);
+  for (auto& participant : participants_) {
+    participant->applyPurgeCycle(cycle);
   }
+  // TODO: ensure that we're updating files
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::lookup(const EntryName& name, Timestamp validAt) {
@@ -260,10 +258,10 @@ std::set<std::string> FileStore::Cell::pagePaths() const {
   return latest_->pagePaths();
 }
 
-void FileStore::Cell::processPendingPurgeCycle(const storagefacility::SqliteStorage& sqlite, const PurgeCycle& cycle) {
+void FileStore::Cell::applyPurgeCycle(const PurgeCycle& cycle) {
   assert(cycle.confirmed);
 
-  auto timestamps = sqlite.getPurgedTimestamps(cycle.id, this->participant().name(), this->columnName());
+  auto timestamps = this->participant().fileStore().sqlite_.getPurgedTimestamps(cycle.id, this->participant().name(), this->columnName());
   if (timestamps.empty()) { // Nothing to do: no need to iterate over our versions_
     return;
   }
@@ -672,9 +670,9 @@ std::set<std::string> FileStore::Participant::pagePaths() const {
   return result;
 }
 
-void FileStore::Participant::processPendingPurgeCycle(const storagefacility::SqliteStorage& sqlite, const PurgeCycle& cycle) {
+void FileStore::Participant::applyPurgeCycle(const PurgeCycle& cycle) {
   for (auto& cell : cells_) {
-    cell->processPendingPurgeCycle(sqlite, cycle);
+    cell->applyPurgeCycle(cycle);
   }
 }
 

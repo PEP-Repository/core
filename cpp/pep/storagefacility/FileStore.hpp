@@ -161,7 +161,7 @@ public:
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
 
     std::set<std::string> pagePaths() const; // for latest version
-    void processPendingPurgeCycle(const storagefacility::SqliteStorage& sqlite, const PurgeCycle& cycle);
+    void applyPurgeCycle(const PurgeCycle& cycle);
   };
 
   class Participant {
@@ -189,7 +189,7 @@ public:
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
 
     std::set<std::string> pagePaths() const; // for latest version
-    void processPendingPurgeCycle(const storagefacility::SqliteStorage& sqlite, const PurgeCycle& cycle);
+    void applyPurgeCycle(const PurgeCycle& cycle);
   };
 
 private:
@@ -221,7 +221,7 @@ private:
 public:
   PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;
 
-  void processPendingPurgeCycles(storagefacility::SqliteStorage& sqlite);
+  void applyPurgeCycle(const PurgeCycle& cycle);
 
   std::shared_ptr<Entry> lookup(const EntryName& name, Timestamp validAt = Timestamp::max());
   std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool createIfNeeded = false);
