@@ -283,8 +283,9 @@ MessageMagic BasicMessageMagician::EnsureRegistered(const std::string& crossPlat
   }
 
   // Remind developer to add newly introduced message types to the list of PredefinedMagics (above).
-  assert(false && "Add this crossPlatformName to the 'PredefinedMagics' function");
+  // Log before asserting so that output contains the name before flunking the process.
   PEP_LOG("BasicMessageMagician", Severity::Warning) << "Missing predefined message magic for the " << crossPlatformName << " type";
+  assert(false && "Add this crossPlatformName to the 'PredefinedMagics' function");
 
   // Fallback in case this crossPlatformName still wasn't included in the PredefinedMagics
   auto entry = MakeMagicEntry(crossPlatformName);
