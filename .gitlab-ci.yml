@@ -195,6 +195,7 @@ variables:
   IMAGE_PEP_CONNECTOR:         ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-connector
   IMAGE_PEP_COMPOSE:           ${CI_REGISTRY}/${CI_PROJECT_PATH}/docker-compose
   IMAGE_PEP_SANDBOX:           ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-sandbox
+  IMAGE_PEP_SANDBOX_LATEST:    ${CI_REGISTRY}/pep-public/core/pep-sandbox:latest
   # authserver itself is now part of the pep-services container, so we only need a separate apache/shibboleth container
   IMAGE_PEP_AUTHSERVER_APACHE: ${CI_REGISTRY}/${CI_PROJECT_PATH}/authserver_apache
 
@@ -814,6 +815,8 @@ ubuntu-lts-release-without-castor:
     - .ubuntu-lts-release-base
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+    # Needed by build-sandbox-docker-image
+    - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
   variables:
     BUILD_GO_SERVERS: "off"
     WITH_CASTOR: "False"
@@ -1244,6 +1247,8 @@ build-sandbox-docker-image:
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+    # Needed by publish-sandbox-image
+    - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
   needs:
     - ubuntu-lts-release-without-castor
   #language=sh
