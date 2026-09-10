@@ -148,6 +148,7 @@ ReshuffleRekeyVerifiers ReshuffleRekeyVerifiers::Compute(
 void ReshuffleRekeyVerifiers::ensureThreadSafe() const {
   mReshuffleOverRekeyCommitment.ensureThreadSafe();
   mReshuffleCommitment.ensureThreadSafe();
+  mRekeyCommitment.ensureThreadSafe();
   mRekeyedPublicKey.ensureThreadSafe();
 }
 
