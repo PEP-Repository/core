@@ -27,7 +27,7 @@
     - `pepcli user query`
     - `pepcli query data-size`
 
-- core#2954: Fixed `pepLogon` failure in sandbox image.
+- core#2954: Fixed `pepLogon` failure in sandbox (now named tutorial) image.
 
 - core#2945: Added command `pepcli query page-paths`, which lists the paths of the current data set's pages in Storage Facility's backing storage.
 

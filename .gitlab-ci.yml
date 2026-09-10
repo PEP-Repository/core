@@ -194,8 +194,8 @@ variables:
   IMAGE_PEP_SCHEDULER:         ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-scheduler
   IMAGE_PEP_CONNECTOR:         ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-connector
   IMAGE_PEP_COMPOSE:           ${CI_REGISTRY}/${CI_PROJECT_PATH}/docker-compose
-  IMAGE_PEP_SANDBOX:           ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-sandbox
-  IMAGE_PEP_SANDBOX_LATEST:    ${CI_REGISTRY}/pep-public/core/pep-sandbox:latest
+  IMAGE_PEP_TUTORIAL:           ${CI_REGISTRY}/${CI_PROJECT_PATH}/pep-tutorial
+  IMAGE_PEP_TUTORIAL_LATEST:    ${CI_REGISTRY}/pep-public/core/pep-tutorial:latest
   # authserver itself is now part of the pep-services container, so we only need a separate apache/shibboleth container
   IMAGE_PEP_AUTHSERVER_APACHE: ${CI_REGISTRY}/${CI_PROJECT_PATH}/authserver_apache
 
@@ -815,7 +815,7 @@ ubuntu-lts-release-without-castor:
     - .ubuntu-lts-release-base
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
-    # Needed by build-sandbox-docker-image
+    # Needed by build-tutorial-docker-image
     - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
   variables:
     BUILD_GO_SERVERS: "off"
@@ -1241,13 +1241,13 @@ docker-images:
                           --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
                           --build-arg "BASE_IMAGE=$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" .
 
-build-sandbox-docker-image:
+build-tutorial-docker-image:
   stage: build
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
-    # Needed by publish-sandbox-image
+    # Needed by publish-tutorial-image
     - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
   needs:
     - ubuntu-lts-release-without-castor
@@ -1255,8 +1255,8 @@ build-sandbox-docker-image:
   script:
     - *docker_login
     - docker buildx build --pull
-                          --push --file "docker/pep-sandbox.Dockerfile"
-                          --tag "$IMAGE_PEP_SANDBOX:$IMAGE_TAG_TEST"
+                          --push --file "docker/pep-tutorial.Dockerfile"
+                          --tag "$IMAGE_PEP_TUTORIAL:$IMAGE_TAG_TEST"
                           --label "nl.ru.cs.pep.release-branch=$CI_COMMIT_BRANCH"
                           --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
                           --build-arg "BASE_IMAGE=$RUNTIME_IMAGE_UBUNTU_LTS" .
@@ -1448,7 +1448,7 @@ retag-pep-docker-images:
 # Configuration for the publish stage    #
 ##########################################
 
-publish-sandbox-image:
+publish-tutorial-image:
   stage: publish
   extends: .upload-base
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
@@ -1461,7 +1461,7 @@ publish-sandbox-image:
       allow_failure: true
     - when: never
   needs:
-    - job: build-sandbox-docker-image
+    - job: build-tutorial-docker-image
       artifacts: false
     - job: test-pep-services-image
       artifacts: false
@@ -1474,7 +1474,7 @@ publish-sandbox-image:
     # login with job token doesnt work for pushing to different repository, so we need to use the group api token
     - |
       if [ -z "$PEP_GROUP_API_TOKEN" ]; then
-        echo "PEP_GROUP_API_TOKEN is not set, cannot login to registry to push sandbox image"
+        echo "PEP_GROUP_API_TOKEN is not set, cannot login to registry to push tutorial image"
         exit 1
       fi
     - echo "$PEP_GROUP_API_TOKEN" | docker login "${CI_REGISTRY}" --username "-" --password-stdin
@@ -1482,7 +1482,7 @@ publish-sandbox-image:
     # Which branch was the currently published latest built from? Empty if unpublished.
     - |
       published_branch="$(
-        docker buildx imagetools inspect "$IMAGE_PEP_SANDBOX_LATEST" --format '{{json .Image}}' 2>/dev/null \
+        docker buildx imagetools inspect "$IMAGE_PEP_TUTORIAL_LATEST" --format '{{json .Image}}' 2>/dev/null \
         | jq -r '[.. | objects | .Labels? // empty | ."nl.ru.cs.pep.release-branch"? // empty] | first // ""'
       )"
 
@@ -1496,7 +1496,7 @@ publish-sandbox-image:
         fi
       fi
 
-    - docker buildx imagetools create "$IMAGE_PEP_SANDBOX:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SANDBOX_LATEST"
+    - docker buildx imagetools create "$IMAGE_PEP_TUTORIAL:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_TUTORIAL_LATEST"
 
 ##########################################
 # Configuration for the trigger stage    #
