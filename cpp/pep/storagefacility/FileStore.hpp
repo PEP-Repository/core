@@ -115,7 +115,6 @@ public:
     Timestamp getValidFrom() const noexcept { return validFrom_; }
 
     std::optional<Timestamp> getPurgedAt() const { return purgedAt_; }
-    bool purgeIsPersisted() const noexcept { return purgeIsPersisted_; }
     void markPurged(Timestamp at);
 
     messaging::MessageSequence readPage(size_t index);
@@ -130,7 +129,6 @@ public:
     uint64_t checksumSubstitute{};
     uint64_t payloadSize{};
     std::optional<Timestamp> purgedAt;
-    bool purgeIsPersisted{};
     bool isOriginalPayloadOwner{};
     bool isTombstone{};
 
@@ -162,7 +160,6 @@ public:
 
     std::set<std::string> pagePaths() const; // for latest version
     void applyPurgeCycle(const PurgeCycle& cycle);
-    bool hasUnpersistedPurgedEntries() const noexcept;
   };
 
   class Participant {
@@ -191,7 +188,6 @@ public:
 
     std::set<std::string> pagePaths() const; // for latest version
     void applyPurgeCycle(const PurgeCycle& cycle);
-    bool hasUnpersistedPurgedEntries() const noexcept;
   };
 
 private:
@@ -222,8 +218,7 @@ private:
   Participant* getParticipant(const std::string& name) const;
   Participant& provideParticipant(const std::string& name);
 
-  void ensurePurgePersistenceRunning();
-  void persistPurgedItemsAsync();
+  void persistPendingPurgesAsync();
 
 public:
   PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;

@@ -96,14 +96,7 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
   return **participants_.emplace(std::make_unique<Participant>(*this, name)).first;
 }
 
-void FileStore::ensurePurgePersistenceRunning() {
-  std::scoped_lock lock(purgePersistenceMux_);
-  if (!purgePersistence_.joinable()) {
-    purgePersistence_ = std::thread([self = SharedFrom(*this)]() { self->persistPurgedItemsAsync(); });
-  }
-}
-
-void FileStore::persistPurgedItemsAsync() {
+void FileStore::persistPendingPurgesAsync() {
   std::cerr << "Persisting purged items on a separate thread" << std::endl;
 }
 
@@ -172,7 +165,6 @@ FileStore::CellVersion FileStore::CellVersion::FromEntry(const Entry& entry) {
     .checksumSubstitute = entry.getChecksumSubstitute(),
     .payloadSize = entry.payloadSize(),
     .purgedAt = entry.getPurgedAt(),
-    .purgeIsPersisted = entry.purgeIsPersisted(),
     .isOriginalPayloadOwner = entry.isOriginalPayloadOwner(),
     .isTombstone = entry.isTombstone(),
   };
@@ -231,11 +223,9 @@ std::set<std::string> FileStore::pagePaths() const {
 }
 
 void FileStore::persistPendingPurges() {
-  for (const auto& participant : participants_) {
-    if (participant->hasUnpersistedPurgedEntries()) {
-      this->ensurePurgePersistenceRunning();
-      return; // No need to check further participants
-    }
+  std::scoped_lock lock(purgePersistenceMux_);
+  if (!purgePersistence_.joinable()) {
+    purgePersistence_ = std::thread([self = SharedFrom(*this)]() { self->persistPendingPurgesAsync(); });
   }
 }
 
@@ -244,7 +234,7 @@ void FileStore::applyPurgeCycle(const PurgeCycle& cycle) {
   for (auto& participant : participants_) {
     participant->applyPurgeCycle(cycle);
   }
-  this->ensurePurgePersistenceRunning();
+  this->persistPendingPurges();
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::lookup(const EntryName& name, Timestamp validAt) {
@@ -305,15 +295,6 @@ void FileStore::Cell::applyPurgeCycle(const PurgeCycle& cycle) {
   }
 
   versions_ = std::move(updated);
-}
-
-bool FileStore::Cell::hasUnpersistedPurgedEntries() const noexcept {
-  for (const auto& version : versions_) {
-    if (version.purgedAt.has_value() && !version.purgeIsPersisted) {
-      return true;
-    }
-  }
-  return false;
 }
 
 std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool createIfNeeded) {
@@ -705,15 +686,5 @@ void FileStore::Participant::applyPurgeCycle(const PurgeCycle& cycle) {
     cell->applyPurgeCycle(cycle);
   }
 }
-
-bool FileStore::Participant::hasUnpersistedPurgedEntries() const noexcept {
-  for (const auto& cell : cells_) {
-    if (cell->hasUnpersistedPurgedEntries()) {
-      return true;
-    }
-  }
-  return false;
-}
-
 
 }
