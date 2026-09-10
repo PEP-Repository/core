@@ -565,9 +565,9 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
   auto result = Entry::Create(cell, validFrom, purgedAt, checksumSubstitute, std::move(entryContent));
 
   if (!result->getPurgedAt()) { // The *.entry file does not contain a "purged-at" timestamp
-    if (purgedAt = cell.participant().fileStore().sqlite_.pendingPurgeTimestamp(cell.participant().name(), cell.columnName(), validFrom)) {
+    if (auto pendingPurgedAt = cell.participant().fileStore().sqlite_.pendingPurgeTimestamp(cell.participant().name(), cell.columnName(), validFrom)) {
       // This entry is included in a pending (i.e. confirmed but not yet completed) purge cycle
-      result->markPurged(*purgedAt);
+      result->markPurged(*pendingPurgedAt);
     }
   }
   return result;
