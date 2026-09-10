@@ -52,7 +52,7 @@ private:
   }
 
   static std::chrono::milliseconds RandomDuration();
-  static TimeRange SpendTime();
+  static TimeRange SpendSomeTime();
 
 public:
   Contention() noexcept = default;
@@ -72,7 +72,7 @@ std::chrono::milliseconds Contention::RandomDuration() {
   return std::chrono::milliseconds(msec);
 }
 
-TimeRange Contention::SpendTime() {
+TimeRange Contention::SpendSomeTime() {
   auto duration = RandomDuration();
   auto started = pep::TimeNow();
   std::this_thread::sleep_for(duration);
@@ -82,9 +82,9 @@ TimeRange Contention::SpendTime() {
 Contention Contention::Run(pep::ReaderWriterLock& rwl, bool write) {
   std::function<TimeRange()> synchronized;
   if (write) {
-    synchronized = [&rwl]() { return rwl.write(&SpendTime); };
+    synchronized = [&rwl]() { return rwl.write(&SpendSomeTime); };
   } else {
-    synchronized = [&rwl]() { return rwl.read(&SpendTime); };
+    synchronized = [&rwl]() { return rwl.read(&SpendSomeTime); };
   }
   return Contention(write, synchronized());
 }
