@@ -96,8 +96,21 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
   return **participants_.emplace(std::make_unique<Participant>(*this, name)).first;
 }
 
+void FileStore::persistPurgeCycle(const PurgeCycle& cycle) {
+  std::cerr << "Persisting purge cycle " << cycle.id << " for " << cycle.definition.name() << std::endl;
+}
+
 void FileStore::persistPendingPurgesAsync() {
-  std::cerr << "Persisting purged items on a separate thread" << std::endl;
+  auto cycles = sqlite_.getPurgeCycles(); // TODO: synchronize
+  std::sort(cycles.begin(), cycles.end(), [](const PurgeCycle& lhs, const PurgeCycle& rhs) {
+      return lhs.confirmed < rhs.confirmed;
+    });
+
+  for (const auto& cycle : cycles) {
+    if (cycle.confirmed && !cycle.completed) {
+      this->persistPurgeCycle(cycle);
+    }
+  }
 }
 
 const std::string& FileStore::getColumnString(const std::string& value) {

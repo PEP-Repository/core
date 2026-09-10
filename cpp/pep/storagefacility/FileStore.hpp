@@ -218,6 +218,7 @@ private:
   Participant* getParticipant(const std::string& name) const;
   Participant& provideParticipant(const std::string& name);
 
+  void persistPurgeCycle(const PurgeCycle& cycle);
   void persistPendingPurgesAsync();
 
 public:
