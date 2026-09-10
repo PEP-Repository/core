@@ -94,6 +94,10 @@ Contention Contention::Run(pep::ReaderWriterLock& rwl, bool write) {
 TEST(ReaderWriterLock, Works) {
   constexpr size_t ThreadCount = 200;
   constexpr unsigned OverlappingReadAttempts = 5;
+  constexpr unsigned ReaderToWriterRatio = 3; // One writer to this many readers: e.g. if set to 3, then 1 in 4 threads will be a writer (and 3 in 4 will be a reader)
+
+  static_assert(ReaderToWriterRatio != 0, "Can't modulate very well otherwise, can I now?");
+  constexpr unsigned ReaderToWriterDivisor = ReaderToWriterRatio + 1;
 
   bool overlapping_read_found = false;
   for (unsigned attempt = 0; (attempt < OverlappingReadAttempts) && !overlapping_read_found; ++attempt) {
@@ -105,7 +109,7 @@ TEST(ReaderWriterLock, Works) {
     for (size_t i = 0; i < ThreadCount; ++i) {
       threads[i] = std::thread([i, &rwl, &results]() {
           assert(results[i].isDefaulted());
-          results[i] = Contention::Run(rwl, i % 2 == 0);
+          results[i] = Contention::Run(rwl, i % ReaderToWriterDivisor == 0);
         });
     }
 
@@ -140,6 +144,13 @@ TEST(ReaderWriterLock, Works) {
     }
   }
 
-  // We'd expect to find at least one overlapping read, given our number of OverlappingReadAttempts and ThreadCount
-  EXPECT_TRUE(overlapping_read_found) << "No overlapping read found after " << OverlappingReadAttempts << " attempts: reader threads seem to have been interleaved";
+  // We'd expect to find at least one overlapping read, given the values of our OverlappingReadAttempts and ThreadCount and ReaderToWriterRatio
+  constexpr auto Writers = ThreadCount / ReaderToWriterDivisor
+    + ((ThreadCount % ReaderToWriterDivisor == 0) ? 0 : 1); // Modulo bias favors writers
+  constexpr auto Readers = ThreadCount - Writers;
+
+  EXPECT_TRUE(overlapping_read_found) << "Reader/writer lock seems to interleave readers: no overlapping read found"
+    << " after " << OverlappingReadAttempts << " attempts, each of which"
+    << " used " << Readers << " reader threads"
+    << " and " << Writers << " writer threads";
 }
