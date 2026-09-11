@@ -45,7 +45,7 @@ public:
         catch (...) {
           // The destination accepts only a single terminal notification, and the error that we were
           // already reporting is the more informative one, so keep that one and log this one.
-          PEP_LOG("RxBeforeTermination", Severity::Critical) << "Error handler threw while reporting "
+          PEP_LOG("RxBeforeTermination", Severity::Critical) << "Error handler threw while handling "
             << GetExceptionMessage(exception) << ": " << GetExceptionMessage(std::current_exception());
         }
         destination.on_error(exception);
