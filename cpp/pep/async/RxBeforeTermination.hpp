@@ -13,8 +13,11 @@ namespace pep {
 
 namespace detail {
 
-/// The type of callback accepted by RxBeforeTermination<> (below).
-using RxBeforeTerminationHandler = std::function<void(std::optional<std::exception_ptr>)>;
+/// \brief The type of callback accepted by RxBeforeTermination<> (below).
+/// \remark \p error may be nullopt, meaning no error.
+///   There are places in the code where we call on_error with a nullptr exception_ptr,
+///   meaning the exception_ptr in the optional may be nullptr, but this still represents an error.
+using RxBeforeTerminationHandler = std::function<void(std::optional<std::exception_ptr> error)>;
 
 /// \brief Produces the subscribers that RxBeforeTerminationOperator (below) lifts into an observable.
 /// \tparam TItem The type of item produced by the observable.

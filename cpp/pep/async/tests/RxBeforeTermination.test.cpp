@@ -48,19 +48,22 @@ TEST(RxBeforeTermination, InvokesHandlerBeforeTerminalNotification) {
   boost::asio::io_context io_context;
 
   std::optional<std::optional<std::exception_ptr>> termination;
+  auto RxBeforeTerminationWasExecuted = [&termination] { return termination.has_value(); };
+  auto ObservableEmittedError = [&termination] { return termination->has_value(); };
+
   auto items = testutils::exhaust(io_context, rxcpp::observable<>::range(1, 3)
     .op(RxBeforeTermination([&termination](std::optional<std::exception_ptr> error) { termination = error; })));
 
   EXPECT_EQ(*items, (std::vector<int>{1, 2, 3}));
-  ASSERT_TRUE(termination.has_value());
-  EXPECT_FALSE(termination->has_value()); // Terminated without an error
+  ASSERT_TRUE(RxBeforeTerminationWasExecuted());
+  EXPECT_FALSE(ObservableEmittedError());
 
   termination.reset();
   EXPECT_THROW(testutils::exhaust(io_context, rxcpp::observable<>::error<int>(SourceError())
     .op(RxBeforeTermination([&termination](std::optional<std::exception_ptr> error) { termination = error; }))),
     SourceError);
-  ASSERT_TRUE(termination.has_value());
-  EXPECT_TRUE(termination->has_value());
+  ASSERT_TRUE(RxBeforeTerminationWasExecuted());
+  EXPECT_TRUE(ObservableEmittedError());
 }
 
 /// A handler that throws while the observable completes must be reported to the subscriber as an error,
