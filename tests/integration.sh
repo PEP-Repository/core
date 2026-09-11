@@ -113,7 +113,7 @@ usage() {
 
 check_option_has_value() {
   if [ ${#} -eq 1 ]; then
-    printGreen "WARN: Missing value for option $1"
+    printGreen "Missing value for option $1"
     usage
   fi
 }
@@ -179,7 +179,7 @@ do
     --inline-server-log) ;; # Legacy: this is the only option now
     --reuse-secrets-and-data) REUSE_SECRETS_AND_DATA=true ;;
     -?*)
-      printGreen "WARN: Unknown option: $1"
+      printGreen "Unknown option: $1"
       usage ;;
     *) break
   esac

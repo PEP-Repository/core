@@ -6,7 +6,7 @@ while [ $# -gt 0 ]; do
     --loglevel) shift
       loglevel="$1" ;;
     -?*)
-      >&2 echo "WARN: Unknown option: $1"
+      >&2 echo "Unknown option: $1"
       exit 2 ;;
     *) break
   esac
