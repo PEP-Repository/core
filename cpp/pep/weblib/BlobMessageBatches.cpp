@@ -1,0 +1,155 @@
+#include <pep/weblib/BlobMessageBatches.hpp>
+
+#include <pep/async/CreateObservable.hpp>
+#include <pep/async/RxSubsequently.hpp>
+#include <pep/utils/Log.hpp>
+#include <pep/weblib/EmscriptenValPtr.hpp>
+#include <pep/weblib/OnEmscriptenThread.hpp>
+
+#include <emscripten/bind.h>
+#include <emscripten/val.h>
+
+#include <boost/noncopyable.hpp>
+
+#include <algorithm>
+#include <atomic>
+#include <cstdint>
+#include <memory>
+#include <stdexcept>
+
+using namespace emscripten;
+using namespace pep;
+
+namespace {
+
+const std::string LogTag("BlobMessageBatches");
+
+/// Same types as \c pep::messaging::MessageSequence and \c pep::messaging::MessageBatches
+using MessageSequence = rxcpp::observable<std::shared_ptr<std::string>>;
+using MessageBatches = rxcpp::observable<MessageSequence>;
+
+/// Shared state for reading consecutive pages from a JS Blob.
+/// Reads happen on the main thread, pages are delivered on \c ioWorker.
+struct BlobReadState {
+  weblib::EmscriptenValPtr blob; ///< Only access on the main thread
+  std::uint64_t size; ///< Blob size in bytes, captured at creation
+  std::size_t pageSize; ///< The maximum number of bytes to read at a time
+  rxcpp::observe_on_one_worker ioWorker; ///< Worker on which pages are delivered
+  std::atomic<std::uint64_t> offset = 0; ///< Bytes read so far. Atomic because it is written on the main thread and read on the io worker.
+  rxcpp::observe_on_one_worker mainWorker = weblib::observe_on_emscripten_main_thread();
+};
+
+/// Reads a single page from a Blob on the main thread and delivers it to the inner subscriber on the io worker.
+class BlobPageReader : public boost::noncopyable {
+  std::shared_ptr<BlobReadState> state_;
+  rxcpp::subscriber<std::shared_ptr<std::string>> inner_;
+  val self_;
+
+  BlobPageReader(std::shared_ptr<BlobReadState> state, rxcpp::subscriber<std::shared_ptr<std::string>> inner)
+    : state_(std::move(state)), inner_(std::move(inner)) {}
+
+  void deleteSelf() {
+    self_.call<void>("delete");
+    PEP_LOG(LogTag, Severity::Verbose) << this << " deleted self";
+  }
+
+  void start() {
+    const auto offset = state_->offset.load();
+    const auto end = std::min(offset + state_->pageSize, state_->size);
+    PEP_LOG(LogTag, Severity::Verbose) << this << " reading Blob bytes [" << offset << ", " << end << ")";
+    val promise = state_->blob->call<val>("slice", static_cast<double>(offset), static_cast<double>(end)).call<val>("arrayBuffer");
+    promise.call<val>("then", self_["onPage"].call<val>("bind", self_), self_["onError"].call<val>("bind", self_));
+  }
+
+public:
+  static void ReadPage(std::shared_ptr<BlobReadState> state, rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
+    //TODO(workaround) "new" is a workaround to not copy, see https://github.com/emscripten-core/emscripten/issues/25412
+    val self(new BlobPageReader(std::move(state), std::move(inner)), allow_raw_pointers{});
+    auto* reader = self.as<BlobPageReader*>(allow_raw_pointers{});
+    reader->self_ = self;
+    reader->start();
+  }
+
+  void onPage(val arrayBuffer) {
+    try {
+      // TODO reduce copying here
+      auto page = std::make_shared<std::string>(arrayBuffer.as<std::string>());
+      if (page->empty()) {
+        throw std::runtime_error("Read no data from Blob (did the underlying file change?)");
+      }
+      state_->offset += page->size();
+      inner_.on_next(std::move(page));
+      inner_.on_completed();
+    } catch (...) {
+      inner_.on_error(std::current_exception());
+    }
+    deleteSelf();
+  }
+
+  void onError(val error) {
+    auto message = val::global("String")(std::move(error)).as<std::string>();
+    PEP_LOG(LogTag, Severity::Debug) << this << " Blob read failed: " << message;
+    inner_.on_error(std::make_exception_ptr(std::runtime_error("Failed to read from Blob: " + message)));
+    deleteSelf();
+  }
+};
+
+/// \brief Produces a \c MessageSequence containing a single page from the Blob.
+/// \remark Postpones reading data from the Blob until someone .subscribe()s to the \c MessageSequence
+MessageSequence MakeBlobBatch(std::shared_ptr<BlobReadState> state) {
+  return CreateObservable<std::shared_ptr<std::string>>(
+      [state](rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
+        // Subscription happens on the io worker, but the Blob may only be accessed on the main thread, proxy the page read there
+        rxcpp::observable<>::just(0)
+            .observe_on(state->mainWorker)
+            .subscribe([state, inner](int) {
+              BlobPageReader::ReadPage(state, inner);
+            });
+      })
+      // Deliver the page (and errors/completion) back on the io worker
+      .observe_on(state->ioWorker);
+}
+
+/// Counterpart of \c ProvideBatch in \c MessageSequence.cpp, reading from a
+/// Blob instead of an \c std::istream. Runs on the io worker.
+void ProvideBlobBatch(std::shared_ptr<BlobReadState> state, rxcpp::subscriber<MessageSequence> outer) {
+  if (state->offset < state->size) {
+    outer.on_next(MakeBlobBatch(state) // Provide a single page as a MessageSequence
+        .op(RxSubsequently([state, outer]() { // that must be exhausted before
+          ProvideBlobBatch(state, outer); // continuing with the next
+        })));
+  } else {
+    outer.on_completed();
+  }
+}
+
+}
+
+EMSCRIPTEN_BINDINGS(BlobMessageBatches) {
+  class_<BlobPageReader>("BlobPageReader")
+      .function("onPage", &BlobPageReader::onPage)
+      .function("onError", &BlobPageReader::onError)
+      ;
+}
+
+namespace pep::weblib {
+
+MessageBatches BlobToMessageBatches(val blob, std::size_t pageSize, rxcpp::observe_on_one_worker ioWorker) {
+  if (pageSize == 0) {
+    throw std::invalid_argument("pageSize must be nonzero");
+  }
+  // JS as a Number (double) holds integers exactly up to 2^53, so this is lossless for any Blob a browser can hand us.
+  const auto size = static_cast<std::uint64_t>(blob["size"].as<double>());
+  if (size == 0) {
+    // Empty Blob: a single empty batch, mirroring IStreamToMessageBatches on an empty stream
+    return rxcpp::observable<>::just(
+        rxcpp::observable<>::empty<std::shared_ptr<std::string>>().as_dynamic());
+  }
+  auto state = std::make_shared<BlobReadState>(std::move(blob), size, pageSize, std::move(ioWorker));
+  return CreateObservable<MessageSequence>(
+      [state](rxcpp::subscriber<MessageSequence> outer) {
+        ProvideBlobBatch(state, outer);
+      });
+}
+
+}

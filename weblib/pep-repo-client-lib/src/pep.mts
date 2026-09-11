@@ -87,6 +87,26 @@ export interface ParticipantPersonalia extends Omit<rawTypes.ParticipantPersonal
   dateOfBirth: Date;
 }
 
+export interface StoreQuery {
+  subject: string;
+  column: string;
+  data: string | Blob;
+  // When data is a File, fileExtension is derived from the name unless specified explicitly,
+  metadata?: Record<string, string> | undefined;
+}
+
+interface StoreQueryInternal {
+  subject: string;
+  column: string;
+  data: string | undefined;
+  blob: Blob | undefined;
+  metadata: Map<string, string>;
+}
+
+export interface StoreResult {
+  id: string;
+}
+
 export interface ListQuery {
   subjectGroups?: string[] | undefined;
   /** Loose subjects to request (any format that would be recognized by pepcli) */
@@ -357,6 +377,19 @@ export default class Pep {
       ...personalia,
       dateOfBirth: toDdMmYyyy(personalia.dateOfBirth)
     }, isTestParticipant));
+  }
+
+  store(query: StoreQuery): Promise<StoreResult> {
+    const common = {
+      subject: query.subject,
+      column: query.column,
+      metadata: new Map(Object.entries(query.metadata ?? {}))
+    };
+    const data = query.data;
+    const internalQuery: StoreQueryInternal = data instanceof Blob
+        ? {...common, data: undefined, blob: data}
+        : {...common, data, blob: undefined};
+    return this.#wrapExec(() => this.#client.store(internalQuery));
   }
 
   /**
