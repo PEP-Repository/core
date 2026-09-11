@@ -361,8 +361,14 @@ rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipa
           return std::nullopt;
         }
         entry.second.erase("StudyContexts");
+        if (entry.second.empty()) {
+          // Discard participants that have a "StudyContexts" but none of the requested items.
+          // See https://gitlab.pep.cs.ru.nl/pep/ppp-config/-/work_items/217#note_63288
+          return std::nullopt;
+        }
         return std::move(entry.second);
       })
       // Exclude (std::nullopt) entries for participants that didn't match the user's context
+      // or didn't have (data for) the requested item(s).
       .op(pep::RxFilterNullopt());
 }

@@ -39,12 +39,12 @@ if [[ "$INFRA_NAME" = "local" ]]; then
   PEP_MACOS_APP_CONFIG_VERSION="$PEP_MACOS_DEFAULT_VERSION"
   PEP_MACOS_APP_CONFIG_VERSION_LONG="$PEP_MACOS_DEFAULT_VERSION"
 else
-  CONFIG_ROOT_PATH="$($PEP_CORE_DIR/scripts/gitdir.sh get-project-root $SCRIPTPATH)"
+  CONFIG_ROOT_PATH="$("$PEP_CORE_DIR"/scripts/gitdir.sh get-project-root "$SCRIPTPATH")"
 
-  CONFIG_VERSION_MAJOR="$($PEP_CORE_DIR/scripts/parse-version.sh    get-major    "$CONFIG_ROOT_PATH/version.json" "${CI_PIPELINE_ID}" "${CI_JOB_ID}")"
-  CONFIG_VERSION_MINOR="$($PEP_CORE_DIR/scripts/parse-version.sh    get-minor    "$CONFIG_ROOT_PATH/version.json" "${CI_PIPELINE_ID}" "${CI_JOB_ID}")"
-  CONFIG_VERSION_BUILD="$($PEP_CORE_DIR/scripts/parse-version.sh    get-build    "$CONFIG_ROOT_PATH/version.json" "${CI_PIPELINE_ID}" "${CI_JOB_ID}")"
-  CONFIG_VERSION_REVISION="$($PEP_CORE_DIR/scripts/parse-version.sh get-revision "$CONFIG_ROOT_PATH/version.json" "${CI_PIPELINE_ID}" "${CI_JOB_ID}")"
+  CONFIG_VERSION_MAJOR="$("$PEP_CORE_DIR"/scripts/parse-version.sh    get-major    "$CONFIG_ROOT_PATH/version.json" "${CI_PIPELINE_ID}" "${CI_JOB_ID}")"
+  CONFIG_VERSION_MINOR="$("$PEP_CORE_DIR"/scripts/parse-version.sh    get-minor    "$CONFIG_ROOT_PATH/version.json" "${CI_PIPELINE_ID}" "${CI_JOB_ID}")"
+  CONFIG_VERSION_BUILD="$("$PEP_CORE_DIR"/scripts/parse-version.sh    get-build    "$CONFIG_ROOT_PATH/version.json" "${CI_PIPELINE_ID}" "${CI_JOB_ID}")"
+  CONFIG_VERSION_REVISION="$("$PEP_CORE_DIR"/scripts/parse-version.sh get-revision "$CONFIG_ROOT_PATH/version.json" "${CI_PIPELINE_ID}" "${CI_JOB_ID}")"
 
   PEP_MACOS_APP_CONFIG_VERSION="$CONFIG_VERSION_MAJOR.$CONFIG_VERSION_MINOR.$CONFIG_VERSION_BUILD"
   PEP_MACOS_APP_CONFIG_VERSION_LONG="$PEP_MACOS_APP_CONFIG_VERSION.$CONFIG_VERSION_REVISION"

@@ -41,6 +41,7 @@ add_library(${PROJECT_NAME}Utilslib
     LifeCycler.cpp LifeCycler.hpp
     LocalSettings.cpp LocalSettings.hpp
     Log.cpp Log.hpp
+    MapUtils.hpp
     Math.hpp
     MiscUtil.cpp MiscUtil.hpp
     Mod97.cpp Mod97.hpp
@@ -53,7 +54,7 @@ add_library(${PROJECT_NAME}Utilslib
     Platform.cpp Platform.hpp
     Progress.cpp Progress.hpp
     PropertyBasedContainer.hpp
-    PropertySerializer.hpp
+    PropertySerializer.cpp PropertySerializer.hpp
     Random.cpp Random.hpp
     Raw.cpp Raw.hpp
     SelfRegistering.hpp

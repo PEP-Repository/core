@@ -12,7 +12,7 @@ using SignedKeyComponentRequest = Signed<KeyComponentRequest>;
 
 struct KeyComponentResponse {
   CurveScalar pseudonymEncryptionKeyComponent;
-  CurveScalar dataEncryptionKeyComponent;
+  std::optional<CurveScalar> dataEncryptionKeyComponent;
 };
 
 }

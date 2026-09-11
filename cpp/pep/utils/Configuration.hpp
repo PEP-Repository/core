@@ -12,7 +12,11 @@ private:
 
   void setBasePath(const std::filesystem::path& base);
 
+  Configuration(const boost::property_tree::ptree& properties, DeserializationContext deserialization_context);
+
 public:
+  Configuration() = default;
+
   static Configuration FromFile(const std::filesystem::path& filepath);
 
   static Configuration FromStream(
@@ -24,6 +28,12 @@ public:
           const std::optional<std::filesystem::path>& basePath = std::nullopt);
 
   Configuration get_child(
+          const boost::property_tree::ptree::path_type& path) const;
+
+  std::unordered_map<std::string, Configuration> get_children_map(
+          const boost::property_tree::ptree::path_type& path) const;
+
+  std::vector<Configuration> get_children_vector(
           const boost::property_tree::ptree::path_type& path) const;
 
   std::optional<Configuration> get_child_optional(

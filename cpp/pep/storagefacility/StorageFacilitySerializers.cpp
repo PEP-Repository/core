@@ -4,6 +4,7 @@
 #include <pep/serialization/TimestampSerializer.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
+#include <pep/utils/MapUtils.hpp>
 
 namespace pep {
 

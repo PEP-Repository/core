@@ -182,6 +182,18 @@ TValue& DeserializeProperties(TValue& destination, const boost::property_tree::p
 }
 
 // PropertySerializer<> specializations
+
+/// Identity deserializer.
+///
+/// Allows deserializing compound structures like \c vector<ptree> with the help of specializations below.
+template <>
+class PropertySerializer<boost::property_tree::ptree> : public PropertySerializerByReference<boost::property_tree::ptree> {
+public:
+  void write(boost::property_tree::ptree& destination, const boost::property_tree::ptree& value) const override;
+
+  void read(boost::property_tree::ptree& destination, const boost::property_tree::ptree& source, const DeserializationContext&) const override;
+};
+
 template <typename TValue>
 class PropertySerializer<std::vector<TValue>> : public PropertySerializerByReference<std::vector<TValue>> {
 private:
@@ -317,19 +329,9 @@ public:
 template <>
 class PropertySerializer<std::filesystem::path> : public PropertySerializerByValue<std::filesystem::path> {
 public:
-  void write(boost::property_tree::ptree& destination, const std::filesystem::path& value) const override {
-    SerializeProperties(destination, value.string());
-  }
+  void write(boost::property_tree::ptree& destination, const std::filesystem::path& value) const override;
 
-  std::filesystem::path read(const boost::property_tree::ptree& source, const DeserializationContext& context) const override {
-    std::filesystem::path result = DeserializeProperties<std::string>(source, context);
-    if (!result.empty() && result.is_relative()) {
-      if (auto base = context.get_value<TaggedBaseDirectory>()) {
-        result = *base / result;
-      }
-    }
-    return result;
-  }
+  std::filesystem::path read(const boost::property_tree::ptree& source, const DeserializationContext& context) const override;
 };
 
 }

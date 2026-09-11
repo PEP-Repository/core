@@ -3,7 +3,7 @@
 
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxIndexed.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
@@ -637,7 +637,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
         PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " sending transcryptor request entry batch " << batchNum << " containing " << batch.size() << " entries";
         return messaging::MakeTailSegment(TranscryptorRequestEntries{std::move(batch)});
       })
-      .op(RxBeforeCompletion([requestNumber = ctx->requestNumber, numEntries] {
+      .op(RxSubsequently([requestNumber = ctx->requestNumber, numEntries] {
         PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " sent " << numEntries << " transcryptor request entries";
       }));
 

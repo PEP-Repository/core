@@ -45,9 +45,14 @@ public:
   }
 
   void schedule(const rxcpp::schedulers::schedulable& scbl) const override {
-    PEP_LOG(LogTag, Severity::Verbose) << "schedule on io_context " << &ioContext_;
-    post(ioContext_, [scbl] {
-      PEP_LOG(LogTag, Severity::Verbose) << "running on io_context";
+    PEP_LOG(LogTag, Severity::Verbose) << "schedule on io_context " << &ioContext_
+      << " from thread " << std::this_thread::get_id()
+      << (ioContext_.get_executor().running_in_this_thread() ? " (queuing for current thread)" : "");
+    if (ioContext_.stopped()) {
+      PEP_LOG(LogTag, Severity::Debug) << "Scheduling on stopped io_context" << &ioContext_ << ", work won't run unless it's restarted";
+    }
+    post(ioContext_, [scbl, ioContextPtr = &ioContext_] {
+      PEP_LOG(LogTag, Severity::Verbose) << "running on io_context " << ioContextPtr << " on thread " << std::this_thread::get_id();
       if (scbl.is_subscribed()) {
         // allow recursion
         rxcpp::schedulers::recursion r(true);

@@ -114,7 +114,7 @@ fi
 # Check if the output file already exists
 if [ -f "$OUTPUT_FILE" ]; then
     # Prompt the user for overwrite confirmation
-    read -p "File '$OUTPUT_FILE' exists. Do you want to overwrite it? (y/n): " answer
+    read -r -p "File '$OUTPUT_FILE' exists. Do you want to overwrite it? (y/n): " answer
 
     # Convert the answer to lowercase for consistency
     answer=$(echo "$answer" | tr '[:upper:]' '[:lower:]')

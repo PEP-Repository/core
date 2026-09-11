@@ -2,8 +2,11 @@
 
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <algorithm>
+
+using namespace std::literals;
 
 namespace {
 
@@ -23,19 +26,19 @@ private:
   }
 
 public:
-  StorageFacilityTestEnvironment(int argc, char* argv[]) //NOLINT(modernize-avoid-c-arrays)
-    : pep::SelfRegisteringTestEnvironment<StorageFacilityTestEnvironment>(argc, argv) {
-    auto end = argv + argc;
-    if (std::find(argv, end, std::string("--launch-s3proxy")) != end) {
-      s3proxySh_ = std::filesystem::path(argv[0]).parent_path() / "s3proxy.sh";
+  StorageFacilityTestEnvironment(std::span<const char* const> args)
+    : pep::SelfRegisteringTestEnvironment<StorageFacilityTestEnvironment>(args) {
+    if (std::ranges::find(args, "--launch-s3proxy"sv) != args.end()) {
+      s3proxySh_ = std::filesystem::path(args.front()).parent_path() / "s3proxy.sh";
     }
   }
 
   void SetUp() override {
     if (invokeS3proxySh("start")) {
       // Give containers time to initialize. A single second is too short:
-      // nginx then often produces "502 Bad Gateway" on my machine
-      std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+      // nginx then often produces "502 Bad Gateway" on my machine.
+      // We start three containers (two S3 hosts and a TLS terminator), so allow a bit more time.
+      std::this_thread::sleep_for(std::chrono::milliseconds(3000));
     }
   }
 

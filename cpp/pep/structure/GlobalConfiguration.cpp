@@ -3,6 +3,8 @@
 
 #include <boost/algorithm/string/predicate.hpp>
 
+#include <algorithm>
+
 namespace pep {
 
 UserPseudonymFormat::UserPseudonymFormat(const std::string &prefix, size_t length)
@@ -218,10 +220,10 @@ GlobalConfiguration::GlobalConfiguration(
 std::vector<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonyms(const std::string& studyContext, const std::optional<uint32_t>& visitNumber) const {
   std::vector<ShortPseudonymDefinition> result;
   auto inserter = std::back_inserter(result);
-  std::copy_if(shortPseudonyms_.cbegin(), shortPseudonyms_.cend(), inserter, [studyContext, visitNumber](const ShortPseudonymDefinition& candidate) {return candidate.getStudyContext() == studyContext && candidate.getColumn().getVisitNumber() == visitNumber; });
+  std::ranges::copy_if(shortPseudonyms_, inserter, [studyContext, visitNumber](const ShortPseudonymDefinition& candidate) {return boost::iequals(candidate.getStudyContext(), studyContext) && candidate.getColumn().getVisitNumber() == visitNumber; });
 
   for (const auto& entry : additionalStickers_) {
-    if (entry.studyContext == studyContext && entry.visit == visitNumber) {
+    if (boost::iequals(entry.studyContext, studyContext) && entry.visit == visitNumber) {
       auto defined = *getShortPseudonym(entry.column);
       result.emplace_back(entry.column, defined.getPrefix(), defined.getLength(), defined.getCastor(),
         entry.stickers, entry.suppressAdditionalStickers, defined.getConfiguredDescription(),

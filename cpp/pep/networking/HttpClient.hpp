@@ -73,6 +73,7 @@ public:
   void start();
 
   /// \brief Stops the HttpClient, preventing further requests from being sent.
+  /// \note Calling this multiple times has no effect.
   void shutdown();
 
   /// \brief Creates a request that can be sent later using the "sendRequest" method.

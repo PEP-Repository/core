@@ -47,6 +47,7 @@ public:
   const std::optional<networking::Client::ReconnectParameters>& reconnectParameters() const noexcept { return reconnectParameters_; }
 
   std::string describe() const;
+  std::string describeConnection(const Connection& connection) const;
 
   rxcpp::observable<Connection::Attempt::Result> start();
   rxcpp::observable<FakeVoid> shutdown();

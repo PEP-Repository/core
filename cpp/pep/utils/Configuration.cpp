@@ -1,9 +1,18 @@
 #include <pep/utils/Configuration.hpp>
 
+#include <ranges>
+
 #include <boost/property_tree/json_parser.hpp>
+#include <pep/utils/CollectionUtils.hpp>
+
+using namespace std::ranges;
 
 namespace pep {
-
+Configuration::Configuration(
+  const boost::property_tree::ptree &properties,
+  DeserializationContext deserialization_context)
+  : properties_(properties),
+    deserializationContext_(std::move(deserialization_context)) {}
 
 Configuration Configuration::FromFile(const std::filesystem::path& filepath) {
   Configuration result;
@@ -55,6 +64,24 @@ Configuration Configuration::get_child(const boost::property_tree::ptree::path_t
   result.properties_ = this->properties_.get_child(path);
   result.deserializationContext_ = this->deserializationContext_;
   return result;
+}
+
+std::unordered_map<std::string, Configuration> Configuration::get_children_map(const boost::property_tree::ptree::path_type& path) const {
+  return RangeToCollection<std::unordered_map<std::string, Configuration>>(
+    DeserializeProperties<std::unordered_map<std::string, boost::property_tree::ptree>>(properties_, path, deserializationContext_)
+    | views::transform([&](const auto& entry) {
+      return std::pair{entry.first, Configuration(entry.second, deserializationContext_)};
+    })
+  );
+}
+
+std::vector<Configuration> Configuration::get_children_vector(const boost::property_tree::ptree::path_type& path) const {
+  return RangeToVector(
+    DeserializeProperties<std::vector<boost::property_tree::ptree>>(properties_, path, deserializationContext_)
+    | views::transform([&](const boost::property_tree::ptree& tree) {
+      return Configuration(tree, deserializationContext_);
+    })
+  );
 }
 
 std::optional<Configuration> Configuration::get_child_optional(const boost::property_tree::ptree::path_type& path) const {

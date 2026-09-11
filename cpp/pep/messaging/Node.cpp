@@ -168,6 +168,16 @@ std::string Node::describe() const {
   return binary_->describe();
 }
 
+std::string Node::describeConnection(const Connection& connection) const {
+  if (connection.binary_ == nullptr) {
+    return describe() + " (disconnected)";
+  }
+  if (binary_ == nullptr) {
+    throw std::runtime_error("Can't retrieve description from discarded networking::Node");
+  }
+  return binary_->describeConnection(*connection.binary_);
+}
+
 rxcpp::observable<Connection::Attempt::Result> Node::start() {
   assert(subscriber_ == std::nullopt);
   assert(binary_ != nullptr);

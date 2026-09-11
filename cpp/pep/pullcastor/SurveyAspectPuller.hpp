@@ -9,7 +9,7 @@ namespace pep {
 namespace castor {
 
 /// \brief Pulls Castor survey ("SURVEY") data for a single Castor study.
-class SurveyAspectPuller : public TypedStudyAspectPuller<SurveyAspectPuller, CastorStudyType::Survey>, private SharedConstructor<SurveyAspectPuller> {
+class SurveyAspectPuller : public StudyAspectPuller, private SharedConstructor<SurveyAspectPuller> {
   friend class StudyAspectPuller;
   friend class SharedConstructor<SurveyAspectPuller>;
 

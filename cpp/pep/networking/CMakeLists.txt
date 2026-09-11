@@ -18,7 +18,7 @@ add_library(${PROJECT_NAME}Networkinglib
     HttpMethod.cpp HttpMethod.hpp
     InstanceBound.hpp
     Node.cpp Node.hpp
-    Protocol.hpp
+    Protocol.cpp Protocol.hpp
     Server.cpp Server.hpp
     SendHttpRequest.cpp SendHttpRequest.hpp
     SocketReadBuffer.cpp SocketReadBuffer.hpp

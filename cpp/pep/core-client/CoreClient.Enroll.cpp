@@ -56,7 +56,9 @@ rxcpp::observable<EnrolledPartyKeys> CoreClient::completeEnrollment(std::shared_
 
       // Compute final keys
       this->privateKeyPseudonyms_ = ctx->pseudonymEncryptionKeyComponentAM * ctx->pseudonymEncryptionKeyComponentTS;
-      this->privateKeyData_ = ctx->dataEncryptionKeyComponentAM * ctx->dataEncryptionKeyComponentTS;
+      this->privateKeyData_ = ctx->dataEncryptionKeyComponentAM && ctx->dataEncryptionKeyComponentTS
+        ? std::optional{*ctx->dataEncryptionKeyComponentAM * *ctx->dataEncryptionKeyComponentTS}
+        : std::nullopt;
 
       // Store identity
       this->setSigningIdentity(ctx->identity);
@@ -73,7 +75,7 @@ rxcpp::observable<EnrolledPartyKeys> CoreClient::completeEnrollment(std::shared_
 
       EnrolledPartyKeys result{
         .pseudonymKey = privateKeyPseudonyms_,
-        .dataKey = privateKeyData_ != CurveScalar{} ? std::optional{privateKeyData_} : std::nullopt,
+        .dataKey = privateKeyData_,
         .signingIdentity = *ctx->identity,
       };
 

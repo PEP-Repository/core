@@ -76,4 +76,4 @@ COPY ./docker/zsh.zshrc /root/.zshrc
 WORKDIR /data
 ENV PEP_LOGON_LIMITED=1
 
-CMD ["bash", "/app/run.sh"]
+CMD ["/bin/bash", "/app/run.sh"]
