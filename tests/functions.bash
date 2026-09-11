@@ -209,7 +209,7 @@ execute() {
 }
 
 start_servers_locally() {
-  "$BUILD_DIR/cpp/pep/servers/$BUILD_MODE/pepServers" 2> >(sed -u "s/^/[pepServers]: /" >&2) > >(sed -u "s/^/[pepServers]: /") &
+  "$BUILD_DIR/cpp/pep/servers/$BUILD_MODE/pepServers" --loglevel "$SERVERS_LOGLEVEL" 2> >(sed -u "s/^/[pepServers]: /" >&2) > >(sed -u "s/^/[pepServers]: /") &
   PEP_SERVERS_PID=$!
 }
 
@@ -230,13 +230,13 @@ pepcli() {
   if [ "$LOCAL" = true ]; then
     (
     cd "$DEST_DIR"
-    trace --use-parent-location timeout -v --kill-after=10s "$PEPCLI_TIMEOUT" "$PEPCLI_COMMAND" --loglevel warning "--client-working-directory" "$CONFIG_DIR/client" "--oauth-token-secret" "$CONFIG_DIR/keyserver/OAuthTokenSecret.json" "$@"
+    trace --use-parent-location timeout -v --kill-after=10s "$PEPCLI_TIMEOUT" "$PEPCLI_COMMAND" --loglevel "$CLIENT_LOGLEVEL" "--client-working-directory" "$CONFIG_DIR/client" "--oauth-token-secret" "$CONFIG_DIR/keyserver/OAuthTokenSecret.json" "$@"
     )
   else
     # Add --interactive to enable piping data via stdin
     # Without the --foreground flag it hangs (on some systems), because of the --interactive flag of docker
     # shellcheck disable=SC2086
-    trace --use-parent-location timeout --foreground -v --kill-after=10s "$PEPCLI_TIMEOUT" docker exec --interactive -w "/data/client" pepservertest "$PEPCLI_COMMAND" --loglevel warning "--client-working-directory" "$CONFIG_DIR/client" "--oauth-token-secret" "$CONFIG_DIR/keyserver/OAuthTokenSecret.json" "$@"
+    trace --use-parent-location timeout --foreground -v --kill-after=10s "$PEPCLI_TIMEOUT" docker exec --interactive -w "/data/client" pepservertest "$PEPCLI_COMMAND" --loglevel "$CLIENT_LOGLEVEL" "--client-working-directory" "$CONFIG_DIR/client" "--oauth-token-secret" "$CONFIG_DIR/keyserver/OAuthTokenSecret.json" "$@"
   fi
 }
 

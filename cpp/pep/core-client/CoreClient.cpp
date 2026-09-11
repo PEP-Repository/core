@@ -99,7 +99,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
       .reduce(
         std::make_shared<std::unordered_map<std::string, PolymorphicPseudonym>>(),
         [this](std::shared_ptr<std::unordered_map<std::string, PolymorphicPseudonym>> all, const LocalPseudonyms& entry) {
-          auto decrypted = entry.accessGroup->decrypt(privateKeyPseudonyms_);
+          auto decrypted = decryptLocalPseudonym(entry.accessGroup.value());
           all->emplace(decrypted.text(), entry.polymorphic); // Don't assert that it's emplaced; we may be processing idsAndOrPps that refer to the same participant
           return all;
         }
@@ -179,7 +179,7 @@ PolymorphicPseudonym CoreClient::generateParticipantPolymorphicPseudonym(const s
 }
 
 LocalPseudonym CoreClient::decryptLocalPseudonym(const EncryptedLocalPseudonym& encrypted) const {
-  return encrypted.decrypt(privateKeyPseudonyms_);
+  return encrypted.decrypt(privateKeyPseudonyms());
 }
 
 std::shared_ptr<CoreClient> CoreClient::OpenClient(const Configuration& config,
@@ -197,10 +197,6 @@ void CoreClient::Builder::initialize(
   assert(io_context != nullptr && "Caller must provide an I/O context");
 
   try {
-    // See #1797: the keys file must be (read from and) written to the cwd
-    // because the config's directory may be read-only (e.g. on Windows installations).
-    auto keysFile = std::filesystem::current_path() / config.get<std::string>("EnrolledPartyKeysFile");
-
     this->setCaCertFilepath(config.get<std::filesystem::path>("CaCertificateFile"));
     this->setSystemPublicKeys(config.get<SystemPublicKeys>("SystemPublicKeys"));
 
@@ -219,10 +215,18 @@ void CoreClient::Builder::initialize(
     }
 
     if (persistKeysFile) {
+      // See #1797: the keys file must be (read from and) written to the cwd
+      // because the config's directory may be read-only (e.g. on Windows installations).
+      // However, fall back to keys file at config dir, if it exists.
+      // This is useful for the RegistrationServer for an integration test on base data with pepServers, for example.
+      const auto workingDirKeysFile = std::filesystem::current_path() / config.get<std::string>("EnrolledPartyKeysFile");
+      const auto configDirKeysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
+      auto keysFile = !exists(workingDirKeysFile) && exists(configDirKeysFile) ? configDirKeysFile : workingDirKeysFile;
+
       // Ensure that CoreClient writes future enrollment data to file...
       this->setKeysFilePath(keysFile);
       // ...and try to load previously persisted keys from it
-      if (std::filesystem::exists(keysFile)) {
+      if (exists(keysFile)) {
         Configuration keysConfig = Configuration::FromFile(keysFile);
         try {
           EnrolledPartyKeys enrolledPartyKeys = keysConfig.get<EnrolledPartyKeys>("");
@@ -264,6 +268,14 @@ bool CoreClient::AddServerProxy(ServerProxies& destination, const ServerTraits& 
   }
 
   return false;
+}
+
+const ElgamalPrivateKey& CoreClient::privateKeyPseudonyms() const {
+  return privateKeyPseudonyms_ ? *privateKeyPseudonyms_ : throw std::runtime_error("Private pseudonym key not set");
+}
+
+const ElgamalPrivateKey& CoreClient::privateKeyData() const {
+  return privateKeyData_ ? *privateKeyData_ : throw std::runtime_error("Private data key not set");
 }
 
 std::shared_ptr<const StorageFacilityProxy> CoreClient::getStorageFacilityProxy(bool require) const {

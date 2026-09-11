@@ -248,8 +248,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
 
   std::shared_ptr<X509RootCertificates> rootCAs_;
 
-  ElgamalPrivateKey privateKeyData_;
-  ElgamalPrivateKey privateKeyPseudonyms_;
+  std::optional<ElgamalPrivateKey> privateKeyData_, privateKeyPseudonyms_;
   const SystemPublicKeys systemPublicKeys_;
   std::shared_ptr<GlobalConfiguration> globalConf_;
 
@@ -302,7 +301,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
       return *this;
     }
 
-    const ElgamalPrivateKey& getPrivateKeyData() const {
+    const std::optional<ElgamalPrivateKey>& getPrivateKeyData() const {
       return privateKeyData_;
     }
     Builder& setPrivateKeyData(const ElgamalPrivateKey& privateKeyData) {
@@ -310,7 +309,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
       return *this;
     }
 
-    const ElgamalPrivateKey& getPrivateKeyPseudonyms() const {
+    const std::optional<ElgamalPrivateKey>& getPrivateKeyPseudonyms() const {
       return privateKeyPseudonyms_;
     }
     Builder& setPrivateKeyPseudonyms(const ElgamalPrivateKey& privateKeyPseudonyms) {
@@ -366,8 +365,7 @@ class CoreClient : protected MessageSigner, boost::noncopyable {
     std::optional<std::filesystem::path> keysFilePath_;
     std::filesystem::path caCertFilepath_;
     std::shared_ptr<const X509Identity> signingIdentity_;
-    ElgamalPrivateKey privateKeyData_;
-    ElgamalPrivateKey privateKeyPseudonyms_;
+    std::optional<ElgamalPrivateKey> privateKeyData_, privateKeyPseudonyms_;
     SystemPublicKeys systemPublicKeys_;
     EndPoint accessManagerEndPoint_;
     EndPoint storageFacilityEndPoint_;
@@ -526,8 +524,8 @@ protected:
 
   struct EnrollmentContext {
     std::shared_ptr<const X509Identity> identity;
-    CurveScalar pseudonymEncryptionKeyComponentAM, dataEncryptionKeyComponentAM;
-    CurveScalar pseudonymEncryptionKeyComponentTS, dataEncryptionKeyComponentTS;
+    CurveScalar pseudonymEncryptionKeyComponentAM, pseudonymEncryptionKeyComponentTS;
+    std::optional<CurveScalar> dataEncryptionKeyComponentAM, dataEncryptionKeyComponentTS;
     SignedKeyComponentRequest keyComponentRequest;
 
     explicit EnrollmentContext(std::shared_ptr<const X509Identity> enroller);
@@ -545,6 +543,9 @@ protected:
   }
 
   static bool AddServerProxy(ServerProxies& destination, const ServerTraits& traits, std::shared_ptr<const ServerProxy> proxy);
+
+  const ElgamalPrivateKey& privateKeyPseudonyms() const;
+  const ElgamalPrivateKey& privateKeyData() const;
 
 public:
   virtual ~CoreClient() noexcept = default;

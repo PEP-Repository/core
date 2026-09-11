@@ -105,13 +105,15 @@ usage() {
   echo " --no-docker                  - Run tests without using Docker at all (i.e. without s3proxy). Only possible in local mode; some unit tests will be skipped."
   echo " --publish-ports              - Publish Docker container ports to host, implied with --tests-to-run weblib."
   echo " --reuse-secrets-and-data     - Reuse the secrets and data already present in --generated-data-dir. Configuration is still copied over."
+  echo " --client-loglevel <loglevel> - Use this loglevel for the client (e.g. pepcli) (default 'warning')."
+  echo " --servers-loglevel <loglevel> - Use this loglevel for the servers (default 'info')."
   echo " -h|--help|-?                 - Display this help"
   exit 2
 }
 
 check_option_has_value() {
   if [ ${#} -eq 1 ]; then
-    printGreen "WARN: Missing value for option $1"
+    printGreen "Missing value for option $1"
     usage
   fi
 }
@@ -120,6 +122,8 @@ LOCAL=false
 USE_DOCKER=true
 PUBLISH_PORTS=false
 REUSE_SECRETS_AND_DATA=false
+CLIENT_LOGLEVEL=warning
+SERVERS_LOGLEVEL=info
 while [ ${#} -gt 0 ];
 do
   case $1 in
@@ -158,6 +162,16 @@ do
         shift
         TESTS_TO_SKIP="$1"
       ;;
+    --client-loglevel)
+        check_option_has_value "${@}"
+        shift
+        CLIENT_LOGLEVEL="$1"
+      ;;
+    --servers-loglevel)
+        check_option_has_value "${@}"
+        shift
+        SERVERS_LOGLEVEL="$1"
+      ;;
     -h|--help|-\?) usage ;;
     --local) LOCAL=true ;;
     --no-docker) USE_DOCKER=false ;;
@@ -165,7 +179,7 @@ do
     --inline-server-log) ;; # Legacy: this is the only option now
     --reuse-secrets-and-data) REUSE_SECRETS_AND_DATA=true ;;
     -?*)
-      printGreen "WARN: Unknown option: $1"
+      printGreen "Unknown option: $1"
       usage ;;
     *) break
   esac
@@ -369,7 +383,7 @@ if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
     trace cd "$PKI_DIR_ON_HOST"
     trace "$CORE_DIR/pki/pki.sh"
   else
-    trace docker run --pull=always --rm -v "$PKI_DIR_ON_HOST:$PKI_DIR" -w="$PKI_DIR" "$IMAGE" bash /app/pki.sh all /app/ca_ext.cnf
+    trace docker run --pull=always --rm -v "$PKI_DIR_ON_HOST:$PKI_DIR" -w="$PKI_DIR" "$IMAGE" /app/pki.sh all /app/ca_ext.cnf
   fi
 fi
 
@@ -406,23 +420,25 @@ if [ "$LOCAL" = true ]; then
   trace "$CORE_DIR/docker/init_keys.sh" "$REUSE_SECRETS_AND_DATA" "$DATA_DIR" "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE"
   if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
     trace "$CORE_DIR/docker/config_servers.sh" \
-      "$DATA_DIR" \
-      "$PKI_DIR_ON_HOST" \
-      "$BUILD_DIR/cpp/pep/storagefacility/$BUILD_MODE/pepStorageFacility" \
-      "$BUILD_DIR/cpp/pep/keyserver/$BUILD_MODE/pepKeyServer" \
-      "$BUILD_DIR/cpp/pep/accessmanager/$BUILD_MODE/pepAccessManager" \
-      "$BUILD_DIR/cpp/pep/transcryptor/$BUILD_MODE/pepTranscryptor" \
-      "$BUILD_DIR/cpp/pep/registrationserver/$BUILD_MODE/pepRegistrationServer" \
-      "$BUILD_DIR/cpp/pep/authserver/$BUILD_MODE/pepAuthserver" \
-      "$BUILD_DIR/cpp/pep/cli/$BUILD_MODE/pepcli" \
-      "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepEnrollment"
+      --data-dir "$DATA_DIR" \
+      --pki-dir "$PKI_DIR_ON_HOST" \
+      --storage-facility-bin "$BUILD_DIR/cpp/pep/storagefacility/$BUILD_MODE/pepStorageFacility" \
+      --key-server-bin "$BUILD_DIR/cpp/pep/keyserver/$BUILD_MODE/pepKeyServer" \
+      --access-manager-bin "$BUILD_DIR/cpp/pep/accessmanager/$BUILD_MODE/pepAccessManager" \
+      --transcryptor-bin "$BUILD_DIR/cpp/pep/transcryptor/$BUILD_MODE/pepTranscryptor" \
+      --registration-server-bin "$BUILD_DIR/cpp/pep/registrationserver/$BUILD_MODE/pepRegistrationServer" \
+      --authserver-bin "$BUILD_DIR/cpp/pep/authserver/$BUILD_MODE/pepAuthserver" \
+      --pepcli-bin "$BUILD_DIR/cpp/pep/cli/$BUILD_MODE/pepcli" \
+      --pep-enrollment-bin "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepEnrollment" \
+      --loglevel "$SERVERS_LOGLEVEL"
   fi
   printGreen "\$ $BUILD_DIR/cpp/pep/servers/$BUILD_MODE/pepServers &"
   trace start_servers_locally
 else
-  trace docker run --rm --net pep-network -v "$DATA_DIR:/data" "$IMAGE" bash /app/init_keys.sh "$REUSE_SECRETS_AND_DATA"
+  trace docker run --rm --net pep-network -v "$DATA_DIR:/data" "$IMAGE" /app/init_keys.sh "$REUSE_SECRETS_AND_DATA"
   if [ "$REUSE_SECRETS_AND_DATA" = false ]; then
-    trace docker run --rm --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" "$IMAGE" bash /app/config_servers.sh
+    trace docker run --rm --net pep-network -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" "$IMAGE" /app/config_servers.sh \
+      --loglevel "$SERVERS_LOGLEVEL"
   fi
 
   publish_ports_flags=()
@@ -435,12 +451,13 @@ else
     fi
   fi
 
-  trace docker run --net pep-network "${publish_ports_flags[@]}" -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" -v "$TESTS_DIR/test_input:/test_input" --name pepservertest -d "$IMAGE"
+  trace docker run --net pep-network "${publish_ports_flags[@]}" -v "$DATA_DIR:/data" -v "$PKI_DIR_ON_HOST:$PKI_DIR" -v "$TESTS_DIR/test_input:/test_input" --name pepservertest -d "$IMAGE" \
+    /app/run.sh --loglevel "$SERVERS_LOGLEVEL"
   docker logs --follow pepservertest 2> >(sed -u "s/^/[pep-services]: /" >&2) > >(sed -u "s/^/[pep-services]: /") &
 fi
 
 
-execute client "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepEnrollment" ClientConfig.json 1 "ewogICAgInN1YiI6ICJhc3Nlc3NvciIsCiAgICAiZ3JvdXAiOiAiUmVzZWFyY2ggQXNzZXNzb3IiLAogICAgImlhdCI6ICIxNTQyODk1ODg3IiwKICAgICJleHAiOiAiMjA3MzY1NDEyMiIKfQo.cNoT3VMtEZkrHGLOayqj3gwaM7R2BYv24FJpshecK4s" ClientKeys.json
+execute client "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepEnrollment" --loglevel "$SERVERS_LOGLEVEL" ClientConfig.json 1 "ewogICAgInN1YiI6ICJhc3Nlc3NvciIsCiAgICAiZ3JvdXAiOiAiUmVzZWFyY2ggQXNzZXNzb3IiLAogICAgImlhdCI6ICIxNTQyODk1ODg3IiwKICAgICJleHAiOiAiMjA3MzY1NDEyMiIKfQo.cNoT3VMtEZkrHGLOayqj3gwaM7R2BYv24FJpshecK4s" ClientKeys.json
 execute client cat ClientKeys.json
 
 printGreen "########################################################## Test stage #########################################################"
@@ -483,8 +500,8 @@ fi
 ####################
 
 if should_run_test client; then
-  execute client "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepClientTest" ClientConfig.json 1 POM-1234
-  execute client "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepClientTest" ClientConfig.json 2 POM-1234
+  execute client "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepClientTest" --loglevel "$CLIENT_LOGLEVEL" ClientConfig.json 1 POM-1234
+  execute client "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepClientTest" --loglevel "$CLIENT_LOGLEVEL" ClientConfig.json 2 POM-1234
 fi
 
 ####################
@@ -508,7 +525,7 @@ execute . mkdir -p "$DEST_DIR"
 ####################
 
 if should_run_test dump-shadow; then
-  execute . "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepDumpShadowAdministration" dump ShadowAdministration.key registrationserver/ShadowShortPseudonyms.sqlite
+  execute . "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepDumpShadowAdministration" --loglevel "$CLIENT_LOGLEVEL" dump ShadowAdministration.key registrationserver/ShadowShortPseudonyms.sqlite
 fi
 
 ####################

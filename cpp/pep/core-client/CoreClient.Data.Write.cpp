@@ -215,7 +215,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     .flat_map([this, ctx, requestedPps](IndexedTicket2 indexedTicket) {
     auto signedTicket = std::move(indexedTicket).getTicket();
     ctx->request->ticket = *signedTicket;
-    ctx->pseudonyms = std::make_shared<TicketPseudonyms>(*signedTicket, privateKeyPseudonyms_);
+    ctx->pseudonyms = std::make_shared<TicketPseudonyms>(*signedTicket, privateKeyPseudonyms());
 
     auto accessSubjectCount = signedTicket->openWithoutCheckingSignature().accessSubjects.size();
     if (accessSubjectCount < requestedPps) {
@@ -443,11 +443,8 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
           includeAccessGroupPseudonyms = p.accessGroup.has_value();
         }
         if (*includeAccessGroupPseudonyms) {
-          agPseuds.push_back(
-            std::make_shared<LocalPseudonym>(
-              p.accessGroup->decrypt(privateKeyPseudonyms_)
-              )
-          );
+          agPseuds.push_back(std::make_shared<LocalPseudonym>(
+            decryptLocalPseudonym(*p.accessGroup)));
         }
       }
 

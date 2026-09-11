@@ -9,6 +9,8 @@
 #include <thread>
 #include <vector>
 
+#include <boost/core/demangle.hpp>
+
 namespace pep {
 
 class Servers {
@@ -28,6 +30,7 @@ private:
   void startServer(std::filesystem::path rootConfig, const char* configurationFile) {
     try {
       auto path = std::filesystem::absolute(rootConfig / configurationFile);
+      PEP_LOG("Servers", Severity::Info) << "Starting " << boost::core::demangle(typeid(TServer).name()) << " from " << path;
       auto config = Configuration::FromFile(path);
       auto server = instances_.emplace_back(MakeSharedCopy(NetworkedServer::Make<TServer>(config)));
       auto thread = std::make_shared<std::thread>(&RunServer, server);

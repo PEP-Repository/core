@@ -5,7 +5,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <pep/application/Application.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
@@ -164,7 +164,7 @@ protected:
             return getEntries.map([root](const StructureMetadataEntry& entry) -> FakeVoid {
               root->add(RawPtreePath(entry.subjectKey.subject) / RawPtreePath(entry.subjectKey.key.toString()), entry.value);
               return {};
-            }).op(RxBeforeCompletion([root] {
+            }).op(RxSubsequently([root] {
               write_json(std::cout, *root);
             }));
           }
@@ -173,7 +173,7 @@ protected:
             return getEntries.map([root](StructureMetadataEntry entry) -> FakeVoid {
               (*root)[std::move(entry.subjectKey.subject)][std::move(entry.subjectKey.key)] = std::move(entry.value);
               return {};
-            }).op(RxBeforeCompletion([root] {
+            }).op(RxSubsequently([root] {
               for (const auto& [subject, meta] : *root) {
                 std::cout << "==== " << subject << " ====\n";
                 for (const auto& [key, value] : meta) {

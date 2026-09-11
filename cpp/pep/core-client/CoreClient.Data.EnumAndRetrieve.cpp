@@ -7,7 +7,7 @@
 #include <pep/storagefacility/DataPayloadPage.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/async/CreateObservable.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/utils/Shared.hpp>
 
@@ -120,7 +120,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
         .flat_map([this, ctx](const IndexedTicket2& indexedTicket) {
           ctx->signedTicket = indexedTicket.getTicket();
           ctx->ticket = MakeSharedCopy(ctx->signedTicket->openWithoutCheckingSignature());
-          ctx->pseudonyms = std::make_unique<TicketPseudonyms>(*ctx->signedTicket, privateKeyPseudonyms_);
+          ctx->pseudonyms = std::make_unique<TicketPseudonyms>(*ctx->signedTicket, privateKeyPseudonyms());
           DataEnumerationRequest2 enumRequest;
           enumRequest.ticket = *ctx->signedTicket;
 
@@ -246,7 +246,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                 .flat_map([](
                   rxcpp::observable<FakeVoid> job) { return job; }) // Retrieve AES keys and encrypted pages *concurrently* (because of *flat*_map)
                 .as_dynamic() // Reduce compiler memory usage
-                .op(RxBeforeCompletion(
+                .op(RxSubsequently(
                   [ctx, enumResults]() { // When both AES key retrieval and encrypted page retrieval have been completed...
                     assert(enumResults->size() == ctx->keys.size());
 

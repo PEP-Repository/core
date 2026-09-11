@@ -46,7 +46,8 @@ TcpBasedProtocol::Socket::Socket(const TcpBasedProtocol& protocol, boost::asio::
 
 std::string TcpBasedProtocol::Socket::remoteAddress() const {
   try {
-    return this->basicSocket().remote_endpoint().address().to_string();
+    auto remote = this->basicSocket().remote_endpoint();
+    return remote.address().to_string() + ":" + std::to_string(remote.port());
   }
   catch (const boost::system::system_error& ex) { // remote_endpoint may throw, e.g. when not connected
     using namespace std::literals;
