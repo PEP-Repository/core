@@ -1268,7 +1268,6 @@ test-pep-services-image:
       $UNIT_TESTS_CASTOR
   image:
     name: $IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST
-    entrypoint: [""]
   needs:
     - job: docker-images
       artifacts: false
