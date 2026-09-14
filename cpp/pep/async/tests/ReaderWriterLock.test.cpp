@@ -92,54 +92,45 @@ Contention Contention::Run(pep::ReaderWriterLock& rwl, bool write) {
 }
 
 TEST(ReaderWriterLock, Works) {
-  constexpr size_t ThreadCount = 200;
-  constexpr unsigned OverlappingReadAttempts = 5;
+  constexpr size_t NOF_THREADS = 2000;
 
-  bool overlapping_read_found = false;
-  for (unsigned attempt = 0; (attempt < OverlappingReadAttempts) && !overlapping_read_found; ++attempt) {
-    std::array<std::thread, ThreadCount> threads;
-    std::array<Contention, ThreadCount> results;
-    pep::ReaderWriterLock rwl;
+  std::array<std::thread, NOF_THREADS> threads;
+  std::array<Contention, NOF_THREADS> results;
+  pep::ReaderWriterLock rwl;
 
-    // Run "ThreadCount" threads, each of which stores (assigns) the corresponding "Contention" instance in the "results" array
-    for (size_t i = 0; i < ThreadCount; ++i) {
-      threads[i] = std::thread([i, &rwl, &results]() {
-          assert(results[i].isDefaulted());
-          results[i] = Contention::Run(rwl, i % 2 == 0);
-        });
-    }
+  for (size_t i = 0; i < NOF_THREADS; ++i) {
+    threads[i] = std::thread([i, &rwl, &results]() {
+        assert(results[i].isDefaulted());
+        results[i] = Contention::Run(rwl, i % 2 == 0);
+      });
+  }
 
-    // Wait for the threads to be finished
-    for (auto& thread : threads) {
-      thread.join();
-    }
+  for (auto& thread : threads) {
+    thread.join();
+  }
 
-    // Check overlaps in results
-    for (size_t i = 0; i < ThreadCount; ++i) {
-      ASSERT_FALSE(results[i].isDefaulted()) << "Thread " << i << " did not assign a result value";
-
-      // Find (first) overlapping result in [i + 1, ThreadCount)
-      std::optional<size_t> iOverlapping;
-      for (size_t j = i + 1; j < ThreadCount && !iOverlapping; ++j) {
-        if (results[i].ran().overlapsWith(results[j].ran())) {
-          iOverlapping = j;
-        }
+  bool has_overlapping_read = false;
+  for (size_t i = 0; i < NOF_THREADS; ++i) {
+    ASSERT_FALSE(results[i].isDefaulted()) << "Thread " << i << " did not assign a result value";
+    if (results[i].wrote()) {
+      for (size_t j = i + 1U; j < NOF_THREADS; ++j) {
+        EXPECT_FALSE(results[i].ran().overlapsWith(results[j].ran())) << "Writer thread " << i << " overlapped with " << (results[j].wrote() ? "writer" : "reader") << " thread " << j;
       }
-
-      // Deal with overlapping results if they were found
-      if (iOverlapping) {
-        if (results[i].wrote() || results[*iOverlapping].wrote()) {
-          auto threadType = [&results](size_t i) { return results[i].wrote() ? "writer" : "reader"; };
-          FAIL() << "Overlap between " << threadType(i) << " thread " << i
-            << " and " << threadType(*iOverlapping) << "thread " << *iOverlapping;
-        }
-        else {
-          overlapping_read_found = true;
+    }
+    else {
+      for (size_t j = i + 1U; j < NOF_THREADS; ++j) {
+        auto overlap = results[i].ran().overlapsWith(results[j].ran());
+        if (overlap) {
+          if (results[j].wrote()) {
+            FAIL() << "Reader thread " << i << " overlapped with writer thread " << j;
+          }
+          else {
+            has_overlapping_read = true;
+          }
         }
       }
     }
   }
 
-  // We'd expect to find at least one overlapping read, given our number of OverlappingReadAttempts and ThreadCount
-  EXPECT_TRUE(overlapping_read_found) << "No overlapping read found after " << OverlappingReadAttempts << " attempts: reader threads seem to have been interleaved";
+  EXPECT_TRUE(has_overlapping_read) << "No overlapping read detected: reader threads seem to have been interleaved"; // TODO: retry a coupla times
 }
