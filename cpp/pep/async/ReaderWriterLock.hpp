@@ -1,7 +1,6 @@
 #pragma once
 
 #include <boost/noncopyable.hpp>
-#include <mutex>
 #include <shared_mutex>
 
 namespace pep {
