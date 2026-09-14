@@ -147,7 +147,7 @@ public:
       co_await onIoThread()
           .flat_map([](const std::shared_ptr<Weblib>& self) {
             return self->client_->shutdown();
-          });
+          }).op(RxInstead(FakeVoid{}) /*make nonempty*/);
     } catch (...) {
       clientShutdownError = std::current_exception();
     }
@@ -158,7 +158,7 @@ public:
 
     workGuard_.reset();
     thread_.request_stop(); // Stops io_context
-    co_await ioContextStopped_.get_observable();
+    co_await ioContextStopped_.get_observable().op(RxInstead(FakeVoid{}) /*make nonempty*/);
     // Thread has (almost) exited at this point
     thread_.join();
     PEP_LOG(LogTag, Severity::Debug) << "shut down";
