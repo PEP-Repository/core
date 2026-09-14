@@ -1157,8 +1157,12 @@ messaging::MessageBatches StorageFacility::handlePurgeCancelRequest(std::shared_
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
 
-  auto result = sqlite_->getPurgeCycle(certified.message.id);
-  sqlite_->deletePurgeCycle(certified.message.id);
+  auto result = sqlite_->synchronize([this, id = certified.message.id]() {
+      auto result = sqlite_->getPurgeCycle(id);
+      sqlite_->deletePurgeCycle(id);
+      return result;
+    });
+
   return messaging::BatchSingleMessage(std::move(result));
 }
 
@@ -1169,21 +1173,26 @@ messaging::MessageBatches StorageFacility::handlePurgeConfirmationRequest(std::s
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({ UserGroup::RepositoryManager }, accessGroup);
 
-  auto result = sqlite_->getPurgeCycle(certified.message.id);
-  if (result.confirmed) {
-    throw Error("Purge cycle has already been confirmed");
-  }
+  auto result = sqlite_->synchronize([this, id = certified.message.id]() {
+      auto result = sqlite_->getPurgeCycle(id);
+      if (result.confirmed) {
+        throw Error("Purge cycle has already been confirmed");
+      }
 
-  // (Overly) defensive programming: each purge cycle must have a unique 'confirmed' timestamp to ensure history consistency
-  auto existing = sqlite_->getPurgeCycles();
-  auto timestamp = TimeNow();
-  while (ContainsWhere(existing, [timestamp](const PurgeCycle& cycle) { return cycle.confirmed == timestamp; })) {
-    timestamp = TimeNow();
-  }
+      // (Overly) defensive programming: each purge cycle must have a unique 'confirmed' timestamp to ensure history consistency
+      auto existing = sqlite_->getPurgeCycles();
+      auto timestamp = TimeNow();
+      while (ContainsWhere(existing, [timestamp](const PurgeCycle& cycle) { return cycle.confirmed == timestamp; })) {
+        timestamp = TimeNow();
+      }
 
-  result.confirmed = timestamp;
-  sqlite_->updatePurgeCycle(result);
-  fileStore_->applyPurgeCycle(result);
+      result.confirmed = timestamp;
+      sqlite_->updatePurgeCycle(result);
+      fileStore_->applyPurgeCycle(result);
+
+      return result;
+    });
+
   return messaging::BatchSingleMessage(result);
 }
 
@@ -1228,38 +1237,39 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
     throw Error("Unsupported purge cycle name \"" + definition.name() + '"');
   }
 
-  auto id = sqlite_->createPurgeCycle(PurgeCycle{
-    .id = 0,
-    .definition = std::move(definition),
-    .announced = TimeNow(),
-    .confirmed{},
-    .completed{}
-    });
+  return sqlite_->synchronize([this, definition]() {
+      auto id = sqlite_->createPurgeCycle(PurgeCycle{
+        .id = 0,
+        .definition = std::move(definition),
+        .announced = TimeNow(),
+        .confirmed{},
+        .completed{}
+        });
 
-  try {
-    for (const FileStore::Participant* participant : fileStore_->participants()) {
-      for (const FileStore::Cell* cell : participant->cells()) {
-        const FileStore::CellVersions& versions = cell->versions();
-        auto end = versions.end();
-        if (!versions.empty()) { // Don't purge the last (current) cell version
-          --end;
+      // TODO: use a transaction instead of try...catch { sqlite_->deletePurgeCycle }
+      try {
+        for (const FileStore::Participant* participant : fileStore_->participants()) {
+          for (const FileStore::Cell* cell : participant->cells()) {
+            const FileStore::CellVersions& versions = cell->versions();
+            auto end = versions.end();
+            if (!versions.empty()) { // Don't purge the last (current) cell version
+              --end;
+            }
+            for (auto i = versions.begin(); i != end; ++i) {
+              sqlite_->addToPurgeCycle(id, participant->name(), cell->columnName(), i->validFrom);
+            }
+          }
         }
-        for (auto i = versions.begin(); i != end; ++i) {
-          sqlite_->addToPurgeCycle(id, participant->name(), cell->columnName(), i->validFrom);
-        }
+      } catch (const storagefacility::SqliteStorage::ConstraintViolation&) {
+        sqlite_->deletePurgeCycle(id);
+        throw Error("Storage Facility entries may only be included in a single purge cycle");
+      } catch (...) {
+        sqlite_->deletePurgeCycle(id);
+        throw;
       }
-    }
-  }
-  catch (const storagefacility::SqliteStorage::ConstraintViolation&) {
-    sqlite_->deletePurgeCycle(id);
-    throw Error("Storage Facility entries may only be included in a single purge cycle");
-  }
-  catch (...) {
-    sqlite_->deletePurgeCycle(id);
-    throw;
-  }
 
-  return sqlite_->getPurgeCycle(id);
+      return sqlite_->getPurgeCycle(id);
+    });
 }
 
 std::optional<std::filesystem::path> StorageFacility::getStoragePath() {

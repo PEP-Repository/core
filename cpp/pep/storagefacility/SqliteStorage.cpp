@@ -160,97 +160,111 @@ SqliteStorage::SqliteStorage(std::filesystem::path file)
 SqliteStorage::~SqliteStorage() noexcept = default;
 
 std::vector<PurgeCycle> SqliteStorage::getPurgeCycles() const {
-  return RangeToVector(
-    RangeToVector(implementor_->raw.iterate<PurgeCycleRecord>(sqlite_orm::order_by(&PurgeCycleRecord::id).asc()))
-    | std::ranges::views::transform(&RecordToPurgeCycle)
-  );
+  return this->synchronize([this]() {
+      return RangeToVector(
+        RangeToVector(implementor_->raw.iterate<PurgeCycleRecord>(sqlite_orm::order_by(&PurgeCycleRecord::id).asc()))
+        | std::ranges::views::transform(&RecordToPurgeCycle)
+      );
+    });
 }
 
 PurgeCycle SqliteStorage::getPurgeCycle(PurgeCycle::Id id) const {
-  return RecordToPurgeCycle(implementor_->raw.get<PurgeCycleRecord>(id));
+  return this->synchronize([this, id]() {
+      return RecordToPurgeCycle(implementor_->raw.get<PurgeCycleRecord>(id));
+    });
 }
 
 void SqliteStorage::updatePurgeCycle(const PurgeCycle& cycle) {
-  implementor_->raw.update(PurgeCycleToRecord(cycle));
+  return this->synchronize([this, &cycle]() {
+      implementor_->raw.update(PurgeCycleToRecord(cycle));
+    });
 }
 
 PurgeCycle::Id SqliteStorage::createPurgeCycle(const PurgeCycle& cycle) {
-  auto id = implementor_->raw.insert(PurgeCycleToRecord(cycle));
+  return this->synchronize([this, &cycle]() {
+      auto id = implementor_->raw.insert(PurgeCycleToRecord(cycle));
 
-  PurgeCycle::Id result;
-  try {
-    result = boost::numeric_cast<PurgeCycle::Id>(id);
-  }
-  catch (...) {
-    this->deletePurgeCycleRecord(id);
-    throw std::runtime_error("ID overflow in PurgeCycle table");
-  }
-  return result;
+      PurgeCycle::Id result;
+      try {
+        result = boost::numeric_cast<PurgeCycle::Id>(id);
+      } catch (...) {
+        this->deletePurgeCycleRecord(id);
+        throw std::runtime_error("ID overflow in PurgeCycle table");
+      }
+      return result;
+    });
 }
 
 void SqliteStorage::deletePurgeCycle(PurgeCycle::Id id) {
-  using namespace sqlite_orm;
-  implementor_->raw.remove_all<PurgeEntryRecord>(where(c(&PurgeEntryRecord::cycle) == id));
-  this->deletePurgeCycleRecord(id);
+  return this->synchronize([this, id]() {
+      using namespace sqlite_orm;
+      implementor_->raw.remove_all<PurgeEntryRecord>(where(c(&PurgeEntryRecord::cycle) == id));
+      this->deletePurgeCycleRecord(id);
+    });
 }
 
 void SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const std::string& row, const std::string& column, Timestamp timestamp) {
-  try {
-    implementor_->raw.insert(PurgeEntryRecord{
-      .cycle = id,
-      .row = this->ensureRowId(row),
-      .column = this->ensureColumnId(column),
-      .timestamp = TicksSinceEpoch<std::chrono::milliseconds>(timestamp),
-      });
-  }
-  catch (const std::system_error& error) {
-    auto condition = error.code().default_error_condition();
-    if (condition.category() == sqlite_orm::get_sqlite_error_category() && condition.value() == SQLITE_CONSTRAINT) {
-      throw ConstraintViolation();
-    }
-    throw;
-  }
+  return this->synchronize([this, id, &row, &column, timestamp]() {
+      try {
+        implementor_->raw.insert(PurgeEntryRecord{
+          .cycle = id,
+          .row = this->ensureRowId(row),
+          .column = this->ensureColumnId(column),
+          .timestamp = TicksSinceEpoch<std::chrono::milliseconds>(timestamp),
+          });
+      } catch (const std::system_error& error) {
+        auto condition = error.code().default_error_condition();
+        if (condition.category() == sqlite_orm::get_sqlite_error_category() && condition.value() == SQLITE_CONSTRAINT) {
+          throw ConstraintViolation();
+        }
+        throw;
+      }
+    });
 }
 
 std::set<Timestamp> SqliteStorage::getPurgedTimestamps(PurgeCycle::Id id, const std::string& row, const std::string& column) const {
-  std::set<Timestamp> result;
+  return this->synchronize([this, id, &row, &column]() {
+      std::set<Timestamp> result;
 
-  using namespace sqlite_orm;
-  auto rowId = this->getRowId(row);
-  auto columnId = this->getColumnId(column);
+      using namespace sqlite_orm;
+      auto rowId = this->getRowId(row);
+      auto columnId = this->getColumnId(column);
 
-  if (rowId.has_value() && columnId.has_value()) {
-    for (auto millis : implementor_->raw.select(&PurgeEntryRecord::timestamp,
-      where(c(&PurgeEntryRecord::row) == *rowId
-        && c(&PurgeEntryRecord::column) == *columnId),
-      order_by(&PurgeEntryRecord::timestamp))) {
-      [[maybe_unused]] auto emplaced = result.emplace(database::TimestampFromUnixMillis(millis)).second;
-      assert(emplaced);
-    }
-  }
+      if (rowId.has_value() && columnId.has_value()) {
+        for (auto millis : implementor_->raw.select(&PurgeEntryRecord::timestamp,
+          where(c(&PurgeEntryRecord::row) == *rowId
+            && c(&PurgeEntryRecord::column) == *columnId),
+          order_by(&PurgeEntryRecord::timestamp))) {
+          [[maybe_unused]] auto emplaced = result.emplace(database::TimestampFromUnixMillis(millis)).second;
+          assert(emplaced);
+        }
+      }
 
-  return result;
+      return result;
+    });
 }
 
 std::optional<Timestamp> SqliteStorage::pendingPurgeTimestamp(const std::string& row, const std::string& column, Timestamp timestamp) const {
-  auto rowId = this->getRowId(row);
-  auto columnId = this->getColumnId(column);
-  if (!rowId.has_value() || !columnId.has_value()) {
-    return std::nullopt;
-  }
+  return this->synchronize([this, &row, &column, timestamp]() -> std::optional<Timestamp> {
+      auto rowId = this->getRowId(row);
+      auto columnId = this->getColumnId(column);
+      if (!rowId.has_value() || !columnId.has_value()) {
+        return std::nullopt;
+      }
 
-  using namespace sqlite_orm;
-  auto millis = database::TimestampToUnixMillis(timestamp);
+      using namespace sqlite_orm;
+      auto millis = database::TimestampToUnixMillis(timestamp);
 
-  auto confirmed = implementor_->raw.select(&PurgeCycleRecord::confirmed,
-    inner_join<PurgeEntryRecord>(on(c(&PurgeEntryRecord::cycle) == c(&PurgeCycleRecord::id))),
-    where(c(&PurgeEntryRecord::row) == rowId && c(&PurgeEntryRecord::column) == columnId && c(&PurgeEntryRecord::timestamp) == millis
-      && c(&PurgeCycleRecord::confirmed) != 0 && c(&PurgeCycleRecord::completed) == 0));
-  if (confirmed.empty()) {
-    return std::nullopt;
-  }
-  assert(confirmed.size() == 1U);
-  return database::TimestampFromUnixMillis(confirmed.front());
+      auto confirmed = implementor_->raw.select(&PurgeCycleRecord::confirmed,
+        inner_join<PurgeEntryRecord>(on(c(&PurgeEntryRecord::cycle) == c(&PurgeCycleRecord::id))),
+        where(c(&PurgeEntryRecord::row) == rowId && c(&PurgeEntryRecord::column) == columnId && c(&PurgeEntryRecord::timestamp) == millis
+          && c(&PurgeCycleRecord::confirmed) != 0 && c(&PurgeCycleRecord::completed) == 0));
+      if (confirmed.empty()) {
+        return std::nullopt;
+      }
+      assert(confirmed.size() == 1U);
+      return database::TimestampFromUnixMillis(confirmed.front());
+    });
 }
 
 }

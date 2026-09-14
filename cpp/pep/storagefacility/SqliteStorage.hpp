@@ -2,6 +2,7 @@
 
 #include <pep/storagefacility/PurgeCycle.hpp>
 #include <filesystem>
+#include <mutex>
 #include <set>
 
 namespace pep::storagefacility {
@@ -10,6 +11,16 @@ class SqliteStorage final {
 private:
   struct Implementor;
   std::unique_ptr<Implementor> implementor_;
+
+  // This class needs to be thread safe because it's accessed from Storage Facility's (primary) thread as well as from
+  // FileStore's purge persistence thread. We'd have liked to use a reader/writer lock instead of a mutex, but it's
+  // unclear which of Implementor::raw's sqlite_orm operations would be safe for concurrent (reader) access. And
+  // sqlite_orm's maintainer advises "using your own mutex before accessing a database": see
+  // https://github.com/fnc12/sqlite_orm/issues/163#issuecomment-405028656
+  // We use a recursive_mutex (as opposed to a non-recursive one) so that there won't be trouble when
+  // - methods of this class call each other, and/or
+  // - an external caller synchronizes over multiple method calls (each of which will also synchronize).
+  mutable std::recursive_mutex mutex_;
 
   std::optional<int64_t> getRowId(const std::string& name) const;
   std::optional<int64_t> getColumnId(const std::string& name) const;
@@ -45,6 +56,18 @@ public:
   /// @param timestamp the cell timestamp ("version")
   /// @return the timestamp of the cycle in which the specified cell version is/was/will-be purged, or std::nullopt if the cell version isn't included in a purge cycle
   std::optional<Timestamp> pendingPurgeTimestamp(const std::string& row, const std::string& column, Timestamp timestamp) const;
+
+  /// @brief Executes a function while providing (exclusive) access to this instance
+  /// @tparam TFunction The type of function to execute
+  /// @tparam ...TArgs Types of parameters that will be passed to the function
+  /// @param function The function to execute
+  /// @param ...args Parameters to pass to the function
+  /// @return The function's return value
+  template <typename TFunction, typename... TArgs>
+  auto synchronize(TFunction&& function, TArgs... args) const {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    return function(std::forward<TArgs>(args)...);
+  }
 };
 
 class SqliteStorage::ConstraintViolation : public std::runtime_error {

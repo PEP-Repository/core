@@ -101,7 +101,7 @@ void FileStore::persistPurgeCycle(const PurgeCycle& cycle) {
 }
 
 void FileStore::persistPendingPurgesAsync() {
-  auto cycles = sqlite_.getPurgeCycles(); // TODO: synchronize
+  auto cycles = sqlite_.getPurgeCycles();
   std::sort(cycles.begin(), cycles.end(), [](const PurgeCycle& lhs, const PurgeCycle& rhs) {
       return lhs.confirmed < rhs.confirmed;
     });
