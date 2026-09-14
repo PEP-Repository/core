@@ -3,7 +3,6 @@
 #include <pep/utils/Timestamp.hpp>
 #include <gtest/gtest.h>
 #include <array>
-#include <thread>
 
 namespace {
 
