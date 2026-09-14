@@ -43,26 +43,26 @@ public:
 
   void addToPurgeCycle(PurgeCycle::Id id, const std::string& row, const std::string& column, Timestamp timestamp);
 
-  /// @brief Returns timestamps ("versions") for the specified cell that are included in the specified purge cycle
-  /// @param id the purge cycle ID
-  /// @param row (the text representation of) the row's local pseudonym for Storage Facility
-  /// @param column the column name
-  /// @return timestamps ("versions") for the specified cell that are included in the specified purge cycle
+  /// \brief Returns timestamps ("versions") for the specified cell that are included in the specified purge cycle
+  /// \param id the purge cycle ID
+  /// \param row (the text representation of) the row's local pseudonym for Storage Facility
+  /// \param column the column name
+  /// \return timestamps ("versions") for the specified cell that are included in the specified purge cycle
   std::set<Timestamp> getPurgedTimestamps(PurgeCycle::Id id, const std::string& row, const std::string& column) const;
 
-  /// @brief Returns the ("confirmed") timestamp of the purge cycle that includes the specified cell version
-  /// @param row (the text representation of) the row's local pseudonym for Storage Facility
-  /// @param column the column name
-  /// @param timestamp the cell timestamp ("version")
-  /// @return the timestamp of the cycle in which the specified cell version is/was/will-be purged, or std::nullopt if the cell version isn't included in a purge cycle
+  /// \brief Returns the ("confirmed") timestamp of the purge cycle that includes the specified cell version
+  /// \param row (the text representation of) the row's local pseudonym for Storage Facility
+  /// \param column the column name
+  /// \param timestamp the cell timestamp ("version")
+  /// \return the timestamp of the cycle in which the specified cell version is/was/will-be purged, or std::nullopt if the cell version isn't included in a purge cycle
   std::optional<Timestamp> pendingPurgeTimestamp(const std::string& row, const std::string& column, Timestamp timestamp) const;
 
-  /// @brief Executes a function while providing (exclusive) access to this instance
-  /// @tparam TFunction The type of function to execute
-  /// @tparam TArgs Types of parameters that will be passed to the function
-  /// @param function The function to execute
-  /// @param args Parameters to pass to the function
-  /// @return The function's return value
+  /// \brief Executes a function while providing (exclusive) access to this instance
+  /// \tparam TFunction The type of function to execute
+  /// \tparam TArgs Types of parameters that will be passed to the function
+  /// \param function The function to execute
+  /// \param args Parameters to pass to the function
+  /// \return The function's return value
   template <typename TFunction, typename... TArgs>
   auto synchronize(TFunction&& function, TArgs... args) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
