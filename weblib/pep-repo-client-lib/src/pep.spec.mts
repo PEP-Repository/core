@@ -77,8 +77,8 @@ describe('Pep', () => {
       console.debug('Authenticated');
     });
   });
-  after(() => {
-    pep?.delete();
+  after(async () => {
+    await pep?.delete();
     mainExited = true;
   });
 
