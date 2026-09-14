@@ -34,9 +34,9 @@ public:
 };
 
 
-/// @brief Base class for (process-wide) test environments that should be set up for a test executable. ALSO SEE THE WARNING associated with this class.
-/// @tparam TDerived The (derived) class that implements the ::testing::Environment.
-/// @warning To ensure that the (derived) class is found by the test executable, its definition should be sourced **directly** into the test executable,
+/// \brief Base class for (process-wide) test environments that should be set up for a test executable. ALSO SEE THE WARNING associated with this class.
+/// \tparam TDerived The (derived) class that implements the ::testing::Environment.
+/// \warning To ensure that the (derived) class is found by the test executable, its definition should be sourced **directly** into the test executable,
 ///          i.e. linking the executable to a library that defines the type won't work. See https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/2980#note_63709.
 template <typename TDerived>
 class SelfRegisteringTestEnvironment : public pep::SelfRegistering<TDerived, RegisteredTestEnvironment>, public RegisteredTestEnvironment {
