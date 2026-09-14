@@ -59,9 +59,9 @@ public:
 
   /// @brief Executes a function while providing (exclusive) access to this instance
   /// @tparam TFunction The type of function to execute
-  /// @tparam ...TArgs Types of parameters that will be passed to the function
+  /// @tparam TArgs Types of parameters that will be passed to the function
   /// @param function The function to execute
-  /// @param ...args Parameters to pass to the function
+  /// @param args Parameters to pass to the function
   /// @return The function's return value
   template <typename TFunction, typename... TArgs>
   auto synchronize(TFunction&& function, TArgs... args) const {
