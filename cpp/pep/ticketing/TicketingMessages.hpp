@@ -62,11 +62,6 @@ public:
   Ticket2 openForLogging(const X509RootCertificates& rootCAs, std::string& serialized) const;
 };
 
-class SignedTicket2ValidityPeriodError : public Error {
-public:
-  using Error::Error;
-};
-
 struct ClientSideTicketRequest2 {
   std::vector<std::string> modes;
   std::vector<std::string> participantGroups;
