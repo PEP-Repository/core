@@ -74,7 +74,7 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
     );
   }
   catch (const SignatureValidityPeriodError& sig) {
-    throw SignedTicket2ValidityPeriodError(sig.description_);
+    throw SignedTicket2ValidityPeriodError("Outside ticket validity period: " + sig.description_);
   }
 
   auto ticket = Serialization::FromString<Ticket2>(data_);
