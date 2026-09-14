@@ -5,6 +5,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <rxcpp/operators/rx-filter.hpp>
+#include <ranges>
 
 namespace pep {
 namespace castor {
