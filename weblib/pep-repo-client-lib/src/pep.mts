@@ -295,7 +295,8 @@ export default class Pep {
     this.#client = null!; // Prevent usage
     await this.#wrapExec(async () => {
       try {
-        // Stop event loop asynchronously first: synchronously stopping it in `client.delete()` may deadlock
+        // Stop event loop asynchronously first: synchronously stopping it in `client.delete()` may deadlock.
+        // Consume WASM exception here: before runtime shutdown.
         await this.runHandleWasmException(() => client.shutdown());
       } finally {
         client.delete();

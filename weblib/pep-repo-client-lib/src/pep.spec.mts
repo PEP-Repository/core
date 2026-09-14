@@ -11,8 +11,8 @@ const isNode = !!globalThis.process;
 let mainExited = false;
 if (isNode) {
   process.on('beforeExit', () => {
-    if (!mainExited) {
-      process.exitCode ??= 13;
+    if (!mainExited && !process.exitCode) {
+      process.exitCode = 13;
       console.error('\nUnexpected exit: Either Node.js was terminated or ' +
           'it prevented a hang due to a Promise that can never be fulfilled');
     }
