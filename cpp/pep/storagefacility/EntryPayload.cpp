@@ -2,6 +2,7 @@
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/utils/Raw.hpp>
 #include <pep/utils/Shared.hpp>
+#include <pep/serialization/Error.hpp>
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/utils/MapUtils.hpp>
 
