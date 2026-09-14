@@ -66,9 +66,9 @@ public:
 
 std::chrono::milliseconds Contention::RandomDuration() {
   static_assert(CHAR_BIT == 8);
-  unsigned char randomized; // [0, 256)
+  unsigned char randomized;
   pep::RandomBytes({ &randomized, 1 });
-  unsigned int msec = randomized % 4U; // [0, 64)
+  unsigned int msec = randomized % 4U; // [0, 64) msec
   return std::chrono::milliseconds(msec);
 }
 
