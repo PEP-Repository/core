@@ -11,6 +11,7 @@ if [[ -n "$CI_PROJECT_DIR" ]]; then
     PEP_MACOS_ROOT_DIR="$CI_PROJECT_DIR"
 else
     echo "GitLab environment variable CI_PROJECT_DIR not set, using directory relative to script."
+    # portability-disable=readlink-f # This script only ever runs on macOS CI, where readlink -f exists
     PEP_MACOS_ROOT_DIR=$(readlink -f "$(dirname -- "$0")/..")
 fi
 

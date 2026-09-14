@@ -1,7 +1,7 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/application/Application.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxGroupToVectors.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
@@ -12,6 +12,7 @@
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 using namespace pep::cli;
 
@@ -53,7 +54,7 @@ private:
       *sid = id;
       return pep::FakeVoid();
     })
-    .op(pep::RxBeforeCompletion(
+    .op(pep::RxSubsequently(
       [sid]() {
         if (*sid == "") {
           throw std::runtime_error(

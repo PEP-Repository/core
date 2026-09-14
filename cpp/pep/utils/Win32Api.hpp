@@ -139,6 +139,8 @@ public:
   size_t getMaxItems() const noexcept { return maxItems_; }
 };
 
+std::optional<std::string> GetRegistryString(HKEY key, PCSTR valueName);
+
 }
 
 #endif // _WIN32

@@ -62,12 +62,6 @@ public:
   Ticket2 openForLogging(const X509RootCertificates& rootCAs, std::string& serialized) const;
 };
 
-class SignedTicket2ValidityPeriodError : public DeserializableDerivedError<SignedTicket2ValidityPeriodError> {
-public:
-  explicit inline SignedTicket2ValidityPeriodError(const std::string& description)
-    : DeserializableDerivedError<SignedTicket2ValidityPeriodError>(description) { }
-};
-
 struct ClientSideTicketRequest2 {
   std::vector<std::string> modes;
   std::vector<std::string> participantGroups;

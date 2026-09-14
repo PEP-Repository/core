@@ -2,7 +2,7 @@
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/MiscUtil.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
@@ -290,7 +290,7 @@ protected:
         return pep::FakeVoid();
       })
       .as_dynamic() // Reduce compiler memory usage
-      .op(pep::RxBeforeCompletion(
+      .op(pep::RxSubsequently(
       [ctx, client]() {
         ctx->collectSubjects();
         ctx->printRemainingPseudsToReport(client);

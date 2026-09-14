@@ -1,6 +1,5 @@
 #pragma once
 
-#include <pep/serialization/Error.hpp>
 #include <pep/serialization/ProtocolBufferedSerializer.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 

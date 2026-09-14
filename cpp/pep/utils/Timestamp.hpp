@@ -38,7 +38,7 @@ template<DerivedFromSpecialization<std::chrono::duration> TToDuration, typename 
 
 /// Converts to an XML (ISO 8601) datetime string, with a resolution in seconds.
 /// This uses the UTC form with separators between the components.
-/// @example "2024-05-06T08:52:21Z"
+/// \example "2024-05-06T08:52:21Z"
 [[nodiscard]] std::string TimestampToXmlDateTime(Timestamp);
 
 /// Representation of a timezone that is used as parameter in some functions of the Timestamp class

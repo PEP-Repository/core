@@ -332,7 +332,7 @@ if [ $GEN_PDF -eq 1 ]; then
     console_update "Line [output.pdf] not found in book.toml."
     if grep -Fxq "[output]" "book.toml"; then
       console_update "Found [output] in book.toml, adding [output.pdf] directly after."
-      sed -i -e "/\[output\]/a\\" -e "\[output.pdf\]" book.toml
+      sed -i.bak -e "/\[output\]/a\\" -e "\[output.pdf\]" book.toml && rm -f book.toml.bak
     else
       console_alert "WARNING: No [output.pdf] found in book.toml. Just adding [output.pdf] to the end of the file, please check if correct."
       echo "[output.pdf]" >> "book.toml"

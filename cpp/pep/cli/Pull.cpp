@@ -19,7 +19,7 @@
 #include <pep/structuredoutput/Csv.hpp>
 #include <pep/structuredoutput/FormatFlags.hpp>
 #include <pep/structuredoutput/Json.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/utils/File.hpp>
 
@@ -450,7 +450,7 @@ protected:
           auto directory = createDownloadDirectory(ctx, client, globalConfig, ctx->applyFileExtensions);
           ctx->progress->advance("Downloading");
           return directory->pull(client, ctx->options, ctx->progress->push())
-          .op(pep::RxBeforeCompletion([ctx, globalConfig]() {
+          .op(pep::RxSubsequently([ctx, globalConfig]() {
             cleanUp(ctx);
             ExecuteExports(ctx->exportFormats, {.globalConfig = globalConfig, .input_directory = ctx->outputDirectory, .force = ctx->force}); // TODO: pass existing "directory" so that "ExecuteExports" doesn't have to re-invoke "DownloadDirectory::Create"
           }));

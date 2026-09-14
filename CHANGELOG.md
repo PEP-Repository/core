@@ -6,6 +6,8 @@
 
 ## Changes in upcoming release (1.8)
 
+- core#2958: parameter `expiration` for `pepcli token request` is now marked as required.
+
 - #2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
 
 - core#2488: Added command `pepcli pseudonym convert`, which converts a pseudonym of any form into a polymorphic, local, or brief-local pseudonym.
@@ -25,7 +27,7 @@
     - `pepcli user query`
     - `pepcli query data-size`
 
-- core#2954: Fixed `pepLogon` failure in sandbox image.
+- core#2954: Fixed `pepLogon` failure in sandbox (now named tutorial) image.
 
 - core#2945: Added command `pepcli query page-paths`, which lists the paths of the current data set's pages in Storage Facility's backing storage.
 
@@ -73,6 +75,8 @@
   }}
   ```
   </details>
+
+- ppp-config#217: The pepAssessor GUI application no longer produces empty lines in export files.
 
 **MANUAL CHANGES REQUIRED**:
 

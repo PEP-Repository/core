@@ -3,7 +3,8 @@
 #include <pep/utils/File.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/archiving/Pseudonymiser.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxBeforeTermination.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/archiving/Tar.hpp>
 #include <pep/utils/Stream.hpp>
@@ -277,7 +278,7 @@ private:
           }
           batches = pep::messaging::IStreamToMessageBatches(stream);
           if (setStdinBinary) {
-            batches = batches.op(pep::RxBeforeCompletion([setStdinBinary] {
+            batches = batches.op(pep::RxSubsequently([setStdinBinary] {
               setStdinBinary->reset();
             }));
           }

@@ -99,6 +99,12 @@ If the (Conan-based) meson build fails because your Python executable "is not a 
 
 Multiconfig builds (using the same folder for Debug & Release) are currently not supported, so always pass a build type.
 
+### Building using shared libraries
+
+While developing, you may speed up link times by using shared libraries. Shared third-party dependencies can be enabled by passing `-o "&:shared_libs=dependencies"` to `conan install`. To use shared libraries inside of the pep project as well, instead pass `-o "&:shared_libs=all"`. This option is not supported with MSVC.
+
+To run executables, you may need to add shared libraries in your path. This can be done by sourcing `your-build/generators/conanrun.*`.
+
 ### Useful git config options
 
 To ease the job of working with the docker-build submodule, you may want to execute these git commands:

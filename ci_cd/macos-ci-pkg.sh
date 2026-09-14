@@ -11,6 +11,7 @@ if [[ -n "$CI_PROJECT_DIR" ]] && [[ -n "$PEP_FOSS_REPO_DIR" ]]; then
 else
     echo "GitLab environment variable CI_PROJECT_DIR and/or PEP_FOSS_REPO_DIR not set, using directory relative to script."
     PEP_MACOS_PROJ_DIR=$(pwd)
+    # portability-disable=readlink-f # This script only ever runs on macOS CI, where readlink -f exists
     PEP_MACOS_FOSS_DIR=$(readlink -f "$(dirname -- "$0")/..")
     if [[ -z "$PEP_MACOS_FOSS_DIR" ]]; then
         echo "Error: PEP_MACOS_FOSS_DIR variable is not set."

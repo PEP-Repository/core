@@ -464,6 +464,26 @@ SetConsoleCodePage::~SetConsoleCodePage() noexcept {
   }
 }
 
+std::optional<std::string> GetRegistryString(HKEY key, PCSTR valueName) {
+  const DWORD stringTypes = RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ;
+  DWORD sizeWithNull{};
+  // First query size
+  if (::RegGetValueA(key, nullptr, valueName, stringTypes, nullptr, nullptr, &sizeWithNull) != ERROR_SUCCESS) {
+    if (::GetLastError() == ERROR_FILE_NOT_FOUND) {
+      return std::nullopt;
+    }
+    win32api::ApiCallFailure::RaiseLastError();
+  }
+  std::string data(sizeWithNull - 1, '\0');
+  // Then query value
+  if (::RegGetValueA(key, nullptr, valueName, stringTypes, nullptr, data.data(), &sizeWithNull) != ERROR_SUCCESS) {
+    win32api::ApiCallFailure::RaiseLastError();
+  }
+  // This should be a no-op unless the value changed in-between.
+  data.resize(sizeWithNull - 1);
+  return data;
+}
+
 }
 
 #endif

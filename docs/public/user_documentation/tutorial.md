@@ -33,21 +33,21 @@ The PEP tutorial is a self-contained environment that runs in a Docker container
 1. Open a terminal/command prompt and run:
 
     ```shell
-    docker run -d --rm --name pep-sandbox gitlabregistry.pep.cs.ru.nl/pep-public/core/pep-sandbox:latest && docker logs -f pep-sandbox
+    docker run -d --rm --name pep-tutorial gitlabregistry.pep.cs.ru.nl/pep-public/core/pep-tutorial:latest && docker logs -f pep-tutorial
     ```
 
 !!! note "Note"
     Note that if you use MacOS with Apple Silicon, you may need to run the above command with the extra flag `--platform linux/amd64` to emulate the correct CPU architecture, like this:
 
     ```shell
-    docker run -d --rm --name pep-sandbox --platform linux/amd64 gitlabregistry.pep.cs.ru.nl/pep-public/core/pep-sandbox:latest && docker logs -f pep-sandbox
+    docker run -d --rm --name pep-tutorial --platform linux/amd64 gitlabregistry.pep.cs.ru.nl/pep-public/core/pep-tutorial:latest && docker logs -f pep-tutorial
     ```
 
   This will start the PEP tutorial environment and show you the setup logs. Wait until you see the message:
 
   ```plaintext
   ================================================================
-  PEP Tutorial Sandbox ready!
+  PEP Tutorial ready!
   ================================================================
   ```
 
@@ -56,7 +56,7 @@ The PEP tutorial is a self-contained environment that runs in a Docker container
 3. Enter the container by running:
 
     ```shell
-    docker exec -it pep-sandbox bash
+    docker exec -it pep-tutorial bash
     ```
 
 You are now inside the PEP tutorial environment. We will refer to this as *the terminal*.
@@ -64,7 +64,7 @@ You are now inside the PEP tutorial environment. We will refer to this as *the t
 ### Disclaimers
 
 !!! warning "Simplified setup"
-    Please note that this is a simplified setup for demonstration purposes of a small subset of the features of the command line interface. Do not use any parts of the pep-sandbox setup for any other purpose than demonstration, as it has no persistent storage and is not secure.
+    Please note that this is a simplified setup for demonstration purposes of a small subset of the features of the command line interface. Do not use any parts of the pep-tutorial setup for any other purpose than demonstration, as it has no persistent storage and is not secure.
 
 !!! warning "pepcli output"
     When using pepcli (explained later), the terminal might show: `2026-02-12 15:53:49: <warning> [Networking client] Could not establish connection for client to tls://Authserver:16512: boost::system::system_error: Connection refused [system:111]. Retrying in 1000ms`. This is due to the way the tutorial environment is set up, and can be safely ignored.
@@ -548,7 +548,7 @@ The environment is safe to experiment in. You can't break anything, and you can 
 
 ```shell
 exit  # Leave the container
-docker stop pep-sandbox # Stop the container
+docker stop pep-tutorial # Stop the container
 ```
 
 ## Wrapping up

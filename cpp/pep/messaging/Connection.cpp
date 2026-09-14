@@ -65,23 +65,30 @@ void Connection::handleHeaderReceived(const networking::SizedTransfer::Result& r
 }
 
 void Connection::ensureSend() {
-  PEP_LOG(LogTag, Severity::Verbose) << "Connection::ensureSend (sendActive=" << sendActive_ << ",requestor_.pending=" << requestor_->pending() << ",receivedRequests.size=" << incomingRequestTails_.size() << ",to=" << describe() << ")";
+  PEP_LOG(LogTag, Severity::Verbose) << "Connection::ensureSend (" << "requestor_.pending=" << requestor_->pending() << ",receivedRequests.size=" << incomingRequestTails_.size() << ",to=" << describe() << ")";
   if (!this->isConnected()) {
+    PEP_LOG(LogTag, Severity::Verbose) << "Connection::ensureSend: not connected";
     return;
   }
-  if (sendActive_)
+  if (sendActive_) {
+    PEP_LOG(LogTag, Severity::Verbose) << "Connection::ensureSend: already sending";
     return;
-  if (!scheduler_->available())
+  }
+  if (!scheduler_->available()) {
+    PEP_LOG(LogTag, Severity::Verbose) << "Connection::ensureSend: no queued messages";
     return;
+  }
   sendActive_ = true;
 
-  // we have to send in two stages, first a header of 8 bytes consiting of a message length and a message id
+  // we have to send in two stages, first a header of 8 bytes consisting of a message length and a message id
   auto entry = scheduler_->pop();
   MessageProperties properties = entry.properties;
   messageOutBody_ = entry.content;
   assert(messageOutBody_);
 
-  PEP_LOG(LogTag, Severity::Verbose) << "Connection::ensureSend outgoing message streamId=" << properties.messageId().streamId() << " (to " << describe() << ")";
+  PEP_LOG(LogTag, Severity::Verbose) << "Connection::ensureSend outgoing "
+    << properties.messageId().type().describe()
+    << " streamId=" << properties.messageId().streamId() << " (to " << describe() << ")";
 
   if (messageOutBody_->size() >= MaxSizeOfMessage) {
     std::ostringstream msg;
@@ -146,6 +153,8 @@ void Connection::handleSchedulerError(const MessageId& id, std::exception_ptr er
 
 void Connection::start() {
   if (this->isConnected()) {
+    PEP_LOG(LogTag, Severity::Verbose) << "Connection::start";
+
     binary_->asyncRead(&messageInHeader_, sizeof(messageInHeader_), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {
       self->handleHeaderReceived(result);
       });

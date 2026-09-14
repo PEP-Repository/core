@@ -40,7 +40,7 @@ struct IsAlternativeOf<T, std::variant<Ts...>> : std::disjunction<std::is_same<T
 
 /// Accepts types that are an alternatives of a specialization of `std::variant`
 ///
-/// @example
+/// \example
 ///   ```
 ///   template <AlternativeOf<MyVariant> T>
 ///   std::size_t toString(T alternative) { return alternative.size(); }

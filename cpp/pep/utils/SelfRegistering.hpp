@@ -14,6 +14,9 @@ namespace pep {
 ///               which is invoked once for every TDerived type (during static variable initialization).
 /// \tparam registerDerived Development helper: specify "false" to (temporarily) disable self-registration for specific derived types.
 /// \remark See e.g. https://stackoverflow.com/a/10333643.
+/// \warning The mechanism only works for TDerived types that are linked into the resulting executable. If TDerived is defined in a library
+///          that the executable is linked against, TDerived will only be registered if the type is referenced ("used by") the executable.
+///          See https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/2980
 template <class TDerived, class TRegistrar, bool registerDerived = true>
 class SelfRegistering;
 
@@ -56,7 +59,8 @@ public:
 };
 
 
-/* Sample code:
+/* Sample code follows. Note that the .cpp files need to be sourced _directly_ by the executable.
+ * See also the \warning on the SelfRegistering<> class.
  *
  * // MyBase.hpp
  * #include <pep/utils/SelfRegistering.hpp>

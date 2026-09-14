@@ -1,29 +1,39 @@
-#include <gtest/gtest.h>
-
-#include <pep/serialization/Serialization.hpp>
 #include <pep/serialization/ErrorSerializer.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <gtest/gtest.h>
 
 namespace {
 
-class DerivedTestError : public pep::DeserializableDerivedError<DerivedTestError> {
-public:
-  DerivedTestError(const std::string& description)
-    : pep::DeserializableDerivedError<DerivedTestError>(description) {
-  }
+struct MoreSpecificError : public pep::Error {
+  static const std::string Message;
+  explicit MoreSpecificError() : pep::Error(Message) {}
 };
 
-TEST(Error, DeserializesToDerivedType) {
-  // Throw a derived error type...
-  std::string serialized;
+const std::string MoreSpecificError::Message = "Created as a MoreSpecificError instance";
+
+} // End anonymous namespace
+
+
+TEST(Error, DerivedClassesDeserializeToBase) {
+  // No serializer exists for MoreSpecificError, so we serialize it as its base pep::Error class.
+  // This mimics the behavior of Scheduler::queueNextBatch, which catches (thrown) `pep::Error` instances and
+  // (serializes and) sends those base class instances across the network.
+  auto serialized = pep::Serialization::ToString<pep::Error>(MoreSpecificError());
+
   try {
-    throw DerivedTestError("Nothing to see here. Move along.");
+    pep::Error::ThrowIfDeserializable(serialized);
   }
-  catch (const pep::Error& error) { // ... and catch and serialize it as a base Error instance
-    serialized = pep::Serialization::ToString(error);
+  catch (const MoreSpecificError&) {
+    // Demonstrates a limitation instead of specifying a requirement:
+    // feel free to remove this test case if/when you (re-)add support for derived type (de)serialization.
+    // See https://gitlab.pep.cs.ru.nl/pep/core/-/merge_requests/2563#note_63843
+    FAIL() << "Error class (de)serialization does not support derived type re-instantiation";
   }
-
-  ASSERT_EQ(pep::GetMessageMagic(serialized), pep::MessageMagician<pep::Error>::GetMagic()) << "(Type derived from) DeserializableDerivedError<> should be serialized as its base (Error) type";
-  ASSERT_THROW(pep::Error::ThrowIfDeserializable(serialized), DerivedTestError) << "Rethrow should produce the original (derived) Error type";
-}
-
+  catch (const pep::Error& deserialized) {
+    EXPECT_EQ(MoreSpecificError::Message, deserialized.what())
+      << "Deserialized (base type) Error instance should have the original (derived) instance's description";
+  }
+  catch (...) {
+    FAIL() << "Error class frontend function (deserialized and) threw an instance of a different type";
+  }
 }
