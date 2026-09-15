@@ -15,7 +15,7 @@ using Magics = boost::bimap<MessageMagic, std::string>;
 
 Magics::value_type MakeMagicEntry(const std::string& crossPlatformName) {
   auto magic = CalculateMessageMagic(crossPlatformName);
-  return { magic, std::move(crossPlatformName) };
+  return { magic, crossPlatformName };
 }
 
 Magics PredefinedMagics() {
