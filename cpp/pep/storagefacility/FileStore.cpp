@@ -286,7 +286,10 @@ std::set<std::string> FileStore::Cell::pagePaths() const {
 void FileStore::Cell::applyPurgeCycle(const PurgeCycle& cycle) {
   assert(cycle.confirmed);
 
-  auto timestamps = this->participant().fileStore().sqlite_.getPurgedTimestamps(cycle.id, this->participant().name(), this->columnName());
+  auto timestamps = this->participant().fileStore().sqlite_.getPurgedTimestamps(cycle.id, storagefacility::SqliteStorage::CellSpec{
+    .row = this->participant().name(),
+    .column = this->columnName()
+    });
   if (timestamps.empty()) { // Nothing to do: no need to iterate over our versions_
     return;
   }
@@ -560,7 +563,14 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
   auto result = Entry::Create(cell, validFrom, purgedAt, checksumSubstitute, std::move(entryContent));
 
   if (!result->getPurgedAt()) { // The *.entry file does not contain a "purged-at" timestamp
-    if (auto pendingPurgedAt = cell.participant().fileStore().sqlite_.pendingPurgeTimestamp(cell.participant().name(), cell.columnName(), validFrom)) {
+    storagefacility::SqliteStorage::CellVersionSpec version{
+      .cell = {
+        .row = cell.participant().name(),
+        .column = cell.columnName(),
+      },
+      .timestamp = validFrom,
+    };
+    if (auto pendingPurgedAt = cell.participant().fileStore().sqlite_.pendingPurgeTimestamp(version)) {
       // This entry is included in a pending (i.e. confirmed but not yet completed) purge cycle
       result->markPurged(*pendingPurgedAt);
     }
