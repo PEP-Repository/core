@@ -80,7 +80,7 @@ get_image_location() {
     return
   fi
 
-  created_at=$(printf '%s' "$details" | gitlab_api get-outdated-creation-timestamp)
+  created_at=$(printf '%s' "$details" | "$SCRIPTPATH"/gitlab-json.sh get-outdated-creation-timestamp)
   if [ -n "$created_at" ]; then
     >&2 echo "FOSS Docker image $imgname for SHA $sha is outdated (created at $created_at)."
     return

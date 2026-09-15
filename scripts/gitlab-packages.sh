@@ -62,7 +62,7 @@ urlencode() {
 }
 
 is_outdated() {
-  raw_echo "$1" | gitlab_api get-outdated-creation-timestamp
+  raw_echo "$1" | "$SCRIPTPATH"/gitlab-json.sh get-outdated-creation-timestamp
 }
 
 get_generic_file_id() {
