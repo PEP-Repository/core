@@ -13,7 +13,7 @@ namespace {
 
 using Magics = boost::bimap<MessageMagic, std::string>;
 
-Magics::value_type MakeMagicEntry(std::string crossPlatformName) {
+Magics::value_type MakeMagicEntry(const std::string& crossPlatformName) {
   auto magic = CalculateMessageMagic(crossPlatformName);
   return { magic, std::move(crossPlatformName) };
 }
@@ -290,7 +290,7 @@ MessageMagic BasicMessageMagician::EnsureRegistered(const std::string& crossPlat
   // Fallback in case this crossPlatformName still wasn't included in the PredefinedMagics
   auto entry = MakeMagicEntry(crossPlatformName);
   auto result = entry.left;
-  magics.insert(std::move(entry));
+  magics.insert(entry);
   return result;
 }
 
