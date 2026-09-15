@@ -110,7 +110,7 @@ ci-yml-include-versions:
   tags: [docker-small]
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   script:
-    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/check-ci-yml-include-versions.sh "$PEP_GROUP_READ_API_TOKEN" . "$CI_CONFIG_PATH"
+    - ./"$PEP_FOSS_REPO_DIR"/ci_cd/check-ci-yml-include-versions.sh --job-token "$CI_JOB_TOKEN" --git-dir . --ci-yml "$CI_CONFIG_PATH"
 
 analyse-source:
   stage: static-analysis

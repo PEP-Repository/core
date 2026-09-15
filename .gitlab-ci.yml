@@ -459,7 +459,7 @@ retrieve-lockfile:
     - echo "Retrieving lockfile from job ${CI_SERVER_URL}/${DOCKER_BUILD_PROJECT}/-/jobs/${DOCKER_BUILD_LOCKFILE_JOB}"
     - docker_build_project_urlencode="$(printf %s "${DOCKER_BUILD_PROJECT}" | jq --slurp --raw-input --raw-output @uri)"
     - >
-      curl --no-progress-meter --fail --location --header "PRIVATE-TOKEN: ${PEP_GROUP_READ_API_TOKEN}"
+      curl --no-progress-meter --fail --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}"
       "${CI_API_V4_URL}/projects/${docker_build_project_urlencode}/jobs/${DOCKER_BUILD_LOCKFILE_JOB}/artifacts/conan-ci.lock"
       --output ./docker-build/builder/conan/conan-ci.lock
   artifacts:
