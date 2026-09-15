@@ -18,13 +18,16 @@ variables:
     - set -u
 
     # Set the displayed user with the commits that are about to be made
-    - NAME_USER="Gitlab_CI_script"
     - DOCS_PATH="docs/${DOCS_VISIBILITY_TYPE}"
     - git config --global user.email "support@pep.cs.ru.nl"
-    - git config --global user.name "$NAME_USER"
+    - git config --global user.name "Gitlab CI script from $CI_PROJECT_NAME"
+
+    # Do not put token in the URL to prevent it from being printed on clone
+    - git config --global "credential.$CI_SERVER_URL.username" gitlab-ci-token
+    - git config --global "credential.$CI_SERVER_URL.helper" '!f() { test "$1" = get && echo "password=$CI_JOB_TOKEN"; }; f'
 
     # Clone the repository via HTTPS inside a new, unique directory
-    - git clone "https://${NAME_USER}:${DOCS_GROUP_WRITE_REPOSITORY_TOKEN}@${CI_SERVER_HOST}/${DOCS_PATH}.git" "${CI_COMMIT_SHA}"
+    - git clone "${CI_SERVER_URL}/${DOCS_PATH}.git" "${CI_COMMIT_SHA}"
 
     - cd "${CI_COMMIT_SHA}"
 

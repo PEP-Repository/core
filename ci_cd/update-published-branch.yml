@@ -16,7 +16,7 @@ push-published-branch-to-github:
     - apk update -qq && apk add --no-cache git
     - git config --global color.ui always
     - git remote remove gitlab &>/dev/null || true
-    - git remote add gitlab "https://gitlab-ci-token:${PEP_GROUP_REPOSITORY_TOKEN}@gitlab.pep.cs.ru.nl/pep/core.git"
+    - git remote add gitlab "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.pep.cs.ru.nl/pep/core.git"
     - git remote remove github &>/dev/null || true
     - git remote add github "https://pep-team:${GITHUB_ACCESS_TOKEN}@github.com/PEP-Repository/core.git"
 
