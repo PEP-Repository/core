@@ -33,7 +33,7 @@ get_location() {
   ref="$registry_root/$rel/$imgname:$sha"
   
   # (Try to) pull the current image so we can `docker image inspect` it
-  if ! docker pull "$ref" > /dev/null 2> /dev/null; then
+  if ! docker pull "$ref" 1>&2; then # Prevent docker command's stdout from cluttering this function's output
     >&2 echo "Image not found at $ref"
     return
   fi
