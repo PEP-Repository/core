@@ -388,9 +388,10 @@ get_foss_package_file_id() {
 
   file=$(echo "$files" | head -n 1)
   # >&2 echo "file is $file"
-  created_at=$(get_outdated_creation_timestamp "$file")
+  created_at=$(echo "$file" | jq --raw-output ".created_at")
+  # >&2 echo "created_at is $created_at"
   
-  if [ -n "$created_at" ]; then
+  if ! "$SCRIPTPATH/../scripts/is-up-to-date.sh" "$created_at"; then
     >&2 echo File "$file_name" in FOSS package "$package_name" for SHA "$foss_sha" is outdated \(created at "$created_at"\).
     return;
   fi
