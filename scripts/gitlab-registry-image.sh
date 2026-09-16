@@ -8,6 +8,7 @@ readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
 readonly SCRIPTPATH
 
+# shellcheck source=scripts/sh-utils.sh
 . "$SCRIPTPATH/sh-utils.sh"
 
 command="$1"
