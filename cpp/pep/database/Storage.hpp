@@ -113,6 +113,32 @@ struct Storage : public BasicStorage {
     }
   }
 
+  /// \brief Invokes a function within a transaction. The transaction is committed if the function returns; rolled back if the function throws.
+  /// \tparam TFunction The type of function to invoke
+  /// \tparam TArgs Types of parameters that will be passed to the function
+  /// \param function The function to invoke
+  /// \param args Parameters to pass to the function
+  /// \return The function's return value
+  /// \remark Nested transactions are not supported, i.e. this method does not support reentrancy.
+  template <typename TFunction, typename... TArgs>
+  auto transactionally(TFunction&& function, TArgs... args) {
+    /* We want to *directly* return the result of (invoking) the function, i.e. without (temporarily) storing it in a
+     * variable. So we can't have a line after our function invocation that'll commit the transaction (or allow it to be
+     * committed). So we invert the normal pattern for transactionality:
+     * - the transaction is committed *by default*, i.e. if (the function returns and) the scope exits normally.
+     * - our catch clause causes (the non-default) rollback if the function throws.
+     */
+    auto guard = raw.transaction_guard();
+    guard.commit_on_destroy = true;
+    try {
+      return function(std::forward<TArgs>(args)...);
+    }
+    catch (...) {
+      guard.commit_on_destroy = false;
+      throw;
+    }
+  }
+
   /// Return whether any non-tombstone records exist without retrieving them.
   ///
   /// Example: check if a column group is not empty

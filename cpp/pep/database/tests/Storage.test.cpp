@@ -145,4 +145,69 @@ TEST_F(StorageTest, syncSchema_with_new_table_succeeds) {
   }
 }
 
+TEST_F(StorageTest, transactionality_works) {
+  std::filesystem::path dbPath = getDbPath();
+  {
+    pep::database::Storage<MakeStorageBase> storage(dbPath.string());
+    ASSERT_TRUE(storage.syncSchema());
+
+    auto count = storage.raw.count<MyTableRecord>();
+    EXPECT_EQ(count, 0);
+
+    storage.raw.insert(MyTableRecord{
+      .key = "First",
+      });
+    ASSERT_EQ(++count, storage.raw.count<MyTableRecord>()) << "Unexpected count after nontransactional insertion";
+
+    storage.transactionally([&storage]() {
+      storage.raw.insert(MyTableRecord{
+        .key = "Second",
+        });
+      });
+    ASSERT_EQ(++count, storage.raw.count<MyTableRecord>()) << "Unexpected count after transactional insertion";
+
+    EXPECT_THROW(storage.transactionally([&storage]() {
+      storage.raw.insert(MyTableRecord{
+        .key = "Third",
+        });
+      throw std::runtime_error("Should cause rollback");
+      }), std::runtime_error);
+    EXPECT_EQ(count, storage.raw.count<MyTableRecord>()) << "Unexpected count after exception during transaction";
+
+    EXPECT_THROW(storage.transactionally([&storage]() {
+      storage.raw.insert(MyTableRecord{
+        .key = "Fourth",
+        });
+      storage.raw.insert(MyTableRecord{
+        .key = "Fifth",
+        });
+      throw std::runtime_error("Should cause rollback");
+      }), std::runtime_error);
+    EXPECT_EQ(count, storage.raw.count<MyTableRecord>()) << "Unexpected count after exception during multi-command transaction";
+  }
+}
+
+TEST_F(StorageTest, transactionality_throws_for_reentrancy) {
+  std::filesystem::path dbPath = getDbPath();
+  {
+    pep::database::Storage<MakeStorageBase> storage(dbPath.string());
+    ASSERT_TRUE(storage.syncSchema());
+
+    EXPECT_EQ(0, storage.raw.count<MyTableRecord>());
+
+    EXPECT_ANY_THROW(storage.transactionally([&storage]() {
+      storage.raw.insert(MyTableRecord{
+        .key = "First",
+        });
+      storage.transactionally([&storage]() {
+        storage.raw.insert(MyTableRecord{
+          .key = "Second",
+          });
+        });
+      }));
+
+    EXPECT_EQ(0, storage.raw.count<MyTableRecord>()) << "Nesting attempt should have rolled back and/or prevented transactions";
+  }
+}
+
 }
