@@ -35,14 +35,14 @@ get_location() {
   # (Try to) pull the current image so we can `docker image inspect` it
   if ! docker pull "$ref" > /dev/null 2> /dev/null; then
     >&2 echo "Image not found at $ref"
-	return
+    return
   fi
   
   # Don't echo a location if the image (exists but) is outdated
   created_at="$(docker image inspect "$ref" | jq -r ".[].Created"))"
   if ! "$SCRIPTPATH/is-up-to-date.sh" "$created_at"; then
     >&2 echo "Image $ref is outdated: created at $created_at"
-	return
+    return
   fi
   
   # Image (exists and) is recent enough: echo its ref
