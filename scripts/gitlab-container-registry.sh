@@ -62,33 +62,6 @@ delete_for_branch() {
   done
 }
 
-get_image_location() {
-  imgname="$1"
-  sha="$2"
-
-  repos=$(gitlab_api get-multipage "registry/repositories")
-  repo=$(printf '%s' "$repos" | jq ".[] | select(.name==\"$imgname\")")
-  if [ -z "$repo" ]; then
-    >&2 echo "No FOSS Docker images found with name $imgname."
-    return
-  fi
-
-  repo_id=$(printf '%s' "$repo" | jq ".id")
-  details=$(gitlab_api get "registry/repositories/$repo_id/tags/$sha" || true)
-  if [ -z "$details" ]; then
-    >&2 echo "FOSS Docker image $imgname not found for SHA $sha."
-    return
-  fi
-
-  created_at=$(printf '%s' "$details" | "$SCRIPTPATH"/gitlab-json.sh get-outdated-creation-timestamp)
-  if [ -n "$created_at" ]; then
-    >&2 echo "FOSS Docker image $imgname for SHA $sha is outdated (created at $created_at)."
-    return
-  fi
-
-  printf '%s' "$details" | jq --raw-output ".location"
-}
-
 # TODO: support aNyCaSeCoMmAnDs
 case $command in
   list-branches)
@@ -96,9 +69,6 @@ case $command in
     ;;
   delete-for-branch)
     delete_for_branch "$4"
-    ;;
-  get-image-location)
-    get_image_location "$4" "$5"
     ;;
   *)
     >&2 echo Unsupported command "$command"
