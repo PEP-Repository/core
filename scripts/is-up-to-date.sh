@@ -15,7 +15,7 @@ readonly SCRIPTPATH
 readonly timestamp="${1:?Expected timestamp}"; shift
 
 if [ "$#" -gt 0 ]; then
-  fail "Unexpected command line parameter(s): $@"
+  fail "Unexpected command line parameter(s): $*"
 fi
 
 seconds=$(( $(gnu_date +%s) - $(gnu_date -d "$timestamp" +%s) ))
