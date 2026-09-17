@@ -87,7 +87,7 @@ We use `std::ranges` algorithms and views throughout. Not every C++23 range feat
 
   A projection may itself be a lambda when the key is a chained getter (`[](const auto& d) { return d.getColumn().getFullName(); }`); that is still clearer than a two-argument comparator.
 - A predicate may be a pointer-to-member (field or function) directly, e.g. `any_of(entries_, &Parameter::isRequired)`, because ranges invoke through [`std::invoke`](https://en.cppreference.com/w/cpp/utility/functional/invoke). Consequently, using `std::mem_fn` is not necessary for parameters to functions in `std::ranges`.
-  However, taking the address of a most standard library functions (e.g. `&std::string::empty`) is [now allowed](https://eel.is/c++draft/namespace.std#def:function,addressable). Taking the address of an *overloaded* function is also not possible (`PEP_WRAP_FN` may be used in some cases).
+  However, taking the address of most standard library functions (e.g. `&std::string::empty`) is [not allowed](https://eel.is/c++draft/namespace.std#def:function,addressable). Taking the address of an *overloaded* function is also not possible (`PEP_WRAP_FN` may be used in some cases).
 - Test membership with `contains`, not by comparing a `find` or `count` result, unless the iterator is required: `contains(modes, "read")` rather than `find(...) != end()`, and `map.contains(k)` rather than `map.find(k) != map.end()` or `map.count(k) != 0`.
 - Replace a "set a flag and break" search loop with `any_of`/`all_of`/`none_of`.
 - Remove elements with [`std::erase`/`std::erase_if`](https://en.cppreference.com/w/cpp/container/vector/erase2) rather than the erase-remove idiom.
