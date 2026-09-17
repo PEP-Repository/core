@@ -24,7 +24,7 @@ private:
   mutable std::recursive_mutex mutex_;
   mutable unsigned transactionLevel_ = 0U;
 
-  void performWithSynchronization(const Action& action) const;
+  void performAtomically(const Action& action) const;
 
   std::optional<int64_t> getRowId(const std::string& name) const;
   std::optional<int64_t> getColumnId(const std::string& name) const;
@@ -67,8 +67,8 @@ public:
   /// \param args Parameters to pass to the function
   /// \return The function's return value
   template <typename TFunction, typename... TArgs>
-  decltype(auto) synchronize(TFunction&& function, TArgs&&... args) const {
-    ActionPerformer performer = std::bind(&SqliteStorage::performWithSynchronization, this, std::placeholders::_1);
+  decltype(auto) atomically(TFunction&& function, TArgs&&... args) const {
+    ActionPerformer performer = std::bind(&SqliteStorage::performAtomically, this, std::placeholders::_1);
     return PerformAsAction(performer, std::forward<TFunction>(function), std::forward<TArgs>(args)...);
   }
 };

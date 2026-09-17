@@ -111,7 +111,7 @@ struct SqliteStorage::Implementor : public pep::database::Storage<MakeRawStorage
   using pep::database::Storage<MakeRawStorage>::Storage;
 };
 
-void SqliteStorage::performWithSynchronization(const Action& action) const {
+void SqliteStorage::performAtomically(const Action& action) const {
   // Ensure thread safe
   std::lock_guard<std::recursive_mutex> lock(mutex_);
 
@@ -178,7 +178,7 @@ SqliteStorage::SqliteStorage(std::filesystem::path file)
 SqliteStorage::~SqliteStorage() noexcept = default;
 
 std::vector<PurgeCycle> SqliteStorage::getPurgeCycles() const {
-  return this->synchronize([this]() {
+  return this->atomically([this]() {
       return RangeToVector(
         RangeToVector(implementor_->raw.iterate<PurgeCycleRecord>(sqlite_orm::order_by(&PurgeCycleRecord::id).asc()))
         | std::ranges::views::transform(&RecordToPurgeCycle)
@@ -187,19 +187,19 @@ std::vector<PurgeCycle> SqliteStorage::getPurgeCycles() const {
 }
 
 PurgeCycle SqliteStorage::getPurgeCycle(PurgeCycle::Id id) const {
-  return this->synchronize([this, id]() {
+  return this->atomically([this, id]() {
       return RecordToPurgeCycle(implementor_->raw.get<PurgeCycleRecord>(id));
     });
 }
 
 void SqliteStorage::updatePurgeCycle(const PurgeCycle& cycle) {
-  return this->synchronize([this, &cycle]() {
+  return this->atomically([this, &cycle]() {
       implementor_->raw.update(PurgeCycleToRecord(cycle));
     });
 }
 
 PurgeCycle::Id SqliteStorage::createPurgeCycle(const PurgeCycle& cycle) {
-  return this->synchronize([this, &cycle]() {
+  return this->atomically([this, &cycle]() {
       auto id = implementor_->raw.insert(PurgeCycleToRecord(cycle));
 
       PurgeCycle::Id result;
@@ -214,7 +214,7 @@ PurgeCycle::Id SqliteStorage::createPurgeCycle(const PurgeCycle& cycle) {
 }
 
 void SqliteStorage::deletePurgeCycle(PurgeCycle::Id id) {
-  return this->synchronize([this, id]() {
+  return this->atomically([this, id]() {
       using namespace sqlite_orm;
       implementor_->raw.remove_all<PurgeEntryRecord>(where(c(&PurgeEntryRecord::cycle) == id));
       this->deletePurgeCycleRecord(id);
@@ -222,7 +222,7 @@ void SqliteStorage::deletePurgeCycle(PurgeCycle::Id id) {
 }
 
 void SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const CellVersionSpec& cellVersion) {
-  return this->synchronize([this, id, &cellVersion]() {
+  return this->atomically([this, id, &cellVersion]() {
       try {
         implementor_->raw.insert(PurgeEntryRecord{
           .cycle = id,
@@ -241,7 +241,7 @@ void SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const CellVersionSpec& ce
 }
 
 std::set<Timestamp> SqliteStorage::getPurgedTimestamps(PurgeCycle::Id id, const CellSpec& cell) const {
-  return this->synchronize([this, id, &cell]() {
+  return this->atomically([this, id, &cell]() {
       std::set<Timestamp> result;
 
       using namespace sqlite_orm;
@@ -264,7 +264,7 @@ std::set<Timestamp> SqliteStorage::getPurgedTimestamps(PurgeCycle::Id id, const 
 }
 
 std::optional<Timestamp> SqliteStorage::pendingPurgeTimestamp(const CellVersionSpec& cellVersion) const {
-  return this->synchronize([this, &cellVersion]() -> std::optional<Timestamp> {
+  return this->atomically([this, &cellVersion]() -> std::optional<Timestamp> {
       auto rowId = this->getRowId(cellVersion.cell.row);
       auto columnId = this->getColumnId(cellVersion.cell.column);
       if (!rowId.has_value() || !columnId.has_value()) {

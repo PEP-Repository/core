@@ -1157,7 +1157,7 @@ messaging::MessageBatches StorageFacility::handlePurgeCancelRequest(std::shared_
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
 
-  auto result = sqlite_->synchronize([this, id = certified.message.id]() {
+  auto result = sqlite_->atomically([this, id = certified.message.id]() {
       auto result = sqlite_->getPurgeCycle(id);
       sqlite_->deletePurgeCycle(id);
       return result;
@@ -1173,7 +1173,7 @@ messaging::MessageBatches StorageFacility::handlePurgeConfirmationRequest(std::s
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({ UserGroup::RepositoryManager }, accessGroup);
 
-  auto result = sqlite_->synchronize([this, id = certified.message.id]() {
+  auto result = sqlite_->atomically([this, id = certified.message.id]() {
       auto result = sqlite_->getPurgeCycle(id);
       if (result.confirmed) {
         throw Error("Purge cycle has already been confirmed");
@@ -1237,7 +1237,7 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
     throw Error("Unsupported purge cycle name \"" + definition.name() + '"');
   }
 
-  return sqlite_->synchronize([this, definition]() {
+  return sqlite_->atomically([this, definition]() {
       auto id = sqlite_->createPurgeCycle(PurgeCycle{
         .id = 0,
         .definition = std::move(definition),
