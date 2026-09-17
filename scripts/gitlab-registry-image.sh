@@ -15,16 +15,6 @@ command="$1"
 registry_root="$2"
 git_dir="$3"
 
-# TODO: consolidate duplicate code with gitlab-json.sh
-get_outdated_creation_timestamp() {
-  created_at="$1"
-  seconds=$(( $(gnu_date +%s) - $(gnu_date -d "$created_at" +%s) ))
-  days=$(( seconds / 60 / 60 / 24 ))
-  if [ "$days" -ge 6 ]; then
-    echo "$created_at"
-  fi
-}
-
 get_location() {
   imgname="$1"
   sha="$2"
