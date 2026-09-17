@@ -10,6 +10,14 @@ struct MyTableRecord {
   int id;
   std::string key;
   std::string value;
+
+  static MyTableRecord MakeKeyOnly(std::string key) {
+    return MyTableRecord{
+      .id{},
+      .key = std::move(key),
+      .value{},
+    };
+  }
 };
 
 struct ExtraTableRecord {
@@ -154,33 +162,23 @@ TEST_F(StorageTest, transactionality_works) {
     auto count = storage.raw.count<MyTableRecord>();
     EXPECT_EQ(count, 0);
 
-    storage.raw.insert(MyTableRecord{
-      .key = "First",
-      });
+    storage.raw.insert(MyTableRecord::MakeKeyOnly("First"));
     ASSERT_EQ(++count, storage.raw.count<MyTableRecord>()) << "Unexpected count after nontransactional insertion";
 
     storage.transactionally([&storage]() {
-      storage.raw.insert(MyTableRecord{
-        .key = "Second",
-        });
+      storage.raw.insert(MyTableRecord::MakeKeyOnly("Second"));
       });
     ASSERT_EQ(++count, storage.raw.count<MyTableRecord>()) << "Unexpected count after transactional insertion";
 
     EXPECT_THROW(storage.transactionally([&storage]() {
-      storage.raw.insert(MyTableRecord{
-        .key = "Third",
-        });
+      storage.raw.insert(MyTableRecord::MakeKeyOnly("Third"));
       throw std::runtime_error("Should cause rollback");
       }), std::runtime_error);
     EXPECT_EQ(count, storage.raw.count<MyTableRecord>()) << "Unexpected count after exception during transaction";
 
     EXPECT_THROW(storage.transactionally([&storage]() {
-      storage.raw.insert(MyTableRecord{
-        .key = "Fourth",
-        });
-      storage.raw.insert(MyTableRecord{
-        .key = "Fifth",
-        });
+      storage.raw.insert(MyTableRecord::MakeKeyOnly("Fourth"));
+      storage.raw.insert(MyTableRecord::MakeKeyOnly("Fifth"));
       throw std::runtime_error("Should cause rollback");
       }), std::runtime_error);
     EXPECT_EQ(count, storage.raw.count<MyTableRecord>()) << "Unexpected count after exception during multi-command transaction";
@@ -196,13 +194,9 @@ TEST_F(StorageTest, transactionality_throws_for_reentrancy) {
     EXPECT_EQ(0, storage.raw.count<MyTableRecord>());
 
     EXPECT_ANY_THROW(storage.transactionally([&storage]() {
-      storage.raw.insert(MyTableRecord{
-        .key = "First",
-        });
+      storage.raw.insert(MyTableRecord::MakeKeyOnly("First"));
       storage.transactionally([&storage]() {
-        storage.raw.insert(MyTableRecord{
-          .key = "Second",
-          });
+        storage.raw.insert(MyTableRecord::MakeKeyOnly("Second"));
         });
       }));
 
