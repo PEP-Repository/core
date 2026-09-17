@@ -68,8 +68,7 @@ public:
   /// \return The function's return value
   template <typename TFunction, typename... TArgs>
   decltype(auto) atomically(TFunction&& function, TArgs&&... args) const {
-    ActionPerformer performer = std::bind_front(&SqliteStorage::performAtomically, this);
-    return PerformAsAction(performer, std::forward<TFunction>(function), std::forward<TArgs>(args)...);
+    return PerformAsAction(std::bind_front(&SqliteStorage::performAtomically, this), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
   }
 };
 

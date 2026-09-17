@@ -11,15 +11,14 @@ namespace pep {
 /// \remark The \ref PerformAsAction function adapts any function (signature) to a callback of this type
 using Action = std::function<void()>;
 
-/// A function that invokes an \ref Action callback
-using ActionPerformer = std::function<void(const Action&)>;
-
 namespace detail {
+
+using ActionPerformer = std::function<void(Action)>;
 
 template <typename TResult>
 struct ActionResultAdapter {
   template <typename TFunction, typename... TArgs>
-  static TResult Perform(const ActionPerformer& performer, TFunction&& function, TArgs&&... args) {
+  static TResult Perform(ActionPerformer performer, TFunction&& function, TArgs&&... args) {
     static_assert(std::is_same_v<TResult, std::invoke_result_t<TFunction, TArgs...>>, "Wrong ActionResultAdapter specialization selected");
 
     std::optional<TResult> result;
@@ -35,7 +34,7 @@ struct ActionResultAdapter {
 template <typename T>
 struct ActionResultAdapter<T&> {
   template <typename TFunction, typename... TArgs>
-  static T& Perform(const ActionPerformer& performer, TFunction&& function, TArgs&&... args) {
+  static T& Perform(ActionPerformer performer, TFunction&& function, TArgs&&... args) {
     static_assert(std::is_same_v<T&, std::invoke_result_t<TFunction, TArgs...>>, "Wrong ActionResultAdapter specialization selected");
 
     T* address = nullptr;
@@ -51,7 +50,7 @@ struct ActionResultAdapter<T&> {
 template <>
 struct ActionResultAdapter<void> {
   template <typename TFunction, typename... TArgs>
-  static void Perform(const ActionPerformer& performer, TFunction&& function, TArgs&&... args) {
+  static void Perform(ActionPerformer performer, TFunction&& function, TArgs&&... args) {
     static_assert(std::is_same_v<void, std::invoke_result_t<TFunction, TArgs...>>, "Wrong ActionResultAdapter specialization selected");
 
     [[maybe_unused]] bool invoked = false;
@@ -92,10 +91,10 @@ struct ActionResultAdapter<void> {
 ///         std::forward<TFunction>(function), std::forward<TArgs>(args)...);
 ///     }
 /// \endcode
-template <typename TFunction, typename... TArgs>
-decltype(auto) PerformAsAction(const ActionPerformer& performer, TFunction&& function, TArgs&&... args) {
+template <typename TPerformer, typename TFunction, typename... TArgs>
+decltype(auto) PerformAsAction(TPerformer&& performer, TFunction&& function, TArgs&&... args) {
   using Result = std::invoke_result_t<TFunction, TArgs...>;
-  return detail::ActionResultAdapter<Result>::Perform(performer, std::forward<TFunction>(function), std::forward<TArgs>(args)...);
+  return detail::ActionResultAdapter<Result>::Perform(detail::ActionPerformer(std::forward<TPerformer>(performer)), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
 }
 
 }
