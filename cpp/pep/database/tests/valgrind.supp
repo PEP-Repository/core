@@ -1,4 +1,4 @@
-# See https://github.com/fnc12/sqlite_orm/issues/1539 #
+# File handle leak: see https://github.com/fnc12/sqlite_orm/issues/1539 #
 {
    SqliteOrmTransactionalityFileHandleLeak
    CoreError:FdNotClosed
@@ -9,4 +9,14 @@
    fun:openDatabase
    fun:_ZN10sqlite_orm8internal12storage_base26begin_transaction_internalERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE
 }
-####
+# Memory leak associated with file handle leak: see https://github.com/fnc12/sqlite_orm/issues/1539 #
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:sqlite3MemMalloc
+   fun:sqlite3Malloc
+   fun:openDatabase
+   fun:_ZN10sqlite_orm8internal12storage_base26begin_transaction_internalERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE
+}
