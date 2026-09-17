@@ -110,7 +110,7 @@ TEST(BlobMessageBatches, manyPages) {
 
 TEST(BlobMessageBatches, binaryContent) {
   // Embedded NUL and high bytes must survive the ArrayBuffer -> std::string conversion
-  const auto content = "a\0b\x01\x7f"s;
+  const auto content = "a\0b\x01\x7f\xc3\x28"s;
   EXPECT_EQ(ReadBlobPages(content, 16), content);
 }
 
