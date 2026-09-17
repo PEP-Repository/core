@@ -66,13 +66,15 @@ struct ActionResultAdapter<void> {
 
 }
 
-/// \brief Lets non-templated functions ("ActionPerformer"s) invoke callback functions with heterogeneous signatures.
+/// \brief Lets non-templated ActionPerformer functions invoke (callback) functions with heterogeneous signatures.
 /// \tparam TFunction The type of (callback) function to invoke
 /// \tparam TArgs Types of parameters that will be passed to the function
 /// \param performer A function that invokes its Action parameter
 /// \param function The function to invoke
 /// \param args Parameters to pass to the function
 /// \return The function's return value
+/// \remark Adapts heterogeneous (e.g. templated) function invocations to an Action so that the invocation can be
+///         performed by non-templated code (that e.g. performs setup and/or teardown).
 /// \code
 ///   class Database {
 ///   private:
