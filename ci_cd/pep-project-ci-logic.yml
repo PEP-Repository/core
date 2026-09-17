@@ -155,6 +155,7 @@ load-version:
 
 provide-binaries:
   stage: prerequisites
+  extends: .dind-small
   tags: [docker-small]
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   timeout: 1h 30m
