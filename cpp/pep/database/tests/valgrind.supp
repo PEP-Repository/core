@@ -1,0 +1,12 @@
+# See https://github.com/fnc12/sqlite_orm/issues/1539 #
+{
+   SqliteOrmTransactionalityFileHandleLeak
+   CoreError:FdNotClosed
+   fun:open
+   fun:robust_open
+   fun:unixOpen
+   fun:sqlite3BtreeOpen
+   fun:openDatabase
+   fun:_ZN10sqlite_orm8internal12storage_base26begin_transaction_internalERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE
+}
+####
