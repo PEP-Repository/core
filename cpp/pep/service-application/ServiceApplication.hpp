@@ -12,6 +12,9 @@ protected:
 
   std::optional<pep::severity_level> consoleLogMinimumSeverityLevel() const override;
 
+  //TODO Remove
+  std::optional<severity_level> syslogLogMinimumSeverityLevel() const override { return debug; }
+
   virtual std::string getServiceDescription() const = 0;
 };
 
