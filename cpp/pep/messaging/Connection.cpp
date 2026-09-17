@@ -293,8 +293,8 @@ std::string Connection::getReceivedMessageContent(const MessageHeader& header) {
 
   auto result = mMessageInBody.substr(0U, header.length());
 
-  LOG(LOG_TAG, severity_level::verbose) << "Incoming " << messageId.type().describe() << " ("
-    << (result.size() >= sizeof(MessageMagic) ? DescribeMessageMagic(result) : "no valid message magic")
+  LOG(LOG_TAG, severity_level::debug) << "Incoming " << messageId.type().describe() << " ("
+    << DescribeMessageMagic(result)
     << ", stream id " << messageId.streamId() << ", " << this->describe() << ")";
 
   return result;
@@ -465,7 +465,7 @@ rxcpp::observable<std::string> Connection::sendRequest(std::shared_ptr<std::stri
     throw std::runtime_error(msg.str());
   }
 
-  LOG(LOG_TAG, severity_level::verbose)
+  LOG(LOG_TAG, severity_level::debug)
     << "Connection::sendRequest: sending "
     << DescribeMessageMagic(*message)
     << " of size " << message->length() << " to " << describe();
