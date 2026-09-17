@@ -86,7 +86,8 @@ struct ActionResultAdapter<void> {
 /// 
 ///     template <typename TFunction, typename... TArgs>
 ///     decltype(auto) transactionally(TFunction&& function, TArgs&&... args) {
-///       return PerformAsAction(std::bind(&Database::invokeInTransaction, this), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
+///       return PerformAsAction(std::bind(&Database::invokeInTransaction, this, std::placeholders::_1),
+///         std::forward<TFunction>(function), std::forward<TArgs>(args)...);
 ///     }
 /// \endcode
 template <typename TFunction, typename... TArgs>
