@@ -457,7 +457,8 @@ public:
                     metadata.emplace(key, MetadataXEntry::FromPlaintext(value, false, false));
                   }
                 }
-                // Placed after explicit fileExtension, so it wins over derived extension
+                // Placed after explicit fileExtension,
+                // so the derived extension fails to insert if an explicit one is present
                 if (IsValidFileExtension(fileExtension)) {
                   metadata.emplace(MetadataXEntry::MakeFileExtension(fileExtension));
                 }
