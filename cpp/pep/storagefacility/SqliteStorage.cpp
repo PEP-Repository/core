@@ -2,6 +2,7 @@
 #include <pep/database/UnixMillis.hpp>
 #include <pep/storagefacility/PurgeMessages.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
+#include <pep/utils/Defer.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 #include <sqlite_orm/sqlite_orm.h>
 
@@ -109,6 +110,23 @@ SqliteStorage::ConstraintViolation::ConstraintViolation()
 struct SqliteStorage::Implementor : public pep::database::Storage<MakeRawStorage> {
   using pep::database::Storage<MakeRawStorage>::Storage;
 };
+
+void SqliteStorage::performWithSynchronization(const Action& action) const {
+  // Ensure thread safe
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+
+  // Determine if we're already in a transaction (i.e. this is a reentrant invocation)
+  assert(transactionLevel_ != std::numeric_limits<decltype(transactionLevel_)>::max());
+  auto initial = (transactionLevel_++ == 0U);
+  PEP_DEFER(--transactionLevel_);
+
+  if (initial) { // Not inside a transaction: start one now
+    implementor_->transactionally(action);
+  }
+  else { // Already inside a transaction: don't start a new (nested) one
+    action();
+  }
+}
 
 std::optional<int64_t> SqliteStorage::getRowId(const std::string& name) const {
   using namespace sqlite_orm;

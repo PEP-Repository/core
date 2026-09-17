@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/storagefacility/PurgeCycle.hpp>
+#include <pep/utils/Action.hpp>
 #include <filesystem>
 #include <mutex>
 #include <set>
@@ -21,6 +22,9 @@ private:
   // - methods of this class call each other, and/or
   // - an external caller synchronizes over multiple method calls (each of which will also synchronize).
   mutable std::recursive_mutex mutex_;
+  mutable unsigned transactionLevel_ = 0U;
+
+  void performWithSynchronization(const Action& action) const;
 
   std::optional<int64_t> getRowId(const std::string& name) const;
   std::optional<int64_t> getColumnId(const std::string& name) const;
@@ -63,9 +67,9 @@ public:
   /// \param args Parameters to pass to the function
   /// \return The function's return value
   template <typename TFunction, typename... TArgs>
-  auto synchronize(TFunction&& function, TArgs... args) const {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    return function(std::forward<TArgs>(args)...);
+  decltype(auto) synchronize(TFunction&& function, TArgs&&... args) const {
+    ActionPerformer performer = std::bind(&SqliteStorage::performWithSynchronization, this, std::placeholders::_1);
+    return PerformAsAction(performer, std::forward<TFunction>(function), std::forward<TArgs>(args)...);
   }
 };
 
