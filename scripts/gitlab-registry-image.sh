@@ -29,7 +29,7 @@ get_location() {
   fi
   
   # Don't echo a location if the image (exists but) is outdated
-  created_at="$(docker image inspect "$ref" | jq -r ".[].Created"))"
+  created_at="$(docker image inspect "$ref" | jq -r ".[].Created")"
   if ! "$SCRIPTPATH/is-up-to-date.sh" "$created_at"; then
     >&2 echo "Image $ref is outdated: created at $created_at"
     return
