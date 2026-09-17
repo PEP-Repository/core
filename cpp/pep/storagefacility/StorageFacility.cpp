@@ -1246,7 +1246,6 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
         .completed{}
         });
 
-      // TODO: use a transaction instead of try...catch { sqlite_->deletePurgeCycle }
       try {
         for (const FileStore::Participant* participant : fileStore_->participants()) {
           for (const FileStore::Cell* cell : participant->cells()) {
@@ -1268,11 +1267,7 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
           }
         }
       } catch (const storagefacility::SqliteStorage::ConstraintViolation&) {
-        sqlite_->deletePurgeCycle(id);
         throw Error("Storage Facility entries may only be included in a single purge cycle");
-      } catch (...) {
-        sqlite_->deletePurgeCycle(id);
-        throw;
       }
 
       return sqlite_->getPurgeCycle(id);
