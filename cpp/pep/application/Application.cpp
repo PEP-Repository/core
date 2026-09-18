@@ -271,7 +271,7 @@ int Application::run(std::vector<std::string> args) {
 
   args_ = std::move(args);
 
-  auto argsQueue = args_ | views::drop(1) | to<std::queue>;
+  auto argsQueue = args_ | views::drop(1) | to<std::queue>();
   return this->process(argsQueue);
 }
 
