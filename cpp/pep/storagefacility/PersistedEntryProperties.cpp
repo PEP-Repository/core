@@ -3,6 +3,8 @@
 #include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/MiscUtil.hpp>
 
+#include <utility>
+
 namespace pep {
 
 template <>
@@ -62,9 +64,9 @@ EncryptionScheme ExtractPersistedEntryProperty<EncryptionScheme>(PersistedEntryP
 
 template <>
 void SetPersistedEntryProperty<EncryptionScheme>(PersistedEntryProperties& destination, const std::string& key, const EncryptionScheme& scheme) {
-  static_assert(ToUnderlying(EncryptionScheme::Latest) <= std::numeric_limits<uint8_t>::max()); // Ensure that we don't lose bits in our narrowing cast below
-  assert(ToUnderlying(scheme) >= ToUnderlying(EncryptionScheme::V1));
-  assert(ToUnderlying(scheme) <= ToUnderlying(EncryptionScheme::Latest));
+  static_assert(std::to_underlying(EncryptionScheme::Latest) <= std::numeric_limits<uint8_t>::max()); // Ensure that we don't lose bits in our narrowing cast below
+  assert(std::to_underlying(scheme) >= std::to_underlying(EncryptionScheme::V1));
+  assert(std::to_underlying(scheme) <= std::to_underlying(EncryptionScheme::Latest));
   SetPersistedEntryProperty<uint8_t>(destination, key, static_cast<uint8_t>(scheme));
 }
 

@@ -2,6 +2,10 @@
 
 #include <pep/elgamal/ElgamalSerializers.hpp>
 
+#include <ranges>
+
+using namespace std::ranges;
+
 namespace pep {
 
 PEPIdRegistrationResponse Serializer<PEPIdRegistrationResponse>::fromProtocolBuffer(proto::PEPIdRegistrationResponse&& source) const {
@@ -43,10 +47,7 @@ void Serializer<ListCastorImportColumnsRequest>::moveIntoProtocolBuffer(proto::L
 
 ListCastorImportColumnsResponse Serializer<ListCastorImportColumnsResponse>::fromProtocolBuffer(proto::ListCastorImportColumnsResponse&& source) const {
   ListCastorImportColumnsResponse result;
-  result.importColumns.reserve(static_cast<size_t>(source.import_columns().size()));
-  for (auto& name : *source.mutable_import_columns()) {
-    result.importColumns.push_back(std::move(name));
-  }
+  result.importColumns = *source.mutable_import_columns() | views::as_rvalue | to<std::vector>();
   return result;
 }
 

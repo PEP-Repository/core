@@ -7,6 +7,7 @@
 
 #include <cassert>
 #include <fstream>
+#include <ranges>
 #include <QFileDialog>
 #include <QStandardPaths>
 #include <pep/gui/QTrxGui.hpp>
@@ -19,6 +20,8 @@
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
 
+using namespace std::ranges;
+
 namespace {
 
 const QString AllFilesWildcard =
@@ -30,10 +33,9 @@ const QString AllFilesWildcard =
 ;
 
 void SortAndInsert(std::vector<std::shared_ptr<ExportableItem>>& dest, std::vector<std::shared_ptr<ExportableShortPseudonymItem>>& source) {
-  std::sort(source.begin(), source.end(), [](const std::shared_ptr<ExportableItem>& lhs, const std::shared_ptr<ExportableItem>& rhs) { // Sort SPs to make them easier to find in the UI
-    return lhs->getDescription() < rhs->getDescription();
-            });
-  dest.insert(dest.end(), source.cbegin(), source.cend());
+  // Sort SPs to make them easier to find in the UI
+  sort(source, {}, [](const auto& item) { return item->getDescription(); });
+  dest.append_range(source);
 }
 
 }
@@ -56,7 +58,7 @@ void ExportWidget::WriteParticipantData(const QList<std::shared_ptr<ExportableIt
     if (expandDetails && expander) {
       (*expander)(table, cellContent);
       assert(!table.empty());
-      assert(std::find_if(table.cbegin(), table.cend(), [](const ExportDataRow& row) {return row.empty(); }) == table.cend());
+      assert(none_of(table, [](const ExportDataRow& row) { return row.empty(); }));
     }
     else {
       auto& row = table.emplace_back();
@@ -79,7 +81,7 @@ void ExportWidget::WriteParticipantDataCartesian(ExportDataTable& destination, c
   else {
     for (const auto& row : *own) {
       ExportDataRow values(parentData);
-      values.insert(values.cend(), row.cbegin(), row.cend());
+      values.append_range(row);
       WriteParticipantDataCartesian(destination, values, own + 1, end);
     }
   }
@@ -99,10 +101,8 @@ void ExportWidget::WriteCartesianToDestination(std::ostream& destination, const 
         const auto& cellContent = *cell;
 
         // Escape value if needed
-        auto escape = std::find_if(cellContent.begin(), cellContent.end(), [](char c) {
-          return (c == '"') || (c == ',');
-                                   });
-        if (escape != cellContent.end()) {
+        const bool escape = cellContent.find_first_of("\",") != std::string::npos;
+        if (escape) {
           destination << '"' << boost::replace_all_copy(cellContent, "\"", "\"\"") << '"';
         }
         else {
@@ -246,7 +246,8 @@ void ExportWidget::onItemChanged(QListWidgetItem* item) {
 void ExportWidget::updateSelectionState() {
   auto selected = getSelectedItems();
   ui_->exportButton->setEnabled(!selected.empty());
-  ui_->expandDetailsCheckBox->setEnabled(std::find_if(selected.cbegin(), selected.cend(), [](const std::shared_ptr<ExportableItem>& item) {return item->getDetailExpander(); }) != selected.cend());
+  ui_->expandDetailsCheckBox->setEnabled(any_of(selected,
+    [](const std::shared_ptr<ExportableItem>& item) { return item->getDetailExpander().has_value(); }));
 }
 
 QList<std::shared_ptr<ExportableItem>> ExportWidget::getSelectedItems() const {
@@ -338,9 +339,7 @@ rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipa
   pep::EnumerateAndRetrieveData2Opts opts;
   opts.groups = { "*" };
   opts.columns = { "StudyContexts" };
-  for (const auto& item : items) {
-    opts.columns.push_back(item->getSourceColumnName());
-  }
+  opts.columns.append_range(items | views::transform([](const auto& item) { return item->getSourceColumnName(); }));
 
   using ParticipantData = std::map<std::string, std::string>;
   return pepClient_->enumerateAndRetrieveData2(opts) // Get study contexts, plus values for all requested columns

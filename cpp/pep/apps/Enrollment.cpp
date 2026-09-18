@@ -3,6 +3,8 @@
 #include <pep/apps/Enroller.hpp>
 #include <pep/utils/Configuration.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 
 std::string EnrollmentApplication::getDescription() const {
@@ -15,11 +17,9 @@ commandline::Parameters EnrollmentApplication::getSupportedParameters() const {
 }
 
 std::vector<std::shared_ptr<commandline::Command>> EnrollmentApplication::createChildCommands() {
-  auto servers = RangeToVector(ServerTraits::Where([](const ServerTraits& server) { return server.isEnrollable(); }));
+  auto servers = to<std::vector>(ServerTraits::Where(&ServerTraits::isEnrollable));
   // Sort by EnrolledParty value: produces nicely sorted child commands
-  std::sort(servers.begin(), servers.end(), [](const ServerTraits& lhs, const ServerTraits& rhs) {
-    return *lhs.enrollsAsParty(true) < *rhs.enrollsAsParty(true);
-    });
+  sort(servers, {}, [](const ServerTraits& server) { return *server.enrollsAsParty(true); });
 
   std::vector<std::shared_ptr<commandline::Command>> result;
   result.reserve(servers.size() + 1U);

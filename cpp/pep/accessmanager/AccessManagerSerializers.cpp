@@ -9,6 +9,10 @@
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 
+#include <ranges>
+
+using namespace std::ranges;
+
 namespace pep {
 
 IndexedTicket2 Serializer<IndexedTicket2>::fromProtocolBuffer(proto::IndexedTicket2&& source) const {
@@ -78,10 +82,7 @@ void Serializer<EncryptionKeyResponse>::moveIntoProtocolBuffer(proto::Encryption
 
 ColumnAccessRequest Serializer<ColumnAccessRequest>::fromProtocolBuffer(proto::ColumnAccessRequest&& source) const {
   auto result = ColumnAccessRequest{ source.include_implicitly_granted(), {} };
-  result.requireModes.reserve(static_cast<size_t>(source.require_modes_size()));
-  for (auto mode : source.require_modes()) {
-    result.requireModes.push_back(mode);
-  }
+  result.requireModes.append_range(source.require_modes());
   return result;
 }
 
@@ -108,18 +109,12 @@ ColumnAccessResponse Serializer<ColumnAccessResponse>::fromProtocolBuffer(proto:
     auto indices = source.column_group_columns(i);
 
     ColumnAccess::GroupProperties properties;
-    properties.modes.reserve(static_cast<unsigned>(entry.modes_size()));
-    for (const auto& mode : entry.modes()) {
-      properties.modes.push_back(mode);
-    }
+    properties.modes.append_range(entry.modes());
     properties.columns = Serialization::FromProtocolBuffer(std::move(indices));
     result.columnGroups[entry.name()] = properties;
   }
 
-  result.columns.reserve(static_cast<unsigned>(source.columns_size()));
-  for (auto column : source.columns()) {
-    result.columns.push_back(std::move(column));
-  }
+  result.columns.append_range(*source.mutable_columns() | views::as_rvalue);
 
   return result;
 }
@@ -158,10 +153,7 @@ ParticipantGroupAccessResponse Serializer<ParticipantGroupAccessResponse>::fromP
   ParticipantGroupAccessResponse result;
   result.participantGroups.reserve(static_cast<size_t>(source.participant_groups_size()));
   for (auto& entry : source.participant_groups()) {
-    std::vector<std::string> modes;
-    modes.reserve(static_cast<size_t>(entry.modes_size()));
-    modes.insert(modes.end(), entry.modes().begin(), entry.modes().end());
-    result.participantGroups.emplace(entry.name(), std::move(modes));
+    result.participantGroups.emplace(entry.name(), entry.modes() | to<std::vector>());
   }
   return result;
 }
@@ -216,10 +208,7 @@ ColumnNameMappingResponse Serializer<ColumnNameMappingResponse>::fromProtocolBuf
 FindUserRequest Serializer<FindUserRequest>::fromProtocolBuffer(proto::FindUserRequest&& source) const {
   FindUserRequest result;
   result.primaryId = std::move(*source.mutable_primary_id());
-  result.alternativeIds.reserve(static_cast<size_t>(source.alternative_ids_size()));
-  for (auto& alternative_id : *source.mutable_alternative_ids()) {
-    result.alternativeIds.emplace_back(std::move(alternative_id));
-  }
+  result.alternativeIds = *source.mutable_alternative_ids() | views::as_rvalue | to<std::vector>();
   return result;
 }
 
@@ -297,7 +286,7 @@ StructureMetadataEntry Serializer<StructureMetadataEntry>::fromProtocolBuffer(
 void Serializer<StructureMetadataRequest>::moveIntoProtocolBuffer(
     proto::StructureMetadataRequest& dest, StructureMetadataRequest value) const {
   dest.set_subject_type(Serialization::ToProtocolBuffer(value.subjectType));
-  auto moveSubjects = MoveElements(value.subjects);
+  auto moveSubjects = views::as_rvalue(value.subjects);
   dest.mutable_subjects()->Assign(moveSubjects.begin(), moveSubjects.end());
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_keys(), std::move(value.keys));
 }
@@ -306,7 +295,7 @@ StructureMetadataRequest Serializer<StructureMetadataRequest>::fromProtocolBuffe
     proto::StructureMetadataRequest&& source) const {
   StructureMetadataRequest result;
   result.subjectType = Serialization::FromProtocolBuffer(source.subject_type());
-  result.subjects = RangeToVector(MoveElements(*source.mutable_subjects()));
+  result.subjects = *source.mutable_subjects() | views::as_rvalue | to<std::vector>();
   Serialization::AssignFromRepeatedProtocolBuffer(result.keys, std::move(*source.mutable_keys()));
   return result;
 }

@@ -28,7 +28,7 @@ std::string GenerateShortPseudonym(std::string_view prefix, const std::size_t le
 
   std::uniform_int_distribution sp_distribution(std::size_t{}, SpChars.size() - 1);
   CryptoUrbg urbg;
-  std::generate_n(std::back_inserter(pseudonym), len, [&sp_distribution, &urbg] {
+  std::ranges::generate_n(std::back_inserter(pseudonym), static_cast<std::ptrdiff_t>(len), [&sp_distribution, &urbg] {
     return SpChars[sp_distribution(urbg)];
   });
 

@@ -82,6 +82,7 @@ concept AnyMap = DerivedFromSpecialization<T, std::map> || DerivedFromSpecializa
 /// \return a pair of (1) an iterator at the last insertion position and (2) the number of items inserted into the set
 /// \throws whatever dst throws when an insertion fails, or an \ref std::runtime_error if one of \p src 's items is a duplicate.
 /// \remark Provides a basic (as opposed to strong) exception guarantee: if an exception is raised because of a duplicate item, \p dst may have been partially updated.
+/// \note Different from \c std::set::insert_range , which silently ignores duplicates.
 template <typename T, std::ranges::input_range TSrc>
 auto InsertNonDuplicates(std::set<T>& dst, const TSrc& src)
   requires (std::same_as<T, std::remove_cvref_t<std::ranges::range_value_t<TSrc>>>) {

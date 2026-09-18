@@ -1,6 +1,9 @@
 #include <pep/accessmanager/AccessManagerMessages.hpp>
 
 #include <format>
+#include <ranges>
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -9,37 +12,19 @@ std::shared_ptr<SignedTicket2> IndexedTicket2::getTicket() const {
 }
 
 std::vector<std::string> IndexedTicket2::getColumnGroups() const {
-  std::vector<std::string> ret;
-  ret.reserve(columnGroups_.size());
-  for (const auto& kv : columnGroups_)
-    ret.push_back(kv.first);
-  return ret;
+  return views::keys(columnGroups_) | to<std::vector>();
 }
 
 std::vector<std::string> IndexedTicket2::getParticipantGroups() const {
-  std::vector<std::string> ret;
-  ret.reserve(participantGroups_.size());
-  for (const auto& kv : participantGroups_)
-    ret.push_back(kv.first);
-  return ret;
+  return views::keys(participantGroups_) | to<std::vector>();
 }
 
 std::vector<std::string> IndexedTicket2::getColumns() const {
-  std::vector<std::string> ret;
-  const auto& columns = openTicketWithoutCheckingSignature()->columns;
-  ret.reserve(columns.size());
-  for (const auto& column : columns)
-    ret.push_back(column);
-  return ret;
+  return openTicketWithoutCheckingSignature()->columns;
 }
 
 std::vector<std::string> IndexedTicket2::getModes() const {
-  std::vector<std::string> ret;
-  const auto& modes = openTicketWithoutCheckingSignature()->modes;
-  ret.reserve(modes.size());
-  for (const auto& mode : modes)
-    ret.push_back(mode);
-  return ret;
+  return openTicketWithoutCheckingSignature()->modes;
 }
 
 

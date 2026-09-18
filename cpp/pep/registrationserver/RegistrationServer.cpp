@@ -660,7 +660,7 @@ messaging::MessageBatches RegistrationServer::handleSignedRegistrationRequest(st
     .op(RxCartesianProduct(getShortPseudonymDefinitions())) // Combine participant SPs with defined SPs
     .filter([](std::pair<std::shared_ptr<std::vector<std::string>>, ShortPseudonymDefinition> pair) { // Keep only defined SPs that the participant does not have
     auto end = pair.first->cend();
-    return std::find(pair.first->cbegin(), end, pair.second.getColumn().getFullName()) == end;
+    return std::ranges::find(pair.first->cbegin(), end, pair.second.getColumn().getFullName()) == end;
   })
     .map([server, reauthenticated](std::pair< std::shared_ptr<std::vector<std::string>>, ShortPseudonymDefinition> pair) { // Keep only the ShortPseudonymDefinition
   #ifdef WITH_CASTOR

@@ -66,10 +66,6 @@ urlencode() {
   "$SCRIPTPATH"/url.sh encode "$1"
 }
 
-is_outdated() {
-  raw_echo "$1" | "$SCRIPTPATH"/gitlab-json.sh get-outdated-creation-timestamp
-}
-
 get_generic_file_id() {
   package_name="$1"
   sha="$2"
@@ -95,8 +91,8 @@ get_generic_file_id() {
   fi
 
   file=$(raw_echo "$files" | head -n 1)
-  created_at=$(is_outdated "$file")
-  if [ -n "$created_at" ]; then
+  created_at=$(raw_echo "$file" | jq --raw-output ".created_at")
+  if ! "$SCRIPTPATH/is-up-to-date.sh" "$created_at"; then
     >&2 echo "File '$file_name' in FOSS package '$package_name' for SHA $sha is outdated (created at $created_at)."
     return
   fi

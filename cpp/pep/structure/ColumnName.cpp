@@ -3,6 +3,7 @@
 #include <cassert>
 #include <algorithm>
 #include <iterator>
+#include <ranges>
 #include <regex>
 #include <stdexcept>
 #include <utility>
@@ -17,6 +18,8 @@ std::string Mangle(const std::string& columnNameSection) {
 }
 
 }
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -48,10 +51,9 @@ std::string ColumnNameMappings::getColumnNameSectionFor(const std::string& rawOr
 }
 
 std::vector<ColumnNameMapping> ColumnNameMappings::getEntries() const {
-  std::vector<ColumnNameMapping> result;
-  result.reserve(entries_.size());
-  std::transform(entries_.cbegin(), entries_.cend(), std::back_inserter(result), [](const std::pair<const std::string, ColumnNameMapping>& entry) {return entry.second; });
-  return result;
+  return entries_
+    | views::values
+    | to<std::vector>();
 }
 
 }

@@ -23,6 +23,7 @@
 #include <filesystem>
 
 using namespace pep::cli;
+using namespace std::ranges;
 namespace pt = boost::property_tree;
 
 namespace {
@@ -67,10 +68,8 @@ private:
 
     std::string csvEscape(std::string value) {
       size_t quotePos = value.find('"');
-      bool useQuotes = value.find(csvSeparator_) != std::string::npos
-        || value.find(' ') != std::string::npos
-        || value.find('\n') != std::string::npos
-        || value.find('\r') != std::string::npos
+      bool useQuotes = value.contains(csvSeparator_)
+        || value.find_first_of(" \n\r") != std::string::npos
         || quotePos != std::string::npos;
       while (quotePos != std::string::npos) {
         value.replace(quotePos, 1, "\"\"");
@@ -131,7 +130,7 @@ private:
       columns.reserve(ptree.size());
       size_t startSize = columns.size();
       for (const auto& entry : ptree) {
-        if (std::find(columns.begin(), columns.end(), entry.first) == columns.end()) {
+        if (!contains(columns, entry.first)) {
           columns.push_back(entry.first);
         }
       }
@@ -294,7 +293,7 @@ private:
               [[maybe_unused]] auto emplaced = config->existing.emplace(column.name);
               assert(emplaced.second);
             }
-            const auto& castorGroup = std::find_if(response.columnGroups.cbegin(), response.columnGroups.cend(), [](const pep::AmaQRColumnGroup& group) {return group.name == "Castor"; });
+            const auto& castorGroup = find(response.columnGroups, "Castor", &pep::AmaQRColumnGroup::name);
             if (castorGroup != response.columnGroups.cend()) {
               for (const auto& column : castorGroup->columns) {
                 [[maybe_unused]] auto emplaced = config->grouped.emplace(column);
@@ -306,8 +305,8 @@ private:
             .concat_map([required](std::shared_ptr<CurrentConfig> config) {
               return required
                 .map([config](ColumnStatus column) {
-                column.exists = (config->existing.find(column.name) != config->existing.cend());
-                column.grouped = (config->grouped.find(column.name) != config->grouped.cend());
+                column.exists = config->existing.contains(column.name);
+                column.grouped = config->grouped.contains(column.name);
                 return column;
                   });
               })
@@ -436,7 +435,7 @@ private:
     private:
       static pep::FakeVoid ReportColumnNameMappings(const pep::ColumnNameMappings& mappings) {
         auto entries = mappings.getEntries();
-        std::sort(entries.begin(), entries.end(), [](const pep::ColumnNameMapping& lhs, const pep::ColumnNameMapping& rhs) { return lhs.original.getValue() < rhs.original.getValue(); });
+        sort(entries, {}, [](const pep::ColumnNameMapping& entry) -> decltype(auto) { return entry.original.getValue(); });
         for (const auto& entry : entries) {
           std::cout << std::quoted(entry.original.getValue()) << " --> " << std::quoted(entry.mapped.getValue()) << std::endl;
         }

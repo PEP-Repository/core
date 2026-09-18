@@ -308,6 +308,30 @@ check-docker-build-versions:
     -   fi
     - fi
 
+# A branch name ends up in container repository paths so it must be a valid OCI repository path. This job
+# is only added to the pipeline when it is not. See spec: https://github.com/opencontainers/distribution-spec/blob/main/spec.md#workflow-categories
+# The whole path is limited to 255 characters, so the branch is capped at 200 to leave room for the project path and the image name.
+check-branch-name:
+  stage: static-analysis
+  tags: [docker-small]
+  image: alpine:latest
+  variables:
+    GIT_STRATEGY: none
+  rules:
+    - if: $CI_COMMIT_REF_NAME !~ /^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(\/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*$/
+      variables:
+        BRANCH_FAIL_REASON: "the OCI distribution spec allows only lowercase letters, digits, and . _ - as separators"
+    - if: $CI_COMMIT_REF_NAME =~ /^.{201,}$/
+      variables:
+        BRANCH_FAIL_REASON: "it is longer than 200 characters, while the whole path is limited to 255"
+  #language=sh
+  script:
+    - |
+      >&2 echo "Branch name $CI_COMMIT_REF_NAME cannot be used as a container repository path."
+      >&2 echo "$BRANCH_FAIL_REASON."
+      >&2 echo "Please rename the branch (and if it exists, the matching branch in dtap)."
+      exit 1
+
 analyse-source:
   stage: static-analysis
   tags: [docker-small]

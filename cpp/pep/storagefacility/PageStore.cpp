@@ -2,6 +2,7 @@
 #include <pep/storagefacility/S3Client.hpp>
 #include <pep/storagefacility/S3Credentials.PropertySerializer.hpp>
 
+#include <algorithm>
 #include <cassert>
 #include <filesystem>
 
@@ -133,8 +134,7 @@ namespace {
       std::shared_ptr<prometheus::Registry> metrics_registry,
       const Configuration& config)
   {
-    auto hostsParams = RangeToCollection<std::unordered_map<std::string, HostParameters>>(
-      config.get_children_map("Hosts")
+    auto hostsParams = config.get_children_map("Hosts")
       | views::transform([&io_context](const auto& entry) {
         const Configuration& hostConfig = entry.second;
         return std::pair{
@@ -150,12 +150,13 @@ namespace {
             .connections = hostConfig.get<unsigned int>("Connections", 5),
           },
         };
-      }));
+      }) | to<std::unordered_map>();
 
     return std::make_shared<S3PageStore>(
       hostsParams,
-      RangeToVector(config.get_children_vector("ReadFromBuckets")
-        | views::transform(ParseBucket)),
+      config.get_children_vector("ReadFromBuckets")
+        | views::transform(ParseBucket)
+        | to<std::vector>(),
       ParseBucket(config.get_child("WriteToBucket")),
       metrics_registry);
   }
@@ -196,13 +197,13 @@ namespace {
               "number of connections for a host must be nonzero");
         }
         hostIt->second = Host{
-          .connections = RangeToVector(
-          views::iota(0u, hostParams.connections)
-          | views::transform([&](unsigned int) {
-            auto client = s3::Client::Create(hostParams.clientParams);
-            client->start();
-            return Connection{std::move(client)};
-          })),
+          .connections =
+            views::iota(0u, hostParams.connections)
+            | views::transform([&](unsigned int) {
+              auto client = s3::Client::Create(hostParams.clientParams);
+              client->start();
+              return Connection{std::move(client)};
+            }) | to<std::vector>(),
         };
       }
     };
