@@ -254,8 +254,8 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                       if (ipage != ctx->pages->cend()) {
                         auto& pages = *ipage->second;
                         std::ostringstream buffer;
-                        for (auto& page : pages) {
-                          assert(page->pageNumber == i);
+                        for ([[maybe_unused]] auto [page, pageNumber] : views::zip(pages, views::iota(0uz))) {
+                          assert(page->pageNumber == pageNumber);
                           buffer << page->decrypt(key, res.metadata);
                         }
                         res.data = std::move(buffer).str();
