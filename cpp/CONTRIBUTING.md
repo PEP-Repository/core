@@ -111,7 +111,7 @@ Most remaining hand-written loops are a range algorithm or view in disguise. Eve
   </details>
 - Pick the conversion spelling that reads best:
   - a trailing `| to<C>()` when there is a pipeline;
-  - `C c(std::from_range, r)` or `= {std::from_range, r}` is also an option when constructing a named container from a plain range;
+  - `C c(std::from_range, r)` is also an option when constructing a named container from a plain range;
   - a prefix `to<C>(r)` when the range is a single expression that you're already passing as an argument.
 - Append or insert whole ranges with `vec.append_range(r)` and `set.insert_range(r)` instead of looping over `push_back`/`insert`. These need the element type to be *implicitly* convertible, so appending `string_view`s to a `vector<string>` still needs a `views::transform`.
 

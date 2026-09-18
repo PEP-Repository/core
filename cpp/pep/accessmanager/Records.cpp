@@ -14,11 +14,12 @@
 #include <utility>
 
 using namespace std::chrono;
+using namespace std::ranges;
 
 namespace pep {
 SelectStarPseudonymRecord::SelectStarPseudonymRecord(LocalPseudonym lp, PolymorphicPseudonym pp) {
-  localPseudonym = {std::from_range, lp.pack()};
-  polymorphicPseudonym = {std::from_range, pp.pack()};
+  localPseudonym = lp.pack() | to<std::vector>();
+  polymorphicPseudonym = pp.pack() | to<std::vector>();
 }
 
 uint64_t SelectStarPseudonymRecord::checksum(int version) const {

@@ -421,7 +421,7 @@ void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::st
   else {
     std::vector<std::string> errorMessageParts;
     ParticipantGroupAccessRuleFilter filter{
-      .participantGroups = {{std::from_range, participantGroups}},
+      .participantGroups = participantGroups | to<std::vector>(),
       .userGroups = {{userGroup}},
       .modes = {{}},
     };
@@ -613,7 +613,7 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
     cgarFilter.modes = std::vector<std::string>{query.columnGroupModeFilter};
   }
   if(!query.columnFilter.empty() || !query.columnGroupFilter.empty()){
-    cgarFilter.columnGroups = {{std::from_range, views::keys(columnsByColumnGroup)}};
+    cgarFilter.columnGroups = columnsByColumnGroup | views::keys | to<std::vector>();
   }
   auto cgars = storage_->getColumnGroupAccessRules(timestamp, cgarFilter);
 

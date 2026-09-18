@@ -468,15 +468,15 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
     auto transactionGuard = implementor_->raw.transaction_guard();
     for (auto record : implementor_->raw.iterate<SelectStarPseudonymRecord>()) {
       CurvePoint localPseudonymAsPoint = Serialization::FromString<CurvePoint>(std::string_view(record.localPseudonym));
-      record.localPseudonym = {std::from_range, localPseudonymAsPoint.pack()};
+      record.localPseudonym = localPseudonymAsPoint.pack() | to<std::vector>();
       ElgamalEncryption polymorphicPseudonymAsElgamalEncryption = Serialization::FromString<ElgamalEncryption>(std::string_view(record.polymorphicPseudonym));
-      record.polymorphicPseudonym = {std::from_range, polymorphicPseudonymAsElgamalEncryption.pack()};
+      record.polymorphicPseudonym = polymorphicPseudonymAsElgamalEncryption.pack() | to<std::vector>();
       implementor_->raw.update(record);
     }
 
     for (auto record : implementor_->raw.iterate<ParticipantGroupParticipantRecord>()) {
       CurvePoint localPseudonymAsPoint = Serialization::FromString<CurvePoint>(std::string_view(record.localPseudonym));
-      record.localPseudonym = {std::from_range, localPseudonymAsPoint.pack()};
+      record.localPseudonym = localPseudonymAsPoint.pack() | to<std::vector>();
       implementor_->raw.update(record);
     }
     transactionGuard.commit();
@@ -687,7 +687,7 @@ void AccessManager::Backend::Storage::computeChecksum(const std::string& chain,
 }
 
 std::vector<PolymorphicPseudonym> AccessManager::Backend::Storage::getPPs() {
-  return {std::from_range, views::values(lpToPpMap_)};
+  return lpToPpMap_ | views::values | to<std::vector>();
 }
 
 std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> AccessManager::Backend::Storage::getPpGroups(std::span<const std::string> participantGroups) {
