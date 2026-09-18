@@ -16,6 +16,8 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <pep/utils/MiscUtil.hpp>
 
+#include <ranges>
+
 using namespace pep;
 using namespace std::ranges;
 
@@ -65,14 +67,9 @@ boost::property_tree::ptree PageStoreConfig(
     hostsConfig.push_back({id, HostConfig(host)});
   }
 
-  std::vector<boost::property_tree::ptree> readBucketConfigs;
-  for (const BucketRef& bucket : readBuckets) {
-    readBucketConfigs.push_back(BucketConfig(bucket));
-  }
-
   boost::property_tree::ptree s3Config;
   s3Config.put_child("Hosts", hostsConfig);
-  SerializeProperties(s3Config, "ReadFromBuckets", readBucketConfigs);
+  SerializeProperties(s3Config, "ReadFromBuckets", readBuckets | views::transform(BucketConfig) | to<std::vector>());
   s3Config.put_child("WriteToBucket", BucketConfig(writeBucket));
 
   boost::property_tree::ptree result;
@@ -193,10 +190,10 @@ protected:
       const std::vector<std::string>& readFromHostIds,
       const std::string& writeToHostId) {
 
-    std::vector<BucketRef> readBuckets;
-    for (const std::string& hostId : readFromHostIds) {
-      readBuckets.push_back({.name = envs.s3TestBucket, .hostId = hostId});
-    }
+    auto readBuckets = readFromHostIds
+      | views::transform([&](const std::string& hostId) {
+        return BucketRef{.name = envs.s3TestBucket, .hostId = hostId};
+      }) | to<std::vector>();
 
     return CreatePageStore(ioContext, PageStoreConfig(
       {{hostAId, envs.hostA}, {hostBId, envs.hostB}},
