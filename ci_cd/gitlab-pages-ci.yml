@@ -24,7 +24,7 @@ variables:
 
     # Do not put token in the URL to prevent it from being printed on clone
     - git config --global "credential.$CI_SERVER_URL.username" gitlab-ci-token
-    - git config --global "credential.$CI_SERVER_URL.helper" '!f() { test "$1" = get && echo "password=$CI_JOB_TOKEN"; }; f'
+    - git config --global "credential.$CI_SERVER_URL.helper" '!f() { [ "$1" = get ] && echo "password=$CI_JOB_TOKEN"; }; f'
 
     # Clone the repository via HTTPS inside a new, unique directory
     - git clone "${CI_SERVER_URL}/${DOCS_PATH}.git" "${CI_COMMIT_SHA}"

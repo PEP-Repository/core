@@ -252,7 +252,7 @@ include:
   #   Sets credentials on the dokcer-build submodule to prevent "fatal: could not read Username"
   #   See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2741
   -   git config "credential.$CI_SERVER_URL.username" gitlab-ci-token
-  -   git config "credential.$CI_SERVER_URL.helper" '!f() { test "$1" = get && echo "password=$CI_JOB_TOKEN"; }; f'
+  -   git config "credential.$CI_SERVER_URL.helper" '!f() { [ "$1" = get ] && echo "password=$CI_JOB_TOKEN"; }; f'
   -   git fetch origin "$OVERRIDE_DOCKER_BUILD_REF"
   -   git checkout FETCH_HEAD
   -   if [ -n "$DOCKER_BUILD_LOCKFILE_JOB" ]; then
@@ -1523,7 +1523,7 @@ update-foss-submodule-in-dtap:
 
     # Do not put token in the URL to prevent it from being printed on clone
     - git config --global "credential.$CI_SERVER_URL.username" gitlab-ci-token
-    - git config --global "credential.$CI_SERVER_URL.helper" '!f() { test "$1" = get && echo "password=$CI_JOB_TOKEN"; }; f'
+    - git config --global "credential.$CI_SERVER_URL.helper" '!f() { [ "$1" = get ] && echo "password=$CI_JOB_TOKEN"; }; f'
 
     - rm -rf dtap
     # Clone the dtap repository shallowly via HTTPS
