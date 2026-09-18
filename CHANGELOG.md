@@ -82,6 +82,8 @@
 
 - core#2961: The `StorageFacility.json` config needs to be changed to the new format (see changes above). Extract `EndPoint`, `Credentials`, `CaCertificateFile`, `UseHttps`, and `Connections` (or the subset that is used) into an object under a new `Hosts` key and give it an ID. Then change all buckets into objects with `Name` and `HostId` properties, the latter of which references the host ID.
 
+- core#298: `PEP_GROUP_REPOSITORY_TOKEN` and `DOCS_GROUP_WRITE_REPOSITORY_TOKEN` CI variables can be removed after all projects are updated. Also update <https://docs.pages.pep.cs.ru.nl/private/ops/main/procedures_maintenance/update-gitlab-pep-group-access-tokens/> to remove the instructions for these tokens.
+
 - core#2974: Building PEP now requires a more recent compiler & stdlib with C++23 features, see README.md.
 
 ---------------

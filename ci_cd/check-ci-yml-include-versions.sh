@@ -32,10 +32,52 @@ readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
 readonly SCRIPTPATH
 
-api_key="$1"
-git_dir="${2:-.}"
+usage() {
+  echo "Usage: '$0' (--api-key <key> | --job-token <token>) [--git-dir <dir>] [--ci-yml <file>]"
+  echo "  --git-dir defaults to the current directory"
+  echo "  --ci-yml defaults to <git-dir>/.gitlab-ci.yml"
+}
+
+api_key=''
+token_opt=''
+git_dir='.'
+ci_yml=''
+while [ "$#" != 0 ]; do
+  case "$1" in
+    # --job-token authenticates with a CI job token ($CI_JOB_TOKEN) instead of an access token
+    --api-key|--job-token)
+      if [ -n "$token_opt" ]; then
+        >&2 echo "$0: Specify only one of --api-key and --job-token"
+        >&2 usage
+        exit 2
+      fi
+      token_opt="$1"
+      shift; api_key="${1:?Expected value for $token_opt}" ;;
+    --git-dir)
+      shift; git_dir="${1:?Expected value for --git-dir}" ;;
+    --ci-yml)
+      shift; ci_yml="${1:?Expected value for --ci-yml}" ;;
+    --help|-h)
+      usage
+      exit ;;
+    *)
+      >&2 echo "$0: Unknown argument: $1"
+      >&2 usage
+      exit 2 ;;
+  esac
+  shift
+done
+
+if [ -z "$api_key" ]; then
+  >&2 echo "$0: Expected --api-key or --job-token"
+  >&2 usage
+  exit 2
+fi
+
+readonly api_key token_opt
+
 git_root=$(cd "$git_dir" && pwd)
-ci_yml="${3:-$git_root/.gitlab-ci.yml}"
+ci_yml="${ci_yml:-$git_root/.gitlab-ci.yml}"
 
 get_gitdir_host() {
   dir="$1"
@@ -89,7 +131,7 @@ check_version_if_included() {
       >&2 echo CI includes "$ref" version of "$file"
       url="repository/files/$("$SCRIPTPATH"/../scripts/url.sh encode "$file")/raw"
       >&2 echo "Retrieving $url with ref=$ref using Gitlab API"
-      "$SCRIPTPATH"/../scripts/gitlab-api.sh --git-dir "$submod_dir" --api-key "$api_key" get "$url" --data-urlencode "ref=$ref" > included.yml
+      "$SCRIPTPATH"/../scripts/gitlab-api.sh --git-dir "$submod_dir" "$token_opt" "$api_key" get "$url" --data-urlencode "ref=$ref" > included.yml
       diffs=$(diff "$submod_dir/$file" included.yml) && diffresult=$? || diffresult=$?
       if [ "$diffresult" != 0 ]; then
         >&2 echo \
