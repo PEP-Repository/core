@@ -1,0 +1,22 @@
+# ThreadSanitizer suppressions for PEP.
+#
+# Usage:
+#   export TSAN_OPTIONS="suppressions=$PWD/tests/tsan-suppressions.supp"
+#   ./tests/integration.sh --local --no-docker --build-dir ./build/Debug
+#
+# Only add entries here for races whose *every* racing access lives in
+# third-party code. Keep patterns as narrow as the report allows: the
+# "race:" type matches any frame in either stack, so a broad pattern such as
+# "race:*/boost/log/*" would also hide our own races whenever the stack happens
+# to run through PEP_LOG.
+#
+# To find the pattern for a new report, run with
+#   TSAN_OPTIONS="log_path=/tmp/tsan ..."
+# and pick a function or header from the innermost third-party frame that is
+# common to both stacks.
+
+# Suppress false-positives for uninstrumented Boost.Log
+race:boost::log::v2_mt_posix::attributes::attribute_value_impl
+race:boost::log::v2_mt_posix::attribute_value::dispatch
+race:*/boost/log/attributes/attribute_value_impl.hpp
+race:*/boost/log/attributes/mutable_constant.hpp

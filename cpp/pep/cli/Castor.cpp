@@ -4,7 +4,7 @@
 #include <pep/application/Application.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/utils/Exceptions.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
@@ -453,7 +453,7 @@ private:
         return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
           return this->getAffectedMappings(*client->getAccessManagerProxy())
             .map(ReportColumnNameMappings)
-            .op(pep::RxBeforeCompletion(
+            .op(pep::RxSubsequently(
               []() {
                 PEP_LOG(LogTag, pep::Severity::Info) << "   ... done!" << std::endl;
               }));

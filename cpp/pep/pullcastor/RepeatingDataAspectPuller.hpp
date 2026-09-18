@@ -7,7 +7,7 @@ namespace pep {
 namespace castor {
 
 /// \brief Pulls Castor repeating data ("RepeatingData") for a single Castor study.
-class RepeatingDataAspectPuller : public TypedStudyAspectPuller<RepeatingDataAspectPuller, CastorStudyType::RepeatingData>, private SharedConstructor<RepeatingDataAspectPuller> {
+class RepeatingDataAspectPuller : public StudyAspectPuller, private SharedConstructor<RepeatingDataAspectPuller> {
   friend class StudyAspectPuller;
   friend class SharedConstructor<RepeatingDataAspectPuller>;
 

@@ -28,7 +28,7 @@ if [ -d "$config_file_or_folder" ]; then
 
   # Find config files regardless of directory structure (e.g. pep-services subfolder).
   # Also include StorageFacility.local.json etc. for integration test config.
-  find -name ClientConfig.json \
+  find . -name ClientConfig.json \
       -or -name AccessManager.json \
       -or -name Authserver.json \
       -or -name KeyServer.json \

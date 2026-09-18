@@ -122,7 +122,6 @@ default_image() {
   echo "$IMAGE_REPOSITORY:$commit_sha"
 }
 
-
 make_absolute() {
   (cd "$1" && pwd)
 }
@@ -210,7 +209,7 @@ execute() {
 }
 
 start_servers_locally() {
-  "$BUILD_DIR/cpp/pep/servers/$BUILD_MODE/pepServers" 2> >(sed -u "s/^/[pepServers]: /" >&2) > >(sed -u "s/^/[pepServers]: /") &
+  "$BUILD_DIR/cpp/pep/servers/$BUILD_MODE/pepServers" --loglevel "$SERVERS_LOGLEVEL" 2> >(sed -u "s/^/[pepServers]: /" >&2) > >(sed -u "s/^/[pepServers]: /") &
   PEP_SERVERS_PID=$!
 }
 
@@ -225,19 +224,19 @@ restart_servers() {
   trace sleep 10
 }
 
-readonly PEPCLI_TIMEOUT=60s
+PEPCLI_TIMEOUT=60s
 # Executes the given pepcli command. It should always be possible to simply copy a used pepcli command (e.g. during Access Administration) and execute it here.
 pepcli() {
   if [ "$LOCAL" = true ]; then
     (
     cd "$DEST_DIR"
-    trace --use-parent-location timeout -v --kill-after=10s "$PEPCLI_TIMEOUT" "$PEPCLI_COMMAND" --loglevel warning "--client-working-directory" "$CONFIG_DIR/client" "--oauth-token-secret" "$CONFIG_DIR/keyserver/OAuthTokenSecret.json" "$@"
+    trace --use-parent-location timeout -v --kill-after=10s "$PEPCLI_TIMEOUT" "$PEPCLI_COMMAND" --loglevel "$CLIENT_LOGLEVEL" "--client-working-directory" "$CONFIG_DIR/client" "--oauth-token-secret" "$CONFIG_DIR/keyserver/OAuthTokenSecret.json" "$@"
     )
   else
     # Add --interactive to enable piping data via stdin
     # Without the --foreground flag it hangs (on some systems), because of the --interactive flag of docker
     # shellcheck disable=SC2086
-    trace --use-parent-location timeout --foreground -v --kill-after=10s "$PEPCLI_TIMEOUT" docker exec --interactive -w "/data/client" pepservertest "$PEPCLI_COMMAND" --loglevel warning "--client-working-directory" "$CONFIG_DIR/client" "--oauth-token-secret" "$CONFIG_DIR/keyserver/OAuthTokenSecret.json" "$@"
+    trace --use-parent-location timeout --foreground -v --kill-after=10s "$PEPCLI_TIMEOUT" docker exec --interactive -w "/data/client" pepservertest "$PEPCLI_COMMAND" --loglevel "$CLIENT_LOGLEVEL" "--client-working-directory" "$CONFIG_DIR/client" "--oauth-token-secret" "$CONFIG_DIR/keyserver/OAuthTokenSecret.json" "$@"
   fi
 }
 
@@ -255,5 +254,14 @@ make_large_random_data_file() {
   path="$DEST_DIR/$1"
   # 10 blocks @ 1048576 bytes each = 10MiB
   execute . dd if=/dev/urandom of="$path" bs=1048576 count=10
+  echo "$path"
+}
+
+# Store something so large that it will be sent to the page store.
+make_non_inline_file() {
+  path="$DEST_DIR/$1"
+  # Anything over 4 kB (the InlinePageThreshold) is stored in the page store instead of
+  # alongside the entry's metadata, which is what we're after here.
+  execute . dd if=/dev/urandom of="$path" bs=1024 count=6
   echo "$path"
 }

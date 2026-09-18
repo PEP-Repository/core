@@ -9,6 +9,8 @@
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/preprocessor/stringize.hpp>
+#include <boost/preprocessor/seq/for_each.hpp>
+#include <boost/preprocessor/variadic/to_seq.hpp>
 
 #include <emscripten/bind.h>
 
@@ -18,16 +20,18 @@ using namespace pep::weblib;
 
 // Add Embind serialization for weblib structures
 
-#define PEP_BINDINGS_IMPL(cur_struct) \
-  EMSCRIPTEN_BINDINGS(cur_struct) { \
-    value_object<cur_struct>(BOOST_PP_STRINGIZE(cur_struct))
+#define PEP_FIELD(r, type, member) \
+  .field(BOOST_PP_STRINGIZE(member), &type::member)
 
-#define PEP_BINDINGS PEP_BINDINGS_IMPL(PEP_CUR_STRUCT)
-
-#define PEP_BINDINGS_END ; }
-
-#define PEP_FIELD(name) .field(#name, &PEP_CUR_STRUCT::name)
-
+#define PEP_BINDINGS(type, ...)                  \
+  EMSCRIPTEN_BINDINGS(type) {                    \
+    value_object<type>(BOOST_PP_STRINGIZE(type)) \
+      BOOST_PP_SEQ_FOR_EACH(                     \
+        PEP_FIELD,                               \
+        type,                                    \
+        BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)    \
+      );                                         \
+  }
 
 EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(ListQuery::subjectGroups)::value_type>();
@@ -37,47 +41,33 @@ EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(std::declval<CellEntry>().partialMetadataView())::mapped_type::value_type>();
 }
 
-//@formatter:off
+PEP_BINDINGS(ListQuery,
+  subjectGroups,
+  subjects,
+  columnGroups,
+  columns
+)
 
-#undef PEP_CUR_STRUCT
-#define PEP_CUR_STRUCT ListQuery
-PEP_BINDINGS
-  PEP_FIELD(subjectGroups)
-  PEP_FIELD(subjects)
-  PEP_FIELD(columnGroups)
-  PEP_FIELD(columns)
-PEP_BINDINGS_END
+PEP_BINDINGS(ColumnGroup,
+  name,
+  columns
+)
 
-#undef PEP_CUR_STRUCT
-#define PEP_CUR_STRUCT ColumnGroup
-PEP_BINDINGS
-  PEP_FIELD(name)
-  PEP_FIELD(columns)
-PEP_BINDINGS_END
+PEP_BINDINGS(EnrolledUser,
+  userGroup,
+  user
+)
 
-#undef PEP_CUR_STRUCT
-#define PEP_CUR_STRUCT EnrolledUser
-PEP_BINDINGS
-  PEP_FIELD(userGroup)
-  PEP_FIELD(user)
-PEP_BINDINGS_END
+PEP_BINDINGS(SubjectGroup,
+  name
+)
 
-#undef PEP_CUR_STRUCT
-#define PEP_CUR_STRUCT SubjectGroup
-PEP_BINDINGS
-  PEP_FIELD(name)
-PEP_BINDINGS_END
-
-#undef PEP_CUR_STRUCT
-#define PEP_CUR_STRUCT ParticipantPersonalia
-PEP_BINDINGS
-  PEP_FIELD(firstName)
-  PEP_FIELD(middleName)
-  PEP_FIELD(lastName)
-  PEP_FIELD(dateOfBirth)
-PEP_BINDINGS_END
-
-//@formatter:on
+PEP_BINDINGS(ParticipantPersonalia,
+  firstName,
+  middleName,
+  lastName,
+  dateOfBirth
+)
 
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {
   using namespace std::ranges;

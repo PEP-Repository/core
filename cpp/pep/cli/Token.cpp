@@ -45,7 +45,7 @@ protected:
         + pep::commandline::Parameter(
               "expiration",
               "The expiration time for the token")
-              .value(pep::commandline::Value<Timestamp>().positional())
+              .value(pep::commandline::Value<Timestamp>().positional().required())
         + pep::commandline::Parameter("json", "Produce output in JSON format");
   }
 };

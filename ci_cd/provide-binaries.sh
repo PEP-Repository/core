@@ -77,13 +77,13 @@ ensure_pipeline_triggered() {
 
 provide_foss_image() {
   name="$1"
-  location=$("$SCRIPTPATH"/../scripts/gitlab-container-registry.sh \
-    "$foss_root" "$api_key" get-image-location "$name" "$foss_sha")
+  location=$("$SCRIPTPATH"/../scripts/gitlab-registry-image.sh \
+    get-location "${CI_REGISTRY}" "$foss_root" "$name" "$foss_sha")
   if [ -z "$location" ]; then
     echo "Running a FOSS pipeline to (re-)produce Docker image '$name'..."
     ensure_pipeline_triggered
-    location=$("$SCRIPTPATH"/../scripts/gitlab-container-registry.sh \
-      "$foss_root" "$api_key" get-image-location "$name" "$foss_sha")
+    location=$("$SCRIPTPATH"/../scripts/gitlab-registry-image.sh \
+      get-location "${CI_REGISTRY}" "$foss_root" "$name" "$foss_sha")
     if [ -z "$location" ]; then
       >&2 echo "FOSS pipeline did not produce expected Docker image '$name' for SHA $foss_sha"
       return 1
@@ -96,12 +96,12 @@ provide_foss_image() {
 download_foss_package() {
   package_name="$1"
   file_name="$2"
-  if ! "$SCRIPTPATH"/../scripts/gitlab-packages.sh "$foss_root" "$api_key" \
-      download-generic "$package_name" "$foss_sha" "$file_name"; then
+  if ! "$SCRIPTPATH"/../scripts/gitlab-packages.sh --git-dir "$foss_root" --api-key "$api_key" \
+      download generic "$package_name" "$foss_sha" "$file_name"; then
     echo "Running a FOSS pipeline to (re-)produce file '$file_name' in package '$package_name' for SHA $foss_sha..."
     ensure_pipeline_triggered
-    "$SCRIPTPATH"/../scripts/gitlab-packages.sh "$foss_root" "$api_key" \
-      download-generic "$package_name" "$foss_sha" "$file_name" || {
+    "$SCRIPTPATH"/../scripts/gitlab-packages.sh --git-dir "$foss_root" --api-key "$api_key" \
+      download generic "$package_name" "$foss_sha" "$file_name" || {
       >&2 echo "FOSS pipeline did not produce expected file '$file_name' in '$package_name' for SHA $foss_sha"
       return 1
     }
@@ -110,12 +110,12 @@ download_foss_package() {
 
 download_foss_npm_package() {
   package_name="$1"
-  if ! "$SCRIPTPATH"/../scripts/gitlab-packages.sh "$foss_root" "$api_key" \
-      download-npm "$package_name" "$foss_sha"; then
+  if ! "$SCRIPTPATH"/../scripts/gitlab-packages.sh --git-dir "$foss_root" --api-key "$api_key" \
+      download npm "$package_name" "$foss_sha"; then
     echo "Running a FOSS pipeline to (re-)produce npm package '$package_name' for SHA $foss_sha..."
     ensure_pipeline_triggered
-    "$SCRIPTPATH"/../scripts/gitlab-packages.sh "$foss_root" "$api_key" \
-      download-npm "$package_name" "$foss_sha" || {
+    "$SCRIPTPATH"/../scripts/gitlab-packages.sh --git-dir "$foss_root" --api-key "$api_key" \
+      download npm "$package_name" "$foss_sha" || {
       >&2 echo "FOSS pipeline did not produce expected npm package '$package_name' for SHA $foss_sha"
       return 1
     }

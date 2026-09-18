@@ -5,7 +5,6 @@
 #include <map>
 #include <set>
 #include <stdexcept>
-#include <string>
 #include <utility>
 
 namespace pep {
@@ -44,6 +43,22 @@ LifeCycler::~LifeCycler() noexcept {
     assert(GetAllowedLifeCycleTransitions(status_).contains(Status::Finalized));
     this->setStatus(Status::Finalized);
   }
+}
+
+std::string_view LifeCycler::StatusToString(Status status) {
+  switch (status) {
+    case Status::Uninitialized: return "uninitialized";
+    case Status::Reinitializing: return "reinitializing";
+    case Status::Initializing: return "initializing";
+    case Status::Initialized: return "initialized";
+    case Status::Finalizing: return "finalizing";
+    case Status::Finalized: return "finalized";
+  }
+  throw std::invalid_argument("Invalid LifeCycler::Status: " + std::to_string(std::to_underlying(status)));
+}
+
+std::string LifeCycler::StatusChange::toString() const {
+  return (std::string(StatusToString(previous)) += " -> ") += StatusToString(updated);
 }
 
 LifeCycler::Status LifeCycler::setStatus(Status status) {

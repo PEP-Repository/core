@@ -1,11 +1,17 @@
 #include <pep/structure/StudyContext.hpp>
 
-#include <ranges>
+#include <pep/utils/Compare.hpp>
 
 #include <boost/algorithm/string/join.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 
 using namespace std::ranges;
+
+#include <algorithm>
+#include <ranges>
+#include <set>
+#include <stdexcept>
 
 namespace pep {
 
@@ -16,6 +22,23 @@ namespace {
       boost::split(result, value, std::bind_front(std::equal_to{}, ','));
     }
     return result;
+  }
+
+  bool IsValidIdCharacter(char c) {
+    return (c >= 'a' && c <= 'z')
+        || (c >= 'A' && c <= 'Z')
+        || (c >= '0' && c <= '9')
+        || c == '_';
+  }
+}
+
+StudyContext::StudyContext(std::string id)
+  : StudyContext(std::move(id), false) {
+  if (id_.empty()) {
+    throw std::runtime_error("Study context id must not be empty");
+  }
+  if (!all_of(id_, IsValidIdCharacter)) {
+    throw std::runtime_error("Study context id \"" + id_ + "\" is invalid: only alphanumerics and underscores are allowed");
   }
 }
 
@@ -28,7 +51,7 @@ bool StudyContext::matches(const std::string& contexts) const {
     return isDefault();
   }
   auto ids = ContextStringToIds(contexts);
-  return contains(ids, getId());
+  return any_of(ids, [this](const std::string& id) { return boost::iequals(id, getId()); });
 }
 
 bool StudyContext::matchesShortPseudonym(const pep::ShortPseudonymDefinition& sp) const {
@@ -46,18 +69,32 @@ std::string StudyContext::getAdministeringAssessorColumnName(uint32_t visitNumbe
 }
 
 bool StudyContext::operator ==(const StudyContext& other) const {
-  return (id_ == other.id_) && (isDefault_ == other.isDefault_);
+  return boost::iequals(id_, other.id_) && (isDefault_ == other.isDefault_);
 }
 
 std::vector<StudyContext>::const_iterator StudyContexts::getPositionOf(const StudyContext& context) const {
   return find(items_, context);
 }
 
+std::vector<StudyContext>::const_iterator StudyContexts::findById(const std::string& id) const {
+  return find_if(items_, [&id](const StudyContext& candidate) { return boost::iequals(candidate.getId(), id); });
+}
+
+bool StudyContexts::hasDefault() const noexcept {
+  return getDefault() != nullptr;
+}
+
 StudyContexts::StudyContexts(std::vector<StudyContext> items)
   : items_(std::move(items)) {
   if (!items_.empty()) {
-    if (getDefault() != nullptr) {
+    if (hasDefault()) {
       throw std::runtime_error("Don't specify a default when initializing StudyContexts");
+    }
+    std::set<std::string, CaseInsensitiveCompare> ids;
+    for (const auto& item : items_) {
+      if (!ids.insert(item.getId()).second) {
+        throw std::runtime_error("Duplicate study context id \"" + item.getId() + "\"");
+      }
     }
     items_.front().isDefault_ = true;
   }
@@ -66,16 +103,27 @@ StudyContexts::StudyContexts(std::vector<StudyContext> items)
   }
 }
 
+std::vector<StudyContext> StudyContexts::getConfigured() const {
+  std::vector<StudyContext> result;
+  for (const auto& item : items_) {
+    if (!item.getId().empty()) { // Omit any empty id
+      result.push_back(item);
+      result.back().isDefault_ = false; // Remove any defaults, as the constructor will synthesize a default context
+    }
+  }
+  return result;
+}
+
 bool StudyContexts::contains(const StudyContext& context) const {
   return getPositionOf(context) != items_.cend();
 }
 
 void StudyContexts::add(const StudyContext& context) {
-  if (contains(context)) {
-    throw std::runtime_error("Attempt to add duplicate study context");
+  if (findById(context.getId()) != items_.cend()) {
+    throw std::runtime_error("Attempted to add duplicate study context");
   }
-  if (context.isDefault() && (getDefault() != nullptr)) {
-    throw std::runtime_error("Attempt to add duplicate default study context");
+  if (context.isDefault() && hasDefault()) {
+    throw std::runtime_error("Attempted to add duplicate default study context");
   }
   items_.push_back(context);
 }
@@ -89,7 +137,7 @@ void StudyContexts::remove(const StudyContext& context) {
 }
 
 const StudyContext& StudyContexts::getById(const std::string& id) const {
-  auto position = find(items_, id, &StudyContext::getId);
+  auto position = findById(id);
   if (position == items_.cend()) {
     throw std::runtime_error("Study context " + id + " not found");
   }

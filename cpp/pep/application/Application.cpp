@@ -189,24 +189,15 @@ Application::~Application() {
 }
 
 std::string Application::getName() const {
-  if (argc_ > 0) {
-    return std::filesystem::path(this->getArgv()[0]).filename().string();
+  if (!args_.empty()) {
+    return std::filesystem::path(args_.front()).filename().string();
   }
   return "[this program]";
 }
 
-int Application::getArgc() const {
-  if (argc_ < 0) {
-    throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
-  }
-  return argc_;
-}
-
-char** Application::getArgv() const {
-  if (argv_ == nullptr) {
-    throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
-  }
-  return argv_;
+std::vector<std::string> Application::ConvertArguments(std::span<const char* const> args) {
+  return args | views::transform([](const char* arg) { return std::string(arg); })
+    | to<std::vector>();
 }
 
 int Application::RunWithoutError(std::function<int()> implementor) noexcept {
@@ -238,13 +229,12 @@ void Application::initializeLoggingOnce() {
   { // initialize logging sinks
     std::vector<std::shared_ptr<Logging>> logging;
 
+    std::optional<Severity> userProvidedConsoleLevel =
+      values.getOptional<std::string>("loglevel")
+      .transform(Logging::ParseSeverity);
     std::optional<Severity> consoleLevel = this->consoleLogMinimumSeverityLevel();
-    if (auto consoleLevelStr = values.getOptional<std::string>("loglevel")) {
-      consoleLevel = Logging::ParseSeverity(*consoleLevelStr);
-      if (consoleLevel < Logging::compiledMinimumSeverity) {
-        PEP_LOG(LogTag, Severity::Warning)
-          << "Logs with severity below <" << Logging::FormatSeverity(Logging::compiledMinimumSeverity) << "> are not enabled for this build";
-      }
+    if (userProvidedConsoleLevel) {
+      consoleLevel = userProvidedConsoleLevel;
     }
     if (consoleLevel) {
       logging.push_back(std::make_shared<ConsoleLogging>(*consoleLevel));
@@ -260,6 +250,12 @@ void Application::initializeLoggingOnce() {
     }
 
     Logging::Initialize(logging);
+
+    // Only log this after initializing logging (otherwise style is inconsistent etc.)
+    if (userProvidedConsoleLevel && userProvidedConsoleLevel < Logging::compiledMinimumSeverity) {
+      PEP_LOG(LogTag, Severity::Warning)
+        << "Logs with severity below <" << Logging::FormatSeverity(Logging::compiledMinimumSeverity) << "> are not enabled for this build";
+    }
   }
 
   showVersionInfo_ = !values.has("suppress-version-info");
@@ -268,17 +264,15 @@ void Application::initializeLoggingOnce() {
   }
 }
 
-int Application::run(int argc, char* argv[]) { //NOLINT(modernize-avoid-c-arrays)
+int Application::run(std::vector<std::string> args) {
   if (useUnwinder()) {
     InitializeUnwinder();
   }
 
-  std::queue<std::string> args;
-  for_each(argv + 1, argv + argc, [&args](const char* arg) {args.push(arg); });
+  args_ = std::move(args);
 
-  argc_ = argc;
-  argv_ = argv;
-  return this->process(args);
+  auto argsQueue = args_ | views::drop(1) | to<std::queue>;
+  return this->process(argsQueue);
 }
 
 std::filesystem::path Application::rawConfigDirectory() const {
@@ -347,39 +341,7 @@ bool Application::ReportTermination(std::exception_ptr exception) noexcept {
 
 #ifdef _WIN32
 
-// Helper class to convert a number of wide strings to the char *argv[] expected by Application.execute()
-class MainFunctionArguments {
-  std::vector<std::string> argStrings_;
-  std::vector<char*> argv_;
-
- public:
-   MainFunctionArguments(int argc, LPWSTR* wideArgv) {
-     assert(argc >= 0);
-     assert(wideArgv != nullptr);
-
-     for (int i = 0; i < argc; i++) {
-       auto wide = wideArgv[i];
-       assert(wide != nullptr);
-       argStrings_.emplace_back(win32api::WideStringToUtf8(wide));
-     }
-
-     argv_ = argStrings_
-       | views::transform([](std::string& argString) { return argString.data(); })
-       | to<std::vector>();
-
-     argv_.emplace_back(nullptr); // C++ standard requires that "The value of argv[argc] shall be 0": see https://timsong-cpp.github.io/cppwp/basic.start.main
-   }
-
-  int argc() const noexcept {
-    return static_cast<int>(argStrings_.size());
-  }
-
-  char** argv() noexcept {
-    return argv_.data();
-  }
-};
-
-int Application::InvokeWithArgcArgv(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd, std::function<int(int, char**)> invoke) {
+int Application::InvokeWithArgs(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd, std::function<int(std::vector<std::string> args)> invoke) {
   runningOnWindowsSubsystem = true;
 
   int argc;
@@ -389,10 +351,11 @@ int Application::InvokeWithArgcArgv(HINSTANCE hInstance, HINSTANCE hPrevInstance
   }
   PEP_DEFER(::LocalFree(wideArgv));
 
-  MainFunctionArguments arguments(argc, wideArgv);
-  assert(argc == arguments.argc());
-
-  return invoke(argc, arguments.argv());
+  std::span<const LPCWSTR> wideArgs(wideArgv, static_cast<std::size_t>(argc));
+  return invoke(wideArgs
+    | views::transform([](LPCWSTR wstr) {
+      return win32api::WideStringToUtf8(wstr);
+    }) | to<std::vector>());
 }
 
 #endif

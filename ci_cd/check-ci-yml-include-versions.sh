@@ -89,7 +89,7 @@ check_version_if_included() {
       >&2 echo CI includes "$ref" version of "$file"
       url="repository/files/$("$SCRIPTPATH"/../scripts/url.sh encode "$file")/raw"
       >&2 echo "Retrieving $url with ref=$ref using Gitlab API"
-      "$SCRIPTPATH"/../scripts/gitlab-api.sh "$submod_dir" "$api_key" get "$url" --data-urlencode "ref=$ref" > included.yml
+      "$SCRIPTPATH"/../scripts/gitlab-api.sh --git-dir "$submod_dir" --api-key "$api_key" get "$url" --data-urlencode "ref=$ref" > included.yml
       diffs=$(diff "$submod_dir/$file" included.yml) && diffresult=$? || diffresult=$?
       if [ "$diffresult" != 0 ]; then
         >&2 echo \

@@ -27,7 +27,10 @@ public:
 
   /// \brief Produces a human-readable description of this networking node.
   /// \return A string describing this node.
-  std::string describe() const { return component_->describe(); }
+  std::string describe() const;
+
+  /// Get human-readable description of a connection to this networking node.
+  std::string describeConnection(const Connection& connection) const;
 
   /// \brief Makes the node start its networking.
   void start();

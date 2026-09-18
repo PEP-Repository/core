@@ -16,10 +16,10 @@ void RegisteredTestEnvironment::RegisterFactory(const Factory& factory) {
   registered = factory;
 }
 
-RegisteredTestEnvironment* RegisteredTestEnvironment::Create(int argc, char* argv[]) { //NOLINT(modernize-avoid-c-arrays)
+RegisteredTestEnvironment* RegisteredTestEnvironment::Create(std::span<const char* const> args) {
   const auto& registered = RegisteredFactory();
   if (registered.has_value()) {
-    return (*registered)(argc, argv);
+    return (*registered)(args);
   }
   return nullptr;
 }
