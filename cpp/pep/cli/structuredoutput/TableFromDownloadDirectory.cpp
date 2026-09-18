@@ -6,12 +6,14 @@
 #include <cstddef>
 #include <filesystem>
 #include <optional>
+#include <ranges>
 #include <pep/structuredoutput/IndexedStringPool.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/VariantUtils.hpp>
 #include <vector>
 
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace pep::structuredOutput {
 namespace {
@@ -42,13 +44,12 @@ TableTripletsAndPools triplets(
       .participants = IndexedStringPool<ParticipantIdentifier>{participantProjection},
       .columns = IndexedStringPool<std::string>{identity}};
 
-  out.triplets.reserve(descs.size());
-  std::ranges::transform(descs, std::back_inserter(out.triplets), [&out, &valueProjection](const RecordDescriptor& d) {
+  out.triplets.append_range(descs | views::transform([&out, &valueProjection](const RecordDescriptor& d) {
     return TableTriplet{
         .participant = out.participants.map(d.getParticipant()),
         .column = out.columns.map(d.getColumn()),
         .value = valueProjection(d)};
-  });
+  }));
 
   return out;
 }
@@ -57,7 +58,7 @@ std::vector<std::string> Concat(std::string lhs, const std::vector<std::string_v
   std::vector<std::string> combined;
   combined.reserve(rhs.size() + 1);
   combined.emplace_back(std::move(lhs));
-  for (auto r: rhs) { combined.emplace_back(r); }
+  combined.append_range(rhs | views::transform([](std::string_view part) { return std::string(part); })); // string_view converts to string only explicitly
   return combined;
 }
 
@@ -70,7 +71,9 @@ Table TableFrom(const TableTripletsAndPools& pooled, std::string idColumnName) {
   const auto participants = pooled.participants.all();
   auto table = PreAllocatedTable(Concat(std::move(idColumnName), pooled.columns.all()), participants.size());
   auto allRecords = table.records();
-  for (std::size_t i = 0; i < participants.size(); ++i) { allRecords[i][0] = participants[i]; }
+  for (auto [participant, record] : views::zip(participants, allRecords)) {
+    record.front() = participant;
+  }
   for (auto& t : pooled.triplets) { allRecords[t.participant.index()][t.column.index() + 1] = t.value; }
   return table;
 }
@@ -102,7 +105,7 @@ bool AllColumnFilesArePrintable(const Table& table, std::size_t columnNr, const 
     if (!IsFileLike(field)) return false;
     const auto content = readFile(field);
     const auto isPrintable = [](char c) { return std::isprint(c); };
-    return std::ranges::all_of(content, isPrintable);
+    return all_of(content, isPrintable);
   });
 }
 

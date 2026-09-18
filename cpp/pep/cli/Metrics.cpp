@@ -3,10 +3,13 @@
 #include <pep/client/Client.hpp>
 #include <pep/application/Application.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 
@@ -20,11 +23,11 @@ protected:
   pep::commandline::Parameters getSupportedParameters() const override {
     auto traits = pep::ServerTraits::All();
 
-    std::vector<std::string> ids;
-    ids.reserve(traits.size());
-    std::transform(traits.begin(), traits.end(), std::back_inserter(ids), [](const pep::ServerTraits& traits) {return traits.commandLineId(); });
+    auto ids = traits
+      | views::transform(&pep::ServerTraits::commandLineId)
+      | to<std::vector>();
     // Sort by command line ID: produces nicely sorted child commands
-    std::sort(ids.begin(), ids.end());
+    sort(ids);
 
     return ChildCommandOf<CliApplication>::getSupportedParameters()
       + pep::commandline::Parameter("server", "Restrict to specified server(s)").value(pep::commandline::Value<std::string>().positional().multiple()

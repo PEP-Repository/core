@@ -7,7 +7,10 @@
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <cassert>
+#include <ranges>
 #include <boost/algorithm/string/join.hpp>
+
+using namespace std::ranges;
 
 namespace {
 
@@ -15,9 +18,9 @@ QRegularExpression GetPseudonymsRegex(const std::vector<pep::PseudonymFormat>& f
   if (formats.empty()) {
     throw std::runtime_error("Input validation not possible: no pseudonym format specified");
   }
-  std::vector<std::string> entries;
-  entries.reserve(formats.size());
-  std::transform(formats.cbegin(), formats.cend(), std::back_inserter(entries), [](const pep::PseudonymFormat& format) {return format.getRegexPattern(); });
+  auto entries = formats
+    | views::transform(&pep::PseudonymFormat::getRegexPattern)
+    | to<std::vector>();
   auto pattern = "^(" + boost::algorithm::join(entries, "|") + ")$";
   return QRegularExpression(QString::fromStdString(pattern));
 }
@@ -49,9 +52,9 @@ ParticipantSelector::ParticipantSelector(QWidget* parent, const pep::GlobalConfi
   ui_->sidInput->setMaxLength(static_cast<int>(maxLength));
 
   const auto& sps = config.getShortPseudonyms();
-  std::vector<pep::PseudonymFormat> spFormats;
-  spFormats.reserve(sps.size());
-  std::transform(sps.cbegin(), sps.cend(), std::back_inserter(spFormats), [](const pep::ShortPseudonymDefinition& definition) {return pep::PseudonymFormat(definition.getPrefix(), definition.getLength()); });
+  auto spFormats = sps
+    | views::transform([](const pep::ShortPseudonymDefinition& definition) {return pep::PseudonymFormat(definition.getPrefix(), definition.getLength()); })
+    | to<std::vector>();
 
   ui_->sidInput->setValidator(new QRegularExpressionValidator(GetPseudonymsRegex(config.getParticipantIdentifierFormats()), ui_->sidInput));
   SetInputValidationTooltip(ui_->sidInput, tr("participant-id-tooltip"));

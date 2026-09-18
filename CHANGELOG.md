@@ -82,6 +82,8 @@
 
 - core#2961: The `StorageFacility.json` config needs to be changed to the new format (see changes above). Extract `EndPoint`, `Credentials`, `CaCertificateFile`, `UseHttps`, and `Connections` (or the subset that is used) into an object under a new `Hosts` key and give it an ID. Then change all buckets into objects with `Name` and `HostId` properties, the latter of which references the host ID.
 
+- core#2974: Building PEP now requires a more recent compiler & stdlib with C++23 features, see README.md.
+
 ---------------
 *Past changes, do not edit (except by person doing release):*
 

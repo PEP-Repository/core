@@ -260,8 +260,8 @@ TEST_F(AccessManagerStorageTest, getChecksumChainNames_happy) {
     "user-group-users",
     "structure-metadata",
   };
-  std::sort(actual.begin(), actual.end());
-  std::sort(expected.begin(), expected.end());
+  sort(actual);
+  sort(expected);
   ASSERT_EQ(actual, expected);
 }
 
@@ -654,7 +654,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_unfiltered_groups) {
 
   auto response = storage->executeUserQuery({TimeNow(), "", ""});
   PrepareSortedMine(response);
-  const auto groupNames = RangeToVector(response.userGroups | views::transform(std::mem_fn(&UserGroup::name)));
+  const auto groupNames = response.userGroups | views::transform(&UserGroup::name) | to<std::vector>();
   EXPECT_EQ(groupNames, (std::vector{group1.name, group2.name})) << "should return all group names";
   EXPECT_EQ(response.userGroups, (std::vector<UserGroup>{
       group1,
@@ -744,7 +744,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_group) {
   auto response = storage->executeUserQuery({TimeNow(), "Group1", ""});
   PrepareSortedMine(response);
 
-  const auto groupNames = RangeToVector(response.userGroups | views::transform(std::mem_fn(&UserGroup::name)));
+  const auto groupNames = response.userGroups | views::transform(&UserGroup::name) | to<std::vector>();
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return filtered group names";
 
   EXPECT_EQ(response.users, (std::vector<QRUser>{
@@ -783,7 +783,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user) {
       {user1, {}, {user1Alt}, {{group1, {}}}}, // Note: we also want to see alternative IDs
     })) << "should return filtered users with all alt IDs with group memberships";
 
-  const auto groupNames = RangeToVector(response.userGroups | views::transform(std::mem_fn(&UserGroup::name)));
+  const auto groupNames = response.userGroups | views::transform(&UserGroup::name) | to<std::vector>();
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return user-filtered group names";
 }
 
@@ -812,7 +812,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_alt) {
       {user1, {}, {user1Alt}, {{group1, {}}}},
     })) << "should return filtered users with all alt IDs with group memberships";
 
-  const auto groupNames = RangeToVector(response.userGroups | views::transform(std::mem_fn(&UserGroup::name)));
+  const auto groupNames = response.userGroups | views::transform(&UserGroup::name) | to<std::vector>();
   EXPECT_EQ(groupNames, std::vector{group1}) << "should return user-filtered group names";
 }
 
@@ -848,7 +848,7 @@ TEST_F(AccessManagerStorageTest, executeQuery_filtered_user_and_group) {
       {userA1, {}, {}, {{groupA1, {}}}},
     })) << "should return double-filtered users with group memberships";
 
-  const auto groupNames = RangeToVector(response.userGroups | views::transform(std::mem_fn(&UserGroup::name)));
+  const auto groupNames = response.userGroups | views::transform(&UserGroup::name) | to<std::vector>();
   EXPECT_EQ(groupNames, std::vector{groupA1}) << "should return double-filtered group names";
 }
 

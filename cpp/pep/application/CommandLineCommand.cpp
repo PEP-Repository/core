@@ -11,6 +11,8 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/format.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 namespace commandline {
 
@@ -44,7 +46,7 @@ int Command::issueCommandLineHelp(const std::optional<std::string>& error) {
     fullSelf = parent.command + ' ' + fullSelf;
   }
 
-  std::reverse(parents.begin(), parents.end());
+  reverse(parents);
 
   auto parameters = this->getSupportedParameters();
   auto children = this->createChildCommands();
@@ -66,7 +68,7 @@ int Command::issueCommandLineHelp(const std::optional<std::string>& error) {
   auto arguments = parameters.getInvocationSummary();
   if (!children.empty()) {
     char pre = '[', post = ']';
-    if (std::all_of(children.cbegin(), children.cend(), [](std::shared_ptr<Command> child) {
+    if (all_of(children, [](std::shared_ptr<Command> child) {
       assert(!child->getSupportedParameters().empty()); // Should have at least the --help switch
       return child->hasRequiredArgument(); })) {
       pre = '<';
@@ -138,7 +140,7 @@ bool Command::hasRequiredArgument() {
 
 std::optional<int> Command::processLexedParameters(const LexedValues& lexed) {
   assert(!parametersLexed_);
-  if (lexed.find("help") != lexed.cend()) {
+  if (lexed.contains("help")) {
     return this->issueCommandLineHelp(std::nullopt);
   }
   parametersLexed_ = true;
@@ -190,7 +192,7 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
 
     // Merge parameters, ensure no conflicting parameter additions (i.e., same parameter added by multiple transformations)
     for (const auto& [key, vals] : transformResult.toAdd) {
-      assert((mergedToAdd.find(key) == mergedToAdd.end())
+      assert(!mergedToAdd.has(key)
              && "Programmer error: Multiple transformed parameters specified conflicting parameter additions.");
       mergedToAdd.set(key, vals);
     }
@@ -249,9 +251,7 @@ int Command::routeToDescendant(CommandPath childPath, NamedValues leafValues, st
   if (childPath.segments.size() > 1U) {
     remaining.segments.assign(childPath.segments.begin() + 1, childPath.segments.end());
   }
-  auto child = std::find_if(children.cbegin(), children.cend(), [&childName](const std::shared_ptr<Command>& c) {
-    return c->getName() == childName;
-  });
+  auto child = find(children, childName, &Command::getName);
 
   assert(child != children.cend() && "Programmer error: a command is forwarded to an invalid child path.");
   
@@ -292,7 +292,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
       auto lexed = parameters.lex(arguments);
 
       // Step 3: Handle autocomplete requests
-      if (!isLeafDispatch && lexed.find("autocomplete") != lexed.end()) {
+      if (!isLeafDispatch && lexed.contains("autocomplete")) {
         return this->printAutocompleteInfo(argumentsCopy);
       }
 
@@ -359,16 +359,14 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
   }
 
   // Step 12: Optionally dispatch to child command
-  assert(std::all_of(children.cbegin(), children.cend(), [this](const std::shared_ptr<Command>& child) { return child->getParentCommand() == this; }));
+  assert(all_of(children, [this](const std::shared_ptr<Command>& child) { return child->getParentCommand() == this; }));
   if (!children.empty()) {
     if (arguments.empty()) {
       return this->issueCommandLineHelp("No command specified.");
     }
     std::string command = arguments.front();
     arguments.pop();
-    auto child = std::find_if(children.cbegin(), children.cend(), [&command](const std::shared_ptr<Command>& child) {
-      return child->getName() == command;
-    });
+    auto child = find(children, command, &Command::getName);
     if (child == children.cend()) {
       return this->issueCommandLineHelp("Unsupported command '" + command + "' issued to " + this->getName() + GetGlobWarning(command));
     }
@@ -415,7 +413,7 @@ int Command::printAutocompleteInfo(std::queue<std::string>& arguments) {
       // Complete parameter switches
       auto completeParams = parameters.getSwitchesToAutocomplete(lexed);
       // Put required parameters first
-      std::ranges::stable_sort(completeParams, std::greater{}, &Parameter::isRequired);
+      stable_sort(completeParams, std::greater{}, &Parameter::isRequired);
       complete.parameters(completeParams);
     }
   }
@@ -445,7 +443,7 @@ int Command::autocompleteChildCommand(std::queue<std::string>& arguments) {
   else { // We have child commands
     std::string command = arguments.front();
     arguments.pop();
-    auto child = std::ranges::find_if(children, [&command](const std::shared_ptr<Command>& child) {
+    auto child = find_if(children, [&command](const std::shared_ptr<Command>& child) {
       return child->getName() == command && !child->isUndocumented();
     });
     if (child == children.cend()) {

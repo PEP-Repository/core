@@ -5,6 +5,9 @@
 #include <QFutureWatcher>
 
 #include <QtConcurrent/QtConcurrent>
+
+namespace {
+
 class AsyncException : public QException {
 private:
   std::exception_ptr original_;
@@ -17,6 +20,8 @@ public:
   QException* clone() const override { return new AsyncException(original_); }
   void raise() const override { throw *this; }
 };
+
+}
 
 void Async::Run(QObject* owner, const std::function<void()>& job, const std::function<void(std::exception_ptr)>& onCompletion) {
   if (owner == nullptr) {

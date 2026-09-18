@@ -47,7 +47,7 @@ rxcpp::observable<IndexedTicket2> TicketFile::GetTicket(CoreClient& client, cons
     assert(opts.has_value());
     file = parameterValues.get<std::filesystem::path>("ticket-out");
     // Tickets are written to file with the intent to use them for followup (e.g. "pepcli get") queries, which require the "read" privilege
-    auto mode = std::find(requestOpts.modes.cbegin(), requestOpts.modes.cend(), "read");
+    auto mode = std::ranges::find(requestOpts.modes, "read");
     if (mode == requestOpts.modes.cend()) {
       requestOpts.modes.push_back("read");
     }

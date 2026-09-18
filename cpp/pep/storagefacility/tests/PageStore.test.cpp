@@ -223,7 +223,7 @@ protected:
 
 private:
   static std::optional<std::string> single(const std::shared_ptr<std::vector<std::shared_ptr<std::string>>>& results) {
-    return GetOptionalValue(RangeToOptional(*results), [](const auto& ptr) { return *ptr; });
+    return RangeToOptional(*results).transform([](const auto& ptr) { return *ptr; });
   }
 };
 

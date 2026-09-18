@@ -13,6 +13,7 @@
 #include <pep/cli/TicketFile.hpp>
 
 #include <iostream>
+#include <ranges>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -83,7 +84,7 @@ protected:
       }
 
       SubjectData(pep::PolymorphicPseudonym pp, const std::optional<pep::LocalPseudonym> lp, std::shared_ptr<pep::GlobalConfiguration> globalConfig)
-        : pp_(pp), collectMetadata_(false), lp_(pep::GetOptionalValue(lp, std::mem_fn(&pep::LocalPseudonym::text))) {
+        : pp_(pp), collectMetadata_(false), lp_(lp.transform(&pep::LocalPseudonym::text)) {
         if (lp.has_value() && globalConfig) {
           blp_ = globalConfig->getUserPseudonymFormat().makeUserPseudonym(*lp);
         }
@@ -277,9 +278,9 @@ protected:
               std::move(ticket));
           if (ctx->parameterValues.has("show-dataless")) {
             auto pseuds = ctx->earOpts.ticket->openTicketWithoutCheckingSignature()->accessSubjects;
-            std::transform(pseuds.begin(), pseuds.end(), std::inserter(ctx->pseudsToReport, ctx->pseudsToReport.begin()), [](const pep::LocalPseudonyms& lps) {
+            ctx->pseudsToReport.insert_range(pseuds | std::views::transform([](const pep::LocalPseudonyms& lps) {
               return std::make_pair(lps.polymorphic, lps.accessGroup);
-              });
+              }));
           }
           return client->enumerateAndRetrieveData2(ctx->earOpts);
         });

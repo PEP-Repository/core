@@ -28,6 +28,8 @@
 #include <chrono>
 #include <numeric>
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
@@ -204,10 +206,9 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     return batch;
       })
     .concat_map([server, ctx](std::shared_ptr<Batch> batch) {
-    std::vector<size_t> is(batch->requestEntries.size());
     PEP_LOG(LogTag, TranscryptorRequestLoggingSeverity) << "Transcryptor request " << ctx->requestNumber << " processing " << batch->requestEntries.size() << "-entry batch";
-    std::iota(is.begin(), is.end(), 0);
-    return server->workerPool_->batched_map<8>(std::move(is),
+    return server->workerPool_->batched_map<8>(
+      views::iota(0uz, batch->requestEntries.size()) | to<std::vector>(),
       ObserveOnAsio(*server->getIoContext()),
       [server, ctx, batch](size_t i) {
       const auto& entry = batch->requestEntries[i];
@@ -284,8 +285,8 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       [](std::shared_ptr<Results> results, std::shared_ptr<Batch> batch) {
         results->responseEntries.reserve(results->responseEntries.size() + batch->results.responseEntries.size());
         results->localPseudonyms.reserve(results->localPseudonyms.size() + batch->results.localPseudonyms.size());
-        std::copy(batch->results.responseEntries.cbegin(), batch->results.responseEntries.cend(), std::back_insert_iterator(results->responseEntries));
-        std::copy(batch->results.localPseudonyms.cbegin(), batch->results.localPseudonyms.cend(), std::back_insert_iterator(results->localPseudonyms));
+        copy(batch->results.responseEntries, std::back_insert_iterator(results->responseEntries));
+        copy(batch->results.localPseudonyms, std::back_insert_iterator(results->localPseudonyms));
         return results;
       })
     .map([server, ctx, start_time](std::shared_ptr<Results> results) {

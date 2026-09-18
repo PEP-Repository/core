@@ -2,10 +2,14 @@
 
 #include <pep/utils/Compare.hpp>
 
+#include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 
+using namespace std::ranges;
+
 #include <algorithm>
+#include <ranges>
 #include <set>
 #include <stdexcept>
 
@@ -33,7 +37,7 @@ StudyContext::StudyContext(std::string id)
   if (id_.empty()) {
     throw std::runtime_error("Study context id must not be empty");
   }
-  if (!std::ranges::all_of(id_, IsValidIdCharacter)) {
+  if (!all_of(id_, IsValidIdCharacter)) {
     throw std::runtime_error("Study context id \"" + id_ + "\" is invalid: only alphanumerics and underscores are allowed");
   }
 }
@@ -47,7 +51,7 @@ bool StudyContext::matches(const std::string& contexts) const {
     return isDefault();
   }
   auto ids = ContextStringToIds(contexts);
-  return std::ranges::any_of(ids, [this](const std::string& id) { return boost::iequals(id, getId()); });
+  return any_of(ids, [this](const std::string& id) { return boost::iequals(id, getId()); });
 }
 
 bool StudyContext::matchesShortPseudonym(const pep::ShortPseudonymDefinition& sp) const {
@@ -69,11 +73,11 @@ bool StudyContext::operator ==(const StudyContext& other) const {
 }
 
 std::vector<StudyContext>::const_iterator StudyContexts::getPositionOf(const StudyContext& context) const {
-  return std::find(items_.cbegin(), items_.cend(), context);
+  return find(items_, context);
 }
 
 std::vector<StudyContext>::const_iterator StudyContexts::findById(const std::string& id) const {
-  return std::ranges::find_if(items_, [&id](const StudyContext& candidate) { return boost::iequals(candidate.getId(), id); });
+  return find_if(items_, [&id](const StudyContext& candidate) { return boost::iequals(candidate.getId(), id); });
 }
 
 bool StudyContexts::hasDefault() const noexcept {
@@ -141,9 +145,8 @@ const StudyContext& StudyContexts::getById(const std::string& id) const {
 }
 
 const StudyContext* StudyContexts::getDefault() const noexcept {
-  auto end = items_.cend();
-  auto position = std::find_if(items_.cbegin(), end, [](const StudyContext& candidate) { return candidate.isDefault(); });
-  if (position == end) {
+  auto position = find_if(items_, &StudyContext::isDefault);
+  if (position == items_.cend()) {
     return nullptr;
   }
   return &*position;
@@ -167,14 +170,8 @@ StudyContexts StudyContexts::parse(const std::string& value) const {
 }
 
 std::string StudyContexts::toString() const {
-  std::string result;
-  for (const auto& item : items_) {
-    if (!result.empty()) {
-      result += ',';
-    }
-    result += item.getId();
-  }
-  return result;
+  // Not passing the view to boost::algorithm::join directly: it doesn't support C++20 ranges
+  return boost::algorithm::join(items_ | views::transform(&StudyContext::getId) | to<std::vector>(), ",");
 }
 
 }

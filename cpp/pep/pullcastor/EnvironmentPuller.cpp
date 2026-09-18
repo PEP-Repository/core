@@ -22,6 +22,8 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 namespace castor {
 
@@ -47,8 +49,8 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
     std::set<std::string> result;
     for (const auto& group : access.columnGroups) {
       const ColumnAccess::GroupProperties& properties = group.second;
-      if (std::find(properties.modes.cbegin(), properties.modes.cend(), "read") != properties.modes.cend()
-        && std::find(properties.modes.cbegin(), properties.modes.cend(), "write") != properties.modes.cend()) {
+      if (contains(properties.modes, "read")
+        && contains(properties.modes, "write")) {
         for (const auto index : properties.columns.indices) {
           const auto& column = access.columns[index];
           result.emplace(column);
@@ -135,7 +137,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
         // If SP column names have been specified, limit to those
         if (spColumns.has_value()) {
           allowedSps = allowedSps.filter([spColumns](const ShortPseudonymDefinition& sp) {
-            return std::find(spColumns->cbegin(), spColumns->cend(), sp.getColumn().getFullName()) != spColumns->cend();
+            return contains(*spColumns, sp.getColumn().getFullName());
           });
         }
 
@@ -149,7 +151,7 @@ EnvironmentPuller::EnvironmentPuller(std::shared_ptr<boost::asio::io_context> io
             }
           }
           allowedSps = allowedSps.filter([colNames](const ShortPseudonymDefinition& sp) {
-            return colNames.find(sp.getColumn().getFullName()) != colNames.cend();
+            return colNames.contains(sp.getColumn().getFullName());
             });
         }
 
@@ -306,12 +308,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::string>>> EnvironmentPuller::
     .flat_map([client = client_](std::shared_ptr<std::vector<std::string>> prefixes) {
     return GetReadWritableColumnNames(client)
       .filter([prefixes](const std::string& column) {
-        for (const auto& prefix : *prefixes) {
-          if (column.starts_with(prefix)) {
-            return true;
-          }
-        }
-        return false;
+        return any_of(*prefixes, [&](const std::string& prefix) { return column.starts_with(prefix); });
       })
       .op(RxToVector());
     });
@@ -346,7 +343,7 @@ rxcpp::observable<std::shared_ptr<StoredData>> EnvironmentPuller::getStoredData(
     std::shared_ptr<std::vector<PolymorphicPseudonym>> pps = std::get<4>(context);
 
     auto nonSpColumns = MakeSharedCopy(*dhColumns);
-    std::copy(dataColumns->cbegin(), dataColumns->cend(), std::back_inserter(*nonSpColumns));
+    nonSpColumns->append_range(*dataColumns);
 
     return StoredData::Load(client, pps, spColumns, nonSpColumns)
       .flat_map([self](std::shared_ptr<StoredData> stored) {

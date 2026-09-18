@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <ranges>
 #include <thread>
 
 #include <pep/cli/DownloadDirectory.hpp>
@@ -31,6 +32,7 @@
 using namespace pep::enumUtils;
 using namespace pep::cli;
 using namespace std::chrono_literals;
+using namespace std::ranges;
 namespace so = pep::structuredOutput;
 namespace fs = std::filesystem;
 
@@ -239,18 +241,15 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
       .zip(am.getAccessibleColumns(true, { "read" }))
       .map([ctx](const auto &access) {
       const pep::ParticipantGroupAccess &pga = std::get<0>(access);
-      for (const auto& pg : pga.participantGroups) {
-        if (std::find(pg.second.begin(), pg.second.end(), "access") != pg.second.end())
-        {
-          ctx->content.groups.push_back(pg.first);
-        }
-      }
+      ctx->content.groups.append_range(pga.participantGroups
+        | views::filter([](const auto& pgWithModes) { return contains(pgWithModes.second, "access"); })
+        | views::keys);
+
       const pep::ColumnAccess &ca = std::get<1>(access);
-      ctx->content.columnGroups.reserve(ca.columnGroups.size());
-      for (const auto& cg : ca.columnGroups) {
-        assert(std::find(cg.second.modes.begin(), cg.second.modes.end(), "read") != cg.second.modes.end());
-        ctx->content.columnGroups.push_back(cg.first);
-      }
+      assert(all_of(views::values(ca.columnGroups), [](const auto& cgProps) {
+        return contains(cgProps.modes, "read");
+      }));
+      ctx->content.columnGroups.append_range(views::keys(ca.columnGroups));
       if (ctx->content.groups.empty()) {
         PEP_LOG(LogTag, pep::Severity::Warning) << "No accessible participants - download will contain no data";
       }
@@ -314,7 +313,7 @@ std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr
         lines.reserve(nonpristine.size() + 1);
         lines.emplace_back("Data in output directory " + ctx->outputDirectory + " has changed since last download. Specify --force to discard local changes and update to server version.");
 
-        std::transform(nonpristine.begin(), nonpristine.end(), std::back_inserter(lines), [](const pep::cli::DownloadDirectory::NonPristineEntry& entry) {
+        lines.append_range(nonpristine | views::transform([](const pep::cli::DownloadDirectory::NonPristineEntry& entry) {
           if (!entry.path.has_value()) {
             assert(entry.record.has_value());
             return "Absent file for participant " + entry.record->getParticipant().getLocalPseudonym().text() + ", column " + entry.record->getColumn();
@@ -325,7 +324,7 @@ std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr
           }
           assert(!is_directory(*entry.path));
           return "File " + entry.path->string() + " has local changes";
-          });
+          }));
         throw std::runtime_error(boost::join(lines, "\n- "));
       }
     }

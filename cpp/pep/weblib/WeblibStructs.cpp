@@ -71,8 +71,7 @@ PEP_BINDINGS(ParticipantPersonalia,
 
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {
   using namespace std::ranges;
-  return RangeToCollection<decltype(partialMetadataView())>(
-    inner->metadata.extra()
+  return inner->metadata.extra()
     | views::transform([](const auto& entry) {
       const auto& [key, value] = entry;
       std::optional<val> view;
@@ -82,7 +81,7 @@ std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataVi
       }
       return std::pair{key, std::move(view)};
     })
-  );
+    | to<decltype(partialMetadataView())>();
 }
 
 std::string CellEntry::id() const {

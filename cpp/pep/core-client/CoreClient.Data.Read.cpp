@@ -8,12 +8,16 @@
 #include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-buffer_count.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-group_by.hpp>
 #include <rxcpp/operators/rx-take.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -36,7 +40,7 @@ void FillHistoryRequestIndices(const SignedTicket2& ticket,
     std::vector<TTicketItem>& ticketItems = (*unsignedTicket).*ticketItemsMember;
     indexList = IndexList();
     for (const auto& specifiedItem : *specified) {
-      auto position = std::find_if(ticketItems.cbegin(), ticketItems.cend(), [&specifiedItem, &itemsMatch](const TTicketItem& ticketItem) {
+      auto position = find_if(ticketItems, [&specifiedItem, &itemsMatch](const TTicketItem& ticketItem) {
         return itemsMatch(ticketItem, specifiedItem);
         });
       if (position >= ticketItems.cend()) {
@@ -152,7 +156,6 @@ CoreClient::retrieveData(
   std::shared_ptr<SignedTicket2> ticket) {
   PEP_LOG(LogTag, Severity::Debug) << "retrieveData";
 
-  using namespace std::ranges;
   return batchedSubjects
       .map([this, ticket](const rxcpp::observable<FileKey>& batch) -> rxcpp::observable<RetrievePage> {
         return batch.op(RxToVector())
@@ -167,14 +170,18 @@ CoreClient::retrieveData(
               };
 
               auto ctx = std::make_shared<BatchContext>();
-              ctx->files = RangeToCollection<std::vector<FileContext>>(std::move(*batch));
+              ctx->files = std::move(*batch)
+                  | views::as_rvalue
+                  | views::transform([](FileKey&& fileKey) { return FileContext{.fileKey = std::move(fileKey)}; })
+                  | to<std::vector>();
 
               // Request the file contents from the storage facility
               auto pagesFromServer =
                   getStorageFacilityProxy(true)->requestDataRead(DataReadRequest2{
                     .ticket = *ticket,
-                    .ids = RangeToVector(ctx->files
-                        | views::transform([](const FileContext& file) { return file.fileKey.entry->id; })),
+                    .ids = ctx->files
+                        | views::transform([](const FileContext& file) { return file.fileKey.entry->id; })
+                        | to<std::vector>(),
                   })
                   .map([](DataPayloadPage page) {
                     return std::optional{std::move(page)};
@@ -236,7 +243,7 @@ CoreClient::retrieveData(
                     };
                   });
 
-              return RxIterate(RangeToVector(emptyFiles))
+              return RxIterate(to<std::vector>(emptyFiles))
                   .concat(std::move(pagesFromServer));
             });
       });
@@ -267,11 +274,9 @@ CoreClient::getHistory2(SignedTicket2 ticket,
     })
     .op(RxConcatenateVectors())
     .flat_map([this, ticket = std::move(openedTicket)](std::shared_ptr<std::vector<DataHistoryEntry2>> entries) {
-      std::vector<HistoryResult> results;
-      results.reserve(entries->size());
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonyms>> localPseuds;
       std::unordered_map<uint32_t, std::shared_ptr<LocalPseudonym>> agPseuds;
-      std::transform(entries->cbegin(), entries->cend(), std::back_inserter(results), [this, &ticket, localPseuds, agPseuds](const DataHistoryEntry2& entry) mutable {
+      auto results = *entries | views::transform([this, &ticket, localPseuds, agPseuds](const DataHistoryEntry2& entry) mutable {
         auto ilp = localPseuds.find(entry.pseudonymIndex);
         if (ilp == localPseuds.cend()) {
           auto emplaced = localPseuds.emplace(std::make_pair(entry.pseudonymIndex, MakeSharedCopy(ticket.accessSubjects[entry.pseudonymIndex])));
@@ -302,7 +307,8 @@ CoreClient::getHistory2(SignedTicket2 ticket,
           entry.timestamp,
           !entry.id.empty() ? std::optional{entry.id} : std::nullopt,
         };
-        });
+        })
+        | to<std::vector>();
       return rxcpp::observable<>::just(results);
     });
 }
