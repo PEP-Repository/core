@@ -153,7 +153,7 @@ ParticipantGroupAccessResponse Serializer<ParticipantGroupAccessResponse>::fromP
   ParticipantGroupAccessResponse result;
   result.participantGroups.reserve(static_cast<size_t>(source.participant_groups_size()));
   for (auto& entry : source.participant_groups()) {
-    result.participantGroups.emplace(entry.name(), entry.modes() | std::ranges::to<std::vector>());
+    result.participantGroups.emplace(entry.name(), entry.modes() | to<std::vector>());
   }
   return result;
 }
