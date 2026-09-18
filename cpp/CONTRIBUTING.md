@@ -60,7 +60,7 @@ We use `std::ranges` algorithms and views throughout. Not every C++23 range feat
 
 #### Algorithms
 
-- Use the `std::ranges` algorithm, not the iterator-pair `std::` one: `sort(v)` rather than `std::sort(v.begin(), v.end())`. Only fall back to iterators for a genuine sub-range, and prefer `views::take`/`views::drop`/`std::ranges::subrange` even then. Ranged algorithms have more benefits than just the syntactic sugar.
+- Use the `std::ranges` algorithm, not the iterator-pair `std::` one: `sort(v)` rather than `std::sort(v.begin(), v.end())`. Only fall back to iterators for a genuine sub-range, and prefer `views::take`/`views::drop`/`std::ranges::subrange` even then. Ranged algorithms have more benefits than just the syntactic sugar, like support for sentinel iterators and projections.
 - Use the projection (`Proj`) parameter to get rid of lambdas. Most `find_if` calls are really a `find` with a projection, and most comparators are really a `sort` with one. Passing `{}` as the comparator means "the default `<` or `==`".
   <details>
     <summary>Projection examples</summary>
