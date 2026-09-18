@@ -78,7 +78,7 @@ void VerifyServersHaveUniqueProperties(const std::unordered_set<pep::ServerTrait
     | views::transform([getProperty](const pep::ServerTraits& server) {
       return std::make_pair(server, getProperty(server));
       })
-    | to<ServerProperties>();
+    | to<ServerProperties<Plain>>();
 
   // Compare each server('s property) against each other server('s property)
   using Value = ServerPropertyValue<Plain>;
