@@ -39,15 +39,20 @@ usage() {
 }
 
 api_key=''
-token_opt='--api-key'
+token_opt=''
 git_dir='.'
 ci_yml=''
 while [ "$#" != 0 ]; do
   case "$1" in
-    --api-key)
-      shift; api_key="${1:?Expected value for --api-key}" ;;
-    --job-token)  # Authenticate with a CI job token ($CI_JOB_TOKEN) instead of an access token
-      shift; api_key="${1:?Expected value for --job-token}"; token_opt='--job-token' ;;
+    # --job-token authenticates with a CI job token ($CI_JOB_TOKEN) instead of an access token
+    --api-key|--job-token)
+      if [ -n "$token_opt" ]; then
+        >&2 echo "$0: Specify only one of --api-key and --job-token"
+        >&2 usage
+        exit 2
+      fi
+      token_opt="$1"
+      shift; api_key="${1:?Expected value for $token_opt}" ;;
     --git-dir)
       shift; git_dir="${1:?Expected value for --git-dir}" ;;
     --ci-yml)
