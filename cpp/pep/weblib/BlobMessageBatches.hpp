@@ -13,8 +13,8 @@ namespace pep::weblib {
 
 /// \brief Create batches that lazily read page-sized chunks from a JS Blob (or File),
 ///        keeping at most one page in c++ memory at a time.
-/// \details The return type is \c pep::messaging::MessageBatches, spelled out to keep the
-///          web common library free of the messaging dependency.
+/// \details The return type is \c pep::messaging::MessageBatches, spelled out because including
+///          \c MessageSequence.hpp would pull protobuf and abseil into the web common library.
 ///          Must be called on the main thread.
 /// \param blob A <a href="https://developer.mozilla.org/en-US/docs/Web/API/Blob">Blob</a>,
 ///        e.g. a File obtained from an <code>&lt;input type="file"&gt;</code> element.

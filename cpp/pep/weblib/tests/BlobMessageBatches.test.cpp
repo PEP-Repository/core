@@ -1,6 +1,7 @@
 #include <pep/weblib/BlobMessageBatches.hpp>
 
-#include <pep/weblib/ObservableStream.hpp>
+#include <pep/utils/CollectionUtils.hpp>
+#include <pep/weblib/ObservableByteStream.hpp>
 #include <pep/weblib/OnEmscriptenThread.hpp>
 #include <pep/weblib/tests/PromiseHelpers.hpp>
 
@@ -15,7 +16,9 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -32,12 +35,14 @@ namespace {
 # pragma GCC diagnostic ignored "-Wmissing-variable-declarations" // For EM_JS parameters
 #endif
 
-/// Collects all page strings from a JavaScript ReadableStream and joins them with '|'.
+/// Collects all pages from a JavaScript ReadableStream and joins them with '|'.
+/// Stays in bytes throughout, like production, so data that is not valid UTF-8 survives.
 /// Returns the resulting JavaScript Promise as an Emscripten EM_VAL.
-EM_JS(EM_VAL /*Promise<string>*/, PagesAsString, (EM_VAL /*ReadableStream<string>*/ streamHandle), { //language=js
+EM_JS(EM_VAL /*Promise<Uint8Array>*/, PagesAsBytes, (EM_VAL /*ReadableStream<Uint8Array>*/ streamHandle), { //language=js
   return Emval.toHandle((async () => {
-    const stream = Emval.toValue(streamHandle);
-    return (await Array.fromAsync(stream)).join('|');
+    const pages = await Array.fromAsync(Emval.toValue(streamHandle));
+    const joined = new Blob(pages.flatMap((page, i) => i === 0 ? [page] : ['|', page]));
+    return new Uint8Array(await joined.arrayBuffer());
   })());
 });
 
@@ -55,15 +60,20 @@ EM_JS(EM_VAL /*Blob-like*/, MakeFailingBlob, (), { //language=js
 
 // Converts the blob into a page stream and passes it to PagesAsString for collection.
 val PagesPromise(val blob, std::size_t pageSize) {
-  val stream = CreateReadableStream(BlobToMessageBatches(std::move(blob), pageSize, observe_on_emscripten_main_thread())
-                                      .concat() // Exhaust each batch before the next one is produced
-                                      .map([](const std::shared_ptr<std::string>& page) { return val(*page); }));
-  return val::take_ownership(PagesAsString(stream.as_handle()));
+  val stream = CreateReadableByteStream(BlobToMessageBatches(std::move(blob), pageSize, observe_on_emscripten_main_thread())
+                                          .concat() // Exhaust each batch before the next one is produced
+                                          .map([](const std::shared_ptr<std::string>& page) { return *page; }),
+                                        pageSize);
+  return val::take_ownership(PagesAsBytes(stream.as_handle()));
 }
 
+/// Creates a Blob holding exactly the bytes of \p content, as a File read from disk would.
+/// (Passing a std::string as a val would instead produce a JS string, decoding the bytes as UTF-8.)
 val MakeBlob(const std::string& content) {
+  const std::span bytes = pep::ConvertBytes<std::uint8_t>(content);
   val parts = val::array();
-  parts.call<void>("push", val(content));
+  // Copies out of wasm memory, which the view merely aliases
+  parts.call<void>("push", val::global("Uint8Array").new_(typed_memory_view(bytes.size(), bytes.data())));
   return val::global("Blob").new_(parts);
 }
 
@@ -109,7 +119,8 @@ TEST(BlobMessageBatches, manyPages) {
 }
 
 TEST(BlobMessageBatches, binaryContent) {
-  // Embedded NUL and high bytes must survive the ArrayBuffer -> std::string conversion
+  // Embedded NUL and high bytes must survive the ArrayBuffer -> std::string conversion.
+  // \xc3\x28 is invalid UTF-8, so it would be mangled if anything went through a JS string.
   const auto content = "a\0b\x01\x7f\xc3\x28"s;
   EXPECT_EQ(ReadBlobPages(content, 16), content);
 }

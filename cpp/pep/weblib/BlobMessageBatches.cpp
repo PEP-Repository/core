@@ -1,7 +1,9 @@
 #include <pep/weblib/BlobMessageBatches.hpp>
 
 #include <pep/async/CreateObservable.hpp>
+#include <pep/async/FakeVoid.hpp>
 #include <pep/async/RxSubsequently.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/weblib/EmscriptenValPtr.hpp>
 #include <pep/weblib/OnEmscriptenThread.hpp>
@@ -14,7 +16,9 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <exception>
 #include <memory>
+#include <span>
 #include <stdexcept>
 
 using namespace emscripten;
@@ -72,12 +76,30 @@ public:
 
   void onPage(val arrayBuffer) {
     try {
-      // TODO reduce copying here
-      auto page = std::make_shared<std::string>(arrayBuffer.as<std::string>());
-      if (page->empty()) {
+      const auto length = arrayBuffer["byteLength"].as<std::size_t>();
+      if (length == 0) {
         throw std::runtime_error("Read no data from Blob (did the underlying file change?)");
       }
-      state_->offset += page->size();
+      // Let JS copy straight into the page. arrayBuffer.as<std::string>() would copy twice, via a temporary buffer.
+      auto page = std::make_shared<std::string>();
+      // resize_and_overwrite requires that its callback not throw, so a failure is captured and rethrown below
+      std::exception_ptr failure;
+      page->resize_and_overwrite(length, [&](char* buffer, std::size_t size) noexcept {
+        try {
+          const std::span bytes = ConvertBytes<std::uint8_t>(std::span{buffer, size});
+          val(typed_memory_view(bytes.size(), bytes.data()))
+              .call<void>("set", val::global("Uint8Array").new_(std::move(arrayBuffer)));
+          return size;
+        }
+        catch (...) {
+          failure = std::current_exception();
+          return std::size_t{0}; // Discards the buffer, leaving no indeterminate bytes behind
+        }
+      });
+      if (failure) {
+        std::rethrow_exception(failure);
+      }
+      state_->offset += length;
       inner_.on_next(std::move(page));
       inner_.on_completed();
     } catch (...) {
@@ -100,9 +122,9 @@ MessageSequence MakeBlobBatch(std::shared_ptr<BlobReadState> state) {
   return CreateObservable<std::shared_ptr<std::string>>(
       [state](rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
         // Subscription happens on the io worker, but the Blob may only be accessed on the main thread, proxy the page read there
-        rxcpp::observable<>::just(0)
+        rxcpp::observable<>::just(FakeVoid{})
             .observe_on(state->mainWorker)
-            .subscribe([state, inner](int) {
+            .subscribe([state, inner](FakeVoid) {
               BlobPageReader::ReadPage(state, inner);
             });
       })
