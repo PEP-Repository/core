@@ -24,7 +24,7 @@ SwitchAnnouncement::SwitchAnnouncement(const std::string& prefix, const std::str
   : prefix_(prefix), text_(text) {
   assert(!text_.empty());
   assert(text_[0] != SwitchPrefixCharacter);
-  assert(!std::any_of(text_.begin(), text_.end(), [](char c) {return !std::isprint(c); }));
+  assert(!std::ranges::any_of(text_, [](char c) {return !std::isprint(c); }));
 }
 
 SwitchAnnouncement::SwitchAnnouncement(const std::string& name)

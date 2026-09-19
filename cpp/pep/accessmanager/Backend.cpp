@@ -10,7 +10,11 @@
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MapUtils.hpp>
 
+#include <ranges>
+
 #include <boost/algorithm/string/join.hpp>
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -337,10 +341,7 @@ void AccessManager::Backend::checkParticipantAccess(const std::string& userGroup
   // What ParticipantGroups is this localPseudonym in?
   auto pgps = storage_->getParticipantGroupParticipants(at, {.localPseudonyms = std::vector<LocalPseudonym>{localPseudonym}});
   std::vector<std::string> participantGroups{"*"}; // All participants are implicitly added to "*"
-  participantGroups.reserve(participantGroups.size() + pgps.size());
-  std::transform(pgps.cbegin(), pgps.cend(), std::back_inserter(participantGroups), [](auto& entry) {
-    return entry.participantGroup;
-  });
+  participantGroups.append_range(pgps | views::transform(&ParticipantGroupParticipant::participantGroup));
 
   std::vector<std::string> errorMessageParts;
   for (auto& mode : modes) {
@@ -407,8 +408,7 @@ void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::st
                                                        const std::string& userGroup,
                                                        std::vector<std::string>& modes,
                                                        const Timestamp& timestamp) {
-  using namespace std::ranges;
-  if (!participantGroups.empty() && find(modes, "enumerate") == modes.cend()) {
+  if (!participantGroups.empty() && !contains(modes, "enumerate")) {
     modes.push_back("enumerate");
   }
 
@@ -421,15 +421,15 @@ void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::st
   else {
     std::vector<std::string> errorMessageParts;
     ParticipantGroupAccessRuleFilter filter{
-      .participantGroups = RangeToVector(participantGroups),
+      .participantGroups = participantGroups | to<std::vector>(),
       .userGroups = {{userGroup}},
       .modes = {{}},
     };
     for (auto& mode : modes) {
       filter.modes->assign({mode});
-      auto allowedParticipantGroups = RangeToCollection<std::unordered_set>(
-        storage_->getParticipantGroupAccessRules(timestamp, filter)
-        | views::transform(std::mem_fn(&ParticipantGroupAccessRule::participantGroup)));
+      auto allowedParticipantGroups = storage_->getParticipantGroupAccessRules(timestamp, filter)
+        | views::transform(&ParticipantGroupAccessRule::participantGroup)
+        | to<std::unordered_set>();
       for (auto& pg : participantGroups) {
         if (!allowedParticipantGroups.contains(pg)) {
           errorMessageParts.push_back("Access denied to " + Logging::Escape(userGroup) + " for mode "
@@ -447,9 +447,9 @@ std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillPart
     std::span<const std::string> participantGroups,
     std::vector<Pp>& pps) {
   // ParticipantGroups by Polymorph Pseudonym
-  auto groupedPps = RangeToCollection<std::vector<std::pair<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/>>>(
+  auto groupedPps = to<std::vector<std::pair<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/>>>(
     storage_->getPpGroups(participantGroups));
-  std::ranges::shuffle(groupedPps, CryptoUrbg());
+  shuffle(groupedPps, CryptoUrbg());
 
   std::unordered_map<std::string, pep::IndexList> participantGroupMap;
   for (const auto& [pp, groups] : groupedPps) {
@@ -486,7 +486,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
     else {
       auto availableModes = iterator->second.modes;
       for (auto& mode : modes) {
-        if (std::find(availableModes.cbegin(), availableModes.cend(), mode) == availableModes.cend()) {
+        if (!contains(availableModes, mode)) {
           errorMessageParts.push_back("Access denied to " + Logging::Escape(userGroup) + " for mode "
                                       + Logging::Escape(mode) + " to column-group " + Logging::Escape(cg));
         }
@@ -498,25 +498,17 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
   for (auto& column : columns) {
     // What columnGroups is this column in?
     auto cgcs = storage_->getColumnGroupColumns(at, {.columns = std::vector<std::string>{column}});
-    std::vector<std::string> associatedColumnGroups{};
-    associatedColumnGroups.reserve(cgcs.size());
-    std::transform(cgcs.cbegin(), cgcs.cend(), std::back_inserter(associatedColumnGroups), [](auto& entry) {
-      return entry.columnGroup;
-    });
-    for (auto& requiredMode : modes) {
-      bool accessGranted = false;
-      for (auto& cg : associatedColumnGroups) {
-        // If we find the required access mode in ANY of the associated columngroups, all is well.
-        auto iterator = columnAccess.columnGroups.find(cg);
-        if (iterator != columnAccess.columnGroups.cend()) {
-          auto& availableModes = iterator->second.modes;
-          if (std::find(availableModes.cbegin(), availableModes.cend(), requiredMode) != availableModes.cend()) {
-            accessGranted = true;
-            break;
-          }
-        }
-      }
-      if (accessGranted == false) {
+    auto associatedColumnGroups = cgcs
+      | views::transform(&ColumnGroupColumn::columnGroup)
+      | to<std::vector>();
+    for (const auto& requiredMode : modes) {
+      // If we find the required access mode in ANY of the associated columngroups, all is well.
+      bool accessGranted = any_of(associatedColumnGroups, [&](const std::string& cg) {
+        auto groupPropsIt = columnAccess.columnGroups.find(cg);
+        return groupPropsIt != columnAccess.columnGroups.cend()
+            && contains(groupPropsIt->second.modes, requiredMode);
+      });
+      if (!accessGranted) {
         errorMessageParts.push_back("Access denied to " + Logging::Escape(userGroup) + " for mode "
                                     + Logging::Escape(requiredMode) + " to column " + Logging::Escape(column));
       }
@@ -535,7 +527,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
     cgcs = storage_->getColumnGroupColumns(at, {.columnGroups = {columnGroups}});
     for (auto& cgc : cgcs) {
       // Add the column to the columns vector if it is not already there.
-      auto pos = std::find(columns.cbegin(), columns.cend(), cgc.column);
+      auto pos = find(columns, cgc.column);
       uint32_t index = static_cast<uint32_t>(pos - columns.cbegin());
       if (pos == columns.end()) {
         columns.push_back(cgc.column);
@@ -543,7 +535,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
 
       // Add the columnGroup and column to the map
       auto& entry = columnGroupMap[cgc.columnGroup];
-      if (std::find(entry.indices.cbegin(), entry.indices.cend(), index) == entry.indices.cend()) {
+      if (!contains(entry.indices, index)) {
         entry.indices.push_back(index);
       }
     }
@@ -571,7 +563,7 @@ void AccessManager::Backend::checkTicketForEncryptionKeyRequest(std::shared_ptr<
     }
 
     auto col = entry.metadata.getTag();
-    if (ticketCols.count(col) == 0) {
+    if (!ticketCols.contains(col)) {
       std::ostringstream msg;
       msg << "Access denied: ticket does not grant access to column " << Logging::Escape(col);
       throw Error(msg.str());
@@ -580,11 +572,6 @@ void AccessManager::Backend::checkTicketForEncryptionKeyRequest(std::shared_ptr<
 }
 
 AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, const std::string& userGroup) {
-  const auto transform = [](const auto& inRange, auto& outRange, const auto& unary) {
-    std::transform(inRange.cbegin(), inRange.cend(), std::inserter(outRange, outRange.end()), unary);
-  };
-
-
   UserGroup::EnsureAccess({ UserGroup::AccessAdministrator, UserGroup::DataAdministrator, UserGroup::RepositoryManager }, userGroup, "AmaQuery");
   AmaQueryResponse result;
 
@@ -626,29 +613,32 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
     cgarFilter.modes = std::vector<std::string>{query.columnGroupModeFilter};
   }
   if(!query.columnFilter.empty() || !query.columnGroupFilter.empty()){
-    cgarFilter.columnGroups = RangeToVector(std::views::keys(columnsByColumnGroup));
+    cgarFilter.columnGroups = columnsByColumnGroup | views::keys | to<std::vector>();
   }
   auto cgars = storage_->getColumnGroupAccessRules(timestamp, cgarFilter);
 
   if(!query.userGroupFilter.empty() || !query.columnGroupModeFilter.empty()) {
     // If there were additional cgar filters in place, we need to go back on the found columngroups and columns and apply another narrowing filter, showing only those
     // columngroups that appear in the cgars.
-    std::set<std::string> cgsInCgars{};
-    transform(cgars, cgsInCgars, [] (const auto& cgar){return cgar.columnGroup;});
+    auto cgsInCgars = cgars
+      | views::transform(&ColumnGroupAccessRule::columnGroup)
+      | to<std::set>();
     std::erase_if(columnsByColumnGroup,
                   [&cgsInCgars](const auto& entry){ return !cgsInCgars.contains(entry.first);});
   }
   // Fill the result with the columns, columnGroups and cgars
-  result.columnGroups.reserve(columnsByColumnGroup.size());
-  std::set<std::string> columns{};
-  for (auto& [cg, cols] : columnsByColumnGroup){
-    result.columnGroups.push_back(AmaQRColumnGroup(cg, cols));
-    std::copy(cols.begin(), cols.end(), std::inserter(columns, columns.end())); // Add the found values to the columns vector.
-  }
-  transform(columns, result.columns, [](const auto& col) { return AmaQRColumn(col);});
+  result.columnGroups = columnsByColumnGroup
+    | views::transform([](const auto& entry) { return AmaQRColumnGroup(entry.first, entry.second);})
+    | to<std::vector>();
+  result.columns = views::values(columnsByColumnGroup)
+    | views::join // Concatenate column lists
+    | to<std::set>() // Deduplicate the columns of the individual column groups
+    | views::transform([](const std::string& col) { return AmaQRColumn(col); })
+    | to<std::vector>();
 
-  result.columnGroupAccessRules.reserve(cgars.size());
-  transform(cgars, result.columnGroupAccessRules, [](const auto& cgar){ return AmaQRColumnGroupAccessRule(cgar.columnGroup, cgar.userGroup, cgar.mode);});
+  result.columnGroupAccessRules = cgars
+    | views::transform([](const auto& cgar){ return AmaQRColumnGroupAccessRule(cgar.columnGroup, cgar.userGroup, cgar.mode);})
+    | to<std::vector>();
 
   // Participantgroups and pgars
   ParticipantGroupFilter pgFilter;
@@ -665,23 +655,29 @@ AmaQueryResponse AccessManager::Backend::performAMAQuery(const AmaQuery& query, 
     pgarFilter.userGroups = std::vector<std::string>{query.userGroupFilter};
   }
 
-  std::set<std::string> foundParticipantGroups{};
   auto pgars = storage_->getParticipantGroupAccessRules(timestamp, pgarFilter);
 
+  std::set<std::string> foundParticipantGroups;
   if(!query.participantGroupModeFilter.empty() || !query.userGroupFilter.empty()){
     // The pgar filters are narrowing the found participants as well, only show pgs with pgars
-    transform(pgars, foundParticipantGroups, [](const auto& pgar) { return pgar.participantGroup;});
+    foundParticipantGroups = pgars
+      | views::transform(&ParticipantGroupAccessRule::participantGroup)
+      | to<std::set>();
   } else{
     // Get the participantgroups as normal.
     auto pgs = storage_->getParticipantGroups(timestamp, pgFilter);
-    transform(pgs, foundParticipantGroups,[](const auto& pg) { return pg.name;});
+    foundParticipantGroups = pgs
+      | views::transform(&ParticipantGroup::name)
+      | to<std::set>();
   }
 
   // Fill the result
-  result.participantGroupAccessRules.reserve(pgars.size());
-  transform(pgars, result.participantGroupAccessRules, [](const auto& pgar){return AmaQRParticipantGroupAccessRule(pgar.participantGroup, pgar.userGroup, pgar.mode);});
-  result.participantGroups.reserve(foundParticipantGroups.size());
-  transform(foundParticipantGroups, result.participantGroups, [](const std::string& name) { return AmaQRParticipantGroup{ .name = name }; });
+  result.participantGroupAccessRules = pgars
+    | views::transform([](const auto& pgar){return AmaQRParticipantGroupAccessRule(pgar.participantGroup, pgar.userGroup, pgar.mode);})
+    | to<std::vector>();
+  result.participantGroups = foundParticipantGroups
+    | views::transform([](const std::string& name) { return AmaQRParticipantGroup{ .name = name }; })
+    | to<std::vector>();
 
   return result;
 }
@@ -700,11 +696,9 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
   if (request.includeImplicitlyGranted
       && userGroup == UserGroup::DataAdministrator) { // Data administrator has implicit "read-meta" access to all
                                                        // column groups
-    auto allCgs = storage_->getColumnGroups(now);
-    for (const auto& cg : allCgs) {
+    for (const auto& cg : storage_->getColumnGroups(now)) {
       auto& modes = result.columnGroups[cg.name].modes;
-      auto end = modes.cend();
-      if (std::find(modes.cbegin(), end, "read-meta") == end) {
+      if (!contains(modes, "read-meta")) {
         modes.push_back("read-meta");
       }
     }
@@ -716,11 +710,11 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
     allowedModes.push_back(cgar.mode);
     if (request.includeImplicitlyGranted) {
       // All users have implicit "read-meta" access if they have "read" access
-      if (cgar.mode == "read" && std::find(allowedModes.cbegin(), allowedModes.cend(), "read-meta") == allowedModes.cend()) {
+      if (cgar.mode == "read" && !contains(allowedModes, "read-meta")) {
         allowedModes.push_back("read-meta");
       }
       // All users have implicit "write" access if they have "write-meta" access
-      else if (cgar.mode == "write-meta" && std::find(allowedModes.cbegin(), allowedModes.cend(), "write") == allowedModes.cend()) {
+      else if (cgar.mode == "write-meta" && !contains(allowedModes, "write")) {
         allowedModes.push_back("write");
       }
     }
@@ -728,32 +722,20 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
 
   // Remove column groups from the result that don't provide all required modes
   for (const auto& requireMode : request.requireModes) {
-    // Removing items from unordered_map during iteration: see https://stackoverflow.com/a/15662547
-    auto i = result.columnGroups.begin();
-    while (i != result.columnGroups.end()) {
-      const auto& availableModes = i->second.modes;
-      if (std::find(availableModes.cbegin(), availableModes.cend(), requireMode) == availableModes.cend()) {
-        i = result.columnGroups.erase(i);
-      }
-      else {
-        ++i;
-      }
-    }
+    std::erase_if(result.columnGroups, [&requireMode](const auto& entry) {
+      return !contains(entry.second.modes, requireMode);
+    });
   }
 
-  std::vector<std::string> columnGroupsInMap;
-  columnGroupsInMap.reserve(result.columnGroups.size());
-  std::transform(result.columnGroups.begin(),
-                 result.columnGroups.end(),
-                 std::back_inserter(columnGroupsInMap),
-                 [](auto& entry) { return entry.first; });
+  auto columnGroupsInMap = result.columnGroups
+    | views::keys
+    | to<std::vector>();
   // For each columnGroup in the result, look up all associated columns and add them to both the "columns" vector, and
   // the groupProperties in the map.
   for (auto& cgc : storage_->getColumnGroupColumns(now, {.columnGroups = columnGroupsInMap})) {
-    auto begin = result.columns.begin(), end = result.columns.end();
-    auto pos = std::find(begin, end, cgc.column);
-    uint32_t index = static_cast<uint32_t>(pos - begin);
-    if (pos == end) {
+    auto pos = find(result.columns, cgc.column);
+    auto index = static_cast<uint32_t>(pos - result.columns.begin());
+    if (pos == result.columns.end()) {
       result.columns.push_back(cgc.column);
     }
     result.columnGroups.at(cgc.columnGroup).columns.indices.push_back(index);

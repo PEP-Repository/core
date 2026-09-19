@@ -4,9 +4,12 @@
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-map.hpp>
 
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 
@@ -54,12 +57,11 @@ protected:
   pep::commandline::Parameters getSupportedParameters() const override {
     auto traits = pep::ServerTraits::All();
 
-    std::vector<std::string> serverIds;
-    serverIds.reserve(traits.size());
-    std::transform(traits.cbegin(), traits.cend(), std::back_inserter(serverIds),
-      [](const pep::ServerTraits& single) {return single.commandLineId(); });
+    auto serverIds = traits
+      | views::transform(&pep::ServerTraits::commandLineId)
+      | to<std::vector>();
     // Sort by command line ID: produces nicely sorted child commands
-    std::sort(serverIds.begin(), serverIds.end());
+    sort(serverIds);
 
     return ChildCommandOf<CliApplication>::getSupportedParameters()
       + pep::commandline::Parameter("server", "Server to ping").value(pep::commandline::Value<std::string>().required().allow(serverIds))

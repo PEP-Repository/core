@@ -15,10 +15,17 @@ push-published-branch-to-github:
   before_script:
     - apk update -qq && apk add --no-cache git
     - git config --global color.ui always
-    - git remote remove gitlab &>/dev/null || true
-    - git remote add gitlab "https://gitlab-ci-token:${PEP_GROUP_REPOSITORY_TOKEN}@gitlab.pep.cs.ru.nl/pep/core.git"
-    - git remote remove github &>/dev/null || true
-    - git remote add github "https://pep-team:${GITHUB_ACCESS_TOKEN}@github.com/PEP-Repository/core.git"
+
+    # Do not put tokens in the remote URLs, to prevent them from being printed on fetch/push
+    - git config --global "credential.$CI_SERVER_URL.username" gitlab-ci-token
+    - git config --global "credential.$CI_SERVER_URL.helper" '!f() { [ "$1" = get ] && echo "password=$CI_JOB_TOKEN"; }; f'
+    - git config --global "credential.https://github.com.username" pep-team
+    - git config --global "credential.https://github.com.helper" '!f() { [ "$1" = get ] && echo "password=$GITHUB_ACCESS_TOKEN"; }; f'
+
+    - git remote remove gitlab >/dev/null 2>&1 || true
+    - git remote add gitlab "${CI_SERVER_URL}/pep/core.git"
+    - git remote remove github >/dev/null 2>&1 || true
+    - git remote add github "https://github.com/PEP-Repository/core.git"
 
   script:
     - set -eu

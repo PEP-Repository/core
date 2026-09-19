@@ -15,6 +15,7 @@
 #include <exception>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -27,6 +28,7 @@
 #include <rxcpp/operators/rx-reduce.hpp>
 
 using namespace pep;
+using namespace std::ranges;
 
 namespace {
 
@@ -49,10 +51,7 @@ rxcpp::observable<TResponse> BatchedRetrieve(
   for (size_t offset = 0U; offset < ids.size(); offset += CoreClient::DataRetrievalBatchSize) {
     size_t batchSize = std::min(CoreClient::DataRetrievalBatchSize, ids.size() - offset);
     auto& batch = batches->emplace_back();
-    batch.reserve(batchSize);
-    std::copy(ids.cbegin() + static_cast<ptrdiff_t>(offset),
-              ids.cbegin() + static_cast<ptrdiff_t>(offset + batchSize),
-              std::back_inserter(batch));
+    batch.append_range(subrange{ids.cbegin() + static_cast<ptrdiff_t>(offset), ids.cbegin() + static_cast<ptrdiff_t>(offset + batchSize)});
   }
 
   /* Documentation on e.g. http://reactivex.io/documentation/operators/range.html says
@@ -128,14 +127,10 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
             std::unordered_set<uint32_t> pseudIdxs;
             std::unordered_set<uint32_t> colIdxs;
             for (const auto& cg: ctx->requestTicketOpts->columnGroups) {
-              for (uint32_t i: indexedTicket.getColumnGroupMapping().at(cg).indices) {
-                colIdxs.insert(i);
-              }
+              colIdxs.insert_range(indexedTicket.getColumnGroupMapping().at(cg).indices);
             }
             for (const auto& g: ctx->requestTicketOpts->participantGroups) {
-              for (uint32_t i: indexedTicket.getParticipantGroupMapping().at(g).indices) {
-                pseudIdxs.insert(i);
-              }
+              pseudIdxs.insert_range(indexedTicket.getParticipantGroupMapping().at(g).indices);
             }
             if (!ctx->requestTicketOpts->pps.empty()) {
               auto accessSubjects = indexedTicket.getAccessSubjects();
@@ -145,10 +140,8 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                 lut[accessSubjects[i]] = static_cast<uint32_t>(i);
               }
 
-              pseudIdxs.reserve(pseudIdxs.size() + ctx->requestTicketOpts->pps.size());
-              for (const auto& pp: ctx->requestTicketOpts->pps) {
-                pseudIdxs.insert(lut.at(pp));
-              }
+              pseudIdxs.insert_range(ctx->requestTicketOpts->pps
+                | views::transform([&lut](const PolymorphicPseudonym& pp) { return lut.at(pp); }));
             }
             if (!ctx->requestTicketOpts->columns.empty()) {
               auto ticketCols = indexedTicket.getColumns();
@@ -158,15 +151,11 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                 lut[ticketCols[i]] = static_cast<uint32_t>(i);
               }
 
-              colIdxs.reserve(colIdxs.size() + ctx->requestTicketOpts->columns.size());
-              for (const auto& col: ctx->requestTicketOpts->columns) {
-                colIdxs.insert(lut.at(col));
-              }
+              colIdxs.insert_range(ctx->requestTicketOpts->columns
+                | views::transform([&lut](const std::string& col) { return lut.at(col); }));
             }
-            enumRequest.pseudonyms = IndexList(std::vector<uint32_t>(
-              pseudIdxs.begin(), pseudIdxs.end()));
-            enumRequest.columns = IndexList(std::vector<uint32_t>(
-              colIdxs.begin(), colIdxs.end()));
+            enumRequest.pseudonyms = IndexList(pseudIdxs | to<std::vector>());
+            enumRequest.columns = IndexList(colIdxs | to<std::vector>());
           }
 
           return getStorageFacilityProxy(true)->requestDataEnumeration(std::move(enumRequest))
@@ -200,8 +189,9 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
               }
 
               auto entryCount = entries->size();
-              auto ids = RangeToVector(*entries
-                | std::ranges::views::transform(std::mem_fn(&DataEnumerationEntry2::id)));
+              auto ids = *entries
+                | views::transform(&DataEnumerationEntry2::id)
+                | to<std::vector>();
               // Convert each of SF's DataEnumerationEntry2 to (a shared_ptr to) an EnumerateResult
               auto enumResults = MakeSharedCopy(ConvertDataEnumerationEntries(std::move(*entries), *ctx->pseudonyms));
 
@@ -212,9 +202,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                     throw std::runtime_error("Received unexpected number of plaintext keys");
                   }
                   assert(ctx->keys.empty());
-                  ctx->keys.reserve(keys.size());
-                  std::transform(keys.cbegin(), keys.cend(), std::back_inserter(ctx->keys),
-                                 [](const AESKey& key) { return key.bytes; });
+                  ctx->keys.append_range(keys | views::transform(&AESKey::bytes));
                   return FakeVoid();
                 });
 
@@ -266,9 +254,9 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                       if (ipage != ctx->pages->cend()) {
                         auto& pages = *ipage->second;
                         std::ostringstream buffer;
-                        for (size_t i = 0U; i < pages.size(); ++i) {
-                          assert(pages[i]->pageNumber == i);
-                          buffer << pages[i]->decrypt(key, res.metadata);
+                        for ([[maybe_unused]] auto [page, pageNumber] : views::zip(pages, views::iota(0uz))) {
+                          assert(page->pageNumber == pageNumber);
+                          buffer << page->decrypt(key, res.metadata);
                         }
                         res.data = std::move(buffer).str();
                       }

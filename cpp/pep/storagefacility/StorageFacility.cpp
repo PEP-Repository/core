@@ -29,6 +29,7 @@
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
 
+#include <ranges>
 #include <unordered_map>
 #include <sstream>
 
@@ -37,6 +38,7 @@
 #include <prometheus/counter.h>
 
 using namespace std::chrono_literals;
+using namespace std::ranges;
 
 namespace pep {
 
@@ -337,19 +339,11 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   std::vector<ResponseEntry> responseEntries;
 
   // Look-up table to check whether to include column
-  std::vector<std::string> includeColumn;
-  if (request.columns) {
-    includeColumn.reserve(request.columns->indices.size());
-    for (uint32_t idx : request.columns->indices) {
-      includeColumn.push_back(ticket.columns.at(idx));
-    }
-  }
-  else {
-    includeColumn.reserve(ticket.columns.size());
-    for (const auto& column : ticket.columns) {
-      includeColumn.push_back(column);
-    }
-  }
+  auto includeColumn = request.columns
+    ? request.columns->indices
+        | views::transform([&ticket](uint32_t idx) { return ticket.columns.at(idx); })
+        | to<std::vector>()
+    : ticket.columns;
 
   // Create column-to-ticket-column-index look-up-table
   std::unordered_map<std::string, uint32_t> columnIndex;
@@ -482,9 +476,9 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       response = std::make_shared<DataEnumerationResponse2>();
     };
 
-    for (size_t i = 0; i < request.ids.size(); i++) {
+    for (auto [id, i] : views::zip(request.ids, views::iota(0uz))) {
       // TODO execute decryption in WorkerPool
-      auto sfid = server->decryptId(request.ids[i]);
+      auto sfid = server->decryptId(id);
       auto sfentry = server->fileStore_->lookup(EntryName::Parse(sfid.path), sfid.time);
       if (sfentry == nullptr) {
         throw Error("openExistingDataEntry failed");
@@ -504,7 +498,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       // TODO execute rerandomization in WorkerPool
       entry.polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey());
       entry.fileSize = sfcontent->payload()->size();
-      entry.id = request.ids[i];
+      entry.id = id;
       entry.index = static_cast<uint32_t>(i);
       entry.columnIndex = indices.getColumnIndex(column);
       entry.pseudonymIndex = indices.getPseudonymIndex(pseud);
@@ -544,18 +538,16 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   entries.resize(request.ids.size());
 
   // open files
-  for (size_t i = 0; i < request.ids.size(); i++) {
+  for (auto [entry, id] : views::zip(entries, request.ids)) {
     // TODO execute decryption in WorkerPool
-    auto sfid = decryptId(request.ids[i]);
-    auto entry = fileStore_->lookup(EntryName::Parse(sfid.path), sfid.time);
+    auto sfid = decryptId(id);
+    entry = fileStore_->lookup(EntryName::Parse(sfid.path), sfid.time);
     if (entry == nullptr) {
       throw Error("openExistingDataEntry failed");
     }
     if (entry->isTombstone()) {
       throw Error("Cannot read data of a deleted entry");
     }
-
-    entries[i] = entry;
 
     // Check permission
     indices.verifyColumnAccess(entry->getName().column());
@@ -700,7 +692,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
       const auto& entry = request->entries[i];
 
       // Decrypt local pseudonym
-      if (pseudonymLut.count(entry.pseudonymIndex) == 0) {
+      if (!pseudonymLut.contains(entry.pseudonymIndex)) {
         pseudonymLut[entry.pseudonymIndex] = MakeSharedCopy(
           ticket.accessSubjects.at(entry.pseudonymIndex)
           .storageFacility.decrypt(pseudonymKey_));
@@ -789,16 +781,15 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
             },
             [this, server, subscriber, ctx, hasher, getResponse]() { // file close
               auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
-              for (size_t i = 0; i < ctx->entries.size(); i++) {
-                auto& entry = ctx->entries[i];
+              for (auto [entry, entryId, i] : views::zip(ctx->entries, ctx->ids, views::iota(0uz))) {
                 try {
                   auto id = encryptId(entry->getName().string(), time);
                   std::move(*entry).commit(time);
-                  ctx->ids[i] = id;
+                  entryId = id;
                 }
                 catch (std::exception& e) {
                   std::move(*entry).cancel();
-                  ctx->ids[i].clear();
+                  entryId.clear();
                   std::ostringstream ss;
                   ss << "File " << i << " is not sane: " << e.what();
                   PEP_LOG(LogTag, Severity::Warning) << ss.str();
@@ -862,9 +853,9 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   }
 
   // Fill a vector with indices of pseudonyms that we want/need decrypted
-  std::vector<uint32_t> pseudIndices;
-  pseudIndices.reserve(request->entries.size());
-  std::transform(request->entries.cbegin(), request->entries.cend(), std::back_inserter(pseudIndices), [](const DataStoreEntry2& entry) {return entry.pseudonymIndex; });
+  auto pseudIndices = request->entries
+    | views::transform(&DataStoreEntry2::pseudonymIndex)
+    | to<std::vector>();
 
   // Decrypt pseudonyms.
   auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, &pseudIndices);
@@ -967,19 +958,16 @@ std::vector<std::optional<LocalPseudonym>> StorageFacility::decryptLocalPseudony
   }
 
   // TODO execute in WorkerPool
-  std::vector<std::optional<LocalPseudonym>> result;
-  result.reserve(source.size());
-  for (size_t i = 0; i < source.size(); ++i) {
-    if (includePseudonym[i]) { // Caller wants/needs this pseudonym: decrypt it
-      result.emplace_back(source[i].storageFacility.decrypt(pseudonymKey_));
-    }
-    else { // Caller doesn't need this pseudonym: don't decrypt
-      result.emplace_back(std::nullopt);
-    }
-  }
-
-  assert(result.size() == source.size()); // Return value indices correspond with "source" parameter indices
-  return result;
+  // Return value indices correspond with "source" parameter indices
+  return views::zip(source, includePseudonym)
+    | views::transform([&](const auto& pseudonymAndInclude) -> std::optional<LocalPseudonym> {
+        const auto& [pseudonyms, include] = pseudonymAndInclude;
+        if (!include) { // Caller doesn't need this pseudonym: don't decrypt
+          return std::nullopt;
+        }
+        return pseudonyms.storageFacility.decrypt(pseudonymKey_);
+      })
+    | to<std::vector>();
 }
 
 messaging::MessageBatches
@@ -1000,17 +988,11 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   DataHistoryResponse2 response;
 
   // Look-up table to check whether to include column
-  std::vector<std::string> includeColumn;
-  if (request.columns) {
-    includeColumn.reserve(request.columns->indices.size());
-    for (uint32_t idx : request.columns->indices)
-      includeColumn.push_back(ticket.columns.at(idx));
-  }
-  else {
-    includeColumn.reserve(ticket.columns.size());
-    for (const auto& column : ticket.columns)
-      includeColumn.push_back(column);
-  }
+  auto includeColumn = request.columns
+    ? request.columns->indices
+        | views::transform([&ticket](uint32_t idx) { return ticket.columns.at(idx); })
+        | to<std::vector>()
+    : ticket.columns;
 
   // Create column-to-ticket-column-index look-up-table
   std::unordered_map<std::string, uint32_t> columnIndex;
@@ -1102,7 +1084,7 @@ messaging::MessageBatches StorageFacility::handlePagePathRequest(std::shared_ptr
 
     while (i != end) {
       PagePathResponse chunk;
-      FillToCapacity(std::inserter(chunk.paths, chunk.paths.end()), messaging::NetMessageCapacity, std::ranges::subrange{ i, end });
+      FillToCapacity(std::inserter(chunk.paths, chunk.paths.end()), messaging::NetMessageCapacity, subrange{ i, end });
       if (chunk.paths.size() == 0U) {
         throw std::runtime_error("Could not create network-portable set of page paths");
       }

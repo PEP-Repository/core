@@ -23,15 +23,20 @@ usage() {
 
 git_dir=''
 api_key=''
-token_opt='--api-key'
+token_opt=''
 while [ "$#" != 0 ]; do
   case "$1" in
     --git-dir)
       shift; git_dir="${1:?Expected value for --git-dir}" ;;
-    --api-key)
-      shift; api_key="${1:?Expected value for --api-key}" ;;
-    --job-token)  # Authenticate with a CI job token ($CI_JOB_TOKEN) instead of an access token
-      shift; api_key="${1:?Expected value for --job-token}"; token_opt='--job-token' ;;
+    # --job-token authenticates with a CI job token ($CI_JOB_TOKEN) instead of an access token
+    --api-key|--job-token)
+      if [ -n "$token_opt" ]; then
+        >&2 echo "$0: Specify only one of --api-key and --job-token"
+        >&2 usage
+        exit 2
+      fi
+      token_opt="$1"
+      shift; api_key="${1:?Expected value for $token_opt}" ;;
     --dry-run)  # Only print what would be deleted, without actually deleting
       export DRY_DELETE=yes ;;
     --help|-h)
@@ -61,10 +66,6 @@ urlencode() {
   "$SCRIPTPATH"/url.sh encode "$1"
 }
 
-is_outdated() {
-  raw_echo "$1" | gitlab_api get-outdated-creation-timestamp
-}
-
 get_generic_file_id() {
   package_name="$1"
   sha="$2"
@@ -90,8 +91,8 @@ get_generic_file_id() {
   fi
 
   file=$(raw_echo "$files" | head -n 1)
-  created_at=$(is_outdated "$file")
-  if [ -n "$created_at" ]; then
+  created_at=$(raw_echo "$file" | jq --raw-output ".created_at")
+  if ! "$SCRIPTPATH/is-up-to-date.sh" "$created_at"; then
     >&2 echo "File '$file_name' in FOSS package '$package_name' for SHA $sha is outdated (created at $created_at)."
     return
   fi

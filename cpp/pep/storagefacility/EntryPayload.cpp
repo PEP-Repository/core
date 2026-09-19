@@ -2,10 +2,13 @@
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/utils/Raw.hpp>
 #include <pep/utils/Shared.hpp>
+#include <pep/serialization/Error.hpp>
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/utils/MapUtils.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -35,8 +38,8 @@ void EntryPayload::Save(std::shared_ptr<EntryPayload> payload, PersistedEntryPro
   }
   else {
     payload->save(properties, pages);
-    assert(properties.count(FileSizeKey) != 0U);
-    // Don't assert(properties.count(PageSizeKey) != 0U) since it doesn't hold for an empty PagedEntryPayload
+    assert(properties.contains(FileSizeKey));
+    // Don't assert(properties.contains(PageSizeKey)) since it doesn't hold for an empty PagedEntryPayload
   }
 }
 
@@ -147,7 +150,7 @@ rxcpp::observable<std::string> PagedEntryPayload::appendPage(PageStore& pageStor
   auto xxhashstr = XxHashToString(xxhash);
 
   // Throw an exception when a duplicate hash is found
-  if (std::find(pages_.begin(), pages_.end(), xxhash) != pages_.end()) {
+  if (contains(pages_, xxhash)) {
     throw std::runtime_error("FileStore error, duplicate data hash found in Entry Change: " + name.string() + ", a hashing collision has (likely) occurred.");
   }
 
@@ -182,7 +185,7 @@ std::optional<uint64_t> PagedEntryPayload::pageSize() const {
 
 std::set<std::string> PagedEntryPayload::getPagePaths(const EntryName& name) const {
   std::set<std::string> result;
-  InsertNonDuplicates(result, pages_ | std::ranges::views::transform([&name](PageId hash) {
+  InsertNonDuplicates(result, pages_ | views::transform([&name](PageId hash) {
     return GetPagePath(name, hash);
     }));
   return result;

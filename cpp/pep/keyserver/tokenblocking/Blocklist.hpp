@@ -1,10 +1,12 @@
 #pragma once
 
-#include <cstdint>
-#include <optional>
 #include <pep/keyserver/tokenblocking/BlocklistEntry.hpp>
 #include <pep/keyserver/tokenblocking/TokenIdentifier.hpp>
+
 #include <vector>
+#include <cstdint>
+#include <optional>
+#include <algorithm>
 
 namespace pep::tokenBlocking {
 

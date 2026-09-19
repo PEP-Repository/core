@@ -240,19 +240,6 @@ include:
       variables:
         ENABLE_LINTER: no
 
-# Sets credentials on the git repo in the current working directory to prevent "fatal: could not read Username"
-# See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2741
-#language=sh
-.specify-local-git-credentials: &specify-local-git-credentials
-  - git config user.email "support@pep.cs.ru.nl"
-  - git config user.name "$NAME_USER"
-  - |
-    cat >./git-password.sh <<'EOF'
-    #!/usr/bin/env sh
-    exec echo "$PEP_GROUP_REPOSITORY_TOKEN"
-    EOF
-    chmod +x ./git-password.sh
-    git config core.askPass "$PWD/git-password.sh"
 # Checkout the right docker-build commit, if overridden, but keep potentially modified conan-ci.lock. Requires git
 #language=sh
 .checkout-docker-build-script-sh-steps: &checkout-docker-build-script-sh-steps
@@ -262,7 +249,10 @@ include:
   -     cp ./builder/conan/conan-ci.lock ../conan-ci.lock
   -     git reset --hard
   -   fi
-  -   *specify-local-git-credentials
+  #   Sets credentials on the dokcer-build submodule to prevent "fatal: could not read Username"
+  #   See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2741
+  -   git config "credential.$CI_SERVER_URL.username" gitlab-ci-token
+  -   git config "credential.$CI_SERVER_URL.helper" '!f() { [ "$1" = get ] && echo "password=$CI_JOB_TOKEN"; }; f'
   -   git fetch origin "$OVERRIDE_DOCKER_BUILD_REF"
   -   git checkout FETCH_HEAD
   -   if [ -n "$DOCKER_BUILD_LOCKFILE_JOB" ]; then
@@ -271,6 +261,7 @@ include:
   -   fi
   -   cd ../
   - fi
+
 #language=powershell
 .checkout-docker-build-script-powershell-steps: &checkout-docker-build-script-powershell-steps
   - $PSNativeCommandUseErrorActionPreference = $true
@@ -316,6 +307,30 @@ check-docker-build-versions:
           exit 1
     -   fi
     - fi
+
+# A branch name ends up in container repository paths so it must be a valid OCI repository path. This job
+# is only added to the pipeline when it is not. See spec: https://github.com/opencontainers/distribution-spec/blob/main/spec.md#workflow-categories
+# The whole path is limited to 255 characters, so the branch is capped at 200 to leave room for the project path and the image name.
+check-branch-name:
+  stage: static-analysis
+  tags: [docker-small]
+  image: alpine:latest
+  variables:
+    GIT_STRATEGY: none
+  rules:
+    - if: $CI_COMMIT_REF_NAME !~ /^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(\/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*$/
+      variables:
+        BRANCH_FAIL_REASON: "the OCI distribution spec allows only lowercase letters, digits, and . _ - as separators"
+    - if: $CI_COMMIT_REF_NAME =~ /^.{201,}$/
+      variables:
+        BRANCH_FAIL_REASON: "it is longer than 200 characters, while the whole path is limited to 255"
+  #language=sh
+  script:
+    - |
+      >&2 echo "Branch name $CI_COMMIT_REF_NAME cannot be used as a container repository path."
+      >&2 echo "$BRANCH_FAIL_REASON."
+      >&2 echo "Please rename the branch (and if it exists, the matching branch in dtap)."
+      exit 1
 
 analyse-source:
   stage: static-analysis
@@ -468,7 +483,7 @@ retrieve-lockfile:
     - echo "Retrieving lockfile from job ${CI_SERVER_URL}/${DOCKER_BUILD_PROJECT}/-/jobs/${DOCKER_BUILD_LOCKFILE_JOB}"
     - docker_build_project_urlencode="$(printf %s "${DOCKER_BUILD_PROJECT}" | jq --slurp --raw-input --raw-output @uri)"
     - >
-      curl --no-progress-meter --fail --location --header "PRIVATE-TOKEN: ${PEP_GROUP_READ_API_TOKEN}"
+      curl --no-progress-meter --fail --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}"
       "${CI_API_V4_URL}/projects/${docker_build_project_urlencode}/jobs/${DOCKER_BUILD_LOCKFILE_JOB}/artifacts/conan-ci.lock"
       --output ./docker-build/builder/conan/conan-ci.lock
   artifacts:
@@ -1526,19 +1541,13 @@ update-foss-submodule-in-dtap:
   #language=sh
   script:
     # Set the displayed user with the commits that are about to be made
-    - NAME_USER="Gitlab_CI_script"
     - DTAP_PROJ="pep/dtap"
     - git config --global user.email "support@pep.cs.ru.nl"
-    - git config --global user.name "$NAME_USER"
+    - git config --global user.name "Gitlab CI script from $CI_PROJECT_NAME"
 
     # Do not put token in the URL to prevent it from being printed on clone
-    - |
-      cat >./git-password.sh <<'EOF'
-      #!/usr/bin/env sh
-      exec echo "$PEP_GROUP_REPOSITORY_TOKEN"
-      EOF
-      chmod +x ./git-password.sh
-      git config --global core.askPass "$PWD/git-password.sh"
+    - git config --global "credential.$CI_SERVER_URL.username" gitlab-ci-token
+    - git config --global "credential.$CI_SERVER_URL.helper" '!f() { [ "$1" = get ] && echo "password=$CI_JOB_TOKEN"; }; f'
 
     - rm -rf dtap
     # Clone the dtap repository shallowly via HTTPS

@@ -7,7 +7,9 @@
 #include <sstream>
 #include <cctype>
 #include <cstdint>
+#include <ranges>
 #include <unordered_map>
+#include <utility>
 
 #include <boost/log/utility/setup/console.hpp>
 #include <boost/log/utility/setup/file.hpp>
@@ -26,6 +28,8 @@
 // we have this check to make sure that logging is properly configured and we don't lose logging in production
 #error "Non-Windows build need native boost logging functionality"
 #endif
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -96,9 +100,8 @@ std::string FormatThreadName() {
 
 Severity Logging::ParseSeverity(const std::string& level) {
   auto names = GetSeverityLevelNames();
-  auto end = names.cend();
-  auto position = std::find_if(names.cbegin(), end, [&level](const std::pair<const Severity, std::string>& candidate) {return candidate.second == level; });
-  if (position == end) {
+  auto position = find(names, level, &std::pair<const Severity, std::string>::second);
+  if (position == names.cend()) {
     throw std::runtime_error("Invalid severity level " + level);
   }
   return position->first;
@@ -108,17 +111,15 @@ std::string Logging::FormatSeverity(Severity level) {
   auto names = GetSeverityLevelNames();
   auto position = names.find(level);
   if (position == names.cend()) {
-    throw std::runtime_error("Invalid severity level " + std::to_string(ToUnderlying(level)));
+    throw std::runtime_error("Invalid severity level " + std::to_string(std::to_underlying(level)));
   }
   return position->second;
 }
 
 std::vector<std::string> Logging::SeverityNames() {
-  auto pairs = GetSeverityLevelNames();
-  std::vector<std::string> result;
-  result.reserve(pairs.size());
-  std::transform(pairs.cbegin(), pairs.cend(), std::back_inserter(result), [](const std::pair<const Severity, std::string>& pair) {return pair.second; });
-  return result;
+  return GetSeverityLevelNames()
+    | views::values
+    | to<std::vector>();
 }
 
 Logging::pep_severity_channel_logger& Logging::GetLogger() {
@@ -143,7 +144,7 @@ void Logging::Initialize(const std::vector<std::shared_ptr<Logging>>& settings) 
   if (!initialized) {
     // Prevent Boost's default log sink from sending everything to the console
     auto highest = GetSeverityLevelNames().rbegin()->first; // Get highest severity level
-    auto nonexistent = static_cast<Severity>(ToUnderlying(highest) + 1); // Get severity level that will never be reached because it doesn't exist
+    auto nonexistent = static_cast<Severity>(std::to_underlying(highest) + 1); // Get severity level that will never be reached because it doesn't exist
     ConsoleLogging console(nonexistent); // Configure console logging that suppresses all existing severity levels
     Logging& upcast = console;
     upcast.apply();

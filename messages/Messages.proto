@@ -483,7 +483,7 @@ message ChecksumChainResponse {
 
 message Error {
   string description = 1;
-  string original_type_name = 2;
+  reserved 2;
 }
 
 //

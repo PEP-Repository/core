@@ -3,7 +3,10 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <algorithm>
+#include <ranges>
 #include <tuple>
+
+using namespace std::ranges;
 
 namespace pep::structuredOutput {
 namespace {
@@ -22,7 +25,7 @@ json ObjectFromHeaderAndRecord(ConstRecordRef header, ConstRecordRef record) {
   assert(header.size() == record.size());
 
   auto object = json::object();
-  for (std::size_t i = 0; i < record.size(); ++i) { object.emplace(header[i], record[i]); }
+  for (auto [name, field] : views::zip(header, record)) { object.emplace(name, field); }
   return object;
 }
 
@@ -51,15 +54,7 @@ json PtreeToJson(const boost::property_tree::ptree& pt) {
   }
   
   // if all keys are empty, it's an array
-  bool isArray = true;
-  for (const auto& [key, value] : pt) {
-    if (!key.empty()) {
-      isArray = false;
-      break;
-    }
-  }
-
-  if (isArray) {
+  if (all_of(views::keys(pt), [](const std::string& key) { return key.empty(); })) {
     json array = json::array();
     for (const auto& [key, value] : pt) {
       array.push_back(PtreeToJson(value));

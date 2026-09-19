@@ -18,17 +18,24 @@ readonly SCRIPTPATH
 no_project=false
 git_dir=''
 api_key=''
+token_opt=''
 token_header='PRIVATE-TOKEN'
 while [ "$#" != 0 ]; do
   case "$1" in
     --no-project) # Do not prefix API URL with project
       no_project=true ;;
-    # Authenticate with a CI job token ($CI_JOB_TOKEN), which is only accepted in its own header:
+    # A CI job token ($CI_JOB_TOKEN) is only accepted in its own header:
     # https://docs.gitlab.com/ci/jobs/ci_job_token/#rest-api-authentication
-    --job-token)
-      shift; api_key="${1:?Expected value for --job-token}"; token_header='JOB-TOKEN' ;;
-    --api-key)
-      shift; api_key="${1:?Expected value for --api-key}" ;;
+    --api-key|--job-token)
+      if [ -n "$token_opt" ]; then
+        >&2 echo "$0: Specify only one of --api-key and --job-token"
+        exit 2
+      fi
+      token_opt="$1"
+      if [ "$token_opt" = --job-token ]; then
+        token_header='JOB-TOKEN'
+      fi
+      shift; api_key="${1:?Expected value for $token_opt}" ;;
     --git-dir)
       shift; git_dir="${1:?Expected value for --git-dir}" ;;
     --help|-h)
@@ -48,27 +55,6 @@ done
 readonly git_dir="${git_dir:?Expected --git-dir}"
 readonly api_key="${api_key:?Expected --api-key or --job-token}"
 readonly command="${1:?Expected command}"; shift
-
-# Commands that don't require a project URL or API connection
-case $command in
-  get-outdated-creation-timestamp)
-    # Read a JSON object from stdin containing a ".created_at" property, e.g.
-    # - Docker image (tag) details: https://docs.gitlab.com/ee/api/container_registry.html#get-details-of-a-registry-repository-tag
-    # - project package details: https://docs.gitlab.com/ee/api/packages.html#get-a-project-package
-    # - pipelines
-    # If the ".created_at" is older than the (hard-coded) threshold, this function prints
-    # the value of that ".created_at" property (so that the caller can report its value), otherwise print nothing. Exit 0 in both cases.
-    entry=$(cat)
-    created_at=$(raw_echo "$entry" | jq --raw-output ".created_at")
-    seconds=$(( $(gnu_date +%s) - $(gnu_date -d "$created_at" +%s) ))
-    days=$(( seconds / 60 / 60 / 24 ))
-    if [ "$days" -ge 6 ]; then
-      echo "$created_at"
-    fi
-    exit 0
-    ;;
-esac
-
 rel_path="${1?:Expected URL path}"; shift
 # Further arguments are passed verbatim to the "curl" command(s) that we issue
 

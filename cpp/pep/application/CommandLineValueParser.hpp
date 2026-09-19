@@ -38,7 +38,7 @@ struct ValueParser<T, std::enable_if_t<std::is_same_v<T, Timestamp>>> {
       auto timestampString = std::string_view(argument).substr(unixtimeMsPrefix.length());
       return Timestamp(std::chrono::milliseconds{boost::lexical_cast<Timestamp::rep>(timestampString)});
     }
-    if (argument.find("-") != std::string::npos) {
+    if (argument.contains('-')) {
       return TimeZone::Local().timestampFromXmlDateTime(argument);
     }
     return TimeZone::Local().timestampFromYyyyMmDd(argument);
