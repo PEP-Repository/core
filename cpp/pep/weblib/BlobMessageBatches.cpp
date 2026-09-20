@@ -1,7 +1,6 @@
 #include <pep/weblib/BlobMessageBatches.hpp>
 
 #include <pep/async/CreateObservable.hpp>
-#include <pep/async/FakeVoid.hpp>
 #include <pep/async/RxSubsequently.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Log.hpp>
@@ -10,6 +9,8 @@
 
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
+
+#include <rxcpp/operators/rx-subscribe_on.hpp>
 
 #include <boost/noncopyable.hpp>
 
@@ -39,7 +40,9 @@ struct BlobReadState {
   std::uint64_t size; ///< Blob size in bytes, captured at creation
   std::size_t pageSize; ///< The maximum number of bytes to read at a time
   rxcpp::observe_on_one_worker ioWorker; ///< Worker on which pages are delivered
-  std::atomic<std::uint64_t> offset = 0; ///< Bytes read so far. Atomic because it is written on the main thread and read on the io worker.
+  /// Bytes read so far. Written on the main thread, read on the io worker, but never concurrently:
+  /// each access is separated by a queue hop, and the next read waits for the batch to complete.
+  std::atomic<std::uint64_t> offset = 0;
   rxcpp::observe_on_one_worker mainWorker = weblib::observe_on_emscripten_main_thread();
 };
 
@@ -66,12 +69,19 @@ class BlobPageReader : public boost::noncopyable {
   }
 
 public:
-  static void ReadPage(std::shared_ptr<BlobReadState> state, rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
-    //TODO(workaround) "new" is a workaround to not copy, see https://github.com/emscripten-core/emscripten/issues/25412
-    val self(new BlobPageReader(std::move(state), std::move(inner)), allow_raw_pointers{});
-    auto* reader = self.as<BlobPageReader*>(allow_raw_pointers{});
-    reader->self_ = self;
-    reader->start();
+  /// \brief Produces a \c MessageSequence containing a single page from the Blob.
+  /// \remark Postpones reading data from the Blob until someone .subscribe()s to the \c MessageSequence
+  static MessageSequence ReadPage(std::shared_ptr<BlobReadState> state) {
+    return CreateObservable<std::shared_ptr<std::string>>(
+        [state](rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
+          //TODO(workaround) "new" is a workaround to not copy, see https://github.com/emscripten-core/emscripten/issues/25412
+          val self(new BlobPageReader(state, std::move(inner)), allow_raw_pointers{});
+          auto* reader = self.as<BlobPageReader*>(allow_raw_pointers{});
+          reader->self_ = self;
+          reader->start();
+        })
+        // The Blob may only be accessed on the main thread, so subscribe (and therefore read) there
+        .subscribe_on(state->mainWorker);
   }
 
   void onPage(val arrayBuffer) {
@@ -116,18 +126,9 @@ public:
   }
 };
 
-/// \brief Produces a \c MessageSequence containing a single page from the Blob.
-/// \remark Postpones reading data from the Blob until someone .subscribe()s to the \c MessageSequence
+/// Produces a single page as a \c MessageSequence ("batch"), delivered on the io worker.
 MessageSequence MakeBlobBatch(std::shared_ptr<BlobReadState> state) {
-  return CreateObservable<std::shared_ptr<std::string>>(
-      [state](rxcpp::subscriber<std::shared_ptr<std::string>> inner) {
-        // Subscription happens on the io worker, but the Blob may only be accessed on the main thread, proxy the page read there
-        rxcpp::observable<>::just(FakeVoid{})
-            .observe_on(state->mainWorker)
-            .subscribe([state, inner](FakeVoid) {
-              BlobPageReader::ReadPage(state, inner);
-            });
-      })
+  return BlobPageReader::ReadPage(state)
       // Deliver the page (and errors/completion) back on the io worker
       .observe_on(state->ioWorker);
 }
