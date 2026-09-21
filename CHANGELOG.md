@@ -26,6 +26,10 @@
 
 - core#2945: Added command `pepcli query page-paths`, which lists the paths of the current data set's pages in Storage Facility's backing storage.
 
+**MANUAL CHANGES REQUIRED**:
+
+- core!2527: For projects using nginx (e.g. for s3proxy), modify `etc/params/proxy` to change `proxy_set_header Host $host;` to `proxy_set_header Host $http_host;` (or just replace by the version in pep/core>).
+
 ---------------
 *Past changes, do not edit (except by person doing release):*
 
