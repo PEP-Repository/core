@@ -5,7 +5,7 @@
 if((CMAKE_BUILD_TYPE STREQUAL "Release") OR
    (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
     message("Note: log statements with severity less than info are left out")
-    set(DEFAULT_LOGGING debug) #TODO Change back to info
+    set(DEFAULT_LOGGING info)
 else()
     set(DEFAULT_LOGGING verbose)
 endif()

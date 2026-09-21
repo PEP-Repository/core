@@ -12,7 +12,7 @@ std::string ServiceApplicationBase::getDescription() const {
 }
 
 std::optional<pep::severity_level> ServiceApplicationBase::consoleLogMinimumSeverityLevel() const {
-  return pep::severity_level::debug; //TODO Change back to info
+  return pep::severity_level::info;
 }
 
 }
