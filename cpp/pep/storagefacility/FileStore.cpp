@@ -8,6 +8,8 @@
 #include <pep/utils/Raw.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
 
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <filesystem>
@@ -104,6 +106,11 @@ void FileStore::persistPurgeCycle(const PurgeCycle& cycle) {
       << ", column " << version.cell.column
       << ", timestamp " << TimestampToXmlDateTime(version.timestamp) << std::endl;
   }
+
+  auto updated = cycle;
+  assert(!updated.completed);
+  updated.completed = TimeNow();
+  sqlite_.updatePurgeCycle(updated);
 }
 
 void FileStore::persistPendingPurgesAsync() {
@@ -117,6 +124,19 @@ void FileStore::persistPendingPurgesAsync() {
       this->persistPurgeCycle(cycle);
     }
   }
+
+  post(*ioContext_, [this]() {
+      // Let the ASIO thread join this (purgePersistence_) thread to clean up
+      {
+        std::scoped_lock lock(purgePersistenceMux_);
+        assert(purgePersistence_.joinable());
+        purgePersistence_.join();
+      }
+      // Start a new persistence thread if any new cycles have been confirmed while we were running
+      if (std::ranges::any_of(sqlite_.getPurgeCycles(), [](const PurgeCycle& cycle) { return cycle.confirmed && !cycle.completed; })) {
+        this->persistPendingPurges();
+      }
+    });
 }
 
 const std::string& FileStore::getColumnString(const std::string& value) {
@@ -127,12 +147,13 @@ const std::string& FileStore::getColumnString(const std::string& value) {
 }
 
 FileStore::FileStore(
-  const storagefacility::SqliteStorage& sqlite,
+  storagefacility::SqliteStorage& sqlite,
   const std::filesystem::path& metadatapath,
   const Configuration& pageStoreConfig,
   std::shared_ptr<boost::asio::io_context> io_context,
   std::shared_ptr<prometheus::Registry> metrics_registry)
-  : sqlite_(sqlite),
+  : ioContext_(io_context),
+  sqlite_(sqlite),
   path_(CheckedPath::FromTrusted(metadatapath)),
   pagestore_(PageStore::Create(io_context, metrics_registry, pageStoreConfig))
 {

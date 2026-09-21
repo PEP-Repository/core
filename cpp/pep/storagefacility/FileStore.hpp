@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/utils/CheckedPath.hpp>
 #include <pep/utils/Shared.hpp>
 #include <pep/storagefacility/EntryContent.hpp>
@@ -192,13 +193,14 @@ public:
 
 private:
   FileStore(
-    const storagefacility::SqliteStorage& sqlite,
+    storagefacility::SqliteStorage& sqlite,
     const std::filesystem::path& metadatapath,
     const Configuration& pageStoreConfig,
     std::shared_ptr<boost::asio::io_context> io_context,
     std::shared_ptr<prometheus::Registry> metrics_registry);
 
-  const storagefacility::SqliteStorage& sqlite_;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
+  storagefacility::SqliteStorage& sqlite_;
   std::thread purgePersistence_;
   std::mutex purgePersistenceMux_;
 
