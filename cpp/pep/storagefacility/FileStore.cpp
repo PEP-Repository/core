@@ -3,6 +3,7 @@
 #include <pep/utils/BuildFlavor.hpp>
 #include <pep/storagefacility/Constants.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/utils/MapUtils.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Raw.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
@@ -21,34 +22,30 @@ namespace pep {
 
 namespace {
 
-const std::string CHECKSUM_SUBSTITUTE_KEY = "checksum-substitute";
+const std::string ChecksumSubstituteKey = "checksum-substitute";
 
 uint64_t GenerateChecksumSubstitute() {
   return RandomInteger<uint64_t>();
 }
 
-const std::string ENTRY_FILE_TYPE("pepentry");
+const std::string EntryFileType("pepentry");
 const std::string LogTag("StorageFacility");
 
 }
 
-/**
- * Design:
- * - metadata is stored on local file system
- * - pages is stored on 'data' volume (which can be migrated to the cloud later on rather easy)
- * - every stored item is xxhashed so it can be verified that no error occured
- * - on start all the metadata is loaded into memory (4 KiB per entry x 256k entries = 1 GiB of RAM)
- * - I/O model: all reads are from memory; writes will synchronous write to disk for consistency
- * - retrieving 40k items out of 360k items (no historical items) cost 92ms
- * - retrieving 2 latest items out of 40k historical items of a total of 360k items cost 99ms
- */
+// Design:
+// - metadata is stored on local file system
+// - pages is stored on 'data' volume (which can be migrated to the cloud later on rather easy)
+// - every stored item is xxhashed so it can be verified that no error occured
+// - on start all the metadata is loaded into memory (4 KiB per entry x 256k entries = 1 GiB of RAM)
+// - I/O model: all reads are from memory; writes will synchronous write to disk for consistency
+// - retrieving 40k items out of 360k items (no historical items) cost 92ms
+// - retrieving 2 latest items out of 40k historical items of a total of 360k items cost 99ms
 
- /**
-  * Challenges:
-  * - correctly (with all error condition) retrieve data from S3 interface
-  * - if there are many entries; starting will take longer (possible migrate to mmap()ed data structure)
-  * - partitioning (within a host; but also mutliple storage facilities)
-  */
+ // Challenges:
+ // - correctly (with all error condition) retrieve data from S3 interface
+ // - if there are many entries; starting will take longer (possible migrate to mmap()ed data structure)
+ // - partitioning (within a host; but also mutliple storage facilities)
 
 const std::string FileStore::Entry::FileExtension = ".entry";
 
@@ -100,7 +97,7 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
 }
 
 const std::string& FileStore::getColumnString(const std::string& value) {
-  if (value.find(EntryName::Delimiter) != std::string::npos) {
+  if (value.contains(EntryName::Delimiter)) {
     throw std::runtime_error("Cell name may not contain an entry name delimiter");
   }
   return *columnNames_.insert(value).first;
@@ -335,13 +332,13 @@ messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
 void FileStore::Entry::save() const {
   std::ostringstream out;
 
-  out << ENTRY_FILE_TYPE;
+  out << EntryFileType;
   WriteBinary(out, this->getName().string());
   WriteBinary(out, static_cast<std::uint64_t>(TicksSinceEpoch<milliseconds>(validFrom_)));
 
   std::vector<PageId> pages;
   PersistedEntryProperties properties;
-  SetPersistedEntryProperty(properties, CHECKSUM_SUBSTITUTE_KEY, this->getChecksumSubstitute());
+  SetPersistedEntryProperty(properties, ChecksumSubstituteKey, this->getChecksumSubstitute());
 
   EntryContent::Save(this->content(), properties, pages);
 
@@ -379,7 +376,7 @@ void FileStore::EntryChange::commit(Timestamp availableFrom) && {
   // this should not happen due to combination of above conditions:
   // - check that the availableFrom > last item (on time of modify() method)
   // - check that last item on time of modify() is still the last item at time of commit()
-  if (this->getCell().versions().find(availableFrom) != this->getCell().versions().cend()) {
+  if (this->getCell().versions().contains(availableFrom)) {
     auto msg = "Cannot store duplicate entry with name " + this->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(availableFrom));
     PEP_LOG(LogTag, Severity::Error) << msg;
@@ -442,9 +439,9 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
     throw std::invalid_argument("could not open file for reading");
 
   // Read magic bytes from start of file, validating that this is file indeed represents a file store entry
-  std::string fileType(ENTRY_FILE_TYPE.size(), '\0');
+  std::string fileType(EntryFileType.size(), '\0');
   infile.read(fileType.data(), static_cast<std::streamsize>(fileType.size()));
-  if (fileType != ENTRY_FILE_TYPE) {
+  if (fileType != EntryFileType) {
     throw std::invalid_argument("could not read file (wrong file type): " + path.string());
   }
 
@@ -462,7 +459,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
   auto pages = ReadBinary(infile, std::vector<PageId>());
   auto properties = ReadBinary(infile, PersistedEntryProperties());
 
-  auto checksumSubstitute = ExtractPersistedEntryProperty<uint64_t>(properties, CHECKSUM_SUBSTITUTE_KEY);
+  auto checksumSubstitute = ExtractPersistedEntryProperty<uint64_t>(properties, ChecksumSubstituteKey);
   auto entryContent = EntryContent::Load(cell.participant().fileStore(), properties, pages);
 
   // Read content hash from (end of) file

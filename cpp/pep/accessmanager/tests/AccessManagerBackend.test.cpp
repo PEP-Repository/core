@@ -9,6 +9,7 @@
 #include <gmock/gmock-matchers.h>
 
 using namespace pep;
+using namespace std::ranges;
 
 namespace {
 
@@ -184,8 +185,8 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_happy) {
   EXPECT_EQ(columnGroupMap, expectedColumnGroupMap);
 
   // Sort calculated and expected values the same way to prevent failure due to ordering differences
-  std::sort(columns.begin(), columns.end());
-  std::sort(expectedColumns.begin(), expectedColumns.end());
+  sort(columns);
+  sort(expectedColumns);
 
   EXPECT_EQ(columns, expectedColumns);
 }

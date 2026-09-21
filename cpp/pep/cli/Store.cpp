@@ -3,7 +3,8 @@
 #include <pep/utils/File.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/archiving/Pseudonymiser.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxBeforeTermination.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/archiving/Tar.hpp>
 #include <pep/utils/Stream.hpp>
@@ -102,7 +103,7 @@ void AddSpecifiedMetadata(std::map<std::string, pep::MetadataXEntry>& metadata, 
   }
 }
 
-/* \brief Takes the parameters provided by the user, global configuration, pp, and column and puts them in a single struct. */
+/// Takes the parameters provided by the user, global configuration, pp, and column and puts them in a single struct.
 rxcpp::observable < std::shared_ptr<StoreContext>> CreateContext(std::shared_ptr<pep::CoreClient> client, const pep::commandline::NamedValues& parameterValues, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) {
   auto context = std::make_shared<StoreContext>();
   // Get local context parameters
@@ -277,7 +278,7 @@ private:
           }
           batches = pep::messaging::IStreamToMessageBatches(stream);
           if (setStdinBinary) {
-            batches = batches.op(pep::RxBeforeCompletion([setStdinBinary] {
+            batches = batches.op(pep::RxSubsequently([setStdinBinary] {
               setStdinBinary->reset();
             }));
           }

@@ -1,10 +1,13 @@
 #include <pep/application/CommandLineParameter.hpp>
 
 #include <numeric>
+#include <ranges>
 #include <utility>
 #include <iostream>
 
 #include <boost/algorithm/string/join.hpp>
+
+using namespace std::ranges;
 
 namespace pep {
 namespace commandline {
@@ -20,7 +23,7 @@ Parameter::Parameter(const std::string& name, const std::optional<std::string>& 
 
 Parameter Parameter::alias(const SwitchAnnouncement& alias) const {
   auto announcements = this->getAnnouncements();
-  if (announcements.find(alias) != announcements.cend()) {
+  if (announcements.contains(alias)) {
     throw std::runtime_error("Switch " + name_ + " already has announcement " + alias.string());
   }
 
@@ -133,7 +136,7 @@ Values Parameter::parse(const ProvidedValues& lexed) const {
 
 bool Parameter::isLackingValue(const ProvidedValues& lexed) const noexcept {
   if (this->getValueSpecification()) {
-    return std::any_of(lexed.cbegin(), lexed.cend(), [](const ProvidedValue &val) {
+    return any_of(lexed, [](const ProvidedValue &val) {
       return !val.has_value();
     });
   }
@@ -267,21 +270,12 @@ void Parameters::writeHelpText(std::ostream& destination) const {
       entries.push_back(std::make_tuple(alias.first, alias.second, *canonical));
     }
   }
-  struct CompareAliasText {
-    inline bool operator()(const Entry& lhs, const Entry& rhs) const {
-      const auto& left = std::get<0>(lhs).getText();
-      const auto& right = std::get<0>(rhs).getText();
-      return std::less<std::string>()(left, right);
-    }
-  };
-  std::sort(entries.begin(), entries.end(), CompareAliasText());
+  sort(entries, {}, [](const Entry& entry) -> decltype(auto) { return std::get<0>(entry).getText(); });
 
-  bool announce = true;
+  if (!entries.empty()) {
+    destination << "\nSwitch aliases: \n";
+  }
   for (const auto& entry : entries) {
-    if (announce) {
-      destination << "\nSwitch aliases: \n";
-      announce = false;
-    }
     WriteHelpItem(destination, std::get<1>(entry), "Alias for " + std::get<2>(entry)); // TODO: indent so that text for --proper-aliases and -shorthands is aligned
   }
 }
@@ -301,7 +295,7 @@ Parameters Parameters::operator +(const std::vector<Parameter>& parameters) cons
 }
 
 const Parameter* Parameters::find(const std::string& name) const {
-  auto pos = std::find_if(entries_.cbegin(), entries_.cend(), [&name](const Parameter& candidate) {return candidate.getName() == name; });
+  auto pos = std::ranges::find(entries_, name, &Parameter::getName);
   if (pos == entries_.cend()) {
     return nullptr;
   }
@@ -313,7 +307,7 @@ void Parameters::writeHelpText(std::ostream& destination, const std::string& hea
     const std::vector<Parameter>& parameters;
     bool operator()(Index lhs, Index rhs) const { return std::less<std::string>()(parameters[lhs].getName(), parameters[rhs].getName()); }
   };
-  std::sort(indices.begin(), indices.end(), CompareParameterNamesByIndex{ entries_ });
+  sort(indices, CompareParameterNamesByIndex{ entries_ });
 
   auto announce = true;
   for (auto index : indices) {
@@ -469,27 +463,24 @@ std::vector<const Parameter*> Parameters::getSwitchesToAutocomplete(const LexedV
 }
 
 bool Parameters::hasRequired() const {
-  return std::any_of(entries_.cbegin(), entries_.cend(), [](const Parameter& s) {return s.isRequired(); });
+  return any_of(entries_, &Parameter::isRequired);
 }
 
 bool Parameters::hasInfinitePositional() const noexcept {
-  return std::any_of(entries_.cbegin(), entries_.cend(), [](const Parameter& s) {return s.allowsMultiple(); });
+  return any_of(entries_, &Parameter::allowsMultiple);
 }
 
 std::vector<std::string> Parameters::getInvocationSummary() const {
   std::vector<std::optional<std::string>> optionals;
   optionals.reserve(entries_.size());
+  optionals.append_range(named_ | views::transform([this](Index index) {return entries_[index].getInvocationSummary(true); }));
+  optionals.append_range(positional_ | views::transform([this](Index index) {return entries_[index].getInvocationSummary(true); }));
 
-  auto position = std::back_inserter(optionals);
-  position = std::transform(named_.cbegin(), named_.cend(), position, [this](Index index) {return entries_[index].getInvocationSummary(true); });
-  std::transform(positional_.cbegin(), positional_.cend(), position, [this](Index index) {return entries_[index].getInvocationSummary(true); });
+  std::erase(optionals, std::nullopt);
 
-  optionals.erase(std::remove(optionals.begin(), optionals.end(), std::nullopt), optionals.end());
-
-  std::vector<std::string> result;
-  result.reserve(optionals.size());
-  std::transform(optionals.cbegin(), optionals.cend(), std::back_inserter(result), [](const std::optional<std::string> entry) {return *entry; });
-  return result;
+  return optionals
+    | views::transform([](const std::optional<std::string>& entry) {return *entry; })
+    | to<std::vector>();
 }
 
 }

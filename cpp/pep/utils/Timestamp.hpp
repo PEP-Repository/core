@@ -38,7 +38,7 @@ template<DerivedFromSpecialization<std::chrono::duration> TToDuration, typename 
 
 /// Converts to an XML (ISO 8601) datetime string, with a resolution in seconds.
 /// This uses the UTC form with separators between the components.
-/// @example "2024-05-06T08:52:21Z"
+/// \example "2024-05-06T08:52:21Z"
 [[nodiscard]] std::string TimestampToXmlDateTime(Timestamp);
 
 /// Representation of a timezone that is used as parameter in some functions of the Timestamp class
@@ -49,7 +49,7 @@ public:
   [[nodiscard]] static TimeZone PosixTimezone(std::string str) { return TimeZone{std::move(str)}; }
 
   /// Parses a pep::Timestamp value from a yyyyMmDd string, such as "20240523"
-  /// @returns the timestamp matching zero milliseconds into the iso date, depending on the timezone
+  /// \returns the timestamp matching zero milliseconds into the iso date, depending on the timezone
   [[nodiscard]] Timestamp timestampFromYyyyMmDd(std::string_view yyyyMmDd) const;
   /// Parses a timestamp value from an XML (ISO 8061) datetime string (yyyy-mm-dd[Thh:mm:ss[Z|+-hh:mm]]).
   /// If a timezone is specified in the string, that will be used. Otherwise, \p this timezone will be used.

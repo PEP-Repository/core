@@ -20,12 +20,10 @@ class RepeatingDataForm : public SimpleCastorChildObject<RepeatingDataForm, Repe
   std::shared_ptr<RepeatingData> getRepeatingData() const { return this->getParent(); }
 
  protected:
-  /*!
-   * \brief construct a RepeatingDataForm
-   *
-   * \param repeatingData The Study this repeating data form belongs to
-   * \param json The %Json response from the Castor API for this repeating data form
-   */
+  /// \brief construct a RepeatingDataForm
+  ///
+  /// \param repeatingData The Study this repeating data form belongs to
+  /// \param json The %Json response from the Castor API for this repeating data form
   RepeatingDataForm(std::shared_ptr<RepeatingData> repeatingData, JsonPtr json);
 
  private:

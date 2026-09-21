@@ -31,8 +31,7 @@ CurveScalar CurveScalar::FromText(std::string_view text) {
   }
 }
 
-/*! \brief Create a zero CurveScalar
- */
+/// \brief Create a zero CurveScalar
 CurveScalar::CurveScalar() { //NOLINT(cppcoreguidelines-pro-type-member-init) inner_ is initialized
   group_scalar_setzero(&inner_);
 }
@@ -43,8 +42,7 @@ CurveScalar CurveScalar::One() {
   return scalar;
 }
 
-/*! \brief Create a new CurveScalar from a packed scalar.
- */
+/// \brief Create a new CurveScalar from a packed scalar.
 CurveScalar::CurveScalar(std::string_view packed) { //NOLINT(cppcoreguidelines-pro-type-member-init) inner_ is initialized
   if (packed.size() != CurveScalar::PackedBytes) {
     throw std::invalid_argument("Trying to construct CurveScalar with incorrect number of packed bytes");
@@ -55,71 +53,65 @@ CurveScalar::CurveScalar(std::string_view packed) { //NOLINT(cppcoreguidelines-p
   }
 }
 
-/*! \brief Adds a scalar to this scalar.
- *
- * This scalar remains unchanged.
- *
- * \param s The scalar to add.
- * \return The resulting CurveScalar.
- */
+/// \brief Adds a scalar to this scalar.
+///
+/// This scalar remains unchanged.
+///
+/// \param s The scalar to add.
+/// \return The resulting CurveScalar.
 CurveScalar CurveScalar::operator+(const CurveScalar& s) const {
   CurveScalar r;
   group_scalar_add(&r.inner_, &inner_, &s.inner_);
   return r;
 }
 
-/*! \brief Subtract a scalar from this scalar.
- *
- * This scalar remains unchanged.
- *
- * \param s The scalar to add.
- * \return The resulting CurveScalar.
- */
+/// \brief Subtract a scalar from this scalar.
+///
+/// This scalar remains unchanged.
+///
+/// \param s The scalar to add.
+/// \return The resulting CurveScalar.
 CurveScalar CurveScalar::operator-(const CurveScalar& s) const {
   CurveScalar r;
   group_scalar_sub(&r.inner_, &inner_, &s.inner_);
   return r;
 }
 
-/*! \brief Multiplies a scalar with this scalar.
- *
- * This scalar remains unchanged.
- *
- * \param s The scalar to multiply with.
- * \return The resulting CurveScalar.
- */
+/// \brief Multiplies a scalar with this scalar.
+///
+/// This scalar remains unchanged.
+///
+/// \param s The scalar to multiply with.
+/// \return The resulting CurveScalar.
 CurveScalar CurveScalar::operator*(const CurveScalar& s) const {
   CurveScalar r;
   group_scalar_mul(&r.inner_, &inner_, &s.inner_);
   return r;
 }
 
-/*! Squares this scalar.
- *
- * This scalar remains unchanged.
- * \return The resulting CurveScalar
- */
+/// Squares this scalar.
+///
+/// This scalar remains unchanged.
+/// \return The resulting CurveScalar
 CurveScalar CurveScalar::square() const {
   CurveScalar r;
   group_scalar_square(&r.inner_, &inner_);
   return r;
 }
 
-/*! Calculates the inverse of this scalar.
- *
- * This scalar remains unchanged.
- * \return The resulting CurveScalar.
- */
+/// Calculates the inverse of this scalar.
+///
+/// This scalar remains unchanged.
+/// \return The resulting CurveScalar.
 CurveScalar CurveScalar::invert() const {
   CurveScalar r;
   group_scalar_invert(&r.inner_, &inner_);
   return r;
 }
 
-/*! \brief Creates a valid CurveScalar from the specified 64 bytes.
- *
- * The data is modified to comply with the constraints for CurveScalar values (i.e. clamped).
- */
+/// \brief Creates a valid CurveScalar from the specified 64 bytes.
+///
+/// The data is modified to comply with the constraints for CurveScalar values (i.e. clamped).
 CurveScalar CurveScalar::From64Bytes(std::string_view bytes) {
   if (bytes.size() != 64) {
     throw std::invalid_argument("Trying to construct CurveScalar with incorrect number of bytes");

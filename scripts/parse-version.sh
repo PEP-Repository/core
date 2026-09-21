@@ -37,6 +37,9 @@ case $command in
   get-build)
     get_build "$pipeline"
     ;;
+  get-semver)
+    echo "${version_major}.${version_minor}.$(get_build "$pipeline")"
+    ;;
   get-revision)
     echo "$job"
     ;;

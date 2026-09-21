@@ -7,7 +7,7 @@ exitcode=0
 # Check all files with shebang headers
 for FILE in $(git --no-pager grep -l -I -E '^#\!'); do
     # Skip files that do not have a shebang at the start of the first line
-    if ! [[ $(head -n 1 $FILE) =~ ^"#!" ]]; then
+    if ! [[ $(head -n 1 "$FILE") =~ ^"#!" ]]; then
         continue;
     fi
 
@@ -27,11 +27,19 @@ for FILE in $(git --no-pager grep -l -I -E '^#\!'); do
     fi
 done
 
+mapfile -t SH_FILES < <(git ls-files | grep "\.sh$")
+
 # Run shellcheck on all .sh files
-for FILE in $(git ls-files | grep "\.sh$"); do
-    if ! shellcheck "$FILE" --external-sources --severity=warning; then
+for FILE in "${SH_FILES[@]}"; do
+    if ! shellcheck "$FILE" --external-sources --severity=info; then
         exitcode=1
     fi
 done
+
+# Check for non portable invocations of the cli tools we call, which shellcheck does not cover
+# docker/ runs in our own images and the macOS installer only ever runs on macOS
+if ! "$(dirname -- "$0")/check-portability.sh" --ignore-dir docker --ignore-dir installer/macOS; then
+    exitcode=1
+fi
 
 exit $exitcode

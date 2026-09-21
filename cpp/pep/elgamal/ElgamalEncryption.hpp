@@ -9,8 +9,7 @@ using ElgamalPrivateKey = CurveScalar;
 using ElgamalPublicKey = CurvePoint;
 using ElgamalTranslationKey = CurveScalar;
 
-/*! \brief An ElGamal Encryption Triple.
- */
+/// An ElGamal Encryption Triple.
 class ElgamalEncryption {
  public:
   static constexpr size_t PackedBytes = CurvePoint::PackedBytes * 3;

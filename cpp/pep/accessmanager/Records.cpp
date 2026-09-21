@@ -11,42 +11,44 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 
 using namespace std::chrono;
+using namespace std::ranges;
 
 namespace pep {
 SelectStarPseudonymRecord::SelectStarPseudonymRecord(LocalPseudonym lp, PolymorphicPseudonym pp) {
-  localPseudonym = RangeToVector(lp.pack());
-  polymorphicPseudonym = RangeToVector(pp.pack());
+  localPseudonym = lp.pack() | to<std::vector>();
+  polymorphicPseudonym = pp.pack() | to<std::vector>();
 }
 
 uint64_t SelectStarPseudonymRecord::checksum(int version) const {
   Sha256 hasher;
   switch (version) {
   case 1: { // Old
-    CurvePoint localPseudonymAsCurvePoint(SpanToString(localPseudonym));
+    CurvePoint localPseudonymAsCurvePoint{std::string_view(localPseudonym)};
     hasher.update(Serialization::ToString<CurvePoint>(localPseudonymAsCurvePoint));
 
     ElgamalEncryption polymorphicPseudonymAsElgamalEncryption =
-        ElgamalEncryption::FromPacked(SpanToString(polymorphicPseudonym));
+        ElgamalEncryption::FromPacked(std::string_view(polymorphicPseudonym));
     hasher.update(Serialization::ToString<ElgamalEncryption>(polymorphicPseudonymAsElgamalEncryption));
     break;
   }
   default: // New
     hasher
-      .update(SpanToString(localPseudonym))
-      .update(SpanToString(polymorphicPseudonym));
+      .update(std::string_view(localPseudonym))
+      .update(std::string_view(polymorphicPseudonym));
     break;
   }
   return UnpackUint64BE(hasher.digest());
 }
 
 LocalPseudonym SelectStarPseudonymRecord::getLocalPseudonym() const {
-  return LocalPseudonym::FromPacked(SpanToString(localPseudonym));
+  return LocalPseudonym::FromPacked(std::string_view(localPseudonym));
 }
 
 PolymorphicPseudonym SelectStarPseudonymRecord::getPolymorphicPseudonym() const {
-  return PolymorphicPseudonym::FromPacked(SpanToString(polymorphicPseudonym));
+  return PolymorphicPseudonym::FromPacked(std::string_view(polymorphicPseudonym));
 }
 
 ParticipantGroupRecord::ParticipantGroupRecord(std::string name, bool tombstone)
@@ -71,11 +73,11 @@ ParticipantGroupParticipantRecord::ParticipantGroupParticipantRecord(
     tombstone(tombstone),
     participantGroup(std::move(participantGroup)) {
   this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
-  this->localPseudonym = RangeToVector(localPseudonym.pack());
+  this->localPseudonym = std::ranges::to<std::vector>(localPseudonym.pack());
 }
 
 uint64_t ParticipantGroupParticipantRecord::checksum(int version) const {
-  std::string localPseudonymString(SpanToString(localPseudonym));
+  std::string localPseudonymString(std::from_range, localPseudonym);
   if (version == 1) {
     CurvePoint localPseudonymAsCurvePoint(localPseudonymString);
     localPseudonymString = Serialization::ToString<CurvePoint>(localPseudonymAsCurvePoint);
@@ -87,11 +89,11 @@ uint64_t ParticipantGroupParticipantRecord::checksum(int version) const {
 }
 
 LocalPseudonym ParticipantGroupParticipantRecord::getLocalPseudonym() const {
-  return LocalPseudonym::FromPacked(SpanToString(localPseudonym));
+  return LocalPseudonym::FromPacked(std::string_view(localPseudonym));
 }
 
 LocalPseudonym ParticipantGroupParticipant::getLocalPseudonym() const {
-  return LocalPseudonym::FromPacked(SpanToString(localPseudonym));
+  return LocalPseudonym::FromPacked(std::string_view(localPseudonym));
 }
 
 
@@ -204,7 +206,7 @@ StructureMetadataRecord::StructureMetadataRecord(
   : checksumNonce(RandomVector<char>(16)),
     timestamp{TicksSinceEpoch<milliseconds>(TimeNow())},
     tombstone{tombstone},
-    subjectType{ToUnderlying(subjectType)},
+    subjectType{std::to_underlying(subjectType)},
     subject(std::move(subject)),
     metadataGroup(std::move(metadataGroup)),
     subkey(std::move(key)),
@@ -223,7 +225,7 @@ StructureMetadataRecord::StructureMetadataRecord(
   : checksumNonce(RandomVector<char>(16)),
     timestamp{TicksSinceEpoch<milliseconds>(TimeNow())},
     tombstone{tombstone},
-    subjectType{ToUnderlying(subjectType)},
+    subjectType{std::to_underlying(subjectType)},
     internalSubjectId(internalSubjectId),
     metadataGroup(std::move(metadataGroup)),
     subkey(std::move(key)),
@@ -234,11 +236,11 @@ StructureMetadataRecord::StructureMetadataRecord(
 
 uint64_t StructureMetadataRecord::checksum() const {
   std::ostringstream os;
-  os << SpanToString(checksumNonce)
+  os << std::string_view(checksumNonce)
     << timestamp << '\0'
     << subjectType << '\0' //NOLINT(bugprone-unintended-char-ostream-output) Must remain for backward compatibility
     << subject << '\0' << metadataGroup << '\0' << subkey << '\0'
-    << SpanToString(value) << '\0'
+    << std::string_view(value) << '\0'
     << tombstone;
   return UnpackUint64BE(Sha256().digest(std::move(os).str()));
 }

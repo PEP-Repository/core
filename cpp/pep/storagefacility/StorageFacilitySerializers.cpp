@@ -4,6 +4,11 @@
 #include <pep/serialization/TimestampSerializer.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
+#include <pep/utils/MapUtils.hpp>
+
+#include <ranges>
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -63,9 +68,7 @@ void Serializer<DataEnumerationResponse2>::moveIntoProtocolBuffer(proto::DataEnu
 MetadataReadRequest2 Serializer<MetadataReadRequest2>::fromProtocolBuffer(proto::MetadataReadRequest2&& source) const {
   MetadataReadRequest2 result;
   result.ticket = Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket()));
-  result.ids.reserve(static_cast<size_t>(source.ids().size()));
-  for (auto& x : *source.mutable_ids())
-    result.ids.push_back(std::move(x));
+  result.ids = *source.mutable_ids() | views::as_rvalue | to<std::vector>();
   return result;
 }
 
@@ -79,9 +82,7 @@ void Serializer<MetadataReadRequest2>::moveIntoProtocolBuffer(proto::MetadataRea
 DataReadRequest2 Serializer<DataReadRequest2>::fromProtocolBuffer(proto::DataReadRequest2&& source) const {
   DataReadRequest2 result;
   result.ticket = Serialization::FromProtocolBuffer(std::move(*source.mutable_ticket()));
-  result.ids.reserve(static_cast<size_t>(source.ids().size()));
-  for (auto& x : *source.mutable_ids())
-    result.ids.push_back(std::move(x));
+  result.ids = *source.mutable_ids() | views::as_rvalue | to<std::vector>();
   return result;
 }
 
@@ -107,9 +108,7 @@ void Serializer<MetadataUpdateRequest2>::moveIntoProtocolBuffer(proto::MetadataU
 
 MetadataUpdateResponse2 Serializer<MetadataUpdateResponse2>::fromProtocolBuffer(proto::MetadataUpdateResponse2&& source) const {
   MetadataUpdateResponse2 result;
-  result.ids.reserve(static_cast<size_t>(source.ids().size()));
-  for (auto& x : *source.mutable_ids())
-    result.ids.push_back(std::move(x));
+  result.ids = *source.mutable_ids() | views::as_rvalue | to<std::vector>();
   return result;
 }
 
@@ -121,9 +120,7 @@ void Serializer<MetadataUpdateResponse2>::moveIntoProtocolBuffer(proto::Metadata
 
 DataStoreResponse2 Serializer<DataStoreResponse2>::fromProtocolBuffer(proto::DataStoreResponse2&& source) const {
   DataStoreResponse2 result;
-  result.ids.reserve(static_cast<size_t>(source.ids().size()));
-  for (auto& x : *source.mutable_ids())
-    result.ids.push_back(std::move(x));
+  result.ids = *source.mutable_ids() | views::as_rvalue | to<std::vector>();
   result.hash = source.hash();
   return result;
 }

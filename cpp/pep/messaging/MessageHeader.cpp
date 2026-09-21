@@ -8,7 +8,7 @@ namespace pep::messaging {
 
 namespace {
 
-/// @brief Aggressive guesstimate of the overhead capacity needed when serializing a business object
+/// Aggressive guesstimate of the overhead capacity needed when serializing a business object
 constexpr double SerializationCapacityOverheadFactor = 0.1;
 
 }

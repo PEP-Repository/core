@@ -2,7 +2,6 @@
 #include <pep/async/RxCache.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxRequireCount.hpp>
-#include <pep/async/RxToSet.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/key-components/KeyComponentSerializers.hpp>
@@ -13,7 +12,9 @@
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/utils/CollectionUtils.hpp>
+#include <pep/utils/MapUtils.hpp>
+
+#include <ranges>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -30,6 +31,8 @@
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
@@ -39,7 +42,7 @@ const std::string LogTag ("CoreClient");
 bool ModesInclude(const std::vector<std::string>& required, std::vector<std::string> provided) {
   auto begin = provided.cbegin(), end = provided.cend();
   // If a "read" privilege is held, ensure that the corresponding (implicitly included) "read-meta" privilege is in the array as well
-  if (std::find(begin, end, "read") != end && std::find(begin, end, "read-meta") == end) {
+  if (find(begin, end, "read") != end && find(begin, end, "read-meta") == end) {
     provided.push_back("read-meta");
 
     // Ensure that iterators are valid after vector update
@@ -47,7 +50,7 @@ bool ModesInclude(const std::vector<std::string>& required, std::vector<std::str
     end = provided.cend();
   }
   // If a "write-meta" privilege is held, ensure that the corresponding (implicitly included) "write" privilege is in the array as well
-  if (std::find(begin, end, "write-meta") != end && std::find(begin, end, "write") == end) {
+  if (find(begin, end, "write-meta") != end && find(begin, end, "write") == end) {
     provided.push_back("write");
   }
   return IsSubset(required, provided);
@@ -100,7 +103,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
       .reduce(
         std::make_shared<std::unordered_map<std::string, PolymorphicPseudonym>>(),
         [this](std::shared_ptr<std::unordered_map<std::string, PolymorphicPseudonym>> all, const LocalPseudonyms& entry) {
-          auto decrypted = entry.accessGroup->decrypt(privateKeyPseudonyms_);
+          auto decrypted = decryptLocalPseudonym(entry.accessGroup.value());
           all->emplace(decrypted.text(), entry.polymorphic); // Don't assert that it's emplaced; we may be processing idsAndOrPps that refer to the same participant
           return all;
         }
@@ -139,7 +142,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
             auto pseudonymStart = userPseudFormat.stripPrefix(participantIdOrPP);
             return ppsByLp->observe()
               .map([i, participantIdOrPP, pseudonymStart](std::shared_ptr<std::unordered_map<std::string, PolymorphicPseudonym>> ppsByLp) {
-              auto position = std::find_if(ppsByLp->cbegin(), ppsByLp->cend(), [pseudonymStart](const auto& pair) {return boost::starts_with(pair.first, pseudonymStart); });
+              auto position = find_if(*ppsByLp, [pseudonymStart](const auto& pair) {return boost::starts_with(pair.first, pseudonymStart); });
               if (position == ppsByLp->cend()) {
                 throw std::runtime_error("Can't find local pseudonym matching " + participantIdOrPP);
               }
@@ -180,7 +183,7 @@ PolymorphicPseudonym CoreClient::generateParticipantPolymorphicPseudonym(const s
 }
 
 LocalPseudonym CoreClient::decryptLocalPseudonym(const EncryptedLocalPseudonym& encrypted) const {
-  return encrypted.decrypt(privateKeyPseudonyms_);
+  return encrypted.decrypt(privateKeyPseudonyms());
 }
 
 std::shared_ptr<CoreClient> CoreClient::OpenClient(const Configuration& config,
@@ -198,10 +201,6 @@ void CoreClient::Builder::initialize(
   assert(io_context != nullptr && "Caller must provide an I/O context");
 
   try {
-    // See #1797: the keys file must be (read from and) written to the cwd
-    // because the config's directory may be read-only (e.g. on Windows installations).
-    auto keysFile = std::filesystem::current_path() / config.get<std::string>("EnrolledPartyKeysFile");
-
     this->setCaCertFilepath(config.get<std::filesystem::path>("CaCertificateFile"));
     this->setSystemPublicKeys(config.get<SystemPublicKeys>("SystemPublicKeys"));
 
@@ -220,10 +219,18 @@ void CoreClient::Builder::initialize(
     }
 
     if (persistKeysFile) {
+      // See #1797: the keys file must be (read from and) written to the cwd
+      // because the config's directory may be read-only (e.g. on Windows installations).
+      // However, fall back to keys file at config dir, if it exists.
+      // This is useful for the RegistrationServer for an integration test on base data with pepServers, for example.
+      const auto workingDirKeysFile = std::filesystem::current_path() / config.get<std::string>("EnrolledPartyKeysFile");
+      const auto configDirKeysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
+      auto keysFile = !exists(workingDirKeysFile) && exists(configDirKeysFile) ? configDirKeysFile : workingDirKeysFile;
+
       // Ensure that CoreClient writes future enrollment data to file...
       this->setKeysFilePath(keysFile);
       // ...and try to load previously persisted keys from it
-      if (std::filesystem::exists(keysFile)) {
+      if (exists(keysFile)) {
         Configuration keysConfig = Configuration::FromFile(keysFile);
         try {
           EnrolledPartyKeys enrolledPartyKeys = keysConfig.get<EnrolledPartyKeys>("");
@@ -265,6 +272,14 @@ bool CoreClient::AddServerProxy(ServerProxies& destination, const ServerTraits& 
   }
 
   return false;
+}
+
+const ElgamalPrivateKey& CoreClient::privateKeyPseudonyms() const {
+  return privateKeyPseudonyms_ ? *privateKeyPseudonyms_ : throw std::runtime_error("Private pseudonym key not set");
+}
+
+const ElgamalPrivateKey& CoreClient::privateKeyData() const {
+  return privateKeyData_ ? *privateKeyData_ : throw std::runtime_error("Private data key not set");
 }
 
 std::shared_ptr<const StorageFacilityProxy> CoreClient::getStorageFacilityProxy(bool require) const {
@@ -351,15 +366,15 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
       .flat_map([this, allSps, columns](const ParticipantGroupAccess& access) {
       pep::EnumerateAndRetrieveData2Opts opts;
       for (const auto& [pg, modes] : access.participantGroups) {
-        if (std::find(modes.begin(), modes.end(), "access") != modes.end()
-          && std::find(modes.begin(), modes.end(), "enumerate") != modes.end()) {
+        if (contains(modes, "access")
+          && contains(modes, "enumerate")) {
           opts.groups.push_back(pg);
         }
       }
       if (opts.groups.empty()) {
         throw std::runtime_error("Cannot do shortpseudonym lookup. User does not have the appropriate access to any participant group");
       }
-      std::copy(columns->cbegin(), columns->cend(), std::back_inserter(opts.columns));
+      opts.columns = *columns | to<std::vector>();
 
       return this->enumerateAndRetrieveData2(opts);
         });
@@ -396,8 +411,8 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
     tOpts.modes = { "read" };
     tOpts.includeAccessGroupPseudonyms = true;
     for (auto& [participantGroup, modes] : participantGroupAccess.participantGroups) {
-      if (std::find(modes.begin(), modes.end(), "access") != modes.end()
-          && std::find(modes.begin(), modes.end(), "enumerate") != modes.end()) {
+      if (contains(modes, "access")
+          && contains(modes, "enumerate")) {
         tOpts.participantGroups.push_back(participantGroup);
       }
     }

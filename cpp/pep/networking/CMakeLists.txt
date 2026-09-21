@@ -5,7 +5,7 @@ if(SSLKEYLOGFILE)
   add_definitions(-DKEYLOG_FILE="${SSLKEYLOGFILE}")
 endif()
 
-add_library(${PROJECT_NAME}Networkinglib STATIC
+add_library(${PROJECT_NAME}Networkinglib
     CertificateVerification.cpp CertificateVerification.hpp
     Client.cpp Client.hpp
     Connection.cpp Connection.hpp
@@ -18,7 +18,7 @@ add_library(${PROJECT_NAME}Networkinglib STATIC
     HttpMethod.cpp HttpMethod.hpp
     InstanceBound.hpp
     Node.cpp Node.hpp
-    Protocol.hpp
+    Protocol.cpp Protocol.hpp
     Server.cpp Server.hpp
     SendHttpRequest.cpp SendHttpRequest.hpp
     SocketReadBuffer.cpp SocketReadBuffer.hpp

@@ -20,11 +20,10 @@ std::pair<ElgamalPrivateKey, ElgamalPublicKey> ElgamalEncryption::CreateKeyPair(
   return {sk, pk};
 }
 
-/*! \brief Create an ElgamalEncryption triple by encrypting a point.
- *
- * \param publicKey The public key to encrypt with.
- * \param data The point to encrypt.
- */
+/// \brief Create an ElgamalEncryption triple by encrypting a point.
+///
+/// \param publicKey The public key to encrypt with.
+/// \param data The point to encrypt.
 ElgamalEncryption::ElgamalEncryption(const ElgamalPublicKey& publicKey, const CurvePoint& data) {
   CurveScalar k;
 
@@ -34,33 +33,30 @@ ElgamalEncryption::ElgamalEncryption(const ElgamalPublicKey& publicKey, const Cu
   this->publicKey = publicKey;
 }
 
-/*! \brief Create an ElgamalEncryption triple from its three components.
- *
- * \param b Blinding component
- * \param c Cipher component
- * \param publicKey Public key
- */
+/// \brief Create an ElgamalEncryption triple from its three components.
+///
+/// \param b Blinding component
+/// \param c Cipher component
+/// \param publicKey Public key
 ElgamalEncryption::ElgamalEncryption(const CurvePoint& b, const CurvePoint& c, const CurvePoint& publicKey)
   : b(b), c(c), publicKey(publicKey) {
 }
 
-/*! \brief Decrypt the ElgamalEncryption triple.
- *
- * \param sk The private key to decrypt with.
- * \return The decrypted point.
- */
+/// \brief Decrypt the ElgamalEncryption triple.
+///
+/// \param sk The private key to decrypt with.
+/// \return The decrypted point.
 CurvePoint ElgamalEncryption::decrypt(const ElgamalPrivateKey& sk) const {
   return c - (sk * b);
 }
 
-/*! \brief rerandomize an ElgamalEncryption triple.
- *
- * PRE: (b,c,y) = EG(k,M,y)
- * POST: (b',c',y') = EG(k+z,M,y) for random z
- * The original point is not changed.
- * \return The rerandomized triple.
- * \warning It is important to check that the publicKey is nonzero, otherwise rerandomization is a no-op, which enables other attacks in a full RSK.
- */
+/// \brief rerandomize an ElgamalEncryption triple.
+///
+/// PRE: (b,c,y) = EG(k,M,y)
+/// POST: (b',c',y') = EG(k+z,M,y) for random z
+/// The original point is not changed.
+/// \return The rerandomized triple.
+/// \warning It is important to check that the publicKey is nonzero, otherwise rerandomization is a no-op, which enables other attacks in a full RSK.
 ElgamalEncryption ElgamalEncryption::rerandomize() const {
   auto rerandomize = CurveScalar::Random();
   return {
@@ -70,15 +66,14 @@ ElgamalEncryption ElgamalEncryption::rerandomize() const {
   };
 }
 
-/*! \brief rekey an ElgamalEncryption triple.
- *
- * PRE: (b,c,y) = EG(k,M,y)
- * POST: (b',c',y') = EG(1/rekey*k,M,rekey*y)
- * The original point is not changed.
- * \param rekey The translation key.
- * \return The rekeyed triple.
- * \warning This should usually be combined with rerandomization to mitigate attacks (not just on unlinkability, see crypto docs).
- */
+/// \brief rekey an ElgamalEncryption triple.
+///
+/// PRE: (b,c,y) = EG(k,M,y)
+/// POST: (b',c',y') = EG(1/rekey*k,M,rekey*y)
+/// The original point is not changed.
+/// \param rekey The translation key.
+/// \return The rekeyed triple.
+/// \warning This should usually be combined with rerandomization to mitigate attacks (not just on unlinkability, see crypto docs).
 ElgamalEncryption ElgamalEncryption::rekey(const ElgamalTranslationKey& rekey) const {
   return {
     rekey.invert() * b,
@@ -87,15 +82,14 @@ ElgamalEncryption ElgamalEncryption::rekey(const ElgamalTranslationKey& rekey) c
   };
 }
 
-/*! \brief reshuffle an ElgamalEncryption triple.
- *
- * PRE: (b,c,y) = EG(k,M,y)
- * POST: (b',c',y') = EG(reshuffle*k,reshuffle*M,y)
- * The original point is not changed.
- * \param reshuffle The value to reshuffle with.
- * \return The reshuffled triple.
- * \warning This should usually be combined with rerandomization to mitigate attacks (not just on unlinkability, see crypto docs).
- */
+/// \brief reshuffle an ElgamalEncryption triple.
+///
+/// PRE: (b,c,y) = EG(k,M,y)
+/// POST: (b',c',y') = EG(reshuffle*k,reshuffle*M,y)
+/// The original point is not changed.
+/// \param reshuffle The value to reshuffle with.
+/// \return The reshuffled triple.
+/// \warning This should usually be combined with rerandomization to mitigate attacks (not just on unlinkability, see crypto docs).
 ElgamalEncryption ElgamalEncryption::reshuffle(const CurveScalar& reshuffle) const {
   return {
     reshuffle * b,
@@ -104,12 +98,11 @@ ElgamalEncryption ElgamalEncryption::reshuffle(const CurveScalar& reshuffle) con
   };
 }
 
-/*! \brief reshuffle and rekey an ElgamalEncryption triple.
- *
- * \param reshuffle the CurveScalar to reshuffle with
- * \param rekey the ElgamalTranslationKey to rekey along
- * \warning This should usually be combined with rerandomization to mitigate attacks (not just on unlinkability, see crypto docs).
- */
+/// \brief reshuffle and rekey an ElgamalEncryption triple.
+///
+/// \param reshuffle the CurveScalar to reshuffle with
+/// \param rekey the ElgamalTranslationKey to rekey along
+/// \warning This should usually be combined with rerandomization to mitigate attacks (not just on unlinkability, see crypto docs).
 ElgamalEncryption ElgamalEncryption::reshuffleRekey(const CurveScalar& reshuffle, const ElgamalTranslationKey& rekey) const {
   return {
     reshuffle * rekey.invert() * b,
@@ -118,9 +111,7 @@ ElgamalEncryption ElgamalEncryption::reshuffleRekey(const CurveScalar& reshuffle
   };
 }
 
-/*!
- * \return The public key of the ElgamalEncryption.
- */
+/// \return The public key of the ElgamalEncryption.
 const ElgamalPublicKey& ElgamalEncryption::getPublicKey() const {
   return publicKey;
 }

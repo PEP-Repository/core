@@ -39,6 +39,6 @@ target_link_libraries(${PROJECT_NAME}Castorlib
 )
 
 verify_headers_standalone(${PROJECT_NAME}Castorlib)
-if (WITH_TESTS)
+if(WITH_TESTS)
   add_unit_tests(Castor)
-endif ()
+endif()

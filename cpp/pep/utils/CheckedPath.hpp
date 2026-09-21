@@ -2,6 +2,7 @@
 
 #include <concepts>
 #include <filesystem>
+#include <ostream>
 
 namespace pep {
 

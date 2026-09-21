@@ -9,6 +9,7 @@
 #include <compare>
 #include <cstdint>
 #include <ostream>
+#include <utility>
 
 namespace pep::messaging {
 
@@ -68,7 +69,7 @@ public:
   [[nodiscard]] Flags withClose() const; ///< Returns the closing variant of these Flags
   [[nodiscard]] bool has(Flags) const noexcept; ///< Checks if the passed Flags are a subset of these Flags
 
-  [[nodiscard]] EncodedMessageProperties encode() const noexcept { return ToUnderlying(bits_); }
+  [[nodiscard]] EncodedMessageProperties encode() const noexcept { return std::to_underlying(bits_); }
 
   [[nodiscard]] static Flags DecodeFrom(EncodedMessageProperties properties) {
     return Flags(static_cast<Bits>(properties & detail::encoding_layout::FlagBits));

@@ -105,8 +105,8 @@ build_config_dockerfile() {
   image_name=$(basename "$dockerfile" .Dockerfile)
   dest_image=$(get_destination_image_path "$image_name")
 
-  base_image=$("$SCRIPTPATH"/../scripts/gitlab-container-registry.sh \
-    "$foss_root" "$api_key" get-image-location "$image_name" "$foss_sha")
+  base_image=$("$SCRIPTPATH"/../scripts/gitlab-registry-image.sh \
+    get-location "${CI_REGISTRY}" "$foss_root" "$image_name" "$foss_sha")
   if has_foss_base_image "$image_name"; then
     if [ -z "$base_image" ]; then
       >&2 echo "Cannot find base image '$image_name' with SHA $foss_sha for $dest_image"

@@ -36,11 +36,14 @@
 #include <QString>
 #include <QScrollBar>
 
+#include <ranges>
+
 #ifdef _WIN32
 #include <fstream>
 #include <Windows.h>
 #endif /*_WIN32*/
 
+using namespace std::ranges;
 
 namespace {
 
@@ -259,7 +262,7 @@ ParticipantWidget::ParticipantWidget(MainWindow* parent,
 }
 
 void ParticipantWidget::disablePrinting() {
-  printButtons_->setEnabled(false);
+  printButtons_->setButtonsEnabled(false);
 
   for (auto visit : visitWidgets_) {
     visit->disablePrinting();
@@ -277,9 +280,7 @@ void ParticipantWidget::runQuery(bool completeRegistration) {
     "StudyContexts"
   };
 
-  for (const auto& device : globalConfig_.getDevices()) {
-    cols.push_back(device.columnName);
-  }
+  cols.append_range(globalConfig_.getDevices() | views::transform(&pep::DeviceRegistrationDefinition::columnName));
 
   if (currentPepRole_.canSeeParticipantPersonalia()) {
     cols.push_back("ParticipantInfo");
@@ -356,11 +357,10 @@ void ParticipantWidget::setReadOnly(bool readOnly) {
   ui_->scrollArea->horizontalScrollBar()->setValue(horizontal);
 }
 
-/*! \brief Update device in pep infrastructure
- *
- * Once a user has changed the participant device through the ParticipantWidget::manageDevices() function the change needs to be sent to the pep infrastructure.
- * This function mangages changing the device ID in the infrastructure. This function is tied to a ui_ button defined in participantwidget.ui_
- */
+/// \brief Update device in pep infrastructure
+///
+/// Once a user has changed the participant device through the ParticipantWidget::manageDevices() function the change needs to be sent to the pep infrastructure.
+/// This function mangages changing the device ID in the infrastructure. This function is tied to a ui_ button defined in participantwidget.ui_
 void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
   std::string serial = deviceId.toStdString();
   std::string type;
@@ -371,7 +371,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
   auto previous = participantData_.participantDeviceHistory.find(columnName.toStdString());
   if (previous != participantData_.participantDeviceHistory.cend()) {
     current = previous->second.getCurrent();
-    std::copy(previous->second.begin(), previous->second.end(), std::back_inserter(records));
+    records.append_range(previous->second);
   }
   if (current) {
     assert(current->serial == serial);
@@ -382,7 +382,7 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
     type = "stop";
   }
   else {
-    std::transform(serial.begin(), serial.end(), serial.begin(), ::toupper);
+    transform(serial, serial.begin(), ::toupper);
     type = "start";
   }
 
@@ -412,11 +412,11 @@ void ParticipantWidget::updateDevice(QString columnName, QString deviceId) {
 
 std::vector<pep::ShortPseudonymDefinition> ParticipantWidget::getPrintableShortPseudonyms(const std::optional<unsigned int>& visit) const {
   auto all = globalConfig_.getShortPseudonyms(studyContext_.getIdIfNonDefault(), visit);
-  std::vector<pep::ShortPseudonymDefinition> retval;
-  std::copy_if(all.cbegin(), all.cend(), std::back_inserter(retval), [](const pep::ShortPseudonymDefinition& entry) {
-    return entry.getStickers() > 0;
-  });
-  return retval;
+  return all
+    | views::filter([](const pep::ShortPseudonymDefinition& entry) {
+      return entry.getStickers() > 0;
+    })
+    | to<std::vector>();
 }
 
 void ParticipantWidget::updateVisitAssessor(QString id) {
@@ -435,10 +435,9 @@ void ParticipantWidget::updateVisitAssessor(QString id) {
   });
 }
 
-/*! \brief Prints visit stickers via the bartender application
- *
- * This function requires the external bartender application. Prints all stickers for the current participant visit based on a template loaded from the client application directory.
- */
+/// \brief Prints visit stickers via the bartender application
+///
+/// This function requires the external bartender application. Prints all stickers for the current participant visit based on a template loaded from the client application directory.
 void ParticipantWidget::printAllVisitStickers() {
   this->invokeBartender(getPrintableShortPseudonyms(currentVisitNumber_));
 }
@@ -550,10 +549,9 @@ QString ParticipantWidget::describeShortPseudonymDefinition(const pep::ShortPseu
   return description + " " + this->getVisitCaption(*visit);
 }
 
-/*! \brief Print a single sticker via the bartender application
- *
- * This function requires the external bartender application. Prints a test sticker for the current participant based on a template loaded from the client application directory.
- */
+/// \brief Print a single sticker via the bartender application
+///
+/// This function requires the external bartender application. Prints a test sticker for the current participant based on a template loaded from the client application directory.
 void ParticipantWidget::printSingleVisitSticker() {
   this->printSingleSticker(currentVisitNumber_);
 }
@@ -651,10 +649,9 @@ bool ParticipantWidget::provideBartenderPath() {
   return getConfiguredPathError() == nullptr;
 }
 
-/*! \brief Print summary of current participant information
- *
- * Used to aid the assessors.
- */
+/// \brief Print summary of current participant information
+///
+/// Used to aid the assessors.
 void ParticipantWidget::printSummary() {
 #ifdef _WIN32
   if(!currentPepRole_.canPrintSummary()) {
@@ -719,15 +716,7 @@ void ParticipantWidget::locateBartender() {
     if (::RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Seagull Scientific\\BarTender", 0, KEY_READ, &key) == ERROR_SUCCESS) {
       PEP_DEFER(RegCloseKey(key));
 
-      DWORD dwType;
-      const size_t BUFFER_SIZE = 256U;
-      BYTE regvalue[BUFFER_SIZE];
-      DWORD size = BUFFER_SIZE;
-      if (::RegQueryValueExA(key, "Last Execution Directory", 0, &dwType, regvalue, &size) == ERROR_SUCCESS) { // TODO: deal with ERROR_MORE_DATA: see https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regqueryvalueexa
-        if (dwType == REG_SZ) { // TODO: support other string types as well
-          bestDir = std::string((char*)regvalue, size - 1);
-        }
-      }
+      bestDir = pep::win32api::GetRegistryString(key, "Last Execution Directory");
     }
   }
 
@@ -806,10 +795,9 @@ void ParticipantWidget::locateBartender() {
   }
 }
 
-/*! \brief Close current participant
- *
- * Sets current object to be deleted.
- */
+/// \brief Close current participant
+///
+/// Sets current object to be deleted.
 void ParticipantWidget::closeParticipant() {
   //Should also clear out current patient data
   mainWindow_->changeActiveTab(0);
@@ -818,20 +806,18 @@ void ParticipantWidget::closeParticipant() {
   parent()->deleteLater();
 }
 
-/*! \brief Function called when translation button is pressed
- *
- * When a translation signal hits this object this code block will be executed.
- * At time of writing (1-16-2018) only one translation call is made and this happens on construction.
- */
+/// \brief Function called when translation button is pressed
+///
+/// When a translation signal hits this object this code block will be executed.
+/// At time of writing (1-16-2018) only one translation call is made and this happens on construction.
 void ParticipantWidget::onTranslation() {
   ui_->retranslateUi(this);
   this->processData();
 }
 
-/*! \brief Process current information
- *
- * This code block does a lot. All of the current UI is configured in this function. No arguments are taken, but many class variables are used.
- */
+/// \brief Process current information
+///
+/// This code block does a lot. All of the current UI is configured in this function. No arguments are taken, but many class variables are used.
 void ParticipantWidget::processData() {
   ui_->participant->setText(tr("participant '%1'").arg(participantId_));
 
@@ -857,18 +843,17 @@ void ParticipantWidget::processData() {
 
   releaseParticipantButton_->setEnabled(currentPepRole_.canSetParticipantContext() && participantStudyContexts_.getItems().size() > 1);
 
-  for (auto i = 0U; i < deviceWidgets_.size(); ++i) {
-    auto widget = deviceWidgets_[i];
+  for (auto [widget, deviceDefinition] : views::zip(deviceWidgets_, globalConfig_.getDevices())) {
     auto columnName = widget->getColumnName();
 
     const auto& history = participantData_.participantDeviceHistory[columnName.toStdString()];
     auto current = history.getCurrent();
     widget->setDeviceId(current ? QString::fromStdString(current->serial) : QString());
 
-    auto historyWidget = std::find_if(deviceHistoryWidgets_.begin(), deviceHistoryWidgets_.end(), [&columnName](DeviceHistoryWidget *candidate) {return candidate->getColumnName() == columnName; });
+    auto historyWidget = std::ranges::find(deviceHistoryWidgets_, columnName, &DeviceHistoryWidget::getColumnName); // Qualified: unqualified "find" would resolve to QWidget::find
     (*historyWidget)->setHistory(history);
 
-    if (studyContext_.matches(globalConfig_.getDevices()[i].studyContext)) {
+    if (studyContext_.matches(deviceDefinition.studyContext)) {
       std::string historyInvalidReason;
       if (!history.isValid(&historyInvalidReason)) {
         emit statusMessage(tr("Device history for column %1 is invalid: %2. Please correct the device history.").arg(columnName, historyInvalidReason.c_str()), pep::Severity::Error);
@@ -1290,23 +1275,21 @@ void ParticipantWidget::editDeviceHistoryEntry(QString columnName, size_t index)
   dialog->show();
 }
 
-/*! \brief Helper function to make the visit number visible class wide.
- *
- * This function takes a zero based visit number (0, 1, 2 at time of writing and hopefully forever) and sets the current visit number to a one based number (1, 2, 3).
- * In case it's not clear the mapping should be {0->1, 1->2, 2->3}
- *
- * \param visitNumber The zero based visit number.
- */
+/// \brief Helper function to make the visit number visible class wide.
+///
+/// This function takes a zero based visit number (0, 1, 2 at time of writing and hopefully forever) and sets the current visit number to a one based number (1, 2, 3).
+/// In case it's not clear the mapping should be {0->1, 1->2, 2->3}
+///
+/// \param visitNumber The zero based visit number.
 
 void ParticipantWidget::setCurrentVisitNumber(int visitNumber) {
   ////std::cout << "Visit number changed to " << visitNumber << std::endl;
   currentVisitNumber_ = visitNumber +1; //Input in 0 indexed and labels are 1 indexed.
 }
 
-/*! \brief Destructor
- *
- * Unsubscribes from shared resources and deletes Qt UI.
- */
+/// \brief Destructor
+///
+/// Unsubscribes from shared resources and deletes Qt UI.
 
 ParticipantWidget::~ParticipantWidget() {
   delete ui_;
@@ -1314,9 +1297,8 @@ ParticipantWidget::~ParticipantWidget() {
 
 const pep::ShortPseudonymDefinition *ParticipantDataAggregator::getShortPseudonymDefinition(const std::string& shortPseudonymTag) const {
   const auto& spDefinitions = globalConfig_.getShortPseudonyms();
-  auto position = std::find_if(std::begin(spDefinitions), std::end(spDefinitions),
-    [shortPseudonymTag](pep::ShortPseudonymDefinition definition) {
-    return definition.getColumn().getFullName() == shortPseudonymTag;
+  auto position = find(spDefinitions, shortPseudonymTag, [](const pep::ShortPseudonymDefinition& definition) {
+    return definition.getColumn().getFullName();
   });
   if (position == std::end(spDefinitions)) {
     return nullptr;
@@ -1325,7 +1307,7 @@ const pep::ShortPseudonymDefinition *ParticipantDataAggregator::getShortPseudony
 }
 
 void ParticipantDataAggregator::processDeviceHistory(const pep::EnumerateAndRetrieveResult& result) {
-  assert(deviceHistory_.find(result.column) == deviceHistory_.cend());
+  assert(!deviceHistory_.contains(result.column));
   deviceHistory_[result.column] = result;
 }
 
@@ -1348,12 +1330,11 @@ void ParticipantDataAggregator::processShortPseudonym(const pep::EnumerateAndRet
   auto definition = getShortPseudonymDefinition(shortPseudonymTag);
   if (definition != nullptr) {
     shortPseudonyms_[shortPseudonymTag] = result.data;
-    auto removed = std::remove(unfilledShortPseudonyms_.begin(), unfilledShortPseudonyms_.end(), definition);
     /* Since we're receiving SP data matching a known definition, that definition must have been added to our
      * "unfilledShortPseudonyms_" field at construction time.
      */
-    assert(removed != unfilledShortPseudonyms_.end());
-    unfilledShortPseudonyms_.erase(removed, unfilledShortPseudonyms_.end());
+    [[maybe_unused]] auto removedCount = std::erase(unfilledShortPseudonyms_, definition);
+    assert(removedCount > 0);
   }
 }
 
@@ -1396,15 +1377,12 @@ bool ParticipantDataAggregator::isVisitAssessorColumn(const std::string& columnN
 }
 
 bool ParticipantDataAggregator::isDeviceHistoryColumn(const std::string& columnName) const {
-  const auto& devices = globalConfig_.getDevices();
-  auto end = devices.cend();
-  return std::find_if(devices.cbegin(), end, [&columnName](const pep::DeviceRegistrationDefinition& definition) {return definition.columnName == columnName; }) != end;
+  return contains(globalConfig_.getDevices(), columnName, &pep::DeviceRegistrationDefinition::columnName);
 }
 
 ParticipantDataAggregator::ParticipantDataAggregator(const pep::GlobalConfiguration& globalConfig) noexcept
   : globalConfig_(globalConfig), participantIdentifierIsSet_(false) {
-  auto inserter = std::back_inserter(unfilledShortPseudonyms_);
-  std::transform(globalConfig_.getShortPseudonyms().begin(), globalConfig_.getShortPseudonyms().end(), inserter, [](const pep::ShortPseudonymDefinition& definition) {return &definition; });
+  unfilledShortPseudonyms_.append_range(globalConfig_.getShortPseudonyms() | views::transform([](const pep::ShortPseudonymDefinition& definition) {return &definition; }));
 }
 
 void ParticipantDataAggregator::process(const pep::EnumerateAndRetrieveResult& result) {

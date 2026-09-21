@@ -9,6 +9,7 @@
 #include <pep/utils/OpenSSLHasher.hpp>
 
 #include <format>
+#include <utility>
 
 namespace pep {
 
@@ -47,8 +48,9 @@ Metadata Metadata::getBound() const {
   result.blindingTimestamp_ = blindingTimestamp_;
   result.tag_ = tag_;
   result.encryptionScheme_ = encryptionScheme_;
-  result.extra_ = RangeToCollection<std::map<std::string, MetadataXEntry>>(extra_
-      | views::filter([](const std::pair<const std::string, MetadataXEntry>& entry) { return entry.second.bound(); }));
+  result.extra_ = extra_
+      | views::filter([](const std::pair<const std::string, MetadataXEntry>& entry) { return entry.second.bound(); })
+      | to<std::map>();
   return result;
 }
 
@@ -68,7 +70,7 @@ KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const Local
 
   if (scheme == EncryptionScheme::V2) {
     std::ostringstream ss;
-    ss << PackUint64BE(ToUnderlying(EncryptionScheme::V2));
+    ss << PackUint64BE(std::to_underlying(EncryptionScheme::V2));
     ss << PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(this->getBlindingTimestamp())));
     ss << PackUint64BE(this->getTag().size());
     ss << this->getTag();
@@ -77,7 +79,7 @@ KeyBlindingAdditionalData Metadata::computeKeyBlindingAdditionalData(const Local
 
   if (scheme == EncryptionScheme::V3) {
     std::ostringstream ss;
-    ss << PackUint64BE(ToUnderlying(EncryptionScheme::V3));
+    ss << PackUint64BE(std::to_underlying(EncryptionScheme::V3));
     ss << PackUint64BE(static_cast<uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(this->getBlindingTimestamp())));
     ss << PackUint64BE(this->getTag().size());
     ss << this->getTag();

@@ -12,6 +12,8 @@
 #include <pep/utils/File.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-distinct.hpp>
@@ -22,7 +24,10 @@
 
 #include <boost/algorithm/string/split.hpp>
 
+#include <utility>
+
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 
@@ -94,8 +99,8 @@ protected:
           std::set<std::string> result;
           for (const auto& group : access.participantGroups) {
             const auto& modes = group.second;
-            if (std::find(modes.cbegin(), modes.cend(), "access") != modes.cend()
-              && std::find(modes.cbegin(), modes.cend(), "enumerate") != modes.cend()) {
+            if (contains(modes, "access")
+              && contains(modes, "enumerate")) {
               result.emplace(group.first);
             }
           }
@@ -104,7 +109,7 @@ protected:
           .distinct()
           .op(pep::RxToSet())
           .flat_map([](std::shared_ptr<std::set<std::string>> groups) -> rxcpp::observable<std::string> {
-          if (groups->find("*") != groups->cend()) {
+          if (groups->contains("*")) {
             return rxcpp::observable<>::just(std::string("*"));
           }
           return pep::RxIterate(std::move(*groups));
@@ -134,11 +139,9 @@ protected:
         std::cerr << "Skipping inaccessible column group " << group << std::endl;
       }
       else {
-        const auto& indices = position->second.columns.indices;
-        columns.reserve(indices.size());
-        for (auto i : indices) {
-          columns.emplace_back(access->columns[i]);
-        }
+        columns = position->second.columns.indices
+          | views::transform([&access](uint32_t index) { return access->columns[index]; })
+          | to<std::vector>();
       }
       return pep::RxIterate(std::move(columns));
         });
@@ -205,7 +208,7 @@ protected:
         [](std::shared_ptr<ColumnExtensions> all, std::shared_ptr<ColumnExtensions> sub) {
           for (auto entry : *sub) {
             const auto& key = entry.first;
-            if (all->find(key) != all->cend()) {
+            if (all->contains(key)) {
               throw std::runtime_error("Multiple extensions specified for column " + key);
             }
             [[maybe_unused]] auto emplaced = all->emplace(entry).second;
@@ -220,7 +223,7 @@ protected:
         std::shared_ptr<std::set<std::string>> accessible = std::get<1>(context);
         auto i = required->begin();
         while (i != required->end()) {
-          if (accessible->find(i->first) == accessible->cend()) {
+          if (!accessible->contains(i->first)) {
             std::cerr << "Skipping inaccessible column " << i->first << std::endl;
             i = required->erase(i);
           }
@@ -394,6 +397,14 @@ protected:
 
         auto counts = std::make_shared<Counts>();
 
+#if defined(__GNUC__) && !defined(__clang__)
+# pragma GCC diagnostic push
+// GCC (15.2, -O3) in Flatpak reports uninitialized use of its own scalar-replacement temporaries ("SR.<number>") in the
+// std::shared_ptr copy constructors that it inlines into the lambda captures below. The captured values are
+// always initialized, so these diagnostics are false positives.
+# pragma GCC diagnostic ignored "-Wuninitialized"
+# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
         return this->getRequiredColumnExtensions(client)
           .concat_map([counts](std::shared_ptr<ColumnExtensions> columnExtensions) {
           counts->start(columnExtensions->size());
@@ -407,8 +418,9 @@ protected:
           ticketRequest.participantGroups = *pgs;
           ticketRequest.pps = *pps;
 
-          ticketRequest.columns.reserve(columnExtensions->size());
-          std::transform(columnExtensions->cbegin(), columnExtensions->cend(), std::back_inserter(ticketRequest.columns), [](const auto& pair) {return pair.first; });
+          ticketRequest.columns = *columnExtensions
+            | views::keys
+            | to<std::vector>();
 
           return client->requestTicket2(ticketRequest)
             .flat_map([client](const pep::IndexedTicket2& ticket) {return client->enumerateData(ticket.getTicket()); })
@@ -439,6 +451,9 @@ protected:
             });
           });
       });
+#if defined(__GNUC__) && !defined(__clang__)
+# pragma GCC diagnostic pop
+#endif
 
     if (connectivityResult != 0) {
       return connectivityResult;
@@ -501,9 +516,7 @@ protected:
       return rxcpp::observable<>::just(true);
     }
 
-    std::vector<pep::StoreMetadata2Entry> storeEntries;
-    storeEntries.reserve(updates.size());
-    std::transform(updates.cbegin(), updates.cend(), std::back_inserter(storeEntries), [verbose = this->getParameterValues().has("verbose")](const Update& update) {
+    auto storeEntries = updates | views::transform([verbose = this->getParameterValues().has("verbose")](const Update& update) {
       if (verbose) {
         const auto& previous = update.getPreviousExtension();
         if (previous.has_value()) {
@@ -517,7 +530,8 @@ protected:
         std::cout << '\n';
       }
       return update.getStoreEntry();
-      });
+      })
+      | to<std::vector>();
     std::cout.flush();
 
     return client->updateMetadata2(storeEntries)
@@ -641,7 +655,7 @@ private:
       case Kind::Participant: return "Participant";
       case Kind::ShortPseudonym: return "Short pseudonym";
       }
-      throw std::runtime_error("Unsupported participant specification kind: " + std::to_string(pep::ToUnderlying(kind)));
+      throw std::runtime_error("Unsupported participant specification kind: " + std::to_string(std::to_underlying(kind)));
     }
 
     Kind kind;
@@ -736,8 +750,9 @@ protected:
         opts.columnGroups = MultiCellQuery::GetColumnGroups(vm);
         opts.columns = MultiCellQuery::GetColumns(vm);
 
-        opts.pps.reserve(specs->size());
-        std::transform(specs->cbegin(), specs->cend(), std::back_inserter(opts.pps), [](const auto& pair) {return pair.first; });
+        opts.pps = *specs
+          | views::keys
+          | to<std::vector>();
 
         return client->requestTicket2(opts)
           .flat_map([client](pep::IndexedTicket2 indexed) {

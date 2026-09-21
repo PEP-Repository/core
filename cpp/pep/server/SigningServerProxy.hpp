@@ -15,12 +15,12 @@ private:
   rxcpp::observable<SignedPingResponse> requestSignedPing(const PingRequest& request) const;
 
 public:
-  /// @brief Constructor
-  /// @param untyped The ServerConnection that can exchange messages with the proxied server
-  /// @param clientMessageSigner The instance that will sign messages sent to the server.
-  /// @param expectedCommonName The expected common name in certificates of signed messages from the server.
-  /// @param rootCertificates The rootCertificates that can be used to verify signed messages
-  /// @remark Caller must ensure that the MessageSigner outlives the ServerProxy
+  /// \brief Constructor
+  /// \param untyped The ServerConnection that can exchange messages with the proxied server
+  /// \param clientMessageSigner The instance that will sign messages sent to the server.
+  /// \param expectedCommonName The expected common name in certificates of signed messages from the server.
+  /// \param rootCertificates The rootCertificates that can be used to verify signed messages
+  /// \remark Caller must ensure that the MessageSigner outlives the ServerProxy
   SigningServerProxy(std::shared_ptr<messaging::ServerConnection> untyped, const MessageSigner& clientMessageSigner,
     std::string expectedCommonName, std::shared_ptr<X509RootCertificates> rootCertificates)
     : ServerProxy(std::move(untyped), clientMessageSigner), expectedCommonName_(std::move(expectedCommonName)), rootCertificates_(std::move(rootCertificates)) {}

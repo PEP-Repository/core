@@ -10,6 +10,8 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/lexical_cast.hpp>
 
+using namespace std::ranges;
+
 namespace pep::networking {
 
 namespace {
@@ -24,7 +26,7 @@ struct ProtocolProperties {
   uint16_t defaultPort;
 };
 
-const std::vector<ProtocolProperties> SUPPORTED_PROTOCOLS = {
+const std::vector<ProtocolProperties> SupportedProtocols = {
   { false, "http", 80 },
   { true, "https", 443}
 };
@@ -34,8 +36,8 @@ void TrimOutsideWhitespace(std::string& str) {
 }
 
 std::string FormatHttpUrl(bool tls, const EndPoint& endPoint) {
-  auto protocol = std::find_if(SUPPORTED_PROTOCOLS.begin(), SUPPORTED_PROTOCOLS.end(), [tls](const ProtocolProperties& candidate) { return candidate.tls == tls; });
-  assert(protocol != SUPPORTED_PROTOCOLS.end());
+  auto protocol = find(SupportedProtocols, tls, &ProtocolProperties::tls);
+  assert(protocol != SupportedProtocols.end());
 
   auto result = protocol->scheme + "://" + endPoint.hostname;
   if (endPoint.port != protocol->defaultPort) {
@@ -63,8 +65,8 @@ HttpClient::Parameters::Parameters(boost::asio::io_context& ioContext, boost::ur
   : ioContext_(ioContext), tls_(false), baseUri_(std::move(absoluteBase)) {
   this->validateBaseUri();
 
-  auto protocol = std::find_if(SUPPORTED_PROTOCOLS.begin(), SUPPORTED_PROTOCOLS.end(), [scheme = baseUri_.scheme()](const ProtocolProperties& candidate) { return candidate.scheme == scheme; });
-  if (protocol == SUPPORTED_PROTOCOLS.end()) {
+  auto protocol = find(SupportedProtocols, baseUri_.scheme(), &ProtocolProperties::scheme);
+  if (protocol == SupportedProtocols.end()) {
     throw std::runtime_error("Unsupported protocol " + std::string(baseUri_.scheme()));
   }
 
@@ -167,6 +169,7 @@ std::string HttpClient::pathFromUrl(const boost::urls::url& full) {
 }
 
 rxcpp::observable<HTTPResponse> HttpClient::sendRequest(HTTPRequest request) {
+  PEP_LOG(LogTag, Severity::Debug) << "Sending HTTP request for " << request.uri();
   if (!this->isRunning()) {
     throw std::runtime_error("HttpClient must be running to send a request");
   }
@@ -370,7 +373,7 @@ void HttpClient::handleReadHeaderLine(const DelimitedTransfer::Result& result) {
 void HttpClient::readBody() {
   auto transferEncodingHeader = response_.getHeaders().find("Transfer-Encoding");
   if (transferEncodingHeader != response_.getHeaders().end()) {
-    if (transferEncodingHeader->second.find("chunked") == std::string::npos) {
+    if (!transferEncodingHeader->second.contains("chunked")) {
       // Since binaryClient_ may have received (or may still receive) stuff that we can't process, we can't (reliably) keep using it
       this->restart();
       this->finishSending(std::make_exception_ptr(std::runtime_error("Unsupported transfer encoding " + transferEncodingHeader->second)));

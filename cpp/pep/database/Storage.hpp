@@ -18,21 +18,21 @@ struct SchemaError : std::logic_error {
   Reason reason;
 };
 
-/// @brief Represents an SQL "HAVING" clause
-/// @tparam T An expression that records must match (to be included in the result set)
-/// @remark Defined with a (fully) lowercase name so it matches other sqlite_orm constructs
+/// \brief Represents an SQL "HAVING" clause
+/// \tparam T An expression that records must match (to be included in the result set)
+/// \remark Defined with a (fully) lowercase name so it matches other sqlite_orm constructs
 template<typename T>
 struct having {
   explicit having(T&& expr) : expr_(std::move(expr)) {}
   T expr_;
 };
 
-/// @brief Non-template base class for Storage<> (defined below).
+/// Non-template base class for Storage<> (defined below).
 struct BasicStorage {
-  /// @brief Whether the storage is stored on a persistent medium (TRUE) or in memory (FALSE)
+  /// Whether the storage is stored on a persistent medium (TRUE) or in memory (FALSE)
   const bool isPersistent;
 
-  /// @brief Specify this as the "path" to construct a Storage<> that's non-persistent, i.e. backed by memory
+  /// Specify this as the "path" to construct a Storage<> that's non-persistent, i.e. backed by memory
   static const char* const StoreInMemory;
 
 private:
@@ -40,37 +40,35 @@ private:
   explicit BasicStorage(const std::string& path);
 };
 
-/* !
- * \brief Helper for storage using sqlite-orm.
- * \tparam MakeRaw A function that accepts an std::string and returns the result of invoking sqlite_orm::make_storage with that string.
- *
- * \code
- *   struct Person { std::string name };
- *
- *   auto MakeRawStorage(std::string path) {
- *     using namespace sqlite_orm;
- *     return make_storage(std::move(path),
- *       make_table("People",
- *         make_column("name", &Person::name)));
- *   }
- *
- *   using MyStorage = pep::database::Storage<MakeRawStorage>;
- * \endcode
- *
- * \remark A.o. usable to hide storage details behind the pimpl idiom:
- *         - in the .hpp, declare (but don't define) a MyStorage class.
- *         - in the .cpp, define MyStorage to e.g. inherit from pep::database::Storage<> instead of being a typedef/alias.
- */
+/// \brief Helper for storage using sqlite-orm.
+/// \tparam MakeRaw A function that accepts an std::string and returns the result of invoking sqlite_orm::make_storage with that string.
+///
+/// \code
+///   struct Person { std::string name };
+///
+///   auto MakeRawStorage(std::string path) {
+///     using namespace sqlite_orm;
+///     return make_storage(std::move(path),
+///       make_table("People",
+///         make_column("name", &Person::name)));
+///   }
+///
+///   using MyStorage = pep::database::Storage<MakeRawStorage>;
+/// \endcode
+///
+/// \remark A.o. usable to hide storage details behind the pimpl idiom:
+///         - in the .hpp, declare (but don't define) a MyStorage class.
+///         - in the .cpp, define MyStorage to e.g. inherit from pep::database::Storage<> instead of being a typedef/alias.
 template <auto MakeRaw>
 struct Storage : public BasicStorage {
-  /// @brief The raw sqlite_orm storage type
+  /// The raw sqlite_orm storage type
   using Raw = decltype(MakeRaw(std::string()));
 
-  /// @brief The raw sqlite_orm storage
+  /// The raw sqlite_orm storage
   Raw raw;
 
-  /// @brief Constructor
-  /// @param path The path to the sqlite database file. Pass StoreInMemory to initialize non-persistent storage.
+  /// \brief Constructor
+  /// \param path The path to the sqlite database file. Pass StoreInMemory to initialize non-persistent storage.
   explicit Storage(std::string path)
     : BasicStorage(path), raw(MakeRaw(std::move(path))) {}
 

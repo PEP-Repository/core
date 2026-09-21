@@ -38,9 +38,7 @@ public:
   inline bool eatsAll() const noexcept { return eatAll_; }
 
   virtual ArgValueType getType() const noexcept { return ArgValueType::String; }
-  /*!
-   * \brief Get string representation of default value and its description
-   */
+  /// \brief Get string representation of default value and its description
   virtual std::optional<std::pair<std::string, std::optional<std::string>>> getDefault() const noexcept { return {}; }
   virtual std::vector<std::string> getSuggested() const noexcept { return {}; }
 
@@ -143,20 +141,21 @@ Derived ValueSpecificationTemplate<Derived, T>::enableFlag(bool ValueSpecificati
 
 template <typename Derived, typename T>
 std::vector<std::string> ValueSpecificationTemplate<Derived, T>::getSuggested() const noexcept {
+  using namespace std::ranges;
   std::vector<std::string> result;
   if (default_) {
     result.emplace_back(detail::Format<T>()(*default_));
   }
   for (const auto& v : suggested_) {
     std::string s = detail::Format<T>()(v);
-    if (std::find(result.cbegin(), result.cend(), s) == result.end()) {
+    if (!contains(result, s)) {
       result.emplace_back(s);
     }
   }
   if (allowed_) {
     for (const auto& v : *allowed_) {
       std::string s = detail::Format<T>()(v);
-      if (std::find(result.cbegin(), result.cend(), s) == result.end()) {
+      if (!contains(result, s)) {
         result.emplace_back(s);
       }
     }
@@ -203,7 +202,7 @@ bool ValueSpecificationTemplate<Derived, T>::allows(const T& value) const {
     return true;
   }
   auto end = allowed_->cend();
-  return std::find(allowed_->cbegin(), end, value) != end;
+  return std::ranges::find(allowed_->cbegin(), end, value) != end;
 }
 
 template <typename Derived, typename T>
@@ -228,9 +227,8 @@ template <typename Derived, typename T>
 template <typename TContainer>
 Derived ValueSpecificationTemplate<Derived, T>::allow(const TContainer& values) const {
   Derived result = static_cast<const Derived&>(*this);
-  auto end = values.end();
-  for (auto i = values.begin(); i != end; ++i) {
-    result.addAllowedValue(*i);
+  for (const auto& value : values) {
+    result.addAllowedValue(value);
   }
   return result;
 }

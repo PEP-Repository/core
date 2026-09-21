@@ -14,12 +14,12 @@ class IndexedStringPool final {
 public:
   using Projection = std::function<std::string(const T&)>;
 
-  /// @brief Non-owning pointer to a string in a StringPool
-  /// @details Remains valid until the StringPool is destructed or reassigned
+  /// \brief Non-owning pointer to a string in a StringPool
+  /// \details Remains valid until the StringPool is destructed or reassigned
   class Ptr;
 
   /// Constructs a pool to map values of \c T to string via \p toString
-  /// @pre toString must always return the same output for the same input
+  /// \pre toString must always return the same output for the same input
   explicit IndexedStringPool(Projection toString) : toString_(std::move(toString)) {}
 
   /// Maps /p t to a (new or existing) string in the pool

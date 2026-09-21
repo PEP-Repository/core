@@ -2,6 +2,8 @@
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/utils/Math.hpp>
 
+#include <ranges>
+
 using namespace std::literals;
 
 namespace pep {
@@ -15,16 +17,14 @@ void LocalPseudonyms::ensurePacked() const {
 }
 
 std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<LocalPseudonyms>& lps) {
-  std::vector<PolymorphicPseudonym> pps;
-  pps.reserve(lps.size());
-  for (const auto& p : lps)
-    pps.push_back(p.polymorphic);
-  return pps;
+  return lps
+    | std::views::transform(&LocalPseudonyms::polymorphic)
+    | std::ranges::to<std::vector>();
 }
 
 bool Ticket2::hasMode(const std::string& mode) const {
   // Check if the ticket explicitly includes the specified mode
-  if (std::find(modes.begin(), modes.end(), mode) != modes.end()) {
+  if (std::ranges::contains(modes, mode)) {
     return true;
   }
   // The "read-meta" mode is implicitly covered if the ticket includes "read" access
@@ -74,7 +74,7 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
     );
   }
   catch (const SignatureValidityPeriodError& sig) {
-    throw SignedTicket2ValidityPeriodError(sig.description_);
+    throw Error("Ticket outside validity period: " + sig.description_);
   }
 
   auto ticket = Serialization::FromString<Ticket2>(data_);

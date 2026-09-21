@@ -9,12 +9,10 @@
 
 namespace pep::networking {
 
-/*!
-* \brief Base class for networking protocols based on (Boost's implementation of) TCP. Inherit through the TcpBasedProtocolImplementor<> helper (defined below).
-*/
+/// Base class for networking protocols based on (Boost's implementation of) TCP. Inherit through the TcpBasedProtocolImplementor<> helper (defined below).
 class TcpBasedProtocol : public Protocol {
 public:
-  /// @brief Common ancestor for all nested types, binding them to a TcpBasedProtocol instance (allowing type safe downcasting)
+  /// Common ancestor for all nested types, binding them to a TcpBasedProtocol instance (allowing type safe downcasting)
   class TcpBound;
 
   /// \copydoc Protocol::Socket
@@ -40,9 +38,8 @@ protected:
 };
 
 
-/* \brief Base class for (all) of the TcpBasedProtocol type's nested classes, allowing type safe downcasting.
- * \remark See the InstanceBound<> class documentation for rationale.
- */
+/// \brief Base class for (all) of the TcpBasedProtocol type's nested classes, allowing type safe downcasting.
+/// \remark See the InstanceBound<> class documentation for rationale.
 class TcpBasedProtocol::TcpBound : private InstanceBound<TcpBasedProtocol> {
 protected:
   using InstanceBound<TcpBasedProtocol>::downcastIfBoundTo;
@@ -50,18 +47,15 @@ protected:
   explicit TcpBound(const TcpBasedProtocol& protocol) noexcept : InstanceBound<TcpBasedProtocol>(protocol) {}
 
 public:
-  /* \brief Produces the TcpBasedProtocol (instance/type) to which this object is bound.
-   * \return (A reference to) a TcpBasedProtocol instance.
-   */
+  /// \brief Produces the TcpBasedProtocol (instance/type) to which this object is bound.
+  /// \return (A reference to) a TcpBasedProtocol instance.
   const TcpBasedProtocol& tcp() const noexcept { return this->boundInstance(); }
 };
 
 
-/*!
- * \brief Wrapper for a networking socket. Abstracts over protocol details (TCP, TLS, ...).
- * \remark (Derived class) instances must be created using std::make_shared (or equivalent) so that instances of this
- *         class can keep themselves alive to perform asynchronous cleanup after their "close()" method has been called.
- */
+/// \brief Wrapper for a networking socket. Abstracts over protocol details (TCP, TLS, ...).
+/// \remark (Derived class) instances must be created using std::make_shared (or equivalent) so that instances of this
+///         class can keep themselves alive to perform asynchronous cleanup after their "close()" method has been called.
 class TcpBasedProtocol::Socket : public Protocol::Socket, public TcpBound {
   friend class ClientComponent;
   friend class ServerComponent;
@@ -115,9 +109,8 @@ protected:
   std::string addressSummary() const override { return endPoint_.describe() + ':' + std::to_string(endPoint_.port); }
 
 public:
-  /* \brief Produces the endpoint to which the client connects.
-   * \return (A reference to) this client's EndPoint.
-   */
+  /// \brief Produces the endpoint to which the client connects.
+  /// \return (A reference to) this client's EndPoint.
   const EndPoint& endPoint() const noexcept { return endPoint_; }
 };
 
@@ -135,15 +128,13 @@ protected:
   std::string addressSummary() const override { return "localhost:" + std::to_string(port_); }
 
 public:
-  /* \brief When passed to the constructor, specifies that the server will expose itself on a random port.
-   */
+  /// \brief When passed to the constructor, specifies that the server will expose itself on a random port.
   static constexpr uint16_t RandomPort = 0;
 
-  /* \brief Produces the port on which the server will be exposed.
-   * \return The port number for the server.
-   * \remark May produce a sentinel value such as RandomPort. Invoke ServerComponent::port to determine the actual
-   *         (non-sentinel) port number on which a server has been exposed.
-   */
+  /// \brief Produces the port on which the server will be exposed.
+  /// \return The port number for the server.
+  /// \remark May produce a sentinel value such as RandomPort. Invoke ServerComponent::port to determine the actual
+  ///         (non-sentinel) port number on which a server has been exposed.
   uint16_t port() const noexcept { return port_; }
 };
 
@@ -158,9 +149,8 @@ private:
   void onResolved(const ConnectionAttempt::Handler& notify, std::shared_ptr<Socket> socket, const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::results_type results);
 
 public:
-  /* \brief Constructor.
-   * \param parameters Parameters for this client component.
-   */
+  /// \brief Constructor.
+  /// \param parameters Parameters for this client component.
   explicit ClientComponent(const ClientParameters& parameters);
 
   /// \copydoc TcpBasedProtocol::ClientParameters::endPoint
@@ -181,14 +171,12 @@ private:
   boost::asio::ip::tcp::acceptor acceptor_;
 
 public:
-  /* \brief Constructor.
-   * \param parameters Parameters for this server component.
-   */
+  /// \brief Constructor.
+  /// \param parameters Parameters for this server component.
   explicit ServerComponent(const ServerParameters& parameters);
 
-  /* \brief Produces the port on which the server is exposed.
-   * \return The port number for the server.
-   */
+  /// \brief Produces the port on which the server is exposed.
+  /// \return The port number for the server.
   uint16_t port() const;
 
   /// \copydoc Protocol::ServerComponent::openSocket
@@ -199,9 +187,7 @@ public:
 };
 
 
-/*!
- * \brief Helper class for TcpBasedProtocol: implementors should inherit from this one instead of directly from TcpBasedProtocol.
- */
+/// Helper class for TcpBasedProtocol: implementors should inherit from this one instead of directly from TcpBasedProtocol.
 template <typename TDerived>
 class TcpBasedProtocolImplementor : public ProtocolImplementor<TDerived, TcpBasedProtocol> {
 public:
@@ -216,10 +202,9 @@ public:
 template <typename TDerived>
 class TcpBasedProtocolImplementor<TDerived>::ClientParameters : public TcpBasedProtocol::ClientParameters {
 public:
-  /* \brief Constructor.
-   * \param ioContext The I/O context associated with this instance.
-   * \param endPoint The endpoint to which the client will connect.
-   */
+  /// \brief Constructor.
+  /// \param ioContext The I/O context associated with this instance.
+  /// \param endPoint The endpoint to which the client will connect.
   ClientParameters(boost::asio::io_context& ioContext, EndPoint endPoint)
     : TcpBasedProtocol::ClientParameters(TDerived::Instance(), ioContext, std::move(endPoint)) {
   }
@@ -230,10 +215,9 @@ public:
 template <typename TDerived>
 class TcpBasedProtocolImplementor<TDerived>::ServerParameters : public TcpBasedProtocol::ServerParameters {
 public:
-  /* \brief Constructor.
-   * \param ioContext The I/O context associated with this instance.
-   * \param port The port on which the server will be exposed. May be a sentinel value such as TcpBasedProtocol::ServerParameters::RandomPort.
-   */
+  /// \brief Constructor.
+  /// \param ioContext The I/O context associated with this instance.
+  /// \param port The port on which the server will be exposed. May be a sentinel value such as TcpBasedProtocol::ServerParameters::RandomPort.
   ServerParameters(boost::asio::io_context& ioContext, uint16_t port) noexcept
     : TcpBasedProtocol::ServerParameters(TDerived::Instance(), ioContext, port) {
   }

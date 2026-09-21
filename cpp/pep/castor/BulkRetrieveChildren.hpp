@@ -5,21 +5,20 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <rxcpp/operators/rx-filter.hpp>
+#include <ranges>
 
 namespace pep {
 namespace castor {
 
-/*!
- * \brief Retrieve a list of objects that are children of specified parent objects.
- *
- * \tparam ChildType The type of the objects in the list
- * \tparam ParentType The type of the parent object (which is passed to every child item's constructor)
- * \param parentsById a map associating parent IDs with parent object instances
- * \param apiPath path to request from the API
- * \param embeddedItemsNodeName name of the node under the "_embedded" node that contains data on child items
- * \param parentIdNodeName name of the node within the child data that specifies the parent ID
- * \return Observable that, if no error occurs, emits one ChildType for every item in the list
- */
+/// \brief Retrieve a list of objects that are children of specified parent objects.
+///
+/// \tparam ChildType The type of the objects in the list
+/// \tparam ParentType The type of the parent object (which is passed to every child item's constructor)
+/// \param parentsById a map associating parent IDs with parent object instances
+/// \param apiPath path to request from the API
+/// \param embeddedItemsNodeName name of the node under the "_embedded" node that contains data on child items
+/// \param parentIdNodeName name of the node within the child data that specifies the parent ID
+/// \return Observable that, if no error occurs, emits one ChildType for every item in the list
 template <class ChildType, class ParentType>
 rxcpp::observable<std::shared_ptr<ChildType>> BulkRetrieveChildren(
   std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<ParentType>>> parentsById,
@@ -34,7 +33,7 @@ rxcpp::observable<std::shared_ptr<ChildType>> BulkRetrieveChildren(
   // Get the (first parent's) CastorConnection instance so we can send requests over it
   auto connection = parentsById->cbegin()->second->getConnection();
   // All parent instances must/should belong to the same CastorConnection
-  assert(std::all_of(parentsById->cbegin(), parentsById->cend(), [connection](const auto& entry) {return entry.second->getConnection() == connection; }));
+  assert(std::ranges::all_of(*parentsById | std::views::values, [&](const auto& parent) {return parent->getConnection() == connection; }));
 
   return connection->getJsonEntries(apiPath, embeddedItemsNodeName) // Retrieve JSON entries for children
     .map([parentsById, parentIdNodeName](JsonPtr json) -> std::shared_ptr<ChildType> {
@@ -48,17 +47,15 @@ rxcpp::observable<std::shared_ptr<ChildType>> BulkRetrieveChildren(
     .filter([](std::shared_ptr<ChildType> child) {return child != nullptr; }); // Filter out sentinel values for child instances that couldn't be created
 }
 
-/*!
- * \brief Retrieve a list of objects that are children of specified parent objects.
- *
- * \tparam ChildType The type of the objects in the list
- * \tparam ParentType The type of the parent object (which is passed to every child item's constructor)
- * \param parents the parent object instances
- * \param apiPath path to request from the API
- * \param embeddedItemsNodeName name of the node under the "_embedded" node that contains data on child items
- * \param parentIdNodeName name of the node within the child data that specifies the parent ID
- * \return Observable that, if no error occurs, emits one ChildType for every item in the list
- */
+/// \brief Retrieve a list of objects that are children of specified parent objects.
+///
+/// \tparam ChildType The type of the objects in the list
+/// \tparam ParentType The type of the parent object (which is passed to every child item's constructor)
+/// \param parents the parent object instances
+/// \param apiPath path to request from the API
+/// \param embeddedItemsNodeName name of the node under the "_embedded" node that contains data on child items
+/// \param parentIdNodeName name of the node within the child data that specifies the parent ID
+/// \return Observable that, if no error occurs, emits one ChildType for every item in the list
 template <class ChildType, class ParentType>
 rxcpp::observable<std::shared_ptr<ChildType>> BulkRetrieveChildren(
   rxcpp::observable<std::shared_ptr<ParentType>> parents,

@@ -1,23 +1,21 @@
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
+#include <ranges>
 #include <utility>
+
+using namespace std::ranges;
 
 namespace pep {
 
 namespace {
 
-template <typename T>
-void AppendVector(std::vector<T>& destination, const std::vector<T>& source) {
-  destination.insert(destination.end(), source.begin(), source.end());
-}
-
 void AppendAndSquashVector(std::vector<AmaQRColumnGroup>& destination, const std::vector<AmaQRColumnGroup>& source) {
   for (auto& sourceGroup : source) {
-    auto found = std::find_if(destination.begin(), destination.end(), [sourceGroup](const AmaQRColumnGroup& destGroup) {return destGroup.name == sourceGroup.name; });
+    auto found = find(destination, sourceGroup.name, &AmaQRColumnGroup::name);
     if (found != destination.end()) {
       // The group already exists in the destination. Add the columns_ of the sourceGroup to this destinationGroup.
-      AppendVector<std::string>(found->columns, sourceGroup.columns);
+      found->columns.append_range(sourceGroup.columns);
     }
     else {
       destination.push_back(sourceGroup);
@@ -100,10 +98,11 @@ AccessManagerProxy::amaAddParticipantToGroup(std::string group, const Polymorphi
 rxcpp::observable<FakeVoid>
 AccessManagerProxy::amaRemoveParticipantsFromGroup(const std::string& group, const std::vector<PolymorphicPseudonym>& participants) const {
   AmaMutationRequest request;
-  request.removeParticipantFromGroup.reserve(participants.size());
-  std::transform(participants.begin(), participants.end(), std::back_inserter(request.removeParticipantFromGroup), [&group](const PolymorphicPseudonym& pp) {
-    return AmaRemoveParticipantFromGroup(group, pp);
-    });
+  request.removeParticipantFromGroup = participants
+    | views::transform([&group](const PolymorphicPseudonym& pp) {
+      return AmaRemoveParticipantFromGroup(group, pp);
+      })
+    | to<std::vector>();
   return requestAmaMutation(std::move(request));
 }
 
@@ -154,11 +153,11 @@ AccessManagerProxy::amaQuery(AmaQuery query) const {
     .reduce( // Concatenate all parts into a single AmaQueryResponse instance, which will remain empty if we didn't receive (a partial) one from AM
       std::make_shared<AmaQueryResponse>(),
       [](std::shared_ptr<AmaQueryResponse> all, const AmaQueryResponse& part) {
-        AppendVector(all->columns, part.columns);
+        all->columns.append_range(part.columns);
         AppendAndSquashVector(all->columnGroups, part.columnGroups);
-        AppendVector(all->columnGroupAccessRules, part.columnGroupAccessRules);
-        AppendVector(all->participantGroups, part.participantGroups);
-        AppendVector(all->participantGroupAccessRules, part.participantGroupAccessRules);
+        all->columnGroupAccessRules.append_range(part.columnGroupAccessRules);
+        all->participantGroups.append_range(part.participantGroups);
+        all->participantGroupAccessRules.append_range(part.participantGroupAccessRules);
         return all;
       }
     )

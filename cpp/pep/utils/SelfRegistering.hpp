@@ -6,22 +6,21 @@ namespace pep {
 
 // See bottom of this source for sample code.
 
-/*!
- * \brief A mixin class that invokes a registration function at program initialization time,
- *        allowing the registrar to know about all self-registering types without needing to
- *        change code when a registering type is added, removed, or changed.
- * \tparam TDerived The (derived) class to register.
- * \tparam TRegistrar The registrar class. Must provide a "template <typename T> static some_type RegisterType()",
- *               which is invoked once for every TDerived type (during static variable initialization).
- * \tparam registerDerived Development helper: specify "false" to (temporarily) disable self-registration for specific derived types.
- * \remark See e.g. https://stackoverflow.com/a/10333643.
- */
+/// \brief A mixin class that invokes a registration function at program initialization time,
+///        allowing the registrar to know about all self-registering types without needing to
+///        change code when a registering type is added, removed, or changed.
+/// \tparam TDerived The (derived) class to register.
+/// \tparam TRegistrar The registrar class. Must provide a "template <typename T> static some_type RegisterType()",
+///               which is invoked once for every TDerived type (during static variable initialization).
+/// \tparam registerDerived Development helper: specify "false" to (temporarily) disable self-registration for specific derived types.
+/// \remark See e.g. https://stackoverflow.com/a/10333643.
+/// \warning The mechanism only works for TDerived types that are linked into the resulting executable. If TDerived is defined in a library
+///          that the executable is linked against, TDerived will only be registered if the type is referenced ("used by") the executable.
+///          See https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/2980
 template <class TDerived, class TRegistrar, bool registerDerived = true>
 class SelfRegistering;
 
-/*!
- * \brief The actual implementation: (a specialization that) registers the TDerived class with its TRegistrar class.
- */
+/// \brief The actual implementation: (a specialization that) registers the TDerived class with its TRegistrar class.
 template <class TDerived, class TRegistrar>
 class SelfRegistering<TDerived, TRegistrar, true> {
   using RegistrationId = decltype(TRegistrar::template RegisterType<TDerived>());
@@ -43,13 +42,11 @@ template <class TDerived, class TRegistrar>
 const typename SelfRegistering<TDerived, TRegistrar, true>::RegistrationId SelfRegistering<TDerived, TRegistrar, true>::TheRegistrationId
 = TRegistrar::template RegisterType<TDerived>();
 
-/*!
- * \brief Development helper specialization that doesn't actually register the derived class.
- * \remark Usage: to (temporarily) disable self-registration, change
- *          class MyClass : public SelfRegistering<MyClass, MyBase>
- *        to
- *          class MyClass : public SelfRegistering<MyClass, MyBase, false>
- */
+/// \brief Development helper specialization that doesn't actually register the derived class.
+/// \remark Usage: to (temporarily) disable self-registration, change
+///          class MyClass : public SelfRegistering<MyClass, MyBase>
+///        to
+///          class MyClass : public SelfRegistering<MyClass, MyBase, false>
 template <class TDerived, class TRegistrar>
 class SelfRegistering<TDerived, TRegistrar, false> {
 protected:
@@ -62,7 +59,8 @@ public:
 };
 
 
-/* Sample code:
+/* Sample code follows. Note that the .cpp files need to be sourced _directly_ by the executable.
+ * See also the \warning on the SelfRegistering<> class.
  *
  * // MyBase.hpp
  * #include <pep/utils/SelfRegistering.hpp>

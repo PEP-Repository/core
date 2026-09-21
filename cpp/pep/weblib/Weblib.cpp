@@ -255,16 +255,15 @@ public:
           return self->client_->getAccessManagerProxy()->getAccessibleColumns(true, { "read" });
         })
         .map([](const ColumnAccess& access) {
-          return RangeToVector(
-            access.columnGroups
+          return access.columnGroups
             | views::transform([&](const auto& entry) {
               const auto& [name, columnGroup] = entry;
               return ColumnGroup{
                   .name = name,
-                  .columns = RangeToVector(SafeIndexInto(columnGroup.columns.indices, access.columns)),
+                  .columns = to<std::vector>(SafeIndexInto(columnGroup.columns.indices, access.columns)),
               };
             })
-          );
+            | to<std::vector>();
         });
   }
 
@@ -274,17 +273,16 @@ public:
         .flat_map([](const std::shared_ptr<Weblib>& self) {
           return self->client_->getAccessManagerProxy()->getAccessibleParticipantGroups(true);
         }).map([](ParticipantGroupAccess access) {
-          return RangeToVector(
-            std::move(access).participantGroups
+          return std::move(access).participantGroups
             | views::filter([](const auto& entry) {
               const auto& [name, modes] = entry;
-              return find(modes, "access") != modes.end();
+              return contains(modes, "access");
             })
             | views::keys
             | views::transform([](const std::string& name) {
               return SubjectGroup{ .name = name };
             })
-          );
+            | to<std::vector>();
         });
   }
 
@@ -342,7 +340,7 @@ public:
               auto pageBatches = self->client_->retrieveData(
                   self->client_->getKeys(
                       rxcpp::observable<>::iterate(
-                          RangeToVector(*entries | views::transform(std::mem_fn(&CellEntry::inner)))),
+                          *entries | views::transform(&CellEntry::inner) | to<std::vector>()),
                       signedTicket),
                   signedTicket);
               return rxcpp::observable<>::just(entries)

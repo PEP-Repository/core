@@ -63,35 +63,35 @@
          </property>
          <property name="styleSheet">
           <string notr="true">QWidget {
-	border: 0.05em solid #CA0B5E;
-	border-radius: 0.25em;
-	color: #CA0B5E;
-	padding: 0.5em;
-	font-size: 13pt;
-	outline: none;
+  border: 0.05em solid #CA0B5E;
+  border-radius: 0.25em;
+  color: #CA0B5E;
+  padding: 0.5em;
+  font-size: 13pt;
+  outline: none;
 }
 QWidget:focus {
-	border: 0.1em solid #CA0B5E;
+  border: 0.1em solid #CA0B5E;
 }
 QWidget:hover {
-	background-color: rgba(202,11,94,0.8);
-	color: white;
+  background-color: rgba(202,11,94,0.8);
+  color: white;
 }
 QWidget:disabled {
-	color: grey;
-	border-color: grey;
+  color: grey;
+  border-color: grey;
 }
 QComboBox {
-	background-color: transparent;
+  background-color: transparent;
 }
 QComboBox QAbstractItemView:hover {
-	background-color: rgba(202,11,94,0.8);
-	color: white;
+  background-color: rgba(202,11,94,0.8);
+  color: white;
 }
 QComboBox::item:selected
 {
-	background-color: rgba(202,11,94,0.8);
-	color: white;
+  background-color: rgba(202,11,94,0.8);
+  color: white;
 }
       </string>
          </property>
@@ -127,23 +127,23 @@ QComboBox::item:selected
          </property>
          <property name="styleSheet">
           <string notr="true">QWidget {
-	border: 0.05em solid #CA0B5E;
-	border-radius: 0.25em;
-	color: #CA0B5E;
-	padding: 0.5em;
-	font-size: 13pt;
-	outline: none;
+  border: 0.05em solid #CA0B5E;
+  border-radius: 0.25em;
+  color: #CA0B5E;
+  padding: 0.5em;
+  font-size: 13pt;
+  outline: none;
 }
 QWidget:focus {
-	border: 0.1em solid #CA0B5E;
+  border: 0.1em solid #CA0B5E;
 }
 QWidget:hover {
-	background-color: rgba(202,11,94,0.8);
-	color: white;
+  background-color: rgba(202,11,94,0.8);
+  color: white;
 }
 QWidget:disabled {
-	color: grey;
-	border-color: grey;
+  color: grey;
+  border-color: grey;
 }
 </string>
          </property>

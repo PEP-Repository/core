@@ -23,7 +23,7 @@ using is_optional = is_optional_impl<std::decay_t<T>>;
 } // namespace detail
 
 /// Optional reference, with the same interface and semantics as (C++26) std::optional
-/// @note The implementation is based on https://github.com/steve-downey/optional_ref/blob/main/papers/optional_ref.h,
+/// \note The implementation is based on https://github.com/steve-downey/optional_ref/blob/main/papers/optional_ref.h,
 /// which is the reference implementation for C++26 std::optional<T&>.
 ///
 /// We only made minor modifications, so that we can define this as a separate template class,

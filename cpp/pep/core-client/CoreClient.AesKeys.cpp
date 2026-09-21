@@ -108,7 +108,7 @@ CoreClient::unblindAndDecryptKeys(
     return getWorkerPool()->batched_map<8>(std::move(encKeys),
            ObserveOnAsio(*ioContext_),
         [this](EncryptedKey encKey) {
-      auto point = encKey.decrypt(privateKeyData_);
+      auto point = encKey.decrypt(privateKeyData());
       return AESKey(point);
     });
   });
@@ -139,7 +139,7 @@ rxcpp::observable<FakeVoid> CoreClient::encryptAndBlindKeys(
     );
   }
   // Give each KeyRequest a (reference to the) ticket
-  std::for_each(keyRequests.begin(), keyRequests.end(), [ticket = MakeSharedCopy(request->ticket)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.ticket2 = ticket; });
+  std::ranges::for_each(keyRequests, [ticket = MakeSharedCopy(request->ticket)](std::pair<const size_t, EncryptionKeyRequest>& pair) {pair.second.ticket2 = ticket; });
 
   return RxIterate(std::move(keyRequests))
     .flat_map([this, request](std::pair<const size_t, EncryptionKeyRequest> pair) {

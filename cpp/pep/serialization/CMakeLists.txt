@@ -1,6 +1,6 @@
 # Library providing the general serialization mechanism, and the (network-portable) Error type.
 
-add_library(${PROJECT_NAME}Serializationlib STATIC
+add_library(${PROJECT_NAME}Serializationlib
     Error.cpp Error.hpp
     ErrorSerializer.cpp ErrorSerializer.hpp
     IndexList.hpp # Defined in this library to make this simple utility type widely available

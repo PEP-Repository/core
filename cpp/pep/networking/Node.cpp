@@ -71,6 +71,20 @@ void Node::handleConnectionAttempt(const Connection::Attempt::Result& status) co
   onConnectionAttempt.notify(status);
 }
 
+std::string Node::describe() const {
+  if (component_ == nullptr) {
+    throw std::runtime_error("Can't retrieve description from discarded networking::Protocol::NodeComponent");
+  }
+  return component_->describe();
+}
+
+std::string Node::describeConnection(const Connection &connection) const {
+  if (component_ == nullptr) {
+    throw std::runtime_error("Can't retrieve description from discarded networking::Protocol::NodeComponent");
+  }
+  return component_->describeConnection(connection);
+}
+
 void Node::start() {
   auto status = this->status();
   if (status > Status::Initialized) {

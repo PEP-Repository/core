@@ -158,9 +158,9 @@ TEST(Timestamp, ToBoostPtime) {
 }
 
 TEST(Timestamp, FromBoostPtime) {
-  const boost::posix_time::ptime UNIX_EPOCH(boost::gregorian::date(1970, 1, 1));
-  EXPECT_EQ(UNIX_EPOCH, boost::posix_time::from_time_t(0)); // Ensure that our constant in fact represents the start of the epoch
-  EXPECT_EQ(pep::Timestamp{/*zero*/}, pep::TimestampFromBoostPtime(UNIX_EPOCH));
+  const boost::posix_time::ptime UnixEpoch(boost::gregorian::date(1970, 1, 1));
+  EXPECT_EQ(UnixEpoch, boost::posix_time::from_time_t(0)); // Ensure that our constant in fact represents the start of the epoch
+  EXPECT_EQ(pep::Timestamp{/*zero*/}, pep::TimestampFromBoostPtime(UnixEpoch));
 
   EXPECT_EQ(pep::TimestampFromBoostPtime(boost::posix_time::neg_infin), pep::Timestamp::min());
   EXPECT_EQ(pep::TimestampFromBoostPtime(boost::posix_time::pos_infin), pep::Timestamp::max());

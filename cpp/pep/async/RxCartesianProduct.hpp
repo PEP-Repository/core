@@ -38,11 +38,10 @@ public:
 }
 
 
-/*! \brief Combines each emission of one observable with each emission of another observable.
- *
- * \param o2 The second observable
- * \return An observable<> of std::pair<> instances for each combination of items emitted by the source observable and and o2
- */
+/// \brief Combines each emission of one observable with each emission of another observable.
+///
+/// \param o2 The second observable
+/// \return An observable<> of std::pair<> instances for each combination of items emitted by the source observable and and o2
 template <typename T2, typename SourceOperator2>
 detail::RxCartesianProductOperator<T2, SourceOperator2> RxCartesianProduct(rxcpp::observable<T2, SourceOperator2> o2) {
   return detail::RxCartesianProductOperator<T2, SourceOperator2>(o2);

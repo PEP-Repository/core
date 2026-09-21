@@ -11,14 +11,14 @@ void HasherBase::update(const void* block, size_t size) {
 }
 
 void HasherBase::update(std::istream& source) {
-  constexpr std::streamsize HASH_CHUNK_LENGTH{4096};
+  constexpr std::streamsize HashChunkLength{4096};
 
-  std::array<char, HASH_CHUNK_LENGTH> chunk{};
+  std::array<char, HashChunkLength> chunk{};
   std::streamsize actual{-1};
   do {
     source.read(chunk.data(), chunk.size());
     if (source) {
-      actual = HASH_CHUNK_LENGTH;
+      actual = HashChunkLength;
     }
     else if (source.rdstate() == (std::ios_base::eofbit | std::ios_base::failbit)) {
       actual = source.gcount();
@@ -30,7 +30,7 @@ void HasherBase::update(std::istream& source) {
       auto converted = static_cast<std::make_unsigned_t<std::streamsize>>(actual);
       this->update(chunk.data(), size_t{converted});
     }
-  } while (actual == HASH_CHUNK_LENGTH);
+  } while (actual == HashChunkLength);
 }
 
 void HasherBase::setFinished() {

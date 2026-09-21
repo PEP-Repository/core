@@ -1,10 +1,12 @@
 #pragma once
 
-#include <cstdint>
-#include <optional>
 #include <pep/keyserver/tokenblocking/BlocklistEntry.hpp>
 #include <pep/keyserver/tokenblocking/TokenIdentifier.hpp>
+
 #include <vector>
+#include <cstdint>
+#include <optional>
+#include <algorithm>
 
 namespace pep::tokenBlocking {
 
@@ -38,11 +40,11 @@ public:
   virtual int64_t add(const TokenIdentifier&, const Entry::Metadata&) = 0;
 
   /// Removes an existing entry if it exists.
-  /// @return The entry that was removed or \c std::nullopt if nothing was removed.
+  /// \return The entry that was removed or \c std::nullopt if nothing was removed.
   virtual std::optional<Entry> removeById(int64_t) = 0;
 };
 
-/// Convenience function that returns true iff the @p token is matched by one or more entries on the @p list.
+/// Convenience function that returns true iff the \p token is matched by one or more entries on the \p list.
 inline bool IsBlocking(const Blocklist& list, const TokenIdentifier& token, Timestamp at=TimeNow()) {
   auto matches = list.allEntriesMatching(token);
   auto found = std::ranges::find_if(matches,

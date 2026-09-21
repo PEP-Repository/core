@@ -62,7 +62,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> CrfAspectPuller::FormP
 }
 
 CrfAspectPuller::CrfAspectPuller(std::shared_ptr<StudyPuller> sp, const StudyAspect& aspect)
-  : TypedStudyAspectPuller<CrfAspectPuller, CastorStudyType::Crf>(sp, aspect), immediatePartialData_(aspect.getStorage()->immediatePartialData()) {
+  : StudyAspectPuller(sp, aspect), immediatePartialData_(aspect.getStorage()->immediatePartialData()) {
   formPullers_ = CreateRxCache([sp, prefix = this->getColumnNamePrefix()]() {
     return FormPuller::LoadAll(sp, prefix)
       .op(RxToUnorderedMap([](std::shared_ptr<FormPuller> form) {return form->getFormId(); }));

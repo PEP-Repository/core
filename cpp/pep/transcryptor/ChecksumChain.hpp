@@ -11,12 +11,10 @@ struct TranscryptorStorageBackend;
 
 namespace transcryptor {
 
-/*!
- * \brief Base class for checksum chain calculations (which derived classes implement in their their "calculate" methods).
- * \remark Caches the last calculated result, allowing it to be
- *         - produced from memory instead of recalculated when re-requested for the same checkpoint (as PEP's Watchdog is prone to do).
- *         - used as a partial result for the calculation of checksums at later checkpoints, eliminating more (needless re-)calculations.
- */
+/// \brief Base class for checksum chain calculations (which derived classes implement in their their "calculate" methods).
+/// \remark Caches the last calculated result, allowing it to be
+///         - produced from memory instead of recalculated when re-requested for the same checkpoint (as PEP's Watchdog is prone to do).
+///         - used as a partial result for the calculation of checksums at later checkpoints, eliminating more (needless re-)calculations.
 class ChecksumChain : boost::noncopyable {
 protected:
   static constexpr uint64_t EmptyTableCheckpoint = 1;
@@ -45,10 +43,8 @@ public:
 
   std::string name() const noexcept { return name_; }
 
-  /*!
-   * \brief Returns the checksum chain's value at the highest available checkpoint not exceeding the specified one
-   * \remark Caches the last computed result to prevent excessive (re-)calculation.
-   */
+  /// \brief Returns the checksum chain's value at the highest available checkpoint not exceeding the specified one
+  /// \remark Caches the last computed result to prevent excessive (re-)calculation.
   Result get(std::shared_ptr<TranscryptorStorageBackend> storage, uint64_t maxCheckpoint);
 };
 

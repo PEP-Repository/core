@@ -95,11 +95,9 @@ private:
           .flat_map([client](std::shared_ptr<pep::GlobalConfiguration> config) {
           pep::EnumerateAndRetrieveData2Opts opts;
           opts.groups = { "*" };
-          opts.columns = { "ParticipantIdentifier" };
           opts.includeAccessGroupPseudonyms = true;
-          for (const auto& device : config->getDevices()) {
-            opts.columns.push_back(device.columnName);
-          }
+          opts.columns = { "ParticipantIdentifier" };
+          opts.columns.append_range(config->getDevices() | std::views::transform(&pep::DeviceRegistrationDefinition::columnName));
           return client->enumerateAndRetrieveData2(opts);
         })
           .reduce( // Aggregate into an unordered_map<> with an entry for each participant

@@ -33,7 +33,7 @@ private:
 
     // Zero-fill consumed randomness so that secrets don't remain in memory
     auto consumed = source.subspan(0U, result);
-    std::ranges::fill(consumed.begin(), consumed.end(), std::byte{});
+    std::ranges::fill(consumed, std::byte{});
 
     return result;
   }

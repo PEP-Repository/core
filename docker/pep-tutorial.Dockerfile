@@ -59,14 +59,14 @@ WORKDIR /data
 COPY docker/fake-pepLogon /app/pepLogon
 RUN chmod +x /app/pepLogon
 
-# Copy workshop setup scripts
-COPY docker/entrypoint-workshop.sh /
-RUN chmod +x /entrypoint-workshop.sh
+# Copy tutorial setup scripts
+COPY docker/entrypoint-tutorial.sh /
+RUN chmod +x /entrypoint-tutorial.sh
 
 ENV PEP_LOGON_LIMITED=1
 ENV PEP_CONFIG_DIR="/config"
 
 ENV DEBIAN_FRONTEND=''
 
-# Use workshop entrypoint for automatic setup and server execution
-ENTRYPOINT ["/entrypoint-workshop.sh"]
+# Use tutorial entrypoint for automatic setup and server execution
+ENTRYPOINT ["/entrypoint-tutorial.sh"]

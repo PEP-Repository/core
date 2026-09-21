@@ -29,7 +29,7 @@ void CurvePoint::ensurePacked() const {
 
 std::string_view CurvePoint::pack() const {
   ensurePacked();
-  return SpanToString(packed_);
+  return std::string_view(packed_);
 }
 
 group_ge* CurvePoint::unpack() const {
@@ -49,10 +49,7 @@ CurvePoint::CurvePoint(std::string_view packed, bool unpack) {
   if (packed.size() != packed_.size()) {
     throw std::invalid_argument("Trying to construct CurvePoint with incorrect number of packed bytes");
   }
-  std::copy(
-    packed.begin(),
-    packed.begin() + static_cast<ptrdiff_t>(packed_.size()),
-    packed_.begin());
+  std::ranges::copy(packed, packed_.begin()); // Sizes are equal: checked above
   state_ = State::GotPacked;
 
   if (unpack) {
@@ -65,24 +62,22 @@ CurvePoint::CurvePoint() : state_{State::GotBoth} {}
 CurvePoint::CurvePoint(BaseT) : CurvePoint(BasePoint) {}
 
 
-/*! \brief Add a CurvePoint to this CurvePoint.
- *
- * This CurvePoint remains unaltered.
- * \param p The CurvePoint to add.
- * \return The resulting CurvePoint.
- */
+/// \brief Add a CurvePoint to this CurvePoint.
+///
+/// This CurvePoint remains unaltered.
+/// \param p The CurvePoint to add.
+/// \return The resulting CurvePoint.
 CurvePoint CurvePoint::operator+(const CurvePoint& p) const {
   CurvePoint r(State::GotUnpacked);
   group_ge_add(&r.unpacked_, unpack(), p.unpack());
   return r;
 }
 
-/*! \brief Subtract a CurvePoint from this CurvePoint.
- *
- * This CurvePoint remains unaltered.
- * \param p The CurvePoint to subtract.
- * \return The resulting CurvePoint.
- */
+/// \brief Subtract a CurvePoint from this CurvePoint.
+///
+/// This CurvePoint remains unaltered.
+/// \param p The CurvePoint to subtract.
+/// \return The resulting CurvePoint.
 CurvePoint CurvePoint::operator-(const CurvePoint& p) const {
   CurvePoint r(State::GotUnpacked);
   group_ge t;
@@ -91,11 +86,10 @@ CurvePoint CurvePoint::operator-(const CurvePoint& p) const {
   return r;
 }
 
-/*! \brief Double this CurvePoint
- *
- * This CurvePoint remains unaltered.
- * \return The resulting CurvePoint.
- */
+/// \brief Double this CurvePoint
+///
+/// This CurvePoint remains unaltered.
+/// \return The resulting CurvePoint.
 CurvePoint CurvePoint::dbl() const {
   CurvePoint r(State::GotUnpacked);
   group_ge_double(&r.unpacked_, unpack());
@@ -114,13 +108,12 @@ CurvePoint CurvePoint::mult(const PublicCurveScalar& s) const {
   return r;
 }
 
-/*! \brief Derive CurvePoint from a string
- *
- * The string is hashed using SHA512 and then embedded into the group
- * using the Ristretto variant of Elligator2.
- *
- * \return The derived CurvePoint.
- */
+/// \brief Derive CurvePoint from a string
+///
+/// The string is hashed using SHA512 and then embedded into the group
+/// using the Ristretto variant of Elligator2.
+///
+/// \return The derived CurvePoint.
 CurvePoint CurvePoint::Hash(std::string_view s) {
   CurvePoint r(State::GotUnpacked);
   group_ge_hashfromstr(&r.unpacked_, reinterpret_cast<const unsigned char*>(s.data()), s.length());

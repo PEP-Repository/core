@@ -12,7 +12,7 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
     // applying quotes generously even though YAML would allow more to go without quotes
     return str.empty() ||
       !std::isalpha(str.front()) ||
-      !std::all_of(str.begin(), str.end(), [](char c) { return std::isalnum(c) || c == '_' || c == ' '; });
+      !std::ranges::all_of(str, [](char c) { return std::isalnum(c) || c == '_' || c == ' '; });
   };
   constexpr auto needsEscape = [](char c) { return c == '\\' || c == '"'; };
 
@@ -24,9 +24,9 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
 }
 
 /// Recursive function to convert a JSON object to a YAML string.
-/// @note does NOT prefix the output with indentation,
+/// \note does NOT prefix the output with indentation,
 ///       the caller should make sure that the output stream is at the correct initial indentation level
-/// @note DOES append a newline character to the output
+/// \note DOES append a newline character to the output
 void SerializeJsonAsYaml(std::ostream& stream, const YamlConfig& config, nlohmann::ordered_json node, std::size_t indentLevel = {}) {
   const std::size_t spacesPerLevel = (config.indentation == WhitespaceFormat::FourSpaces) ? 4 : 2;
   const auto indent = std::string(spacesPerLevel * indentLevel, ' ');
@@ -95,7 +95,7 @@ std::ostream& append(std::ostream& stream, const Tree& tree, const YamlConfig& c
 }
 
 /// Converts a tree to string.
-/// @details This is a small wrapper around append for convenience.
+/// \details This is a small wrapper around append for convenience.
 std::string to_string(const Tree& tree, const YamlConfig& config) {
   std::ostringstream stream;
   append(stream, tree, config);

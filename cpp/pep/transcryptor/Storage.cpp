@@ -17,8 +17,7 @@
 #include <boost/algorithm/hex.hpp>
 #include <boost/range/algorithm/set_algorithm.hpp>
 
-#include <cctype>
-#include <numeric>
+#include <ranges>
 #include <utility>
 
 // The schema of the database is defined in the TsCreateDb() function.
@@ -47,6 +46,7 @@
 
 using namespace std::chrono;
 using namespace std::literals;
+using namespace std::ranges;
 
 namespace pep {
 
@@ -106,7 +106,7 @@ struct TicketRequestRecord {
 
     this->pseudonymHash = std::vector<char>(
         pseudonymHash.begin(), pseudonymHash.end());
-    this->request = RangeToVector(std::move(ticketRequest));
+    this->request = to<std::vector>(ticketRequest);
     this->timestamp = TicksSinceEpoch<milliseconds>(TimeNow());
     this->certificateChain = certificateChain;
   }
@@ -260,7 +260,7 @@ struct PseudonymSetPseudonymRecord {
   PseudonymSetPseudonymRecord(const LocalPseudonym& pseudonym, int64_t set)
     : checksumNonce(RandomVector<char>(16)),
       set(set) {
-    this->pseudonym = RangeToVector(Serialization::ToString(pseudonym.getValidCurvePoint()));
+    this->pseudonym = to<std::vector>(Serialization::ToString(pseudonym.getValidCurvePoint()));
   }
 
   uint64_t checksum() const {
@@ -378,14 +378,14 @@ struct PseudonymizationDomainVerifiersRecord {
     std::string pseudonymizationDomain,
     const CurvePoint& reshuffleCommitment)
     : pseudonymizationDomain(std::move(pseudonymizationDomain)),
-      reshuffleCommitment(RangeToVector(reshuffleCommitment.pack())) {}
-  
+      reshuffleCommitment(to<DbCurvePoint>(reshuffleCommitment.pack())) {}
+
   std::string pseudonymizationDomain; // Primary key
 
   DbCurvePoint reshuffleCommitment;
 
   CurvePoint getReshuffleCommitment() const {
-    return CurvePoint(SpanToString(reshuffleCommitment));
+    return CurvePoint(std::string_view(reshuffleCommitment));
   }
 };
 
@@ -401,9 +401,9 @@ struct SessionVerifiersRecord {
     : certificateHash(std::move(certificateHash)),
       expirationTimestamp{TicksSinceEpoch<milliseconds>(expirationTimestamp)},
       pseudonymizationDomain(std::move(pseudonymizationDomain)),
-      rekeyCommitment(RangeToVector(rekeyCommitment.pack())),
-      reshuffleOverRekeyCommitment(RangeToVector(reshuffleOverRekeyCommitment.pack())),
-      rekeyedPublicKey(RangeToVector(rekeyedPublicKey.pack())) {}
+      rekeyCommitment(to<DbCurvePoint>(rekeyCommitment.pack())),
+      reshuffleOverRekeyCommitment(to<DbCurvePoint>(reshuffleOverRekeyCommitment.pack())),
+      rekeyedPublicKey(to<DbCurvePoint>(rekeyedPublicKey.pack())) {}
 
   std::vector<char> certificateHash; // Primary key
 
@@ -415,13 +415,13 @@ struct SessionVerifiersRecord {
     rekeyedPublicKey;
 
   CurvePoint getRekeyCommitment() const {
-    return CurvePoint(SpanToString(rekeyCommitment));
+    return CurvePoint(std::string_view(rekeyCommitment));
   }
   CurvePoint getReshuffleOverRekeyCommitment() const {
-    return CurvePoint(SpanToString(reshuffleOverRekeyCommitment));
+    return CurvePoint(std::string_view(reshuffleOverRekeyCommitment));
   }
   ElgamalPublicKey getRekeyedPublicKey() const {
-    return CurvePoint(SpanToString(rekeyedPublicKey));
+    return CurvePoint(std::string_view(rekeyedPublicKey));
   }
 };
 
@@ -734,7 +734,7 @@ void TranscryptorStorage::migrateFromV1toV2() {
     // store old checksum before we modify record
     uint64_t old_checksum = record.checksum_v1();
 
-    auto request = Serialization::FromString<SignedTicketRequest2>(SpanToString(record.request));
+    auto request = Serialization::FromString<SignedTicketRequest2>(std::string_view(record.request));
 
     if (!request.logSignature()) {
       PEP_LOG(LogTag, Severity::Warning) << "Ticket request record number "
@@ -744,7 +744,7 @@ void TranscryptorStorage::migrateFromV1toV2() {
     }
 
     auto [serialized, chainId] = this->extractCertificateChain(std::move(request));
-    record.request = RangeToVector(std::move(serialized));
+    record.request = to<std::vector>(std::move(serialized));
     if (chainId)
       record.certificateChain = chainId;
 
@@ -785,17 +785,14 @@ void TranscryptorStorage::computeChecksum(const std::string& chain,
 }
 
 std::vector<std::string> TranscryptorStorage::getChecksumChainNames() {
-  std::vector<std::string> ret;
-  ret.reserve(checksumChains_.size());
-  for (const auto& pair : checksumChains_) {
-    ret.push_back(pair->name());
-  }
-  return  ret;
+  return checksumChains_
+    | views::transform([](const auto& chain) { return chain->name(); })
+    | to<std::vector>();
 }
 
 int64_t TranscryptorStorage::getOrCreateModeSet(
     std::vector<std::string> modes) {
-  std::sort(modes.begin(), modes.end());
+  sort(modes);
   Sha256 hash;
   for (const auto& mode : modes) {
     hash.update(PackUint64BE(mode.size()));
@@ -822,7 +819,7 @@ int64_t TranscryptorStorage::getOrCreateModeSet(
 
 int64_t TranscryptorStorage::getOrCreateColumnSet(
     std::vector<std::string> cols) {
-  std::sort(cols.begin(), cols.end());
+  sort(cols);
   Sha256 hash;
   for (const auto& col : cols) {
     hash.update(PackUint64BE(col.size()));
@@ -849,14 +846,18 @@ int64_t TranscryptorStorage::getOrCreateColumnSet(
 
 int64_t TranscryptorStorage::getOrCreatePseudonymSet(const std::vector<LocalPseudonym>& ps) {
   // Compute key to lookup pseudonymset
-  std::vector<std::string> pps;
-  pps.reserve(ps.size());
-  for (auto& p : ps) {
-    pps.push_back(std::string(p.pack()));
+  auto pps = ps
+    | views::transform([](const LocalPseudonym& p) { return std::string(p.pack()); })
+    | to<std::vector>();
+  sort(pps);
+  std::string key;
+  {
+    Sha256 hasher;
+    for (const auto& pp : pps) {
+      hasher.update(pp);
+    }
+    key = hasher.digest();
   }
-  std::sort(pps.begin(), pps.end());
-  auto key = Sha256().digest(
-      std::accumulate(pps.begin(), pps.end(), std::string()));
 
   // Work around https://github.com/fnc12/sqlite_orm/issues/245
   key = boost::algorithm::hex(key.substr(0, 16));
@@ -1007,7 +1008,7 @@ std::optional<uint64_t> TranscryptorStorage::getCurrentVersion() {
 
 std::optional<ReshuffleRekeyVerifiers> TranscryptorStorage::getUserVerifiers(const X509Certificate& userCertificate) {
   auto domain = userCertificate.getOrganizationalUnit().value();
-  auto hash = RangeToVector(CertificateHash(userCertificate));
+  auto hash = to<std::vector>(CertificateHash(userCertificate));
   if (auto sessionVerifiers = storage_->raw.get_optional<SessionVerifiersRecord>(hash)) {
     PEP_LOG(LogTag, Severity::Debug) << "Found existing verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);
@@ -1033,7 +1034,7 @@ void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& user
     storage_->raw.replace(PseudonymizationDomainVerifiersRecord(domain, verifiers.reshuffleCommitment));
   }
 
-  auto hash = RangeToVector(CertificateHash(userCertificate));
+  auto hash = to<std::vector>(CertificateHash(userCertificate));
   if (auto sessionVerifiers = storage_->raw.get_optional<SessionVerifiersRecord>(hash)) {
     PEP_LOG(LogTag, Severity::Debug) << "Found existing session verifiers for "
       << Logging::Escape(userCertificate.getCommonName().value()) << " in " << Logging::Escape(domain);

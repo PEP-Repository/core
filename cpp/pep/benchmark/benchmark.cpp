@@ -4,6 +4,7 @@
 
 #include <openssl/rand.h>
 
+#include <algorithm>
 #include <random>
 #include <vector>
 
@@ -16,6 +17,8 @@
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
+
+using namespace std::ranges;
 
 namespace {
 void SetBytesProcessed(benchmark::State& state, size_t bytesPerIteration)
@@ -201,7 +204,9 @@ static void BM_GenerateKeyFactor(benchmark::State& state) {
     .reshuffle{},
     .rekey = pep::KeyFactorSecret(pep::RandomArray<64>()),
   });
-  auto fakeDerCertificate = pep::RangeToCollection<std::string>(std::views::iota(0, 970));
+  auto fakeDerCertificate = views::iota(0, 970)
+    | views::transform([](int i) { return static_cast<char>(i); })
+    | to<std::string>();
   const pep::RekeyRecipient recipient(1, std::move(fakeDerCertificate));
   for (auto _ : state)
     benchmark::DoNotOptimize(rsk.generateKeyFactor(recipient));
@@ -265,8 +270,7 @@ static void BM_PageSerialize(benchmark::State& state) {
   for (auto _ : state) {
     if (i == pages.size()) {
       state.PauseTiming();
-      for (size_t j = 0; j < pages.size(); j++)
-        pages[j] = page;
+      fill(pages, page);
       i = 0;
       state.ResumeTiming();
     }
@@ -359,21 +363,21 @@ static void BM_KeyRequestCopy(benchmark::State& state) {
 }
 BENCHMARK(BM_KeyRequestCopy);
 
-const std::string SAMPLE_SHA256_DIGEST = "abcdefghijklmnopqrstuvwxyz123456"; // Digest length of 256 bits = 32 bytes
+const std::string SampleSha256Digest = "abcdefghijklmnopqrstuvwxyz123456"; // Digest length of 256 bits = 32 bytes
 
 static void BM_SignDigest(benchmark::State& state) {
   pep::AsymmetricKeyPair keypair = pep::AsymmetricKeyPair::GenerateKeyPair();
   for (auto _ : state)
-    benchmark::DoNotOptimize(keypair.getPrivateKey().signDigestSha256(SAMPLE_SHA256_DIGEST));
+    benchmark::DoNotOptimize(keypair.getPrivateKey().signDigestSha256(SampleSha256Digest));
   state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_SignDigest);
 
 static void BM_VerifyDigest(benchmark::State& state) {
   pep::AsymmetricKeyPair keypair = pep::AsymmetricKeyPair::GenerateKeyPair();
-  auto sig = keypair.getPrivateKey().signDigestSha256(SAMPLE_SHA256_DIGEST);
+  auto sig = keypair.getPrivateKey().signDigestSha256(SampleSha256Digest);
   for (auto _ : state)
-    benchmark::DoNotOptimize(keypair.getPublicKey().verifyDigestSha256(SAMPLE_SHA256_DIGEST, sig));
+    benchmark::DoNotOptimize(keypair.getPublicKey().verifyDigestSha256(SampleSha256Digest, sig));
   state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_VerifyDigest);
@@ -410,7 +414,7 @@ static void BM_RNG_URBG(benchmark::State& state) {
     NumRandomBytes / sizeof(typename TUrbg::result_type)
   > buffer{};
   for (auto _ : state) {
-    std::ranges::generate(buffer, std::ref(gen));
+    generate(buffer, std::ref(gen));
     benchmark::DoNotOptimize(buffer);
   }
   SetBytesProcessed(state, std::span(buffer).size_bytes());

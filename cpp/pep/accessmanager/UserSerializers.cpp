@@ -4,6 +4,8 @@
 
 namespace pep {
 
+using namespace std::ranges;
+
 CreateUser Serializer<CreateUser>::fromProtocolBuffer(proto::CreateUser&& source) const {
   return CreateUser(std::move(*source.mutable_uid()));
 }
@@ -127,9 +129,9 @@ UserMutationRequest Serializer<UserMutationRequest>::fromProtocolBuffer(proto::U
     std::move(*source.mutable_add_user_identifier()));
   Serialization::AssignFromRepeatedProtocolBuffer(result.removeUserIdentifier,
     std::move(*source.mutable_remove_user_identifier()));
-  result.setPrimaryId = RangeToVector(MoveElements(*source.mutable_set_primary_identifier()));
-  result.unsetPrimaryId = RangeToVector(MoveElements(*source.mutable_unset_primary_identifier()));
-  result.setDisplayId = RangeToVector(MoveElements(*source.mutable_set_display_identifier()));
+  result.setPrimaryId = *source.mutable_set_primary_identifier() | views::as_rvalue | to<std::vector>();
+  result.unsetPrimaryId = *source.mutable_unset_primary_identifier() | views::as_rvalue | to<std::vector>();
+  result.setDisplayId = *source.mutable_set_display_identifier() | views::as_rvalue | to<std::vector>();
   Serialization::AssignFromRepeatedProtocolBuffer(result.createUserGroup,
     std::move(*source.mutable_create_user_group()));
   Serialization::AssignFromRepeatedProtocolBuffer(result.removeUserGroup,
@@ -152,11 +154,11 @@ void Serializer<UserMutationRequest>::moveIntoProtocolBuffer(proto::UserMutation
     std::move(value.removeUser));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_add_user_identifier(),
     std::move(value.addUserIdentifier));
-  auto moveSetPrimaryId = MoveElements(value.setPrimaryId);
+  auto moveSetPrimaryId = views::as_rvalue(value.setPrimaryId);
   dest.mutable_set_primary_identifier()->Assign(moveSetPrimaryId.begin(), moveSetPrimaryId.end());
-  auto moveUnsetPrimaryId = MoveElements(value.unsetPrimaryId);
+  auto moveUnsetPrimaryId = views::as_rvalue(value.unsetPrimaryId);
   dest.mutable_unset_primary_identifier()->Assign(moveUnsetPrimaryId.begin(), moveUnsetPrimaryId.end());
-  auto moveSetDisplayId = MoveElements(value.setDisplayId);
+  auto moveSetDisplayId = views::as_rvalue(value.setDisplayId);
   dest.mutable_set_display_identifier()->Assign(moveSetDisplayId.begin(), moveSetDisplayId.end());
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_remove_user_identifier(),
     std::move(value.removeUserIdentifier));
@@ -232,7 +234,7 @@ QRUser Serializer<QRUser>::fromProtocolBuffer(proto::QRUser&& source) const {
   if (source.has_display_id()) {
     displayId = std::move(*source.mutable_display_id());
   }
-  std::vector<std::string> otherUids = RangeToVector(MoveElements(*source.mutable_other_uids()));
+  std::vector<std::string> otherUids = *source.mutable_other_uids() | views::as_rvalue | to<std::vector>();
   std::vector<QRUserGroupMembership> groups;
   Serialization::AssignFromRepeatedProtocolBuffer(groups,
     std::move(*source.mutable_groups()));
@@ -245,7 +247,7 @@ void Serializer<QRUser>::moveIntoProtocolBuffer(proto::QRUser& dest, QRUser valu
     *dest.mutable_display_id() = std::move(*value.displayId);
   if (value.primaryId)
     *dest.mutable_primary_id() = std::move(*value.primaryId);
-  auto moveOtherUids = MoveElements(value.otherUids);
+  auto moveOtherUids = views::as_rvalue(value.otherUids);
   dest.mutable_other_uids()->Assign(moveOtherUids.begin(), moveOtherUids.end());
 
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_groups(),

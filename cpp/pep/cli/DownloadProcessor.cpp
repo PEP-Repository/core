@@ -1,6 +1,6 @@
 #include <pep/cli/DownloadProcessor.hpp>
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxDrain.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxToVector.hpp>
@@ -9,9 +9,13 @@
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
+
+#include <ranges>
 
 using namespace pep;
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 
@@ -56,9 +60,8 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<Timestamp>>>> GetPay
         }
         auto result = std::make_shared<std::vector<std::optional<Timestamp>>>();
         result->resize(metaCount);
-        for (size_t i = 0U; i < payloadTimestamps->size(); ++i) {
-          auto metaIndex = (*metaIndices)[i];
-          (*result)[metaIndex] = (*payloadTimestamps)[i];
+        for (auto [metaIndex, timestamp] : views::zip(*metaIndices, *payloadTimestamps)) {
+          (*result)[metaIndex] = timestamp;
         }
         return result;
       });
@@ -95,7 +98,7 @@ rxcpp::observable<FakeVoid> DownloadProcessor::update(std::shared_ptr<CoreClient
     .flat_map([self, progress, ctx](std::shared_ptr<VectorOfVectors<std::shared_ptr<EnumerateResult>>> metas) { return self->locateFileContents(progress, ctx, metas); })
     .tap([self, progress, ctx](std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads) { self->prepareLocalData(progress, downloads, ctx->options.assumePristine); })
     .flat_map([self, progress, ctx](std::shared_ptr<std::unordered_map<RecordDescriptor, std::shared_ptr<EnumerateResult>>> downloads) {return self->retrieveFromServer(progress, ctx, downloads); })
-    .op(RxBeforeCompletion([progress]() {progress->advanceToCompletion(); }))
+    .op(RxSubsequently([progress]() {progress->advanceToCompletion(); }))
     .op(RxInstead(FakeVoid())); // Return a single FakeVoid for the entire operation
 }
 
@@ -180,11 +183,11 @@ void DownloadProcessor::prepareLocalData(
       // or the payload will be updated to a newer version (i.e. same participant and column, but different timestamp)
       if (!destination_->remove(existing)) {
         if (assumePristine) {
-          auto update = std::find_if(downloads->cbegin(), downloads->cend(), [&existing](const std::pair<const RecordDescriptor, std::shared_ptr<EnumerateResult>>& enumerated) {
-            return *enumerated.second->accessGroupPseudonym == existing.getParticipant().getLocalPseudonym()
-              && enumerated.second->column == existing.getColumn();
+          bool update = any_of(*downloads | views::values, [&existing](const std::shared_ptr<EnumerateResult>& enumerated) {
+            return *enumerated->accessGroupPseudonym == existing.getParticipant().getLocalPseudonym()
+              && enumerated->column == existing.getColumn();
             });
-          if (update == downloads->cend()) {
+          if (!update) {
             // Data should have been removed from the local copy, but it wasn't there
             PEP_LOG(LogTag + ":update", Severity::Warning) << "Could not remove data that was assumed to be pristine: participant " << existing.getParticipant().getLocalPseudonym().text()
               << "; column " << existing.getColumn()
@@ -246,7 +249,7 @@ rxcpp::observable<FakeVoid> DownloadProcessor::retrieveFromServer(
             return FakeVoid{};
           });
       })
-      .op(RxBeforeCompletion([self, ctx, retrieveProgress]() {
+      .op(RxSubsequently([self, ctx, retrieveProgress]() {
         retrieveProgress->advanceToCompletion();
       }));
 }

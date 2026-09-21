@@ -4,6 +4,8 @@
 #include <pep/networking/Server.hpp>
 #include <pep/utils/Log.hpp>
 
+using namespace std::ranges;
+
 namespace pep::messaging {
 
 namespace {
@@ -121,9 +123,7 @@ void Node::vetConnectionWith(const std::string& description, const std::string& 
 }
 
 void Node::handleConnectionEstablishing(std::shared_ptr<Connection> connection, const LifeCycler::StatusChange& change) {
-  auto existing = std::find_if(existingConnections_.begin(), existingConnections_.end(), [connection](const ExistingConnection& candidate) {
-    return candidate.own == connection;
-    });
+  auto existing = find(existingConnections_, connection, &ExistingConnection::own);
   if (existing == existingConnections_.end()) {
     // This messaging::Connection is sending a notification but we've already discarded it from our existingConnections_, i.e. the associated
     // (binary) networking::Connection has already been destroyed, and we've already run the cleanup code in (the lambda in) Node::start.
@@ -168,6 +168,16 @@ std::string Node::describe() const {
   return binary_->describe();
 }
 
+std::string Node::describeConnection(const Connection& connection) const {
+  if (connection.binary_ == nullptr) {
+    return describe() + " (disconnected)";
+  }
+  if (binary_ == nullptr) {
+    throw std::runtime_error("Can't retrieve description from discarded networking::Node");
+  }
+  return binary_->describeConnection(*connection.binary_);
+}
+
 rxcpp::observable<Connection::Attempt::Result> Node::start() {
   assert(subscriber_ == std::nullopt);
   assert(binary_ != nullptr);
@@ -199,7 +209,7 @@ rxcpp::observable<Connection::Attempt::Result> Node::start() {
 
         std::erase_if(self->existingConnections_, [](const ExistingConnection& candidate) {return candidate.binary.lock() == nullptr; });
         auto binaryConnection = *binaryResult;
-        if (std::any_of(self->existingConnections_.begin(), self->existingConnections_.end(), [binaryConnection](const ExistingConnection& existing) {
+        if (any_of(self->existingConnections_, [binaryConnection](const ExistingConnection& existing) {
           return existing.binary.lock() == binaryConnection;
           })) {
           throw std::runtime_error("Node attempting to create a second messaging connection for a single binary connection");

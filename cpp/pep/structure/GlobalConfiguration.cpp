@@ -1,7 +1,12 @@
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/utils/Log.hpp>
 
+#include <algorithm>
+#include <ranges>
+
 #include <boost/algorithm/string/predicate.hpp>
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -22,8 +27,7 @@ bool AssessorDefinition::matchesStudyContext(const StudyContext& context) const 
   if (studyContexts.empty()) {
     return context.isDefault();
   }
-  auto contextsEnd = studyContexts.cend();
-  return std::find_if(studyContexts.cbegin(), contextsEnd, [id = context.getId()](const std::string& candidate) { return boost::iequals(candidate, id); }) != contextsEnd;
+  return any_of(studyContexts, [id = context.getId()](const std::string& candidate) { return boost::iequals(candidate, id); });
 }
 
 size_t UserPseudonymFormat::getTotalLength() const {
@@ -68,11 +72,11 @@ PseudonymFormat::PseudonymFormat(std::string prefix, size_t digits)
   }
 
   // Require as many digits as configured, plus those for the checksum
-  regexPattern_ += "[0-9]{" + std::to_string(*getTotalNumberOfDigits()) + "}";
+  regexPattern_ += "[0-9]{" + std::to_string(*getTotalNumberOfDigits()) + "}"; //NOLINT(clang-analyzer-core.CallAndMessage) False positive (Clang-Tidy 21)
 }
 
 PseudonymFormat::PseudonymFormat(std::string regexPattern)
-  : prefix_(), digits_(0U), regexPattern_(std::move(regexPattern)) {
+  : regexPattern_(std::move(regexPattern)) {
   if (regexPattern_.empty()) {
     throw std::runtime_error("No pattern specified for pseudonym format");
   }
@@ -95,11 +99,10 @@ std::optional<size_t> PseudonymFormat::getLength() const {
 }
 
 std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonym(const std::string& column) const noexcept {
-  auto end = shortPseudonyms_.cend();
-  auto position = std::find_if(shortPseudonyms_.cbegin(), end, [column](ShortPseudonymDefinition candidate) {
-    return column == candidate.getColumn().getFullName();
+  auto position = find(shortPseudonyms_, column, [](const ShortPseudonymDefinition& candidate) {
+    return candidate.getColumn().getFullName();
   });
-  if (position == end) {
+  if (position == shortPseudonyms_.cend()) {
     return std::nullopt;
   }
   return *position;
@@ -107,17 +110,15 @@ std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonym(c
 
 std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonymForValue(const std::string& value) const noexcept {
   // Look up the value in the errata
-  auto errataEnd = spErrata_.cend();
-  auto erratum = std::find_if(spErrata_.cbegin(), errataEnd, [&value](const ShortPseudonymErratum& candidate) { return candidate.value == value; });
-  if (erratum != errataEnd) {
+  auto erratum = find(spErrata_, value, &ShortPseudonymErratum::value);
+  if (erratum != spErrata_.cend()) {
     assert(!erratum->column.empty());
     return this->getShortPseudonym(erratum->column);
   }
 
   // Look up the value's prefix in the short pseudonym definitions
-  auto spsEnd = shortPseudonyms_.cend();
-  auto sp = std::find_if(shortPseudonyms_.cbegin(), spsEnd, [&value](const ShortPseudonymDefinition& candidate) {return value.starts_with(candidate.getPrefix()); });
-  if (sp != spsEnd) {
+  auto sp = find_if(shortPseudonyms_, [&value](const ShortPseudonymDefinition& candidate) {return value.starts_with(candidate.getPrefix()); });
+  if (sp != shortPseudonyms_.cend()) {
     return *sp;
   }
 
@@ -127,11 +128,8 @@ std::optional<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonymFo
 
 
 std::optional<ColumnSpecification> GlobalConfiguration::getColumnSpecification(const std::string& column) const noexcept {
-  auto end = columnSpecifications_.cend();
-  auto position = std::find_if(columnSpecifications_.cbegin(), end, [column](ColumnSpecification candidate) {
-    return column == candidate.getColumn();
-  });
-  if (position == end) {
+  auto position = find(columnSpecifications_, column, &ColumnSpecification::getColumn);
+  if (position == columnSpecifications_.cend()) {
     return std::nullopt;
   }
   return *position;
@@ -216,12 +214,15 @@ GlobalConfiguration::GlobalConfiguration(
 }
 
 std::vector<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonyms(const std::string& studyContext, const std::optional<uint32_t>& visitNumber) const {
-  std::vector<ShortPseudonymDefinition> result;
-  auto inserter = std::back_inserter(result);
-  std::copy_if(shortPseudonyms_.cbegin(), shortPseudonyms_.cend(), inserter, [studyContext, visitNumber](const ShortPseudonymDefinition& candidate) {return candidate.getStudyContext() == studyContext && candidate.getColumn().getVisitNumber() == visitNumber; });
+  auto result = shortPseudonyms_
+    | views::filter([studyContext, visitNumber](const ShortPseudonymDefinition& candidate) {
+      return boost::iequals(candidate.getStudyContext(), studyContext)
+        && candidate.getColumn().getVisitNumber() == visitNumber;
+    })
+    | to<std::vector>();
 
   for (const auto& entry : additionalStickers_) {
-    if (entry.studyContext == studyContext && entry.visit == visitNumber) {
+    if (boost::iequals(entry.studyContext, studyContext) && entry.visit == visitNumber) {
       auto defined = *getShortPseudonym(entry.column);
       result.emplace_back(entry.column, defined.getPrefix(), defined.getLength(), defined.getCastor(),
         entry.stickers, entry.suppressAdditionalStickers, defined.getConfiguredDescription(),
@@ -233,14 +234,10 @@ std::vector<ShortPseudonymDefinition> GlobalConfiguration::getShortPseudonyms(co
 }
 
 std::vector<std::string> GlobalConfiguration::getVisitAssessorColumns(const pep::StudyContext& context) const {
-  std::vector<std::string> result{};
   auto visits = getNumberOfVisits(context.getIdIfNonDefault());
-  result.reserve(visits);
-  for (unsigned i = 1; i <= visits; ++i) {
-    auto column = context.getAdministeringAssessorColumnName(i);
-    result.push_back(std::move(column));
-  }
-  return result;
+  return views::iota(1U, visits + 1U)
+    | views::transform([&context](uint32_t visit) { return context.getAdministeringAssessorColumnName(visit); })
+    | to<std::vector>();
 }
 
 

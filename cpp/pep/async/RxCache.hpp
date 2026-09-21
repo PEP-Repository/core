@@ -8,18 +8,17 @@
 
 namespace pep {
 
-/*! \brief Caches the emissions of an RX observable, allowing them to be (re-)observed locally.
-  *
-  * Mainly intended to solve timing issues w.r.t. lifetime, an RxCache
-  * is kept alive for as long as
-  * - the original observable emits items, or
-  * - someone observes the cached emissions, or
-  * - (obviously) someone retains a shared_ptr to it.
-  * (Any condition or combination thereof will keep the object alive.)
-  *
-  * ONLY USE RxCache with observables that terminate, i.e. they invoke their
-  * "onCompleted" handler.
-  */
+/// \brief Caches the emissions of an RX observable, allowing them to be (re-)observed locally.
+///
+/// Mainly intended to solve timing issues w.r.t. lifetime, an RxCache
+/// is kept alive for as long as
+/// - the original observable emits items, or
+/// - someone observes the cached emissions, or
+/// - (obviously) someone retains a shared_ptr to it.
+/// (Any condition or combination thereof will keep the object alive.)
+///
+/// ONLY USE RxCache with observables that terminate, i.e. they invoke their
+/// "onCompleted" handler.
 template <typename T>
 class RxCache : public std::enable_shared_from_this<RxCache<T>> {
 public:
@@ -27,13 +26,12 @@ public:
   virtual rxcpp::observable<T> observe() const = 0;
 };
 
-/*! \brief Aggregates the emissions of an observable into (a shared_ptr to) an RxCache instance: CreateRxCache([]() {return myObservable;}).
-           The cache does not create a source observable until the cache itself is (observed and) subscribed to.
-           If a source observable completes with an error, the cache creates a new source observable when it is re-(observed and )subscribed to.
- * \tparam CreateSource A parameterless function-like type that returns an observable<> instance.
- * \param createSource A function-like object that creates a source observable.
- * \return An RxCache<> emitting the items (or error) emitted by the source observable.
- */
+/// \brief Aggregates the emissions of an observable into (a shared_ptr to) an RxCache instance: CreateRxCache([]() {return myObservable;}).
+/// The cache does not create a source observable until the cache itself is (observed and) subscribed to.
+/// If a source observable completes with an error, the cache creates a new source observable when it is re-(observed and )subscribed to.
+/// \tparam CreateSource A parameterless function-like type that returns an observable<> instance.
+/// \param createSource A function-like object that creates a source observable.
+/// \return An RxCache<> emitting the items (or error) emitted by the source observable.
 template <typename CreateSource>
 std::shared_ptr<RxCache<typename decltype(std::declval<CreateSource>()())::value_type>> CreateRxCache(const CreateSource& createSource);
 

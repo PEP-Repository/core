@@ -31,14 +31,12 @@ struct CommandPath {
   bool operator==(const CommandPath&) const = default;
 };
 
-/*!
- * \brief Result of a parameter transformation/forwarding operation.
- * \details Describes what to add at the target and where to dispatch to.
- * `toAdd` contains values to inject at the target (the original param itself is erased by the framework).
- * `ancestor` is the command from which `childPath` is navigated; nullptr means dispatch from self.
- * `childPath` is a typed sequence of subcommand names to navigate from `ancestor` to the target.
- * An empty `childPath` means the ancestor itself is the target.
- */
+/// \brief Result of a parameter transformation/forwarding operation.
+/// \details Describes what to add at the target and where to dispatch to.
+/// `toAdd` contains values to inject at the target (the original param itself is erased by the framework).
+/// `ancestor` is the command from which `childPath` is navigated; nullptr means dispatch from self.
+/// `childPath` is a typed sequence of subcommand names to navigate from `ancestor` to the target.
+/// An empty `childPath` means the ancestor itself is the target.
 struct ParameterTransformationResult {
   NamedValues toAdd;
   Command* ancestor = nullptr; // nullptr = dispatch from self
@@ -48,12 +46,10 @@ struct ParameterTransformationResult {
     : toAdd(std::move(toAdd)), ancestor(ancestor), childPath(std::move(childPath)) {}
 };
 
-/*!
- * \brief Definition of a formal parameter belonging to a command.
- * \details Parameters may accept a value (via `.value(...)`) or just be present as a switch or not.
- * Parameters accepting a value may be positional (have no associated switch).
- * Besides its canonical name, a non-positional parameter may have aliases.
- */
+/// \brief Definition of a formal parameter belonging to a command.
+/// \details Parameters may accept a value (via `.value(...)`) or just be present as a switch or not.
+/// Parameters accepting a value may be positional (have no associated switch).
+/// Besides its canonical name, a non-positional parameter may have aliases.
 class Parameter {
   friend class Parameters;
 
@@ -120,10 +116,8 @@ public:
   Values parse(const ProvidedValues& lexed) const;
 };
 
-/*!
- * \brief Parameters belonging to one (sub)command.
- * These stop at the first unrecognized argument or "--".
- */
+/// \brief Parameters belonging to one (sub)command.
+/// These stop at the first unrecognized argument or "--".
 class Parameters {
   friend class Command;
 
@@ -140,33 +134,23 @@ private:
   void add(const Parameter& parameter);
   void writeHelpText(std::ostream& destination, const std::string& header, std::vector<Index> indices) const;
 
-  /*!
-   * \param terminated If non-null, will be set to true if lexing stopped after a `SwitchAnnouncement::StopProcessing` token
-   */
+  /// \param terminated If non-null, will be set to true if lexing stopped after a `SwitchAnnouncement::StopProcessing` token
   LexedValues lex(std::queue<std::string>& arguments, bool* terminated = nullptr) const;
   NamedValues parse(const LexedValues& lexed) const;
   void finalize(NamedValues& parsed) const;
 
-  /*!
-   * \brief Get switch requiring a value at this position (`--switch <here>`), if any.
-   */
+  /// Get switch requiring a value at this position (`--switch <here>`), if any.
   const Parameter* currentSwitchRequiringValue(const LexedValues& lexed) const noexcept;
 
-  /*!
-   * \brief Get the first positional parameter from this position accepting a value.
-   */
+  /// Get the first positional parameter from this position accepting a value.
   const Parameter* firstPositional(const LexedValues& lexed) const noexcept;
 
-  /*!
-   * \brief Get parameters for which switches should be completed at this position.
-   */
+  /// Get parameters for which switches should be completed at this position.
   std::vector<const Parameter*> getSwitchesToAutocomplete(const LexedValues& lexed) const noexcept;
 
   inline bool empty() const { return entries_.empty(); }
   bool hasRequired() const;
-  /*!
-   * \brief Is there a positional parameter accepting multiple arguments?
-   */
+  /// Is there a positional parameter accepting multiple arguments?
   bool hasInfinitePositional() const noexcept;
   std::vector<std::string> getInvocationSummary() const;
   void writeHelpText(std::ostream& destination) const;

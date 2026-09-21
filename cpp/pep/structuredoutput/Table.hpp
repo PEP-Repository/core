@@ -11,30 +11,30 @@
 namespace pep::structuredOutput {
 
 /// A densely populated rectangular table of strings, stored in contiguous memory.
-/// @details Designed as a simple and generic structure that we can translate to various output formats.
+/// \details Designed as a simple and generic structure that we can translate to various output formats.
 class Table final {
 public:
 
   /// Reference to the fields that make up a single record
-  /// @warning Calling a non-const member function of Table can invalidate existing ConstRecordRef objects that
+  /// \warning Calling a non-const member function of Table can invalidate existing ConstRecordRef objects that
   /// point into that table, because potential data reallocation.
   using ConstRecordRef = std::span<const std::string>;
 
   /// Reference to the fields that make up a single record
-  /// @warning Calling a non-const member function of Table can invalidate existing ConstRecordRef objects that
+  /// \warning Calling a non-const member function of Table can invalidate existing ConstRecordRef objects that
   /// point into that table, because potential data reallocation.
   using RecordRef = std::span<std::string>;
 
   /// Creates an empty table from just a header
-  /// @throws std::runtime_error if \p header is empty
+  /// \throws std::runtime_error if \p header is empty
   static Table EmptyWithHeader(std::vector<std::string> header) {
     const auto rowSize = header.size(); // because we want to pass the size as it was before moving
     return Table(std::move(header), {}, rowSize);
   }
 
   /// Creates a table by cutting up a flat vector of strings into records that match the size of the header
-  /// @throws std::runtime_error if \p header is empty
-  /// @throws std::runtime_error if the size of \p data is not a multiple of the size of \p header
+  /// \throws std::runtime_error if \p header is empty
+  /// \throws std::runtime_error if the size of \p data is not a multiple of the size of \p header
   static Table FromSeparateHeaderAndData(std::vector<std::string> header, std::vector<std::string> data) {
     const auto rowSize = header.size(); // because we want to pass the size as it was before moving
     return Table(std::move(header), std::move(data), rowSize);
@@ -47,11 +47,11 @@ public:
   RecordRef header() noexcept { return asMutable(std::as_const(*this).header()); }
 
   /// All records in the table.
-  /// @details The header is not considered to be a record and is thus not included.
+  /// \details The header is not considered to be a record and is thus not included.
   std::vector<ConstRecordRef> records() const noexcept;
 
   /// All records in the table.
-  /// @details The header is not considered to be a record and is thus not included.
+  /// \details The header is not considered to be a record and is thus not included.
   std::vector<RecordRef> records() noexcept { return asMutable(std::as_const(*this).records()); }
 
   /// The number of records in the table
@@ -67,24 +67,24 @@ public:
   bool empty() const noexcept { return data_.empty(); }
 
   /// Ensures that enough memory is allocated for at least \p n records.
-  /// @warning May reallocate internal data and invalidate ConstRecordRef objects that point into this Table
+  /// \warning May reallocate internal data and invalidate ConstRecordRef objects that point into this Table
   void reserve(std::size_t n) { data_.reserve(n * recordSize_); }
 
   /// Appends a new record to the end of the table
-  /// @return A reference to the record that was created
-  /// @throws std::runtime_error if the size of \p record in not equal to the recordSize
-  /// @warning May reallocate internal data and invalidate ConstRecordRef objects that point into this Table
+  /// \return A reference to the record that was created
+  /// \throws std::runtime_error if the size of \p record in not equal to the recordSize
+  /// \warning May reallocate internal data and invalidate ConstRecordRef objects that point into this Table
   RecordRef emplace_back(std::vector<std::string> record);
 
 private:
   Table(std::vector<std::string> header, std::vector<std::string> data, std::size_t recordSize);
 
   /// Remove const qualification from a reference to internal data
-  /// @pre ConstRecordRef must point into data_
+  /// \pre ConstRecordRef must point into data_
   RecordRef asMutable(ConstRecordRef);
 
   /// Remove const qualification from references to internal data
-  /// @pre every ConstRecordRef must point into data_
+  /// \pre every ConstRecordRef must point into data_
   std::vector<RecordRef> asMutable(const std::vector<ConstRecordRef>&);
 
   std::vector<std::string> header_; ///< name of each column

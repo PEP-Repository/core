@@ -26,11 +26,12 @@ namespace {
     auto io_context = std::make_shared<boost::asio::io_context>();
     sftest::Envs envs; // fills itself with environment variables PEP_*
 
-    std::shared_ptr<Client> client = envs.CreateS3Client(io_context);
+    std::shared_ptr<Client> client = sftest::CreateS3Client(io_context, envs.hostA);
     client->start();
     PEP_DEFER(client->shutdown(); io_context->run(););
 
     std::string data(10, '\0');
+    //NOLINTNEXTLINE(modernize-use-ranges) std::ranges::iota needs libc++ 23; unavailable on our Emscripten/Apple Clang floor
     std::iota(data.begin(), data.end(), '\0');
 
     {

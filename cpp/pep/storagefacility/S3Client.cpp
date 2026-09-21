@@ -101,8 +101,7 @@ void ClientImp::precheckResponse(const HTTPResponse& resp,
     const std::vector<unsigned int>& acceptedStatusCodes)
 {
 #ifndef SIMULATE_S3_BACKEND_FAILURE
-  if (std::count(acceptedStatusCodes.begin(),
-        acceptedStatusCodes.end(), resp.getStatusCode()) == 0)
+  if (std::ranges::count(acceptedStatusCodes, resp.getStatusCode()) == 0)
 #else
 #ifdef __GNUC__
 # pragma GCC diagnostic warning "-Wunreachable-code"

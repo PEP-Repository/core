@@ -8,10 +8,8 @@
 namespace pep {
 namespace commandline {
 
-/*!
- * \brief One (sub)command, with parameters directly following it.
- * Contains formal definition and possibly the concrete values.
- */
+/// \brief One (sub)command, with parameters directly following it.
+/// Contains formal definition and possibly the concrete values.
 class Command {
 private:
   std::optional<NamedValues> parameterValues_;
@@ -54,22 +52,18 @@ public:
   virtual Parameters getSupportedParameters() const; // Derived classes should add to this set
   const NamedValues& getParameterValues() const; // Available after finalizeParameters() has been called
 
-  /*!
-   * \brief Dispatch to a (possibly nested) descendant using pre-built values, without re-lexing ancestor args.
-   * \details Routing steps finalize this level and navigate into the named child. At the leaf,
-   * `leafValues` are merged in, `leafArgs` are lexed, then the command is finalized and executed.
-   * Use this for alias forwarding and parameter deprecation.
-   * \param childPath Subcommand names to navigate to the target. Empty means this command is the target.
-   * \param leafValues Values to merge into the target (leaf) command before finalizing.
-   * \param leafArgs   Raw arguments to lex into the target command before finalizing.
-   */
+  /// \brief Dispatch to a (possibly nested) descendant using pre-built values, without re-lexing ancestor args.
+  /// \details Routing steps finalize this level and navigate into the named child. At the leaf,
+  /// `leafValues` are merged in, `leafArgs` are lexed, then the command is finalized and executed.
+  /// Use this for alias forwarding and parameter deprecation.
+  /// \param childPath Subcommand names to navigate to the target. Empty means this command is the target.
+  /// \param leafValues Values to merge into the target (leaf) command before finalizing.
+  /// \param leafArgs   Raw arguments to lex into the target command before finalizing.
   int dispatchTo(CommandPath childPath, NamedValues leafValues, std::queue<std::string> leafArgs = {});
 };
 
-/*!
- * \brief Utility base for child commands.
- * \tparam TParent The parent command type. Must inherit from Command.
- */
+/// \brief Utility base for child commands.
+/// \tparam TParent The parent command type. Must inherit from Command.
 template <typename TParent>
 class ChildCommandOf : public Command {
 private:

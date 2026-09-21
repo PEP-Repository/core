@@ -22,9 +22,8 @@ void PropertySerializer<EnrolledPartyKeys>::write(boost::property_tree::ptree& d
   }
 }
 EnrolledPartyKeys PropertySerializer<EnrolledPartyKeys>::read(const boost::property_tree::ptree& source, const DeserializationContext& context) const {
-  const auto scheme = GetOptionalValue(
-    DeserializeProperties<std::optional<std::string>>(source, "EnrollmentScheme", context),
-    Serialization::ParseEnum<EnrollmentScheme>);
+  const auto scheme = DeserializeProperties<std::optional<std::string>>(source, "EnrollmentScheme", context)
+    .transform(Serialization::ParseEnum<EnrollmentScheme>);
   auto privateKey = DeserializeProperties<std::optional<std::string>>(source, "PrivateKey", context);
   auto certificateChain = DeserializeProperties<std::optional<std::string>>(source, "CertificateChain", context);
 

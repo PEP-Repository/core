@@ -5,7 +5,8 @@
 #include <cmath>
 
 int main(int argc, char* argv[]) {
-  auto env = pep::RegisteredTestEnvironment::Create(argc, argv);
+  std::span<const char* const> args(argv, static_cast<std::size_t>(argc));
+  auto env = pep::RegisteredTestEnvironment::Create(args);
   if (env != nullptr) {
     testing::AddGlobalTestEnvironment(env); // googletest takes ownership of the registered environment objects. No further memory management required. See: http://google.github.io/googletest/advanced.html
   }

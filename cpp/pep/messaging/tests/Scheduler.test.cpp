@@ -8,6 +8,7 @@
 #include <numeric>
 
 using namespace std::literals;
+using namespace std::ranges;
 
 namespace {
 
@@ -58,8 +59,8 @@ public:
   }
 
   size_t count() const noexcept { return std::accumulate(streams_.cbegin(), streams_.cend(), size_t{}, [](size_t total, const auto& pair) {return total + pair.second.items; }); }
-  bool closed() const noexcept { return std::all_of(streams_.cbegin(), streams_.cend(), [](const auto& pair) { return pair.second.closed; }); }
-  bool error() const noexcept { return std::any_of(streams_.cbegin(), streams_.cend(), [](const auto& pair) { return pair.second.exception != nullptr; }); }
+  bool closed() const noexcept { return all_of(streams_, [](const auto& pair) { return pair.second.closed; }); }
+  bool error() const noexcept { return any_of(streams_, [](const auto& pair) { return pair.second.exception != nullptr; }); }
 };
 
 
@@ -141,10 +142,9 @@ void TestStreams(const std::vector<size_t> sizes) {
   boost::asio::io_context ioContext;
   auto streamId = pep::messaging::StreamId::BeforeFirst();
 
-  std::vector<Stream> streams;
-  for (auto size : sizes) {
-    streams.emplace_back(ioContext, streamId, size);
-  }
+  auto streams = sizes
+    | views::transform([&](std::size_t size) { return Stream(ioContext, streamId, size); })
+    | to<std::vector>();
 
   size_t items = std::accumulate(streams.cbegin(), streams.cend(), size_t{}, [](size_t total, const Stream& stream) {return total + stream.itemCount(); });
 

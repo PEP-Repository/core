@@ -12,6 +12,8 @@
 #include <pep/structuredoutput/Tree.hpp>
 #include <pep/cli/structuredoutput/TreeFromAmaQueryResponse.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -22,6 +24,7 @@
 
 using namespace std::chrono;
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 
@@ -88,9 +91,7 @@ rxcpp::observable<std::shared_ptr<ParticipantState>> ParticipantState::Get(std::
 
   pep::EnumerateAndRetrieveData2Opts opts;
   opts.groups.push_back("*");
-  for (const auto& entry : GetFieldReadMethods()) { // Read all columns that we can process
-    opts.columns.push_back(entry.first);
-  }
+  opts.columns = GetFieldReadMethods() | views::keys | to<std::vector>(); // Read all columns that we can process
 
   return client->enumerateAndRetrieveData2(opts) // Get salient data for every row
     .reduce(
@@ -340,7 +341,7 @@ ParticipantGroup::AutoAssignContext::AutoAssignContext(std::shared_ptr<pep::Core
 }
 
 void ParticipantGroup::AutoAssignContext::ToLower(std::string& value) {
-  std::transform(value.begin(), value.end(), value.begin(), [](char c) {return std::tolower(c); });
+  transform(value, value.begin(), [](char c) {return std::tolower(c); });
 }
 
 std::string ParticipantGroup::AutoAssignContext::getGroupNameForStudyContext(const std::optional<pep::StudyContext>& context) const {
@@ -430,7 +431,7 @@ private:
       using FormatConfig = decltype(so::QueryDisplayConfig<so::AmaQueryFlags>::formatConfig);
 
       const auto isIncluded = [includedTypes = values.getOptionalMultiple<std::string>("include")](const auto key) {
-        return includedTypes.empty() || std::ranges::find(includedTypes, key.simple) != includedTypes.end();
+        return includedTypes.empty() || contains(includedTypes, key.simple);
       };
       const auto format = values.get<std::string>("format");
 
@@ -820,9 +821,9 @@ private:
           return client->requestTicket2(requestTicketOpts)
             .flat_map([group, client](const pep::IndexedTicket2& indexed) {
             auto ticket = indexed.openTicketWithoutCheckingSignature();
-            std::vector<pep::PolymorphicPseudonym> pps;
-            pps.reserve(ticket->accessSubjects.size());
-            std::transform(ticket->accessSubjects.begin(), ticket->accessSubjects.end(), std::back_inserter(pps), [](const pep::LocalPseudonyms& local) {return local.polymorphic; });
+            auto pps = ticket->accessSubjects
+              | views::transform(&pep::LocalPseudonyms::polymorphic)
+              | to<std::vector>();
             return client->getAccessManagerProxy()->amaRemoveParticipantsFromGroup(group, pps);
               });
           });

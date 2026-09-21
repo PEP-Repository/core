@@ -11,6 +11,7 @@
 #include <memory>
 
 #include <filesystem>
+#include <ranges>
 #include <utility>
 
 #ifdef _WIN32
@@ -23,9 +24,13 @@
 #include <unistd.h>
 #endif
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
+
+const std::string LogTag = "Application";
 
 //NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static const Application* applicationInstance = nullptr;
@@ -38,7 +43,7 @@ void LogVersionInfo(const std::string& tag, std::string summary) {
   if (summary.empty()) {
     summary = "No version information available. Running a local build?";
   }
-  PEP_LOG("Application " + tag, Severity::Info) << summary;
+  PEP_LOG(LogTag + ' ' += tag, Severity::Info) << summary;
 }
 
 template <typename T>
@@ -184,24 +189,15 @@ Application::~Application() {
 }
 
 std::string Application::getName() const {
-  if (argc_ > 0) {
-    return std::filesystem::path(this->getArgv()[0]).filename().string();
+  if (!args_.empty()) {
+    return std::filesystem::path(args_.front()).filename().string();
   }
   return "[this program]";
 }
 
-int Application::getArgc() const {
-  if (argc_ < 0) {
-    throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
-  }
-  return argc_;
-}
-
-char** Application::getArgv() const {
-  if (argv_ == nullptr) {
-    throw std::runtime_error("Main function parameters may not be retrieved until the run() method is invoked");
-  }
-  return argv_;
+std::vector<std::string> Application::ConvertArguments(std::span<const char* const> args) {
+  return args | views::transform([](const char* arg) { return std::string(arg); })
+    | to<std::vector>();
 }
 
 int Application::RunWithoutError(std::function<int()> implementor) noexcept {
@@ -233,8 +229,15 @@ void Application::initializeLoggingOnce() {
   { // initialize logging sinks
     std::vector<std::shared_ptr<Logging>> logging;
 
-    if (auto consoleLevelStr = values.getOptional<std::string>("loglevel")) {
-      logging.push_back(std::make_shared<ConsoleLogging>(Logging::ParseSeverity(*consoleLevelStr)));
+    std::optional<Severity> userProvidedConsoleLevel =
+      values.getOptional<std::string>("loglevel")
+      .transform(Logging::ParseSeverity);
+    std::optional<Severity> consoleLevel = this->consoleLogMinimumSeverityLevel();
+    if (userProvidedConsoleLevel) {
+      consoleLevel = userProvidedConsoleLevel;
+    }
+    if (consoleLevel) {
+      logging.push_back(std::make_shared<ConsoleLogging>(*consoleLevel));
       usingConsoleLog = true;
     }
 
@@ -247,6 +250,12 @@ void Application::initializeLoggingOnce() {
     }
 
     Logging::Initialize(logging);
+
+    // Only log this after initializing logging (otherwise style is inconsistent etc.)
+    if (userProvidedConsoleLevel && userProvidedConsoleLevel < Logging::compiledMinimumSeverity) {
+      PEP_LOG(LogTag, Severity::Warning)
+        << "Logs with severity below <" << Logging::FormatSeverity(Logging::compiledMinimumSeverity) << "> are not enabled for this build";
+    }
   }
 
   showVersionInfo_ = !values.has("suppress-version-info");
@@ -255,17 +264,15 @@ void Application::initializeLoggingOnce() {
   }
 }
 
-int Application::run(int argc, char* argv[]) { //NOLINT(modernize-avoid-c-arrays)
+int Application::run(std::vector<std::string> args) {
   if (useUnwinder()) {
     InitializeUnwinder();
   }
 
-  std::queue<std::string> args;
-  std::for_each(argv + 1, argv + argc, [&args](const char* arg) {args.push(arg); });
+  args_ = std::move(args);
 
-  argc_ = argc;
-  argv_ = argv;
-  return this->process(args);
+  auto argsQueue = args_ | views::drop(1) | to<std::queue>();
+  return this->process(argsQueue);
 }
 
 std::filesystem::path Application::rawConfigDirectory() const {
@@ -299,7 +306,7 @@ std::filesystem::path Application::getConfigDirectory() {
 }
 
 Configuration Application::loadMainConfigFile() {
-  //NOLINTNEXTLINE(bugprone-unused-local-non-trivial-variable) XXX False positive in older Clang-Tidy
+  //NOLINTNEXTLINE(bugprone-unused-local-non-trivial-variable) TODO(workaround) False positive in older Clang-Tidy
   [[maybe_unused]] auto dir = this->getConfigDirectory(); // Logs version info (if required) at this time
   auto file = this->getMainConfigPath();
   assert(dir == file.parent_path());
@@ -317,7 +324,7 @@ bool Application::ReportTermination(std::exception_ptr exception) noexcept {
     }
 
     if (usingConsoleLog) {
-      PEP_LOG("Application", Severity::Critical) << "Terminating application " << detail;
+      PEP_LOG(LogTag, Severity::Critical) << "Terminating application " << detail;
     }
     else {
       auto channel = CreateNotificationChannel(true);
@@ -334,38 +341,7 @@ bool Application::ReportTermination(std::exception_ptr exception) noexcept {
 
 #ifdef _WIN32
 
-// Helper class to convert a number of wide strings to the char *argv[] expected by Application.execute()
-class MainFunctionArguments {
-  std::vector<std::string> argStrings_;
-  std::vector<char*> argv_;
-
- public:
-   MainFunctionArguments(int argc, LPWSTR* wideArgv) {
-     assert(argc >= 0);
-     assert(wideArgv != nullptr);
-
-     for (int i = 0; i < argc; i++) {
-       auto wide = wideArgv[i];
-       assert(wide != nullptr);
-       argStrings_.emplace_back(win32api::WideStringToUtf8(wide));
-     }
-
-     argv_.reserve(argStrings_.size());
-     std::transform(argStrings_.begin(), argStrings_.end(), std::back_inserter(argv_), [](std::string& argString) {return argString.data(); });
-
-     argv_.emplace_back(nullptr); // C++ standard requires that "The value of argv[argc] shall be 0": see https://timsong-cpp.github.io/cppwp/basic.start.main
-   }
-
-  int argc() const noexcept {
-    return static_cast<int>(argStrings_.size());
-  }
-
-  char** argv() noexcept {
-    return argv_.data();
-  }
-};
-
-int Application::InvokeWithArgcArgv(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd, std::function<int(int, char**)> invoke) {
+int Application::InvokeWithArgs(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd, std::function<int(std::vector<std::string> args)> invoke) {
   runningOnWindowsSubsystem = true;
 
   int argc;
@@ -375,10 +351,11 @@ int Application::InvokeWithArgcArgv(HINSTANCE hInstance, HINSTANCE hPrevInstance
   }
   PEP_DEFER(::LocalFree(wideArgv));
 
-  MainFunctionArguments arguments(argc, wideArgv);
-  assert(argc == arguments.argc());
-
-  return invoke(argc, arguments.argv());
+  std::span<const LPCWSTR> wideArgs(wideArgv, static_cast<std::size_t>(argc));
+  return invoke(wideArgs
+    | views::transform([](LPCWSTR wstr) {
+      return win32api::WideStringToUtf8(wstr);
+    }) | to<std::vector>());
 }
 
 #endif
@@ -405,13 +382,9 @@ std::optional<Severity> Application::fileLogMinimumSeverityLevel() const {
 
 commandline::Parameters Application::getSupportedParameters() const {
   auto loglevel = commandline::Value<std::string>().allow(Logging::SeverityNames());
-  auto defaultValue = this->consoleLogMinimumSeverityLevel();
-  if (defaultValue.has_value()) {
-    loglevel = loglevel.defaultsTo(Logging::FormatSeverity(*defaultValue));
-  }
   auto result = commandline::Command::getSupportedParameters()
     + commandline::Parameter("suppress-version-info", "Don't log (" + Logging::FormatSeverity(Severity::Info) + "-level messages with) version details")
-    + commandline::Parameter("loglevel", "Write log messages to stderr if they have at least this severity").value(loglevel)
+    + commandline::Parameter("loglevel", "Write log messages to stderr if they have at least this severity").value(std::move(loglevel))
     + commandline::Parameter("version", "Produce version info and exit");
 
 #ifdef _WIN32
@@ -427,7 +400,7 @@ commandline::Parameters Application::getSupportedParameters() const {
 std::optional<int> Application::processLexedParameters(const commandline::LexedValues& lexed) {
 #ifdef _WIN32
   if (runningOnWindowsSubsystem) {
-    if (lexed.find("bind-to-console") != lexed.cend()) {
+    if (lexed.contains("bind-to-console")) {
       winConsole.parentConsoleBinding = win32api::ParentConsoleBinding::TryCreate();
       if (winConsole.parentConsoleBinding != nullptr) {
         std::cerr << '\n' // Don't write on the line containing the next user prompt
@@ -446,7 +419,7 @@ std::optional<int> Application::processLexedParameters(const commandline::LexedV
 
 #endif
 
-  if (lexed.find("version") != lexed.end()){
+  if (lexed.contains("version")){
     return printVersionInfo(lexed);
   }
 
@@ -456,7 +429,7 @@ std::optional<int> Application::processLexedParameters(const commandline::LexedV
   // Also, we allow printing version info above.
   if (::GetACP() != CP_UTF8) {
     if (lexed.contains("allow-non-utf8")) {
-      PEP_LOG("Application", Severity::Warning)
+      PEP_LOG(LogTag, Severity::Warning)
         << "Code page was not set to UTF-8, you may be using an old Windows version. "
            "Using --allow-non-utf8 is not recommended, you may experience problems using special characters.";
     } else {

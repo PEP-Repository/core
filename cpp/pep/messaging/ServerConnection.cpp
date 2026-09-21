@@ -1,8 +1,11 @@
 #include <pep/async/CreateObservable.hpp>
 #include <pep/messaging/BinaryProtocol.hpp>
 #include <pep/messaging/ServerConnection.hpp>
+#include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MiscUtil.hpp>
+
+using namespace std::literals;
 
 namespace {
 const std::string LogTag = "ServerConnection";
@@ -11,15 +14,17 @@ const std::string LogTag = "ServerConnection";
 namespace pep::messaging {
 
 ServerConnection::ServerConnection(std::shared_ptr<Node> node) noexcept
-  : node_(node) {
+  : node_(std::move(node)) {
   assert(node_ != nullptr);
+  nodeDescription_ = node_->describe();
 }
 
 void ServerConnection::handleConnectivityChange(const LifeCycler::StatusChange& change) {
   if (change.updated == LifeCycler::Status::Initialized) {
     this->handleConnectivityChange(Connection::Attempt::Result::Success(connection_));
   } else {
-    this->handleConnectivityChange(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error("Connectivity lost")))); // TODO: get reason from connection_ or "change" parameter
+    // TODO: get reason from connection_ or "change" parameter?
+    this->handleConnectivityChange(Connection::Attempt::Result::Failure(std::make_exception_ptr(std::runtime_error(("Connectivity lost ("s += LifeCycler::StatusToString(change.updated)) += ')'))));
   }
 }
 
@@ -30,6 +35,7 @@ void ServerConnection::handleConnectivityChange(const Connection::Attempt::Resul
     this->onConnected(*result);
     // status already indicates connected/success
   } else {
+    PEP_LOG(LogTag, Severity::Debug) << nodeDescription_ << ": Disconnected: " << GetExceptionMessage(result.exception());
     status.connected = false;
     try {
       std::rethrow_exception(result.exception());
@@ -47,6 +53,7 @@ void ServerConnection::handleConnectivityChange(const Connection::Attempt::Resul
 
 void ServerConnection::onConnected(std::shared_ptr<Connection> connection) {
   assert(connection_ == nullptr || connection_ == connection);
+  PEP_LOG(LogTag, Severity::Debug) << nodeDescription_ << ": Connected";
 
   if (connection_ == nullptr) {
     connection_ = connection;
@@ -60,7 +67,7 @@ void ServerConnection::onConnected(std::shared_ptr<Connection> connection) {
     // Send pending requests now
     auto send = std::exchange(pendingRequests_, Default<decltype(pendingRequests_)>);
     if (!send.empty()) {
-      PEP_LOG(LogTag, Severity::Debug) << (node_ ? node_->describe() + ": " : "") << "Sending " << send.size() << " previously pending requests";
+      PEP_LOG(LogTag, Severity::Debug) << nodeDescription_ << ": Sending " << send.size() << " previously pending requests";
     }
     for (const auto& request: send) {
       rxcpp::observable<std::string> obs;
@@ -128,16 +135,19 @@ rxcpp::observable<std::string> ServerConnection::sendRequest(std::shared_ptr<std
     return connection_->sendRequest(message, tail);
   }
 
-  PEP_LOG(LogTag, Severity::Debug) << (node_ ? node_->describe() + ": " : "") << "Adding request to pending requests list while waiting for connection";
-  return CreateObservable<std::string>([weak = WeakFrom(*this), message, tail](rxcpp::subscriber<std::string> subscriber) {
+  PEP_LOG(LogTag, Severity::Debug) << nodeDescription_ << ": Waiting for connection before sending request";
+  return CreateObservable<std::string>([weak = WeakFrom(*this), message, tail, description = nodeDescription_](rxcpp::subscriber<std::string> subscriber) {
       auto self = weak.lock();
       if (self == nullptr) {
+        PEP_LOG(LogTag, Severity::Debug) << description << ": Discarding pending request: server connection was destroyed";
         subscriber.on_error(std::make_exception_ptr(std::runtime_error("Server connection was destroyed")));
       }
       else if (self->connection_ != nullptr) { // Connection has been established before caller subscribed
+        PEP_LOG(LogTag, Severity::Debug) << description << ": Connection established, sending request bypassing pending requests list";
         self->connection_->sendRequest(message, tail).subscribe(subscriber);
       }
       else { // Connection has not been established yet
+        PEP_LOG(LogTag, Severity::Debug) << description << ": Adding request to pending requests list while waiting for connection";
         self->pendingRequests_.emplace_back(PendingRequest{ // Store the request so it can be sent when the connection is established later
           .message = message,
           .tail = tail,

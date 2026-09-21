@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <ranges>
 #include <thread>
 
 #include <pep/cli/DownloadDirectory.hpp>
@@ -19,7 +20,7 @@
 #include <pep/structuredoutput/Csv.hpp>
 #include <pep/structuredoutput/FormatFlags.hpp>
 #include <pep/structuredoutput/Json.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/utils/File.hpp>
 
@@ -31,6 +32,7 @@
 using namespace pep::enumUtils;
 using namespace pep::cli;
 using namespace std::chrono_literals;
+using namespace std::ranges;
 namespace so = pep::structuredOutput;
 namespace fs = std::filesystem;
 
@@ -53,18 +55,14 @@ struct Context {
   so::FormatFlags exportFormats = so::FormatFlags::None;
 };
 
-/*!
-* \brief Will a saved configuration file be used for this command?
-*/
+/// \brief Will a saved configuration file be used for this command?
 bool UsesSavedConfig(const std::shared_ptr<Context> &ctx) {
   return ctx->update || ctx->updateFormat || ctx->resume;
 }
 
-/*!
-* \brief Create a working copy of the source in which changes can safely be made without losing the original data.
-* \param source Path to the original file or directory
-* \param dest Path to the directory in which to place the copies
-*/
+/// \brief Create a working copy of the source in which changes can safely be made without losing the original data.
+/// \param source Path to the original file or directory
+/// \param dest Path to the directory in which to place the copies
 void HardlinkFolders(fs::path source, fs::path dest) {
   for (const auto& entry : fs::directory_iterator(source)) {
     if (!fs::is_directory(entry)) {
@@ -81,11 +79,9 @@ void HardlinkFolders(fs::path source, fs::path dest) {
   }
 }
 
-/*!
-* \brief Changes the names of the participant- and metadata directories from the long User Pseudonyms to the shorter Participant Alias.
-* \param directory Path to the output directory
-* \param globalConfig Shared pointer to the GlobalConfiguration
-*/
+/// \brief Changes the names of the participant- and metadata directories from the long User Pseudonyms to the shorter Participant Alias.
+/// \param directory Path to the output directory
+/// \param globalConfig Shared pointer to the GlobalConfiguration
 void UpdateFormat(fs::path directory, std::shared_ptr<pep::GlobalConfiguration> globalConfig) {
   auto metadataDir = directory / DownloadMetadata::GetDirectoryName();
   for (const fs::directory_entry& entry : fs::directory_iterator(directory)) {
@@ -104,10 +100,8 @@ void UpdateFormat(fs::path directory, std::shared_ptr<pep::GlobalConfiguration> 
   }
 }
 
-/*!
-* \brief Print the current stage of the download process to std::cout
-* \param progress The Progress object containing the current state
-*/
+/// \brief Print the current stage of the download process to std::cout
+/// \param progress The Progress object containing the current state
 void ReportProgress(const pep::Progress& progress) {
   auto state = progress.getState();
   assert(!state.empty());
@@ -120,10 +114,8 @@ void ReportProgress(const pep::Progress& progress) {
   }
 }
 
-/*!
-* \brief Assure that the temp directory exists and if needed, is reset to match the outputDirectory.
-* \param ctx Shared pointer to the Context
-*/
+/// \brief Assure that the temp directory exists and if needed, is reset to match the outputDirectory.
+/// \param ctx Shared pointer to the Context
 void prepareTempDirectory(const std::shared_ptr<Context> &ctx) {
   // Existing temp directory should be left intact only if --resume is specified
   if (fs::exists(ctx->tempDirectory) && !ctx->resume) {
@@ -137,10 +129,8 @@ void prepareTempDirectory(const std::shared_ptr<Context> &ctx) {
   }
 }
 
-/*!
-* \brief Many flags and switches can not be simultaneously set. This function guards against all incompatible combinations.
-* \param ctx Shared pointer to the Context
-*/
+/// \brief Many flags and switches can not be simultaneously set. This function guards against all incompatible combinations.
+/// \param ctx Shared pointer to the Context
 void checkContextSettings(const std::shared_ptr<Context> &ctx) {
   if (ctx->force && ctx->options.assumePristine) {
     throw std::runtime_error("Options --force and --assume-pristine cannot be used together - specify either one or the other");
@@ -206,11 +196,9 @@ so::FormatFlags ParseExportFormats(const std::vector<std::string>& formatNames) 
   return flags;
 }
 
-/*!
-* \brief Based on the values given by the user, create a Context object that contains all required data to perform the download.
-* \param client Shared pointer to the pepClient.
-* \param values The cli flag and switch values given by the user
-*/
+/// \brief Based on the values given by the user, create a Context object that contains all required data to perform the download.
+/// \param client Shared pointer to the pepClient.
+/// \param values The cli flag and switch values given by the user
 rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<pep::CoreClient> client, const pep::commandline::NamedValues& values) {
   auto ctx = std::make_shared<Context>();
   if (values.has("report-progress")) {
@@ -253,18 +241,15 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
       .zip(am.getAccessibleColumns(true, { "read" }))
       .map([ctx](const auto &access) {
       const pep::ParticipantGroupAccess &pga = std::get<0>(access);
-      for (const auto& pg : pga.participantGroups) {
-        if (std::find(pg.second.begin(), pg.second.end(), "access") != pg.second.end())
-        {
-          ctx->content.groups.push_back(pg.first);
-        }
-      }
+      ctx->content.groups.append_range(pga.participantGroups
+        | views::filter([](const auto& pgWithModes) { return contains(pgWithModes.second, "access"); })
+        | views::keys);
+
       const pep::ColumnAccess &ca = std::get<1>(access);
-      ctx->content.columnGroups.reserve(ca.columnGroups.size());
-      for (const auto& cg : ca.columnGroups) {
-        assert(std::find(cg.second.modes.begin(), cg.second.modes.end(), "read") != cg.second.modes.end());
-        ctx->content.columnGroups.push_back(cg.first);
-      }
+      assert(all_of(views::values(ca.columnGroups), [](const auto& cgProps) {
+        return contains(cgProps.modes, "read");
+      }));
+      ctx->content.columnGroups.append_range(views::keys(ca.columnGroups));
       if (ctx->content.groups.empty()) {
         PEP_LOG(LogTag, pep::Severity::Warning) << "No accessible participants - download will contain no data";
       }
@@ -302,12 +287,10 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
           });
   }
 }
-/*!
-* \brief Based on the settings in the Context, create a DownloadDirectory that will handle all further data downloading and file creation.
-* \param ctx shared pointer to the Context
-* \param client shared pointer to the pepClient
-* \param globalConfig Shared pointer to the GlobalConfiguration
-*/
+/// \brief Based on the settings in the Context, create a DownloadDirectory that will handle all further data downloading and file creation.
+/// \param ctx shared pointer to the Context
+/// \param client shared pointer to the pepClient
+/// \param globalConfig Shared pointer to the GlobalConfiguration
 std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr<Context> ctx, const std::shared_ptr<pep::CoreClient> client, const std::shared_ptr<pep::GlobalConfiguration> globalConfig, bool applyFileExtensions) {
   std::shared_ptr<DownloadDirectory> directory;
   if (ctx->update) {
@@ -330,7 +313,7 @@ std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr
         lines.reserve(nonpristine.size() + 1);
         lines.emplace_back("Data in output directory " + ctx->outputDirectory + " has changed since last download. Specify --force to discard local changes and update to server version.");
 
-        std::transform(nonpristine.begin(), nonpristine.end(), std::back_inserter(lines), [](const pep::cli::DownloadDirectory::NonPristineEntry& entry) {
+        lines.append_range(nonpristine | views::transform([](const pep::cli::DownloadDirectory::NonPristineEntry& entry) {
           if (!entry.path.has_value()) {
             assert(entry.record.has_value());
             return "Absent file for participant " + entry.record->getParticipant().getLocalPseudonym().text() + ", column " + entry.record->getColumn();
@@ -341,7 +324,7 @@ std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr
           }
           assert(!is_directory(*entry.path));
           return "File " + entry.path->string() + " has local changes";
-          });
+          }));
         throw std::runtime_error(boost::join(lines, "\n- "));
       }
     }
@@ -466,7 +449,7 @@ protected:
           auto directory = createDownloadDirectory(ctx, client, globalConfig, ctx->applyFileExtensions);
           ctx->progress->advance("Downloading");
           return directory->pull(client, ctx->options, ctx->progress->push())
-          .op(pep::RxBeforeCompletion([ctx, globalConfig]() {
+          .op(pep::RxSubsequently([ctx, globalConfig]() {
             cleanUp(ctx);
             ExecuteExports(ctx->exportFormats, {.globalConfig = globalConfig, .input_directory = ctx->outputDirectory, .force = ctx->force}); // TODO: pass existing "directory" so that "ExecuteExports" doesn't have to re-invoke "DownloadDirectory::Create"
           }));

@@ -9,11 +9,14 @@
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 
 #include <fstream>
+#include <ranges>
 #include <pep/messaging/MessageSequence.hpp>
 
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-take.hpp>
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -124,9 +127,9 @@ AuthserverBackend::AuthserverBackend(const Parameters &params)
 }
 
 std::vector<std::string> AuthserverBackend::getChecksumChainNames() const {
-  std::vector<std::string> checksumChainNames;
-  std::ranges::transform(checksumNameMappings, std::back_inserter(checksumChainNames), [](const auto& pair) { return pair.first; });
-  return checksumChainNames;
+  return checksumNameMappings
+    | views::keys
+    | to<std::vector>();
 }
 
 rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainRequest(ChecksumChainRequest request) {

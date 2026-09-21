@@ -1,4 +1,5 @@
 #include <pep/messaging/RequestHandler.hpp>
+#include <pep/serialization/Error.hpp>
 
 namespace pep::messaging {
 

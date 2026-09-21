@@ -1,6 +1,8 @@
 #pragma once
 
+#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxToSet.hpp>
+
 #include <rxcpp/operators/rx-flat_map.hpp>
 
 namespace pep {
@@ -18,8 +20,8 @@ struct RxDistinct {
   template <typename TItem, typename SourceOperator>
   rxcpp::observable<TItem> operator()(rxcpp::observable<TItem, SourceOperator> items) const {
     return items
-      .op(RxToSet(false))
-      .flat_map([](std::shared_ptr<std::set<TItem>> set) {return rxcpp::observable<>::iterate(std::move(*set)); });
+      .op(RxToUnorderedSet(false))
+      .flat_map([](std::shared_ptr<std::unordered_set<TItem>> set) {return RxIterate(std::move(*set)); });
   }
 };
 

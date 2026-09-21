@@ -10,14 +10,14 @@ template <typename T>
 using OptionalCRef = OptionalRef<const T>;
 
 /// Constructs a OptionalRef from a pointer
-/// @note Returns a OptionalCRef if T is const
+/// \note Returns a OptionalCRef if T is const
 template <typename T>
 OptionalRef<T> AsOptionalRef(T* t) {
   return (t == nullptr) ? OptionalRef<T>{} : OptionalRef<T>{*t};
 }
 
 /// Constructs a OptionalCRef from a pointer
-/// @note Use this if you always want to return a const ref even if T is not const
+/// \note Use this if you always want to return a const ref even if T is not const
 template <typename T>
 OptionalCRef<T> AsOptionalCRef(T* t) {
   return AsOptionalRef(t);
@@ -34,8 +34,8 @@ static_assert(
     "OptionalCRefFromPtr always returns a const ref");
 
 /// Convenience function aliasing ref.value.get()
-/// @throws std::bad_optional_access if \p ref does not contain a value.
-/// @note Always returns a mutable ref. Does not work for OptionalCRef inputs
+/// \throws std::bad_optional_access if \p ref does not contain a value.
+/// \note Always returns a mutable ref. Does not work for OptionalCRef inputs
 template <typename T>
 requires(!std::is_const_v<T>)
 T& AsRef(OptionalRef<T>& ref) {
@@ -43,14 +43,14 @@ T& AsRef(OptionalRef<T>& ref) {
 }
 
 /// Convenience function aliasing ref.value.get()
-/// @throws std::bad_optional_access if \p ref does not contain a value.
+/// \throws std::bad_optional_access if \p ref does not contain a value.
 template <typename T>
 const T& AsCRef(const OptionalRef<T>& ref) {
   return ref.value();
 }
 
 /// Convenience function aliasing ref.value.get()
-/// @throws std::bad_optional_access if \p ref does not contain a value.
+/// \throws std::bad_optional_access if \p ref does not contain a value.
 template <typename T>
 const T& AsCRef(const OptionalCRef<T>& ref) {
   return ref.value();

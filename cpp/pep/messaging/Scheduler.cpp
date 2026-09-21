@@ -4,11 +4,18 @@
 #include <pep/serialization/ErrorSerializer.hpp>
 #include <pep/serialization/Serialization.hpp>
 
+#include <ranges>
+
+using namespace std::ranges;
+
 namespace pep::messaging {
 
 namespace {
 
 const std::string LogTag = "Messaging scheduler";
+
+/// Projection that lets a range algorithm look an outgoing message up by its message ID
+const MessageId& MessageIdOf(const Scheduler::OutgoingMessage& message) noexcept { return message.properties.messageId(); }
 
 }
 
@@ -63,12 +70,12 @@ Scheduler::OutgoingMessage Scheduler::pop() {
   if (result.properties.flags().has(Flags::Close)) {
     assert(!this->isScheduledMessageId(messageId));
   } else {
-    auto closeLater = std::ranges::any_of(outgoing_, [&messageId](const OutgoingMessage& candidate) {
-      return candidate.properties.messageId() == messageId && candidate.properties.flags().has(Flags::Close);
+    auto closeLater = any_of(outgoing_, [&messageId](const OutgoingMessage& candidate) {
+      return MessageIdOf(candidate) == messageId && candidate.properties.flags().has(Flags::Close);
       });
     // check if the stream is closed in a later packet in the queue
     // or that there is an observable
-    assert(closeLater || generators_.find(messageId) != generators_.end());
+    assert(closeLater || generators_.contains(messageId));
   }
 #endif
 
@@ -134,7 +141,7 @@ void Scheduler::activateGenerator(const MessageId& messageId, MessageBatches bat
 
 void Scheduler::queueNextBatch(const MessageId& messageId) {
   // if there are messages queued for this message id, wait with requesting the next batch
-  if (std::any_of(outgoing_.begin(), outgoing_.end(), [&messageId](const OutgoingMessage& entry) { return entry.properties.messageId() == messageId; }))
+  if (contains(outgoing_, messageId, MessageIdOf))
     return;
   auto it = generators_.find(messageId);
   // if not found, do nothing
@@ -197,16 +204,13 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
           // We're done sending batches for this message(Id)
           self->generators_.erase(messageId);
 
-          bool adjustedInlinePayload = false;
           // try to reuse a packet already in the outgoing_ queue
-          for (auto it = self->outgoing_.rbegin(); it != self->outgoing_.rend(); ++it) {
-            if (it->properties.messageId() == messageId) {
-              it->properties = MessageProperties(it->properties.messageId(),it->properties.flags().withClose());
-              adjustedInlinePayload = true;
-              break;
-            }
+          auto queuedLast = self->outgoing_ | views::reverse;
+          auto queued = find(queuedLast, messageId, MessageIdOf);
+          if (queued != queuedLast.end()) {
+            queued->properties = MessageProperties(queued->properties.messageId(), queued->properties.flags().withClose());
           }
-          if (!adjustedInlinePayload) {
+          else {
             self->emplaceOutgoing(messageId, Flags::Close, std::make_shared<std::string>(""));
           }
         } else {
@@ -226,7 +230,7 @@ void Scheduler::queueNextBatch(const MessageId& messageId) {
 
 void Scheduler::finalizeBatches(const MessageId& messageId, const std::optional<MessageSequence>& last) {
   auto& queue = generators_[messageId].batches;
-  assert(std::none_of(queue.cbegin(), queue.cend(), [](const Batch& existing) { return existing.final; }));
+  assert(none_of(queue, &Batch::final));
 
   // only change inline if we are not processing the stream already
   if (last || queue.empty() || queue.back().active) {
@@ -237,7 +241,7 @@ void Scheduler::finalizeBatches(const MessageId& messageId, const std::optional<
 }
 
 bool Scheduler::isScheduledMessageId(const MessageId& messageId) const {
-  return std::any_of(outgoing_.cbegin(), outgoing_.cend(), [&messageId](const OutgoingMessage& candidate) { return candidate.properties.messageId() == messageId; })
+  return contains(outgoing_, messageId, MessageIdOf)
     || generators_.contains(messageId);
 }
 

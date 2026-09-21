@@ -1075,8 +1075,8 @@ TEST(ParameterParameterCombinations, NoLongerSupportedParameterWithNoLongerSuppo
 
   EXPECT_EQ(exitCode, EXIT_FAILURE) << "Should fail when using no-longer-supported parameters together";
   EXPECT_TRUE(
-    err.find("Error: The parameter '--role' is no longer supported.") != std::string::npos ||
-    err.find("Error: The parameter '--permission' is no longer supported.") != std::string::npos
+    err.contains("Error: The parameter '--role' is no longer supported.") ||
+    err.contains("Error: The parameter '--permission' is no longer supported.")
   );
 }
 
