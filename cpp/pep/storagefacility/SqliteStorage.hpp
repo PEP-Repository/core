@@ -65,12 +65,13 @@ public:
   /// \return the timestamp of the cycle in which the specified cell version is/was/will-be purged, or std::nullopt if the cell version isn't included in a purge cycle
   std::optional<Timestamp> pendingPurgeTimestamp(const CellVersionSpec& cellVersion) const;
 
-  /// \brief Executes a function while providing (exclusive) access to this instance
+  /// \brief Executes a function while providing (exclusive, thread safe and transactional) access to this instance
   /// \tparam TFunction The type of function to execute
   /// \tparam TArgs Types of parameters that will be passed to the function
   /// \param function The function to execute
   /// \param args Parameters to pass to the function
   /// \return The function's return value
+  /// \remark Any changes (that the function makes) to this SqliteStorage instance will be rolled back if an exception escapes.
   template <typename TFunction, typename... TArgs>
   decltype(auto) atomically(TFunction&& function, TArgs&&... args) const {
     return PerformAsAction(std::bind_front(&SqliteStorage::performAtomically, this), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
