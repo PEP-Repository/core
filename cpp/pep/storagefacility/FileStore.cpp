@@ -2,6 +2,7 @@
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/utils/BuildFlavor.hpp>
 #include <pep/storagefacility/Constants.hpp>
+#include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MapUtils.hpp>
 #include <pep/utils/Random.hpp>
@@ -98,30 +99,26 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
   return **participants_.emplace(std::make_unique<Participant>(*this, name)).first;
 }
 
-void FileStore::persistPurgeCycle(const PurgeCycle& cycle) {
-  std::cerr << "Persisting purge cycle " << cycle.id << " for " << cycle.definition.name() << std::endl;
-  for (auto version : sqlite_.getIncludedCellVersions(cycle.id)) {
-    std::cerr << "- Purging row " << version.cell.row
-      << ", column " << version.cell.column
-      << ", timestamp " << TimestampToXmlDateTime(version.timestamp) << std::endl;
-  }
+void FileStore::persistPurgeCyclesAsync(std::vector<PurgeCycle> cycles) {
+  assert(!cycles.empty());
 
-  auto updated = cycle;
-  assert(!updated.completed);
-  updated.completed = TimeNow();
-  sqlite_.updatePurgeCycle(updated);
-}
+  try {
+    std::ranges::sort(cycles, {}, &PurgeCycle::confirmed);
+    for (const auto& cycle : cycles) {
+      assert(cycle.confirmed && !cycle.completed);
 
-void FileStore::persistPendingPurgesAsync() {
-  auto cycles = sqlite_.getPurgeCycles();
-  std::sort(cycles.begin(), cycles.end(), [](const PurgeCycle& lhs, const PurgeCycle& rhs) {
-      return lhs.confirmed < rhs.confirmed;
-    });
+      for (auto version : sqlite_.getIncludedCellVersions(cycle.id)) {
+        // TODO: ensure this version is persisted
+      }
 
-  for (const auto& cycle : cycles) {
-    if (cycle.confirmed && !cycle.completed) {
-      this->persistPurgeCycle(cycle);
+      auto updated = cycle;
+      assert(!updated.completed);
+      updated.completed = TimeNow();
+      sqlite_.updatePurgeCycle(updated);
     }
+  }
+  catch (...) {
+    PEP_LOG(LogTag, Severity::Error) << "Encountered exception persisting purge cycles: " << GetExceptionMessage(std::current_exception());
   }
 
   post(*ioContext_, [this]() {
@@ -132,9 +129,7 @@ void FileStore::persistPendingPurgesAsync() {
         purgePersistence_.join();
       }
       // Start a new persistence thread if any new cycles have been confirmed while we were running
-      if (std::ranges::any_of(sqlite_.getPurgeCycles(), [](const PurgeCycle& cycle) { return cycle.confirmed && !cycle.completed; })) {
-        this->persistPendingPurges();
-      }
+      this->persistPendingPurges();
     });
 }
 
@@ -262,9 +257,14 @@ std::set<std::string> FileStore::pagePaths() const {
 }
 
 void FileStore::persistPendingPurges() {
-  std::scoped_lock lock(purgePersistenceMux_);
-  if (!purgePersistence_.joinable()) {
-    purgePersistence_ = std::thread([self = SharedFrom(*this)]() { self->persistPendingPurgesAsync(); });
+  auto pending = RangeToVector(sqlite_.getPurgeCycles()
+    | std::views::filter([](const PurgeCycle& cycle) { return cycle.confirmed && !cycle.completed; }));
+
+  if (!pending.empty()) {
+    std::scoped_lock lock(purgePersistenceMux_);
+    if (!purgePersistence_.joinable()) {
+      purgePersistence_ = std::thread([self = SharedFrom(*this), pending]() { self->persistPurgeCyclesAsync(pending); });
+    }
   }
 }
 
