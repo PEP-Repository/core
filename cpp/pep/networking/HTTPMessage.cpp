@@ -146,7 +146,7 @@ HTTPRequest::HTTPRequest(
     std::move(host),
     method,
     std::move(uri),
-    {std::make_shared<std::string>(std::move(body))},
+    body.empty() ? std::vector<std::shared_ptr<std::string>>{} : std::vector{std::make_shared<std::string>(std::move(body))},
     std::move(headers),
     completeHeaders) {}
 
