@@ -99,6 +99,11 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
 
 void FileStore::persistPurgeCycle(const PurgeCycle& cycle) {
   std::cerr << "Persisting purge cycle " << cycle.id << " for " << cycle.definition.name() << std::endl;
+  for (auto version : sqlite_.getIncludedCellVersions(cycle.id)) {
+    std::cerr << "- Purging row " << version.cell.row
+      << ", column " << version.cell.column
+      << ", timestamp " << TimestampToXmlDateTime(version.timestamp) << std::endl;
+  }
 }
 
 void FileStore::persistPendingPurgesAsync() {

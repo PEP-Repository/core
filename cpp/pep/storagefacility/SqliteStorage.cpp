@@ -237,6 +237,27 @@ void SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const CellVersionSpec& ce
     });
 }
 
+std::set<SqliteStorage::CellVersionSpec> SqliteStorage::getIncludedCellVersions(PurgeCycle::Id id) const {
+  return this->atomically([this, id]() {
+      std::set<CellVersionSpec> result;
+
+      using namespace sqlite_orm;
+      for (auto entry : implementor_->raw.select(columns(&RowRecord::pseudonym, &ColumnRecord::name, &PurgeEntryRecord::timestamp),
+        where(c(&PurgeEntryRecord::cycle) == id
+          && c(&PurgeEntryRecord::row) == c(&RowRecord::seqno)
+          && c(&PurgeEntryRecord::column) == c(&ColumnRecord::seqno)))) {
+        result.emplace(CellVersionSpec{
+            .cell = {
+              .row = std::get<0>(entry),
+              .column = std::get<1>(entry),
+            },
+            .timestamp = database::TimestampFromUnixMillis(std::get<2>(entry)),
+          });
+      }
+      return result;
+    });
+}
+
 std::set<Timestamp> SqliteStorage::getPurgedTimestamps(PurgeCycle::Id id, const CellSpec& cell) const {
   return this->atomically([this, id, &cell]() {
       std::set<Timestamp> result;

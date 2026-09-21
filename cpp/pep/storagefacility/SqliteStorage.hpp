@@ -49,6 +49,11 @@ public:
 
   void addToPurgeCycle(PurgeCycle::Id id, const CellVersionSpec& cellVersion);
 
+  /// \brief Returns cell version(specification)s that are included in the specified purge cycle.
+  /// \param id the purge cycle ID
+  /// \return cell version(specification)s that are included in the specified purge cycle.
+  std::set<CellVersionSpec> getIncludedCellVersions(PurgeCycle::Id id) const;
+
   /// \brief Returns timestamps ("versions") for the specified cell that are included in the specified purge cycle
   /// \param id the purge cycle ID
   /// \param cell the cell to inspect
@@ -80,11 +85,15 @@ public:
 struct SqliteStorage::CellSpec {
   std::string row; // (Text representation of) the row's local pseudonym for Storage Facility
   std::string column;
+
+  auto operator<=>(const CellSpec&) const = default;
 };
 
 struct SqliteStorage::CellVersionSpec {
   CellSpec cell;
   Timestamp timestamp;
+
+  auto operator<=>(const CellVersionSpec&) const = default;
 };
 
 }
