@@ -222,7 +222,7 @@ namespace authorization_header {
 
 
     std::string ComputeCanonicalHeaders(Context& c) {
-      const std::map<std::string, std::string, CaseInsensitiveCompare>& headers(c.request.getHeaders());
+      const HTTPMessage::HeaderMap& headers(c.request.getHeaders());
       std::vector<std::string> keys;
 
       if(c.signHeaders.empty()) {

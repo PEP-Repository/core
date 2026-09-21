@@ -95,7 +95,7 @@ bool CompareRedirectUris(boost::urls::url_view providedRedirectUri, boost::urls:
   return registeredRedirectUri.buffer() == providedRedirectUri.buffer();
 }
 
-HTTPResponse MakeHttpResponse(const std::string& status, const std::string& body, std::string pageType, std::map<std::string, std::string, CaseInsensitiveCompare> headers = std::map<std::string, std::string, CaseInsensitiveCompare>()) {
+HTTPResponse MakeHttpResponse(const std::string& status, const std::string& body, std::string pageType, HTTPMessage::HeaderMap headers = {}) {
   // Adds headers for all HTTP responses
   pageType.append(";charset=UTF-8");
   headers.emplace("Content-Type", pageType);

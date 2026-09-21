@@ -12,10 +12,10 @@ namespace pep {
 
 HTTPMessage::HTTPMessage(
   std::vector<std::shared_ptr<std::string>> bodyparts,
-  std::map<std::string, std::string, CaseInsensitiveCompare> headers)
+  HeaderMap headers)
   : headers_(std::move(headers)), bodyparts_(std::move(bodyparts)) {}
 
-HTTPMessage::HTTPMessage(std::string body, std::map<std::string, std::string, CaseInsensitiveCompare> headers)
+HTTPMessage::HTTPMessage(std::string body, HeaderMap headers)
   : headers_(std::move(headers)), bodyparts_({std::make_shared<std::string>(std::move(body))}) {}
 
 bool HTTPMessage::hasHeader(const std::string& name) const {
@@ -30,8 +30,7 @@ std::string HTTPMessage::header(const std::string& name) const {
   return headers_.at(name);
 }
 
-const std::map<std::string, std::string, CaseInsensitiveCompare>&
-  HTTPMessage::getHeaders() const
+auto HTTPMessage::getHeaders() const -> const HeaderMap&
 {
   return headers_;
 }
@@ -89,7 +88,7 @@ std::map<std::string, std::string> HTTPMessage::getBodyAsFormData() const {
 }
 
 HTTPResponse::HTTPResponse(const std::string& status, std::string body,
-  std::map<std::string, std::string, CaseInsensitiveCompare> headers,
+  HeaderMap headers,
   bool completeHeaders
 ) : HTTPMessage(std::move(body), std::move(headers)) {
 
@@ -106,7 +105,7 @@ HTTPResponse::HTTPResponse(const std::string& status, std::string body,
 
 HTTPResponse::HTTPResponse(
   unsigned int statuscode, std::string statusMessage, std::string body,
-  std::map<std::string, std::string, CaseInsensitiveCompare> headers,
+  HeaderMap headers,
   bool completeHeaders
 )
   : HTTPMessage(std::move(body), std::move(headers)),
@@ -141,7 +140,7 @@ HTTPRequest::HTTPRequest(
     networking::HttpMethod method,
     boost::urls::url uri,
     std::string body,
-    std::map<std::string, std::string,CaseInsensitiveCompare> headers,
+    HeaderMap headers,
     bool completeHeaders)
 : HTTPRequest(
     std::move(host),
@@ -155,7 +154,7 @@ HTTPRequest::HTTPRequest(
     networking::HttpMethod method,
     boost::urls::url uri,
     std::string body,
-    std::map<std::string, std::string, CaseInsensitiveCompare> headers,
+    HeaderMap headers,
     bool completeHeaders)
   : HTTPRequest(
       std::string(uri.encoded_host_and_port()),
@@ -170,7 +169,7 @@ HTTPRequest::HTTPRequest(
     networking::HttpMethod method,
     boost::urls::url uri,
     std::vector<std::shared_ptr<std::string>> bodyparts,
-    std::map<std::string, std::string, CaseInsensitiveCompare> headers,
+    HeaderMap headers,
     bool completeHeaders)
   : HTTPMessage(std::move(bodyparts), std::move(headers)),
     host_(std::move(host)),
