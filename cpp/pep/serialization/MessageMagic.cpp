@@ -252,7 +252,9 @@ std::string DescribeMessageMagic(MessageMagic magic) {
 }
 
 std::string DescribeMessageMagic(std::string_view str) {
-  return DescribeMessageMagic(GetMessageMagic(str));
+  return str.empty() ? "<empty>"
+    : str.size() < sizeof(MessageMagic) ? "<too short>"
+    : DescribeMessageMagic(GetMessageMagic(str));
 }
 
 MessageMagic CalculateMessageMagic(std::string_view crossPlatformName) {

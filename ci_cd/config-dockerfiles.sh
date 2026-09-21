@@ -12,7 +12,7 @@
 #   repository's "docker/config-dockerfiles",
 # - then this script can build a Docker image based on the source repo's
 #   (Docker)file and the project repo's (config) directory.
-# When building such a "config dockerfile", if the config image should be based on a PEP (source repo) 
+# When building such a "config dockerfile", if the config image should be based on a PEP (source repo)
 # binary Docker image, the script locates that binary image in the source repo's registry.
 
 set -eu
