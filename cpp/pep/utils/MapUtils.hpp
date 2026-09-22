@@ -46,13 +46,15 @@ void ReserveToMatch(std::ranges::sized_range auto& container, std::ranges::forwa
 /// \brief Builds a pointer set from a range, collecting duplicates separately.
 /// \details Inserts pointers to each element into an unordered set; elements that
 /// are already present are appended to the duplicates vector instead.
+/// \tparam forceConst If true, return a set of pointers to const values, instead of deducing constness
 /// \returns A pair with (first) a set of unique element pointers, and
 /// (second) a vector of pointers to the duplicate elements.
+template <bool forceConst = false>
 auto MakeUnorderedPointerSet(std::ranges::forward_range auto&& values)
     -> std::pair<
-        UnorderedPointerSet<QualifiedRangeValue<decltype(values)>>,
-        std::vector<QualifiedRangeValue<decltype(values)>*>> {
-  auto result = decltype(MakeUnorderedPointerSet(values)){};
+        UnorderedPointerSet<std::conditional_t<forceConst, const QualifiedRangeValue<decltype(values)>, QualifiedRangeValue<decltype(values)>>>,
+        std::vector<std::conditional_t<forceConst, const QualifiedRangeValue<decltype(values)>, QualifiedRangeValue<decltype(values)>>*>> {
+  auto result = decltype(MakeUnorderedPointerSet<forceConst>(values)){};
   auto& [set, duplicates] = result;
   ReserveToMatch(set, values);
   for (auto& value : values) {
@@ -64,8 +66,8 @@ auto MakeUnorderedPointerSet(std::ranges::forward_range auto&& values)
 
 /// \brief Returns whether \p sub is a subset of \p super .
 /// \details Ignores duplicate values.
-bool IsSubset(std::ranges::input_range auto const& sub, std::ranges::forward_range auto const& super) {
-  const auto superset = MakeUnorderedPointerSet(super).first; // O(super*log(super))
+bool IsSubset(std::ranges::input_range auto&& sub, std::ranges::forward_range auto&& super) {
+  const auto superset = MakeUnorderedPointerSet<true>(super).first; // O(super*log(super))
   return std::ranges::all_of(sub, [&](const auto& value) { return superset.contains(std::addressof(value)); }); // O(sub*log(super))
 }
 
