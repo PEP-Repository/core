@@ -109,7 +109,7 @@ void FileStore::persistPurgeCyclesAsync(std::vector<PurgeCycle> cycles) {
       assert(cycle.confirmed && !cycle.completed);
 
       for (auto version : sqlite_.getIncludedCellVersions(cycle.id)) {
-        // TODO: ensure this version is persisted
+        this->getParticipant(version.cell.row)->ensurePurgePersisted(*cycle.confirmed, version.cell.column, version.timestamp);
       }
 
       auto updated = cycle;
@@ -349,6 +349,10 @@ void FileStore::Cell::applyPurgeCycle(const PurgeCycle& cycle) {
   versions_ = std::move(updated);
 }
 
+void FileStore::Cell::ensurePurgePersisted(Timestamp purgedAt, Timestamp cellVersion) {
+  Entry::EnsurePurgePersisted(purgedAt, *this, cellVersion);
+}
+
 std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool createIfNeeded) {
   auto entry = lookup(name);
   if (entry) {
@@ -438,6 +442,10 @@ void FileStore::Entry::markPurged(Timestamp at) {
 }
 
 void FileStore::Entry::save() const {
+  this->save(FileExtension);
+}
+
+void FileStore::Entry::save(const std::string& extension) const {
   std::ostringstream out;
 
   out << EntryFileType;
@@ -459,7 +467,7 @@ void FileStore::Entry::save() const {
   std::string content = std::move(out).str();
   XXH64_hash_t hash = XXH64(content.data(), content.length(), 0ULL);
 
-  this->getCell().participant().fileStore().fileSystem_.write([this, &content, hash]() {
+  this->getCell().participant().fileStore().fileSystem_.write([this, &extension, &content, hash]() {
       std::filesystem::path tempfile = this->getFilePath(".tmp");
       std::ofstream outfile;
       outfile.open(tempfile, std::ios::binary | std::ios::out | std::ios::trunc);
@@ -473,7 +481,7 @@ void FileStore::Entry::save() const {
       }
       outfile.close();
 
-      std::filesystem::rename(tempfile, this->getFilePath(Entry::FileExtension));
+      std::filesystem::rename(tempfile, this->getFilePath(extension));
     });
 }
 
@@ -538,7 +546,38 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
   return result;
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension) {
+void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Timestamp version) {
+  auto filename = CheckedFileName(std::to_string(TicksSinceEpoch<milliseconds>(version)));
+  std::filesystem::path entryPath = cell.path() / (filename + FileExtension);
+  std::filesystem::path purgedPath = cell.path() / (filename + PurgedFileExtension);
+
+  // Process ".entry" file if it exists
+  if (auto entry = TryLoadFile(cell, filename, FileExtension)) {
+    if (entry->getPurgedAt().has_value()) {
+      // Nothing to do: purge has already been persisted, i.e. "purged-at" is already stored in ".entry" file
+      assert(entry->getPurgedAt() == purgedAt);
+      return;
+    }
+
+    // Clean up (possibly corrupt file left behind by) failed or interrupted previous persistence attempt
+    if (exists(purgedPath)) {
+      remove(purgedPath);
+    }
+
+    // Save ".purged" file
+    entry->markPurged(purgedAt);
+    entry->save(PurgedFileExtension);
+    assert(exists(purgedPath));
+
+    // Remove ".entry" file
+    remove(entryPath);
+  }
+
+  // A ".purged" file exists and a ".entry" file does not: rename 
+  rename(purgedPath, entryPath);
+}
+
+std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoadFile(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension) {
   // Preferably load the ".entry" file. If a ".purged" file also exists, purge persistence for this file has been
   // interrupted (e.g. because the process was killed), likely leaving the ".purged" file partially written and
   // therefore corrupt.
@@ -608,19 +647,22 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
   infile.close();
 
   // Validate file content against its hash
-  uint64_t calculatedHash = XXH64(content.data(), content.length(), uint64_t{0});
+  uint64_t calculatedHash = XXH64(content.data(), content.length(), uint64_t{ 0 });
   if (calculatedHash != expectedHash)
     throw std::invalid_argument("hash did not match for file " + path.string());
 
-  auto result = Entry::Create(cell, validFrom, purgedAt, checksumSubstitute, std::move(entryContent));
+  return Entry::Create(cell, validFrom, purgedAt, checksumSubstitute, std::move(entryContent));
+}
 
-  if (!result->getPurgedAt()) { // The loaded file does not contain a "purged-at" timestamp
+std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension) {
+  auto result = TryLoadFile(cell, filename, std::move(extension));
+  if (result != nullptr && !result->getPurgedAt()) { // The loaded file does not contain a "purged-at" timestamp
     storagefacility::SqliteStorage::CellVersionSpec version{
       .cell = {
         .row = cell.participant().name(),
         .column = cell.columnName(),
       },
-      .timestamp = validFrom,
+      .timestamp = result->getValidFrom(),
     };
     if (auto pendingPurgedAt = result->getFileStore().sqlite_.pendingPurgeTimestamp(version)) {
       // This entry is included in a pending (i.e. confirmed but not yet completed) purge cycle
@@ -761,6 +803,12 @@ void FileStore::Participant::applyPurgeCycle(const PurgeCycle& cycle) {
   for (auto& cell : cells_) {
     cell->applyPurgeCycle(cycle);
   }
+}
+
+void FileStore::Participant::ensurePurgePersisted(Timestamp purgedAt, const std::string& column, Timestamp version) {
+  auto cell = this->getCell(column);
+  assert(cell != nullptr);
+  cell->ensurePurgePersisted(purgedAt, version);
 }
 
 }

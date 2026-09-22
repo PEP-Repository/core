@@ -99,6 +99,8 @@ public:
     // Allow EntryChange to invoke SharedConstructor<Entry>::Create (which we inherit privately)
     friend class EntryChange;
 
+    static std::shared_ptr<Entry> TryLoadFile(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension);
+
   private:
     static const std::string FileExtension;
     static const std::string PurgedFileExtension; // used (only) during purge persistence
@@ -111,6 +113,7 @@ public:
     Entry(Cell& cell, Timestamp validFrom, std::optional<Timestamp> purgedAt, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
 
     CheckedPath getFilePath(const std::string& extension) const;
+    void save(const std::string& extension) const;
 
   public:
     std::unique_ptr<EntryContent> cloneContent() const;
@@ -125,6 +128,7 @@ public:
     void save() const;
     static std::shared_ptr<Entry> TryLoad(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension = std::nullopt);
     static std::shared_ptr<Entry> Load(Cell& cell, Timestamp timestamp);
+    static void EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Timestamp version);
   };
 
   struct CellVersion {
@@ -163,6 +167,7 @@ public:
 
     std::set<std::string> pagePaths() const; // for latest version
     void applyPurgeCycle(const PurgeCycle& cycle);
+    void ensurePurgePersisted(Timestamp purgedAt, Timestamp cellVersion);
   };
 
   class Participant {
@@ -191,6 +196,7 @@ public:
 
     std::set<std::string> pagePaths() const; // for latest version
     void applyPurgeCycle(const PurgeCycle& cycle);
+    void ensurePurgePersisted(Timestamp purgedAt, const std::string& column, Timestamp version);
   };
 
 private:
