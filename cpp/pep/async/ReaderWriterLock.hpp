@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/utils/Action.hpp>
 #include <boost/noncopyable.hpp>
 #include <mutex>
 #include <shared_mutex>
@@ -16,21 +17,21 @@ private:
   using WriterLock = std::unique_lock<decltype(mutex_)>;
   using ReaderLock = std::shared_lock<decltype(mutex_)>;
 
-  template <typename TLock, typename TFunction, typename... TArgs>
-  std::invoke_result_t<TFunction, TArgs...> lockAndInvoke(TFunction function, TArgs... args) {
+  template <typename TLock>
+  void lockAndPerform(Action action) {
     TLock lock(mutex_);
-    return function(std::forward<TArgs>(args)...);
+    action();
   }
 
 public:
   template <typename TFunction, typename... TArgs>
-  std::invoke_result_t<TFunction, TArgs...> read(TFunction function, TArgs... args) {
-    return lockAndInvoke<ReaderLock>(std::forward<TFunction>(function), std::forward<TArgs>(args)...);
+  decltype(auto) read(TFunction function, TArgs... args) {
+    return PerformAsAction(std::bind_front(&ReaderWriterLock::lockAndPerform<ReaderLock>, this), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
   }
 
   template <typename TFunction, typename... TArgs>
-  std::invoke_result_t<TFunction, TArgs...> write(TFunction function, TArgs... args) {
-    return lockAndInvoke<WriterLock>(std::forward<TFunction>(function), std::forward<TArgs>(args)...);
+  decltype(auto) write(TFunction function, TArgs... args) {
+    return PerformAsAction(std::bind_front(&ReaderWriterLock::lockAndPerform<WriterLock>, this), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
   }
 };
 
