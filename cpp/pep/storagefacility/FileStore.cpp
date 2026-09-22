@@ -208,10 +208,13 @@ FileStore::Cell::Cell(Participant& participant, const std::string& columnName, b
   : participant_(participant), columnName_(participant.fileStore().getColumnString(columnName)) {
   if (load) {
     participant_.fileStore().fileSystem_.read([this]() {
-        for (const auto& p : std::filesystem::directory_iterator(this->path())) {
-          auto entry = Entry::TryLoad(*this, CheckedPath::FromTrusted(p.path()));
-          if (entry != nullptr) {
-            this->addEntry(entry);
+        for (const auto& i : std::filesystem::directory_iterator(this->path())) {
+          const auto& path = i.path();
+          if (path.has_extension()) {
+            auto entry = Entry::TryLoad(*this, CheckedFileName(path.stem()), path.extension());
+            if (entry != nullptr) {
+              this->addEntry(entry);
+            }
           }
         }
       });
@@ -525,18 +528,23 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
   // See https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file.
   // This may lead to security issues.
   // So basically, we should not run the production StorageFacility on Windows with the current code.
-  auto filename = std::to_string(TicksSinceEpoch<milliseconds>(timestamp)) + FileExtension;
-  auto result = TryLoad(cell, cell.path() / CheckedFileName(filename));
+  auto timestampStr = std::to_string(TicksSinceEpoch<milliseconds>(timestamp));
+  auto result = TryLoad(cell, CheckedFileName(timestampStr));
   if (result == nullptr) {
     throw std::runtime_error("Could not load entry for cell " + cell.entryName().string()
-        + " at timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(timestamp)));
+        + " at timestamp " + timestampStr);
   }
   return result;
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedPath& checkedPath) {
-  const std::filesystem::path& path = checkedPath;
-  if (!std::filesystem::is_regular_file(path) || path.extension().string() != FileExtension) {
+std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension) {
+  auto effectiveExtension = extension.value_or(FileExtension);
+  if (effectiveExtension != FileExtension) {
+    return nullptr; // Not a .entry file
+  }
+
+  std::filesystem::path path = cell.path() / (filename + effectiveExtension);
+  if (!std::filesystem::is_regular_file(path)) {
     return nullptr;
   }
 

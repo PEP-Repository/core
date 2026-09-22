@@ -122,7 +122,7 @@ public:
     messaging::MessageSequence readPage(size_t index);
 
     void save() const;
-    static std::shared_ptr<Entry> TryLoad(Cell& cell, const CheckedPath& path);
+    static std::shared_ptr<Entry> TryLoad(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension = std::nullopt);
     static std::shared_ptr<Entry> Load(Cell& cell, Timestamp timestamp);
   };
 
