@@ -62,7 +62,7 @@ private:
   bool resumeExplicitly_;
 };
 
-void TestReadThrottle(bool resumeExplicitly, uint16_t port) {
+[[maybe_unused]] void TestReadThrottle(bool resumeExplicitly, uint16_t port) {
   constexpr size_t ChunkCount = 5;
   constexpr uint64_t PingId = 42;
 
