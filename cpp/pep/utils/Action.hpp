@@ -39,7 +39,7 @@ struct ActionResultAdapter {
 };
 
 /// \brief Adapts a function (and its arguments) so it can be passed to an \ref ActionPerformer
-/// \tparam TResult The type of reference returned by the function
+/// \tparam T The type of reference returned by the function
 /// \remark This specialization handles (functions with) reference return types.
 template <typename T>
 struct ActionResultAdapter<T&> {
