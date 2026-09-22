@@ -674,7 +674,6 @@ pages:
     - if: "'$[[ inputs.test_coverage ]]' == 'coverage' && $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
   #language=sh
   script:
-    - set -u
     - if [ ! -f htmlcov/index.html ]; then
     -   echo "No coverage report was produced by the ubuntu-lts-debug job."
     -   exit 1
