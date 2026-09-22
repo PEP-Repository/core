@@ -32,7 +32,7 @@ void DataPayloadPage::setEncrypted(
       const std::string& key,
       const Metadata& metadata) {
   auto ctx = createGcmContext();
-  cryptoNonce = RandomString(16);
+  cryptoNonce = RandomString(12);
   cryptoMac.resize(16);
   payloadData.resize(plaintext.size());
   if (key.size() != 32)
@@ -103,6 +103,14 @@ std::string DataPayloadPage::decrypt(
   std::string plaintext(payloadData.size(), '\0');
   if (key.size() != 32)
     throw std::runtime_error("keys should be 32 bytes");
+  // Reject truncated tag.
+  if (cryptoMac.size() != 16)
+    throw std::runtime_error("tag should be 16 bytes");
+  // cryptoNonce used to be 16 bytes, but anything over 12 gets hashed with GHASH, see https://csrc.nist.gov/pubs/sp/800/38/d/final.
+  // Old encryptions still need to be supported.
+  if (cryptoNonce.size() != 12 && cryptoNonce.size() != 16)
+    throw std::runtime_error("nonce should be 12 or 16 bytes");
+
   std::string ad = computeAdditionalData(metadata);
 
   ret = EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr);
