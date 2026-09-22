@@ -52,8 +52,8 @@ void ReserveToMatch(std::ranges::sized_range auto& container, std::ranges::forwa
 template <bool forceConst = false>
 auto MakeUnorderedPointerSet(std::ranges::forward_range auto&& values)
     -> std::pair<
-        UnorderedPointerSet<std::conditional_t<forceConst, const QualifiedRangeValue<decltype(values)>, QualifiedRangeValue<decltype(values)>>>,
-        std::vector<std::conditional_t<forceConst, const QualifiedRangeValue<decltype(values)>, QualifiedRangeValue<decltype(values)>>*>> {
+        UnorderedPointerSet<ConstIf<QualifiedRangeValue<decltype(values)>,  forceConst>>,
+        std::vector<ConstIf<QualifiedRangeValue<decltype(values)>,  forceConst>*>> {
   auto result = decltype(MakeUnorderedPointerSet<forceConst>(values)){};
   auto& [set, duplicates] = result;
   ReserveToMatch(set, values);
