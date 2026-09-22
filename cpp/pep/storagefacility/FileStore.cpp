@@ -207,16 +207,20 @@ FileStore::CellVersion FileStore::CellVersion::FromEntry(const Entry& entry) {
 FileStore::Cell::Cell(Participant& participant, const std::string& columnName, bool load)
   : participant_(participant), columnName_(participant.fileStore().getColumnString(columnName)) {
   if (load) {
-    for (const auto& p : std::filesystem::directory_iterator(this->path())) {
-      auto entry = Entry::TryLoad(*this, CheckedPath::FromTrusted(p.path()));
-      if (entry != nullptr) {
-        this->addEntry(entry);
-      }
-    }
+    participant_.fileStore().fileSystem_.read([this]() {
+        for (const auto& p : std::filesystem::directory_iterator(this->path())) {
+          auto entry = Entry::TryLoad(*this, CheckedPath::FromTrusted(p.path()));
+          if (entry != nullptr) {
+            this->addEntry(entry);
+          }
+        }
+      });
   }
   else {
     // throws when an error occurs while creating any of the given directories in the supplied path
-    std::filesystem::create_directories(this->path());
+    participant_.fileStore().fileSystem_.write([this]() {
+        std::filesystem::create_directories(this->path());
+      });
   }
 }
 
@@ -301,7 +305,9 @@ std::shared_ptr<FileStore::Entry> FileStore::Cell::lookup(Timestamp validAt) {
   if (it->validFrom == latest_->getValidFrom()) {
     return latest_;
   }
-  return Entry::Load(*this, it->validFrom);
+  return participant_.fileStore().fileSystem_.read([this, timestamp = it->validFrom]() {
+      return Entry::Load(*this, timestamp);
+    });
 }
 
 std::set<std::string> FileStore::Cell::pagePaths() const {
@@ -449,20 +455,22 @@ void FileStore::Entry::save() const {
   std::string content = std::move(out).str();
   XXH64_hash_t hash = XXH64(content.data(), content.length(), 0ULL);
 
-  std::filesystem::path tempfile = this->getFilePath(".tmp");
-  std::ofstream outfile;
-  outfile.open(tempfile, std::ios::binary | std::ios::out | std::ios::trunc);
-  if (!outfile.is_open())
-    throw std::invalid_argument("could not write file: " + tempfile.string());
+  this->getCell().participant().fileStore().fileSystem_.write([this, &content, hash]() {
+      std::filesystem::path tempfile = this->getFilePath(".tmp");
+      std::ofstream outfile;
+      outfile.open(tempfile, std::ios::binary | std::ios::out | std::ios::trunc);
+      if (!outfile.is_open())
+        throw std::invalid_argument("could not write file: " + tempfile.string());
 
-  outfile << content;
-  WriteBinary(outfile, uint64_t{hash});
-  if (!outfile) {
-    throw std::runtime_error("failed to write content to file: " + tempfile.string());
-  }
-  outfile.close();
+      outfile << content;
+      WriteBinary(outfile, uint64_t{ hash });
+      if (!outfile) {
+        throw std::runtime_error("failed to write content to file: " + tempfile.string());
+      }
+      outfile.close();
 
-  std::filesystem::rename(tempfile, this->getFilePath(Entry::FileExtension));
+      std::filesystem::rename(tempfile, this->getFilePath(Entry::FileExtension));
+    });
 }
 
 void FileStore::EntryChange::commit(Timestamp availableFrom) && {
