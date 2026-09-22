@@ -425,7 +425,7 @@ messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
   auto payload = content->payload();
   assert(payload != nullptr);
   const auto& cell = this->getCell();
-  return payload->readPage(cell.participant().fileStore().pagestore_, cell.entryName(), index);
+  return payload->readPage(this->getFileStore().pagestore_, cell.entryName(), index);
 }
 
 void FileStore::Entry::markPurged(Timestamp at) {
@@ -603,7 +603,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
       },
       .timestamp = validFrom,
     };
-    if (auto pendingPurgedAt = cell.participant().fileStore().sqlite_.pendingPurgeTimestamp(version)) {
+    if (auto pendingPurgedAt = result->getFileStore().sqlite_.pendingPurgeTimestamp(version)) {
       // This entry is included in a pending (i.e. confirmed but not yet completed) purge cycle
       result->markPurged(*pendingPurgedAt);
     }
