@@ -671,7 +671,7 @@ pages:
     - job: ubuntu-lts-debug
       artifacts: true
   rules:
-    - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
+    - if: "'$[[ inputs.test_coverage ]]' == 'coverage' && $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
   #language=sh
   script:
     - set -u
