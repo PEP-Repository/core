@@ -101,6 +101,7 @@ public:
 
   private:
     static const std::string FileExtension;
+    static const std::string PurgedFileExtension; // used (only) during purge persistence
 
     Timestamp validFrom_;
     std::optional<Timestamp> purgedAt_;

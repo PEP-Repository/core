@@ -51,6 +51,7 @@ const std::string LogTag("StorageFacility");
  // - partitioning (within a host; but also mutliple storage facilities)
 
 const std::string FileStore::Entry::FileExtension = ".entry";
+const std::string FileStore::Entry::PurgedFileExtension = ".purged";
 
 EntryContent::MetadataEntry FileStore::makeMetadataEntry(std::string key, std::string value) {
   auto pos = metadataValues_.emplace(std::move(key), std::set<std::string>()).first;
@@ -538,13 +539,23 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension) {
-  auto effectiveExtension = extension.value_or(FileExtension);
-  if (effectiveExtension != FileExtension) {
-    return nullptr; // Not a .entry file
+  // Preferably load the ".entry" file. If a ".purged" file also exists, purge persistence for this file has been
+  // interrupted (e.g. because the process was killed), likely leaving the ".purged" file partially written and
+  // therefore corrupt.
+  std::filesystem::path path = cell.path() / (filename + FileExtension);
+
+  // If the ".entry" file does not exist, load the ".purged" file if that exists. The situation will only occur if
+  // purge persistence was interrupted (e.g. the process killed) after the ".purged" file was (fully) written and the
+  // original ".entry" file deleted, but before the ".purged" file could be renamed to ".entry".
+  if (!exists(path)) {
+    path = (cell.path() / (filename + PurgedFileExtension)).path();
+    if (!exists(path)) {
+      return nullptr;
+    }
   }
 
-  std::filesystem::path path = cell.path() / (filename + effectiveExtension);
-  if (!std::filesystem::is_regular_file(path)) {
+  if ((extension.has_value() && *extension != path.extension()) // Caller (has found a file and) attempts to load a file that doesn't represent the entry's current state
+    || !std::filesystem::is_regular_file(path)) { // This is not one of our files
     return nullptr;
   }
 
@@ -603,7 +614,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
 
   auto result = Entry::Create(cell, validFrom, purgedAt, checksumSubstitute, std::move(entryContent));
 
-  if (!result->getPurgedAt()) { // The *.entry file does not contain a "purged-at" timestamp
+  if (!result->getPurgedAt()) { // The loaded file does not contain a "purged-at" timestamp
     storagefacility::SqliteStorage::CellVersionSpec version{
       .cell = {
         .row = cell.participant().name(),
