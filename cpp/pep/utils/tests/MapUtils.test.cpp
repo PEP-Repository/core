@@ -2,7 +2,6 @@
 
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
-#include <ranges>
 
 namespace {
 
@@ -31,21 +30,19 @@ TEST(MapUtils, ReserveToMatch) {
 
 TEST(MapUtils, MakeUnorderedPointerSet) {
   using namespace std::ranges;
+
   const auto original = std::vector{'A', 'B', 'C', 'C', 'C', 'B', 'D'};
-  const auto pointsToOriginalValue = [&original](const auto& ptr) {
-    return &original.front() <= ptr && ptr <= &original.back();
+  const auto pointsToOriginal = [&original](auto* ptr) {
+    return any_of(original, [ptr](const auto& val) { return std::addressof(val) == ptr; });
   };
   const auto pointsToAddress = [](auto* address) { return [address](auto* ptr) { return ptr == address; }; };
   const auto pointsToValue = [](auto value) { return [value](auto* ptr) { return *ptr == value; }; };
-  const auto pointsInto = [](const std::ranges::contiguous_range auto& range) {
-    return [&range](auto* ptr) { return &range.front() <= ptr && ptr <= &range.back(); };
-  };
 
   const auto result = pep::MakeUnorderedPointerSet(original);
 
   {
     const auto property = "returns (first) a pointer to each unique value";
-    EXPECT_TRUE(all_of(result.first, pointsToOriginalValue)) << property;
+    EXPECT_TRUE(all_of(result.first, pointsToOriginal)) << property;
     EXPECT_EQ(count_if(result.first, pointsToValue('A')), 1) << property;
     EXPECT_EQ(count_if(result.first, pointsToValue('B')), 1) << property;
     EXPECT_EQ(count_if(result.first, pointsToValue('C')), 1) << property;
@@ -53,7 +50,7 @@ TEST(MapUtils, MakeUnorderedPointerSet) {
   }
   {
     const auto property = "returns (second) a pointer to each duplicate value";
-    EXPECT_TRUE(all_of(result.second, pointsInto(original))) << property;
+    EXPECT_TRUE(all_of(result.second, pointsToOriginal)) << property;
     EXPECT_EQ(count_if(result.second, pointsToValue('B')), 1) << property;
     EXPECT_EQ(count_if(result.second, pointsToValue('C')), 2) << property;
   }
