@@ -415,31 +415,23 @@ public:
   /// \returns \c Promise<StoreResult>
   WeblibApiPromise store(StoreQuery query) {
     // We're still on the main thread here: decide how the data will be produced
-    messaging::MessageBatches batches;
-    std::string fileExtension;
-    if (query.blob.has_value()) {
-      // File/Blob path: blob is a JS Blob, read in chunks
-      if (!query.blob->instanceof(val::global("Blob"))) {
-        throw std::invalid_argument("blob must be a Blob or File");
-      }
-      // A File also has name, derive fileExtension from it, like pepcli does from --input-path.
-      if (const val name = (*query.blob)["name"]; name.isString()) {
-        fileExtension = std::filesystem::path(name.as<std::string>()).extension().string();
-      }
-      batches = BlobToMessageBatches(std::move(*query.blob), messaging::DefaultPageSize, *asioWorker_);
-      query.blob.reset();
-    } else if (query.data.has_value()) {
-      // Simple text path, send it as a single message
-      batches = messaging::BatchSingleMessage(std::move(*query.data));
-      query.data.reset();
-    } else {
-      throw std::invalid_argument("Either data or blob must be provided for store operation");
+    if (!query.blob.instanceof(val::global("Blob"))) {
+      throw std::invalid_argument("blob must be a Blob or File");
     }
+    // A File also has name, derive fileExtension from it, like pepcli does from --input-path.
+    std::string fileExtension;
+    if (const val name = query.blob["name"]; name.isString()) {
+      fileExtension = std::filesystem::path(name.as<std::string>()).extension().string();
+    }
+    messaging::MessageBatches batches =
+        BlobToMessageBatches(std::move(query.blob), messaging::DefaultPageSize, *asioWorker_);
 
+    // Capture the members separately, so that the query (holding a val) does not cross to the io thread
     co_return co_await onIoThread()
-        .flat_map([query = std::move(query), batches = std::move(batches), fileExtension = std::move(fileExtension)](
-            const std::shared_ptr<Weblib>& self) {
-          return self->client_->parsePpsOrIdentities({query.subject})
+        .flat_map([subject = std::move(query.subject), column = std::move(query.column),
+                   metadata = std::move(query.metadata), batches = std::move(batches),
+                   fileExtension = std::move(fileExtension)](const std::shared_ptr<Weblib>& self) {
+          return self->client_->parsePpsOrIdentities({subject})
               .op(RxGetOne("PolymorphicPseudonym"))
               .map([](std::shared_ptr<std::vector<PolymorphicPseudonym>> pps) {
                 if (pps->empty()) {
@@ -447,22 +439,19 @@ public:
                 }
                 return std::make_shared<PolymorphicPseudonym>(pps->front());
               })
-              .flat_map([self, query, batches, fileExtension](std::shared_ptr<PolymorphicPseudonym> pp) {
-                // Build metadata if provided
-                std::map<std::string, MetadataXEntry> metadata;
-                if (query.metadata.has_value()) {
-                  for (const auto& [key, value] : *query.metadata) {
-                    metadata.emplace(key, MetadataXEntry::FromPlaintext(value, false, false));
-                  }
+              .flat_map([self, column, metadata, batches, fileExtension](std::shared_ptr<PolymorphicPseudonym> pp) {
+                std::map<std::string, MetadataXEntry> xMetadata;
+                for (const auto& [key, value] : metadata) {
+                  xMetadata.emplace(key, MetadataXEntry::FromPlaintext(value, false, false));
                 }
                 // Placed after explicit fileExtension,
                 // so the derived extension fails to insert if an explicit one is present
                 if (IsValidFileExtension(fileExtension)) {
-                  metadata.emplace(MetadataXEntry::MakeFileExtension(fileExtension));
+                  xMetadata.emplace(MetadataXEntry::MakeFileExtension(fileExtension));
                 }
 
-                StoreData2Entry entry(pp, query.column, batches);
-                entry.xMetadata = std::move(metadata);
+                StoreData2Entry entry(pp, column, batches);
+                entry.xMetadata = std::move(xMetadata);
 
                 return self->client_->storeData2({entry}, StoreData2Opts{})
                     .map([](const DataStorageResult2& result) {

@@ -39,9 +39,6 @@ EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(ListQuery::columnGroups)::value_type>();
   register_optional<decltype(ListQuery::columns)::value_type>();
   register_optional<decltype(std::declval<CellEntry>().partialMetadataView())::mapped_type::value_type>();
-  register_optional<decltype(StoreQuery::data)::value_type>();
-  register_optional<decltype(StoreQuery::blob)::value_type>();
-  register_optional<decltype(StoreQuery::metadata)::value_type>();
 }
 
 PEP_BINDINGS(ListQuery,
@@ -75,7 +72,6 @@ PEP_BINDINGS(ParticipantPersonalia,
 PEP_BINDINGS(StoreQuery,
   subject,
   column,
-  data,
   blob,
   metadata
 )

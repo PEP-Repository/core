@@ -46,7 +46,8 @@ struct BlobReadState {
   rxcpp::observe_on_one_worker mainWorker = weblib::observe_on_emscripten_main_thread();
 };
 
-/// Reads a single page from a Blob on the main thread and delivers it to the inner subscriber on the io worker.
+/// Reads a single page from a Blob and passes it to the inner subscriber.
+/// Runs on the main thread, where the Blob handle is valid, and deletes itself once the read is done
 class BlobPageReader : public boost::noncopyable {
   std::shared_ptr<BlobReadState> state_;
   rxcpp::subscriber<std::shared_ptr<std::string>> inner_;

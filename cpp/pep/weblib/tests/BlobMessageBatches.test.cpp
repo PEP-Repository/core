@@ -12,6 +12,7 @@
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -21,12 +22,13 @@
 #include <span>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 
 using namespace emscripten;
 using namespace pep::weblib;
 using namespace pep::weblib::tests;
 using namespace std::literals;
+using ::testing::HasSubstr;
+using ::testing::ThrowsMessage;
 
 namespace {
 
@@ -44,6 +46,25 @@ EM_JS(EM_VAL /*Promise<Uint8Array>*/, PagesAsBytes, (EM_VAL /*ReadableStream<Uin
     const joined = new Blob(pages.flatMap((page, i) => i === 0 ? [page] : ['|', page]));
     return new Uint8Array(await joined.arrayBuffer());
   })());
+});
+
+// Creates a Blob-like object that counts its slice() calls, so a test can tell how much was read.
+EM_JS(EM_VAL /*Blob-like*/, MakeCountingBlob, (double size), { //language=js
+  return Emval.toHandle({
+    size,
+    sliceCount: 0,
+    slice(start, end) {
+      ++this.sliceCount;
+      return {arrayBuffer: () => Promise.resolve(new ArrayBuffer(end - start))};
+    },
+  });
+});
+
+// Creates a Promise plus the resolve function for it, so C++ can settle it when it is ready.
+EM_JS(EM_VAL /*{promise, resolve}*/, MakeDeferred, (), { //language=js
+  let resolve;
+  const promise = new Promise(r => resolve = r);
+  return Emval.toHandle({promise, resolve});
 });
 
 // Creates a Blob-like object whose arrayBuffer() always rejects with an error.
@@ -125,16 +146,32 @@ TEST(BlobMessageBatches, binaryContent) {
   EXPECT_EQ(ReadBlobPages(content, 16), content);
 }
 
+TEST(BlobMessageBatches, stopsReadingWhenConsumerStops) {
+  // A consumer that exhausts one batch and then unsubscribes should leave the remaining pages unread,
+  // rather than the next page being fetched in anticipation.
+  // The Blob is created (and read) on the main thread, so the count is reported back as the
+  // promise's value rather than by inspecting the val from the test's own thread.
+  const std::string sliceCount = PromiseTest([] {
+    const val blob = val::take_ownership(MakeCountingBlob(10)); // 3 pages at pageSize 4
+    const val deferred = val::take_ownership(MakeDeferred());
+    const rxcpp::composite_subscription outer;
+    BlobToMessageBatches(blob, 4, observe_on_emscripten_main_thread())
+        .subscribe(outer, [blob, outer, deferred](const rxcpp::observable<std::shared_ptr<std::string>>& batch) {
+          batch.subscribe([](const std::shared_ptr<std::string>&) {}, [blob, outer, deferred] {
+            // The first batch is exhausted: take no more, and report how much was read
+            outer.unsubscribe();
+            deferred["resolve"](val(std::to_string(blob["sliceCount"].as<int>())));
+          });
+        });
+    return deferred["promise"];
+  });
+  EXPECT_EQ(sliceCount, "1") << "Exhausting one batch should not read any further page";
+}
+
 TEST(BlobMessageBatches, errorFromBlob) {
-  EXPECT_THROW({
-    try {
-      PromiseTest([] { return PagesPromise(val::take_ownership(MakeFailingBlob()), 4); });
-    } catch (const std::runtime_error& e) {
-      EXPECT_NE(std::string_view(e.what()).find("Blob error!"), std::string_view::npos)
-          << "Should include the underlying JS error, got: " << e.what();
-      throw;
-    }
-  }, std::runtime_error) << "Should propagate a failing Blob read";
+  EXPECT_THAT([] { PromiseTest([] { return PagesPromise(val::take_ownership(MakeFailingBlob()), 4); }); },
+              ThrowsMessage<std::runtime_error>(HasSubstr("Blob error!")))
+      << "Should propagate a failing Blob read, including the underlying JS error";
 }
 
 TEST(BlobMessageBatches, zeroPageSize) {
