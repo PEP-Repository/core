@@ -66,7 +66,7 @@ auto MakeUnorderedPointerSet(std::ranges::forward_range auto&& values)
 /// \details Ignores duplicate values.
 bool IsSubset(std::ranges::input_range auto const& sub, std::ranges::forward_range auto const& super) {
   const auto superset = MakeUnorderedPointerSet(super).first; // O(super*log(super))
-  return std::ranges::all_of(sub, [&](const auto& value) { return superset.contains(&value); }); // O(sub*log(super))
+  return std::ranges::all_of(sub, [&](const auto& value) { return superset.contains(std::addressof(value)); }); // O(sub*log(super))
 }
 
 /// Returns a value that's included multiple times in the vector, or nullptr if it contains unique values.
