@@ -109,7 +109,7 @@ void FileStore::persistPurgeCyclesAsync(std::vector<PurgeCycle> cycles) {
       assert(cycle.confirmed && !cycle.completed);
 
       for (auto version : sqlite_.getIncludedCellVersions(cycle.id)) {
-        this->getParticipant(version.cell.row)->ensurePurgePersisted(*cycle.confirmed, version.cell.column, version.timestamp);
+        this->getParticipant(version.cell.participant())->ensurePurgePersisted(*cycle.confirmed, version.cell.column(), version.timestamp);
       }
 
       auto updated = cycle;
@@ -321,10 +321,7 @@ std::set<std::string> FileStore::Cell::pagePaths() const {
 void FileStore::Cell::applyPurgeCycle(const PurgeCycle& cycle) {
   assert(cycle.confirmed);
 
-  auto timestamps = this->participant().fileStore().sqlite_.getPurgedTimestamps(cycle.id, storagefacility::SqliteStorage::CellSpec{
-    .row = this->participant().name(),
-    .column = this->columnName()
-    });
+  auto timestamps = this->participant().fileStore().sqlite_.getPurgedTimestamps(cycle.id, this->entryName());
   if (timestamps.empty()) { // Nothing to do: no need to iterate over our versions_
     return;
   }
@@ -658,10 +655,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
   auto result = TryLoadFile(cell, filename, std::move(extension));
   if (result != nullptr && !result->getPurgedAt()) { // The loaded file does not contain a "purged-at" timestamp
     storagefacility::SqliteStorage::CellVersionSpec version{
-      .cell = {
-        .row = cell.participant().name(),
-        .column = cell.columnName(),
-      },
+      .cell = cell.entryName(),
       .timestamp = result->getValidFrom(),
     };
     if (auto pendingPurgedAt = result->getFileStore().sqlite_.pendingPurgeTimestamp(version)) {

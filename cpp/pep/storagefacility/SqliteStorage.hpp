@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/storagefacility/EntryName.hpp>
 #include <pep/storagefacility/PurgeCycle.hpp>
 #include <pep/utils/Action.hpp>
 #include <filesystem>
@@ -34,7 +35,6 @@ private:
   void deletePurgeCycleRecord(int64_t id);
 
 public:
-  struct CellSpec;
   struct CellVersionSpec;
   class ConstraintViolation;
 
@@ -58,7 +58,7 @@ public:
   /// \param id the purge cycle ID
   /// \param cell the cell to inspect
   /// \return timestamps ("versions") for the specified cell that are included in the specified purge cycle
-  std::set<Timestamp> getPurgedTimestamps(PurgeCycle::Id id, const CellSpec& cell) const;
+  std::set<Timestamp> getPurgedTimestamps(PurgeCycle::Id id, const EntryName& cell) const;
 
   /// \brief Returns the ("confirmed") timestamp of the purge cycle that includes the specified cell version
   /// \param cellVersion the cell version to inspect
@@ -83,15 +83,8 @@ public:
   ConstraintViolation();
 };
 
-struct SqliteStorage::CellSpec {
-  std::string row; // (Text representation of) the row's local pseudonym for Storage Facility
-  std::string column;
-
-  auto operator<=>(const CellSpec&) const = default;
-};
-
 struct SqliteStorage::CellVersionSpec {
-  CellSpec cell;
+  EntryName cell;
   Timestamp timestamp;
 
   auto operator<=>(const CellVersionSpec&) const = default;

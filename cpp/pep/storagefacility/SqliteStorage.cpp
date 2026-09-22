@@ -223,8 +223,8 @@ void SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const CellVersionSpec& ce
       try {
         implementor_->raw.insert(PurgeEntryRecord{
           .cycle = id,
-          .row = this->ensureRowId(cellVersion.cell.row),
-          .column = this->ensureColumnId(cellVersion.cell.column),
+          .row = this->ensureRowId(cellVersion.cell.participant()),
+          .column = this->ensureColumnId(cellVersion.cell.column()),
           .timestamp = TicksSinceEpoch<std::chrono::milliseconds>(cellVersion.timestamp),
           });
       } catch (const std::system_error& error) {
@@ -246,11 +246,10 @@ std::set<SqliteStorage::CellVersionSpec> SqliteStorage::getIncludedCellVersions(
         where(c(&PurgeEntryRecord::cycle) == id
           && c(&PurgeEntryRecord::row) == c(&RowRecord::seqno)
           && c(&PurgeEntryRecord::column) == c(&ColumnRecord::seqno)))) {
+        const auto& participant = std::get<0>(entry);
+        const auto& column = std::get<1>(entry);
         result.emplace(CellVersionSpec{
-            .cell = {
-              .row = std::get<0>(entry),
-              .column = std::get<1>(entry),
-            },
+            .cell = EntryName(participant, column),
             .timestamp = database::TimestampFromUnixMillis(std::get<2>(entry)),
           });
       }
@@ -258,13 +257,13 @@ std::set<SqliteStorage::CellVersionSpec> SqliteStorage::getIncludedCellVersions(
     });
 }
 
-std::set<Timestamp> SqliteStorage::getPurgedTimestamps(PurgeCycle::Id id, const CellSpec& cell) const {
+std::set<Timestamp> SqliteStorage::getPurgedTimestamps(PurgeCycle::Id id, const EntryName& cell) const {
   return this->atomically([this, id, &cell]() {
       std::set<Timestamp> result;
 
       using namespace sqlite_orm;
-      auto rowId = this->getRowId(cell.row);
-      auto columnId = this->getColumnId(cell.column);
+      auto rowId = this->getRowId(cell.participant());
+      auto columnId = this->getColumnId(cell.column());
 
       if (rowId.has_value() && columnId.has_value()) {
         for (auto millis : implementor_->raw.select(&PurgeEntryRecord::timestamp,
@@ -283,8 +282,8 @@ std::set<Timestamp> SqliteStorage::getPurgedTimestamps(PurgeCycle::Id id, const 
 
 std::optional<Timestamp> SqliteStorage::pendingPurgeTimestamp(const CellVersionSpec& cellVersion) const {
   return this->atomically([this, &cellVersion]() -> std::optional<Timestamp> {
-      auto rowId = this->getRowId(cellVersion.cell.row);
-      auto columnId = this->getColumnId(cellVersion.cell.column);
+      auto rowId = this->getRowId(cellVersion.cell.participant());
+      auto columnId = this->getColumnId(cellVersion.cell.column());
       if (!rowId.has_value() || !columnId.has_value()) {
         return std::nullopt;
       }
