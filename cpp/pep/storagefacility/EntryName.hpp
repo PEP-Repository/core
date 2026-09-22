@@ -10,7 +10,6 @@ private:
   std::string column_;
 
   EntryName(std::string participant, bool validateParticipant, std::string column);
-  std::tuple<const std::string&, const std::string&> memberValues() const { return std::tie(this->participant(), this->column()); }
 
 public:
   static constexpr char Delimiter = '/'; // Don't change: we need this to (also) serve as a path delimiter on the file system and S3 page store
@@ -24,8 +23,7 @@ public:
   LocalPseudonym pseudonym() const { return LocalPseudonym::FromText(this->participant()); }
   std::string string() const { return this->participant() + Delimiter + this->column(); }
 
-  bool operator==(const EntryName& rhs) const { return this->memberValues() == rhs.memberValues(); }
-  bool operator<(const EntryName& rhs) const { return this->memberValues() < rhs.memberValues(); }
+  auto operator<=>(const EntryName&) const = default;
 
   static EntryName Parse(const std::string& sfId);
 };
