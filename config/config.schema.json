@@ -231,7 +231,11 @@
         "EncIdKeyFile": { "type": "string" },
         "PageStore": { "$ref": "#/$defs/PageStore" },
         "DataSizeResolution": { "type": "integer" },
-        "ParallelisationWidth": { "type": "integer" }
+        "ParallelisationWidth": { "type": "integer" },
+        "MaxPendingPagesMiB": {
+          "type": "integer",
+          "description": "Stop reading incoming pages from the network while at least this many MiB of pages are waiting to be stored. Reading resumes when half of it remains."
+        }
       },
       "required": [
         "StoragePath",
