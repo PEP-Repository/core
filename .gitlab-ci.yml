@@ -660,6 +660,31 @@ ubuntu-lts-debug:
         coverage_format: cobertura
         path: coverage.xml
 
+# Publish the HTML coverage report to core pages
+pages:
+  stage: publish
+  tags: [docker-small]
+  image: alpine:latest
+  variables:
+    GIT_STRATEGY: none
+  needs:
+    - job: ubuntu-lts-debug
+      artifacts: true
+  rules:
+    - if: "'$[[ inputs.test_coverage ]]' == 'coverage' && $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
+  #language=sh
+  script:
+    - if [ ! -f htmlcov/index.html ]; then
+    -   echo "No coverage report was produced by the ubuntu-lts-debug job."
+    -   exit 1
+    - fi
+    - rm -rf public
+    - mv htmlcov public
+  artifacts:
+    paths:
+      - public/
+    expire_in: 7d
+
 # To test the effect of removing Castor integration
 ubuntu-lts-debug-without-castor:
   extends:
