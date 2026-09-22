@@ -18,12 +18,12 @@ namespace {
 
 const auto ReadPauseDuration = 300ms;
 
-// Handles PingRequests that have a tail. Pauses reading right away, and only lets go after a while: the tail can't arrive before that.
+/// Handles PingRequests that have a tail. Pauses reading right away, and only lets go after a while: the tail can't arrive before that.
 class PausingHandler : public pep::messaging::RequestHandler {
 public:
   struct Observations {
-    size_t received = 0; // Tail chunks that the handler has received
-    size_t receivedWhilePaused = 0; // Idem, at the moment that the handler stops being paused
+    size_t received = 0; ///< Tail chunks that the handler has received
+    size_t receivedWhilePaused = 0; ///< Idem, at the moment that the handler stops being paused
     bool completed = false;
   };
 
