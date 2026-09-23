@@ -1256,10 +1256,7 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
             }
             for (auto i = versions.begin(); i != end; ++i) {
               storagefacility::SqliteStorage::CellVersionSpec version{
-                .cell = {
-                  .row = participant->name(),
-                  .column = cell->columnName(),
-                },
+                .cell = EntryName(participant->name(), cell->columnName()),
                 .timestamp = i->validFrom,
               };
               sqlite_->addToPurgeCycle(id, version);
