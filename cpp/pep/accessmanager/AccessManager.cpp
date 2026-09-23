@@ -531,7 +531,13 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
   backend_->checkTicketRequest(request);
 
-  auto timestamp = TimeNow();
+  // Prepare ticket
+  Ticket2 ticket{
+      .timestamp = TimeNow(),
+      .modes = request.modes,
+      .accessSubjects = {},
+      .columns = request.columns,
+      .userGroup = userGroup};
 
   auto pps = request.accessSubjects
     | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; })
@@ -541,22 +547,15 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   std::unordered_map<std::string, IndexList> participantGroupMap;
   if (!request.participantGroups.empty()) {
     // Access to participants does not imply permission to list groups they are in, so first check that
-    backend_->checkParticipantGroupAccess(request.participantGroups, userGroup, modes, timestamp);
+    backend_->checkParticipantGroupAccess(request.participantGroups, userGroup, modes, ticket.timestamp);
 
     participantGroupMap = backend_->fillParticipantGroupMap(request.participantGroups, pps);
   }
 
-  // Prepare ticket
-
-  Ticket2 ticket;
-  ticket.timestamp = TimeNow();
-  ticket.modes = request.modes;
-  ticket.columns = request.columns;
-  ticket.userGroup = userGroup;
 
   // Check columns and column groups
   auto columnGroupMap = backend_->unfoldColumnGroupsAndCheckAccess(
-      userGroup, request.columnGroups, request.modes, timestamp, ticket.columns /*in & out*/);
+      userGroup, request.columnGroups, request.modes, ticket.timestamp, ticket.columns /*in & out*/);
 
   // Remove the main client signature to prevent reuse of
   // the SignedTicketRequest2.
