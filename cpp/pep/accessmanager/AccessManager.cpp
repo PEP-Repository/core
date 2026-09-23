@@ -519,7 +519,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     return std::chrono::steady_clock::now() - start;
   };
 
-  auto requestNumber = nextTicketRequestNumber_++;
+  const auto requestNumber = nextTicketRequestNumber_++;
 
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " received";
 
