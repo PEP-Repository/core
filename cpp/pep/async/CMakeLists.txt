@@ -10,7 +10,7 @@ add_library(${PROJECT_NAME}Asynclib
     IoContextThread.cpp IoContextThread.hpp
     ObservableAwaiter.hpp
     OnAsio.cpp OnAsio.hpp
-    ReaderWriterLock.hpp
+    ReaderWriterLock.cpp ReaderWriterLock.hpp
     RxBeforeTermination.hpp
     RxButFirst.hpp
     RxCache.hpp

@@ -155,3 +155,54 @@ TEST(ReaderWriterLock, Works) {
     << " used " << Readers << " reader threads"
     << " and " << Writers << " writer threads";
 }
+
+TEST(ReaderWriterLock, Recursive) {
+  auto value = 0U;
+
+  // (Plain, non-recursive) ReaderWriterLock supports recursive reads, giving us a new shared_lock every time
+  pep::ReaderWriterLock nonrecursive;
+  EXPECT_EQ(0U, nonrecursive.read([&]() {
+    return nonrecursive.read([&]() {
+      return value;
+      });
+    }));
+
+  // ThreadReaderWriterLock supports recursive writes, in which case (plain, non-recursive) ReaderWriterLock would have deadlocked. Trust me, I've tested.
+  pep::ThreadReaderWriterLock rwl;
+  EXPECT_NO_FATAL_FAILURE(
+    rwl.write([&]() {
+      rwl.write([&]() {
+        EXPECT_EQ(value, 0U);
+        ++value;
+        });
+      })
+  );
+  EXPECT_EQ(value, 1U);
+
+
+  rwl.write([&]() {
+    rwl.read([&]() {
+      ++value; // OK to do inside a reader lock because we're also holding an (outer) writer lock
+      });
+    });
+  EXPECT_EQ(value, 2U);
+
+  EXPECT_THROW(
+    rwl.read([&]() {
+      rwl.write([&]() {
+        ++value;
+        });
+      })
+    , std::exception
+  );
+  EXPECT_EQ(value, 2U) << "Exception should have prevented update";
+
+  rwl.write([&]() { // Since we're holding an outer writer lock...
+    rwl.read([&]() { // ... we don't actually acquire a reader lock here...
+      rwl.write([&]() { // ... so now it's OK to invoke "write" inside a "read"
+        ++value;
+        });
+      });
+    });
+  EXPECT_EQ(value, 3U);
+}

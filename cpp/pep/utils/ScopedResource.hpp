@@ -56,6 +56,9 @@ public:
       teardown_(std::move(raw_));
     }
   }
+
+  const TRaw& raw() const noexcept { return raw_; }
+  decltype(auto) operator*() const noexcept { return this->raw(); }
 };
 
 template <>
