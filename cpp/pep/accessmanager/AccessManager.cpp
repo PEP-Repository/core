@@ -541,11 +541,11 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; })
     | to<std::vector>();
 
-  std::vector<std::string> modes{"access"};
+  std::vector<std::string> participantAccessModes{"access"};
   std::unordered_map<std::string, IndexList> participantGroupMap;
   if (!request.participantGroups.empty()) {
     // Access to participants does not imply permission to list groups they are in, so first check that
-    backend_->checkParticipantGroupAccess(request.participantGroups, ticket.userGroup, modes /*in & out*/, ticket.timestamp);
+    backend_->checkParticipantGroupAccess(request.participantGroups, ticket.userGroup, participantAccessModes /*in & out*/, ticket.timestamp);
 
     participantGroupMap = backend_->fillParticipantGroupMap(request.participantGroups, pps);
   }
@@ -587,7 +587,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     .pps = std::move(pps),
     .columnGroupMap = std::move(columnGroupMap),
     .participantGroupMap = std::move(participantGroupMap),
-    .participantModes = std::move(modes),
+    .participantModes = std::move(participantAccessModes),
     .tsReq {.request = std::move(*signedRequest) },
     .userRecipient = std::move(userRecipient),
     });
