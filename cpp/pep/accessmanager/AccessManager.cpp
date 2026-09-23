@@ -525,10 +525,8 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
   // openAsAccessManager checks that signature_ and logSignature_ are set,
   // are valid and match.
-  auto certified = signedRequest->openAsAccessManager(*this->getRootCAs());
+  const auto certified = signedRequest->openAsAccessManager(*this->getRootCAs());
   const auto& request = certified.message;
-  auto userGroup = certified.signatory.organizationalUnit();
-
   backend_->checkTicketRequest(request);
 
   // Prepare ticket
@@ -537,7 +535,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
       .modes = request.modes,
       .accessSubjects = {},
       .columns = request.columns,
-      .userGroup = userGroup};
+      .userGroup = certified.signatory.organizationalUnit()};
 
   auto pps = request.accessSubjects
     | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; })
@@ -547,15 +545,14 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   std::unordered_map<std::string, IndexList> participantGroupMap;
   if (!request.participantGroups.empty()) {
     // Access to participants does not imply permission to list groups they are in, so first check that
-    backend_->checkParticipantGroupAccess(request.participantGroups, userGroup, modes, ticket.timestamp);
+    backend_->checkParticipantGroupAccess(request.participantGroups, ticket.userGroup, modes /*in & out*/, ticket.timestamp);
 
     participantGroupMap = backend_->fillParticipantGroupMap(request.participantGroups, pps);
   }
 
-
   // Check columns and column groups
   auto columnGroupMap = backend_->unfoldColumnGroupsAndCheckAccess(
-      userGroup, request.columnGroups, request.modes, ticket.timestamp, ticket.columns /*in & out*/);
+      ticket.userGroup, request.columnGroups, request.modes, ticket.timestamp, ticket.columns /*in & out*/);
 
   // Remove the main client signature to prevent reuse of
   // the SignedTicketRequest2.
