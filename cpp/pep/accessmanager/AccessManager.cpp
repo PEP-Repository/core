@@ -515,7 +515,10 @@ void AccessManager::computeChecksumChainChecksum(
 
 messaging::MessageBatches
 AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signedRequest) {
-  auto time = std::chrono::steady_clock::now();
+  const auto elapsedTime = [start = std::chrono::steady_clock::now()]() -> std::chrono::duration<double> {
+    return std::chrono::steady_clock::now() - start;
+  };
+
   auto requestNumber = nextTicketRequestNumber_++;
 
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " received";
@@ -568,7 +571,6 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     Ticket2 ticket;
     SignedTicket2 signedTicket{};
     std::vector<Backend::Pp> pps;
-    decltype(time) start_time;
     std::unordered_map<std::string, IndexList> columnGroupMap;
     std::unordered_map<std::string, IndexList> participantGroupMap;
     std::vector<std::string> participantModes;
@@ -587,7 +589,6 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     .request = request,
     .ticket = std::move(ticket),
     .pps = std::move(pps),
-    .start_time = time,
     .columnGroupMap = std::move(columnGroupMap),
     .participantGroupMap = std::move(participantGroupMap),
     .participantModes = std::move(modes),
@@ -673,7 +674,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     logReq.id = resp.id;
     PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " logging issued ticket";
     return ctx->server->transcryptorProxy_.requestLogIssuedTicket(std::move(logReq));
-  }).map([ctx](LogIssuedTicketResponse resp) {
+  }).map([ctx, elapsedTime](LogIssuedTicketResponse resp) {
     PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " finishing up";
     ctx->signedTicket.addTranscryptorSignature(std::move(resp.signature));
 
@@ -689,7 +690,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     }
     auto result = rxcpp::observable<>::from(MakeSharedCopy(std::move(response))).as_dynamic();
 
-    ctx->server->lpMetrics_->ticketRequest2Duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count());
+    ctx->server->lpMetrics_->ticketRequest2Duration.Observe(elapsedTime().count());
     PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " returning ticket to requestor";
     return result;
   });
