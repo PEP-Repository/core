@@ -58,6 +58,7 @@ add_library(${PROJECT_NAME}Utilslib
     PropertySerializer.cpp PropertySerializer.hpp
     Random.cpp Random.hpp
     Raw.cpp Raw.hpp
+    ScopedResource.hpp
     SelfRegistering.hpp
     Shared.hpp
     Singleton.hpp
