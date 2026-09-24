@@ -134,6 +134,7 @@ namespace {
       std::shared_ptr<prometheus::Registry> metrics_registry,
       const Configuration& config)
   {
+    // Note: we start all S3 clients on the same single-threaded io_context, but they use different sockets.
     auto hostsParams = config.get_children_map("Hosts")
       | views::transform([&io_context](const auto& entry) {
         const Configuration& hostConfig = entry.second;
