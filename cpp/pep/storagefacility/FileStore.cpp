@@ -548,30 +548,36 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
   std::filesystem::path entryPath = cell.path() / (filename + FileExtension);
   std::filesystem::path purgedPath = cell.path() / (filename + PurgedFileExtension);
 
-  // Process ".entry" file if it exists
-  if (auto entry = TryLoadFile(cell, filename, FileExtension)) {
-    if (entry->getPurgedAt().has_value()) {
-      // Nothing to do: purge has already been persisted, i.e. "purged-at" is already stored in ".entry" file
-      assert(entry->getPurgedAt() == purgedAt);
-      return;
-    }
+  cell.participant().fileStore().fileSystem_.write([&]() {
+      // Process ".entry" file if it exists
+      if (auto entry = TryLoadFile(cell, filename, FileExtension)) {
+        if (entry->getPurgedAt().has_value()) {
+          // Nothing to do: purge has already been persisted, i.e. "purged-at" is already stored in ".entry" file
+          assert(entry->getPurgedAt() == purgedAt);
+          return;
+        }
 
-    // Clean up (possibly corrupt file left behind by) failed or interrupted previous persistence attempt
-    if (exists(purgedPath)) {
-      remove(purgedPath);
-    }
+        // Clean up (possibly corrupt file left behind by) failed or interrupted previous persistence attempt
+        if (exists(purgedPath)) {
+          remove(purgedPath);
+          assert(!exists(purgedPath));
+        }
 
-    // Save ".purged" file
-    entry->markPurged(purgedAt);
-    entry->save(PurgedFileExtension);
-    assert(exists(purgedPath));
+        // Save ".purged" file
+        entry->markPurged(purgedAt);
+        entry->save(PurgedFileExtension);
+        assert(exists(purgedPath));
 
-    // Remove ".entry" file
-    remove(entryPath);
-  }
+        // Remove ".entry" file
+        remove(entryPath);
+        assert(!exists(entryPath));
+      }
 
-  // A ".purged" file exists and a ".entry" file does not: rename 
-  rename(purgedPath, entryPath);
+      // A ".purged" file exists and a ".entry" file does not: rename 
+      rename(purgedPath, entryPath);
+      assert(exists(entryPath));
+      assert(!exists(purgedPath));
+    });
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoadFile(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension) {
