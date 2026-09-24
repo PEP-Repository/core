@@ -4,8 +4,11 @@
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
+#include <sstream>
+
 namespace {
 namespace yaml = pep::structuredOutput::yaml;
+using pep::structuredOutput::Table;
 using pep::structuredOutput::Tree;
 using json = nlohmann::ordered_json;
 
@@ -263,6 +266,46 @@ TEST(structuredOutputYaml, EmptyArrayComments) {
       "  - # item count: 2\n"
       "    - 3\n"
       "    - 4\n");
+}
+
+TEST(structuredOutputYaml, FromEmptyTableWithHeader) {
+  const auto table = Table::EmptyWithHeader({"fruit", "color"});
+
+  EXPECT_EQ(
+      yaml::to_string(table),
+      "metadata:\n"
+      "  header:\n"
+      "    - \"fruit\"\n"
+      "    - \"color\"\n"
+      "data: []\n");
+
+  EXPECT_EQ(
+      yaml::to_string(table, {.includeArraySizeComments = true, .includeEmptyArrayComments = true}),
+      "metadata:\n"
+      "  header:\n"
+      "    - \"fruit\"\n"
+      "    - \"color\"\n"
+      "data: [] # item count: 0\n");
+}
+
+TEST(structuredOutputYaml, FromPopulatedTableWithHeader) {
+  const auto table = Table::FromSeparateHeaderAndData({"fruit", "color"}, {"apple", "red", "pear", "green"});
+
+  std::ostringstream stream;
+  yaml::append(stream, table) << "---\n"; // chaining needs the same stream back
+
+  EXPECT_EQ(
+      std::move(stream).str(),
+      "metadata:\n"
+      "  header:\n"
+      "    - \"fruit\"\n"
+      "    - \"color\"\n"
+      "data:\n"
+      "  - fruit: \"apple\"\n"
+      "    color: \"red\"\n"
+      "  - fruit: \"pear\"\n"
+      "    color: \"green\"\n"
+      "---\n");
 }
 
 } // namespace
