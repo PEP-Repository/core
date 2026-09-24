@@ -92,7 +92,7 @@ struct DataHistoryEntry2 {
   uint32_t pseudonymIndex{}; // In the DataHistoryRequest2::ticket_
   Timestamp timestamp;
   std::string id; // Storage facility ID. If empty, this history entry represents a deletion
-  std::optional<Timestamp> purgedAt; // If the entry is purged: the timestamp at which the cycle was confirmed
+  std::optional<Timestamp> purgedAt; // If the entry is purged: the timestamp at which the cycle was applied
 };
 
 struct DataHistoryResponse2 {

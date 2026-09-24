@@ -60,7 +60,7 @@ public:
   /// \return timestamps ("versions") for the specified cell that are included in the specified purge cycle
   std::set<Timestamp> getPurgedTimestamps(PurgeCycle::Id id, const EntryName& cell) const;
 
-  /// \brief Returns the ("confirmed") timestamp of the purge cycle that includes the specified cell version
+  /// \brief Returns the ("applied") timestamp of the purge cycle that includes the specified cell version
   /// \param cellVersion the cell version to inspect
   /// \return the timestamp of the cycle in which the specified cell version is/was/will-be purged, or std::nullopt if the cell version isn't included in a purge cycle
   std::optional<Timestamp> pendingPurgeTimestamp(const CellVersionSpec& cellVersion) const;

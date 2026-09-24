@@ -23,7 +23,7 @@ struct PurgeCycle {
   Id id;
   Definition definition;
   Timestamp announced;
-  std::optional<Timestamp> confirmed;
+  std::optional<Timestamp> applied;
   std::optional<Timestamp> completed;
 };
 

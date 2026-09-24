@@ -1175,18 +1175,18 @@ messaging::MessageBatches StorageFacility::handlePurgeConfirmationRequest(std::s
 
   auto result = sqlite_->atomically([this, id = certified.message.id]() {
       auto result = sqlite_->getPurgeCycle(id);
-      if (result.confirmed) {
-        throw Error("Purge cycle has already been confirmed");
+      if (result.applied) {
+        throw Error("Purge cycle has already been applied");
       }
 
-      // (Overly) defensive programming: each purge cycle must have a unique 'confirmed' timestamp to ensure history consistency
+      // (Overly) defensive programming: each purge cycle must have a unique 'applied' timestamp to ensure history consistency
       auto existing = sqlite_->getPurgeCycles();
       auto timestamp = TimeNow();
-      while (ContainsWhere(existing, [timestamp](const PurgeCycle& cycle) { return cycle.confirmed == timestamp; })) {
+      while (ContainsWhere(existing, [timestamp](const PurgeCycle& cycle) { return cycle.applied == timestamp; })) {
         timestamp = TimeNow();
       }
 
-      result.confirmed = timestamp;
+      result.applied = timestamp;
       sqlite_->updatePurgeCycle(result);
       fileStore_->applyPurgeCycle(result);
 
@@ -1242,7 +1242,7 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
         .id = 0,
         .definition = std::move(definition),
         .announced = TimeNow(),
-        .confirmed{},
+        .applied{},
         .completed{}
         });
 

@@ -629,7 +629,7 @@ message DataEnumerationEntry2 {
   // include the index of the file in the ids field of the request.
   uint32 index = 8;
 
-  // If the entry has been purged: the moment at which the purge cycle was confirmed
+  // If the entry has been purged: the moment at which the purge cycle was applied
   Timestamp purged_at = 9;
 }
 
@@ -781,7 +781,7 @@ message DataHistoryEntry2 {
   // (Encrypted) storage facility ID. If empty, this history entry represents a deletion
   bytes id = 4;
 
-  // If the entry is purged: the timestamp at which the cycle was confirmed
+  // If the entry is purged: the timestamp at which the cycle was applied
   Timestamp purged_at = 5;
 }
 
@@ -808,7 +808,7 @@ message PurgeCycle {
   uint32 id = 1;
   string name = 2;
   Timestamp announced = 3;
-  Timestamp confirmed = 4;
+  Timestamp applied = 4;
   Timestamp completed = 5;
 }
 

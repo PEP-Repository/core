@@ -104,12 +104,12 @@ void FileStore::persistPurgeCyclesAsync(std::vector<PurgeCycle> cycles) {
   assert(!cycles.empty());
 
   try {
-    std::ranges::sort(cycles, {}, &PurgeCycle::confirmed);
+    std::ranges::sort(cycles, {}, &PurgeCycle::applied);
     for (const auto& cycle : cycles) {
-      assert(cycle.confirmed && !cycle.completed);
+      assert(cycle.applied && !cycle.completed);
 
       for (auto version : sqlite_.getIncludedCellVersions(cycle.id)) {
-        this->getParticipant(version.cell.participant())->ensurePurgePersisted(*cycle.confirmed, version.cell.column(), version.timestamp);
+        this->getParticipant(version.cell.participant())->ensurePurgePersisted(*cycle.applied, version.cell.column(), version.timestamp);
       }
 
       auto updated = cycle;
@@ -129,7 +129,7 @@ void FileStore::persistPurgeCyclesAsync(std::vector<PurgeCycle> cycles) {
         assert(purgePersistence_.joinable());
         purgePersistence_.join();
       }
-      // Start a new persistence thread if any new cycles have been confirmed while we were running
+      // Start a new persistence thread if any new cycles have been applied while we were running
       this->persistPendingPurges();
     });
 }
@@ -266,7 +266,7 @@ std::set<std::string> FileStore::pagePaths() const {
 
 void FileStore::persistPendingPurges() {
   auto pending = RangeToVector(sqlite_.getPurgeCycles()
-    | std::views::filter([](const PurgeCycle& cycle) { return cycle.confirmed && !cycle.completed; }));
+    | std::views::filter([](const PurgeCycle& cycle) { return cycle.applied && !cycle.completed; }));
 
   if (!pending.empty()) {
     std::scoped_lock lock(purgePersistenceMux_);
@@ -277,7 +277,7 @@ void FileStore::persistPendingPurges() {
 }
 
 void FileStore::applyPurgeCycle(const PurgeCycle& cycle) {
-  assert(cycle.confirmed && !cycle.completed);
+  assert(cycle.applied && !cycle.completed);
   for (auto& participant : participants_) {
     participant->applyPurgeCycle(cycle);
   }
@@ -319,7 +319,7 @@ std::set<std::string> FileStore::Cell::pagePaths() const {
 }
 
 void FileStore::Cell::applyPurgeCycle(const PurgeCycle& cycle) {
-  assert(cycle.confirmed);
+  assert(cycle.applied);
 
   auto timestamps = this->participant().fileStore().sqlite_.getPurgedTimestamps(cycle.id, this->entryName());
   if (timestamps.empty()) { // Nothing to do: no need to iterate over our versions_
@@ -333,7 +333,7 @@ void FileStore::Cell::applyPurgeCycle(const PurgeCycle& cycle) {
   for (auto version : versions_) {
     if (!version.purgedAt.has_value()) {
       if (timestamps.contains(version.validFrom)) {
-        version.purgedAt = cycle.confirmed;
+        version.purgedAt = cycle.applied;
         if (version.validFrom == latest_->getValidFrom()) {
           latest_->markPurged(*version.purgedAt);
         }
@@ -665,7 +665,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
       .timestamp = result->getValidFrom(),
     };
     if (auto pendingPurgedAt = result->getFileStore().sqlite_.pendingPurgeTimestamp(version)) {
-      // This entry is included in a pending (i.e. confirmed but not yet completed) purge cycle
+      // This entry is included in a pending (i.e. applied but not yet completed) purge cycle
       result->markPurged(*pendingPurgedAt);
     }
   }

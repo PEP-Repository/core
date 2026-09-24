@@ -19,7 +19,7 @@ PurgeCycle Serializer<PurgeCycle>::fromProtocolBuffer(proto::PurgeCycle&& source
     .id = source.id(),
     .definition = PurgeCycle::Definition(std::move(*source.mutable_name())),
     .announced = Serialization::FromProtocolBuffer(std::move(*source.mutable_announced())),
-    .confirmed = ProtoToOptionalTimestamp(source.has_confirmed(), source.confirmed()),
+    .applied = ProtoToOptionalTimestamp(source.has_applied(), source.applied()),
     .completed = ProtoToOptionalTimestamp(source.has_completed(), source.completed()),
   };
 }
@@ -28,8 +28,8 @@ void Serializer<PurgeCycle>::moveIntoProtocolBuffer(proto::PurgeCycle& dest, Pur
   dest.set_id(value.id);
   dest.set_name(std::move(value.definition).name());
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_announced(), value.announced);
-  if (value.confirmed.has_value()) {
-    Serialization::MoveIntoProtocolBuffer(*dest.mutable_confirmed(), *value.confirmed);
+  if (value.applied.has_value()) {
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_applied(), *value.applied);
   }
   if (value.completed.has_value()) {
     Serialization::MoveIntoProtocolBuffer(*dest.mutable_completed(), *value.completed);

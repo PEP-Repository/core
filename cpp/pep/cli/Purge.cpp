@@ -16,11 +16,11 @@ void OutputPurgeCycle(const PurgeCycle& cycle) {
     << "Purge cycle " << cycle.id
     << " for " << cycle.definition.name()
     << " announced at " << TimestampToXmlDateTime(cycle.announced);
-  if (cycle.confirmed) {
-    std::cout << "; confirmed at " << TimestampToXmlDateTime(*cycle.confirmed);
+  if (cycle.applied) {
+    std::cout << "; applied at " << TimestampToXmlDateTime(*cycle.applied);
   }
   if (cycle.completed) {
-    assert(cycle.confirmed);
+    assert(cycle.applied);
     std::cout << "; completed at " << TimestampToXmlDateTime(*cycle.completed);
   }
 
@@ -155,11 +155,11 @@ int CommandPurge::Confirm::execute() {
   return this->executeEventLoopForClient(true, [id](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
     return client->getStorageFacilityProxy()->confirmPurgeCycle(id)
       .map([](PurgeCycle cycle) {
-          assert(cycle.confirmed.has_value());
+          assert(cycle.applied.has_value());
           std::cout << "Purge cycle " << cycle.id
             << " for " << cycle.definition.name()
-            << " applied at " << cycle.confirmed->time_since_epoch().count()
-            << ", i.e. " << TimestampToXmlDateTime(*cycle.confirmed)
+            << " applied at " << cycle.applied->time_since_epoch().count()
+            << ", i.e. " << TimestampToXmlDateTime(*cycle.applied)
             << std::endl;
           return FakeVoid();
         });

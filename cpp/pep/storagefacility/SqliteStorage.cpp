@@ -26,7 +26,7 @@ struct PurgeCycleRecord {
   PurgeCycle::Id id{};
   std::string name;
   database::UnixMillis announced;
-  database::UnixMillis confirmed{};
+  database::UnixMillis applied{};
   database::UnixMillis completed{};
 };
 
@@ -55,7 +55,7 @@ auto MakeRawStorage(std::string path) {
         primary_key().autoincrement()),
       make_column("name", &PurgeCycleRecord::name),
       make_column("announced", &PurgeCycleRecord::announced),
-      make_column("confirmed", &PurgeCycleRecord::confirmed),
+      make_column("applied", &PurgeCycleRecord::applied),
       make_column("completed", &PurgeCycleRecord::completed)),
 
     make_unique_index("idx_PurgeEntry",
@@ -86,7 +86,7 @@ PurgeCycle RecordToPurgeCycle(PurgeCycleRecord record) {
     .id = record.id,
     .definition = PurgeCycle::Definition(std::move(record.name)),
     .announced = database::TimestampFromUnixMillis(record.announced),
-    .confirmed = OptionalTimestampFromUnixMillis(record.confirmed),
+    .applied = OptionalTimestampFromUnixMillis(record.applied),
     .completed = OptionalTimestampFromUnixMillis(record.completed),
   };
 }
@@ -96,7 +96,7 @@ PurgeCycleRecord PurgeCycleToRecord(const PurgeCycle& cycle) {
     .id = cycle.id,
     .name = cycle.definition.name(),
     .announced = database::TimestampToUnixMillis(cycle.announced),
-    .confirmed = OptionalTimestampToUnixMillis(cycle.confirmed),
+    .applied = OptionalTimestampToUnixMillis(cycle.applied),
     .completed = OptionalTimestampToUnixMillis(cycle.completed),
   };
 }
@@ -291,15 +291,15 @@ std::optional<Timestamp> SqliteStorage::pendingPurgeTimestamp(const CellVersionS
       using namespace sqlite_orm;
       auto millis = database::TimestampToUnixMillis(cellVersion.timestamp);
 
-      auto confirmed = implementor_->raw.select(&PurgeCycleRecord::confirmed,
+      auto applied = implementor_->raw.select(&PurgeCycleRecord::applied,
         inner_join<PurgeEntryRecord>(on(c(&PurgeEntryRecord::cycle) == c(&PurgeCycleRecord::id))),
         where(c(&PurgeEntryRecord::row) == rowId && c(&PurgeEntryRecord::column) == columnId && c(&PurgeEntryRecord::timestamp) == millis
-          && c(&PurgeCycleRecord::confirmed) != 0 && c(&PurgeCycleRecord::completed) == 0));
-      if (confirmed.empty()) {
+          && c(&PurgeCycleRecord::applied) != 0 && c(&PurgeCycleRecord::completed) == 0));
+      if (applied.empty()) {
         return std::nullopt;
       }
-      assert(confirmed.size() == 1U);
-      return database::TimestampFromUnixMillis(confirmed.front());
+      assert(applied.size() == 1U);
+      return database::TimestampFromUnixMillis(applied.front());
     });
 }
 

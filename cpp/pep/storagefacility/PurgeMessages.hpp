@@ -15,7 +15,7 @@ struct PurgeAnnounceRequest {
   PurgeCycle::Definition definition;
 };
 
-// Cancel an (unconfirmed) purge cycle
+// Cancel a purge cycle (that has not been applied yet)
 struct PurgeCancelRequest {
   PurgeCycle::Id id;
 };
