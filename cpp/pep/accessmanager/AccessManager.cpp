@@ -513,12 +513,23 @@ void AccessManager::computeChecksumChainChecksum(
   backend_->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
 }
 
-messaging::MessageBatches
-AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signedRequest) {
-  const auto elapsedTime = [start = std::chrono::steady_clock::now()]() -> std::chrono::duration<double> {
-    return std::chrono::steady_clock::now() - start;
-  };
+struct AccessManager::TicketRequestContext {
+  std::shared_ptr<AccessManager> server;
+  uintmax_t requestNumber;
+  TicketRequest2 request;
+  Ticket2 ticket;
+  SignedTicket2 signedTicket{};
+  std::vector<Backend::Pp> pps;
+  std::unordered_map<std::string, IndexList> columnGroupMap{};
+  std::unordered_map<std::string, IndexList> participantGroupMap{};
+  std::vector<std::string> participantModes;
+  TranscryptorRequest tsReq;
+  TranscryptorRequestEntries tsReqEntries{};
+  std::optional<PseudonymTranslator::Recipient> userRecipient;
+};
 
+std::shared_ptr<AccessManager::TicketRequestContext>
+AccessManager::prepareTicketRequest(std::shared_ptr<SignedTicketRequest2> signedRequest) {
   const auto requestNumber = nextTicketRequestNumber_++;
 
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " received";
@@ -529,73 +540,61 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   const auto& request = certified.message;
   backend_->checkTicketRequest(request);
 
-  // Prepare ticket
-  Ticket2 ticket{
-      .timestamp = TimeNow(),
-      .modes = request.modes,
-      .accessSubjects = {},
-      .columns = request.columns,
-      .userGroup = certified.signatory.organizationalUnit()};
-
-  auto pps = request.accessSubjects
-    | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; })
-    | to<std::vector>();
-
-  std::vector<std::string> participantAccessModes{"access"};
-  std::unordered_map<std::string, IndexList> participantGroupMap;
-  if (!request.participantGroups.empty()) {
-    // Access to participants does not imply permission to list groups they are in, so first check that
-    backend_->checkParticipantGroupAccess(request.participantGroups, ticket.userGroup, participantAccessModes /*in & out*/, ticket.timestamp);
-
-    participantGroupMap = backend_->fillParticipantGroupMap(request.participantGroups, pps);
-  }
-
-  // Check columns and column groups
-  auto columnGroupMap = backend_->unfoldColumnGroupsAndCheckAccess(
-      ticket.userGroup, request.columnGroups, request.modes, ticket.timestamp, ticket.columns /*in & out*/);
-
   // Remove the main client signature to prevent reuse of
   // the SignedTicketRequest2.
   auto signature = signedRequest->extractSignature();
 
   // Because of all the asynchronous IO, we move all state into this context
   // struct, so that we don't have to put everything into shared_ptrs
-  struct Context {
-    std::shared_ptr<AccessManager> server;
-    uintmax_t requestNumber;
-    TicketRequest2 request;
-    Ticket2 ticket;
-    SignedTicket2 signedTicket{};
-    std::vector<Backend::Pp> pps;
-    std::unordered_map<std::string, IndexList> columnGroupMap;
-    std::unordered_map<std::string, IndexList> participantGroupMap;
-    std::vector<std::string> participantModes;
-    TranscryptorRequest tsReq;
-    TranscryptorRequestEntries tsReqEntries{};
-    std::optional<PseudonymTranslator::Recipient> userRecipient;
-  };
-
-  auto userRecipient = request.includeUserGroupPseudonyms
-    ? std::optional{RecipientForCertificate(signature.certificateChain().leaf())}
-    : std::nullopt;
-
-  auto ctx = MakeSharedCopy(Context{
+  auto ctx = MakeSharedCopy(TicketRequestContext{
     .server = SharedFrom(*this),
     .requestNumber = requestNumber,
     .request = request,
-    .ticket = std::move(ticket),
-    .pps = std::move(pps),
-    .columnGroupMap = std::move(columnGroupMap),
-    .participantGroupMap = std::move(participantGroupMap),
-    .participantModes = std::move(participantAccessModes),
+    .ticket = Ticket2{
+        .timestamp = TimeNow(),
+        .modes = request.modes,
+        .accessSubjects = {},
+        .columns = request.columns,
+        .userGroup = certified.signatory.organizationalUnit()},
+    .pps = request.accessSubjects
+      | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; })
+      | to<std::vector>(),
+    .participantModes = {"access"},
     .tsReq {.request = std::move(*signedRequest) },
-    .userRecipient = std::move(userRecipient),
+    .userRecipient = request.includeUserGroupPseudonyms
+      ? std::optional{RecipientForCertificate(signature.certificateChain().leaf())}
+      : std::nullopt,
     });
+
+  // Checking participant groups appends "enumerate" to participantModes and the group's members to pps
+  if (!request.participantGroups.empty()) {
+    // Access to participants does not imply permission to list groups they are in, so first check that
+    backend_->checkParticipantGroupAccess(
+        request.participantGroups, ctx->ticket.userGroup, ctx->participantModes /*in & out*/, ctx->ticket.timestamp);
+
+    ctx->participantGroupMap = backend_->fillParticipantGroupMap(request.participantGroups, ctx->pps);
+  }
+
+  // Check columns and column groups; ticket.columns is unfolded in place
+  ctx->columnGroupMap = backend_->unfoldColumnGroupsAndCheckAccess(
+      ctx->ticket.userGroup, request.columnGroups, request.modes, ctx->ticket.timestamp,
+      ctx->ticket.columns /*in & out*/);
 
   // Prepare transcryptor request
   ctx->tsReqEntries.entries.resize(ctx->pps.size());
 
-  PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " constructing observable";
+  return ctx;
+}
+
+messaging::MessageBatches
+AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signedRequest) {
+  const auto elapsedTime = [start = std::chrono::steady_clock::now()]() -> std::chrono::duration<double> {
+    return std::chrono::steady_clock::now() - start;
+  };
+
+  auto ctx = prepareTicketRequest(std::move(signedRequest));
+
+  PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " constructing observable";
 
   // workerPool_->batched_map() does not tell us which index we're handling,
   // so we let it process indices to work around this.  If we need this
@@ -700,7 +699,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
       })
     .concat(result);
 
-  PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " returning observable";
+  PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " returning observable";
   return result;
 }
 

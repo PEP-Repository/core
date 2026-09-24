@@ -73,6 +73,11 @@ protected:
     uint64_t& checksum, uint64_t& checkpoint) override;
 
 private:
+  /// Internal state shared between handleTicketRequest2's synchronous preparation
+  /// and its asynchronous response pipeline. Defined in AccessManager.cpp.
+  struct TicketRequestContext;
+  std::shared_ptr<TicketRequestContext> prepareTicketRequest(std::shared_ptr<SignedTicketRequest2> signedRequest);
+
   messaging::MessageBatches handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> pClientRequest);
   messaging::MessageBatches handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyRequest> pClientRequest);
   messaging::MessageBatches handleAmaMutationRequest(std::shared_ptr<SignedAmaMutationRequest> pRequest);
