@@ -125,6 +125,7 @@ TEST(PendingBytesLimiter, LimitIsGlobalAcrossThrottles) {
 
   fromFirst.reset(); // 60 remain: above the low watermark
   EXPECT_TRUE(throttle1->paused);
+  EXPECT_TRUE(throttle2->paused);
   fromSecond.reset();
   EXPECT_FALSE(throttle1->paused);
   EXPECT_FALSE(throttle2->paused);
