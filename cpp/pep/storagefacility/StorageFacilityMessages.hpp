@@ -20,7 +20,6 @@ struct DataEnumerationEntry2 {
   std::string id;
   Metadata metadata;
   EncryptedKey polymorphicKey;
-  std::optional<Timestamp> purgedAt;
   uint64_t fileSize{};
   uint32_t columnIndex{};
   uint32_t pseudonymIndex{};

@@ -30,9 +30,6 @@ DataEnumerationEntry2 Serializer<DataEnumerationEntry2>::fromProtocolBuffer(prot
   DataEnumerationEntry2 result;
   result.metadata = Serialization::FromProtocolBuffer(std::move(*source.mutable_metadata()));
   result.polymorphicKey = Serialization::FromProtocolBuffer(std::move(*source.mutable_polymorphic_key()));
-  if (source.has_purged_at()) {
-    result.purgedAt = Serialization::FromProtocolBuffer(std::move(*source.mutable_purged_at()));
-  }
   result.fileSize = source.file_size();
   result.id = std::move(*source.mutable_id());
   result.columnIndex = source.column_index();
@@ -44,9 +41,6 @@ DataEnumerationEntry2 Serializer<DataEnumerationEntry2>::fromProtocolBuffer(prot
 void Serializer<DataEnumerationEntry2>::moveIntoProtocolBuffer(proto::DataEnumerationEntry2& dest, DataEnumerationEntry2 value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_metadata(), std::move(value.metadata));
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_polymorphic_key(), value.polymorphicKey);
-  if (value.purgedAt) {
-    *dest.mutable_purged_at() = Serialization::ToProtocolBuffer(*value.purgedAt);
-  }
   dest.set_file_size(value.fileSize);
   *dest.mutable_id() = std::move(value.id);
   dest.set_column_index(value.columnIndex);

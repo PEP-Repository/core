@@ -386,6 +386,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       if (content == nullptr) {
         continue;
       }
+      entry->throwErrorIfPurged("StorageFacility::handleDataEnumerationRequest2");
       assert(content->payload() != nullptr);
 
       auto& re = responseEntries.emplace_back();
@@ -393,7 +394,6 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       re.entry.metadata = this->compileMetadata(col, *entry);
       re.entry.fileSize = entry->content()->payload()->size();
       re.entry.polymorphicKey = content->getPolymorphicKey(); // will be rerandomized later
-      re.entry.purgedAt = entry->getPurgedAt();
       re.entry.columnIndex = colIndexIt->second;
       re.entry.pseudonymIndex = static_cast<uint32_t>(pseud_index);
     }
@@ -494,6 +494,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       if (sfentry == nullptr) {
         throw Error("openExistingDataEntry failed");
       }
+      sfentry->throwErrorIfPurged("StorageFacility::handleMetadataReadRequest2");
       const auto& sfcontent = sfentry->content();
       if (sfcontent == nullptr) {
         throw Error("Cannot read data of a deleted entry");
@@ -509,7 +510,6 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
         .metadata = server->compileMetadata(column, *sfentry),
         // TODO execute rerandomization in WorkerPool
         .polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey()),
-        .purgedAt = sfentry->getPurgedAt(),
         .fileSize = sfcontent->payload()->size(),
         .columnIndex = indices.getColumnIndex(column),
         .pseudonymIndex = indices.getPseudonymIndex(pseud),
@@ -558,6 +558,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
     if (entry == nullptr) {
       throw Error("openExistingDataEntry failed");
     }
+    entry->throwErrorIfPurged("StorageFacility::handleDataReadRequest2");
     if (entry->isTombstone()) {
       throw Error("Cannot read data of a deleted entry");
     }
@@ -717,7 +718,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
       auto& col = ticket.columns.at(entry.columnIndex);
 
       // Modify entry, only creating a new one if we don't require an overwrite
-      auto entryChange = fileStore_->modifyEntry(EntryName(*ctx->pseudonyms[i], col), !requireContentOverwrite);
+      auto entryChange = fileStore_->modifyEntry(EntryName(*ctx->pseudonyms[i], col), !requireContentOverwrite, false);
       if (entryChange == nullptr) {
         throw Error("Cannot find cell to update");
       }
@@ -882,7 +883,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
     assert(localPseudonyms[entry.pseudonymIndex].has_value());
     EntryName key(*localPseudonyms[entry.pseudonymIndex], column);
 
-    auto entryChange = fileStore_->modifyEntry(key, false);
+    auto entryChange = fileStore_->modifyEntry(key, false, true);
     if (entryChange == nullptr) {
       throw Error("Cannot find cell to update metadata for");
     }

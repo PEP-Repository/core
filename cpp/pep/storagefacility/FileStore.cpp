@@ -1,7 +1,9 @@
 #include <pep/storagefacility/FileStore.hpp>
+
+#include <pep/serialization/Error.hpp>
+#include <pep/storagefacility/Constants.hpp>
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/utils/BuildFlavor.hpp>
-#include <pep/storagefacility/Constants.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MapUtils.hpp>
@@ -347,10 +349,21 @@ void FileStore::Cell::ensurePurgePersisted(Timestamp purgedAt, Timestamp cellVer
   Entry::EnsurePurgePersisted(purgedAt, *this, cellVersion);
 }
 
-std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool createIfNeeded) {
+std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool createIfNeeded, bool requireUnpurged) {
   auto entry = lookup(name);
   if (entry) {
-    return EntryChange::Create(*entry);
+    if (requireUnpurged) {
+      entry->throwErrorIfPurged("FileStore::modifyEntry");
+    }
+
+    // Can't modify a purged entry: the modified instance would (possibly) refer to pages that (presumably) don't exist
+    if (!entry->getPurgedAt()) {
+      return EntryChange::Create(*entry);
+    }
+
+    // Let caller's modification become the latest cell version, overriding (masking) the purged entry
+    // Effectively, we're letting a "pepcli delete" override the purged entry, making the current (rolling) data set valid again
+    createIfNeeded = true;
   }
 
   if (!createIfNeeded) {
@@ -433,6 +446,21 @@ messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
 void FileStore::Entry::markPurged(Timestamp at) {
   assert(!purgedAt_.has_value() && "Entry is already purged");
   purgedAt_ = at;
+}
+
+void FileStore::Entry::throwErrorIfPurged(const std::string& logContext) const {
+  if (purgedAt_.has_value()) {
+    auto name = this->getName();
+    PEP_LOG(LogTag, Severity::Error)
+      << logContext << " can't process "
+      << " entry purged at " << TicksSinceEpoch<std::chrono::milliseconds>(*purgedAt_)
+      << " (i.e. " << TimestampToXmlDateTime(*purgedAt_) << ')'
+      << ": participant " << name.participant()
+      << ", column " << name.column()
+      << ", version " << TicksSinceEpoch<std::chrono::milliseconds>(validFrom_)
+      << " (i.e. " << TimestampToXmlDateTime(validFrom_) << ')';
+    throw Error("Attempt to access purged entry");
+  }
 }
 
 void FileStore::Entry::save() const {

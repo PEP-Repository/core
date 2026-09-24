@@ -122,6 +122,7 @@ public:
 
     std::optional<Timestamp> getPurgedAt() const { return purgedAt_; }
     void markPurged(Timestamp at);
+    void throwErrorIfPurged(const std::string& logContext) const;
 
     messaging::MessageSequence readPage(size_t index);
 
@@ -237,7 +238,7 @@ public:
   void applyPurgeCycle(const PurgeCycle& cycle);
 
   std::shared_ptr<Entry> lookup(const EntryName& name, Timestamp validAt = Timestamp::max());
-  std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool createIfNeeded = false);
+  std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool createIfNeeded = false, bool requireUnpurged = true);
 
   EntryContent::Metadata makeMetadataMap(const std::map<std::string, MetadataXEntry>& xentries);
   std::map<std::string, MetadataXEntry> extractMetadataMap(const EntryContent::Metadata& metadata);
