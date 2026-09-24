@@ -100,26 +100,21 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
   return **participants_.emplace(std::make_unique<Participant>(*this, name)).first;
 }
 
-void FileStore::persistPurgeCyclesAsync(std::vector<PurgeCycle> cycles) {
-  assert(!cycles.empty());
+void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
+  assert(cycle.applied && !cycle.completed);
 
   try {
-    std::ranges::sort(cycles, {}, &PurgeCycle::applied);
-    for (const auto& cycle : cycles) {
-      assert(cycle.applied && !cycle.completed);
-
-      for (auto version : sqlite_.getIncludedCellVersions(cycle.id)) {
-        this->getParticipant(version.cell.participant())->ensurePurgePersisted(*cycle.applied, version.cell.column(), version.timestamp);
-      }
-
-      auto updated = cycle;
-      assert(!updated.completed);
-      updated.completed = TimeNow();
-      sqlite_.updatePurgeCycle(updated);
+    for (auto version : sqlite_.getIncludedCellVersions(cycle.id)) {
+      this->getParticipant(version.cell.participant())->ensurePurgePersisted(*cycle.applied, version.cell.column(), version.timestamp);
     }
+
+    auto updated = cycle;
+    assert(!updated.completed);
+    updated.completed = TimeNow();
+    sqlite_.updatePurgeCycle(updated);
   }
   catch (...) {
-    PEP_LOG(LogTag, Severity::Error) << "Encountered exception persisting purge cycles: " << GetExceptionMessage(std::current_exception());
+    PEP_LOG(LogTag, Severity::Error) << "Encountered exception persisting purge cycle " << cycle.id << ": " << GetExceptionMessage(std::current_exception());
   }
 
   post(*ioContext_, [this]() {
@@ -129,7 +124,7 @@ void FileStore::persistPurgeCyclesAsync(std::vector<PurgeCycle> cycles) {
         assert(purgePersistence_.joinable());
         purgePersistence_.join();
       }
-      // Start a new persistence thread if any new cycles have been applied while we were running
+      // Start a new persistence thread if any more cycles need to be persisted
       this->persistPendingPurges();
     });
 }
@@ -271,7 +266,9 @@ void FileStore::persistPendingPurges() {
   if (!pending.empty()) {
     std::scoped_lock lock(purgePersistenceMux_);
     if (!purgePersistence_.joinable()) {
-      purgePersistence_ = std::thread([self = SharedFrom(*this), pending]() { self->persistPurgeCyclesAsync(pending); });
+      auto i = std::ranges::min_element(pending, {}, &PurgeCycle::applied);
+      assert(i != pending.end());
+      purgePersistence_ = std::thread([self = SharedFrom(*this), cycle = *i]() { self->persistPurgeCycleAsync(cycle); });
     }
   }
 }

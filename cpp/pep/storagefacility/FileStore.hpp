@@ -229,7 +229,7 @@ private:
   Participant* getParticipant(const std::string& name) const;
   Participant& provideParticipant(const std::string& name);
 
-  void persistPurgeCyclesAsync(std::vector<PurgeCycle> cycles);
+  void persistPurgeCycleAsync(PurgeCycle cycle);
 
 public:
   PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;
