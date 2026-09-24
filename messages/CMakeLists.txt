@@ -1,6 +1,6 @@
 include(Messages.cmake)
 
-add_library(${PROJECT_NAME}Protolib OBJECT "${MESSAGES_PROTO_PATH}")
+add_library(${PROJECT_NAME}Protolib "${MESSAGES_PROTO_PATH}")
 
 find_package(Protobuf REQUIRED)
 target_link_libraries(${PROJECT_NAME}Protolib PUBLIC protobuf::libprotobuf)
