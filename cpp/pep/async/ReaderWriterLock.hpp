@@ -40,13 +40,13 @@ public:
 
 /// \brief Reader/writer lock for synchronization between threads.
 /// \remark This class supports recursive locking (with the exception of acquiring a writer lock when a reader lock is already held, in which case it will throw an exception).
-class ThreadReaderWriterLock : boost::noncopyable {
+class ReaderWriterThreadLock : boost::noncopyable {
 private:
   ReaderWriterLock nonRecursive_;
 
-  using Accessors = std::map<std::thread::id, unsigned>;
-  Accessors readers_;
-  Accessors writers_;
+  using Accesses = std::map<std::thread::id, unsigned>;
+  Accesses reads_;
+  Accesses writes_;
   std::mutex mutex_;
 
   void performLocked(bool write, const Action& action);

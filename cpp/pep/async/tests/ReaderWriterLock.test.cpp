@@ -167,11 +167,11 @@ TEST(ReaderWriterLock, Recursive) {
       });
     }));
 
-  // ThreadReaderWriterLock supports recursive writes, in which case (plain, non-recursive) ReaderWriterLock would have deadlocked. Trust me, I've tested.
-  pep::ThreadReaderWriterLock rwl;
+  // ReaderWriterThreadLock supports recursive writes, in which case (plain, non-recursive) ReaderWriterLock would have deadlocked. Trust me, I've tested.
+  pep::ReaderWriterThreadLock rwtl;
   EXPECT_NO_FATAL_FAILURE(
-    rwl.write([&]() {
-      rwl.write([&]() {
+    rwtl.write([&]() {
+      rwtl.write([&]() {
         EXPECT_EQ(value, 0U);
         ++value;
         });
@@ -180,16 +180,16 @@ TEST(ReaderWriterLock, Recursive) {
   EXPECT_EQ(value, 1U);
 
 
-  rwl.write([&]() {
-    rwl.read([&]() {
+  rwtl.write([&]() {
+    rwtl.read([&]() {
       ++value; // OK to do inside a reader lock because we're also holding an (outer) writer lock
       });
     });
   EXPECT_EQ(value, 2U);
 
   EXPECT_THROW(
-    rwl.read([&]() {
-      rwl.write([&]() {
+    rwtl.read([&]() {
+      rwtl.write([&]() {
         ++value;
         });
       })
@@ -197,9 +197,9 @@ TEST(ReaderWriterLock, Recursive) {
   );
   EXPECT_EQ(value, 2U) << "Exception should have prevented update";
 
-  rwl.write([&]() { // Since we're holding an outer writer lock...
-    rwl.read([&]() { // ... we don't actually acquire a reader lock here...
-      rwl.write([&]() { // ... so now it's OK to invoke "write" inside a "read"
+  rwtl.write([&]() { // Since we're holding an outer writer lock...
+    rwtl.read([&]() { // ... we don't actually acquire a reader lock here...
+      rwtl.write([&]() { // ... so now it's OK to invoke "write" inside a "read"
         ++value;
         });
       });

@@ -211,7 +211,7 @@ private:
   storagefacility::SqliteStorage& sqlite_;
   std::thread purgePersistence_;
   std::mutex purgePersistenceMux_; // Synchronizes access to the purgePersistence_ instance
-  ReaderWriterLock fileSystem_; // Synchronizes access to (the meta directory on) the file system
+  ReaderWriterThreadLock fileSystem_; // Synchronizes access to (the meta directory on) the file system
 
   // Keep collections of unique strings to save memory: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2322 .
   // Note that "No iterators or references are invalidated" when an std::set or std::map changes, so
