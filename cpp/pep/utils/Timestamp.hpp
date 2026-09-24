@@ -41,6 +41,11 @@ template<DerivedFromSpecialization<std::chrono::duration> TToDuration, typename 
 /// \example "2024-05-06T08:52:21Z"
 [[nodiscard]] std::string TimestampToXmlDateTime(Timestamp);
 
+/// Parses an HTTP-date in the preferred IMF-fixdate format, e.g. "Sun, 06 Nov 1994 08:49:37 GMT".
+/// The obsolete RFC 850 and asctime formats are not supported.
+/// \see https://www.rfc-editor.org/rfc/rfc9110#section-5.6.7
+[[nodiscard]] Timestamp TimestampFromHttpDate(std::string_view httpDate);
+
 /// Representation of a timezone that is used as parameter in some functions of the Timestamp class
 class TimeZone final {
 public:

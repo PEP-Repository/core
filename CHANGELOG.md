@@ -78,6 +78,8 @@
 
 - ppp-config#217: The pepAssessor GUI application no longer produces empty lines in export files.
 
+- core#3004: HTTP requests (e.g. to S3 backends and Castor) are now retried on transient errors (HTTP 408, 429, 500, 502, 503 and 504), honoring `Retry-After` headers.
+
 **MANUAL CHANGES REQUIRED**:
 
 - core#2961: The `StorageFacility.json` config needs to be changed to the new format (see changes above). Extract `EndPoint`, `Credentials`, `CaCertificateFile`, `UseHttps`, and `Connections` (or the subset that is used) into an object under a new `Hosts` key and give it an ID. Then change all buckets into objects with `Name` and `HostId` properties, the latter of which references the host ID.

@@ -1,9 +1,6 @@
 #include <pep/castor/CastorClient.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/async/CreateObservable.hpp>
-#include <pep/async/FakeVoid.hpp>
-#include <pep/async/RxRequireCount.hpp>
-#include <pep/async/RxInstead.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/castor/Study.hpp>
 #include <pep/castor/Ptree.hpp>
@@ -31,9 +28,57 @@ namespace {
 const std::string LogTag("CastorClient");
 const std::string Castor429ResponseMessageHeader = "Too many requests, retry after: ";
 
+/// \brief Determines how long to wait before retrying a request that Castor throttled.
+/// \remark Castor specifies the retry time in the response body. It didn't send a "Retry-After" header when this was written (but see core#3004).
+std::optional<networking::HttpClient::RetryParameters::Delay> GetCastorRetryDelay(const HTTPResponse& response) {
+  if (response.getStatusCode() != 429) { // Too Many Requests
+    return std::nullopt;
+  }
+
+  // TODO: remove this temporary logging once we know whether Castor sends a "Retry-After" header (added with https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/3004)
+  if (response.hasHeader("Retry-After")) {
+    PEP_LOG(LogTag, Severity::Info) << "Castor 429 response includes Retry-After header: " << response.header("Retry-After");
+  } else {
+    PEP_LOG(LogTag, Severity::Info) << "Castor 429 response does not include a Retry-After header";
+  }
+
+  try {
+    boost::property_tree::ptree responseJson;
+    ReadJsonIntoPtree(responseJson, response.getBody()); // E.g. {"success":false,"errors":[{"id":"fa420c23","code":"CODE_QUOTA_EXCEEDED","message":"Too many requests, retry after: 2023-01-31T00:32:32+00:00","data":[]}]}
+
+    // Determine when we're allowed to retry by parsing the (one and only) error in the response JSON
+    const auto& errors = responseJson.get_child("errors");
+    if (errors.size() != 1U) {
+      throw std::runtime_error("Expected exactly one error in Castor 429 response; got " + std::to_string(errors.size()));
+    }
+    // TODO: don't parse human-readable "message" to extract timestamp
+    auto message = errors.front().second.get<std::string>("message"); // E.g. "Too many requests, retry after: 2023-01-31T00:32:32+00:00"
+    if (!message.starts_with(Castor429ResponseMessageHeader)) {
+      throw std::runtime_error("Castor 429 response contains unparseable retry time message");
+    }
+    auto xml = message.substr(Castor429ResponseMessageHeader.size());
+    PEP_LOG(LogTag, Severity::Info) << "Castor requests throttled until " << xml;
+
+    // Just to be sure: wait 1 second longer than calculated, since message says to retry _after_ the specified time
+    auto retryWhen = TimeZone::Utc().timestampFromXmlDateTime(xml) + 1s;
+    // May be negative if e.g. processing or transmission took a while, or we've been sitting on a breakpoint. HttpClient then retries immediately.
+    return std::chrono::ceil<networking::HttpClient::RetryParameters::Delay>(retryWhen - TimeNow());
+  }
+  catch (const std::exception& ex) {
+    PEP_LOG(LogTag, Severity::Warning) << "Couldn't determine retry time from Castor 429 response: " << ex.what();
+    return std::nullopt; // Let HttpClient fall back to its default behavior
+  }
+}
+
 std::shared_ptr<networking::HttpClient> CreateHttpClient(boost::asio::io_context& ioContext, const EndPoint& endPoint, std::optional<std::filesystem::path> caCertFilepath) {
   networking::HttpClient::Parameters parameters(ioContext, true, endPoint);
   parameters.caCertFilepath(std::move(caCertFilepath));
+
+  networking::HttpClient::RetryParameters retry;
+  retry.maxDelay = 15min; // Castor may throttle us for a while, and pulling from Castor isn't time critical
+  retry.delayCallback = &GetCastorRetryDelay;
+  parameters.retryParameters(std::move(retry));
+
   return networking::HttpClient::Create(std::move(parameters));
 }
 
@@ -183,48 +228,6 @@ rxcpp::observable<JsonPtr> CastorClient::handleCastorResponse(std::shared_ptr<HT
             [subscriber](std::exception_ptr ep) {subscriber.on_error(ep); },
             [subscriber]() {subscriber.on_completed(); });
       }
-    });
-  }
-
-  case 429: // Too Many Requests
-  {
-    std::shared_ptr<boost::property_tree::ptree> responseJson = std::make_shared<boost::property_tree::ptree>();
-    ReadJsonIntoPtree(*responseJson, response.getBody()); // E.g. {"success":false,"errors":[{"id":"fa420c23","code":"CODE_QUOTA_EXCEEDED","message":"Too many requests, retry after: 2023-01-31T00:32:32+00:00","data":[]}]}
-
-    // Determine when we're allowed to retry by parsing the (one and only) error in the response JSON
-    const auto& errors = responseJson->get_child("errors");
-    if (errors.size() != 1U) {
-      throw CastorException::FromErrorResponse(response, "Expected exactly one error in Castor 429 response; got " + std::to_string(errors.size()));
-    }
-    // TODO: don't parse human-readable "message" to extract timestamp
-    auto message = errors.front().second.get<std::string>("message"); // E.g. "Too many requests, retry after: 2023-01-31T00:32:32+00:00"
-    if (!message.starts_with(Castor429ResponseMessageHeader)) {
-      throw CastorException::FromErrorResponse(response, "Castor 429 response contains unparseable retry time message");
-    }
-    auto xml = message.substr(Castor429ResponseMessageHeader.size());
-
-    // Calculate the time to wait before retrying
-    auto retryWhen = TimeZone::Utc().timestampFromXmlDateTime(xml);
-
-    // An observable that'll emit a FakeVoid when we can retry the request
-    rxcpp::observable<FakeVoid> wait;
-    if (TimeNow() > retryWhen) { // No need to wait: e.g. processing or transmission took a while, or we've been sitting on a breakpoint
-      wait = rxcpp::observable<>::just(FakeVoid());
-    }
-    else {
-      // Just to be sure: wait 1 second longer than calculated, since message says to retry _after_ the specified time
-      retryWhen += 1s;
-      PEP_LOG(LogTag, Severity::Info) << "Castor requests throttled until " << xml;
-
-      // We need to use a duration instead of a time_point as Rx wants a steady_clock time
-      wait = rxcpp::observable<>::timer(retryWhen - TimeNow())
-        .op(RxGetOne("emissions from RX timer"))
-        .op(RxInstead(FakeVoid()));
-    }
-
-    // Re-send the request when the wait is over
-    return wait.concat_map([self = SharedFrom(*this), request](const FakeVoid&) {
-      return self->sendCastorRequest(request);
     });
   }
 

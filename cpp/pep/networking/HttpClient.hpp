@@ -4,7 +4,9 @@
 #include <pep/networking/EndPoint.hpp>
 #include <pep/networking/HTTPMessage.hpp>
 #include <rxcpp/rx-lite.hpp>
+#include <chrono>
 #include <filesystem>
+#include <functional>
 
 namespace pep::networking {
 
@@ -12,6 +14,25 @@ class HttpClient : public SharedConstructor<HttpClient>, protected LifeCycler, p
   friend class SharedConstructor<HttpClient>;
 
 public:
+  /// \brief Settings for automatically resending requests that fail with a transient error, i.e. an HTTP status code 408, 429, 500, 502, 503 or 504.
+  /// \remark Status codes 500, 502 and 504 don't guarantee that the server didn't process the request, so they're only retried for idempotent methods (i.e. not for POST).
+  struct RetryParameters {
+    using Delay = std::chrono::seconds;
+
+    /// \brief Callback that determines how long to wait before resending a request, e.g. from a server-specific response body.
+    /// \return The delay to wait, or std::nullopt to use the response's "Retry-After" header or (if there is none) exponential backoff.
+    using DelayCallback = std::function<std::optional<Delay>(const HTTPResponse&)>;
+
+    /// \brief The maximum number of times a request is resent. Specify 0 to disable retries.
+    unsigned maxRetries = 3;
+    /// \brief The maximum delay that the server (or delayCallback) may request. Requests aren't resent if a longer delay is requested.
+    Delay maxDelay = std::chrono::minutes{ 1 };
+    /// \brief Delays to use when neither the delayCallback nor a "Retry-After" header specify one. Need not be whole seconds.
+    ExponentialBackoff::Parameters backoff{ std::chrono::seconds{ 1 }, std::chrono::seconds{ 30 } };
+    /// \brief Optional callback that is consulted before the "Retry-After" header.
+    DelayCallback delayCallback;
+  };
+
   class Parameters {
   public:
     Parameters(boost::asio::io_context& ioContext, boost::urls::url absoluteBase, std::optional<std::string> expectedCommonName = std::nullopt);
@@ -26,6 +47,9 @@ public:
     const ExponentialBackoff::Parameters& reconnectParameters() const noexcept { return reconnectParameters_; }
     const ExponentialBackoff::Parameters& reconnectParameters(ExponentialBackoff::Parameters& assign) noexcept { return reconnectParameters_ = assign; }
 
+    const RetryParameters& retryParameters() const noexcept { return retryParameters_; }
+    const RetryParameters& retryParameters(RetryParameters assign) { return retryParameters_ = std::move(assign); }
+
     std::shared_ptr<Client> createBinaryClient() const;
 
   private:
@@ -37,6 +61,7 @@ public:
     EndPoint endPoint_;
     std::optional<std::filesystem::path> caCertFilePath_;
     ExponentialBackoff::Parameters reconnectParameters_;
+    RetryParameters retryParameters_;
   };
 
 private:
@@ -44,6 +69,9 @@ private:
 
   void stop();
   void restart();
+
+  rxcpp::observable<HTTPResponse> sendAttempt(std::shared_ptr<const HTTPRequest> request, unsigned retries);
+  std::optional<std::chrono::milliseconds> getRetryDelay(const HTTPRequest& request, const HTTPResponse& response, unsigned retries) const;
 
   void ensureSend();
   bool continueSending(std::exception_ptr error);
@@ -91,6 +119,7 @@ public:
   /// \brief Sends an HTTP request, returning the response asynchronously.
   /// \param request The request to send.
   /// \return An observable that emits the server's HTTP response once it's received.
+  /// \remark Requests that fail with a transient error are resent according to the client's RetryParameters. The observable emits the last response received.
   /// \remark The request's URI must match the HttpClient's base URI. For best results, pass HTTPRequest instances produced by the HttpClient's "makeRequest" method.
   rxcpp::observable<HTTPResponse> sendRequest(HTTPRequest request);
 
