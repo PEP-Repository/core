@@ -380,6 +380,7 @@ FileStore::EntryChange::EntryChange(Cell& cell)
 
 FileStore::EntryChange::EntryChange(const Entry& overwrites)
   : EntryBase(overwrites.getCell(), GenerateChecksumSubstitute(), overwrites.cloneContent()), lastEntryValidFrom_(overwrites.getValidFrom()) {
+  assert(!overwrites.getPurgedAt());
 }
 
 CheckedPath FileStore::Entry::getFilePath(const std::string& extension) const {
@@ -423,13 +424,20 @@ bool FileStore::EntryBase::isOriginalPayloadOwner() const {
   return !content_->getOriginalPayloadEntryTimestamp().has_value();
 }
 
-std::set<std::string> FileStore::EntryBase::pagePaths() const {
+std::set<std::string> FileStore::EntryBase::getPagePaths() const {
   if (content_ == nullptr) {
     return {};
   }
   auto payload = content_->payload();
   assert(payload != nullptr);
   return payload->getPagePaths(cell_.entryName());
+}
+
+std::set<std::string> FileStore::Entry::pagePaths() const {
+  if (this->getPurgedAt()) {
+    return {};
+  }
+  return EntryBase::getPagePaths();
 }
 
 messaging::MessageSequence FileStore::Entry::readPage(size_t index) {

@@ -40,6 +40,7 @@ public:
     EntryBase(Cell& cell, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
 
     void setContent(std::unique_ptr<EntryContent>&& content) { content_ = std::move(content); }
+    std::set<std::string> getPagePaths() const;
 
     // Allow move-construction (when EntryChange::commit converts the EntryChange into an Entry)...
     EntryBase(EntryBase&&) = default;
@@ -62,7 +63,6 @@ public:
     uint64_t payloadSize() const;
     bool isOriginalPayloadOwner() const;
 
-    std::set<std::string> pagePaths() const;
   };
 
   /// \brief Represents a pending update to a cell. A new Entry will be created when an EntryChange is commit()ted.
@@ -123,6 +123,7 @@ public:
     std::optional<Timestamp> getPurgedAt() const { return purgedAt_; }
     void markPurged(Timestamp at);
     void throwErrorIfPurged(const std::string& logContext) const;
+    std::set<std::string> pagePaths() const;
 
     messaging::MessageSequence readPage(size_t index);
 
