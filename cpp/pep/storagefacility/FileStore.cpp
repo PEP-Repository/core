@@ -554,8 +554,11 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
           return;
         }
 
+        PEP_LOG(LogTag, Severity::Debug) << "Persisting purge into " << entryPath;
+
         // Clean up (possibly corrupt file left behind by) failed or interrupted previous persistence attempt
         if (exists(purgedPath)) {
+          PEP_LOG(LogTag, Severity::Debug) << "Discarding previous purge attempt at " << purgedPath;
           remove(purgedPath);
           assert(!exists(purgedPath));
         }
@@ -566,15 +569,25 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
         assert(exists(purgedPath));
 
         // Remove ".entry" file
+        PEP_LOG(LogTag, Severity::Debug) << "Clearing un-purged state from " << entryPath;
         remove(entryPath);
         assert(!exists(entryPath));
       }
+      else {
+        // No ".entry" file exists (anymore): previous attempt (failed or) was interrupted after it had been removed
+        PEP_LOG(LogTag, Severity::Debug) << "Resuming previous purge attempt at " << purgedPath;
+      }
 
-      // A ".purged" file exists and a ".entry" file does not: rename 
+      // A ".purged" file exists and the corresponding ".entry" file does not: rename
+      PEP_LOG(LogTag, Severity::Debug) << "Finalizing purge persistence of " << entryPath;
+      assert(!exists(entryPath));
+      assert(exists(purgedPath));
       rename(purgedPath, entryPath);
       assert(exists(entryPath));
       assert(!exists(purgedPath));
     });
+
+  PEP_LOG(LogTag, Severity::Info) << "Persisted purge into " << entryPath;
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoadFile(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension) {
