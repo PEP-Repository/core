@@ -296,6 +296,7 @@ DataSizeResponse Serializer<DataSizeResponse>::fromProtocolBuffer(proto::DataSiz
   return DataSizeResponse{
     .blockSize = source.block_size(),
     .totalBlocks = source.total_blocks(),
+    .purgedBlocks = source.purged_blocks(),
     .rollingBlocks = source.rolling_blocks(),
   };
 }
@@ -303,6 +304,7 @@ DataSizeResponse Serializer<DataSizeResponse>::fromProtocolBuffer(proto::DataSiz
 void Serializer<DataSizeResponse>::moveIntoProtocolBuffer(proto::DataSizeResponse& dest, DataSizeResponse value) const {
   dest.set_block_size(value.blockSize);
   dest.set_total_blocks(value.totalBlocks);
+  dest.set_purged_blocks(value.purgedBlocks);
   dest.set_rolling_blocks(value.rollingBlocks);
 }
 

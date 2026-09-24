@@ -167,7 +167,12 @@ StorageFacility::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry
     .Add({})),
   totalPayloadBytes(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
     .Name("pep_total_payload_bytes")
-    .Help("Total bytes in payload(page)s of all entries including history, rounded to configured resolution")
+    .Help("Total bytes in payload(page)s of all entries including history and purged items, rounded to configured resolution")
+    .Register(*registry)
+    .Add({})),
+  purgedPayloadBytes(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
+    .Name("pep_purged_payload_bytes")
+    .Help("Total bytes in payload(page)s of purged entries including history, rounded to configured resolution")
     .Register(*registry)
     .Add({})),
   rollingPayloadBytes(prometheus::BuildGauge()
@@ -1082,19 +1087,18 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
 
   const auto& request = certified.message;
 
-  size_t entryCount{};
-  uint64_t totalBytes{}, rollingBytes{};
-  this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.columns);
+  auto metrics = this->getRoundedFileStoreMetrics(request.columns);
 
   auto countBlocks = [blockSize = dataSizeResolution_](uint64_t bytes) {
-      assert(bytes % blockSize == 0U); // Values produced by this->getFileStoreMetrics are rounded to dataSizeResolution_
+      assert(bytes % blockSize == 0U); // Values produced by this->getRoundedFileStoreMetrics are rounded to dataSizeResolution_
       return bytes / blockSize;
     };
 
   return messaging::BatchSingleMessage(DataSizeResponse{
     .blockSize = dataSizeResolution_,
-    .totalBlocks = countBlocks(totalBytes),
-    .rollingBlocks = countBlocks(rollingBytes),
+    .totalBlocks = countBlocks(metrics.totalBytes),
+    .purgedBlocks = countBlocks(metrics.purgedBytes),
+    .rollingBlocks = countBlocks(metrics.rollingBytes),
     });
 }
 
@@ -1328,9 +1332,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
 
 StorageFacility::~StorageFacility() noexcept = default;
 
-void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns) {
-  uint64_t total{}, rolling{};
-  fileStore_->getMetrics(entryCount, total, rolling, columns);
+FileStore::Metrics StorageFacility::getRoundedFileStoreMetrics(const std::set<std::string>& columns) {
+  auto precise = fileStore_->getMetrics(columns);
 
   auto round = [blockSize = dataSizeResolution_](uint64_t bytes) {
       auto blocks = bytes / blockSize;
@@ -1340,18 +1343,21 @@ void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedT
       return blocks * blockSize;
     };
 
-  roundedTotalBytes = round(total);
-  roundedRollingBytes = round(rolling);
+  return FileStore::Metrics{
+    .entryCount = precise.entryCount,
+    .totalBytes = round(precise.totalBytes),
+    .purgedBytes = round(precise.purgedBytes),
+    .rollingBytes = round(precise.rollingBytes),
+  };
 }
 
 void StorageFacility::updateFileStoreMetrics() {
-  size_t entryCount{};
-  uint64_t totalPayloadBytes{}, rollingPayloadBytes{};
-  this->getFileStoreMetrics(entryCount, totalPayloadBytes, rollingPayloadBytes);
+  auto rounded = this->getRoundedFileStoreMetrics();
 
-  metrics_->entriesIncludingHistory.Set(static_cast<double>(entryCount));
-  metrics_->totalPayloadBytes.Set(static_cast<double>(totalPayloadBytes));
-  metrics_->rollingPayloadBytes.Set(static_cast<double>(rollingPayloadBytes));
+  metrics_->entriesIncludingHistory.Set(static_cast<double>(rounded.entryCount));
+  metrics_->totalPayloadBytes.Set(static_cast<double>(rounded.totalBytes));
+  metrics_->purgedPayloadBytes.Set(static_cast<double>(rounded.purgedBytes));
+  metrics_->rollingPayloadBytes.Set(static_cast<double>(rounded.rollingBytes));
 }
 
 }

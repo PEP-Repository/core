@@ -799,6 +799,7 @@ message DataSizeResponse {
   uint64 block_size = 1;
   uint64 total_blocks = 2;
   uint64 rolling_blocks = 3;
+  uint64 purged_blocks = 4;
 }
 
 message PurgeCycle {

@@ -105,6 +105,7 @@ struct DataSizeRequest {
 struct DataSizeResponse {
   uint64_t blockSize;
   uint64_t totalBlocks;
+  uint64_t purgedBlocks;
   uint64_t rollingBlocks;
 };
 

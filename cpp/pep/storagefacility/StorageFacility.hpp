@@ -31,11 +31,12 @@ private:
     prometheus::Gauge& entriesIncludingHistory;
     prometheus::Gauge& entriesInMetaDir;
 
-    prometheus::Gauge& totalPayloadBytes; // including history
+    prometheus::Gauge& totalPayloadBytes; // including history and purged
+    prometheus::Gauge& purgedPayloadBytes; // over total history
     prometheus::Gauge& rollingPayloadBytes; // "latest" snapshot
   };
 
-  void getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns = {});
+  FileStore::Metrics getRoundedFileStoreMetrics(const std::set<std::string>& columns = {});
   void updateFileStoreMetrics();
 
 public:

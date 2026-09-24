@@ -303,20 +303,27 @@ private:
                   // (Ab)use response fields to store byte counts. While this makes the "response" object's state inconsistent,
                   // it allows us to check for the original block size when outputting rounding information (below).
                   response.totalBlocks *= response.blockSize;
+                  response.purgedBlocks *= response.blockSize;
                   response.rollingBlocks *= response.blockSize;
                 }
 
                 // Left pad numbers (with spaces) so that we can...
                 auto entire = std::to_string(response.totalBlocks);
+                auto purged = std::to_string(response.purgedBlocks);
                 auto latest = std::to_string(response.rollingBlocks);
-                auto width = std::max(entire.size(), latest.size());
+                auto width = std::max(std::max(entire.size(), purged.size()), latest.size());
                 entire = std::string(width - entire.size(), ' ') + entire;
+                purged = std::string(width - purged.size(), ' ') + purged;
                 latest = std::string(width - latest.size(), ' ') + latest;
 
                 // ...produce aligned output
                 std::cout
-                  << "Entire history contains " << entire << ' ' << *units << '\n'
+                  << "Entire history contains " << entire << ' ' << *units << '\n';
+                if (response.purgedBlocks != 0U) std::cout // Nonconforming source formatting to align our output texts
+                  << "including purged data @ " << purged << ' ' << *units << '\n';
+                std::cout
                   << "Latest version contains " << latest << ' ' << *units;
+
                 if (response.blockSize != 1U) {
                   std::cout << '\n'
                     << "(rounded up to the nearest " << chunk << ')';
