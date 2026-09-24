@@ -1,7 +1,6 @@
 #pragma once
 
 #include <pep/utils/Action.hpp>
-#include <pep/utils/ScopedResource.hpp>
 #include <boost/noncopyable.hpp>
 #include <map>
 #include <mutex>
@@ -50,31 +49,18 @@ private:
   Accessors writers_;
   std::mutex mutex_;
 
-  /// \brief Ensures that the instance is locked by the calling thread for the specified type of access.
-  /// \param write Whether caller needs write access (true) or only read access (false)
-  /// \return A ScopedResource that must be kept alive for as long as caller needs the lock
-  /// \remark Dereference the return value to determine if the lock was (first) acquired in this call
-  ScopedResource<bool> acquire(bool write);
+  void performLocked(bool write, const Action& action);
+  std::function<void(const Action&)> makeLockingPerformer(bool write);
 
 public:
   template <typename TFunction, typename... TArgs>
   decltype(auto) read(TFunction function, TArgs... args) {
-    auto locked = this->acquire(false);
-    if (*locked) {
-      return nonRecursive_.read(std::forward<TFunction>(function), std::forward<TArgs>(args)...);
-    }
-    // else
-    return function(std::forward<TArgs>(args)...);
+    return PerformAsAction(this->makeLockingPerformer(false), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
   }
 
   template <typename TFunction, typename... TArgs>
   decltype(auto) write(TFunction function, TArgs... args) {
-    auto locked = this->acquire(true);
-    if (*locked) {
-      return nonRecursive_.write(std::forward<TFunction>(function), std::forward<TArgs>(args)...);
-    }
-    // else
-    return function(std::forward<TArgs>(args)...);
+    return PerformAsAction(this->makeLockingPerformer(true), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
   }
 
 };
