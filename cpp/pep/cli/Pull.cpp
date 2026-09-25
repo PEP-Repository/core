@@ -20,6 +20,7 @@
 #include <pep/structuredoutput/Csv.hpp>
 #include <pep/structuredoutput/FormatFlags.hpp>
 #include <pep/structuredoutput/Json.hpp>
+#include <pep/structuredoutput/Yaml.hpp>
 #include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/utils/File.hpp>
