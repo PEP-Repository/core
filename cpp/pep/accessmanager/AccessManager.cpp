@@ -542,11 +542,11 @@ AccessManager::prepareTicketRequest(std::shared_ptr<SignedTicketRequest2> signed
 
   // Remove the main client signature to prevent reuse of
   // the SignedTicketRequest2.
-  auto signature = signedRequest->extractSignature();
+  const auto signature = signedRequest->extractSignature();
 
   // Because of all the asynchronous IO, we move all state into this context
   // struct, so that we don't have to put everything into shared_ptrs
-  auto ctx = MakeSharedCopy(TicketRequestContext{
+  return MakeSharedCopy(TicketRequestContext{
     .server = SharedFrom(*this),
     .requestNumber = requestNumber,
     .request = request,
@@ -565,25 +565,30 @@ AccessManager::prepareTicketRequest(std::shared_ptr<SignedTicketRequest2> signed
       ? std::optional{RecipientForCertificate(signature.certificateChain().leaf())}
       : std::nullopt,
     });
+}
 
+/// Checks whether the userGroup of the ticket may access the requested resources,
+/// filling the context's maps as a side effect.
+void AccessManager::checkTicketRequestAccess(TicketRequestContext& ctx) {
   // Checking participant groups appends "enumerate" to participantModes and the group's members to pps
-  if (!request.participantGroups.empty()) {
+  if (!ctx.request.participantGroups.empty()) {
     // Access to participants does not imply permission to list groups they are in, so first check that
     backend_->checkParticipantGroupAccess(
-        request.participantGroups, ctx->ticket.userGroup, ctx->participantModes /*in & out*/, ctx->ticket.timestamp);
+        ctx.request.participantGroups,
+        ctx.ticket.userGroup,
+        ctx.participantModes /*in & out*/,
+        ctx.ticket.timestamp);
 
-    ctx->participantGroupMap = backend_->fillParticipantGroupMap(request.participantGroups, ctx->pps);
+    ctx.participantGroupMap = backend_->fillParticipantGroupMap(ctx.request.participantGroups, ctx.pps);
   }
 
   // Check columns and column groups; ticket.columns is unfolded in place
-  ctx->columnGroupMap = backend_->unfoldColumnGroupsAndCheckAccess(
-      ctx->ticket.userGroup, request.columnGroups, request.modes, ctx->ticket.timestamp,
-      ctx->ticket.columns /*in & out*/);
-
-  // Prepare transcryptor request
-  ctx->tsReqEntries.entries.resize(ctx->pps.size());
-
-  return ctx;
+  ctx.columnGroupMap = backend_->unfoldColumnGroupsAndCheckAccess(
+      ctx.ticket.userGroup,
+      ctx.request.columnGroups,
+      ctx.request.modes,
+      ctx.ticket.timestamp,
+      ctx.ticket.columns /*in & out*/);
 }
 
 messaging::MessageBatches
@@ -593,6 +598,11 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   };
 
   auto ctx = prepareTicketRequest(std::move(signedRequest));
+
+  checkTicketRequestAccess(*ctx);
+
+  // Prepare transcryptor request
+  ctx->tsReqEntries.entries.resize(ctx->pps.size());
 
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " constructing observable";
 

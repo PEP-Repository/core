@@ -77,6 +77,7 @@ private:
   /// and its asynchronous response pipeline. Defined in AccessManager.cpp.
   struct TicketRequestContext;
   std::shared_ptr<TicketRequestContext> prepareTicketRequest(std::shared_ptr<SignedTicketRequest2> signedRequest);
+  void checkTicketRequestAccess(TicketRequestContext& ctx);
 
   messaging::MessageBatches handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> pClientRequest);
   messaging::MessageBatches handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyRequest> pClientRequest);
