@@ -6,6 +6,8 @@
 
 ## Changes in upcoming release (1.8)
 
+- core#3010: `pepcli list` now outputs an empty array instead of an empty string when there are no results.
+
 - core#2958: parameter `expiration` for `pepcli token request` is now marked as required.
 
 - #2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
