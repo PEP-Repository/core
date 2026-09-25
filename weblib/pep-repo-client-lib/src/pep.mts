@@ -87,6 +87,30 @@ export interface ParticipantPersonalia extends Omit<rawTypes.ParticipantPersonal
   dateOfBirth: Date;
 }
 
+export interface StoreQuery {
+  subject: string;
+  column: string;
+  data: string | Blob;
+  /**
+   * Metadata associated with the data. Either strings or bytes.
+   * When data is a File, fileExtension is derived from the name unless specified explicitly.
+   */
+  metadata?: Map<string, string | Uint8Array | ArrayBuffer> | undefined;
+}
+
+interface StoreQueryInternal extends Omit<rawTypes.StoreQuery, 'blob' | 'metadata'> {
+  blob: Blob;
+  /** 
+  * The metadata, normalized to Uint8Array.
+  * Encoded here rather than in C++, so the bytes stored do not depend on embind's string handling
+  */
+  metadata: Map<string, Uint8Array>;
+}
+
+export interface StoreResult {
+  id: string;
+}
+
 export interface ListQuery {
   subjectGroups?: string[] | undefined;
   /** Loose subjects to request (any format that would be recognized by pepcli) */
@@ -124,6 +148,17 @@ type AuthenticationChannelMessage =
     | { code: string }
     | { error: string, errorDescription: string | null }
     ;
+
+const textEncoder = new TextEncoder();
+
+/** Normalizes metadata values to the single form the wasm client is given */
+function toBytes(value: string | Uint8Array | ArrayBuffer): Uint8Array {
+  if (typeof value === 'string') {
+    return textEncoder.encode(value);
+  }
+  // Wrapping an ArrayBuffer is a view over the same memory, not a copy
+  return value instanceof ArrayBuffer ? new Uint8Array(value) : value;
+}
 
 function toDdMmYyyy(date: Date) {
   return `${date.getFullYear().toString().padStart(4, '0')}${date.getMonth().toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
@@ -357,6 +392,21 @@ export default class Pep {
       ...personalia,
       dateOfBirth: toDdMmYyyy(personalia.dateOfBirth)
     }, isTestParticipant));
+  }
+
+  store(query: StoreQuery): Promise<StoreResult> {
+    const common = {
+      subject: query.subject,
+      column: query.column,
+      metadata: new Map([...query.metadata ?? []].map(([key, value]) => [key, toBytes(value)]))
+    };
+    // A string is wrapped rather than passed inline, so that it is paged like any other data
+    // instead of having to fit in a single message
+    const internalQuery: StoreQueryInternal = {
+      ...common,
+      blob: query.data instanceof Blob ? query.data : new Blob([query.data]),
+    };
+    return this.#wrapExec(() => this.#client.store(internalQuery));
   }
 
   /**
