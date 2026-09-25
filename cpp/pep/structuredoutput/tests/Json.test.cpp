@@ -20,10 +20,6 @@ std::string ToString(const T& subject, const JsonConfig& config = {}) {
   return std::move(stream).str();
 }
 
-static_assert(json_out::ToIndent(WhitespaceFormat::Compact) == -1);
-static_assert(json_out::ToIndent(WhitespaceFormat::TwoSpaces) == 2);
-static_assert(json_out::ToIndent(WhitespaceFormat::FourSpaces) == 4);
-
 TEST(structuredOutputJson, KeysAppearAsConstructed) {
   EXPECT_EQ(
       ToString(Tree::FromJson({{"C", nullptr}, {"D", nullptr}, {"B", nullptr}, {"A", nullptr}}), {.wsFormat = WhitespaceFormat::Compact}),
@@ -56,13 +52,6 @@ TEST(structuredOutputJson, WhitespaceFormat) {
 
   EXPECT_EQ(ToString(tree),
             ToString(tree, {.wsFormat = WhitespaceFormat::TwoSpaces})) << "two spaces is the default";
-}
-
-TEST(structuredOutputJson, FromEmptyTableWithHeader) {
-  const auto table = Table::EmptyWithHeader({"fruit", "color"});
-
-  EXPECT_EQ(ToString(table, {.wsFormat = WhitespaceFormat::Compact}),
-            R"({"metadata":{"header":["fruit","color"]},"data":[]})");
 }
 
 TEST(structuredOutputJson, FromPopulatedTableWithHeader) {

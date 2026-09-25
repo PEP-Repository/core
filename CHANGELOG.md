@@ -6,6 +6,8 @@
 
 ## Changes in upcoming release (1.8)
 
+- Fixed number formatting in YAML output. Integers outside the 32-bit range are no longer truncated, and floating point numbers are written in their shortest exact form.
+
 - core#2958: parameter `expiration` for `pepcli token request` is now marked as required.
 
 - #2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
