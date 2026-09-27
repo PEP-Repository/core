@@ -58,10 +58,12 @@ fi
 pids=()
 
 is_blank_or_comment() {
+  # if whitespace or starts with #, return true
   [[ "$1" =~ ^[[:space:]]*(#|$) ]]
 }
 
 check_proxy() {
+  # If not 2 args, or arg1 isnt digits, or arg2 isnt "something:number"
   if [ "$#" != 2 ] || ! [[ "$1" =~ ^[0-9]+$ ]] || ! [[ "$2" =~ ^[^:]+:[0-9]+$ ]]; then
     >&2 echo "$0: Expected '<listen port> <target host>:<target port>' in $config, got: $*"
     exit 1
