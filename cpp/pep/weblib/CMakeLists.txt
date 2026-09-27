@@ -58,6 +58,15 @@ set_target_properties(${PROJECT_NAME}Weblib PROPERTIES
 
 set(PEP_WEBLIB_ENVIRONMENT "web,node" CACHE STRING "Environment(s) to build ${PROJECT_NAME}Weblib for")
 
+# Use secure websockets (wss://) instead of plain ws://
+option(PEP_WEBLIB_USE_WSS "Use secure WebSockets (wss://) instead of plain ws://" OFF)
+
+if(PEP_WEBLIB_USE_WSS)
+  set(WEBSOCKET_SCHEME "wss://")
+else()
+  set(WEBSOCKET_SCHEME "ws://")
+endif()
+
 # See https://emscripten.org/docs/tools_reference/settings_reference.html
 target_link_options(${PROJECT_NAME}Weblib PRIVATE
     "-sENVIRONMENT=${PEP_WEBLIB_ENVIRONMENT}"
@@ -82,6 +91,8 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     -sNO_SUPPORT_LONGJMP # We're not using this
     -sTEXTDECODER=2 # Do not generate polyfill for old browsers not supporting TextDecoder
     -sFETCH # For emscripten_fetch
+    -sWEBSOCKET_URL=${WEBSOCKET_SCHEME}
+    "$<$<CONFIG:Debug>:-sSOCKET_DEBUG=1>" # Socket debug logging in Debug builds (see https://emscripten.org/docs/tools_reference/settings_reference.html#websocket-debugging)
     -sNO_INVOKE_RUN # We call callMain ourselves
     # noExitRuntime required for -sNO_EXIT_RUNTIME
     -sINCOMING_MODULE_JS_API=thisProgram,noExitRuntime
