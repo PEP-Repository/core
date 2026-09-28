@@ -723,7 +723,7 @@ FileStore::Entry::Entry(EntryChange&& source, Timestamp validFrom)
 }
 
 FileStore::Entry::Entry(Cell& cell, Timestamp validFrom, std::optional<Timestamp> purgedAt, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content)
-  : EntryBase(cell, checksumSubstitute, std::move(content)), validFrom_(validFrom), purgedAt_(purgedAt), purgeIsPersisted_(purgedAt_.has_value()) {
+  : EntryBase(cell, checksumSubstitute, std::move(content)), validFrom_(validFrom), purgedAt_(purgedAt) {
 }
 
 rxcpp::observable<std::string> FileStore::EntryChange::appendPage(std::shared_ptr<std::string> rawPage, uint64_t payloadSize, uint64_t pagenr) {

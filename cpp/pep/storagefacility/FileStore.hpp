@@ -116,7 +116,6 @@ public:
 
     Timestamp validFrom_;
     std::optional<Timestamp> purgedAt_;
-    bool purgeIsPersisted_ = false;
 
     Entry(EntryChange&& source, Timestamp validFrom);
     Entry(Cell& cell, Timestamp validFrom, std::optional<Timestamp> purgedAt, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
