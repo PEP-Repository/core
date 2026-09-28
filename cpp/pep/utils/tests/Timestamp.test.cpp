@@ -45,7 +45,7 @@ TEST(Timestamp, FromXmlDateTime) {
 TEST(Timestamp, FromHttpDate) {
   EXPECT_EQ(pep::TimestampFromHttpDate("Sun, 06 Nov 1994 08:49:37 GMT"), 784111777000_unixMs);
   EXPECT_EQ(pep::TimestampFromHttpDate("Thu, 29 Feb 2024 13:00:00 GMT"), 1709211600000_unixMs); // leap day
-  EXPECT_EQ(pep::TimestampFromHttpDate("Fri, 31 Dec 9999 23:59:59 GMT"), pep::Timestamp(sys_days{9999y / December / 31d} + 23h + 59min + 59s));
+  EXPECT_EQ(pep::TimestampFromHttpDate("Fri, 31 Dec 9999 23:59:59 GMT"), pep::Timestamp(sys_days{9999y / December / 31d}) + 23h + 59min + 59s);
 
   // Unsupported (obsolete) formats
   EXPECT_THROW((void) pep::TimestampFromHttpDate("Sunday, 06-Nov-94 08:49:37 GMT"), std::runtime_error); // RFC 850
@@ -57,6 +57,7 @@ TEST(Timestamp, FromHttpDate) {
   EXPECT_THROW((void) pep::TimestampFromHttpDate("Sun, 06 Nov 1994 08:49:37 GMT trailing"), std::runtime_error);
   EXPECT_THROW((void) pep::TimestampFromHttpDate("Sun, 06 Foo 1994 08:49:37 GMT"), std::runtime_error);
   EXPECT_THROW((void) pep::TimestampFromHttpDate("Sat, 29 Feb 2025 00:00:00 GMT"), std::runtime_error); // feb 29, but not leap year
+  EXPECT_THROW((void) pep::TimestampFromHttpDate("Sun, 06 Nov 1994 24:00:00 GMT"), std::runtime_error);
 }
 
 TEST(Timestamp, FromYyyyMmDd) {

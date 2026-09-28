@@ -107,9 +107,10 @@ protected:
       std::istringstream ss{std::string(str)};
       ss.exceptions(std::ios_base::badbit | std::ios_base::failbit);
       ss.imbue(std::locale::classic()); // Day and month names are always in English
-      ss >> std::get_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
-      if (auto remaining = GetUnparsed(ss); !remaining.empty()) {
-        throw std::invalid_argument(std::format("Unparsed data remains: {}", remaining));
+      // Not including " GMT" in the format, since std::get_time doesn't fail if the input ends before the format's literal text does
+      ss >> std::get_time(&tm, "%a, %d %b %Y %H:%M:%S");
+      if (auto remaining = GetUnparsed(ss); remaining != " GMT") {
+        throw std::invalid_argument(std::format("Expected \" GMT\" but got \"{}\"", remaining));
       }
     }
 
@@ -117,7 +118,8 @@ protected:
     if (!date.ok()) {
       throw std::invalid_argument("Invalid date");
     }
-    return sys_days{date} + hours{tm.tm_hour} + minutes{tm.tm_min} + seconds{tm.tm_sec};
+    // Convert to Timestamp first: adding hours and minutes to sys_days may overflow if their rep is 32 bits (e.g. on Emscripten)
+    return Timestamp{sys_days{date}} + hours{tm.tm_hour} + minutes{tm.tm_min} + seconds{tm.tm_sec};
   }
 };
 
