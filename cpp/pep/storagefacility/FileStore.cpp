@@ -584,7 +584,7 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
       // Process ".entry" file if it exists
       if (auto entry = TryLoadFile(cell, filename, FileExtension)) {
         if (entry->getPurgedAt().has_value()) {
-          // Nothing to do: purge has already been persisted, i.e. "purged-at" is already stored in ".entry" file
+          PEP_LOG(LogTag, Severity::Debug) << "Purge has previously been persisted into " << entryPath;
           assert(entry->getPurgedAt() == purgedAt);
           return;
         }
