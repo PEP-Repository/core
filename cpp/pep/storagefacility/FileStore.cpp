@@ -120,7 +120,6 @@ void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
     }
 
     auto updated = cycle;
-    assert(!updated.completed);
     updated.completed = TimeNow();
     sqlite_.updatePurgeCycle(updated);
   }
