@@ -28,12 +28,12 @@ private:
 
 public:
   template <typename TFunction, typename... TArgs>
-  decltype(auto) read(TFunction function, TArgs... args) {
+  decltype(auto) read(TFunction&& function, TArgs&&... args) {
     return PerformAsAction(std::bind_front(&ReaderWriterLock::lockAndPerform<ReaderLock>, this), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
   }
 
   template <typename TFunction, typename... TArgs>
-  decltype(auto) write(TFunction function, TArgs... args) {
+  decltype(auto) write(TFunction&& function, TArgs&&... args) {
     return PerformAsAction(std::bind_front(&ReaderWriterLock::lockAndPerform<WriterLock>, this), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
   }
 };
