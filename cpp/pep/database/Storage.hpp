@@ -130,7 +130,7 @@ public:
   /// \return The function's return value
   /// \remark Nested transactions are not supported, i.e. this method does not support reentrancy.
   template <typename TFunction, typename... TArgs>
-  decltype(auto) transactionally(TFunction&& function, TArgs... args) {
+  decltype(auto) transactionally(TFunction&& function, TArgs&&... args) {
     return PerformAsAction(std::bind_front(&Storage::transactionallyPerform, this), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
   }
 
