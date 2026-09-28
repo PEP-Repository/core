@@ -620,6 +620,8 @@ AccessManager::requestTranscryption(std::shared_ptr<TicketRequestContext> ctx) {
         return i;
       })
     .flat_map([ctx](std::vector<size_t>) {
+      // Discard batched_map()'s results: they only told us which indices to fill,
+      // and the request entries now live in ctx->tsReqEntries.entries.
       // Send request to transcryptor
 
       auto numEntries = ctx->tsReqEntries.entries.size();
