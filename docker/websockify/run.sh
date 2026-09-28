@@ -17,7 +17,7 @@ usage() {
 
 cert=
 key=
-config=/config/proxies.conf
+
 while [ "$#" != 0 ]; do
   case "$1" in
     --cert)
@@ -27,15 +27,30 @@ while [ "$#" != 0 ]; do
     --help|-h)
       usage
       exit ;;
+    --)
+      shift
+      break
+      ;;
     -*)
       >&2 echo "$0: Unknown option: $1"
       >&2 usage
-      exit 2 ;;
+      exit 2
+      ;;
     *)
-      config="$1" ;;
+      break
+      ;;
   esac
   shift
 done
+
+config="${1:-/config/proxies.conf}"
+
+if [ "$#" -gt 1 ]; then
+  >&2 echo "$0: Too many arguments"
+  >&2 usage
+  exit 2
+fi
+
 readonly cert key config
 
 if [ -z "$cert" ] || [ -z "$key" ]; then
