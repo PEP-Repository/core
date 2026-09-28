@@ -97,8 +97,8 @@ int CommandPurge::List::execute() {
   return this->executeEventLoopForClient(true, [](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
     return client->getStorageFacilityProxy()->listPurgeCycles()
       .map([](PurgeCycle cycle) {
-      OutputPurgeCycle(cycle);
-      return FakeVoid();
+          OutputPurgeCycle(cycle);
+          return FakeVoid();
         });
     });
 }
@@ -137,8 +137,8 @@ commandline::Parameters CommandPurge::Cancel::getSupportedParameters() const {
 int CommandPurge::Cancel::execute() {
   auto id = this->getParameterValues().get<PurgeCycle::Id>("id");
   return this->executeEventLoopForClient(true, [id](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
-    return client->getStorageFacilityProxy()->cancelPurgeCycle(id)
-      .map([](PurgeCycle) {return FakeVoid(); });
+      return client->getStorageFacilityProxy()->cancelPurgeCycle(id)
+        .map([](PurgeCycle) {return FakeVoid(); });
     });
 }
 
