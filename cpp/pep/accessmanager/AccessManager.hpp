@@ -10,6 +10,7 @@
 #include <pep/transcryptor/TranscryptorProxy.hpp>
 
 #include <filesystem>
+#include <functional>
 
 namespace pep {
 
@@ -78,6 +79,13 @@ private:
   struct TicketRequestContext;
   std::shared_ptr<TicketRequestContext> prepareTicketRequest(std::shared_ptr<SignedTicketRequest2> signedRequest);
   void checkTicketRequestAccess(TicketRequestContext& ctx);
+
+  rxcpp::observable<TranscryptorResponse> requestTranscryption(std::shared_ptr<TicketRequestContext> ctx);
+  rxcpp::observable<LogIssuedTicketResponse> processTranscryptorResponse(
+    std::shared_ptr<TicketRequestContext> ctx, TranscryptorResponse resp);
+  messaging::MessageSequence finalizeTicketResponse(
+    std::shared_ptr<TicketRequestContext> ctx, LogIssuedTicketResponse resp,
+    std::function<std::chrono::duration<double>()> elapsedTime);
 
   messaging::MessageBatches handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> pClientRequest);
   messaging::MessageBatches handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyRequest> pClientRequest);
