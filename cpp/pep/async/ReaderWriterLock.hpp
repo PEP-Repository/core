@@ -62,13 +62,18 @@ private:
 
 public:
   template <typename TFunction, typename... TArgs>
+  decltype(auto) acquire(bool write, TFunction&& function, TArgs&&... args) {
+    return PerformAsAction(this->makeLockingPerformer(write), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
+  }
+
+  template <typename TFunction, typename... TArgs>
   decltype(auto) read(TFunction&& function, TArgs&&... args) {
-    return PerformAsAction(this->makeLockingPerformer(false), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
+    return this->acquire(false, std::forward<TFunction>(function), std::forward<TArgs>(args)...);
   }
 
   template <typename TFunction, typename... TArgs>
   decltype(auto) write(TFunction&& function, TArgs&&... args) {
-    return PerformAsAction(this->makeLockingPerformer(true), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
+    return this->acquire(true, std::forward<TFunction>(function), std::forward<TArgs>(args)...);
   }
 
 };
