@@ -620,9 +620,9 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
       rename(purgedPath, entryPath);
       assert(exists(entryPath));
       assert(!exists(purgedPath));
-    });
 
-  PEP_LOG(LogTag, Severity::Info) << "Persisted purge into " << entryPath;
+      PEP_LOG(LogTag, Severity::Info) << "Persisted purge into " << entryPath;
+    });
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoadFile(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension) {
