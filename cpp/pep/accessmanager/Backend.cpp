@@ -406,12 +406,8 @@ void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
 
 void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::string> participantGroups,
                                                        const std::string& userGroup,
-                                                       std::vector<std::string>& modes,
+                                                       const std::vector<std::string>& modes,
                                                        const Timestamp& timestamp) {
-  if (!participantGroups.empty() && !contains(modes, "enumerate")) {
-    modes.push_back("enumerate");
-  }
-
   if (userGroup == UserGroup::DataAdministrator && !participantGroups.empty()) {
     PEP_LOG(LogTag, Severity::Info)
         << "Granting " << Logging::Escape(userGroup)

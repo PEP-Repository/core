@@ -559,7 +559,9 @@ AccessManager::prepareTicketRequest(std::shared_ptr<SignedTicketRequest2> signed
     .pps = request.accessSubjects
       | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; })
       | to<std::vector>(),
-    .participantModes = {"access"},
+    .participantModes = request.participantGroups.empty()
+      ? std::vector<std::string>{"access"}
+      : std::vector<std::string>{"access", "enumerate"},
     .tsReq {.request = std::move(*signedRequest) },
     .userRecipient = request.includeUserGroupPseudonyms
       ? std::optional{RecipientForCertificate(signature.certificateChain().leaf())}
@@ -570,13 +572,11 @@ AccessManager::prepareTicketRequest(std::shared_ptr<SignedTicketRequest2> signed
 /// Checks whether the userGroup of the ticket may access the requested resources,
 /// filling the context's maps as a side effect.
 void AccessManager::checkTicketRequestAccess(TicketRequestContext& ctx) {
-  // Checking participant groups appends "enumerate" to participantModes and the group's members to pps
   if (!ctx.request.participantGroups.empty()) {
-    // Access to participants does not imply permission to list groups they are in, so first check that
     backend_->checkParticipantGroupAccess(
         ctx.request.participantGroups,
         ctx.ticket.userGroup,
-        ctx.participantModes /*in & out*/,
+        ctx.participantModes,
         ctx.ticket.timestamp);
 
     ctx.participantGroupMap = backend_->fillParticipantGroupMap(ctx.request.participantGroups, ctx.pps);
