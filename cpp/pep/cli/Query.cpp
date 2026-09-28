@@ -311,7 +311,7 @@ private:
                 auto entire = std::to_string(response.totalBlocks);
                 auto purged = std::to_string(response.purgedBlocks);
                 auto latest = std::to_string(response.rollingBlocks);
-                auto width = std::max(std::max(entire.size(), purged.size()), latest.size());
+                auto width = std::max({ entire.size(), purged.size(), latest.size() });
                 entire = std::string(width - entire.size(), ' ') + entire;
                 purged = std::string(width - purged.size(), ' ') + purged;
                 latest = std::string(width - latest.size(), ' ') + latest;
