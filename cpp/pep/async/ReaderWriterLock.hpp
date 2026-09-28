@@ -12,7 +12,7 @@ namespace pep {
 /// \brief Reader/writer lock
 /// \remark After https://stackoverflow.com/a/6450579.
 /// \warning This class will (likely) starve the writer(s) under high read loads: see https://stackoverflow.com/questions/244316/reader-writer-locks-in-c#comment114678482_6450579.
-/// \warning This class will deadlock when used recursively and (at least) one of the locks is a writer lock.
+/// \warning This class will deadlock when used recursively and (at least) one of the locks is a writer lock. See the \ref ReaderWriterThreadLock class (below) for recursion support.
 class ReaderWriterLock : boost::noncopyable {
 private:
   std::shared_mutex mutex_;
