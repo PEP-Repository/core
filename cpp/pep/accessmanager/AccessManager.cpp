@@ -593,6 +593,9 @@ void AccessManager::checkTicketRequestAccess(TicketRequestContext& ctx) {
 
 rxcpp::observable<TranscryptorResponse>
 AccessManager::requestTranscryption(std::shared_ptr<TicketRequestContext> ctx) {
+  // Prepare transcryptor request
+  ctx->tsReqEntries.entries.resize(ctx->pps.size());
+
   // workerPool_->batched_map() does not tell us which index we're handling,
   // so we let it process indices to work around this.  If we need this
   // more often, it's better to change batched_map()
@@ -703,9 +706,6 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   auto ctx = prepareTicketRequest(std::move(signedRequest));
 
   checkTicketRequestAccess(*ctx);
-
-  // Prepare transcryptor request
-  ctx->tsReqEntries.entries.resize(ctx->pps.size());
 
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " constructing observable";
 
