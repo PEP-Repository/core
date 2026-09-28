@@ -11,17 +11,24 @@ namespace {
 
 constexpr const char* DestructiveWarning = "Falsifies repository history, making it impossible to re-download exact copies of data sets that include purged items.";
 
+std::string TimestampOutput(Timestamp timestamp) {
+  std::ostringstream stream;
+  stream << timestamp.time_since_epoch().count()
+    << ", i.e. " << TimestampToXmlDateTime(timestamp);
+  return std::move(stream).str();
+}
+
 void OutputPurgeCycle(const PurgeCycle& cycle) {
   std::cout
     << "Purge cycle " << cycle.id
     << " for " << cycle.definition.name()
     << " announced at " << TimestampToXmlDateTime(cycle.announced);
   if (cycle.applied) {
-    std::cout << "; applied at " << TimestampToXmlDateTime(*cycle.applied);
+    std::cout << "; applied at " << TimestampOutput(*cycle.applied);
   }
   if (cycle.completed) {
     assert(cycle.applied);
-    std::cout << "; completed at " << TimestampToXmlDateTime(*cycle.completed);
+    std::cout << "; completed at " << TimestampOutput(*cycle.completed);
   }
 
   std::cout << '\n';
@@ -156,11 +163,7 @@ int CommandPurge::Confirm::execute() {
     return client->getStorageFacilityProxy()->confirmPurgeCycle(id)
       .map([](PurgeCycle cycle) {
           assert(cycle.applied.has_value());
-          std::cout << "Purge cycle " << cycle.id
-            << " for " << cycle.definition.name()
-            << " applied at " << cycle.applied->time_since_epoch().count()
-            << ", i.e. " << TimestampToXmlDateTime(*cycle.applied)
-            << std::endl;
+          OutputPurgeCycle(cycle);
           return FakeVoid();
         });
     });
