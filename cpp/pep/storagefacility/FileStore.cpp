@@ -593,7 +593,7 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
 
         // Clean up (possibly corrupt file left behind by) failed or interrupted previous persistence attempt
         if (exists(purgedPath)) {
-          PEP_LOG(LogTag, Severity::Debug) << "Discarding previous purge attempt at " << purgedPath;
+          PEP_LOG(LogTag, Severity::Debug) << "Discarding previous purge persistence attempt at " << purgedPath;
           remove(purgedPath);
           assert(!exists(purgedPath));
         }
