@@ -36,6 +36,13 @@ public:
   decltype(auto) write(TFunction&& function, TArgs&&... args) {
     return PerformAsAction(std::bind_front(&ReaderWriterLock::lockAndPerform<WriterLock>, this), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
   }
+
+  template <typename TFunction, typename... TArgs>
+  decltype(auto) acquire(bool write, TFunction&& function, TArgs&&... args) {
+    return write
+      ? this->write(std::forward<TFunction>(function), std::forward<TArgs>(args)...)
+      : this->read(std::forward<TFunction>(function), std::forward<TArgs>(args)...);
+  }
 };
 
 

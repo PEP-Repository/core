@@ -81,13 +81,7 @@ TimeRange Contention::SpendSomeTime() {
 }
 
 Contention Contention::Run(pep::ReaderWriterLock& rwl, bool write) {
-  std::function<TimeRange()> synchronized;
-  if (write) {
-    synchronized = [&rwl]() { return rwl.write(&SpendSomeTime); };
-  } else {
-    synchronized = [&rwl]() { return rwl.read(&SpendSomeTime); };
-  }
-  return Contention(write, synchronized());
+  return Contention(write, rwl.acquire(write, &SpendSomeTime));
 }
 
 }
