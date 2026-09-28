@@ -610,7 +610,7 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
       }
       else {
         // No ".entry" file exists (anymore): previous attempt (failed or) was interrupted after it had been removed
-        PEP_LOG(LogTag, Severity::Debug) << "Resuming previous purge attempt at " << purgedPath;
+        PEP_LOG(LogTag, Severity::Debug) << "Resuming previous purge persistence attempt at " << purgedPath;
       }
 
       // A ".purged" file exists and the corresponding ".entry" file does not: rename
