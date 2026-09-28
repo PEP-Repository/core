@@ -52,6 +52,7 @@ void CreateFile(const Path& path, const std::string& contents) {
 void CreateFilePair(const Path& inputPath, const Path& expectedPath, const std::string& oldPseudonym, const std::string& newPseudonym, size_t fileSize) {
   std::vector<size_t> positions = GeneratePositions(fileSize, oldPseudonym.length());
   std::string binaryContent(fileSize, '\0');
+  //NOLINTNEXTLINE(modernize-use-ranges) std::ranges::iota needs libc++ 23; unavailable on our Emscripten/Apple Clang floor
   std::iota(binaryContent.begin(), binaryContent.end(), '\0');
   InsertPseudonym(binaryContent, oldPseudonym, positions);
   CreateFile(inputPath, binaryContent);

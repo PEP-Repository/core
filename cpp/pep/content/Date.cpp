@@ -49,7 +49,7 @@ std::optional<year_month_day> TryParseDdMonthAbbrevYyyyDate(const std::string& v
   return TryParseDate(DdMonthAbbrevYyyyRegEx, value, [](const std::string& enteredMonth) {
     auto lowercase = boost::algorithm::to_lower_copy(enteredMonth);
     auto begin = monthAbbrevs.begin(), end = monthAbbrevs.end();
-    auto position = std::find(begin, end, lowercase);
+    auto position = std::ranges::find(begin, end, lowercase);
     assert(position != end && "RegEx matched invalid month");
     return January + months{position - begin};
     });

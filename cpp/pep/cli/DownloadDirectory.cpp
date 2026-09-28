@@ -13,6 +13,7 @@
 #include <pep/core-client/CoreClient.hpp>
 
 #include <fstream>
+#include <ranges>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -23,6 +24,7 @@
 
 using namespace pep;
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 
@@ -205,7 +207,7 @@ std::vector<DownloadDirectory::NonPristineEntry> DownloadDirectory::getNonPristi
     this->trackExistingPaths(dirs, files, entry.descriptor);
     auto current = getCurrentDataHash(entry.descriptor);
     auto filename = getRecordFileName(entry.descriptor);
-    progress->advance(1U, GetOptionalValue(this->getRecordFileName(entry.descriptor, false), [](const std::filesystem::path& path) {return path.string(); }));
+    progress->advance(1U, this->getRecordFileName(entry.descriptor, false).transform([](const std::filesystem::path& path) {return path.string(); }));
     if (entry.hash != current) {
       result.emplace_back(entry.descriptor, filename);
     }
@@ -214,10 +216,9 @@ std::vector<DownloadDirectory::NonPristineEntry> DownloadDirectory::getNonPristi
   // Check entries that shouldn't be there
   // TODO: report Progress for this?
   auto unknown = this->getUnknownContents(dirs, files);
-  result.reserve(result.size() + unknown.size());
-  std::transform(unknown.begin(), unknown.end(), std::back_inserter(result), [](const std::filesystem::path& path) {
+  result.append_range(unknown | views::transform([](const std::filesystem::path& path) {
     return NonPristineEntry{ std::nullopt, path };
-    });
+    }));
 
   progress->advanceToCompletion();
   return result;
@@ -271,12 +272,11 @@ filesystem::SetOfExistingPaths DownloadDirectory::getUnknownContents(const files
 }
 
 std::vector<RecordDescriptor> DownloadDirectory::getRecords(const std::function<bool(const RecordDescriptor&)>& match) const {
-  std::vector<RecordDescriptor> result;
-
   auto pristine = metadata_.getRecords(); // TODO: don't rely on pristine data here
-  std::transform(pristine.cbegin(), pristine.cend(), std::back_inserter(result), [](const RecordState& state) {return state.descriptor; });
-  auto removed = std::remove_if(result.begin(), result.end(), [&match](const RecordDescriptor& candidate) {return !match(candidate); });
-  result.erase(removed, result.cend());
+  auto result = pristine
+    | views::transform(&RecordState::descriptor)
+    | to<std::vector>();
+  std::erase_if(result, [&match](const RecordDescriptor& candidate) {return !match(candidate); });
 
   return result;
 }

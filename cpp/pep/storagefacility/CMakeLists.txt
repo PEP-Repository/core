@@ -25,6 +25,7 @@ if(WITH_SERVERS)
       EntryPayload.cpp EntryPayload.hpp
       FileStore.cpp FileStore.hpp
       PageStore.cpp PageStore.hpp
+      PendingBytesLimiter.cpp PendingBytesLimiter.hpp
       PersistedEntryProperties.cpp PersistedEntryProperties.hpp
       S3.cpp S3.hpp
       S3Client.cpp S3Client.hpp

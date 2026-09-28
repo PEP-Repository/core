@@ -1,13 +1,12 @@
 #pragma once
 
 #include <boost/noncopyable.hpp>
-#include <cassert>
 #include <functional>
-#include <limits>
 #include <memory>
 #include <optional>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace pep {
 

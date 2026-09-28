@@ -11,8 +11,10 @@ PEP is an acronym for "Polymorphic Encryption and Pseudonymization". The softwar
    - conan 2.27 or newer (e.g. via `pipx`)
    - `cmake` 3.28 or newer (see https://apt.kitware.com/ for how to get this for older versions of debian-based OSs)
    - ninja (`ninja-build`)
-   - `clang` (v18 is known to work (01-2024); see https://apt.llvm.org/ for how to get recent versions for older versions of debian-based OSs) (`g++` supported but not recommended for compiler performance reasons related to templates & RxCpp)
-   - C++ STL, e.g. `libstdc++-dev` (v13 is known to work (01-2024), see <https://launchpad.net/~ubuntu-toolchain-r/+archive/ubuntu/test> for how to get recent versions like `libstdc++-13-dev` on older Ubuntu-based OSs)
+   - `clang` (`g++` supported but not recommended for compiler performance reasons related to templates & RxCpp)
+     - See [`cpp/CONTRIBUTING.md`](./cpp/CONTRIBUTING.md) for supported versions, see https://apt.llvm.org/ for how to get recent clang versions for older versions of debian-based OSs 
+   - C++ STL, e.g. `libstdc++-dev`
+     - See [`cpp/CONTRIBUTING.md`](./cpp/CONTRIBUTING.md) for supported versions, see <https://launchpad.net/~ubuntu-toolchain-r/+archive/ubuntu/test> for how to get recent versions like `libstdc++-15-dev` on older Ubuntu-based OSs
    - For Qt GUI: APT packages can be installed via Conan, or pass `-o'&:use_system_qt=False'` to `conan install` to use Conan package instead
    - For Go watchdog:
      - Install the `golang` package (version 1.21 or newer. See <https://launchpad.net/%7Elongsleep/+archive/ubuntu/golang-backports>, if you use a linux distro based on Ubuntu 22.04)

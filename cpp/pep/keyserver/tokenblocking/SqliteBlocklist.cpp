@@ -5,6 +5,7 @@
 #include <pep/keyserver/tokenblocking/SqliteBlocklist.hpp>
 #include <pep/database/Storage.hpp>
 #include <pep/database/UnixMillis.hpp>
+#include <ranges>
 #include <type_traits>
 
 using namespace std::chrono;
@@ -47,10 +48,10 @@ std::optional<Blocklist::Entry> Inflate(std::optional<FlatEntry>&& flat) {
 
 /// Consumes a FlatEntry vector to build a Blocklist::Entry vector
 std::vector<Blocklist::Entry> InflateAll(std::vector<FlatEntry>&& flat) {
-  std::vector<Blocklist::Entry> result;
-  result.reserve(flat.size());
-  for (auto&& flatEntry : flat) { result.emplace_back(Inflate(std::move(flatEntry))); }
-  return result;
+  return flat
+    | std::views::as_rvalue
+    | std::views::transform(PEP_WRAP_FN(Inflate))
+    | std::ranges::to<std::vector>();
 }
 
 auto MakeStorage(const std::filesystem::path& dbFile) {

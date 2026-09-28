@@ -69,10 +69,20 @@ PEP_BINDINGS(ParticipantPersonalia,
   dateOfBirth
 )
 
+PEP_BINDINGS(StoreQuery,
+  subject,
+  column,
+  blob,
+  metadata
+)
+
+PEP_BINDINGS(StoreResult,
+  id
+)
+
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {
   using namespace std::ranges;
-  return RangeToCollection<decltype(partialMetadataView())>(
-    inner->metadata.extra()
+  return inner->metadata.extra()
     | views::transform([](const auto& entry) {
       const auto& [key, value] = entry;
       std::optional<val> view;
@@ -82,7 +92,7 @@ std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataVi
       }
       return std::pair{key, std::move(view)};
     })
-  );
+    | to<decltype(partialMetadataView())>();
 }
 
 std::string CellEntry::id() const {

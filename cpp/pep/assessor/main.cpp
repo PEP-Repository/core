@@ -21,11 +21,14 @@
 
 #include <filesystem>
 #include <iostream>
+#include <ranges>
 #include <thread>
 
 #ifdef _WIN32
 #include <windows.h>
 #endif /*_WIN32*/
+
+using namespace std::ranges;
 
 namespace {
 
@@ -158,7 +161,7 @@ class PepAssessorApplication : public pep::Application {
     // Pass empty arguments because if we want to support Qt arguments we'd probably need to parse these *first*.
     // Qt does want the program name, though.
     std::vector<std::string> args{getName()};
-    auto argv = pep::RangeToVector(args | std::views::transform([](std::string& arg) { return arg.data(); }));
+    auto argv = args | views::transform([](std::string& arg) { return arg.data(); }) | to<std::vector>();
     int argc = static_cast<int>(argv.size());
     argv.emplace_back(); // argv[argc] must be nullptr, see https://eel.is/c++draft/basic.start.main#2.2
     QApplication pepAssessor(argc, argv.data());

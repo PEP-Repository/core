@@ -5,6 +5,8 @@
 #include <pep/utils/EnumUtils.hpp>
 #include <boost/core/noncopyable.hpp>
 
+#include <utility>
+
 namespace pep::networking {
 
 using SizedTransfer = OperationInvocation<size_t>;
@@ -23,12 +25,12 @@ public:
   ~Transport() noexcept override;
 
   enum class ConnectivityStatus {
-    Unconnected   = ToUnderlying(LifeCycler::Status::Uninitialized),
-    Reconnecting  = ToUnderlying(LifeCycler::Status::Reinitializing),
-    Connecting    = ToUnderlying(LifeCycler::Status::Initializing),
-    Connected     = ToUnderlying(LifeCycler::Status::Initialized),
-    Disconnecting = ToUnderlying(LifeCycler::Status::Finalizing),
-    Disconnected  = ToUnderlying(LifeCycler::Status::Finalized)
+    Unconnected   = std::to_underlying(LifeCycler::Status::Uninitialized),
+    Reconnecting  = std::to_underlying(LifeCycler::Status::Reinitializing),
+    Connecting    = std::to_underlying(LifeCycler::Status::Initializing),
+    Connected     = std::to_underlying(LifeCycler::Status::Initialized),
+    Disconnecting = std::to_underlying(LifeCycler::Status::Finalizing),
+    Disconnected  = std::to_underlying(LifeCycler::Status::Finalized)
   };
 
   ConnectivityStatus status() const noexcept;

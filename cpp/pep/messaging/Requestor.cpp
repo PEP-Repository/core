@@ -33,13 +33,10 @@ Requestor::~Requestor() noexcept {
     PEP_LOG(LogTag, Severity::Error)
       << "outstanding requests list is not empty:";
     for (const auto& kv : entries_) {
-      std::string msgType = "(too short)";
       auto msg = kv.second.message;
-      if (msg->size() >= sizeof(MessageMagic))
-        msgType = DescribeMessageMagic(*msg);
       PEP_LOG(LogTag, Severity::Error)
         << " streamid " << kv.first
-        << " " << msgType;
+        << " " << DescribeMessageMagic(*msg);
     }
     assert(false);
   }
@@ -52,7 +49,7 @@ StreamId Requestor::getNewRequestStreamId() {
   do {
     // ensure that ID differs from the previously generated one
     result = StreamId::MakeNext(result);
-  } while (entries_.find(result) != entries_.end()); // ensure that we don't recycle IDs of requests that we haven't received a reply to
+  } while (entries_.contains(result)); // ensure that we don't recycle IDs of requests that we haven't received a reply to
 
   // ensure that a future call doesn't produce this ID again
   return previousRequestStreamId_ = result;

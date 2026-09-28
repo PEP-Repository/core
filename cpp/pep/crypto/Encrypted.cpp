@@ -7,7 +7,7 @@ namespace pep {
 EncryptedBase::EncryptedBase(const std::string& key,
   const std::string& plaintext) {
   auto ctx = createGcmContext();
-  iv = RandomString(16);
+  iv = RandomString(12);
   tag.resize(16);
   ciphertext.resize(plaintext.size());
   if (key.size() != 32)
@@ -69,6 +69,13 @@ std::string EncryptedBase::baseDecrypt(const std::string& key) const {
   plaintext.resize(ciphertext.size());
   if (key.size() != 32)
     throw std::runtime_error("keys should be 32 bytes");
+  // Reject truncated tag.
+  if (tag.size() != 16)
+    throw std::runtime_error("tag should be 16 bytes");
+  // iv used to be 16 bytes, but anything over 12 gets hashed with GHASH, see https://csrc.nist.gov/pubs/sp/800/38/d/final.
+  // Old encryptions still need to be supported.
+  if (iv.size() != 12 && iv.size() != 16)
+    throw std::runtime_error("nonce should be 12 or 16 bytes");
 
   ret = EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr);
   if (ret != 1)

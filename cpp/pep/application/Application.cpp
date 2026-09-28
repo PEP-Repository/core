@@ -11,9 +11,8 @@
 #include <memory>
 
 #include <filesystem>
+#include <ranges>
 #include <utility>
-#include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/MiscUtil.hpp>
 
 #ifdef _WIN32
 #include <sstream>
@@ -24,6 +23,8 @@
 #else
 #include <unistd.h>
 #endif
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -195,7 +196,8 @@ std::string Application::getName() const {
 }
 
 std::vector<std::string> Application::ConvertArguments(std::span<const char* const> args) {
-  return RangeToVector(args | std::views::transform([](const char* arg) { return std::string(arg); }));
+  return args | views::transform([](const char* arg) { return std::string(arg); })
+    | to<std::vector>();
 }
 
 int Application::RunWithoutError(std::function<int()> implementor) noexcept {
@@ -228,7 +230,8 @@ void Application::initializeLoggingOnce() {
     std::vector<std::shared_ptr<Logging>> logging;
 
     std::optional<Severity> userProvidedConsoleLevel =
-      GetOptionalValue(values.getOptional<std::string>("loglevel"), Logging::ParseSeverity);
+      values.getOptional<std::string>("loglevel")
+      .transform(Logging::ParseSeverity);
     std::optional<Severity> consoleLevel = this->consoleLogMinimumSeverityLevel();
     if (userProvidedConsoleLevel) {
       consoleLevel = userProvidedConsoleLevel;
@@ -268,8 +271,7 @@ int Application::run(std::vector<std::string> args) {
 
   args_ = std::move(args);
 
-  std::queue<std::string> argsQueue;
-  for (const auto& arg : args_ | std::views::drop(1)) { argsQueue.push(arg); }
+  auto argsQueue = args_ | views::drop(1) | to<std::queue>();
   return this->process(argsQueue);
 }
 
@@ -350,9 +352,10 @@ int Application::InvokeWithArgs(HINSTANCE hInstance, HINSTANCE hPrevInstance, LP
   PEP_DEFER(::LocalFree(wideArgv));
 
   std::span<const LPCWSTR> wideArgs(wideArgv, static_cast<std::size_t>(argc));
-  return invoke(RangeToVector(wideArgs | std::views::transform([](LPCWSTR wstr) {
-    return win32api::WideStringToUtf8(wstr);
-  })));
+  return invoke(wideArgs
+    | views::transform([](LPCWSTR wstr) {
+      return win32api::WideStringToUtf8(wstr);
+    }) | to<std::vector>());
 }
 
 #endif
@@ -397,7 +400,7 @@ commandline::Parameters Application::getSupportedParameters() const {
 std::optional<int> Application::processLexedParameters(const commandline::LexedValues& lexed) {
 #ifdef _WIN32
   if (runningOnWindowsSubsystem) {
-    if (lexed.find("bind-to-console") != lexed.cend()) {
+    if (lexed.contains("bind-to-console")) {
       winConsole.parentConsoleBinding = win32api::ParentConsoleBinding::TryCreate();
       if (winConsole.parentConsoleBinding != nullptr) {
         std::cerr << '\n' // Don't write on the line containing the next user prompt
@@ -416,7 +419,7 @@ std::optional<int> Application::processLexedParameters(const commandline::LexedV
 
 #endif
 
-  if (lexed.find("version") != lexed.end()){
+  if (lexed.contains("version")){
     return printVersionInfo(lexed);
   }
 

@@ -5,6 +5,7 @@
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/async/CreateObservable.hpp>
+#include <pep/async/RxBeforeTermination.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Hasher.hpp>
 #include <pep/async/RxIterate.hpp>
@@ -32,6 +33,7 @@
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
 
+#include <ranges>
 #include <unordered_map>
 #include <sstream>
 
@@ -40,6 +42,7 @@
 #include <prometheus/counter.h>
 
 using namespace std::chrono_literals;
+using namespace std::ranges;
 
 namespace pep {
 
@@ -179,6 +182,16 @@ StorageFacility::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry
     .Name("pep_rolling_payload_bytes")
     .Help("Total bytes in payload(page)s of current/latest/rolling data, rounded to configured resolution")
     .Register(*registry)
+    .Add({})),
+  pendingPageBytes(prometheus::BuildGauge()
+    .Name("pep_sf_pending_page_bytes")
+    .Help("Total size of the incoming pages that have been received but are not stored yet")
+    .Register(*registry)
+    .Add({})),
+  readingPaused(prometheus::BuildGauge()
+    .Name("pep_sf_reading_paused")
+    .Help("Whether we've stopped reading incoming data because too many pages are waiting to be stored (1) or not (0)")
+    .Register(*registry)
     .Add({}))
 { }
 
@@ -193,6 +206,10 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     // See the declaration/definition of the fields for default values
     ReadOptionalNonZeroConfigValue(parallelisationWidth_, config, "ParallelisationWidth");
     ReadOptionalNonZeroConfigValue(dataSizeResolution_, config, "DataSizeResolution");
+    ReadOptionalNonZeroConfigValue(maxPendingPagesMiB_, config, "MaxPendingPagesMiB");
+    if (maxPendingPagesMiB_ > std::numeric_limits<uint64_t>::max() / (1024U * 1024U)) {
+      throw std::runtime_error("MaxPendingPagesMiB is too large");
+    }
 
     encIdKeyFile = config.get<std::filesystem::path>("EncIdKeyFile");
     storagePath_ = config.get<std::filesystem::path>("StoragePath");
@@ -346,19 +363,11 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   std::vector<ResponseEntry> responseEntries;
 
   // Look-up table to check whether to include column
-  std::vector<std::string> includeColumn;
-  if (request.columns) {
-    includeColumn.reserve(request.columns->indices.size());
-    for (uint32_t idx : request.columns->indices) {
-      includeColumn.push_back(ticket.columns.at(idx));
-    }
-  }
-  else {
-    includeColumn.reserve(ticket.columns.size());
-    for (const auto& column : ticket.columns) {
-      includeColumn.push_back(column);
-    }
-  }
+  auto includeColumn = request.columns
+    ? request.columns->indices
+        | views::transform([&ticket](uint32_t idx) { return ticket.columns.at(idx); })
+        | to<std::vector>()
+    : ticket.columns;
 
   // Create column-to-ticket-column-index look-up-table
   std::unordered_map<std::string, uint32_t> columnIndex;
@@ -492,9 +501,9 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       response = std::make_shared<DataEnumerationResponse2>();
     };
 
-    for (size_t i = 0; i < request.ids.size(); i++) {
+    for (auto [id, i] : views::zip(request.ids, views::iota(0uz))) {
       // TODO execute decryption in WorkerPool
-      auto sfid = server->decryptId(request.ids[i]);
+      auto sfid = server->decryptId(id);
       auto sfentry = server->fileStore_->lookup(EntryName::Parse(sfid.path), sfid.time);
       if (sfentry == nullptr) {
         throw Error("openExistingDataEntry failed");
@@ -511,7 +520,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       std::string column = sfentry->getName().column();
 
       DataEnumerationEntry2 entry{
-        .id = request.ids[i],
+        .id = id,
         .metadata = server->compileMetadata(column, *sfentry),
         // TODO execute rerandomization in WorkerPool
         .polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey()),
@@ -556,10 +565,10 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   entries.resize(request.ids.size());
 
   // open files
-  for (size_t i = 0; i < request.ids.size(); i++) {
+  for (auto [entry, id] : views::zip(entries, request.ids)) {
     // TODO execute decryption in WorkerPool
-    auto sfid = decryptId(request.ids[i]);
-    auto entry = fileStore_->lookup(EntryName::Parse(sfid.path), sfid.time);
+    auto sfid = decryptId(id);
+    entry = fileStore_->lookup(EntryName::Parse(sfid.path), sfid.time);
     if (entry == nullptr) {
       throw Error("openExistingDataEntry failed");
     }
@@ -567,8 +576,6 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
     if (entry->isTombstone()) {
       throw Error("Cannot read data of a deleted entry");
     }
-
-    entries[i] = entry;
 
     // Check permission
     indices.verifyColumnAccess(entry->getName().column());
@@ -679,6 +686,7 @@ template <typename TRequest>
 messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
   std::shared_ptr<Signed<TRequest>> signedRequest,
   messaging::MessageSequence tail,
+  std::shared_ptr<messaging::ReadThrottle> throttle,
   bool requireContentOverwrite,
   const GetEntryContent<typename TRequest::Entry> getEntryContent,
   const GetDataAlterationResponse& getResponse) {
@@ -699,6 +707,8 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
       std::vector<std::string> errors;
       std::vector<uint64_t> fileSizes;
       decltype(time) startTime;
+      // While set, we stop reading from the connection that delivers our tail when too many pages (of all requests) are waiting to be stored
+      std::unique_ptr<PendingBytesLimiter::Attachment> throttleAttachment;
     };
     auto ctx = std::make_shared<StreamContext>();
 
@@ -713,7 +723,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
       const auto& entry = request->entries[i];
 
       // Decrypt local pseudonym
-      if (pseudonymLut.count(entry.pseudonymIndex) == 0) {
+      if (!pseudonymLut.contains(entry.pseudonymIndex)) {
         pseudonymLut[entry.pseudonymIndex] = MakeSharedCopy(
           ticket.accessSubjects.at(entry.pseudonymIndex)
           .storageFacility.decrypt(pseudonymKey_));
@@ -747,9 +757,10 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
     auto hasher = std::make_shared<XxHasher>(0ULL);
 
     return CreateObservable<messaging::MessageSequence>(
-      [ctx, server, request, tail, hasher, this, getResponse](
+      [ctx, server, request, tail, throttle, hasher, this, getResponse](
         rxcpp::subscriber<messaging::MessageSequence>
         subscriber) {
+        ctx->throttleAttachment = pendingPages_->attach(throttle);
         tail.map(
           [server, subscriber, ctx, request]
           (std::shared_ptr<std::string> rawPage) // incoming page
@@ -771,6 +782,11 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
               // An exception will be raised by the call (below) to Serialization::FromString<DataPayloadPage>
             }
 
+            // Account for the page until it has been stored (or discarded). This is what keeps memory usage in check:
+            // if pages arrive faster than we can store them, we stop reading until enough of them have been dealt with.
+            // (In a shared_ptr, because the callbacks that hold on to it must be copyable.)
+            auto pending = std::make_shared<PendingBytesLimiter::Reservation>(server->pendingPages_->reserve(rawPage->size()));
+
             auto page = Serialization::FromString<DataPayloadPage>(*rawPage);
 
             // Note that .at() tests bounds.
@@ -784,7 +800,11 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
             return sfentry->appendPage(rawPage, fs, page.pageNumber).tap(
               [server, rawPage](const std::string& md5hash) {
                 server->metrics_->dataStoredBytes.Increment(static_cast<double>(rawPage->size()));
-              });
+              })
+              .op(RxBeforeTermination([pending](const std::optional<std::exception_ptr>&) {
+                // Also released when the observable is destroyed without terminating, e.g. when the request fails or is cancelled
+                pending->release();
+              }));
           })
           .as_dynamic()
           // We can't use merge here because the md5hashes need to be added to
@@ -795,23 +815,24 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
               hasher->update(md5hash);
             },
             [subscriber, ctx](std::exception_ptr e) { // error handler
+              ctx->throttleAttachment.reset();
               for (auto& handle : ctx->entries) {
                 std::move(*handle).cancel();
               }
               subscriber.on_error(e);
             },
             [this, server, subscriber, ctx, hasher, getResponse]() { // file close
+              ctx->throttleAttachment.reset();
               auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
-              for (size_t i = 0; i < ctx->entries.size(); i++) {
-                auto& entry = ctx->entries[i];
+              for (auto [entry, entryId, i] : views::zip(ctx->entries, ctx->ids, views::iota(0uz))) {
                 try {
                   auto id = encryptId(entry->getName().string(), time);
                   std::move(*entry).commit(time);
-                  ctx->ids[i] = id;
+                  entryId = id;
                 }
                 catch (std::exception& e) {
                   std::move(*entry).cancel();
-                  ctx->ids[i].clear();
+                  entryId.clear();
                   std::ostringstream ss;
                   ss << "File " << i << " is not sane: " << e.what();
                   PEP_LOG(LogTag, Severity::Warning) << ss.str();
@@ -837,7 +858,8 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 
 messaging::MessageBatches StorageFacility::handleDataStoreRequest2(
   std::shared_ptr<SignedDataStoreRequest2> signedRequest,
-  messaging::MessageSequence tail) {
+  messaging::MessageSequence tail,
+  std::shared_ptr<messaging::ReadThrottle> throttle) {
   auto getEntryContent = [filestore = fileStore_](const DataStoreEntry2& entry) {
     auto metadata = filestore->makeMetadataMap(entry.metadata.extra());
     return std::make_unique<EntryContent>(
@@ -858,7 +880,7 @@ messaging::MessageBatches StorageFacility::handleDataStoreRequest2(
       std::move(resp));
   };
 
-  return this->handleDataAlterationRequest<DataStoreRequest2>(signedRequest, tail, false, getEntryContent, getResponse);
+  return this->handleDataAlterationRequest<DataStoreRequest2>(signedRequest, tail, std::move(throttle), false, getEntryContent, getResponse);
 }
 
 messaging::MessageBatches
@@ -875,9 +897,9 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   }
 
   // Fill a vector with indices of pseudonyms that we want/need decrypted
-  std::vector<uint32_t> pseudIndices;
-  pseudIndices.reserve(request->entries.size());
-  std::transform(request->entries.cbegin(), request->entries.cend(), std::back_inserter(pseudIndices), [](const DataStoreEntry2& entry) {return entry.pseudonymIndex; });
+  auto pseudIndices = request->entries
+    | views::transform(&DataStoreEntry2::pseudonymIndex)
+    | to<std::vector>();
 
   // Decrypt pseudonyms.
   auto localPseudonyms = this->decryptLocalPseudonyms(ticket.accessSubjects, &pseudIndices);
@@ -965,7 +987,7 @@ StorageFacility::handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteReques
   };
 
   auto tail = rxcpp::observable<>::empty<std::shared_ptr<std::string>>();
-  return this->handleDataAlterationRequest<DataDeleteRequest2>(signedRequest, tail, true, getEntryContent, getResponse);
+  return this->handleDataAlterationRequest<DataDeleteRequest2>(signedRequest, tail, nullptr, true, getEntryContent, getResponse);
 }
 
 std::vector<std::optional<LocalPseudonym>> StorageFacility::decryptLocalPseudonyms(const std::vector<LocalPseudonyms>& source, std::vector<uint32_t> const *indices) const {
@@ -980,19 +1002,16 @@ std::vector<std::optional<LocalPseudonym>> StorageFacility::decryptLocalPseudony
   }
 
   // TODO execute in WorkerPool
-  std::vector<std::optional<LocalPseudonym>> result;
-  result.reserve(source.size());
-  for (size_t i = 0; i < source.size(); ++i) {
-    if (includePseudonym[i]) { // Caller wants/needs this pseudonym: decrypt it
-      result.emplace_back(source[i].storageFacility.decrypt(pseudonymKey_));
-    }
-    else { // Caller doesn't need this pseudonym: don't decrypt
-      result.emplace_back(std::nullopt);
-    }
-  }
-
-  assert(result.size() == source.size()); // Return value indices correspond with "source" parameter indices
-  return result;
+  // Return value indices correspond with "source" parameter indices
+  return views::zip(source, includePseudonym)
+    | views::transform([&](const auto& pseudonymAndInclude) -> std::optional<LocalPseudonym> {
+        const auto& [pseudonyms, include] = pseudonymAndInclude;
+        if (!include) { // Caller doesn't need this pseudonym: don't decrypt
+          return std::nullopt;
+        }
+        return pseudonyms.storageFacility.decrypt(pseudonymKey_);
+      })
+    | to<std::vector>();
 }
 
 messaging::MessageBatches
@@ -1013,17 +1032,11 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   DataHistoryResponse2 response;
 
   // Look-up table to check whether to include column
-  std::vector<std::string> includeColumn;
-  if (request.columns) {
-    includeColumn.reserve(request.columns->indices.size());
-    for (uint32_t idx : request.columns->indices)
-      includeColumn.push_back(ticket.columns.at(idx));
-  }
-  else {
-    includeColumn.reserve(ticket.columns.size());
-    for (const auto& column : ticket.columns)
-      includeColumn.push_back(column);
-  }
+  auto includeColumn = request.columns
+    ? request.columns->indices
+        | views::transform([&ticket](uint32_t idx) { return ticket.columns.at(idx); })
+        | to<std::vector>()
+    : ticket.columns;
 
   // Create column-to-ticket-column-index look-up-table
   std::unordered_map<std::string, uint32_t> columnIndex;
@@ -1115,7 +1128,7 @@ messaging::MessageBatches StorageFacility::handlePagePathRequest(std::shared_ptr
 
     while (i != end) {
       PagePathResponse chunk;
-      FillToCapacity(std::inserter(chunk.paths, chunk.paths.end()), messaging::NetMessageCapacity, std::ranges::subrange{ i, end });
+      FillToCapacity(std::inserter(chunk.paths, chunk.paths.end()), messaging::NetMessageCapacity, subrange{ i, end });
       if (chunk.paths.size() == 0U) {
         throw std::runtime_error("Could not create network-portable set of page paths");
       }
@@ -1305,6 +1318,10 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
     parameters->getIoContext(),
     registry_)),
   metrics_(std::make_shared<Metrics>(registry_)),
+  pendingPages_(PendingBytesLimiter::Create(
+    parameters->getMaxPendingPagesBytes(),
+    parameters->getMaxPendingPagesBytes() / 2U, // Only resume reading when there's decent room again, to prevent flapping
+    PendingBytesLimiter::Gauges{ .pendingBytes = &metrics_->pendingPageBytes, .paused = &metrics_->readingPaused })),
   timer_(*parameters->getIoContext()),
   parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()) {

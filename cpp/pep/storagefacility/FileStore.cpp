@@ -141,7 +141,7 @@ void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
 }
 
 const std::string& FileStore::getColumnString(const std::string& value) {
-  if (value.find(EntryName::Delimiter) != std::string::npos) {
+  if (value.contains(EntryName::Delimiter)) {
     throw std::runtime_error("Cell name may not contain an entry name delimiter");
   }
   return *columnNames_.insert(value).first;
@@ -260,8 +260,9 @@ std::set<std::string> FileStore::pagePaths() const {
 }
 
 void FileStore::persistPendingPurges() {
-  auto pending = RangeToVector(sqlite_.getPurgeCycles()
-    | std::views::filter([](const PurgeCycle& cycle) { return cycle.applied && !cycle.completed; }));
+  auto pending = sqlite_.getPurgeCycles()
+    | std::views::filter([](const PurgeCycle& cycle) { return cycle.applied && !cycle.completed; })
+    | std::ranges::to<std::vector>();
 
   if (!pending.empty()) {
     std::scoped_lock lock(purgePersistenceMux_);
@@ -525,7 +526,7 @@ void FileStore::EntryChange::commit(Timestamp availableFrom) && {
   // this should not happen due to combination of above conditions:
   // - check that the availableFrom > last item (on time of modify() method)
   // - check that last item on time of modify() is still the last item at time of commit()
-  if (this->getCell().versions().find(availableFrom) != this->getCell().versions().cend()) {
+  if (this->getCell().versions().contains(availableFrom)) {
     auto msg = "Cannot store duplicate entry with name " + this->getName().string()
         + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(availableFrom));
     PEP_LOG(LogTag, Severity::Error) << msg;

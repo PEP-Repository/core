@@ -42,8 +42,7 @@ QPushButton* ButtonBar::addButton(const QString& description, ButtonClickSlot sl
   return button;
 }
 
-// enables or disables all the buttons in the button bar
-void ButtonBar::setEnabled(bool enable) {
+void ButtonBar::setButtonsEnabled(bool enable) {
   for(QPushButton* button : enabledButtons_)
     button->setEnabled(enable);
 }

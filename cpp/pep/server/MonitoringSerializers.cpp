@@ -1,5 +1,9 @@
 #include <pep/server/MonitoringSerializers.hpp>
 
+#include <ranges>
+
+using namespace std::ranges;
+
 namespace pep {
 
 MetricsResponse Serializer<MetricsResponse>::fromProtocolBuffer(proto::MetricsResponse&& source) const {
@@ -14,9 +18,7 @@ void Serializer<MetricsResponse>::moveIntoProtocolBuffer(proto::MetricsResponse&
 
 ChecksumChainNamesResponse Serializer<ChecksumChainNamesResponse>::fromProtocolBuffer(proto::ChecksumChainNamesResponse&& source) const {
   ChecksumChainNamesResponse result;
-  result.names.reserve(static_cast<size_t>(source.names().size()));
-  for (auto& name : *source.mutable_names())
-    result.names.push_back(std::move(name));
+  result.names = *source.mutable_names() | views::as_rvalue | to<std::vector>();
   return result;
 }
 

@@ -37,10 +37,10 @@ THasher::Hash Hmac(std::string_view key, std::string_view data) {
   }
 
   // Compute inner hash
-  auto intermediateHash = THasher{}.digest(SpanToString(k_ipad), SpanToString(data));
+  auto intermediateHash = THasher{}.digest(SpanToString(k_ipad), data);
 
   // Compute final HMAC
-  return finalHasher.digest(SpanToString(k_opad), SpanToString(intermediateHash));
+  return finalHasher.digest(SpanToString(k_opad), intermediateHash);
 }
 
 }

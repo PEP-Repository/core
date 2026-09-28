@@ -69,13 +69,10 @@ public:
   }
 
   static bool KnowsType(const std::string& typeName) {
-    const auto& traits = RegisteredTypeTraits();
-    auto end = traits.cend();
-    auto position = std::find_if(traits.cbegin(), traits.cend(), [typeName](const RegisteredTraits& instance) {
+    return std::ranges::any_of(RegisteredTypeTraits(), [typeName](const RegisteredTraits& instance) {
       // Match as substring: caller will (likely) specify just class name "Xyz" while the "pretty name" contains decorations, e.g. "class ns::sub::Xyz"
-      return instance.prettyName.find(typeName) != std::string::npos;
+      return instance.prettyName.contains(typeName);
       });
-    return position != end;
   }
 };
 

@@ -23,6 +23,7 @@ void TestClientServerBasics(TestServerFactory& factory) {
 
   auto sent = std::make_shared<std::string>(MessageSize, '\0'),
     received = std::make_shared<std::string>(MessageSize, '\0');
+  //NOLINTNEXTLINE(modernize-use-ranges) std::ranges::iota needs libc++ 23; unavailable on our Emscripten/Apple Clang floor
   std::iota(sent->begin(), sent->end(), '\0');
 
   auto protocol = factory.protocol().name();

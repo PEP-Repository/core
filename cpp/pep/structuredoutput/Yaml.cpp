@@ -12,7 +12,7 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
     // applying quotes generously even though YAML would allow more to go without quotes
     return str.empty() ||
       !std::isalpha(str.front()) ||
-      !std::all_of(str.begin(), str.end(), [](char c) { return std::isalnum(c) || c == '_' || c == ' '; });
+      !std::ranges::all_of(str, [](char c) { return std::isalnum(c) || c == '_' || c == ' '; });
   };
   constexpr auto needsEscape = [](char c) { return c == '\\' || c == '"'; };
 

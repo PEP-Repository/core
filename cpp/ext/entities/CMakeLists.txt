@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20...4.2)
+cmake_minimum_required(VERSION 3.20...4.3)
 project(entities C CXX)
 
 cmake_policy(SET CMP0063 NEW)

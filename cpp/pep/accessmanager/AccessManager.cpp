@@ -28,6 +28,7 @@
 #include <ranges>
 #include <sstream>
 #include <chrono>
+#include <utility>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -39,6 +40,8 @@
 
 #include <prometheus/gauge.h>
 #include <prometheus/summary.h>
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -107,9 +110,8 @@ std::vector<AmaQueryResponse> ExtractPartialQueryResponse(const AmaQueryResponse
   size_t responseStrings = MaxAmaQueryResponseStrings + 1U; // Mark "previous response full" to have first AmaQueryResponse created
 
   // TODO: use more efficient chunking for T with fixed number of strings
-  for (size_t i = 0U; i < sourceEntries.size(); ++i) {
-    // Get source AmaQRxyz entry and check whether it'll fit in a message at all
-    const T& entry = sourceEntries[i];
+  for (const T& entry : sourceEntries) {
+    // Check whether the source AmaQRxyz entry will fit in a message at all
     auto entryStrings = CountAmaQueryResponseEntryStrings(entry);
     if (entryStrings > AmaQueryResponseStringsWarningThreshold) {
       PEP_LOG(LogTag, Severity::Warning) << "(Excessively) large AMA query response entry: " << NormalizedTypeNamer<T>::GetTypeName() << " contains " + std::to_string(entryStrings) + " strings";
@@ -131,7 +133,7 @@ std::vector<AmaQueryResponse> ExtractPartialQueryResponse(const AmaQueryResponse
   }
 
   // Reclaim reserved-but-unused space
-  std::for_each(responses.begin(), responses.end(), [member](AmaQueryResponse& response) {(response.*member).shrink_to_fit(); });
+  for_each(responses, [member](AmaQueryResponse& response) {(response.*member).shrink_to_fit(); });
 
   return responses;
 }
@@ -204,11 +206,10 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
 
 void AccessManager::Parameters::setGlobalConfiguration(std::shared_ptr<GlobalConfiguration> gc) {
   const auto& contexts = gc->getStudyContexts().getItems();
-  auto contexts_end = contexts.cend();
   auto end = gc->getShortPseudonyms().cend();
   for (auto i = gc->getShortPseudonyms().cbegin(); i != end; ++i) {
     if (!contexts.empty()) {
-      if (contexts_end == std::find_if(contexts.cbegin(), contexts_end, [&i](const StudyContext& candidate) {return candidate.matchesShortPseudonym(*i); })) {
+      if (none_of(contexts, [&i](const StudyContext& candidate) {return candidate.matchesShortPseudonym(*i); })) {
         throw std::runtime_error("Short pseudonym " + i->getColumn().getFullName() + " defined for unknown study context " + i->getStudyContext());
       }
     }
@@ -324,7 +325,7 @@ std::optional<std::filesystem::path> AccessManager::getStoragePath() {
 
 std::unordered_set<std::string> AccessManager::getAllowedChecksumChainRequesters() {
   auto result = Server::getAllowedChecksumChainRequesters();
-  for (auto& authserver : UserGroup::Authserver) result.insert(authserver);
+  result.insert_range(UserGroup::Authserver);
   return result;
 }
 
@@ -405,7 +406,7 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                     // do nothing --- we need the transcryptor to help out
                   } else {
                     std::ostringstream msg;
-                    msg << "Received unknown blinding mode: " << ToUnderlying(entry.keyBlindMode);
+                    msg << "Received unknown blinding mode: " << std::to_underlying(entry.keyBlindMode);
                     throw Error(msg.str());
                   }
                   return key;
@@ -455,9 +456,8 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
                       // workerPool_->batched_map() does not tell us which index we're handling,
                       // so we let it process indices to work around this.  If we need this
                       // more often, it's better to change batched_map()
-                      std::vector<size_t> is(request->entries.size());
-                      std::iota(is.begin(), is.end(), 0);
-                      return server->workerPool_->batched_map<8>(is,
+                      return server->workerPool_->batched_map<8>(
+                            views::iota(0uz, request->entries.size()) | to<std::vector>(),
                             ObserveOnAsio(*server->getIoContext()),
                             [server, request, lpResponse, transResp, rkIndices, localPseudonyms, recipient
                             ](size_t i) {
@@ -515,10 +515,11 @@ void AccessManager::computeChecksumChainChecksum(
 
 messaging::MessageBatches
 AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signedRequest) {
-  using namespace std::ranges;
+  const auto elapsedTime = [start = std::chrono::steady_clock::now()]() -> std::chrono::duration<double> {
+    return std::chrono::steady_clock::now() - start;
+  };
 
-  auto time = std::chrono::steady_clock::now();
-  auto requestNumber = nextTicketRequestNumber_++;
+  const auto requestNumber = nextTicketRequestNumber_++;
 
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " received";
 
@@ -530,31 +531,31 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
 
   backend_->checkTicketRequest(request);
 
-  auto timestamp = TimeNow();
+  // Prepare ticket
+  Ticket2 ticket{
+      .timestamp = TimeNow(),
+      .modes = request.modes,
+      .accessSubjects = {},
+      .columns = request.columns,
+      .userGroup = userGroup};
 
-  auto pps = RangeToVector(request.accessSubjects
-    | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; }));
+  auto pps = request.accessSubjects
+    | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; })
+    | to<std::vector>();
 
   std::vector<std::string> modes{"access"};
   std::unordered_map<std::string, IndexList> participantGroupMap;
   if (!request.participantGroups.empty()) {
     // Access to participants does not imply permission to list groups they are in, so first check that
-    backend_->checkParticipantGroupAccess(request.participantGroups, userGroup, modes, timestamp);
+    backend_->checkParticipantGroupAccess(request.participantGroups, userGroup, modes, ticket.timestamp);
 
     participantGroupMap = backend_->fillParticipantGroupMap(request.participantGroups, pps);
   }
 
-  // Prepare ticket
-
-  Ticket2 ticket;
-  ticket.timestamp = TimeNow();
-  ticket.modes = request.modes;
-  ticket.columns = request.columns;
-  ticket.userGroup = userGroup;
 
   // Check columns and column groups
   auto columnGroupMap = backend_->unfoldColumnGroupsAndCheckAccess(
-      userGroup, request.columnGroups, request.modes, timestamp, ticket.columns /*in & out*/);
+      userGroup, request.columnGroups, request.modes, ticket.timestamp, ticket.columns /*in & out*/);
 
   // Remove the main client signature to prevent reuse of
   // the SignedTicketRequest2.
@@ -569,7 +570,6 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     Ticket2 ticket;
     SignedTicket2 signedTicket{};
     std::vector<Backend::Pp> pps;
-    decltype(time) start_time;
     std::unordered_map<std::string, IndexList> columnGroupMap;
     std::unordered_map<std::string, IndexList> participantGroupMap;
     std::vector<std::string> participantModes;
@@ -588,7 +588,6 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     .request = request,
     .ticket = std::move(ticket),
     .pps = std::move(pps),
-    .start_time = time,
     .columnGroupMap = std::move(columnGroupMap),
     .participantGroupMap = std::move(participantGroupMap),
     .participantModes = std::move(modes),
@@ -604,7 +603,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   // workerPool_->batched_map() does not tell us which index we're handling,
   // so we let it process indices to work around this.  If we need this
   // more often, it's better to change batched_map()
-  auto indexes = RangeToVector(views::iota(std::size_t{}, ctx->pps.size()));
+  std::vector indexes(std::from_range, views::iota(std::size_t{}, ctx->pps.size()));
   messaging::MessageBatches result =
     ctx->server->workerPool_->batched_map<8>(std::move(indexes),
         ObserveOnAsio(*ctx->server->getIoContext()),
@@ -654,14 +653,14 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     if (ctx->ticket.userGroup == UserGroup::DataAdministrator && !ctx->ticket.accessSubjects.empty()) {
       PEP_LOG(LogTag, Severity::Info) << "Granting " << ctx->ticket.userGroup << " unchecked access to " << ctx->ticket.accessSubjects.size() << " participant(s)";
     }
-    for (size_t i = 0; i < ctx->ticket.accessSubjects.size(); i++) {
-      LocalPseudonym localPseudonym = ctx->ticket.accessSubjects[i].accessManager.decrypt(ctx->server->pseudonymKey_);
+    for (auto [accessSubject, pp] : views::zip(ctx->ticket.accessSubjects, ctx->pps)) {
+      LocalPseudonym localPseudonym = accessSubject.accessManager.decrypt(ctx->server->pseudonymKey_);
       if (ctx->ticket.userGroup != UserGroup::DataAdministrator) {
         ctx->server->backend_->checkParticipantAccess(ctx->ticket.userGroup, localPseudonym, ctx->participantModes, ctx->ticket.timestamp);
       }
-      if (ctx->pps[i].isClientProvided && !ctx->server->backend_->hasLocalPseudonym(localPseudonym)) {
+      if (pp.isClientProvided && !ctx->server->backend_->hasLocalPseudonym(localPseudonym)) {
         if (ctx->ticket.hasMode("write")) {
-          ctx->server->backend_->storeLocalPseudonymAndPP(localPseudonym, ctx->ticket.accessSubjects[i].polymorphic);
+          ctx->server->backend_->storeLocalPseudonymAndPP(localPseudonym, accessSubject.polymorphic);
         }
       }
     }
@@ -674,7 +673,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     logReq.id = resp.id;
     PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " logging issued ticket";
     return ctx->server->transcryptorProxy_.requestLogIssuedTicket(std::move(logReq));
-  }).map([ctx](LogIssuedTicketResponse resp) {
+  }).map([ctx, elapsedTime](LogIssuedTicketResponse resp) {
     PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " finishing up";
     ctx->signedTicket.addTranscryptorSignature(std::move(resp.signature));
 
@@ -690,7 +689,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
     }
     auto result = rxcpp::observable<>::from(MakeSharedCopy(std::move(response))).as_dynamic();
 
-    ctx->server->lpMetrics_->ticketRequest2Duration.Observe(std::chrono::duration<double>(std::chrono::steady_clock::now() - ctx->start_time).count());
+    ctx->server->lpMetrics_->ticketRequest2Duration.Observe(elapsedTime().count());
     PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " returning ticket to requestor";
     return result;
   });
@@ -755,10 +754,9 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     };
     TranscryptorRequestEntries tsRequestEntries;
     tsRequestEntries.entries.resize(list.size());  // TODO: chunk according to TsRequestBatchSize
-    for (size_t i = 0; i < list.size(); i++) {
-      TranscryptorRequestEntry& entry = tsRequestEntries.entries[i];
-      entry.polymorphic = list[i];
-          FillTranscryptorRequestEntry(entry, self->pseudonymTranslator());
+    for (auto [entry, polymorphic] : views::zip(tsRequestEntries.entries, list)) {
+      entry.polymorphic = polymorphic;
+      FillTranscryptorRequestEntry(entry, self->pseudonymTranslator());
     }
     return self->transcryptorProxy_.requestTranscryption(std::move(tsRequest), messaging::MakeSingletonTail(tsRequestEntries))
       .map([server = SharedFrom(*self), participantGroup, performRemove](const TranscryptorResponse& resp) -> FakeVoid {

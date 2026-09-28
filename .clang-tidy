@@ -13,7 +13,7 @@ Checks:
   #TODO(workaround) Enable when IgnoreConstantIntExpr becomes generally available
   - -bugprone-implicit-widening-of-multiplication-result
   - -bugprone-reserved-identifier # Disable as it's slow and we have -Wreserved-identifier
-  - -bugprone-signed-bitwise # Signed bitwise behavior is well-defined in C++20
+  - -bugprone-signed-bitwise # Signed bitwise behavior is well-defined since C++20
   - -bugprone-switch-missing-default-case
   # Suppress warnings about things like a static std::string
   - -bugprone-throwing-static-initialization
@@ -76,7 +76,7 @@ Checks:
 
   - modernize-avoid-c-arrays
   - modernize-deprecated-headers
-  - modernize-replace-auto-ptr
+  - modernize-loop-convert
   - modernize-shrink-to-fit
   - modernize-use-bool-literals
   - modernize-use-constraints
@@ -84,15 +84,18 @@ Checks:
   - modernize-use-equals-delete
   - modernize-use-nullptr
   - modernize-use-override
+  - modernize-use-ranges
   - modernize-use-starts-ends-with
   - modernize-use-std-numbers
 
+  - performance-inefficient-vector-operation
   - performance-move-const-arg
   - performance-move-constructor-init
   - performance-no-automatic-move
   - performance-type-promotion-in-math-fn
 
   - readability-const-return-type
+  - readability-container-contains
   - readability-container-data-pointer
   - readability-duplicate-include
   - readability-misleading-indentation
@@ -106,6 +109,7 @@ Checks:
   - readability-string-compare
   - readability-redundant-string-cstr
   - readability-suspicious-call-argument
+  - readability-use-anyofallof
 
 CheckOptions:
   # Ignore empty catch when it contains a comment with the word 'ignore'

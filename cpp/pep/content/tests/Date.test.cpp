@@ -12,7 +12,7 @@ using namespace std::chrono;
 
 namespace {
 
-const auto DateNotOk = std::not_fn(std::mem_fn(&year_month_day::ok));
+const auto DateNotOk = [](const year_month_day& date) { return !date.ok(); };
 
 TEST(Date, MultiFormat) {
   using PP = pep::ParticipantPersonalia; // class under test

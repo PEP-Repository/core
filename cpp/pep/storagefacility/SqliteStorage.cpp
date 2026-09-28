@@ -179,10 +179,10 @@ SqliteStorage::~SqliteStorage() noexcept = default;
 
 std::vector<PurgeCycle> SqliteStorage::getPurgeCycles() const {
   return this->atomically([this]() {
-      return RangeToVector(
-        RangeToVector(implementor_->raw.iterate<PurgeCycleRecord>(sqlite_orm::order_by(&PurgeCycleRecord::id).asc()))
-        | std::ranges::views::transform(&RecordToPurgeCycle)
-      );
+      return implementor_->raw.iterate<PurgeCycleRecord>(sqlite_orm::order_by(&PurgeCycleRecord::id).asc())
+        | std::ranges::to<std::vector>()
+        | std::views::transform(&RecordToPurgeCycle)
+        | std::ranges::to<std::vector>();
     });
 }
 

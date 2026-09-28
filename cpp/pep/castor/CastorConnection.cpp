@@ -3,6 +3,8 @@
 #include <pep/castor/Ptree.hpp>
 #include <pep/castor/Study.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
@@ -11,6 +13,8 @@
 #include <rxcpp/operators/rx-take.hpp>
 
 #include <boost/property_tree/ptree.hpp>
+
+using namespace std::ranges;
 
 namespace pep::castor {
 
@@ -24,10 +28,9 @@ namespace {
 ///         The returned ptrees are heap-allocated (as opposed to stack-allocated) so they can be efficiently passed through RX pipelines.
 std::vector<std::shared_ptr<boost::property_tree::ptree>> CreateSharedChildTrees(JsonPtr parent, const std::string& embeddedItemsNodeName) {
   const auto& children = GetFromPtree<boost::property_tree::ptree>(*parent, "_embedded." + embeddedItemsNodeName);
-  std::vector<std::shared_ptr<boost::property_tree::ptree>> result;
-  result.reserve(children.size());
-  std::transform(children.begin(), children.end(), std::back_inserter(result), [](const auto& item) {return std::make_shared<boost::property_tree::ptree>(item.second); });
-  return result;
+  return children
+    | views::transform([](const auto& item) {return std::make_shared<boost::property_tree::ptree>(item.second); })
+    | to<std::vector>();
 }
 
 }

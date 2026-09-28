@@ -77,13 +77,13 @@ ensure_pipeline_triggered() {
 
 provide_foss_image() {
   name="$1"
-  location=$("$SCRIPTPATH"/../scripts/gitlab-container-registry.sh \
-    "$foss_root" "$api_key" get-image-location "$name" "$foss_sha")
+  location=$("$SCRIPTPATH"/../scripts/gitlab-registry-image.sh \
+    get-location "${CI_REGISTRY}" "$foss_root" "$name" "$foss_sha")
   if [ -z "$location" ]; then
     echo "Running a FOSS pipeline to (re-)produce Docker image '$name'..."
     ensure_pipeline_triggered
-    location=$("$SCRIPTPATH"/../scripts/gitlab-container-registry.sh \
-      "$foss_root" "$api_key" get-image-location "$name" "$foss_sha")
+    location=$("$SCRIPTPATH"/../scripts/gitlab-registry-image.sh \
+      get-location "${CI_REGISTRY}" "$foss_root" "$name" "$foss_sha")
     if [ -z "$location" ]; then
       >&2 echo "FOSS pipeline did not produce expected Docker image '$name' for SHA $foss_sha"
       return 1

@@ -5,7 +5,11 @@
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-flat_map.hpp>
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -71,12 +75,12 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
   ticketRequest.forceTicket = opts.forceTicket;
   ticketRequest.modes = {"write"};
   for (const auto& entry : entries) {
-    if (ctx->columns.count(entry.column) == 0) {
+    if (!ctx->columns.contains(entry.column)) {
       ctx->columns[entry.column] = static_cast<uint32_t>(
           ticketRequest.columns.size());
       ticketRequest.columns.push_back(entry.column);
     }
-    if (ctx->pps.count(*entry.polymorphicPseudonym) == 0) {
+    if (!ctx->pps.contains(*entry.polymorphicPseudonym)) {
       ctx->pps[*entry.polymorphicPseudonym] = static_cast<uint32_t>(
           ticketRequest.pps.size());
       ticketRequest.pps.push_back(*entry.polymorphicPseudonym);
@@ -89,9 +93,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
   ctx->request->entries.reserve(entries.size());
   ctx->data.reserve(entries.size());
 
-  for (size_t i=0; i<entries.size(); i++) {
-    const auto& entry = entries.at(i);
-
+  for (auto [entry, key] : views::zip(entries, ctx->keys)) {
     DataStoreEntry2 entry2;
     entry2.columnIndex = ctx->columns[entry.column];
     entry2.pseudonymIndex = ctx->pps[*entry.polymorphicPseudonym];
@@ -101,7 +103,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     // set extra metadata entries, encrypting them with the entry's key
     // when requested.
     for (auto&& [name, xentry] : entry.xMetadata) {
-      entry2.metadata.extra()[name] = xentry.prepareForStore(ctx->keys[i].bytes);
+      entry2.metadata.extra()[name] = xentry.prepareForStore(key.bytes);
     }
 
     ctx->request->entries.emplace_back(entry2);
@@ -188,12 +190,12 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     // specifies the column(name)s and PPs , allowing us to easily/speedily find
     // the associated indices when we construct the DataStoreEntry2 (below).
 
-    if (ctx->columns.count(entry.column) == 0) {
+    if (!ctx->columns.contains(entry.column)) {
       ctx->columns[entry.column] = static_cast<uint32_t>(
         ticketRequest.columns.size()); // Associate the column(name) with the index it'll get in the ticket
       ticketRequest.columns.push_back(entry.column);
     }
-    if (ctx->pps.count(*entry.polymorphicPseudonym) == 0) {
+    if (!ctx->pps.contains(*entry.polymorphicPseudonym)) {
       ctx->pps[*entry.polymorphicPseudonym] = static_cast<uint32_t>(
         ticketRequest.pps.size()); // Associate the PP with the index it'll get in the ticket
       ticketRequest.pps.push_back(*entry.polymorphicPseudonym);
@@ -229,11 +231,13 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     DataEnumerationRequest2 enumRequest;
     enumRequest.ticket = *signedTicket;
     enumRequest.columns = IndexList();
-    enumRequest.columns->indices.reserve(ctx->columns.size());
-    std::transform(ctx->columns.cbegin(), ctx->columns.cend(), std::back_inserter(enumRequest.columns->indices), [](const std::pair<const std::string, uint32_t>& pair) {return pair.second; });
+    enumRequest.columns->indices = ctx->columns
+      | views::values
+      | to<std::vector>();
     enumRequest.pseudonyms = IndexList();
-    enumRequest.pseudonyms->indices.reserve(ctx->pps.size());
-    std::transform(ctx->pps.cbegin(), ctx->pps.cend(), std::back_inserter(enumRequest.pseudonyms->indices), [](const std::pair<const PolymorphicPseudonym, uint32_t>& pair) {return pair.second; });
+    enumRequest.pseudonyms->indices = ctx->pps
+      | views::values
+      | to<std::vector>();
 
 #if defined(__GNUC__) && !defined(__clang__)
 # pragma GCC diagnostic push
@@ -343,7 +347,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
               return result;
             })
           .map([](std::shared_ptr<DataStorageResult2> result) {
-            assert(std::all_of(result->ids.cbegin(), result->ids.cend(), [](const std::string& id) {return !id.empty(); }));
+            assert(all_of(result->ids, [](const std::string& id) {return !id.empty(); }));
             return *result;
             }).as_dynamic();
           }).as_dynamic(); // Reduce compiler memory usage
@@ -386,12 +390,12 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   ticketRequest.forceTicket = opts.forceTicket;
   ticketRequest.modes = { "write" };
   for (const auto& entry : entries) {
-    if (ctx->columns.count(entry.column) == 0) {
+    if (!ctx->columns.contains(entry.column)) {
       ctx->columns[entry.column] = static_cast<uint32_t>(
         ticketRequest.columns.size());
       ticketRequest.columns.push_back(entry.column);
     }
-    if (ctx->pps.count(*entry.polymorphicPseudonym) == 0) {
+    if (!ctx->pps.contains(*entry.polymorphicPseudonym)) {
       ctx->pps[*entry.polymorphicPseudonym] = static_cast<uint32_t>(
         ticketRequest.pps.size());
       ticketRequest.pps.push_back(*entry.polymorphicPseudonym);

@@ -41,16 +41,85 @@ This section lists our own coding guidelines, which we apply on top of the more 
 
 ### Use of C++ basics
 
-- use C++20
+- use C++23
 - keep the use of templating low
 - Use STL containers like `std::vector`, `std::map` instead of rolling your own
 - Use `auto` to avoid redundant repetition of type names, ie use `auto` instead of `std::map<RequestType,int>::iterator` [ES.11](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#es11-use-auto-to-avoid-redundant-repetition-of-type-names)
 - use [range-based for loops](https://en.cppreference.com/w/cpp/language/range-for) `for (auto& e : collection) { ... }` [ES.71](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#es71-prefer-a-range-for-statement-to-a-for-statement-when-there-is-a-choice)
 - use `nullptr` rather than `NULL` or `0` [ES.47](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#es47-use-nullptr-rather-than-0-or-null)
 - Prefer `std::unordered_map` and `std::unordered_set` over `std::map` and `std::set` when the order of elements is not important while lookup and insertion performance is.
-- Pre-allocate STL containers wherever possible by calling (for example) [`std::vector::reserve(new_cap)`](https://en.cppreference.com/w/cpp/container/vector/reserve) [Per.14](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#per14-minimize-the-number-of-allocations-and-deallocations)
+- Pre-allocate STL containers when you fill them with a loop, by calling (for example) [`std::vector::reserve(new_cap)`](https://en.cppreference.com/w/cpp/container/vector/reserve) [Per.14](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#per14-minimize-the-number-of-allocations-and-deallocations). Don't do this when building a container from a range: [`std::ranges::to`](#on-ranges) already reserves for sized ranges.
 - Avoid casts. If you must use a cast, use a type initializer like `int64{1}` when the value can be safely converted or a named cast like `static_cast<T>` if it can not [ES.49](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#es49-if-you-must-use-a-cast-use-a-named-cast)
 - Prefer `using` over `typedef` for defining aliases [T.43](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#t43-prefer-using-over-typedef-for-defining-aliases)
+- Prefer a defaulted `[[nodiscard]] auto operator<=>(const T&) const = default` over hand-writing `operator<` with
+  `std::tie`.
+
+### On ranges
+
+We use `std::ranges` algorithms and views throughout. Not every C++23 range feature is available to us though: see [Environments we build for](#environments-we-build-for) below for environments we need to support.
+
+#### Algorithms
+
+- Use the `std::ranges` algorithm, not the iterator-pair `std::` one: `sort(v)` rather than `std::sort(v.begin(), v.end())`. Only fall back to iterators for a genuine sub-range, and prefer `views::take`/`views::drop`/`std::ranges::subrange` even then. Ranged algorithms have more benefits than just the syntactic sugar, like support for sentinel iterators and projections.
+- Use the projection (`Proj`) parameter to get rid of lambdas. Most `find_if` calls are really a `find` with a projection, and most comparators are really a `sort` with one. Passing `{}` as the comparator means "the default `<` or `==`".
+  <details>
+    <summary>Projection examples</summary>
+
+  ```c++
+  // A comparison lambda is a `find` with a projection
+  find_if(items_, [id](const StudyContext& c) { return c.getId() == id; }); // Don't
+  find(items_, id, &StudyContext::getId);                                   // Do
+
+  // Searching only to compare against end() is a `contains` with a projection
+  find_if(devices.cbegin(), end, [&columnName](const DeviceRegistrationDefinition& d) {
+    return d.columnName == columnName; }) != end;                           // Don't
+  contains(devices, columnName, &DeviceRegistrationDefinition::columnName); // Do
+
+  // A comparator functor or lambda is a `sort` with a projection
+  sort(entries, [](const Entry& lhs, const Entry& rhs) {
+    return std::get<0>(lhs).getText() < std::get<0>(rhs).getText(); });     // Don't
+  // Note: decltype(auto) is to return a reference if getText() returns a reference, avoiding a copy
+  sort(entries, {}, [](const Entry& e) -> decltype(auto) {
+    return std::get<0>(e).getText(); });                                    // Do
+  ```
+
+  </details>
+
+  A projection may itself be a lambda when the key is a chained getter (`[](const auto& d) { return d.getColumn().getFullName(); }`); that is still clearer than a two-argument comparator.
+- A predicate may be a pointer-to-member (field or function) directly, e.g. `any_of(entries_, &Parameter::isRequired)`, because ranges invoke through [`std::invoke`](https://en.cppreference.com/w/cpp/utility/functional/invoke). Consequently, using `std::mem_fn` is not necessary for parameters to functions in `std::ranges`.
+  However, taking the address of most standard library functions (e.g. `&std::string::empty`) is [not allowed](https://eel.is/c++draft/namespace.std#def:function,addressable). Taking the address of an *overloaded* function is also not possible (`PEP_WRAP_FN` may be used in some cases).
+- Test membership with `contains`, not by comparing a `find` or `count` result, unless the iterator is required: `contains(modes, "read")` rather than `find(...) != end()`, and `map.contains(k)` rather than `map.find(k) != map.end()` or `map.count(k) != 0`.
+- Replace a "set a flag and break" search loop with `any_of`/`all_of`/`none_of`.
+- Remove elements with [`std::erase`/`std::erase_if`](https://en.cppreference.com/w/cpp/container/vector/erase2) rather than the erase-remove idiom.
+
+#### Hand-written loops
+
+Most remaining hand-written loops are a range algorithm or view in disguise. Even when you think you need an index to index into multiple lists, you may be able to use [`std::views::zip`](https://en.cppreference.com/w/cpp/ranges/zip_view) instead, which produces tuples of references (just use `for (auto [a, b] : views::zip(...))`). If you actually need the index, consider zipping with `views::iota(0uz)` (`views::enumerate` is not available yet on all platforms).
+
+#### Building containers
+
+- Build a container with a view pipeline terminated by [`std::ranges::to`](https://en.cppreference.com/w/cpp/ranges/to), rather than `reserve` plus `std::transform` into a `std::back_inserter`. For a longer chain, put each operation on its own line:
+  <details>
+    <summary>Pipeline example</summary>
+
+  ```c++
+  auto pseudIndices = request->entries
+    | views::transform(&DataStoreEntry2::pseudonymIndex)
+    | to<std::vector>();
+  ```
+
+  </details>
+- Pick the conversion spelling that reads best:
+  - a trailing `| to<C>()` when there is a pipeline;
+  - `C c(std::from_range, r)` is also an option when constructing a named container from a plain range;
+  - a prefix `to<C>(r)` when the range is a single expression that you're already passing as an argument.
+- Append or insert whole ranges with `vec.append_range(r)` and `set.insert_range(r)` instead of looping over `push_back`/`insert`. These need the element type to be *implicitly* convertible, so appending `string_view`s to a `vector<string>` still needs a `views::transform`.
+
+#### Mechanics
+
+- For conciseness, put `using namespace std::ranges;` at the top of a `.cpp` file when using multiple ranged functions. Never put it in a header: instead spell out `std::ranges::`/`std::views::`, or scope the using-directive to a function body.
+- Boost algorithms may not accept C++20 ranges, so materialize first: `boost::algorithm::join(items | views::transform(...) | to<std::vector>(), ",")`. The converse also holds: several third-party collection types (`boost::urls::params_encoded_view`, sqlite_orm's `mapped_view`) work with a range-based `for` but do *not* satisfy `std::ranges::input_range`, so they can't start a view pipeline.
+- A view constructed over an lvalue is lazy and does not own its source. Don't return one, store one, or hand one to Rx: materialize with `| to<std::vector>()` first if the source will not outlive the iteration.
 
 ### On Lambdas
 
@@ -61,8 +130,8 @@ This section lists our own coding guidelines, which we apply on top of the more 
   ```c++
   auto candidates = std::vector<int>({ 1,2,3,4,5,6,7,8 });
   auto divisor = 3;
-  auto divisible = std::count_if(candidates.begin(), candidates.end(),
-    [&divisor](int& i) { return (i % divisor == 0); });
+  auto divisible = std::ranges::count_if(candidates,
+    [divisor](int i) { return i % divisor == 0; });
   ```
 
   </details>
@@ -313,3 +382,18 @@ PEP provides a [logging system](https://gitlab.pep.cs.ru.nl/pep/core/blob/main/c
 - For a member documented after its declaration, use `///<`.
 - Use backslash commands (`\brief`, `\param`, `\return`, ...), not the `@`-prefixed equivalents.
 - If a doc comment only has a single-line brief description (no `\param`/`\return` etc.), the `\brief` command may be omitted. Otherwise, use an explicit `\brief` command and `\details` when necessary.
+
+## Environments we build for
+
+These are the environments we build for and thus need to support (2026-08-17):
+
+| Platform               | Architecture | Compiler                         | Standard library |
+|------------------------|--------------|----------------------------------|------------------|
+| Windows 10 build 1809  | x86-64       | MSVC build tools 14.51 (VS 2026) | MS STL           |
+| macOS 13.3             | x86-64       | Apple Clang 17                   | Apple libc++     |
+| macOS 13.3             | arm64        | Apple Clang 21                   | Apple libc++     |
+| Linux Ubuntu 26.04     | x86-64       | Clang 21                         | GCC libstdc++ 15 |
+| Linux Flatpak KDE 6.11 | x86-64       | GCC 15                           | GCC libstdc++    |
+| Emscripten             | wasm32       | emcc 4.0.22 / Clang 22           | Clang libc++ 20  |
+
+See [cppstat](https://cppstat.org/) for info on supported features.

@@ -62,7 +62,7 @@ public:
   std::vector<T> getOptionalMultiple(const std::string& key) const;
 
   size_t count(const std::string& key) const noexcept;
-  inline bool has(const std::string& key) const noexcept { return entries_.count(key) != 0U; }
+  inline bool has(const std::string& key) const noexcept { return entries_.contains(key); }
   bool hasAnyOf(std::initializer_list<std::string> key) const noexcept;
   inline size_t erase(const std::string& key) { return entries_.erase(key); }
 };

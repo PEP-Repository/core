@@ -45,8 +45,8 @@ DeviceHistoryWidget::~DeviceHistoryWidget()
 
 void DeviceHistoryWidget::setHistory(const pep::ParticipantDeviceHistory& history) {
   ui_->device_history_listWidget->clear();
-  for (auto i = history.begin(); i != history.end(); ++i) {
-    auto timestamp = QLocale().toString(pep::LocalQDateTimeFromStdTimestamp(i->time), QLocale::FormatType::LongFormat);
-    ui_->device_history_listWidget->addItem(QString::fromStdString(i->serial) + " " + (i->isActive() ? tr("deviceRegisteredOn") : tr("deviceUnregisteredOn")) + " " + timestamp);
+  for (const auto& record : history) {
+    auto timestamp = QLocale().toString(pep::LocalQDateTimeFromStdTimestamp(record.time), QLocale::FormatType::LongFormat);
+    ui_->device_history_listWidget->addItem(QString::fromStdString(record.serial) + " " + (record.isActive() ? tr("deviceRegisteredOn") : tr("deviceUnregisteredOn")) + " " + timestamp);
   }
 }

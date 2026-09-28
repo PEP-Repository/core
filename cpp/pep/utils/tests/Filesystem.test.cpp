@@ -6,6 +6,8 @@
 #include <ranges>
 #include <string_view>
 
+using namespace std::ranges;
+
 namespace {
 
 // To clean up disk resources in case the pep::filesystem::Temporary objects under test fail to do so.
@@ -45,7 +47,7 @@ TEST(FilesystemRandomizedName, PreAndPostFix) {
 
   const auto replacedChars = result.substr(result.find('>') + 1, 8); // safe because of the previous ASSERT checks
   // We only test if the character were replaced and trust that replacement chars are selected randomly.
-  EXPECT_TRUE(std::ranges::all_of(replacedChars, [](char c) { return isdigit(c) || islower(c); }));
+  EXPECT_TRUE(all_of(replacedChars, [](char c) { return isdigit(c) || islower(c); }));
 }
 
 // If a pattern with multiple % blocks is passed to RandomizedName
@@ -56,13 +58,13 @@ TEST(FilesystemRandomizedName, Segmented) {
   const auto result = pep::filesystem::RandomizedName(pattern);
 
   // We only test if the character were replaced and trust that replacement chars are selected randomly.
-  EXPECT_TRUE(std::ranges::all_of(result.substr(0, 4), isDigitOrLowercaseAlpha));
+  EXPECT_TRUE(all_of(result.substr(0, 4), isDigitOrLowercaseAlpha));
   EXPECT_EQ(result[4], '-');
-  EXPECT_TRUE(std::ranges::all_of(result.substr(5, 4), isDigitOrLowercaseAlpha));
+  EXPECT_TRUE(all_of(result.substr(5, 4), isDigitOrLowercaseAlpha));
   EXPECT_EQ(result[9], '-');
-  EXPECT_TRUE(std::ranges::all_of(result.substr(10, 4), isDigitOrLowercaseAlpha));
+  EXPECT_TRUE(all_of(result.substr(10, 4), isDigitOrLowercaseAlpha));
   EXPECT_EQ(result[14], '-');
-  EXPECT_TRUE(std::ranges::all_of(result.substr(15, 4), isDigitOrLowercaseAlpha));
+  EXPECT_TRUE(all_of(result.substr(15, 4), isDigitOrLowercaseAlpha));
 }
 
 // Passing an empty string to RandomizedName results in an empty string

@@ -77,7 +77,7 @@ template <> void SetPersistedEntryProperty<EncryptionScheme>(PersistedEntryPrope
 /// \return The property's value, or std::nullopt if the property was not present in the structure.
 template <typename T>
 std::optional<T> TryExtractPersistedEntryProperty(PersistedEntryProperties& source, const std::string& key) {
-  if (source.find(key) != source.end()) {
+  if (source.contains(key)) {
     return ExtractPersistedEntryProperty<T>(source, key);
   }
   return std::nullopt;

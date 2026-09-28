@@ -1,21 +1,44 @@
 # This file defines settings applicable to all (C and) C++ targets (including external ones).
-cmake_minimum_required(VERSION 3.20...4.2)
+cmake_minimum_required(VERSION 3.20...4.3)
 
 enable_language(C CXX)
 
-#TODO This info is outdated
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
-  message(FATAL_ERROR "Require at least gcc 7.0 (or different compiler)")
-endif()
-
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
-  message(FATAL_ERROR "Require at least clang 6.0 (or different compiler)")
-endif()
-
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+function(check_compiler_version compiler min_version)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "${compiler}" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS min_version)
+    message(WARNING "PEP may fail to build with ${compiler} < ${min_version}. See supported environments in cpp/CONTRIBUTING.md.")
+  endif()
+endfunction()
+
+check_compiler_version("AppleClang" 17)
+check_compiler_version(Clang 21)
+check_compiler_version(GNU 15)
+check_compiler_version(MSVC 19.51)
+
+include(CheckCXXSourceCompiles)
+
+function(check_stdlib_version name macro min_version)
+  set(CMAKE_REQUIRED_QUIET ON)
+  check_cxx_source_compiles("
+    #include <version>
+    #if defined(${macro}) && (${macro}) < (${min_version})
+      #error \"standard library too old\"
+    #endif
+    int main() {}
+  " STDLIB_VERSION_OK_${name}_${min_version})
+  if(NOT STDLIB_VERSION_OK_${name}_${min_version})
+    message(WARNING "PEP may fail to build with ${name} < ${min_version}. See supported environments in cpp/CONTRIBUTING.md.")
+  endif()
+endfunction()
+
+# _GLIBCXX_RELEASE is the libstdc++ major version (available since GCC 7).
+check_stdlib_version(GLIBCXX _GLIBCXX_RELEASE 15)
+# _LIBCPP_VERSION encodes libc++'s version as <major><minor 2 digits><patch 2 digits>, e.g. 200000 for 20.0.0.
+check_stdlib_version(LIBCPP _LIBCPP_VERSION 200000)
 
 if(BUILD_SHARED_LIBS)
   message(STATUS "BUILD_SHARED_LIBS is ON. This requires dependencies to be shared as well, to prevent ODR-violations.")

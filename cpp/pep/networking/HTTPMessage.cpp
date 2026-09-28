@@ -19,7 +19,7 @@ HTTPMessage::HTTPMessage(std::string body, std::map<std::string, std::string, Ca
   : headers_(std::move(headers)), bodyparts_({std::make_shared<std::string>(std::move(body))}) {}
 
 bool HTTPMessage::hasHeader(const std::string& name) const {
-  return headers_.find(name) != headers_.end();
+  return headers_.contains(name);
 }
 
 void HTTPMessage::setHeader(std::string name, std::string value) {

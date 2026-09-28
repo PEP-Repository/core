@@ -33,11 +33,11 @@ concept FlagEnumCandidate = requires {
 template <typename T>
 concept FlagEnum = FlagEnumCandidate<T> && detail::MarkedAsFlagEnumType<T>;
 
-template<typename T, typename Ref>
-using CopyConstness = std::conditional_t<std::is_const_v<Ref>, const T, T>;
+template <typename T, bool addConst>
+using ConstIf = std::conditional_t<addConst, const T, T>;
 
-//TODO(workaround) Replace by auto(v) in C++23
-[[nodiscard]] auto decay_copy(auto v) { return v; }
+template<typename T, typename Ref>
+using CopyConstness = ConstIf<T, std::is_const_v<Ref>>;
 
 // See https://stackoverflow.com/a/70130881
 namespace detail {

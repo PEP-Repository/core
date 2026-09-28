@@ -5,6 +5,7 @@
 #include <pep/utils/Platform.hpp>
 #include <pep/storagefacility/PageHash.hpp>
 
+#include <ranges>
 #include <sstream>
 
 #include <boost/algorithm/hex.hpp>
@@ -13,6 +14,8 @@
 
 
 // See S3.hpp for (more) documentation.
+
+using namespace std::ranges;
 
 namespace pep::s3::request
 {
@@ -95,7 +98,7 @@ namespace authorization_header {
       // We do not allow spaces in access keys, for these are not dealt with
       // correctly by minio.
 
-      if (c.credentials.accessKey.find(' ') != std::string::npos)
+      if (c.credentials.accessKey.contains(' '))
         throw std::runtime_error("There is a space (' ') in the access key; "
             "not all S3 servers can't deal with that.");
 
@@ -203,10 +206,11 @@ namespace authorization_header {
       std::vector<std::string> keys;
       keys.reserve(encodedQueries.size());
 
-      for (auto query : encodedQueries)
+      for (auto query : encodedQueries) {
         keys.push_back(std::string(query.key));
+      }
 
-      std::sort(keys.begin(), keys.end());
+      sort(keys);
 
       std::ostringstream ss;
 
@@ -223,16 +227,13 @@ namespace authorization_header {
 
     std::string ComputeCanonicalHeaders(Context& c) {
       const std::map<std::string, std::string, CaseInsensitiveCompare>& headers(c.request.getHeaders());
-      std::vector<std::string> keys;
-
-      if(c.signHeaders.empty()) {
+      auto keys = c.signHeaders;
+      if (keys.empty()) {
         // sign all headers
-        for (const auto& [key, value] : headers)
-          keys.push_back(key);
-      } else
-        keys = c.signHeaders;
+        keys = views::keys(headers) | to<std::vector>();
+      }
 
-      std::sort(keys.begin(), keys.end());
+      sort(keys);
 
       std::ostringstream ss_result;
       std::ostringstream ss_signed_headers;

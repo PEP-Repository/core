@@ -27,8 +27,8 @@ rxcpp::observable<std::shared_ptr<StoredData>> StoredData::Load(std::shared_ptr<
   }
   std::vector<std::string> columns;
   columns.reserve(spColumns->size() + otherColumns->size());
-  columns.insert(columns.end(), spColumns->cbegin(), spColumns->cend());
-  columns.insert(columns.end(), otherColumns->cbegin(), otherColumns->cend());
+  columns.append_range(*spColumns);
+  columns.append_range(*otherColumns);
 
   return PepParticipant::LoadAll(client, *participants, participantGroups, columns, { })
     .flat_map([spColumns, mapped](std::shared_ptr<PepParticipant> participant) {

@@ -3,7 +3,11 @@
 #include <pep/castor/SurveyDataPoint.hpp>
 #include <pep/castor/Ptree.hpp>
 
+#include <ranges>
+
 #include <entities.hpp>
+
+using namespace std::ranges;
 
 namespace pep {
 namespace castor {
@@ -35,11 +39,11 @@ SurveyPackageInstance::SurveyPackageInstance(std::shared_ptr<Participant> partic
   if (embedded) {
     const auto& siPtrees = GetFromPtree<boost::optional<boost::property_tree::ptree>>(*embedded, "survey_instances");
     if (siPtrees) {
-      surveyInstanceIds_.reserve(siPtrees->size());
-      std::transform(siPtrees->begin(), siPtrees->end(), std::back_inserter(surveyInstanceIds_), [](const auto& keyValuePair) {
-        const auto& siPtree = keyValuePair.second;
-        return GetFromPtree<std::string>(siPtree, "id");
-        });
+      surveyInstanceIds_.append_range(*siPtrees
+        | views::values
+        | views::transform([](const auto& siPtree) {
+          return GetFromPtree<std::string>(siPtree, "id");
+        }));
     }
   }
 }

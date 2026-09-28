@@ -2,36 +2,33 @@
 
 #include <pep/utils/TypeTraits.hpp>
 
+#include <utility>
+
 namespace pep {
 inline namespace enumUtils { // to allow selective import of just these definitions
-
-//TODO(workaround) Replace by std::to_underlying in C++23
-[[nodiscard]] constexpr auto ToUnderlying(Enum auto v) noexcept {
-  return static_cast<std::underlying_type_t<decltype(v)>>(v);
-}
 
 template <FlagEnum T>
 constexpr T operator~(const T flags) noexcept {
   //NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) all (bitwise) combinations of flags are valid
-  return static_cast<T>(~ToUnderlying(flags) & ToUnderlying(T::All));
+  return static_cast<T>(~std::to_underlying(flags) & std::to_underlying(T::All));
 }
 
 template <FlagEnum T>
 constexpr T operator| (const T lhs, const T rhs) noexcept {
   //NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) all (bitwise) combinations of flags are valid
-  return static_cast<T>(ToUnderlying(lhs) | ToUnderlying(rhs));
+  return static_cast<T>(std::to_underlying(lhs) | std::to_underlying(rhs));
 }
 
 template <FlagEnum T>
 constexpr T operator& (const T lhs, const T rhs) noexcept {
   //NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) all (bitwise) combinations of flags are valid
-  return static_cast<T>(ToUnderlying(lhs) & ToUnderlying(rhs));
+  return static_cast<T>(std::to_underlying(lhs) & std::to_underlying(rhs));
 }
 
 template <FlagEnum T>
 constexpr T operator^ (const T lhs, const T rhs) noexcept {
   //NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) all (bitwise) combinations of flags are valid
-  return static_cast<T>(ToUnderlying(lhs) ^ ToUnderlying(rhs));
+  return static_cast<T>(std::to_underlying(lhs) ^ std::to_underlying(rhs));
 }
 
 template <FlagEnum T>

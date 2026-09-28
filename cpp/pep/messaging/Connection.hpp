@@ -5,6 +5,7 @@
 #include <pep/networking/ExponentialBackoff.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/messaging/MessageHeader.hpp>
+#include <pep/messaging/ReadThrottle.hpp>
 #include <pep/messaging/RequestHandler.hpp>
 #include <pep/messaging/Requestor.hpp>
 #include <pep/serialization/Serialization.hpp>
@@ -61,6 +62,20 @@ private:
   std::string getReceivedMessageContent(const MessageHeader& header);
 
   void start();
+  /// Starts receiving the next message, unless reading is paused (in which case it's postponed until reading resumes).
+  void receiveNext();
+
+  // ******************** Pausing of reading ********************
+private:
+  // Handed to request handlers, so that they can stop us from reading (and thereby from accepting) further messages
+  class IncomingThrottle;
+
+  void pauseReading();
+  void resumeReading();
+
+  unsigned readPauses_ = 0; ///< Number of active IncomingThrottles that have paused us
+  bool readDeferred_ = false; ///< Whether receiveNext was called while paused, so that we must call it again when reading resumes
+  uint64_t throttleGeneration_ = 0; ///< Incremented when state is cleared, making outstanding IncomingThrottles inert
 
   // ******************** State and callback for keep-alive timer ********************
 private:
@@ -107,11 +122,12 @@ private:
     MessageMagic magic;
     std::shared_ptr<std::string> head;
     MessageSequence tail;
+    std::shared_ptr<ReadThrottle> throttle;
   };
   std::vector<PrematureRequest> prematureRequests_;
 
   void processReceivedRequest(const StreamId& streamId, const Flags& flags, std::string content);
-  void dispatchRequest(const StreamId& streamId, std::shared_ptr<std::string> request, MessageSequence chunks);
+  void dispatchRequest(const StreamId& streamId, std::shared_ptr<std::string> request, MessageSequence chunks, std::shared_ptr<ReadThrottle> throttle);
   void scheduleResponses(const StreamId& streamId, MessageBatches responses);
 
   // ******************** Version verification ********************

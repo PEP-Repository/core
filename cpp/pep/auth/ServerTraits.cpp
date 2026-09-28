@@ -3,12 +3,15 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <cassert>
+#include <ranges>
+
+using namespace std::ranges;
 
 namespace pep {
 
 std::string ServerTraits::defaultId() const {
   auto result = description_;
-  result.erase(remove_if(result.begin(), result.end(), isspace), result.end());
+  std::erase_if(result, isspace);
   return result;
 }
 
@@ -156,8 +159,9 @@ std::optional<ServerTraits> ServerTraits::Find(const std::function<bool(const Se
   case 1U:
     return *filtered.begin();
   default:
-    std::vector<std::string> descriptions;
-    std::transform(filtered.begin(), filtered.end(), std::back_inserter(descriptions), [](const ServerTraits& traits) {return traits.description(); });
+    auto descriptions = filtered
+      | views::transform(&ServerTraits::description)
+      | to<std::vector>();
     throw std::runtime_error("Multiple server traits match the predicate: " + boost::join(descriptions, " and "));
   }
 }
