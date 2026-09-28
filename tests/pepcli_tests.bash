@@ -543,7 +543,7 @@ if should_run_test user-removal-and-expiration; then
   pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid when the user is removed from the group"
   trace sleep 1s
 
-  expiration="$($DATE_CMD -d "now+5 seconds" +%s)"
+  expiration="$($DATE_CMD -d "now+10 seconds" +%s)"
   pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
   token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
   while [ "$($DATE_CMD -d "now+1 second" +%s)" -lt "$expiration" ]; do # We compare with now+1 second, so the following doesn't fail if in the meantime the current time increased to the next second
@@ -567,11 +567,27 @@ if should_run_test user-removal-and-expiration; then
 
   blocked_token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
   pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should be valid"
-  pepcli --oauth-token-group "Access Administrator" token block create --issuedBefore "unix:$($DATE_CMD -d "now" +%s)" --block-start "unix:$($DATE_CMD -d "now+5 seconds" +%s)" --message "Manually blocked" test-user test-group
+  # Block rules are created without --issuedBefore, so they apply to all tokens issued up to now (including blocked_token).
+  # Prints the id of the created block rule
+  create_token_block() {
+    pepcli --oauth-token-group "Access Administrator" token block create "$@" test-user test-group | sed -n '2s/^"\([0-9]*\)";.*$/\1/p'
+  }
+  # A rule with a block-start far in the future is not yet in effect, so the token should still be valid
+  future_block_id="$(create_token_block --block-start "unix:$($DATE_CMD -d "now+10 years" +%s)" --message "Blocked in the future")"
+  [ -n "$future_block_id" ] || fail "Could not determine id of created block rule"
   pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should still be valid, before block-start timestamp"
+  # A rule without block-start is in effect immediately, so the token should be blocked
+  immediate_block_id="$(create_token_block --message "Manually blocked")"
+  [ -n "$immediate_block_id" ] || fail "Could not determine id of created block rule"
+  pepcli --oauth-token "$blocked_token" query enrollment && fail "Token should be blocked by block rule without block-start timestamp"
+  # Updating the expiration of the group membership should not lift the manual block
   pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+20 years" +%s)" test-user test-group
-  trace sleep 5s
   pepcli --oauth-token "$blocked_token" query enrollment && fail "Manually blocked token should not be unblocked by updating the expiration of the group membership"
+  # Removing the rule that is in effect should unblock the token (which also shows that the future rule is still not in effect)
+  pepcli --oauth-token-group "Access Administrator" token block remove "$immediate_block_id"
+  pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should be valid again after removing the block rule that is in effect"
+  # Remove the remaining rule, so no block rules are left behind
+  pepcli --oauth-token-group "Access Administrator" token block remove "$future_block_id"
 
   test_cleanup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
 fi
