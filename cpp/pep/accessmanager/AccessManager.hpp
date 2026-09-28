@@ -81,8 +81,9 @@ private:
   void checkTicketRequestAccess(TicketRequestContext& ctx);
 
   rxcpp::observable<TranscryptorResponse> requestTranscryption(std::shared_ptr<TicketRequestContext> ctx);
-  rxcpp::observable<LogIssuedTicketResponse> processTranscryptorResponse(
-    std::shared_ptr<TicketRequestContext> ctx, TranscryptorResponse resp);
+  std::string checkAndStoreAccessSubjects(std::shared_ptr<TicketRequestContext> ctx, TranscryptorResponse resp);
+  rxcpp::observable<LogIssuedTicketResponse> logIssuedTicket(
+    std::shared_ptr<TicketRequestContext> ctx, std::string transcryptorId);
   messaging::MessageSequence finalizeTicketResponse(
     std::shared_ptr<TicketRequestContext> ctx, LogIssuedTicketResponse resp,
     std::function<std::chrono::duration<double>()> elapsedTime);

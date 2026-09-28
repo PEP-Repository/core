@@ -643,8 +643,10 @@ AccessManager::requestTranscryption(std::shared_ptr<TicketRequestContext> ctx) {
     });
 }
 
-rxcpp::observable<LogIssuedTicketResponse>
-AccessManager::processTranscryptorResponse(std::shared_ptr<TicketRequestContext> ctx, TranscryptorResponse resp) {
+/// Stores the transcryptor's returned access subjects in the ticket, checking
+/// per-participant access (and registering client-provided pseudonyms).
+/// \return the response's id, for logging the issued ticket at the transcryptor.
+std::string AccessManager::checkAndStoreAccessSubjects(std::shared_ptr<TicketRequestContext> ctx, TranscryptorResponse resp) {
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " received transcryptor response";
   // Now we have local pseudonyms for the original PPs.
   if (resp.entries.size() != ctx->pps.size()) {
@@ -666,13 +668,18 @@ AccessManager::processTranscryptorResponse(std::shared_ptr<TicketRequestContext>
       }
     }
   }
+  return resp.id;
+}
 
+/// Signs the ticket and logs it at the transcryptor.
+rxcpp::observable<LogIssuedTicketResponse>
+AccessManager::logIssuedTicket(std::shared_ptr<TicketRequestContext> ctx, std::string transcryptorId) {
   // All seems fine: finally, we log the ticket at the transcryptor
   ctx->signedTicket = SignedTicket2(std::move(ctx->ticket), *ctx->server->getSigningIdentity());
 
   LogIssuedTicketRequest logReq;
   logReq.ticket = ctx->signedTicket;
-  logReq.id = resp.id;
+  logReq.id = std::move(transcryptorId);
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " logging issued ticket";
   return ctx->server->transcryptorProxy_.requestLogIssuedTicket(std::move(logReq));
 }
@@ -714,7 +721,8 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   messaging::MessageBatches result =
     requestTranscryption(ctx)
       .flat_map([ctx, this](TranscryptorResponse resp) {
-        return processTranscryptorResponse(ctx, std::move(resp));
+        const auto transcryptorId = checkAndStoreAccessSubjects(ctx, std::move(resp));
+        return logIssuedTicket(ctx, transcryptorId);
       })
       .map([ctx, elapsedTime, this](LogIssuedTicketResponse resp) {
         return finalizeTicketResponse(ctx, std::move(resp), elapsedTime);
