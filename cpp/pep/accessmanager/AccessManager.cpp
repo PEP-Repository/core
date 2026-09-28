@@ -619,7 +619,7 @@ AccessManager::requestTranscryption(std::shared_ptr<TicketRequestContext> ctx) {
             ctx->userRecipient);
         return i;
       })
-    .flat_map([ctx](std::vector<size_t> is) {
+    .flat_map([ctx](std::vector<size_t>) {
       // Send request to transcryptor
 
       auto numEntries = ctx->tsReqEntries.entries.size();
