@@ -77,16 +77,12 @@ private:
   /// Internal state shared between handleTicketRequest2's synchronous preparation
   /// and its asynchronous response pipeline. Defined in AccessManager.cpp.
   struct TicketRequestContext;
-  std::shared_ptr<TicketRequestContext> prepareTicketRequest(std::shared_ptr<SignedTicketRequest2> signedRequest);
+  std::shared_ptr<TicketRequestContext> prepareTicketRequest(std::shared_ptr<SignedTicketRequest2>);
   void checkTicketRequestAccess(TicketRequestContext& ctx);
-
-  rxcpp::observable<TranscryptorResponse> requestTranscryption(std::shared_ptr<TicketRequestContext> ctx);
-  std::string checkAndStoreAccessSubjects(std::shared_ptr<TicketRequestContext> ctx, TranscryptorResponse resp);
-  rxcpp::observable<LogIssuedTicketResponse> logIssuedTicket(
-    std::shared_ptr<TicketRequestContext> ctx, std::string transcryptorId);
-  messaging::MessageSequence finalizeTicketResponse(
-    std::shared_ptr<TicketRequestContext> ctx, LogIssuedTicketResponse resp,
-    std::function<std::chrono::duration<double>()> elapsedTime);
+  rxcpp::observable<TranscryptorResponse> requestTranscryption(std::shared_ptr<TicketRequestContext>);
+  std::string checkAndStoreAccessSubjects(std::shared_ptr<TicketRequestContext>, TranscryptorResponse);
+  rxcpp::observable<LogIssuedTicketResponse> logIssuedTicket(std::shared_ptr<TicketRequestContext>, std::string transcryptorId);
+  messaging::MessageSequence finalizeTicketResponse(std::shared_ptr<TicketRequestContext>, LogIssuedTicketResponse, std::function<std::chrono::duration<double>()> elapsedTime);
 
   messaging::MessageBatches handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> pClientRequest);
   messaging::MessageBatches handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyRequest> pClientRequest);

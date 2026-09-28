@@ -513,6 +513,7 @@ void AccessManager::computeChecksumChainChecksum(
   backend_->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
 }
 
+// handleTicketRequest2 does async IO, so this struct holds its state instead of multiple shared_ptrs
 struct AccessManager::TicketRequestContext {
   std::shared_ptr<AccessManager> server;
   uintmax_t requestNumber;
@@ -534,18 +535,14 @@ AccessManager::prepareTicketRequest(std::shared_ptr<SignedTicketRequest2> signed
 
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << requestNumber << " received";
 
-  // openAsAccessManager checks that signature_ and logSignature_ are set,
-  // are valid and match.
+  // openAsAccessManager checks that signature_ and logSignature_ are set, are valid and match.
   const auto certified = signedRequest->openAsAccessManager(*this->getRootCAs());
   const auto& request = certified.message;
   backend_->checkTicketRequest(request);
 
-  // Remove the main client signature to prevent reuse of
-  // the SignedTicketRequest2.
+  // Remove the main client signature to prevent reuse of the SignedTicketRequest2.
   const auto signature = signedRequest->extractSignature();
 
-  // Because of all the asynchronous IO, we move all state into this context
-  // struct, so that we don't have to put everything into shared_ptrs
   return MakeSharedCopy(TicketRequestContext{
     .server = SharedFrom(*this),
     .requestNumber = requestNumber,
@@ -569,8 +566,7 @@ AccessManager::prepareTicketRequest(std::shared_ptr<SignedTicketRequest2> signed
     });
 }
 
-/// Checks whether the userGroup of the ticket may access the requested resources,
-/// filling the context's maps as a side effect.
+/// Checks whether the userGroup of the ticket may access the requested resources, filling the context's maps as a side effect.
 void AccessManager::checkTicketRequestAccess(TicketRequestContext& ctx) {
   if (!ctx.request.participantGroups.empty()) {
     backend_->checkParticipantGroupAccess(
@@ -593,37 +589,28 @@ void AccessManager::checkTicketRequestAccess(TicketRequestContext& ctx) {
 
 rxcpp::observable<TranscryptorResponse>
 AccessManager::requestTranscryption(std::shared_ptr<TicketRequestContext> ctx) {
-  // Prepare transcryptor request
   ctx->tsReqEntries.entries.resize(ctx->pps.size());
 
   // workerPool_->batched_map() does not tell us which index we're handling,
-  // so we let it process indices to work around this.  If we need this
-  // more often, it's better to change batched_map()
-  std::vector indexes(std::from_range, views::iota(std::size_t{}, ctx->pps.size()));
-  return ctx->server->workerPool_->batched_map<8>(std::move(indexes),
+  // so we let it process indices to work around this.
+  // If we need this more often, it's better to change batched_map()
+  return ctx->server->workerPool_->batched_map<8>(
+      std::vector(std::from_range, views::iota(std::size_t{}, ctx->pps.size())),
       ObserveOnAsio(*ctx->server->getIoContext()),
       [ctx](size_t i) {
         const Backend::Pp& pp = ctx->pps[i];
         TranscryptorRequestEntry& entry = ctx->tsReqEntries.entries[i];
 
-        // Rerandomize old PPs (ie. from the database)
-        // To prevent multiple users receiving identical PPs
-        if (pp.isClientProvided)
-          entry.polymorphic = pp.pp;
-        else
-          entry.polymorphic = pp.pp.rerandomize();
+        // Rerandomize old PPs (ie. from the database) to prevent multiple users receiving identical PPs
+        entry.polymorphic = (pp.isClientProvided) ? pp.pp : pp.pp.rerandomize();
 
-        FillTranscryptorRequestEntry(
-            entry,
-            ctx->server->pseudonymTranslator(),
-            ctx->userRecipient);
+        FillTranscryptorRequestEntry(entry, ctx->server->pseudonymTranslator(), ctx->userRecipient);
         return i;
       })
     .flat_map([ctx](std::vector<size_t>) {
-      // Discard batched_map()'s results: they only told us which indices to fill,
-      // and the request entries now live in ctx->tsReqEntries.entries.
-      // Send request to transcryptor
+      // Discarding batched_map()'s results: request entries now live in ctx->tsReqEntries.entries
 
+      // Send request to transcryptor
       auto tail = RxIterate(std::move(ctx->tsReqEntries.entries))
         .buffer(static_cast<int>(TsRequestBatchSize))
         .as_dynamic() // Reduce compiler memory usage
@@ -661,10 +648,8 @@ std::string AccessManager::checkAndStoreAccessSubjects(std::shared_ptr<TicketReq
     if (ctx->ticket.userGroup != UserGroup::DataAdministrator) {
       ctx->server->backend_->checkParticipantAccess(ctx->ticket.userGroup, localPseudonym, ctx->participantModes, ctx->ticket.timestamp);
     }
-    if (pp.isClientProvided && !ctx->server->backend_->hasLocalPseudonym(localPseudonym)) {
-      if (ctx->ticket.hasMode("write")) {
-        ctx->server->backend_->storeLocalPseudonymAndPP(localPseudonym, accessSubject.polymorphic);
-      }
+    if (pp.isClientProvided && !ctx->server->backend_->hasLocalPseudonym(localPseudonym) && ctx->ticket.hasMode("write")) {
+      ctx->server->backend_->storeLocalPseudonymAndPP(localPseudonym, accessSubject.polymorphic);
     }
   }
   return resp.id;
@@ -673,12 +658,9 @@ std::string AccessManager::checkAndStoreAccessSubjects(std::shared_ptr<TicketReq
 /// Signs the ticket and logs it at the transcryptor.
 rxcpp::observable<LogIssuedTicketResponse>
 AccessManager::logIssuedTicket(std::shared_ptr<TicketRequestContext> ctx, std::string transcryptorId) {
-  // All seems fine: finally, we log the ticket at the transcryptor
   ctx->signedTicket = SignedTicket2(std::move(ctx->ticket), *ctx->server->getSigningIdentity());
 
-  LogIssuedTicketRequest logReq;
-  logReq.ticket = ctx->signedTicket;
-  logReq.id = std::move(transcryptorId);
+  auto logReq = LogIssuedTicketRequest{.ticket = ctx->signedTicket, .id = std::move(transcryptorId)};
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " logging issued ticket";
   return ctx->server->transcryptorProxy_.requestLogIssuedTicket(std::move(logReq));
 }
@@ -688,17 +670,15 @@ AccessManager::finalizeTicketResponse(std::shared_ptr<TicketRequestContext> ctx,
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " finishing up";
   ctx->signedTicket.addTranscryptorSignature(std::move(resp.signature));
 
-  std::string response;
-  if (!ctx->request.requestIndexedTicket) {
-    response = Serialization::ToString(std::move(ctx->signedTicket));
-  }
-  else {
-    response = Serialization::ToString(
-      IndexedTicket2(std::make_shared<SignedTicket2>(
-        std::move(ctx->signedTicket)),
-        std::move(ctx->columnGroupMap), std::move(ctx->participantGroupMap)));
-  }
-  auto result = rxcpp::observable<>::from(MakeSharedCopy(std::move(response))).as_dynamic();
+  const auto result = rxcpp::observable<>::from(
+      MakeSharedCopy(
+          (ctx->request.requestIndexedTicket)
+              ? Serialization::ToString(IndexedTicket2(std::make_shared<SignedTicket2>(
+                    std::move(ctx->signedTicket)),
+                    std::move(ctx->columnGroupMap),
+                    std::move(ctx->participantGroupMap)))
+              : Serialization::ToString(std::move(ctx->signedTicket))))
+      .as_dynamic();
 
   ctx->server->lpMetrics_->ticketRequest2Duration.Observe(elapsedTime().count());
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " returning ticket to requestor";
@@ -712,7 +692,6 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   };
 
   auto ctx = prepareTicketRequest(std::move(signedRequest));
-
   checkTicketRequestAccess(*ctx);
 
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " constructing observable";
