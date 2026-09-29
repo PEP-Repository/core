@@ -1,4 +1,3 @@
-#include <gmock/gmock-matchers.h>
 #include <pep/utils/TestMacros.hpp>
 
 #include <pep/accessmanager/Storage.hpp>
