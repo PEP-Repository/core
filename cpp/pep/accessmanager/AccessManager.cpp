@@ -610,7 +610,8 @@ AccessManager::requestTranscryption(std::shared_ptr<TicketRequestContext> ctx) {
     .flat_map([ctx](std::vector<size_t>) {
       // Discarding batched_map()'s results: request entries now live in ctx->tsReqEntries.entries
 
-      // Send request to transcryptor
+      // Send request to transcryptor.
+      const auto numEntries = ctx->tsReqEntries.entries.size(); // So we can use it after moving ctx->tsReqEntries.entries
       auto tail = RxIterate(std::move(ctx->tsReqEntries.entries))
         .buffer(static_cast<int>(TsRequestBatchSize))
         .as_dynamic() // Reduce compiler memory usage
@@ -620,8 +621,8 @@ AccessManager::requestTranscryption(std::shared_ptr<TicketRequestContext> ctx) {
           PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " sending transcryptor request entry batch " << batchNum << " containing " << batch.size() << " entries";
           return messaging::MakeTailSegment(TranscryptorRequestEntries{std::move(batch)});
         })
-        .op(RxSubsequently([ctx] {
-          PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " sent " << ctx->tsReqEntries.entries.size() << " transcryptor request entries";
+        .op(RxSubsequently([ctx, numEntries] {
+          PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " sent " << numEntries << " transcryptor request entries";
         }));
 
       PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx->requestNumber << " sending transcryptor request";
