@@ -304,7 +304,7 @@ protected:
         if (ctx->format == "json") {
           pep::structuredOutput::json::append(std::cout, tree) << std::endl;
         } else {
-          pep::structuredOutput::yaml::append(std::cout, tree) << std::endl;
+          pep::structuredOutput::yaml::append(std::cout, tree) << std::flush; // yaml output already ends with a newline
         }
         
         ctx->printQueryInfo();
