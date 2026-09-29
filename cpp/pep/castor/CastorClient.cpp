@@ -6,6 +6,7 @@
 #include <pep/castor/Ptree.hpp>
 #include <pep/utils/Timestamp.hpp>
 
+#include <boost/algorithm/string/join.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
