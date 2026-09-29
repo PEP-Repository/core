@@ -13,6 +13,9 @@ using Action = std::function<void()>;
 
 namespace detail {
 
+/// Callback function that invokes an Action
+/// \remark Only used as an implementation detail: the outside-facing \ref PerformAsAction function accepts any
+///         TPerformer with a compatible interface (and wraps it in this type).
 using ActionPerformer = std::function<void(Action)>;
 
 /// \brief Adapts a function (and its arguments) so it can be passed to an \ref ActionPerformer
@@ -82,15 +85,17 @@ struct ActionResultAdapter<void> {
 
 }
 
-/// \brief Lets non-templated ActionPerformer functions invoke (callback) functions with heterogeneous signatures.
+/// \brief Lets non-templated functions invoke (callback) functions with heterogeneous signatures.
+/// \tparam TPerformer The type of the "performer" callback, which must accept a single \ref Action parameter.
 /// \tparam TFunction The type of (callback) function to invoke
 /// \tparam TArgs Types of parameters that will be passed to the function
 /// \param performer A function that invokes its Action parameter
 /// \param function The function to invoke
 /// \param args Parameters to pass to the function
 /// \return The function's return value
-/// \remark Adapts heterogeneous (e.g. templated) function invocations to an Action so that the invocation can be
-///         performed by non-templated code (that e.g. performs setup and/or teardown).
+/// \remark Adapts heterogeneous (e.g. templated) function invocations to an \ref Action and passes that Action to the
+///         \ref performer for invocation, allowing the invocation to be performed by non-templated code (that e.g.
+///         performs setup and/or teardown).
 /// \code
 ///   class Database {
 ///   private:
@@ -111,7 +116,10 @@ struct ActionResultAdapter<void> {
 template <typename TPerformer, typename TFunction, typename... TArgs>
 decltype(auto) PerformAsAction(TPerformer&& performer, TFunction&& function, TArgs&&... args) {
   using Result = std::invoke_result_t<TFunction, TArgs...>;
-  return detail::ActionResultAdapter<Result>::Perform(detail::ActionPerformer(std::forward<TPerformer>(performer)), std::forward<TFunction>(function), std::forward<TArgs>(args)...);
+  return detail::ActionResultAdapter<Result>::Perform(
+    detail::ActionPerformer(std::forward<TPerformer>(performer)),
+    std::forward<TFunction>(function),
+    std::forward<TArgs>(args)...);
 }
 
 }
