@@ -1,5 +1,7 @@
 #include <pep/utils/Action.hpp>
-#include <gtest/gtest.h>
+#include <pep/utils/Base64.hpp>
+#include <pep/utils/Random.hpp>
+#include <pep/utils/TestMacros.hpp>
 
 namespace {
 
@@ -19,7 +21,14 @@ TEST(Action, SupportsHeterogeneousSignatures) {
 }
 
 TEST(Action, PropagatesExceptions) {
-  static_assert(!std::is_base_of_v<std::runtime_error, std::bad_optional_access>, "Can't discriminate our sentinel exception from possible exception thrown by PerformAsAction function");
+  // Make a random(ized) "what" text
+  constexpr size_t bytes = 64U;
+  char raw[bytes];
+  pep::RandomBytes(raw);
+  auto encoded = pep::EncodeBase64Url(std::string(raw, bytes));
 
-  EXPECT_THROW(pep::PerformAsAction(&JustInvokeItAlready, []() {throw std::runtime_error("Should propagate"); }), std::runtime_error);
+  PEP_EXPECT_THROWS_MESSAGE( // Ensure that...
+    pep::PerformAsAction(&JustInvokeItAlready, [&encoded]() {throw std::runtime_error(encoded); }), // ... when the callback raises an exception...
+    std::runtime_error,
+    ::testing::StrCaseEq(encoded)); // ... the "PerformAsAction" function fails with that original exception
 }
