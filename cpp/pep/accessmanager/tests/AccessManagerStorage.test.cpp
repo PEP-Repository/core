@@ -1,5 +1,5 @@
 #include <gmock/gmock-matchers.h>
-#include <gtest/gtest.h>
+#include <pep/utils/TestMacros.hpp>
 
 #include <pep/accessmanager/Storage.hpp>
 #include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
@@ -23,9 +23,6 @@ using ::testing::HasSubstr;
 using CaseSensitivity = AccessManager::Backend::Storage::CaseSensitivity;
 constexpr auto CaseSensitive = CaseSensitivity::CaseSensitive;
 constexpr auto CaseInsensitive = CaseSensitivity::CaseInsensitive;
-
-#define PEP_EXPECT_THROWS_MESSAGE(statement, exception_type, ...) \
-  EXPECT_THAT([&] { statement; }, ::testing::ThrowsMessage<exception_type>(::testing::AllOf(__VA_ARGS__)))
 
 namespace {
 
