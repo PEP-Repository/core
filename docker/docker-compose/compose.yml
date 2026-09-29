@@ -473,8 +473,10 @@ services:
     image: "${DOCKER_IMAGE_BASE}/websockify:${DOCKER_IMAGE_TAG}"
     container_name: "websockify"
     restart: always
+    # The networks of all proxied services: storagefacility is only on pepnetwork, authserver only on authservernetwork
     networks:
       - default
+      - pepnetwork
       - authservernetwork
     ports:
       - "${WEB_PORT_NUMBER_PREFIX:-155}01:${WEB_PORT_NUMBER_PREFIX:-155}01" # accessmanager
