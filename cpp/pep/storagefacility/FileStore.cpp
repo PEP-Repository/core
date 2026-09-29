@@ -356,20 +356,18 @@ std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& 
       entry->throwErrorIfPurged("FileStore::modifyEntry");
     }
 
-    // Can't modify a purged entry: the modified instance would (possibly) refer to pages that (presumably) don't exist
+    // Create a normal EntryChange if we can
     if (!entry->getPurgedAt()) {
       return EntryChange::Create(*entry);
     }
-
-    // Let caller's modification become the latest cell version, overriding (masking) the purged entry
-    // Effectively, we're letting a "pepcli delete" override the purged entry, making the current (rolling) data set valid again
-    createIfNeeded = true;
+    // else entry is purged: let default handling (below) create a fresh EntryChange
   }
-
-  if (!createIfNeeded) {
+  else if (!createIfNeeded) {
+    // Entry doesn't exist yet and caller doesn't want to create a new one
     return nullptr;
   }
 
+  // Entry didn't exist or was purged: create an EntryChange that's not based on a previous version
   return this->provideParticipant(name.participant()).createEntry(name.column());
 }
 
