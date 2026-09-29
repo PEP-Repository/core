@@ -78,7 +78,7 @@ std::optional<Timestamp> OptionalTimestampFromUnixMillis(database::UnixMillis mi
 }
 
 database::UnixMillis OptionalTimestampToUnixMillis(const std::optional<Timestamp>& timestamp) {
-  return database::TimestampToUnixMillis(timestamp.value_or(Timestamp{ /* zero */}));
+  return database::TimestampToUnixMillis(timestamp.value_or(Timestamp{ /* zero */ }));
 }
 
 PurgeCycle RecordToPurgeCycle(PurgeCycleRecord record) {
