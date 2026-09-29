@@ -156,6 +156,7 @@ Data storage and retrieval:
 - [`list`](#list) lists data available in PEP.
 - [`pull`](#pull) stores a data set in files on your local machine.
 - [`store`](#store) stores data in a specific cell.
+- [`delete`](#delete) removes data from a specific cell. (Note that the data can still still be accessed by users with appropriate privileges.)
 
 Administrative tasks:
 
@@ -167,6 +168,7 @@ Administrative tasks:
   - [`ama columnGroup`](#ama-columngroup) can be used to create and remove column groups.
   - [`ama group`](#ama-group) can be used to create and remove participant groups, and add participants to them
     - [`ama group auto-assign`](#ama-group-auto-assign) can be used to automatically fill participant groups based on study contexts.
+- [`history`](#history) provides an overview of all data versions that have been stored in a cell.
 
 **For users enrolled as an `Access Administrator`:**
 
@@ -814,6 +816,25 @@ When invoked without further parameters, this command lists the names of all sho
 
 The command accepts an optional `--imported-only` switch. If specified, the command outputs only those columns that are processed when importing data from Castor into PEP. These are the column names that can be passed to the `--sp-column` switch of the [`castor list-import-columns`](#castor-list-import-columns) and [`castor create-import-columns`](#castor-create-import-columns) subcommands.
 
+## history
+
+PEP retains a full history of all data that has ever been stored in the repository. When a non-empty cell is overwritten (using [`pepcli store`](#store)) or `pepcli delete`d, the repository doesn't discard the previous (version of the) data. Instead the repository will only present the cell as "empty" to users interacting with the current ("rolling") data set.
+
+The `pepcli history` command allows users with `Data Administrator` privileges to list all (`pepcli store` and `delete`) changes that have been applied to a specific cell:
+
+```plaintext
+pepcli history --column <column> --participant <spec>
+```
+
+Instead of a `--participant <spec>`, the caller may also specify a `--short-pseudonym <value>`. The command's output is a list of information (in JSON format) on the various data versions that have existed in the cell:
+
+- the `timestamp` field indicates when the change to the cell was made.
+- the `pp` field identifies the subject ("row") to which the cell belongs.
+- the `column` is the name of the column.
+- the `id` is an identifier for the data that was stored in the cell. If the value is `null`, that cell version does not have associated data because the cell was [`pepcli delete`](#delete)d.
+
+Non-`null` values of the `id` field can be passed to the [`pepcli get`](#get) command's `-i` switch to retrieve the data that was stored in the cell for that version.
+
 ## get
 
 When the [`pepcli list`](#list) command has produced IDs referring to data, the associated data can be retrieved using the `pepcli get` command:
@@ -1069,6 +1090,16 @@ The flags are:
 - `-i` Path to the file to store. `-` means stdin, and is the default.
 - `-d` Data to store. Use either this or `-i`
 - `-T` By default, pepcli will request a write-only ticket. You can use `-T` and give a path to store the ticket in. If you use this flag, pepcli will also request read access to the entry that is stored. You can then use the ID in the output, together with this ticket for `pepcli get`. This way you can check whether the data was stored correctly. Note that pepcli also performs its own checks to see whether the data was stored correctly.
+
+## delete
+
+A cell can be cleared using the following command:-
+
+```plaintext
+pepcli delete -c <column name> -p <participant>
+```
+
+Since PEP retains a full history of all data versions, this command does not cause the cell's data to be(come) lost. Instead the cell will just be absent from the repository's current ("rolling") data set. Users with appropriate privileges can still access and retrieve the previous ("deleted") data version by means of the [`pepcli history`](#history) and [`pepcli get`](#get) commands.
 
 ## Specific usage scenarios
 
