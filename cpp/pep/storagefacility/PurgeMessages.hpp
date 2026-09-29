@@ -15,12 +15,12 @@ struct PurgeAnnounceRequest {
   PurgeCycle::Definition definition;
 };
 
-// Cancel a purge cycle (that has not been applied yet)
+// Cancel a purge cycle (that has not been confirmed/applied/started yet)
 struct PurgeCancelRequest {
   PurgeCycle::Id id;
 };
 
-// Confirm or deny a purge cycle
+// Confirm (and apply/start) a purge cycle
 struct PurgeConfirmationRequest {
   PurgeCycle::Id id;
 };
