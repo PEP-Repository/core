@@ -693,7 +693,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoadFile(Cell& cell, cons
   infile.close();
 
   // Validate file content against its hash
-  uint64_t calculatedHash = XXH64(content.data(), content.length(), uint64_t{ 0 });
+  uint64_t calculatedHash = XXH64(content.data(), content.length(), uint64_t{0});
   if (calculatedHash != expectedHash)
     throw std::invalid_argument("hash did not match for file " + path.string());
 
