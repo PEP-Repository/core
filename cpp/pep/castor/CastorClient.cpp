@@ -15,10 +15,12 @@
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
 
 #include <cmath>
+#include <ranges>
 #include <sstream>
 #include <string>
 
 using namespace std::literals;
+using namespace std::ranges;
 
 namespace pep {
 namespace castor {
@@ -45,6 +47,15 @@ std::optional<networking::HttpClient::RetryParameters::Delay> GetCastorRetryDela
   try {
     boost::property_tree::ptree responseJson;
     ReadJsonIntoPtree(responseJson, response.getBody()); // E.g. {"success":false,"errors":[{"id":"fa420c23","code":"CODE_QUOTA_EXCEEDED","message":"Too many requests, retry after: 2023-01-31T00:32:32+00:00","data":[]}]}
+
+    // TODO: remove this temporary logging once we know whether Castor sends retry field in JSON now (added with https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/3004)
+    if (!response.hasHeader("Retry-After")) {
+      auto keys = responseJson
+        | views::keys
+        | views::filter([](std::string_view key) { return key != "errors"; } )
+        | to<std::vector>();
+      PEP_LOG(LogTag, Severity::Info) << "Castor 429 response contains extra JSON keys: " << boost::algorithm::join(keys, ", ");
+    }
 
     // Determine when we're allowed to retry by parsing the (one and only) error in the response JSON
     const auto& errors = responseJson.get_child("errors");
