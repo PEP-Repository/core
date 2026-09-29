@@ -14,7 +14,6 @@
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 
-#include <charconv>
 #include <chrono>
 
 using namespace std::ranges;
@@ -76,19 +75,13 @@ bool IsRetryableError(HttpMethod method, unsigned statusCode) {
 /// \brief Parses the value of a "Retry-After" header, which is either a number of seconds or an HTTP-date.
 /// \return The delay, or std::nullopt if the value couldn't be parsed.
 /// \remark See https://www.rfc-editor.org/rfc/rfc9110#field.retry-after
-std::optional<RetryDelay> ParseRetryAfter(const std::string& value) {
-  const auto begin = value.data(), end = value.data() + value.size();
-  std::uint32_t seconds{}; // Unsigned, so we don't accept negative numbers
-  auto [ptr, ec] = std::from_chars(begin, end, seconds);
-  if (ptr != begin && ptr == end) {
-    if (ec == std::errc::result_out_of_range) {
-      return RetryDelay::max();
-    }
-    if (ec == std::errc{}) {
-      return RetryDelay{ seconds };
-    }
+std::optional<RetryDelay> ParseRetryAfter(std::string_view value) {
+  if (std::chrono::seconds::rep seconds{};
+    boost::conversion::try_lexical_convert(value, seconds)) {
+    return std::chrono::seconds{seconds};
   }
 
+  // Parsing as a number didn't work, try to parse as timestamp:
   try {
     // Round up, since the server wants us to wait at least until the specified time
     return std::chrono::ceil<RetryDelay>(TimestampFromHttpDate(value) - TimeNow());
