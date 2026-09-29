@@ -1099,7 +1099,7 @@ A cell can be cleared using the following command:-
 pepcli delete -c <column name> -p <participant>
 ```
 
-Since PEP retains a full history of all data versions, this command does not cause the cell's data to be(come) lost. Instead the cell will just be absent from the repository's current ("rolling") data set. Users with appropriate privileges can still access and retrieve the previous ("deleted") data version by means of the [`pepcli history`](#history) and [`pepcli get`](#get) commands.
+Since PEP retains a full history of all data versions, this command does not cause the cell's data to become forever lost. Instead the cell will just be absent from the repository's current ("rolling") data set, which is what most users will get to see. The previous ("deleted") data version is still accessible (to users with appropriate privileges) by means of the [`pepcli history`](#history) and [`pepcli get`](#get) commands.
 
 ## Specific usage scenarios
 
