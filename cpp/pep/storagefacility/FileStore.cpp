@@ -350,8 +350,7 @@ void FileStore::Cell::ensurePurgePersisted(Timestamp purgedAt, Timestamp cellVer
 }
 
 std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool createIfNeeded, bool requireUnpurged) {
-  auto entry = lookup(name);
-  if (entry) {
+  if (auto entry = lookup(name)) {
     if (requireUnpurged) {
       entry->throwErrorIfPurged("FileStore::modifyEntry");
     }
