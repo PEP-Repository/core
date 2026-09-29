@@ -222,10 +222,10 @@ void SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const CellVersionSpec& ce
   return this->atomically([this, id, &cellVersion]() {
       try {
         implementor_->raw.insert(PurgeEntryRecord{
-          .cycle = id,
-          .row = this->ensureRowId(cellVersion.cell.participant()),
-          .column = this->ensureColumnId(cellVersion.cell.column()),
-          .timestamp = TicksSinceEpoch<std::chrono::milliseconds>(cellVersion.timestamp),
+            .cycle = id,
+            .row = this->ensureRowId(cellVersion.cell.participant()),
+            .column = this->ensureColumnId(cellVersion.cell.column()),
+            .timestamp = TicksSinceEpoch<std::chrono::milliseconds>(cellVersion.timestamp),
           });
       } catch (const std::system_error& error) {
         auto condition = error.code().default_error_condition();
