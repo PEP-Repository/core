@@ -269,8 +269,7 @@ std::set<Timestamp> SqliteStorage::getPurgedTimestamps(PurgeCycle::Id id, const 
         for (auto millis : implementor_->raw.select(&PurgeEntryRecord::timestamp,
           where(c(&PurgeEntryRecord::cycle) == id
             && c(&PurgeEntryRecord::row) == *rowId
-            && c(&PurgeEntryRecord::column) == *columnId),
-          order_by(&PurgeEntryRecord::timestamp))) {
+            && c(&PurgeEntryRecord::column) == *columnId))) {
           [[maybe_unused]] auto emplaced = result.emplace(database::TimestampFromUnixMillis(millis)).second;
           assert(emplaced);
         }
