@@ -99,7 +99,7 @@ std::pair<std::optional<pep::HTTPResponse>, unsigned> RetrieveWithRetries(AsyncH
   client->sendRequest(client->makeRequest(method))
     .subscribe(
       [&received](const pep::HTTPResponse& response) {
-        EXPECT_FALSE(received.has_value()) << "Received multiple responses from HTTP client";
+        EXPECT_FALSE(received.has_value()) << "Received multiple responses from HttpClient";
         received = response;
       },
       [client](const std::exception_ptr&) {client->shutdown(); },
