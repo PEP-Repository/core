@@ -133,6 +133,7 @@ void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
         std::scoped_lock lock(self->purgePersistenceMux_);
         assert(self->purgePersistence_.joinable());
         self->purgePersistence_.join();
+        assert(!self->purgePersistence_.joinable());
       }
       // ... then start a new persistence thread if any more cycles need to be persisted
       self->persistPendingPurges();
