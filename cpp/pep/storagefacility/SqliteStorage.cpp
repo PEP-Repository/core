@@ -32,8 +32,8 @@ struct PurgeCycleRecord {
 
 struct PurgeEntryRecord {
   PurgeCycle::Id cycle; // FK to PurgeCycleRecord::id
-  int64_t row;        // FK to RowRecord::seqno
-  int64_t column;     // FK to ColumnRecord::seqno
+  int64_t row;          // FK to RowRecord::seqno
+  int64_t column;       // FK to ColumnRecord::seqno
   database::UnixMillis timestamp;
 };
 
