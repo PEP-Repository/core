@@ -22,4 +22,19 @@ TEST(StringStream, GetUnparsed) {
   EXPECT_EQ(pep::GetUnparsed(std::move(consumed)), "");
 }
 
+TEST(StringStream, GetUnparsed_throwsOnBadStream) {
+  {
+    std::istringstream ss("hello");
+    ss.setstate(ss.rdstate() | std::ios_base::badbit);
+    EXPECT_THROW(pep::GetUnparsed(ss), std::ios_base::failure);
+    EXPECT_THROW(pep::GetUnparsed(std::move(ss)), std::ios_base::failure);
+  }
+  {
+    std::istringstream ss("hello");
+    ss.setstate(ss.rdstate() | std::ios_base::failbit);
+    EXPECT_THROW(pep::GetUnparsed(ss), std::ios_base::failure);
+    EXPECT_THROW(pep::GetUnparsed(std::move(ss)), std::ios_base::failure);
+  }
+}
+
 }
