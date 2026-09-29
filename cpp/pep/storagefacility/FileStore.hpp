@@ -28,7 +28,7 @@ public:
 
   struct Metrics {
     size_t entryCount{};
-    uint64_t totalBytes{};
+    uint64_t totalBytes{}; // including purgedBytes
     uint64_t purgedBytes{};
     uint64_t rollingBytes{};
 

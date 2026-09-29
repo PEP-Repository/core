@@ -763,11 +763,9 @@ FileStore::Metrics FileStore::Cell::getMetrics() const {
 
   for (const auto& version : versions_) {
     if (version.isOriginalPayloadOwner) {
+      result.totalBytes += version.payloadSize;
       if (version.purgedAt) {
         result.purgedBytes += version.payloadSize;
-      }
-      else {
-        result.totalBytes += version.payloadSize;
       }
     }
   }
