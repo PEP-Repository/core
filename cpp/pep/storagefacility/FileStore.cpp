@@ -127,15 +127,15 @@ void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
     PEP_LOG(LogTag, Severity::Error) << "Encountered exception persisting purge cycle " << cycle.id << ": " << GetExceptionMessage(std::current_exception());
   }
 
-  post(*ioContext_, [this]() { // Let the ASIO thread...
+  post(*ioContext_, [self = SharedFrom(*this)]() { // Let the ASIO thread...
       // ... join this (purgePersistence_) thread to clean up...
       {
-        std::scoped_lock lock(purgePersistenceMux_);
-        assert(purgePersistence_.joinable());
-        purgePersistence_.join();
+        std::scoped_lock lock(self->purgePersistenceMux_);
+        assert(self->purgePersistence_.joinable());
+        self->purgePersistence_.join();
       }
       // ... then start a new persistence thread if any more cycles need to be persisted
-      this->persistPendingPurges();
+      self->persistPendingPurges();
     });
 }
 
