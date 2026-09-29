@@ -325,6 +325,7 @@ void FileStore::Cell::applyPurgeCycle(const PurgeCycle& cycle) {
 
   // A set<> only provides read-only access to its items, so we can't update (entries in) our versions_ in place.
   // So instead we create a new set<> with updated items and overwrite our entire versions_ member.
+  // No need to synchronize because the purge persistence thread doesn't touch (data derived from) our versions_ field.
   CellVersions updated;
 
   for (auto version : versions_) {
@@ -344,6 +345,7 @@ void FileStore::Cell::applyPurgeCycle(const PurgeCycle& cycle) {
 }
 
 void FileStore::Cell::ensurePurgePersisted(Timestamp purgedAt, Timestamp cellVersion) {
+  // No need to synchronize (with Cell::applyPurgeCycle) because we don't touch our versions_ field
   Entry::EnsurePurgePersisted(purgedAt, *this, cellVersion);
 }
 
