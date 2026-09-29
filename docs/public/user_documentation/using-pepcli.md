@@ -846,7 +846,7 @@ pepcli get -t <ticket file> -i <identifier> -o <output file>
 The flags are:
 
 - `-t` The ticket you stored with the `-T` flag of the [`list` command](#list)
-- `-i` The identifier you got from [`pepcli list`](#list)
+- `-i` The identifier you got from [`pepcli list`](#list) or [`pepcli history`](#history)
 - `-o` The file to write the output to. `-` indicates [stdout](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)). This is the default.
 
 Note that the `pepcli get` command is not capable of data re-pseudonymisation. Data from columns requiring such processing should be retrieved using [`pepcli pull`](#pull) instead.
