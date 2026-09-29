@@ -106,6 +106,7 @@ if(WITH_TESTS)
     RegisteredTestEnvironment.cpp RegisteredTestEnvironment.hpp
     TestApplicationMainFunction.cpp
     TestError.hpp
+    TestMacros.hpp
     TestTiming.hpp
   )
   find_package(GTest REQUIRED)
