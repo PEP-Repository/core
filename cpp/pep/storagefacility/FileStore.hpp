@@ -244,8 +244,6 @@ private:
 public:
   PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;
 
-  void applyPurgeCycle(const PurgeCycle& cycle);
-
   std::shared_ptr<Entry> lookup(const EntryName& name, Timestamp validAt = Timestamp::max());
   std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool createIfNeeded = false, bool requireUnpurged = true);
 
@@ -259,6 +257,7 @@ public:
   }
 
   std::set<std::string> pagePaths() const; // for latest version
+  void applyPurgeCycle(const PurgeCycle& cycle);
   void persistPendingPurges();
 };
 
