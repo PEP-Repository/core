@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-# Install numpy 1.26.4 first (doesn't have strict CPU requirements), then websockify
+# Install numpy 1.26.4 first (old version, because newer numpy from pip doesn't support the qemu instruction set we use on vms), then websockify
 RUN pip install --no-cache-dir numpy==1.26.4 && \
     pip install --no-cache-dir websockify
 
