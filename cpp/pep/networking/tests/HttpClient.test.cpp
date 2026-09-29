@@ -9,11 +9,7 @@
 
 #include <atomic>
 
-#endif // !__EMSCRIPTEN__
-
 namespace {
-
-#ifndef __EMSCRIPTEN__
 
 using namespace std::chrono_literals;
 
@@ -207,12 +203,14 @@ TEST_F(HttpClient, LimitsRetries) {
   EXPECT_EQ(served, 1U);
 }
 
+}
+
 #else // (!)__EMSCRIPTEN__
 
+namespace {
 TEST(HttpClient, BasicFunctioning) {
   GTEST_SKIP() << "HttpServer not supported on Emscripten";
 }
+}
 
 #endif // !__EMSCRIPTEN__
-
-}
