@@ -1313,7 +1313,7 @@ if should_run_test purging; then
   id_of_version_5="$(echo "$hist" | jq -r '.[].id' | tail -n 1)"
   
   # Ensure that we can "pepcli get" the first version now (before it's purged)
-  pepcli list -p "$TEST_PARTICIPANT" -c PurgeTest --ticket-out purge-test.ticket.bin
+  pepcli --oauth-token-group "Research Assessor" list -p "$TEST_PARTICIPANT" -c PurgeTest --ticket-out purge-test.ticket.bin
   pepcli get --ticket "purge-test.ticket.bin" --id "$id_of_version_1" --output-file -
   pepcli get --ticket "purge-test.ticket.bin" --id "$id_of_version_1" --metadata    -
   
