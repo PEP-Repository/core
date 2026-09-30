@@ -1264,6 +1264,8 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
         .completed{}
         });
 
+      bool empty = true;
+
       try {
         for (const FileStore::Participant* participant : fileStore_->participants()) {
           for (const FileStore::Cell* cell : participant->cells()) {
@@ -1279,6 +1281,7 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
                   .timestamp = i->validFrom,
                 };
                 sqlite_->addToPurgeCycle(id, version);
+                empty = false;
               }
             }
           }
@@ -1287,6 +1290,9 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
         throw Error("Storage Facility entries may only be included in a single purge cycle");
       }
 
+      if (empty) {
+        throw Error("Back catalog contains no cell versions");
+      }
       return sqlite_->getPurgeCycle(id);
     });
 }
