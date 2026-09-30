@@ -93,6 +93,7 @@ User ToUser(QRUser user) {
         })
         | to<std::vector>(),
   };
+}
 
 /// Sorts access modes and removes duplicates
 std::vector<std::string> NormalizeModes(std::vector<std::string> modes) {
