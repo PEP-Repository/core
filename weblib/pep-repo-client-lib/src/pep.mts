@@ -111,6 +111,46 @@ export interface StoreResult {
   id: string;
 }
 
+export interface UserGroupMembership {
+  userGroup: string;
+  /** When the membership expires, or `undefined` if it does not */
+  expiration: Date | undefined;
+}
+
+export interface User {
+  displayId: string | undefined;
+  primaryId: string | undefined;
+  otherUids: string[];
+  groups: UserGroupMembership[];
+}
+
+export interface UserGroup {
+  name: string;
+  /** Maximum validity of authentication (OAuth tokens) for this group, in seconds */
+  maxAuthValiditySeconds?: number | undefined;
+}
+
+export interface UserQueryResult {
+  users: User[];
+  userGroups: UserGroup[];
+}
+
+export interface UserQueryFilter {
+  /** Only list groups whose name contains this, and users in those groups */
+  groupFilter?: string | undefined;
+  /** Only list users with an identifier that contains this (case-insensitive), and groups of those users */
+  userFilter?: string | undefined;
+}
+
+interface RawUserGroupMembership {
+  userGroup: string;
+  expiration: number | undefined;
+}
+
+interface RawUser extends Omit<User, 'groups'> {
+  groups: RawUserGroupMembership[];
+}
+
 export interface ListQuery {
   subjectGroups?: string[] | undefined;
   /** Loose subjects to request (any format that would be recognized by pepcli) */
@@ -162,6 +202,18 @@ function toBytes(value: string | Uint8Array | ArrayBuffer): Uint8Array {
 
 function toDdMmYyyy(date: Date) {
   return `${date.getFullYear().toString().padStart(4, '0')}${date.getMonth().toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
+}
+
+function fromJsTime(millisecondsSinceEpoch: number | undefined) {
+  return millisecondsSinceEpoch === undefined ? undefined : new Date(millisecondsSinceEpoch);
+}
+
+function toRawUserGroup(group: UserGroup): rawTypes.UserGroupInfo {
+  // Always pass every field, see https://github.com/emscripten-core/emscripten/issues/25978
+  return {
+    name: group.name,
+    maxAuthValiditySeconds: group.maxAuthValiditySeconds,
+  };
 }
 
 function throwPotentialWasmException(mod: PepModule, ex: WasmException | Error | unknown): never {
@@ -431,6 +483,97 @@ export default class Pep {
    */
   retrieve(entries: CellEntry[]) : ReadableStream<CellData> {
     return this.#wrapExec(() => this.#client.retrieve(entries));
+  }
+
+  /** List users and user groups. Requires the Access Administrator user group. */
+  async listUsers(filter: UserQueryFilter = {}): Promise<UserQueryResult> {
+    const result = await this.#wrapExec(() =>
+        this.#client.listUsers(filter.groupFilter ?? '', filter.userFilter ?? ''));
+    return {
+      users: (result.users as RawUser[]).map(user => ({
+        ...user,
+        groups: user.groups.map(membership => ({
+          userGroup: membership.userGroup,
+          expiration: fromJsTime(membership.expiration),
+        })),
+      })),
+      userGroups: result.userGroups as UserGroup[],
+    };
+  }
+
+  /** Requires the Access Administrator user group */
+  createUser(uid: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.createUser(uid));
+  }
+
+  /** Requires the Access Administrator user group */
+  removeUser(uid: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeUser(uid));
+  }
+
+  /** Add an identifier to the user identified by `existingUid`. Requires the Access Administrator user group. */
+  addUserIdentifier(existingUid: string, newUid: string,
+                    {isPrimaryId = false, isDisplayId = false}: {isPrimaryId?: boolean, isDisplayId?: boolean} = {}): Promise<void> {
+    return this.#wrapExec(() => this.#client.addUserIdentifier(existingUid, newUid, isPrimaryId, isDisplayId));
+  }
+
+  /** Requires the Access Administrator user group */
+  removeUserIdentifier(uid: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeUserIdentifier(uid));
+  }
+
+  /** Make `uid` the primary identifier of its user. Requires the Access Administrator user group. */
+  setUserPrimaryId(uid: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.setUserPrimaryId(uid));
+  }
+
+  /** Requires the Access Administrator user group */
+  unsetUserPrimaryId(uid: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.unsetUserPrimaryId(uid));
+  }
+
+  /** Make `uid` the display identifier of its user. Requires the Access Administrator user group. */
+  setUserDisplayId(uid: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.setUserDisplayId(uid));
+  }
+
+  /** Requires the Access Administrator user group */
+  createUserGroup(group: UserGroup): Promise<void> {
+    return this.#wrapExec(() => this.#client.createUserGroup(toRawUserGroup(group)));
+  }
+
+  /** Requires the Access Administrator user group */
+  modifyUserGroup(group: UserGroup): Promise<void> {
+    return this.#wrapExec(() => this.#client.modifyUserGroup(toRawUserGroup(group)));
+  }
+
+  /** Requires the Access Administrator user group */
+  removeUserGroup(name: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeUserGroup(name));
+  }
+
+  /**
+   * Requires the Access Administrator user group
+   * @param expiration When the membership expires, or `undefined` if it should not
+   */
+  addUserToGroup(uid: string, group: string, expiration?: Date): Promise<void> {
+    return this.#wrapExec(() => this.#client.addUserToGroup(uid, group, expiration?.getTime()));
+  }
+
+  /**
+   * Requires the Access Administrator user group
+   * @param blockTokens Also block existing OAuth tokens of the user for this group (default, like pepcli)
+   */
+  removeUserFromGroup(uid: string, group: string, blockTokens: boolean = true): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeUserFromGroup(uid, group, blockTokens));
+  }
+
+  /**
+   * Requires the Access Administrator user group
+   * @param expiration When the membership expires, or `undefined` if it should not
+   */
+  updateUserGroupExpiration(uid: string, group: string, expiration?: Date): Promise<void> {
+    return this.#wrapExec(() => this.#client.updateUserGroupExpiration(uid, group, expiration?.getTime()));
   }
 
   /** @see {@link PepModule.pepHandleWasmException} */

@@ -25,10 +25,19 @@ interface OAuthTokenSecretFile {
 
 describe('Pep', () => {
   let pep!: Pep;
+  let tokenSecretObj!: OAuthTokenSecretFile;
+
+  async function authenticateAs(userGroup: string) {
+    await pep.runHandleWasmException(async () => {
+      console.debug(`Authenticating as ${userGroup}`);
+      await pep.authenticateWithToken(pep.internalGenerateToken(tokenSecretObj.OAuthTokenSecret, userGroup));
+      console.debug('Authenticated');
+    });
+  }
+
   before(async () => {
     console.debug('Loading config');
     let pepCreateArgs: InitConfig;
-    let tokenSecretObj: OAuthTokenSecretFile;
     if (isNode) {
       // Node.js cannot `fetch` `file:` URLs (yet)
       const [fs, fsp, consumers] = await Promise.all([
@@ -69,13 +78,7 @@ describe('Pep', () => {
     pep = await Pep.create(pepCreateArgs);
     console.debug('Pep initialized');
 
-    await pep.runHandleWasmException(async () => {
-      console.debug('Generating token');
-      const token = pep.internalGenerateToken(tokenSecretObj.OAuthTokenSecret, 'Research Assessor');
-      console.debug('Authenticating with token');
-      await pep.authenticateWithToken(token);
-      console.debug('Authenticated');
-    });
+    await authenticateAs('Research Assessor');
   });
   after(() => {
     pep?.delete();
@@ -210,5 +213,42 @@ describe('Pep', () => {
         });
       });
     });
+  });
+
+  describe('user management', () => {
+    const suffix = crypto.randomUUID();
+    const uid = `weblib-test-user-${suffix}`;
+    const userGroup = `WeblibTestUserGroup-${suffix}`;
+    // Whole seconds, as that is what the server stores
+    const expiration = new Date(Math.floor(Date.now() / 1000 + 24 * 60 * 60) * 1000);
+
+    before(() => authenticateAs('Access Administrator'));
+    after(() => authenticateAs('Research Assessor'));
+
+    it('should create, modify and remove users and user groups', () => pep.runHandleWasmException(async () => {
+      await pep.createUserGroup({name: userGroup, maxAuthValiditySeconds: 3600});
+      await pep.createUser(uid);
+      await pep.addUserToGroup(uid, userGroup, expiration);
+
+      let result = await pep.listUsers({userFilter: uid});
+      expect(result.users).to.deep.equal([{
+        displayId: uid,
+        primaryId: undefined,
+        otherUids: [],
+        groups: [{userGroup, expiration}],
+      }]);
+      expect(result.userGroups).to.deep.equal([{name: userGroup, maxAuthValiditySeconds: 3600}]);
+
+      await pep.updateUserGroupExpiration(uid, userGroup, undefined);
+      result = await pep.listUsers({groupFilter: userGroup});
+      expect(result.users[0]?.groups).to.deep.equal([{userGroup, expiration: undefined}]);
+
+      await pep.removeUserFromGroup(uid, userGroup);
+      await pep.removeUser(uid);
+      await pep.removeUserGroup(userGroup);
+
+      result = await pep.listUsers({userFilter: uid});
+      expect(result.users).to.be.empty;
+    }));
   });
 });
