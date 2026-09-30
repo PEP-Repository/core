@@ -1314,9 +1314,9 @@ if should_run_test purging; then
   timestamp_of_version_5="$(echo "$hist" | jq -r '.[].timestamp' | tail -n 1)"
   
   # Ensure that we can "pepcli get" the first version now (before it's purged)
-  pepcli --oauth-token-group "Research Assessor" list -p "$TEST_PARTICIPANT" -c PurgeTest --ticket-out purge-test.ticket.bin
-  pepcli --oauth-token-group "Research Assessor" get --ticket "purge-test.ticket.bin" --id "$id_of_version_1" --output-file -
-  pepcli --oauth-token-group "Research Assessor" get --ticket "purge-test.ticket.bin" --id "$id_of_version_1" --metadata    -
+  pepcli --oauth-token-group "Research Assessor" list -p "$TEST_PARTICIPANT" -c PurgeTest --ticket-out "$DEST_DIR/purge-test.ticket.bin"
+  pepcli --oauth-token-group "Research Assessor" get --ticket "$DEST_DIR/purge-test.ticket.bin" --id "$id_of_version_1" --output-file -
+  pepcli --oauth-token-group "Research Assessor" get --ticket "$DEST_DIR/purge-test.ticket.bin" --id "$id_of_version_1" --metadata    -
   
   # (Try to) define/request a purge cycle
   pepcli --oauth-token-group "Research Assessor"  purge back-catalog && fail "Purge cycle request should be denied to Research Assessor"
@@ -1351,8 +1351,8 @@ if should_run_test purging; then
   pepcli --oauth-token-group "Repository Manager"  purge confirm "$cycle"
   
   # (Immediately) try to get a purged version
-  pepcli --oauth-token-group "Research Assessor" get --id "$id_of_version_1" --ticket "purge-test.ticket.bin" --output-file - && fail "Purged cell version's data was accessible"
-  pepcli --oauth-token-group "Research Assessor" get --id "$id_of_version_1" --ticket "purge-test.ticket.bin" --metadata    - && fail "Purged cell version's metadata was accessible"
+  pepcli --oauth-token-group "Research Assessor" get --id "$id_of_version_1" --ticket "$DEST_DIR/purge-test.ticket.bin" --output-file - && fail "Purged cell version's data was accessible"
+  pepcli --oauth-token-group "Research Assessor" get --id "$id_of_version_1" --ticket "$DEST_DIR/purge-test.ticket.bin" --metadata    - && fail "Purged cell version's metadata was accessible"
   
   # Ensure that we can't do bogus things after cycle confirmation/application
   pepcli --oauth-token-group "Repository Manager"  purge confirm "$cycle" && fail "Purge cycle reconfirmation should fail"
@@ -1369,7 +1369,7 @@ if should_run_test purging; then
     fail "Expected latest version to survive the purge instead of $unpurged. History was:\n$hist"
   fi
   
-  content="$(pepcli --oauth-token-group "Research Assessor" get --ticket "purge-test.ticket.bin" --id "$id_of_version_5" --output-file -)"
+  content="$(pepcli --oauth-token-group "Research Assessor" get --ticket "$DEST_DIR/purge-test.ticket.bin" --id "$id_of_version_5" --output-file -)"
   if [ "$content" != "Five" ]; then
     fail "Expected latest version (5) to have original content but got:\n$content"
   fi
@@ -1390,6 +1390,6 @@ if should_run_test purging; then
   
   # Clean up
   pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c PurgeTest
-  rm -r purge-test.ticket.bin
+  execute . rm "$DEST_DIR/purge-test.ticket.bin"
   test_cleanup "$PURGE_CONFIG"
 fi
