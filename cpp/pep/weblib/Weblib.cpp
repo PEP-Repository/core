@@ -24,6 +24,7 @@
 #include <pep/weblib/WeblibApiPromise.hpp>
 #include <pep/weblib/WeblibStructs.hpp>
 
+#include <algorithm>
 #include <filesystem>
 #include <functional>
 #include <numeric>
@@ -92,6 +93,13 @@ User ToUser(QRUser user) {
         })
         | to<std::vector>(),
   };
+
+/// Sorts access modes and removes duplicates
+std::vector<std::string> NormalizeModes(std::vector<std::string> modes) {
+  std::ranges::sort(modes);
+  auto duplicates = std::ranges::unique(modes);
+  modes.erase(duplicates.begin(), duplicates.end());
+  return modes;
 }
 
 class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedConstructor<Weblib>, public boost::noncopyable {
@@ -305,11 +313,13 @@ public:
       .getSerializedForm();
   }
 
+  /// Lists column groups the enrolled user has any access to, with the access modes,
+  /// like <code>pepcli query column-access</code>. Modes include implied ones, e.g. "read" implies "read-meta".
   /// \returns \c Promise<ColumnGroup[]>
   WeblibApiPromise listColumns() {
     co_return co_await onIoThread()
         .flat_map([](const std::shared_ptr<Weblib>& self) {
-          return self->client_->getAccessManagerProxy()->getAccessibleColumns(true, { "read" });
+          return self->client_->getAccessManagerProxy()->getAccessibleColumns(true);
         })
         .map([](const ColumnAccess& access) {
           return access.columnGroups
@@ -317,6 +327,7 @@ public:
               const auto& [name, columnGroup] = entry;
               return ColumnGroup{
                   .name = name,
+                  .modes = NormalizeModes(columnGroup.modes),
                   .columns = to<std::vector>(SafeIndexInto(columnGroup.columns.indices, access.columns)),
               };
             })
@@ -324,20 +335,20 @@ public:
         });
   }
 
+  /// Lists subject groups the enrolled user has any access to, with the access modes
   /// \returns \c Promise<SubjectGroup[]>
   WeblibApiPromise listSubjectGroups() {
     co_return co_await onIoThread()
         .flat_map([](const std::shared_ptr<Weblib>& self) {
           return self->client_->getAccessManagerProxy()->getAccessibleParticipantGroups(true);
         }).map([](ParticipantGroupAccess access) {
-          return std::move(access).participantGroups
-            | views::filter([](const auto& entry) {
-              const auto& [name, modes] = entry;
-              return contains(modes, "access");
-            })
-            | views::keys
-            | views::transform([](const std::string& name) {
-              return SubjectGroup{ .name = name };
+          return access.participantGroups
+            | views::transform([](auto& entry) {
+              auto& [name, modes] = entry;
+              return SubjectGroup{
+                  .name = name,
+                  .modes = NormalizeModes(std::move(modes)),
+              };
             })
             | to<std::vector>();
         });
@@ -361,7 +372,7 @@ public:
                 .pps = std::move(*pps),
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
                 .columns = std::move(query->columns).value_or(std::vector<std::string>{}),
-                .modes = {"read"}, //TODO support more modes. Should this method be split with an explicit ticket request?
+                .modes = {query->mode.value_or("read")},
                 .includeAccessGroupPseudonyms = true,
               });
           });

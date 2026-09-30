@@ -3,7 +3,7 @@
  */
 
 import {expect} from 'chai';
-import Pep, {CellEntry, ClientConfig, InitConfig} from "./pep.mjs";
+import Pep, {CellEntry, ClientConfig, getColumnModes, InitConfig} from "./pep.mjs";
 import {binaryToString, concatStringsAsync, deleteObjects} from "./utils.mjs";
 
 const isNode = !!globalThis.process;
@@ -86,32 +86,44 @@ describe('Pep', () => {
   });
 
   describe('#listColumns()', () => {
-    it('should return the name and columns for every column group', async () => {
-      expect(await pep.runHandleWasmException(() => pep.listColumns()))
-          .to.containSubset([
+    it('should return the name, modes and columns for every column group', async () => {
+      const columnGroups = await pep.runHandleWasmException(() => pep.listColumns());
+      expect(columnGroups).to.containSubset([
         {
           name: 'WasmTestColumnGroup',
           columns: ['WasmTestColumn'],
         },
         {
           name: 'ParticipantInfo',
+          modes: ['read', 'read-meta'],
           columns: ['ParticipantInfo'],
         },
         {
           name: 'ParticipantIdentifier',
+          modes: ['read', 'read-meta'],
           columns: ['ParticipantIdentifier'],
         },
       ]);
+      expect(columnGroups.find(group => group.name === 'WasmTestColumnGroup')?.modes)
+          .to.deep.equal(['read', 'read-meta', 'write']);
+    });
+
+    it('should allow getting the modes for every column', async () => {
+      const columns = getColumnModes(await pep.runHandleWasmException(() => pep.listColumns()));
+      expect(columns.find(column => column.name === 'WasmTestColumn')?.modes)
+          .to.deep.equal(['read', 'read-meta', 'write']);
     });
   });
 
   describe('#listSubjectGroups()', () => {
-    it('should list the name of each subject group', async () => {
-      expect(await pep.runHandleWasmException(() => pep.listSubjectGroups()))
-          .to.containSubset([
-            {name: '*'},
-            {name: 'WasmTestSubjectGroup'},
-          ]);
+    it('should list the name and modes of each subject group', async () => {
+      const subjectGroups = await pep.runHandleWasmException(() => pep.listSubjectGroups());
+      expect(subjectGroups).to.containSubset([
+        {name: '*', modes: ['access']},
+        {name: 'WasmTestSubjectGroup'},
+      ]);
+      expect(subjectGroups.find(group => group.name === 'WasmTestSubjectGroup')?.modes)
+          .to.deep.equal(['access', 'enumerate']);
     });
   });
 
@@ -158,6 +170,23 @@ describe('Pep', () => {
             console.log(entriesSimple); // For debugging
             throw ex;
           }
+        });
+      });
+    });
+
+    context('given mode read-meta', () => {
+      it('should list cells', async () => {
+        let entries: CellEntry[] | undefined;
+        after(() => entries && deleteObjects(entries));
+
+        return pep.runHandleWasmException(async () => {
+          entries = await Array.fromAsync(pep.list({
+            subjectGroups: ['WasmTestSubjectGroup'],
+            columnGroups: ['WasmTestColumnGroup'],
+            mode: 'read-meta',
+          }));
+          expect(entries.map(entry => binaryToString(entry.partialMetadataView().get('fileExtension') ?? new Uint8Array())))
+              .to.include.members(['.small', '.large']);
         });
       });
     });

@@ -24,12 +24,17 @@ struct ListQuery {
   std::optional<std::vector<std::string>> subjects;
   std::optional<std::vector<std::string>> columnGroups;
   std::optional<std::vector<std::string>> columns;
+  /// Access mode to request the ticket for: "read" (default) or "read-meta" to also list metadata-only cells
+  std::optional<std::string> mode;
 
   [[nodiscard]] auto operator<=>(const ListQuery&) const = default;
 };
 
+/// Used in the result of listColumns
 struct ColumnGroup {
   std::string name;
+  /// Access modes of the enrolled user ("read", "write", "read-meta", "write-meta"), including implied ones
+  std::vector<std::string> modes;
   std::vector<std::string> columns;
 
   [[nodiscard]] auto operator<=>(const ColumnGroup&) const = default;
@@ -42,8 +47,11 @@ struct EnrolledUser {
   [[nodiscard]] auto operator<=>(const EnrolledUser&) const = default;
 };
 
+/// Used in the result of listSubjectGroups
 struct SubjectGroup {
   std::string name;
+  /// Access modes of the enrolled user: "enumerate" to list cells, "access" to retrieve them
+  std::vector<std::string> modes;
 
   [[nodiscard]] auto operator<=>(const SubjectGroup&) const = default;
 };
