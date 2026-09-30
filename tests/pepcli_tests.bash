@@ -1309,8 +1309,9 @@ if should_run_test purging; then
   fi
   
   # Keep track of some version(ID)s
-  id_of_version_1="$(echo "$hist" | jq -r '.[].id' | head -n 1)"
-  id_of_version_5="$(echo "$hist" | jq -r '.[].id' | tail -n 1)"
+  id_of_version_1="$(echo "$hist"        | jq -r '.[].id'        | head -n 1)"
+  id_of_version_5="$(echo "$hist"        | jq -r '.[].id'        | tail -n 1)"
+  timestamp_of_version_5="$(echo "$hist" | jq -r '.[].timestamp' | tail -n 1)"
   
   # Ensure that we can "pepcli get" the first version now (before it's purged)
   pepcli --oauth-token-group "Research Assessor" list -p "$TEST_PARTICIPANT" -c PurgeTest --ticket-out purge-test.ticket.bin
@@ -1360,11 +1361,11 @@ if should_run_test purging; then
   
   # Ensure that (only) the latest cell version remained
   hist="$(pepcli --oauth-token-group "Data Administrator" history -p "$TEST_PARTICIPANT" -c PurgeTest)"
-  unpurged="$(echo "$hist"  | jq -r '.[] | select( .purgedAt == null ) | .id')"
+  unpurged="$(echo "$hist"  | jq -r '.[] | select( .purgedAt == null ) | .timestamp')"
   if [ "$(echo "$unpurged" | wc -l)" -ne 1 ]; then
     fail "Expected a single item to survive the purge, but found history:\n$hist"
   fi
-  if [ "$unpurged" != "$id_of_version_5" ]; then
+  if [ "$unpurged" != "$timestamp_of_version_5" ]; then
     fail "Expected latest version to survive the purge instead of $unpurged. History was:\n$hist"
   fi
   
