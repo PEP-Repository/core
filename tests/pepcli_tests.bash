@@ -1289,7 +1289,7 @@ if should_run_test purging; then
   # Get (empty) list of purge cycles
   pepcli --oauth-token-group "Research Assessor" purge list && fail "Purge cycles should not be listable by Research Assessor"
   purges="$(pepcli --oauth-token-group "Data Administrator" purge list)"
-  if [ "$(echo "$purges" | wc -l)" -ne 0 ]; then
+  if [ "$(echo -n "$purges" | wc -l)" -ne 0 ]; then
     fail "Expected no purge cycle(s) but got:\n$purges"
   fi
   
@@ -1333,7 +1333,7 @@ if should_run_test purging; then
   pepcli --oauth-token-group "Data Administrator" purge cancel "$cycle"
 
   purges="$(pepcli --oauth-token-group "Repository Manager" purge list)"
-  if [ "$(echo "$purges" | wc -l)" -ne 0 ]; then
+  if [ "$(echo -n "$purges" | wc -l)" -ne 0 ]; then
     fail "Expected no purge cycles after cancellation but got:\n$purges"
   fi
 
