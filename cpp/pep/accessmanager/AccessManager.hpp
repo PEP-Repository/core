@@ -74,15 +74,22 @@ protected:
     uint64_t& checksum, uint64_t& checkpoint) override;
 
 private:
-  /// Internal state shared between handleTicketRequest2's synchronous preparation
-  /// and its asynchronous response pipeline. Defined in AccessManager.cpp.
+  /// Internal state shared by all phases of handleTicketRequest2.
   struct TicketRequestContext;
-  std::shared_ptr<TicketRequestContext> prepareTicketRequest(std::shared_ptr<SignedTicketRequest2>);
-  void checkTicketRequestAccess(TicketRequestContext& ctx);
-  rxcpp::observable<TranscryptorResponse> requestTranscryption(std::shared_ptr<TicketRequestContext>);
-  std::string checkAndStoreAccessSubjects(std::shared_ptr<TicketRequestContext>, TranscryptorResponse);
-  rxcpp::observable<LogIssuedTicketResponse> logIssuedTicket(std::shared_ptr<TicketRequestContext>, std::string transcryptorId);
-  messaging::MessageSequence finalizeTicketResponse(std::shared_ptr<TicketRequestContext>, LogIssuedTicketResponse, std::function<std::chrono::duration<double>()> elapsedTime);
+
+  /// Authenticate the request, check access to the columns and participant groups,
+  /// and resolve participant groups to individual pseudonyms.
+  std::shared_ptr<TicketRequestContext> admitTicketRequest(SignedTicketRequest2);
+
+  /// Re-randomize the pseudonyms that came from the database and ask the Transcryptor to finish the RSK
+  rxcpp::observable<TranscryptorResponse> transcryptTicketRequest(std::shared_ptr<TicketRequestContext>);
+
+  /// Check access per participant and register pseudonyms that are new to the database.
+  /// \return the Transcryptor's log id, needed to have it log the issued ticket
+  std::string identifyTicketRequestParticipants(TicketRequestContext&, TranscryptorResponse);
+
+  /// Sign the ticket and have the Transcryptor log and co-sign it
+  rxcpp::observable<messaging::MessageSequence> issueTicketRequest(std::shared_ptr<TicketRequestContext>, std::string transcryptorLogId, std::function<std::chrono::duration<double>()> elapsedTime);
 
   messaging::MessageBatches handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> pClientRequest);
   messaging::MessageBatches handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyRequest> pClientRequest);
