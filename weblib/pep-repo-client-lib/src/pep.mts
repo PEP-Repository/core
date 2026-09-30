@@ -704,6 +704,26 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.removeSubjectFromGroup(subjectGroup, subject));
   }
 
+  /** Requires the Access Administrator user group */
+  createColumnGroupAccessRule(columnGroup: string, userGroup: string, mode: ColumnAccessMode): Promise<void> {
+    return this.#wrapExec(() => this.#client.createColumnGroupAccessRule(columnGroup, userGroup, mode));
+  }
+
+  /** Requires the Access Administrator user group */
+  removeColumnGroupAccessRule(columnGroup: string, userGroup: string, mode: ColumnAccessMode): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeColumnGroupAccessRule(columnGroup, userGroup, mode));
+  }
+
+  /** Requires the Access Administrator user group */
+  createSubjectGroupAccessRule(subjectGroup: string, userGroup: string, mode: SubjectGroupAccessMode): Promise<void> {
+    return this.#wrapExec(() => this.#client.createSubjectGroupAccessRule(subjectGroup, userGroup, mode));
+  }
+
+  /** Requires the Access Administrator user group */
+  removeSubjectGroupAccessRule(subjectGroup: string, userGroup: string, mode: SubjectGroupAccessMode): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeSubjectGroupAccessRule(subjectGroup, userGroup, mode));
+  }
+
   /** @see {@link PepModule.pepHandleWasmException} */
   handleWasmException(ex: WasmException) {
     return this.#mod.pepHandleWasmException(ex);

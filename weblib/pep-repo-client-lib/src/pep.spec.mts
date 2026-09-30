@@ -324,4 +324,36 @@ describe('Pep', () => {
       expect((await pep.queryAccessManager()).subjectGroups).to.not.include(subjectGroup);
     }));
   });
+
+  describe('access rules', () => {
+    // Use a new user group, so rules of the existing groups are left alone
+    const userGroup = `WeblibTestAccessRuleGroup-${crypto.randomUUID()}`;
+
+    before(async () => {
+      await authenticateAs('Access Administrator');
+      await pep.runHandleWasmException(() => pep.createUserGroup({name: userGroup}));
+    });
+    after(async () => {
+      await pep.runHandleWasmException(() => pep.removeUserGroup(userGroup));
+      await authenticateAs('Research Assessor');
+    });
+
+    it('should create and remove column group access rules', () => pep.runHandleWasmException(async () => {
+      await pep.createColumnGroupAccessRule('WasmTestColumnGroup', userGroup, 'read');
+      expect((await pep.queryAccessManager({userGroup})).columnGroupAccessRules)
+          .to.deep.equal([{columnGroup: 'WasmTestColumnGroup', userGroup, mode: 'read'}]);
+
+      await pep.removeColumnGroupAccessRule('WasmTestColumnGroup', userGroup, 'read');
+      expect((await pep.queryAccessManager({userGroup})).columnGroupAccessRules).to.be.empty;
+    }));
+
+    it('should create and remove subject group access rules', () => pep.runHandleWasmException(async () => {
+      await pep.createSubjectGroupAccessRule('WasmTestSubjectGroup', userGroup, 'enumerate');
+      expect((await pep.queryAccessManager({userGroup})).subjectGroupAccessRules)
+          .to.deep.equal([{subjectGroup: 'WasmTestSubjectGroup', userGroup, mode: 'enumerate'}]);
+
+      await pep.removeSubjectGroupAccessRule('WasmTestSubjectGroup', userGroup, 'enumerate');
+      expect((await pep.queryAccessManager({userGroup})).subjectGroupAccessRules).to.be.empty;
+    }));
+  });
 });

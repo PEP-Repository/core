@@ -772,6 +772,38 @@ public:
       return am.amaRemoveParticipantFromGroup(subjectGroup, pp);
     });
   }
+
+  /// \param mode "read", "write", "read-meta" or "write-meta"
+  WeblibApiVoidPromise createColumnGroupAccessRule(std::string columnGroup, std::string userGroup, std::string mode) {
+    return mutateAccessManager([columnGroup = std::move(columnGroup), userGroup = std::move(userGroup),
+                                mode = std::move(mode)](const AccessManagerProxy& am) {
+      return am.amaCreateColumnGroupAccessRule(columnGroup, userGroup, mode);
+    });
+  }
+
+  /// \param mode "read", "write", "read-meta" or "write-meta"
+  WeblibApiVoidPromise removeColumnGroupAccessRule(std::string columnGroup, std::string userGroup, std::string mode) {
+    return mutateAccessManager([columnGroup = std::move(columnGroup), userGroup = std::move(userGroup),
+                                mode = std::move(mode)](const AccessManagerProxy& am) {
+      return am.amaRemoveColumnGroupAccessRule(columnGroup, userGroup, mode);
+    });
+  }
+
+  /// \param mode "access" or "enumerate"
+  WeblibApiVoidPromise createSubjectGroupAccessRule(std::string subjectGroup, std::string userGroup, std::string mode) {
+    return mutateAccessManager([subjectGroup = std::move(subjectGroup), userGroup = std::move(userGroup),
+                                mode = std::move(mode)](const AccessManagerProxy& am) {
+      return am.amaCreateGroupAccessRule(subjectGroup, userGroup, mode);
+    });
+  }
+
+  /// \param mode "access" or "enumerate"
+  WeblibApiVoidPromise removeSubjectGroupAccessRule(std::string subjectGroup, std::string userGroup, std::string mode) {
+    return mutateAccessManager([subjectGroup = std::move(subjectGroup), userGroup = std::move(userGroup),
+                                mode = std::move(mode)](const AccessManagerProxy& am) {
+      return am.amaRemoveGroupAccessRule(subjectGroup, userGroup, mode);
+    });
+  }
 };
 
 void exitRuntime() { ::emscripten_force_exit(0); }
@@ -816,6 +848,10 @@ EMSCRIPTEN_BINDINGS(weblib) {
       .function("removeSubjectGroup", &Weblib::removeSubjectGroup)
       .function("addSubjectToGroup", &Weblib::addSubjectToGroup)
       .function("removeSubjectFromGroup", &Weblib::removeSubjectFromGroup)
+      .function("createColumnGroupAccessRule", &Weblib::createColumnGroupAccessRule)
+      .function("removeColumnGroupAccessRule", &Weblib::removeColumnGroupAccessRule)
+      .function("createSubjectGroupAccessRule", &Weblib::createSubjectGroupAccessRule)
+      .function("removeSubjectGroupAccessRule", &Weblib::removeSubjectGroupAccessRule)
   ;
   class_<Weblib::OAuthClient>("OAuthClient")
       .function("completeAuthentication", &Weblib::OAuthClient::completeAuthentication)
