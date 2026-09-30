@@ -169,6 +169,10 @@ Administrative tasks:
   - [`ama group`](#ama-group) can be used to create and remove participant groups, and add participants to them
     - [`ama group auto-assign`](#ama-group-auto-assign) can be used to automatically fill participant groups based on study contexts.
 - [`history`](#history) provides an overview of all data versions that have been stored in a cell.
+- [`purge`](#purge) provides subcommands to irrecoverably remove cell versions from the repository's history.
+  - [`purge back-catalog`](#purge-back-catalog) defines a purge cycle that will remove all non-current data from the repository.
+  - [`purge list`](#purge-list) lists purge cycles that have been defined.
+  - [`purge cancel`](#purge-cancel) cancels a previously defined purge cycle.
 
 **For users enrolled as an `Access Administrator`:**
 
@@ -193,6 +197,12 @@ Administrative tasks:
 - [`token`](#token) provides subcommands for requesting and blocking tokens. Only for users enrolled as an `Access Administrator`:
   - [`token request`](#token-request) Generate a new authentication token for a user
   - [`token block create/remove/list`](#token-block-create-remove-list) Blocking and unblocking tokens by managing a blocklist on the server.
+
+**For users enrolled as a `Repository Manager`:**
+
+- [`purge`](#purge) provides subcommands to irrecoverably remove cell versions from the repository's history.
+  - [`purge list`](#purge-list) lists purge cycles that have been defined.
+  - [`purge confirm`](#purge-confirm) confirms and applies a purge cycle.
 
 ## `ama`
 
@@ -818,9 +828,7 @@ The command accepts an optional `--imported-only` switch. If specified, the comm
 
 ## history
 
-PEP retains a full history of all data that has ever been stored in the repository. When a non-empty cell is overwritten (using [`pepcli store`](#store)) or `pepcli delete`d, the repository doesn't discard the previous (version of the) data. Instead the repository will only present the cell as "empty" to users interacting with the current ("rolling") data set.
-
-The `pepcli history` command allows users with `Data Administrator` privileges to list all (`pepcli store` and `delete`) changes that have been applied to a specific cell:
+PEP retains a full history of all data that has ever been stored in the repository. When a non-empty cell is overwritten (using [`pepcli store`](#store)) or `pepcli delete`d, the repository doesn't discard the previous (version of the) data. Instead the repository retains the old data, but will present an updated version of the cell to users that access the current (latest or "rolling") data set. Users with `Data Administrator` privileges can list all changes that have ever been applied to a (specific) cell:
 
 ```plaintext
 pepcli history --column <column> --participant <spec>
@@ -831,9 +839,69 @@ Instead of a `--participant <spec>`, the caller may also specify a `--short-pseu
 - the `timestamp` field indicates when the change to the cell was made.
 - the `pp` field identifies the subject ("row") to which the cell belongs.
 - the `column` is the name of the column.
-- the `id` is an identifier for the data that was stored in the cell. If the value is `null`, that cell version does not have associated data because the cell was [`pepcli delete`](#delete)d.
+- the `id` is an identifier for the data that was stored in the cell. If the value is `null`, that cell version does not have associated data because the cell was [deleted](#delete).
+- if the cell version has been [purged](#purge), the `purgedAt` timestamp will specify the time at which that cell version became inaccessible to users.
 
-Non-`null` values of the `id` field can be passed to the [`pepcli get`](#get) command's `-i` switch to retrieve the data that was stored in the cell for that version.
+Non-`null` values of the `id` field can be passed to the [`pepcli get`](#get) command's `-i` switch to retrieve the data that was stored in the cell for that version. Note that this will yield an error for purged cell versions.
+
+## purge
+
+The `purge` command's various sub-commands allow data to be irrevocably removed from the repository's history. Whereas PEP normally retains copies of all (over)[written](#store) or [deleted](#delete) data, the `purge` commands discard data versions from the repository in such a way that they cannot be recovered. **Purging is therefore a destructive action** and users should exercise caution wielding these commands. To prevent accidental data loss and to increase security, purging requires users with two different administrative roles to work together:
+
+1. a `Data Administrator` must define (i.e. request) a purge cycle, after which
+2. a `Repository Manager` must [confirm](#purge-confirm) (i.e. apply) that purge cycle.
+
+Items remain accessible until the purge cycle has been confirmed, after which they immediately become inaccessible to users ("purged"). The cycle will be marked "completed" later, after repository servers have performed some additional background tasks.
+
+After purging, any attempts to access affected cell versions (e.g. using `pepcli get`](#get)) will result in an error. Purged cell versions will only show up in cell [histories](#history) anymore, where they will be listed as having been purged at the moment that the cycle was confirmed (i.e. applied).
+
+### purge back-catalog
+
+A user with `Data Administrator` privileges can request that all items be discarded from the repository that do not belong to the current (latest or "rolling") data set:
+
+```plaintext
+pepcli purge back-catalog
+```
+
+The command returns (an identifier for) a "purge cycle" that will not be actually executed until it is [confirmed](#purge-confirm) by a `Repository Manager`. Once confirmed, the repository will discard all cell versions that do not belong to the current ("rolling") data set. The repository will effectively retain only its current (latest) state and make any previous cell versions inaccessible to (all) users.
+
+### purge cancel
+
+Purge cycles can be cancelled by a `Data Administrator` if they change their mind after having defined/requested them:
+
+```plaintext
+pepcli purge cancel <id>
+```
+
+The `<id>` must be the identifier of a purge cycle that exists but has not been [confirm](#purge-confirm)ed. After cancellation, the cycle can no longer be confirmed, and will not be [list](#purge-list)ed anymore.
+
+### purge list
+
+Users with `Data Administrator` or `Repository Manager` privileges can list all purge cycles that have been [defined](#purge-back-catalog) and not [cancelled](#purge-cancel):
+
+```plaintext
+pepcli purge list
+```
+
+For each purge cycle, the output includes
+
+- the cycle's `id`, which can be used to [cancel](#purge-cancel) or [confirm](#purge-confirm) it.
+- (a description of) the cell versions associated with the cycle.
+- the time at which the cycle was announced (i.e. defined or requested).
+- if the cycle has been [confirmed](#purge-confirm): the time at which the cycle was confirmed (i.e. applied). This is the moment at which associated cell versions became inaccessible.
+- if all required actions have been performed by repository servers: the time at which the cycle was completed.
+
+If (a cycle has been confirmed but) the time of completion is absent, servers are still performing background tasks associated with the cycle. This does not affect the state that users get to see: items will have become inaccessible at the time of confirmation.
+
+### purge confirm
+
+Users with `Repository Manager` privileges can apply purge cycles that have previously been [defined](purge-back-catalog) by a `Data Administrator`. Since **this command irrevocably discards cell versions**, users must make very sure that the data should indeed be destroyed:
+
+```plaintext
+pepcli purge confirm <id>
+```
+
+Confirmation of a purge cycle immediately makes associated cell versions inaccessible to all users. PEP repository servers will then perform some associated technical tasks in the background, during which time the cycle will be [listed](#purge-list) as "confirmed" but not "completed".
 
 ## get
 
