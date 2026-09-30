@@ -173,6 +173,22 @@ export interface UserQueryFilter {
   userFilter?: string | undefined;
 }
 
+export interface AccessManagerState {
+  columns: string[];
+  columnGroups: {name: string; columns: string[]}[];
+  columnGroupAccessRules: {columnGroup: string; userGroup: string; mode: ColumnAccessMode}[];
+  subjectGroups: string[];
+  subjectGroupAccessRules: {subjectGroup: string; userGroup: string; mode: SubjectGroupAccessMode}[];
+}
+
+/** Each filter matches an exact name. Omitted filters match everything. */
+export interface AccessManagerFilter {
+  column?: string | undefined;
+  columnGroup?: string | undefined;
+  subjectGroup?: string | undefined;
+  userGroup?: string | undefined;
+}
+
 interface RawUserGroupMembership {
   userGroup: string;
   expiration: number | undefined;
@@ -615,6 +631,77 @@ export default class Pep {
    */
   updateUserGroupExpiration(uid: string, group: string, expiration?: Date): Promise<void> {
     return this.#wrapExec(() => this.#client.updateUserGroupExpiration(uid, group, expiration?.getTime()));
+  }
+
+  /**
+   * List columns, column groups, subject groups and access rules.
+   * Requires the Access Administrator, Data Administrator or Repository Manager user group.
+   */
+  queryAccessManager(filter: AccessManagerFilter = {}): Promise<AccessManagerState> {
+    return this.#wrapExec(() => this.#client.queryAccessManager(
+        filter.column ?? '', filter.columnGroup ?? '', filter.subjectGroup ?? '', filter.userGroup ?? ''));
+  }
+
+  /** Requires the Data Administrator user group */
+  createColumn(name: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.createColumn(name));
+  }
+
+  /** Requires the Data Administrator user group */
+  removeColumn(name: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeColumn(name));
+  }
+
+  /** Requires the Data Administrator user group */
+  createColumnGroup(name: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.createColumnGroup(name));
+  }
+
+  /**
+   * Requires the Data Administrator user group
+   * @param force Also remove the group's column memberships and access rules. Without it, removal fails if there are any.
+   */
+  removeColumnGroup(name: string, force: boolean = false): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeColumnGroup(name, force));
+  }
+
+  /** Requires the Data Administrator user group */
+  addColumnToGroup(column: string, columnGroup: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.addColumnToGroup(column, columnGroup));
+  }
+
+  /** Requires the Data Administrator user group */
+  removeColumnFromGroup(column: string, columnGroup: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeColumnFromGroup(column, columnGroup));
+  }
+
+  /** Requires the Data Administrator user group */
+  createSubjectGroup(name: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.createSubjectGroup(name));
+  }
+
+  /**
+   * Requires the Data Administrator user group
+   * @param force Also remove the group's subject memberships and access rules. Without it, removal fails if there are any.
+   */
+  removeSubjectGroup(name: string, force: boolean = false): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeSubjectGroup(name, force));
+  }
+
+  /**
+   * Requires the Data Administrator user group
+   * @param subject A polymorphic pseudonym or identifier, like `ListQuery.subjects`
+   */
+  addSubjectToGroup(subjectGroup: string, subject: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.addSubjectToGroup(subjectGroup, subject));
+  }
+
+  /**
+   * Requires the Data Administrator user group
+   * @param subject A polymorphic pseudonym or identifier, like `ListQuery.subjects`
+   */
+  removeSubjectFromGroup(subjectGroup: string, subject: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeSubjectFromGroup(subjectGroup, subject));
   }
 
   /** @see {@link PepModule.pepHandleWasmException} */

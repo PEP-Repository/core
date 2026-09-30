@@ -280,4 +280,48 @@ describe('Pep', () => {
       expect(result.users).to.be.empty;
     }));
   });
+
+  describe('data administration', () => {
+    const suffix = crypto.randomUUID();
+    const column = `WeblibTestColumn-${suffix}`;
+    const columnGroup = `WeblibTestColumnGroup-${suffix}`;
+    const subjectGroup = `WeblibTestSubjectGroup-${suffix}`;
+
+    before(() => authenticateAs('Data Administrator'));
+    after(() => authenticateAs('Research Assessor'));
+
+    it('should create and remove columns and column groups', () => pep.runHandleWasmException(async () => {
+      await pep.createColumn(column);
+      await pep.createColumnGroup(columnGroup);
+      await pep.addColumnToGroup(column, columnGroup);
+
+      let state = await pep.queryAccessManager({columnGroup});
+      expect(state.columnGroups).to.deep.equal([{name: columnGroup, columns: [column]}]);
+
+      await pep.removeColumnFromGroup(column, columnGroup);
+      state = await pep.queryAccessManager({columnGroup});
+      expect(state.columnGroups).to.deep.equal([{name: columnGroup, columns: []}]);
+
+      // force removes the column membership as well
+      await pep.addColumnToGroup(column, columnGroup);
+      await pep.removeColumnGroup(columnGroup, true);
+      await pep.removeColumn(column);
+
+      state = await pep.queryAccessManager();
+      expect(state.columns).to.not.include(column);
+      expect(state.columnGroups.map(group => group.name)).to.not.include(columnGroup);
+    }));
+
+    it('should create and remove subject groups, and add and remove subjects', () => pep.runHandleWasmException(async () => {
+      await pep.createSubjectGroup(subjectGroup);
+      expect((await pep.queryAccessManager({subjectGroup})).subjectGroups).to.deep.equal([subjectGroup]);
+
+      await pep.addSubjectToGroup(subjectGroup, 'WasmTestSubjectSmall');
+      await pep.removeSubjectFromGroup(subjectGroup, 'WasmTestSubjectSmall');
+      // Succeeds without force, as the group is empty again
+      await pep.removeSubjectGroup(subjectGroup);
+
+      expect((await pep.queryAccessManager()).subjectGroups).to.not.include(subjectGroup);
+    }));
+  });
 });

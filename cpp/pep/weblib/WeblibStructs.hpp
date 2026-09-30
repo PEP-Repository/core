@@ -31,13 +31,13 @@ struct ListQuery {
 };
 
 /// Used in the result of listColumns
-struct ColumnGroup {
+struct AccessibleColumnGroup {
   std::string name;
   /// Access modes of the enrolled user ("read", "write", "read-meta", "write-meta"), including implied ones
   std::vector<std::string> modes;
   std::vector<std::string> columns;
 
-  [[nodiscard]] auto operator<=>(const ColumnGroup&) const = default;
+  [[nodiscard]] auto operator<=>(const AccessibleColumnGroup&) const = default;
 };
 
 struct EnrolledUser {
@@ -133,6 +133,44 @@ struct UserQueryResult {
   std::vector<UserGroupInfo> userGroups;
 
   [[nodiscard]] auto operator<=>(const UserQueryResult&) const = default;
+};
+
+/// Used in the result of queryAccessManager
+struct ColumnGroup {
+  std::string name;
+  std::vector<std::string> columns;
+
+  [[nodiscard]] auto operator<=>(const ColumnGroup&) const = default;
+};
+
+/// Used in the result of queryAccessManager.
+/// Named differently from pep::ColumnGroupAccessRule to prevent ambiguity
+struct ColumnGroupAccessRuleInfo {
+  std::string columnGroup;
+  std::string userGroup;
+  std::string mode;
+
+  [[nodiscard]] auto operator<=>(const ColumnGroupAccessRuleInfo&) const = default;
+};
+
+/// Used in the result of queryAccessManager
+struct SubjectGroupAccessRuleInfo {
+  std::string subjectGroup;
+  std::string userGroup;
+  std::string mode;
+
+  [[nodiscard]] auto operator<=>(const SubjectGroupAccessRuleInfo&) const = default;
+};
+
+/// Used as the result of queryAccessManager
+struct AccessManagerState {
+  std::vector<std::string> columns;
+  std::vector<ColumnGroup> columnGroups;
+  std::vector<ColumnGroupAccessRuleInfo> columnGroupAccessRules;
+  std::vector<std::string> subjectGroups;
+  std::vector<SubjectGroupAccessRuleInfo> subjectGroupAccessRules;
+
+  [[nodiscard]] auto operator<=>(const AccessManagerState&) const = default;
 };
 
 }

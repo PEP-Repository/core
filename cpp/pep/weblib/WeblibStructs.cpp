@@ -54,7 +54,7 @@ PEP_BINDINGS(ListQuery,
   mode
 )
 
-PEP_BINDINGS(ColumnGroup,
+PEP_BINDINGS(AccessibleColumnGroup,
   name,
   modes,
   columns
@@ -108,6 +108,31 @@ PEP_BINDINGS(UserGroupInfo,
 PEP_BINDINGS(UserQueryResult,
   users,
   userGroups
+)
+
+PEP_BINDINGS(ColumnGroup,
+  name,
+  columns
+)
+
+PEP_BINDINGS(ColumnGroupAccessRuleInfo,
+  columnGroup,
+  userGroup,
+  mode
+)
+
+PEP_BINDINGS(SubjectGroupAccessRuleInfo,
+  subjectGroup,
+  userGroup,
+  mode
+)
+
+PEP_BINDINGS(AccessManagerState,
+  columns,
+  columnGroups,
+  columnGroupAccessRules,
+  subjectGroups,
+  subjectGroupAccessRules
 )
 
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {
