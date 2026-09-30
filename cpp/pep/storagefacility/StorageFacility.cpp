@@ -1177,6 +1177,9 @@ messaging::MessageBatches StorageFacility::handlePurgeCancelRequest(std::shared_
 
   auto result = sqlite_->atomically([this, id = certified.message.id]() {
       auto result = sqlite_->getPurgeCycle(id);
+      if (result.applied) {
+        throw Error("Can't cancel purge cycle that has already been applied"); // That data is GONE!
+      }
       sqlite_->deletePurgeCycle(id);
       return result;
     });
