@@ -520,8 +520,8 @@ struct AccessManager::TicketRequestContext {
   SignedTicket2 signedTicket{};
   std::vector<Backend::Pp> pps;
   std::unordered_map<std::string, IndexList> columnGroupMap{};
-  std::unordered_map<std::string, IndexList> participantGroupMap{};
-  std::vector<std::string> participantModes;
+  std::unordered_map<std::string, IndexList> subjectGroupMap{};
+  std::vector<std::string> subjectModes;
   TranscryptorRequest tsReq;
   TranscryptorRequestEntries tsReqEntries{};
   std::optional<PseudonymTranslator::Recipient> userRecipient;
@@ -552,7 +552,7 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
     .pps = request.accessSubjects
       | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; })
       | to<std::vector>(),
-    .participantModes = request.participantGroups.empty()
+    .subjectModes = request.participantGroups.empty()
       ? std::vector<std::string>{"access"}
       : std::vector<std::string>{"access", "enumerate"},
     .tsReq {.request = std::move(signedRequest) },
@@ -566,10 +566,10 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
     backend_->checkParticipantGroupAccess(
         ctx->request.participantGroups,
         ctx->ticket.userGroup,
-        ctx->participantModes,
+        ctx->subjectModes,
         ctx->ticket.timestamp);
 
-    ctx->participantGroupMap = backend_->fillParticipantGroupMap(ctx->request.participantGroups, ctx->pps);
+    ctx->subjectGroupMap = backend_->fillParticipantGroupMap(ctx->request.participantGroups, ctx->pps);
   }
 
   // Check columns and column groups; ticket.columns is unfolded in place
@@ -625,7 +625,7 @@ rxcpp::observable<TranscryptorResponse> AccessManager::transcryptTicketRequest(s
     });
 }
 
-std::string AccessManager::identifyTicketRequestParticipants(TicketRequestContext& ctx, TranscryptorResponse resp) {
+std::string AccessManager::identifyTicketRequestSubjects(TicketRequestContext& ctx, TranscryptorResponse resp) {
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx.requestNumber << " received transcryptor response";
   // Now we have local pseudonyms for the original PPs.
   if (resp.entries.size() != ctx.pps.size()) {
@@ -634,12 +634,12 @@ std::string AccessManager::identifyTicketRequestParticipants(TicketRequestContex
 
   ctx.ticket.accessSubjects = std::move(resp.entries);
   if (ctx.ticket.userGroup == UserGroup::DataAdministrator && !ctx.ticket.accessSubjects.empty()) {
-    PEP_LOG(LogTag, Severity::Info) << "Granting " << ctx.ticket.userGroup << " unchecked access to " << ctx.ticket.accessSubjects.size() << " participant(s)";
+    PEP_LOG(LogTag, Severity::Info) << "Granting " << ctx.ticket.userGroup << " unchecked access to " << ctx.ticket.accessSubjects.size() << " subject(s)";
   }
   for (auto [accessSubject, pp] : views::zip(ctx.ticket.accessSubjects, ctx.pps)) {
     LocalPseudonym localPseudonym = accessSubject.accessManager.decrypt(ctx.server->pseudonymKey_);
     if (ctx.ticket.userGroup != UserGroup::DataAdministrator) {
-      ctx.server->backend_->checkParticipantAccess(ctx.ticket.userGroup, localPseudonym, ctx.participantModes, ctx.ticket.timestamp);
+      ctx.server->backend_->checkParticipantAccess(ctx.ticket.userGroup, localPseudonym, ctx.subjectModes, ctx.ticket.timestamp);
     }
     if (pp.isClientProvided && !ctx.server->backend_->hasLocalPseudonym(localPseudonym) && ctx.ticket.hasMode("write")) {
       ctx.server->backend_->storeLocalPseudonymAndPP(localPseudonym, accessSubject.polymorphic);
@@ -665,7 +665,7 @@ AccessManager::issueTicketRequest(std::shared_ptr<TicketRequestContext> ctx, std
                   ? Serialization::ToString(IndexedTicket2(std::make_shared<SignedTicket2>(
                         std::move(ctx->signedTicket)),
                         std::move(ctx->columnGroupMap),
-                        std::move(ctx->participantGroupMap)))
+                        std::move(ctx->subjectGroupMap)))
                   : Serialization::ToString(std::move(ctx->signedTicket))))
           .as_dynamic();
 
@@ -687,7 +687,7 @@ AccessManager::handleTicketRequest2(std::shared_ptr<SignedTicketRequest2> signed
   messaging::MessageBatches result =
     transcryptTicketRequest(ctx)
       .flat_map([ctx, elapsedTime, this](TranscryptorResponse resp) {
-        const auto transcryptorLogId = identifyTicketRequestParticipants(*ctx, std::move(resp));
+        const auto transcryptorLogId = identifyTicketRequestSubjects(*ctx, std::move(resp));
         return issueTicketRequest(ctx, transcryptorLogId, elapsedTime);
       });
 
