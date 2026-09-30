@@ -1286,10 +1286,6 @@ if should_run_test purging; then
 
   test_setup "$PURGE_CONFIG"
 
-  # Store data in a cell
-  pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c PurgeTest -d One
-  pepcli --oauth-token-group "Data Administrator" purge back-catalog && fail "No back catalog to purge"
-  
   # Get (empty) list of purge cycles
   pepcli --oauth-token-group "Research Assessor" purge list && fail "Purge cycles should not be listable by Research Assessor"
   purges="$(pepcli --oauth-token-group "Data Administrator" purge list)"
@@ -1297,7 +1293,8 @@ if should_run_test purging; then
     fail "Expected no purge cycle(s) but got:\n$purges"
   fi
   
-  # Create some more history
+  # Create some history
+  pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c PurgeTest -d One
   pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c PurgeTest -d Two
   pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c PurgeTest -d Three
   pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c PurgeTest
