@@ -11,20 +11,20 @@ namespace {
 
 constexpr const char* DestructiveWarning = "Falsifies repository history, making it impossible to re-download exact copies of data sets that include purged items.";
 
-void OutputPurgeCycle(const PurgeCycle& cycle) {
-  std::cout
+void OutputPurgeCycle(const PurgeCycle& cycle, std::ostream& destination = std::cout) {
+  destination
     << "Purge cycle " << cycle.id
     << " for " << cycle.definition.name()
     << " announced at " << TimestampToXmlDateTime(cycle.announced);
   if (cycle.applied) {
-    std::cout << "; applied at " << TimestampToXmlDateTime(*cycle.applied);
+    destination << "; applied at " << TimestampToXmlDateTime(*cycle.applied);
   }
   if (cycle.completed) {
     assert(cycle.applied);
-    std::cout << "; completed at " << TimestampToXmlDateTime(*cycle.completed);
+    destination << "; completed at " << TimestampToXmlDateTime(*cycle.completed);
   }
 
-  std::cout << '\n';
+  destination << '\n';
 }
 
 class CommandPurge : public ChildCommandOf<CliApplication> {
@@ -54,6 +54,7 @@ class CommandPurge::BackCatalog : public ChildCommandOf<CommandPurge> {
 public:
   explicit BackCatalog(CommandPurge& parent);
   std::optional<std::string> getAdditionalDescription() const override;
+  commandline::Parameters getSupportedParameters() const override;
 
 protected:
   int execute() override;
@@ -115,11 +116,22 @@ std::optional<std::string> CommandPurge::BackCatalog::getAdditionalDescription()
   return DestructiveWarning;
 }
 
+commandline::Parameters CommandPurge::BackCatalog::getSupportedParameters() const {
+  return ChildCommandOf<CommandPurge>::getSupportedParameters()
+    + commandline::Parameter("raw", "Output only the ID").shorthand('r');
+}
+
 int CommandPurge::BackCatalog::execute() {
-  return this->executeEventLoopForClient(true, [](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
+  auto raw = this->getParameterValues().has("raw");
+  return this->executeEventLoopForClient(true, [raw](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
     return client->getStorageFacilityProxy()->createPurgeCycle(PurgeCycle::Definition(BackCatalogPurgeFilter))
-      .map([](PurgeCycle cycle) {
-          OutputPurgeCycle(cycle);
+      .map([raw](PurgeCycle cycle) {
+          if (raw) {
+            std::cout << cycle.id << std::endl;
+          }
+          else {
+            OutputPurgeCycle(cycle, std::cout);
+          }
           return FakeVoid();
         });
     });

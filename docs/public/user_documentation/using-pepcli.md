@@ -865,6 +865,10 @@ pepcli purge back-catalog
 
 The command returns (an identifier for) a "purge cycle" that will not be actually executed until it is [confirmed](#purge-confirm) by a `Repository Manager`. Once confirmed, the repository will discard all cell versions that do not belong to the current ("rolling") data set. The repository will effectively retain only its current (latest) state and make any previous cell versions inaccessible to (all) users.
 
+The command supports the following switch:
+
+- `--raw` or `-r`: output only the purge cycle ID (instead of a human-readable description) to e.g. make the output usable for scripted processing.
+
 ### purge cancel
 
 Purge cycles can be cancelled by a `Data Administrator` if they change their mind after having defined/requested them:
