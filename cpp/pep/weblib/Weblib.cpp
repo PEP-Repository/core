@@ -521,7 +521,7 @@ public:
   /// \returns \c Promise<UserQueryResult>
   WeblibApiPromise listUsers(std::string groupFilter, std::string userFilter) {
     co_return co_await onIoThread()
-        .flat_map([query = UserQuery{.groupFilter = std::move(groupFilter), .userFilter = std::move(userFilter)}](
+        .flat_map([query = UserQuery{.at = std::nullopt, .groupFilter = std::move(groupFilter), .userFilter = std::move(userFilter)}](
             const std::shared_ptr<Weblib>& self) {
           return self->client_->getAccessManagerProxy()->userQuery(query);
         })
