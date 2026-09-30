@@ -1273,11 +1273,13 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
               --end;
             }
             for (auto i = versions.begin(); i != end; ++i) {
-              storagefacility::SqliteStorage::CellVersionSpec version{
-                .cell = EntryName(participant->name(), cell->columnName()),
-                .timestamp = i->validFrom,
-              };
-              sqlite_->addToPurgeCycle(id, version);
+              if (!i->purgedAt) {
+                storagefacility::SqliteStorage::CellVersionSpec version{
+                  .cell = EntryName(participant->name(), cell->columnName()),
+                  .timestamp = i->validFrom,
+                };
+                sqlite_->addToPurgeCycle(id, version);
+              }
             }
           }
         }
