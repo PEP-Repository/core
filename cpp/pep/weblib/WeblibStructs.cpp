@@ -38,6 +38,7 @@ EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(ListQuery::subjects)::value_type>();
   register_optional<decltype(ListQuery::columnGroups)::value_type>();
   register_optional<decltype(ListQuery::columns)::value_type>();
+  register_optional<decltype(ListQuery::mode)::value_type>();
   register_optional<decltype(std::declval<CellEntry>().partialMetadataView())::mapped_type::value_type>();
 }
 
@@ -45,11 +46,13 @@ PEP_BINDINGS(ListQuery,
   subjectGroups,
   subjects,
   columnGroups,
-  columns
+  columns,
+  mode
 )
 
 PEP_BINDINGS(ColumnGroup,
   name,
+  modes,
   columns
 )
 
@@ -59,7 +62,8 @@ PEP_BINDINGS(EnrolledUser,
 )
 
 PEP_BINDINGS(SubjectGroup,
-  name
+  name,
+  modes
 )
 
 PEP_BINDINGS(ParticipantPersonalia,

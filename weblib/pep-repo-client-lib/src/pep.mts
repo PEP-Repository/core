@@ -73,13 +73,44 @@ export interface EnrolledUser {
   userGroup: string;
 }
 
+/** `read` implies `read-meta`, and `write-meta` implies `write`. Implied modes are always included. */
+export type ColumnAccessMode = 'read' | 'write' | 'read-meta' | 'write-meta';
+
+/** `enumerate` is needed to list cells, `access` to retrieve them */
+export type SubjectGroupAccessMode = 'access' | 'enumerate';
+
 export interface ColumnGroup {
   name: string;
+  modes: ColumnAccessMode[];
   columns: string[];
+}
+
+export interface AccessibleColumn {
+  name: string;
+  /** Combined from all column groups containing this column */
+  modes: ColumnAccessMode[];
+}
+
+/** Get the access modes per column, sorted by column name, from the result of {@link Pep.listColumns} */
+export function getColumnModes(columnGroups: ColumnGroup[]): AccessibleColumn[] {
+  const columnModes = new Map<string, Set<ColumnAccessMode>>();
+  for (const group of columnGroups) {
+    for (const column of group.columns) {
+      let modes = columnModes.get(column);
+      if (!modes) {
+        columnModes.set(column, modes = new Set());
+      }
+      group.modes.forEach(mode => modes.add(mode));
+    }
+  }
+  return [...columnModes]
+      .map(([name, modes]) => ({name, modes: [...modes].sort()}))
+      .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
 }
 
 export interface SubjectGroup {
   name: string;
+  modes: SubjectGroupAccessMode[];
 }
 
 export interface ParticipantPersonalia extends Omit<rawTypes.ParticipantPersonalia, 'dateOfBirth'> {
@@ -117,6 +148,11 @@ export interface ListQuery {
   subjects?: string[] | undefined;
   columnGroups?: string[] | undefined;
   columns?: string[] | undefined;
+  /**
+   * Access mode to list with. Default `read`.
+   * Use `read-meta` to also list cells of which the user can only see metadata; their content cannot be retrieved.
+   */
+  mode?: 'read' | 'read-meta' | undefined;
 }
 
 /**
@@ -378,10 +414,15 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.internalGenerateToken(tokenSecret, userGroup));
   }
 
+  /**
+   * List column groups the user has any access to, with the access modes.
+   * Use {@link getColumnModes} to get the modes per column.
+   */
   listColumns(): Promise<ColumnGroup[]> {
     return this.#wrapExec(() => this.#client.listColumns());
   }
 
+  /** List subject groups the user has any access to, with the access modes */
   listSubjectGroups(): Promise<SubjectGroup[]> {
     return this.#wrapExec(() => this.#client.listSubjectGroups());
   }
