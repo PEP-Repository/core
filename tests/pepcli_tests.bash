@@ -1273,3 +1273,125 @@ if should_run_test certificate-renewal; then
 fi
 
 ####################
+
+if should_run_test purging; then
+
+  PURGE_CONFIG='{
+    "columnGroups": [{
+      "name": "PurgeTestGroup",
+      "columns": [ "PurgeTest" ],
+      "cgars": { "Research Assessor": [ "read", "write" ] }
+    }]
+  }'
+
+  test_setup "$PURGE_CONFIG"
+
+  # Store data in a cell
+  pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c PurgeTest -d One
+  pepcli --oauth-token-group "Data Administrator" purge back-catalog && fail "No back catalog to purge"
+  
+  # Get (empty) list of purge cycles
+  pepcli --oauth-token-group "Research Assessor" purge list && fail "Purge cycles should not be listable by Research Assessor"
+  purges="$(pepcli --oauth-token-group "Data Administrator" purge list)"
+  if [ "$(echo "$purges" | wc -l)" -ne 0 ]; then
+    fail "Expected no purge cycle(s) but got:\n$purges"
+  fi
+  
+  # Create some more history
+  pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c PurgeTest -d Two
+  pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c PurgeTest -d Three
+  pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c PurgeTest
+  pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c PurgeTest -d Five
+
+  hist="$(pepcli --oauth-token-group "Data Administrator" history -p "$TEST_PARTICIPANT" -c PurgeTest)"
+  if [ "$(echo "$hist" | jq -r '.[].timestamp' | wc -l)" -ne 5 ]; then
+    fail "Didn't get expected five history entries in:\n$hist"
+  fi
+  if [ "$(echo "$hist" | jq -r '.[].purgedAt | select( . != null )' | wc -l)" -ne 0 ]; then
+    fail "Found purged items in:\n$purged"
+  fi
+  
+  # Keep track of some version(ID)s
+  id_of_version_1="$(echo "$hist" | jq -r '.[].id' | head -n 1)"
+  id_of_version_5="$(echo "$hist" | jq -r '.[].id' | tail -n 1)"
+  
+  # Ensure that we can "pepcli get" the first version now (before it's purged)
+  pepcli list -p "$TEST_PARTICIPANT" -c PurgeTest --ticket-out purge-test.ticket.bin
+  pepcli get --ticket "purge-test.ticket.bin" --id "$id_of_version_1" --output-file -
+  pepcli get --ticket "purge-test.ticket.bin" --id "$id_of_version_1" --metadata    -
+  
+  # (Try to) define/request a purge cycle
+  pepcli --oauth-token-group "Research Assessor"  purge back-catalog && fail "Purge cycle request should be denied to Research Assessor"
+  pepcli --oauth-token-group "Repository Manager" purge back-catalog && fail "Purge cycle request should be denied to Repository Manager"
+  cycle="$(pepcli --oauth-token-group "Data Administrator" purge back-catalog -r)"
+  
+  purges="$(pepcli --oauth-token-group "Repository Manager" purge list)"
+  if [ "$(echo "$purges" | wc -l)" -ne 1 ]; then
+    fail "Expected a single purge cycle but got:\n$purges"
+  fi
+  
+  # (Try to) cancel a purge cycle
+  pepcli --oauth-token-group "Research Assessor"  purge cancel "$cycle" && fail "Purge cycle should not be cancellable by Research Assessor"
+  pepcli --oauth-token-group "Repository Manager" purge cancel "$cycle" && fail "Purge cycle should not be cancellable by Repository Manager"
+  pepcli --oauth-token-group "Data Administrator" purge cancel "$cycle"
+
+  purges="$(pepcli --oauth-token-group "Repository Manager" purge list)"
+  if [ "$(echo "$purges" | wc -l)" -ne 0 ]; then
+    fail "Expected no purge cycles after cancellation but got:\n$purges"
+  fi
+
+  # Define/request a purge cycle that we'll actually apply
+  cycle="$(pepcli --oauth-token-group "Data Administrator" purge back-catalog -r)"
+  purges="$(pepcli --oauth-token-group "Repository Manager" purge list)"
+  if [ "$(echo "$purges" | wc -l)" -ne 1 ]; then
+    fail "Expected a single purge cycle but got:\n$purges"
+  fi
+  
+  # (Try to) confirm/apply the purge cycle
+  pepcli --oauth-token-group "Research Assessor"   purge confirm "$cycle" && fail "Purge cycle confirmation should be denied to Research Assessor"
+  pepcli --oauth-token-group "Data Administrator"  purge confirm "$cycle" && fail "Purge cycle confirmation should be denied to Data Administrator"
+  pepcli --oauth-token-group "Repository Manager"  purge confirm "$cycle"
+  
+  # (Immediately) try to get a purged version
+  pepcli get --id "$id_of_version_1" --ticket "purge-test.ticket.bin" --output-file - && fail "Purged cell version's data was accessible"
+  pepcli get --id "$id_of_version_1" --ticket "purge-test.ticket.bin" --metadata    - && fail "Purged cell version's metadata was accessible"
+  
+  # Ensure that we can't do bogus things after cycle confirmation/application
+  pepcli --oauth-token-group "Repository Manager"  purge confirm "$cycle" && "Purge cycle reconfirmation should fail"
+  pepcli --oauth-token-group "Data Administrator"  purge cancel  "$cycle" && "Purge cycle cancellation after confirmation should fail"
+  pepcli --oauth-token-group "Data Administrator"  purge back-catalog     && "Purged back catalog shouldn't be (re)purgeable"
+  
+  # Ensure that (only) the latest cell version remained
+  hist="$(pepcli --oauth-token-group "Data Administrator" history -p "$TEST_PARTICIPANT" -c PurgeTest)"
+  unpurged="$(echo "$hist"  | jq -r '.[] | select( .purgedAt == null ) | .id')"
+  if [ "$(echo "$unpurged" | wc -l)" -ne 1 ]; then
+    fail "Expected a single item to survive the purge, but found history:\n$hist"
+  fi
+  if [ "$unpurged" != "$id_of_version_5" ]; then
+    fail "Expected latest version to survive the purge instead of $unpurged. History was:\n$hist"
+  fi
+  
+  content="$(pepcli get --ticket "purge-test.ticket.bin" --id "$id_of_version_5" --output-file -)"
+  if [ "$content" != "Five" ]; then
+    fail "Expected latest version (5) to have original content but got:\n$content"
+  fi
+
+  # Ensure that we can re-purge the back catalog after we create more history
+  pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c PurgeTest -d Six
+  cycle="$(pepcli --oauth-token-group "Data Administrator" purge back-catalog -r)"
+  pepcli --oauth-token-group "Repository Manager"  purge confirm "$cycle"
+  
+  hist="$(pepcli --oauth-token-group "Data Administrator" history -p "$TEST_PARTICIPANT" -c PurgeTest)"
+  unpurged="$(echo "$hist"  | jq -r '.[] | select( .purgedAt == null ) | .id')"
+  if [ "$(echo "$unpurged" | wc -l)" -ne 1 ]; then
+    fail "Purge was survived by something other than a single version. History was:\n$hist"
+  fi
+  if [ "$unpurged" = "$id_of_version_5" ]; then
+    fail "Purge was survived by outdated item $id_of_version_5. History was:\n$hist"
+  fi
+  
+  # Clean up
+  pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c PurgeTest
+  rm -r purge-test.ticket.bin
+  test_cleanup "$PURGE_CONFIG"
+fi
