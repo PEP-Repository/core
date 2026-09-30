@@ -521,7 +521,7 @@ struct AccessManager::TicketRequestContext {
   std::vector<Backend::Pp> pps;
   std::unordered_map<std::string, IndexList> columnGroupMap{};
   std::unordered_map<std::string, IndexList> subjectGroupMap{};
-  std::vector<std::string> subjectModes;
+  std::vector<std::string> requiredSubjectModes;
   TranscryptorRequest tsReq;
   TranscryptorRequestEntries tsReqEntries{};
   std::optional<PseudonymTranslator::Recipient> userRecipient;
@@ -552,7 +552,7 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
     .pps = request.accessSubjects
       | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; })
       | to<std::vector>(),
-    .subjectModes = request.participantGroups.empty()
+    .requiredSubjectModes = request.participantGroups.empty()
       ? std::vector<std::string>{"access"}
       : std::vector<std::string>{"access", "enumerate"},
     .tsReq {.request = std::move(signedRequest) },
@@ -566,7 +566,7 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
     backend_->checkParticipantGroupAccess(
         ctx->request.participantGroups,
         ctx->ticket.userGroup,
-        ctx->subjectModes,
+        ctx->requiredSubjectModes,
         ctx->ticket.timestamp);
 
     ctx->subjectGroupMap = backend_->fillParticipantGroupMap(ctx->request.participantGroups, ctx->pps);
@@ -639,7 +639,7 @@ std::string AccessManager::identifyTicketRequestSubjects(TicketRequestContext& c
   for (auto [accessSubject, pp] : views::zip(ctx.ticket.accessSubjects, ctx.pps)) {
     LocalPseudonym localPseudonym = accessSubject.accessManager.decrypt(ctx.server->pseudonymKey_);
     if (ctx.ticket.userGroup != UserGroup::DataAdministrator) {
-      ctx.server->backend_->checkParticipantAccess(ctx.ticket.userGroup, localPseudonym, ctx.subjectModes, ctx.ticket.timestamp);
+      ctx.server->backend_->checkParticipantAccess(ctx.ticket.userGroup, localPseudonym, ctx.requiredSubjectModes, ctx.ticket.timestamp);
     }
     if (pp.isClientProvided && !ctx.server->backend_->hasLocalPseudonym(localPseudonym) && ctx.ticket.hasMode("write")) {
       ctx.server->backend_->storeLocalPseudonymAndPP(localPseudonym, accessSubject.polymorphic);
