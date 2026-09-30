@@ -1354,9 +1354,9 @@ if should_run_test purging; then
   pepcli get --id "$id_of_version_1" --ticket "purge-test.ticket.bin" --metadata    - && fail "Purged cell version's metadata was accessible"
   
   # Ensure that we can't do bogus things after cycle confirmation/application
-  pepcli --oauth-token-group "Repository Manager"  purge confirm "$cycle" && "Purge cycle reconfirmation should fail"
-  pepcli --oauth-token-group "Data Administrator"  purge cancel  "$cycle" && "Purge cycle cancellation after confirmation should fail"
-  pepcli --oauth-token-group "Data Administrator"  purge back-catalog     && "Purged back catalog shouldn't be (re)purgeable"
+  pepcli --oauth-token-group "Repository Manager"  purge confirm "$cycle" && fail "Purge cycle reconfirmation should fail"
+  pepcli --oauth-token-group "Data Administrator"  purge cancel  "$cycle" && fail "Purge cycle cancellation after confirmation should fail"
+  pepcli --oauth-token-group "Data Administrator"  purge back-catalog     && fail "Purged back catalog shouldn't be (re)purgeable"
   
   # Ensure that (only) the latest cell version remained
   hist="$(pepcli --oauth-token-group "Data Administrator" history -p "$TEST_PARTICIPANT" -c PurgeTest)"
