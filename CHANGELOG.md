@@ -6,6 +6,8 @@
 
 ## Changes in upcoming release (1.8)
 
+- Fixed `pepcli pull --export yaml` to now actually export the data to a yaml file.
+
 - Fixed number formatting in YAML output. Integers outside the 32-bit range are no longer truncated, and floating point numbers are written in their shortest exact form.
 
 - core#2958: parameter `expiration` for `pepcli token request` is now marked as required.
