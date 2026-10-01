@@ -157,9 +157,7 @@ void Connection::start() {
   if (this->isConnected()) {
     PEP_LOG(LogTag, Severity::Verbose) << "Connection::start";
 
-    binary_->asyncRead(&messageInHeader_, sizeof(messageInHeader_), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {
-      self->handleHeaderReceived(result);
-      });
+    this->receiveNext();
 
     // start keep-alive
     if (!keepAliveTimerRunning_) {
@@ -171,6 +169,76 @@ void Connection::start() {
     ensureSend();
   }
 }
+
+void Connection::receiveNext() {
+  if (readPauses_ > 0) {
+    PEP_LOG(LogTag, Severity::Verbose) << "receiveNext: reading is paused (" << describe() << ")";
+    readDeferred_ = true;
+    return;
+  }
+  readDeferred_ = false;
+
+  binary_->asyncRead(&messageInHeader_, sizeof(messageInHeader_), [self = SharedFrom(*this)](const networking::SizedTransfer::Result& result) {
+    self->handleHeaderReceived(result);
+    });
+}
+
+void Connection::pauseReading() {
+  ++readPauses_;
+}
+
+void Connection::resumeReading() {
+  assert(readPauses_ > 0);
+  --readPauses_;
+  if (readPauses_ == 0 && readDeferred_ && this->isConnected()) {
+    PEP_LOG(LogTag, Severity::Verbose) << "resumeReading (" << describe() << ")";
+    this->receiveNext();
+  }
+  // If we're not connected, then start() will call receiveNext once we are (again).
+}
+
+class Connection::IncomingThrottle final : public ReadThrottle {
+  std::weak_ptr<Connection> connection_;
+  uint64_t generation_;
+  bool paused_ = false;
+
+  // Returns the connection if it's still the one that we were created for (i.e. hasn't been reset)
+  [[nodiscard]] std::shared_ptr<Connection> connection() const {
+    auto result = connection_.lock();
+    if (result != nullptr && result->throttleGeneration_ != generation_) {
+      return nullptr;
+    }
+    return result;
+  }
+
+public:
+  explicit IncomingThrottle(const std::shared_ptr<Connection>& connection)
+    : connection_(connection), generation_(connection->throttleGeneration_) {}
+
+  ~IncomingThrottle() override {
+    this->resume();
+  }
+
+  void pause() override {
+    if (paused_) {
+      return;
+    }
+    if (auto connection = this->connection()) {
+      paused_ = true;
+      connection->pauseReading();
+    }
+  }
+
+  void resume() override {
+    if (!paused_) {
+      return;
+    }
+    paused_ = false;
+    if (auto connection = this->connection()) {
+      connection->resumeReading();
+    }
+  }
+};
 
 void Connection::handleHeaderSent(const networking::SizedTransfer::Result& result) {
   PEP_LOG(LogTag, Severity::Verbose) << "handleHeaderSent (" << describe() << ")";
@@ -376,7 +444,7 @@ void Connection::processReceivedRequest(const StreamId& streamId, const Flags& f
     }
 
     // Have request handled and enqueue return value as response messages
-    this->dispatchRequest(streamId, abValue, tail);
+    this->dispatchRequest(streamId, abValue, tail, std::make_shared<IncomingThrottle>(SharedFrom(*this)));
   }
 }
 
@@ -412,7 +480,7 @@ MessageBatches Connection::handleVersionRequest(std::shared_ptr<std::string> req
 }
 
 void Connection::dispatchRequest(
-  const StreamId& streamId, std::shared_ptr<std::string> request, MessageSequence chunks) {
+  const StreamId& streamId, std::shared_ptr<std::string> request, MessageSequence chunks, std::shared_ptr<ReadThrottle> throttle) {
   std::optional<MessageBatches> responses;
 
   pep::MessageMagic magic = 0U;
@@ -429,10 +497,10 @@ void Connection::dispatchRequest(
       if (std::ranges::contains(prematureRequests_, streamId, &PrematureRequest::streamId)) {
         throw std::runtime_error("Received multiple premature requests with stream ID " + std::to_string(streamId.value()));
       }
-      prematureRequests_.emplace_back(PrematureRequest({ streamId, magic, request, chunks }));
+      prematureRequests_.emplace_back(PrematureRequest({ streamId, magic, request, chunks, std::move(throttle) }));
     }
     else {
-      responses = requestHandler_->handleRequest(magic, request, chunks);
+      responses = requestHandler_->handleRequest(magic, request, chunks, std::move(throttle));
     }
   } catch (...) {
     responses = rxcpp::observable<>::error<MessageSequence>(std::current_exception());
@@ -541,6 +609,10 @@ void Connection::clearState(bool reconnecting) {
   messageOutBody_.reset();
   // Clear state for incoming messages
   versionValidated_ = false;
+  // Outstanding IncomingThrottles must no longer affect us: the requests they belong to are gone. start() will resume reading.
+  ++throttleGeneration_;
+  readPauses_ = 0;
+  readDeferred_ = false;
 
   // Discard cached incoming requests
   prematureRequests_.clear();
@@ -645,7 +717,7 @@ void Connection::handleVersionResponse(const VersionResponse& response) {
   for (auto& request : premature) {
     assert(requestHandler_ != nullptr); // Otherwise premature requests wouldn't have been stored
     try {
-      this->scheduleResponses(request.streamId, requestHandler_->handleRequest(request.magic, request.head, request.tail));
+      this->scheduleResponses(request.streamId, requestHandler_->handleRequest(request.magic, request.head, request.tail, request.throttle));
     }
     catch (...) {
       PEP_LOG(LogTag, Severity::Error) << "Error scheduling response(s) for premature " << DescribeMessageMagic(request.magic) << " request: " << GetExceptionMessage(std::current_exception());

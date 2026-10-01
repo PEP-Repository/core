@@ -4,6 +4,7 @@
 #include <pep/async/WorkerPool.hpp>
 #include <pep/utils/XxHasher.hpp>
 #include <pep/storagefacility/FileStore.hpp>
+#include <pep/storagefacility/PendingBytesLimiter.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>
 #include <pep/storagefacility/SFId.hpp>
 
@@ -31,6 +32,9 @@ private:
 
     prometheus::Gauge& totalPayloadBytes; // including history
     prometheus::Gauge& rollingPayloadBytes; // "latest" snapshot
+
+    prometheus::Gauge& pendingPageBytes; ///< received from the network, but not yet stored
+    prometheus::Gauge& readingPaused; ///< 1 while we've stopped reading incoming data because too much is pending
   };
 
   void getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns = {});
@@ -65,6 +69,7 @@ public:
     }
 
     uint64_t getDataSizeResolution() const { return dataSizeResolution_; }
+    uint64_t getMaxPendingPagesBytes() const { return maxPendingPagesMiB_ * (1024U * 1024U); } // Overflow is prevented in the constructor
 
   protected:
     void check() const override;
@@ -74,6 +79,8 @@ public:
     std::optional<std::string> encIdKey_;
     uint8_t parallelisationWidth_ = 10; // passed to RxParalellConcat
     uint64_t dataSizeResolution_ = 1024U * 1024U;
+    // Once this many MiB of incoming pages are waiting to be stored, we stop reading from the connections that deliver them.
+    uint64_t maxPendingPagesMiB_ = 1024U;
 
     // passed to FileStore::Create
     std::filesystem::path storagePath_;
@@ -94,7 +101,7 @@ protected:
 
 private:
   messaging::MessageBatches handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumerationRequest2> signedRequest);
-  messaging::MessageBatches handleDataStoreRequest2(std::shared_ptr<SignedDataStoreRequest2> signedRequest, messaging::MessageSequence tail);
+  messaging::MessageBatches handleDataStoreRequest2(std::shared_ptr<SignedDataStoreRequest2> signedRequest, messaging::MessageSequence tail, std::shared_ptr<messaging::ReadThrottle> throttle);
   messaging::MessageBatches handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdateRequest2> signedRequest);
   messaging::MessageBatches handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRequest2> signedRequest);
   messaging::MessageBatches handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> signedRequest);
@@ -117,6 +124,7 @@ private:
   messaging::MessageBatches handleDataAlterationRequest(
     std::shared_ptr<Signed<TRequest>> signedRequest,
     messaging::MessageSequence tail,
+    std::shared_ptr<messaging::ReadThrottle> throttle, // May be nullptr, if there's no tail (or no connection) to throttle
     bool requireContentOverwrite,
     const GetEntryContent<typename TRequest::Entry> getEntryContent,
     const GetDataAlterationResponse& getResponse);
@@ -127,6 +135,7 @@ private:
   std::shared_ptr<WorkerPool> workerPool_;
   std::shared_ptr<FileStore> fileStore_;
   std::shared_ptr<Metrics> metrics_;
+  std::shared_ptr<PendingBytesLimiter> pendingPages_; // Global: limits the incoming pages that are waiting to be stored, across all requests
   boost::asio::steady_timer timer_;
   const uint8_t parallelisationWidth_ = 0; // passed to RxParallelConcat
   const uint64_t dataSizeResolution_;
