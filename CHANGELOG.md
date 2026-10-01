@@ -4,7 +4,15 @@
 
 - repo#42: description
 
-## Changes in upcoming release (1.8)
+## Changes in upcoming release (1.9)
+
+...
+
+---------------
+*Past changes, do not edit (except by person doing release):*
+
+
+## Release 1.8
 
 - Fixed `pepcli pull --export yaml` to now actually export the data to a yaml file.
 
@@ -115,8 +123,6 @@
 
 - core#298: `PEP_GROUP_REPOSITORY_TOKEN` and `DOCS_GROUP_WRITE_REPOSITORY_TOKEN` CI variables can be removed after all projects are updated. Also update <https://docs.pages.pep.cs.ru.nl/private/ops/main/procedures_maintenance/update-gitlab-pep-group-access-tokens/> to remove the instructions for these tokens.
 
----------------
-*Past changes, do not edit (except by person doing release):*
 
 ## Release 1.7
 
