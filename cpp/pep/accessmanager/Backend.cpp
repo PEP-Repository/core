@@ -466,7 +466,7 @@ void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::st
 
 std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillParticipantGroupMap(
     std::span<const std::string> participantGroups,
-    std::vector<Pp>& pps) {
+    std::vector<PolymorphicPseudonym>& pps) {
   // ParticipantGroups by Polymorph Pseudonym
   auto groupedPps = to<std::vector<std::pair<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/>>>(
     storage_->getPpGroups(participantGroups));
@@ -474,7 +474,7 @@ std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillPart
 
   std::unordered_map<std::string, pep::IndexList> participantGroupMap;
   for (const auto& [pp, groups] : groupedPps) {
-    pps.emplace_back(pp, false);
+    pps.emplace_back(pp);
     for (const std::string& pg : groups) {
       participantGroupMap[pg].indices.push_back(static_cast<uint32_t>(pps.size() - 1));
     }
