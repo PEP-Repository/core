@@ -180,7 +180,7 @@ struct PropertyBasedContainer<std::unique_ptr<TOwner>, GetPropertyMethod> {
 // Specializations for noexcept methods. The standard requires an exact type match when deducing the template parameters
 // of GetPropertyMethod's type ([temp.deduct.type]), so GCC (like EDG) does not match noexcept methods against the
 // specializations above. Clang and MSVC do drop the noexcept there, and would report these as ambiguous with them.
-#if defined(__GNUC__) && !defined(__clang__) //TODO(workaround)
+#if (defined(__GNUC__) && !defined(__clang__)) || defined(__EDG__) //TODO(workaround)
 template <typename TItem, typename TProperty, TProperty(std::remove_const_t<TItem>::*GetPropertyMethod)() const noexcept>
 struct PropertyBasedContainer<TItem*, GetPropertyMethod>
   : PropertyBasedContainer<TItem*, static_cast<TProperty(std::remove_const_t<TItem>::*)() const>(GetPropertyMethod)> {};
