@@ -173,6 +173,70 @@ fi
 
 ####################
 
+if should_run_test registration; then
+  # Completing a participant's registration makes the Registration Server generate their short pseudonyms. This
+  # environment has no Castor connection, so the server can't create the Castor participants that some short
+  # pseudonyms require. We store placeholders for those first, so that the server only generates the others.
+  # (The configuration contains trailing commas, which jq doesn't accept.)
+  short_pseudonyms="$(sed -z -E 's/,(\s*[]}])/\1/g' "$DATA_DIR/accessmanager/GlobalConfiguration.json" | jq --compact-output .short_pseudonyms)"
+  mapfile -t castor_columns < <(jq --raw-output '.[] | select(.castor) | .column' <<< "$short_pseudonyms")
+  mapfile -t generated_columns < <(jq --raw-output '.[] | select(.castor | not) | .column' <<< "$short_pseudonyms")
+  if [ "${#castor_columns[@]}" -eq 0 ] || [ "${#generated_columns[@]}" -eq 0 ]; then
+    fail "Expected the configuration to define both Castor and other short pseudonyms"
+  fi
+
+  registered_ids=()
+  pepcli --oauth-token-group "Access Administrator" ama cgar create ShortPseudonyms "Research Assessor" write
+  for _ in 1 2; do # Multiple participants, whose short pseudonyms must all differ
+    id="$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')"
+    [ -n "$id" ] || fail "Could not generate a participant ID"
+    registered_ids+=("$id")
+    for column in "${castor_columns[@]}"; do
+      pepcli --oauth-token-group "Research Assessor" store -p "$id" -c "$column" -d CastorPlaceholder --file-extension .txt
+    done
+  done
+  pepcli --oauth-token-group "Access Administrator" ama cgar remove ShortPseudonyms "Research Assessor" write
+
+  # Returns the participant's short pseudonyms as a JSON object mapping columns to values
+  stored_short_pseudonyms() {
+    pepcli --oauth-token-group "Research Assessor" list -p "$1" -C ShortPseudonyms | jq --compact-output '.[0].data'
+  }
+
+  shadow_entries=()
+  for id in "${registered_ids[@]}"; do
+    pepcli --oauth-token-group "Research Assessor" register ensure-complete "$id"
+    stored="$(stored_short_pseudonyms "$id")"
+    for column in "${generated_columns[@]}"; do
+      definition="$(jq --compact-output --arg column "$column" '.[] | select(.column == $column)' <<< "$short_pseudonyms")"
+      prefix="$(jq --raw-output .prefix <<< "$definition")"
+      length="$(jq --raw-output .length <<< "$definition")"
+      value="$(jq --raw-output --arg column "$column" '.[$column] // empty' <<< "$stored")"
+      # Generated short pseudonyms consist of the prefix, the configured number of digits, and two check digits
+      [[ "$value" =~ ^${prefix}[0-9]{$((length + 2))}$ ]] || fail "Participant $id has invalid short pseudonym \"$value\" in column $column"
+      shadow_entries+=("$id;$column:$value")
+    done
+    for column in "${castor_columns[@]}"; do
+      value="$(jq --raw-output --arg column "$column" '.[$column]' <<< "$stored")"
+      [ "$value" = CastorPlaceholder ] || fail "Registration replaced participant $id's Castor short pseudonym in column $column"
+    done
+
+    # Completing a complete registration changes nothing
+    pepcli --oauth-token-group "Research Assessor" register ensure-complete "$id"
+    [ "$(stored_short_pseudonyms "$id")" = "$stored" ] || fail "Repeated registration completion changed participant $id's short pseudonyms"
+  done
+
+  duplicates="$(printf '%s\n' "${shadow_entries[@]}" | cut -d: -f2 | sort | uniq --repeated)"
+  [ -z "$duplicates" ] || fail "Registration generated duplicate short pseudonyms: $duplicates"
+
+  # The Registration Server also stores the short pseudonyms in its shadow administration
+  shadow="$(execute . "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepDumpShadowAdministration" --loglevel "$CLIENT_LOGLEVEL" dump ShadowAdministration.key registrationserver/ShadowShortPseudonyms.sqlite)"
+  for entry in "${shadow_entries[@]}"; do
+    grep --quiet --fixed-strings --line-regexp "$entry" <<< "$shadow" || fail "Shadow administration lacks entry $entry"
+  done
+fi
+
+####################
+
 if should_run_test file-extension; then
 
   FE_CONFIG='{
