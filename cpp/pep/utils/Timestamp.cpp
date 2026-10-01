@@ -2,7 +2,10 @@
 
 #include <pep/utils/StringStream.hpp>
 
+#include <ctime>
 #include <format>
+#include <iomanip>
+#include <locale>
 #include <regex>
 #include <sstream>
 #include <stdexcept>
@@ -93,6 +96,33 @@ private:
   std::string timeZone_;
 };
 
+class HttpDateParser final : public TimestampParser {
+public:
+  HttpDateParser() : TimestampParser{"HTTP-date"} {}
+
+protected:
+  Timestamp parseImpl(std::string_view str) override {
+    std::tm tm{};
+    {
+      std::istringstream ss{std::string(str)};
+      ss.exceptions(std::ios_base::badbit | std::ios_base::failbit);
+      ss.imbue(std::locale::classic()); // Day and month names are always in English
+      // Not including " GMT" in the format, since std::get_time doesn't fail if the input ends before the format's literal text does
+      ss >> std::get_time(&tm, "%a, %d %b %Y %H:%M:%S");
+      if (auto remaining = GetUnparsed(ss); remaining != " GMT") {
+        throw std::invalid_argument(std::format("Expected \" GMT\" but got \"{}\"", remaining));
+      }
+    }
+
+    const year_month_day date{year{tm.tm_year + 1900}, month{static_cast<unsigned>(tm.tm_mon + 1)}, day{static_cast<unsigned>(tm.tm_mday)}};
+    if (!date.ok()) {
+      throw std::invalid_argument("Invalid date");
+    }
+    // Convert to Timestamp first: adding hours and minutes to sys_days may overflow if their rep is 32 bits (e.g. on Emscripten)
+    return Timestamp{sys_days{date}} + hours{tm.tm_hour} + minutes{tm.tm_min} + seconds{tm.tm_sec};
+  }
+};
+
 class YyyyMmDdDateParser final : public TimestampParser {
 public:
   explicit YyyyMmDdDateParser(std::string timeZone)
@@ -177,6 +207,10 @@ std::string TimestampToXmlDateTime(Timestamp time) {
   ss.imbue(std::locale(ss.getloc(), facet));
   ss << TimestampToBoostPtime(time);
   return std::move(ss).str();
+}
+
+Timestamp TimestampFromHttpDate(std::string_view httpDate) {
+  return HttpDateParser{}.parse(httpDate);
 }
 
 Timestamp TimeZone::timestampFromYyyyMmDd(std::string_view yyyyMmDd) const {
