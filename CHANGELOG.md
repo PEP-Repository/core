@@ -8,9 +8,13 @@
 
 - core#3010: `pepcli list` now outputs an empty array instead of an empty string when there are no results.
 
+- Fixed `pepcli pull --export yaml` to now actually export the data to a yaml file.
+
+- Fixed number formatting in YAML output. Integers outside the 32-bit range are no longer truncated, and floating point numbers are written in their shortest exact form.
+
 - core#2958: parameter `expiration` for `pepcli token request` is now marked as required.
 
-- #2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
+- core#2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
 
 - core#2488: Added command `pepcli pseudonym convert`, which converts a pseudonym of any form into a polymorphic, local, or brief-local pseudonym.
 
@@ -80,13 +84,36 @@
 
 - ppp-config#217: The pepAssessor GUI application no longer produces empty lines in export files.
 
+- core#2886, !2470: Hardened against path traversal. `pepcli pull`/`get` and the Storage Facility now validate every path element, so crafted column names or archive entries (e.g. `..`, absolute paths, Windows device names) can no longer write outside the intended directory.
+  The Access Manager now also rejects new column names that aren't valid file names on all supported platforms, as well as columns whose names differ only by case from an existing column (existing columns are unaffected).
+
+- core#2956, !2519: Hex secrets are now handled in constant time, to prevent timing side channels.
+
+- core#3006, !2575: The Storage Facility now throttles incoming pages if the S3 backend can't keep up, instead of letting them pile up in memory. Configurable with the new `MaxPendingPagesMiB` setting in `StorageFacility.json` (reading resumes when half of it remains).
+
+- core#2963, !2529: Applications now warn when a log level is requested that is below the minimum severity compiled into the build.
+
+- !2532: Improved server connectivity logging.
+
+- core#2981, !2551: More informative errors when a server's certificate can't be verified.
+
+- core#2991, !2562:
+  - Clients read their `EnrolledPartyKeysFile` from the config directory if it doesn't exist in the working directory but does exist there.
+  - Check for unset keys in the Client.
+  - Fix error handling in some async code.
+  - Improve connection logging
+
+- core#2974: Building PEP now requires a more recent compiler & stdlib with C++23 features, see README.md.
+
+- core#2976: Updated code style around ranges (see `cpp/CONTRIBUTING.md`).
+
+- core#2973: Added `-o "&:shared_libs=all"` option (not supported for MSVC) to build PEP libraries as shared libraries while developing, see `README.md`.
+
 **MANUAL CHANGES REQUIRED**:
 
 - core#2961: The `StorageFacility.json` config needs to be changed to the new format (see changes above). Extract `EndPoint`, `Credentials`, `CaCertificateFile`, `UseHttps`, and `Connections` (or the subset that is used) into an object under a new `Hosts` key and give it an ID. Then change all buckets into objects with `Name` and `HostId` properties, the latter of which references the host ID.
 
 - core#298: `PEP_GROUP_REPOSITORY_TOKEN` and `DOCS_GROUP_WRITE_REPOSITORY_TOKEN` CI variables can be removed after all projects are updated. Also update <https://docs.pages.pep.cs.ru.nl/private/ops/main/procedures_maintenance/update-gitlab-pep-group-access-tokens/> to remove the instructions for these tokens.
-
-- core#2974: Building PEP now requires a more recent compiler & stdlib with C++23 features, see README.md.
 
 ---------------
 *Past changes, do not edit (except by person doing release):*
@@ -169,6 +196,8 @@
 
 - #2863: There is now a JSON schema for server/client configuration files, see `./config/config.schema.json`.
 
+- core#2890, !2471: OAuth tokens are now handled in constant time, to prevent timing side channels.
+
 **MANUAL CHANGES REQUIRED**:
 
 - #2708: After the release has been deployed, use `pepcli user query` to see which users don't have a displayID. It will print a warning message for each user that doesn't have one yet.
@@ -176,6 +205,20 @@
 - #2801: Update `Verifiers.json` for the Transcryptor: Run `./scripts/update-verifiers-1-7.sh /path/to/Verifiers.json`
   - Make sure that you have `pepcli` in your PATH for the current environment, or pass the binary to use as extra argument to the script
 - #2801/#2863: Run `./scripts/upgrade-config-1-7.sh <config folder>` on config folders of the project, optionally with `check-jsonschema`/`jsonschema`/`jv` installed to validate the result locally (otherwise our CI will), or define envvar `NO_VALIDATE=1`.
+
+### Hotfixes for release 1.7
+
+- core#2984, !2556: Data page and encrypted-metadata decryption now rejects truncated (shorter than 16 bytes) AEAD authentication tags, which were previously accepted. Also, decryption now only accepts 12- or 16-byte nonces, and new encryptions use 12 bytes.
+
+- core#2990, !2564: Fixed a data race in the Transcryptor (causing "RSK Proof invalid").
+
+- core#2979, !2546: Fixed that rxcpp's `concat` and `concat_map` would overflow the stack on some long streams.
+
+- core#2946, !2514: Fixed the `--loglevel` option of all applications, which had stopped working in 1.7.
+
+- ppp-config#212, !2541, !2543: PullCastor: fixed an exception caused by reading from the wrong configuration instance, and fixed study aspect pullers failing to register.
+
+- Improved logging of message types at debug level.
 
 ## Release 1.6 (started 2026-01-28)
 

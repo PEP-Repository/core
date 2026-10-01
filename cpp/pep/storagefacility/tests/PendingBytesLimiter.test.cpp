@@ -200,6 +200,7 @@ TEST(PendingBytesLimiter, MovedReservationIsReleasedOnlyOnce) {
   auto original = limiter->reserve(30);
   auto moved = std::move(original);
   EXPECT_EQ(limiter->pendingBytes(), 30);
+  //NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move) Intentional
   original.release(); // Moved-from: must have no effect
   EXPECT_EQ(limiter->pendingBytes(), 30);
 

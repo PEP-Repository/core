@@ -69,6 +69,17 @@ PEP_BINDINGS(ParticipantPersonalia,
   dateOfBirth
 )
 
+PEP_BINDINGS(StoreQuery,
+  subject,
+  column,
+  blob,
+  metadata
+)
+
+PEP_BINDINGS(StoreResult,
+  id
+)
+
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {
   using namespace std::ranges;
   return inner->metadata.extra()

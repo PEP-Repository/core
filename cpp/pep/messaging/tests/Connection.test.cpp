@@ -12,7 +12,10 @@
 #include <rxcpp/operators/rx-tap.hpp>
 #include <gtest/gtest.h>
 
+#include <ranges>
+
 using namespace std::literals;
+using namespace std::ranges;
 
 namespace {
 
@@ -63,8 +66,8 @@ private:
 };
 
 [[maybe_unused]] void TestReadThrottle(bool resumeExplicitly, uint16_t port) {
-  constexpr size_t ChunkCount = 5;
-  constexpr uint64_t PingId = 42;
+  static constexpr size_t ChunkCount = 5;
+  static constexpr uint64_t PingId = 42;
 
   boost::asio::io_context io_context;
   auto observations = std::make_shared<PausingHandler::Observations>();
@@ -95,10 +98,9 @@ private:
   client->start().subscribe(
     [&gotResponse, shutdownAll, started, &timeout](const pep::messaging::Connection::Attempt::Result& result) {
       ASSERT_TRUE(result);
-      std::vector<std::shared_ptr<std::string>> chunks;
-      for (size_t i = 0; i < ChunkCount; ++i) {
-        chunks.push_back(pep::MakeSharedCopy("chunk " + std::to_string(i)));
-      }
+      auto chunks = views::iota(0uz, ChunkCount)
+        | views::transform([](size_t i) { return pep::MakeSharedCopy("chunk " + std::to_string(i)); })
+        | to<std::vector>();
       pep::messaging::MessageBatches tail = rxcpp::observable<>::just(pep::messaging::MessageSequence(pep::RxIterate(std::move(chunks)))).as_dynamic();
 
       (*result)->sendRequest(pep::MakeSharedCopy(pep::Serialization::ToString(pep::PingRequest(PingId))), tail)

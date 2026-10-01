@@ -735,7 +735,28 @@ if should_run_test structured-output; then
     fail "Output to stdout ($CSV_STDOUT_PATH) is different from output to file ($CSV_PATH)."
   fi
 
+  # Pull with a supplementary export
+  execute . rm -f "$DEST_DIR/export.json" "$DEST_DIR/export.yaml"
+
+  pepcli --oauth-token-group soUsers pull\
+    -P soSubjects -C soData --output-directory "$DEST_DIR/pulled-data" --force --export yaml
+  # There is no yaml parser available here, so the format is recognized by an unindented, unquoted block mapping key.
+  YAML_CONTENT=$(execute . cat "$DEST_DIR/export.yaml")
+  echo "$YAML_CONTENT" | grep -qE '^data:$' \
+    || fail "Expected $DEST_DIR/export.yaml to hold yaml, but it holds [$YAML_CONTENT]"
+  echo "$YAML_CONTENT" | grep -q '"soData.shortText": "yellow"' \
+    || fail "Expected $DEST_DIR/export.yaml to hold the pulled data, but it holds [$YAML_CONTENT]"
+  execute . rm -f "$DEST_DIR/export.yaml"
+
+  pepcli --oauth-token-group soUsers pull\
+    -P soSubjects -C soData --output-directory "$DEST_DIR/pulled-data" --force --export json
+  # jq parses the file, which fails for anything that is not json, and then looks the pulled data up by column name
+  JSON_CONTENT=$(execute . cat "$DEST_DIR/export.json")
+  echo "$JSON_CONTENT" | jq -e '.data[] | select(."soData.shortText" == "yellow")' > /dev/null \
+    || fail "Expected $DEST_DIR/export.json to hold the pulled data as json, but it holds [$JSON_CONTENT]"
+
   # Clean up
+  execute . rm -f "$DEST_DIR/export.json" "$DEST_DIR/export.yaml"
   execute . rm -rf "$DEST_DIR/pulled-data"
 
   test_cleanup "$SO_CONFIG"
