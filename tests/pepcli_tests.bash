@@ -177,8 +177,7 @@ if should_run_test registration; then
   # Completing a participant's registration makes the Registration Server generate their short pseudonyms. This
   # environment has no Castor connection, so the server can't create the Castor participants that some short
   # pseudonyms require. We store placeholders for those first, so that the server only generates the others.
-  # (The configuration contains trailing commas, which jq doesn't accept.)
-  short_pseudonyms="$(sed -z -E 's/,(\s*[]}])/\1/g' "$DATA_DIR/accessmanager/GlobalConfiguration.json" | jq --compact-output .short_pseudonyms)"
+  short_pseudonyms="$(jq --compact-output .short_pseudonyms "$DATA_DIR/accessmanager/GlobalConfiguration.json")"
   mapfile -t castor_columns < <(jq --raw-output '.[] | select(.castor) | .column' <<< "$short_pseudonyms")
   mapfile -t generated_columns < <(jq --raw-output '.[] | select(.castor | not) | .column' <<< "$short_pseudonyms")
   if [ "${#castor_columns[@]}" -eq 0 ] || [ "${#generated_columns[@]}" -eq 0 ]; then
