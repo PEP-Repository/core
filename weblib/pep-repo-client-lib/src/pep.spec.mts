@@ -131,7 +131,6 @@ describe('Pep', () => {
     context('given a subject group and column group', () => {
       it('should list cells with metadata', async () => {
         let entries: CellEntry[] | undefined;
-        after(() => entries && deleteObjects(entries));
 
         return pep.runHandleWasmException(async () => {
           entries = await Array.fromAsync(pep.list({
@@ -170,14 +169,13 @@ describe('Pep', () => {
             console.log(entriesSimple); // For debugging
             throw ex;
           }
-        });
+        }).finally(() => entries && deleteObjects(entries));
       });
     });
 
     context('given mode read-meta', () => {
       it('should list cells', async () => {
         let entries: CellEntry[] | undefined;
-        after(() => entries && deleteObjects(entries));
 
         return pep.runHandleWasmException(async () => {
           entries = await Array.fromAsync(pep.list({
@@ -187,14 +185,13 @@ describe('Pep', () => {
           }));
           expect(entries.map(entry => binaryToString(entry.partialMetadataView().get('fileExtension') ?? new Uint8Array())))
               .to.include.members(['.small', '.large']);
-        });
+        }).finally(() => entries && deleteObjects(entries));
       });
     });
 
     context('given a subject Origin ID and column group', () => {
       it('should list cells with metadata', async () => {
         let entries: CellEntry[] | undefined;
-        after(() => entries && deleteObjects(entries));
 
         return pep.runHandleWasmException(async () => {
           entries = await Array.fromAsync(pep.list({
@@ -205,7 +202,7 @@ describe('Pep', () => {
           const [entry] = entries as [CellEntry];
           expect(binaryToString(entry.partialMetadataView().get('fileExtension') ?? new Uint8Array()))
               .equals('.small', 'Got back wrong fileExtension');
-        });
+        }).finally(() => entries && deleteObjects(entries));
       });
     });
   });
@@ -214,7 +211,6 @@ describe('Pep', () => {
     context('given a subject group and column group', () => {
       it('should retrieve cells with data', () => {
         let entries: CellEntry[] | undefined;
-        after(() => entries && deleteObjects(entries));
 
         return pep.runHandleWasmException(async () => {
           entries = await Array.fromAsync(pep.list({
@@ -239,7 +235,7 @@ describe('Pep', () => {
             const content = await concatStringsAsync(data.content.pipeThrough(new TextDecoderStream()));
             expect(content).equals(expectedContent!, 'Wrong cell data');
           }
-        });
+        }).finally(() => entries && deleteObjects(entries));
       });
     });
   });
