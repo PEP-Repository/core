@@ -232,6 +232,17 @@ if should_run_test registration; then
   for entry in "${shadow_entries[@]}"; do
     grep --quiet --fixed-strings --line-regexp "$entry" <<< "$shadow" || fail "Shadow administration lacks entry $entry"
   done
+
+  # Delete the short pseudonyms, so that later tests (also in reruns on the same data) don't find them
+  pepcli --oauth-token-group "Access Administrator" ama cgar create ShortPseudonyms "Research Assessor" write
+  for id in "${registered_ids[@]}"; do
+    for column in "${castor_columns[@]}" "${generated_columns[@]}"; do
+      pepcli --oauth-token-group "Research Assessor" delete -p "$id" -c "$column"
+    done
+    remaining="$(pepcli --oauth-token-group "Research Assessor" list -p "$id" -C ShortPseudonyms | jq '[.[]?.data // {} | length] | add // 0')"
+    [ "$remaining" = 0 ] || fail "$remaining of participant $id's short pseudonyms were not deleted"
+  done
+  pepcli --oauth-token-group "Access Administrator" ama cgar remove ShortPseudonyms "Research Assessor" write
 fi
 
 ####################
