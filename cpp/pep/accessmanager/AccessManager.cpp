@@ -518,7 +518,8 @@ struct AccessManager::TicketRequestContext {
   TicketRequest2 request;
   Ticket2 ticket;
   SignedTicket2 signedTicket{};
-  std::vector<Backend::Pp> pps;
+  std::vector<Backend::Pp> pps; ///< holds access subjects first and reference subjects last
+  std::size_t ppsReferenceSubjectsBegin{};
   std::unordered_map<std::string, IndexList> columnGroupMap{};
   std::unordered_map<std::string, IndexList> subjectGroupMap{};
   std::vector<std::string> requiredSubjectModes;
@@ -573,6 +574,10 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
     ctx->subjectGroupMap = backend_->fillParticipantGroupMap(ctx->request.participantGroups, ctx->pps);
   }
 
+  // Append the pps of reference subjects after the pps of access subjects
+  ctx->ppsReferenceSubjectsBegin = ctx->pps.size();
+  for (const auto& pp : ctx->request.referenceSubjects) { ctx->pps.emplace_back(pp, true); }
+
   // Check columns and column groups; ticket.columns is unfolded in place
   ctx->columnGroupMap = backend_->unfoldColumnGroupsAndCheckAccess(
       ctx->ticket.userGroup,
@@ -585,7 +590,9 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
 }
 
 rxcpp::observable<TranscryptorResponse> AccessManager::transcryptTicketRequest(std::shared_ptr<TicketRequestContext> ctx) {
-  size_t totalSubjects = ctx->pps.size() + ctx->request.referenceSubjects.size();
+  // Transcrypt both the access subjects and the reference subjects: ctx->pps holds the access
+  // subjects first and the reference subjects last.
+  const auto totalSubjects = ctx->pps.size();
   ctx->tsReqEntries.entries.resize(totalSubjects);
 
   // workerPool_->batched_map() does not tell us which index we're handling,
@@ -630,13 +637,12 @@ rxcpp::observable<TranscryptorResponse> AccessManager::transcryptTicketRequest(s
 std::string AccessManager::identifyTicketRequestSubjects(TicketRequestContext& ctx, TranscryptorResponse resp) {
   PEP_LOG(LogTag, TicketRequestLoggingSeverity) << "Ticket request " << ctx.requestNumber << " received transcryptor response";
   // Now we have local pseudonyms for the original PPs.
-  size_t totalSubjects = ctx.pps.size() + ctx.request.referenceSubjects.size();
-  if (resp.entries.size() != totalSubjects) {
+  if (resp.entries.size() != ctx.pps.size()) {
     throw std::runtime_error("Transcryptor returned wrong number of entries");
   }
 
   { // Split the response: first part for access subjects, second part for reference subjects
-    const auto refSubsBegin = resp.entries.begin() + static_cast<std::ptrdiff_t>(ctx.pps.size());
+    const auto refSubsBegin = resp.entries.begin() + static_cast<std::ptrdiff_t>(ctx.ppsReferenceSubjectsBegin);
     ctx.ticket.accessSubjects = std::vector<LocalPseudonyms>(resp.entries.begin(), refSubsBegin);
     ctx.ticket.referenceSubjects = std::vector<LocalPseudonyms>(refSubsBegin, resp.entries.end());
   }
