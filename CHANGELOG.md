@@ -117,7 +117,7 @@
 
 - core#3004: HTTP requests (e.g. to S3 backends and Castor) are now retried on transient errors (HTTP 408, 429, 500, 502, 503 and 504), honoring `Retry-After` headers.
 
-- Python connector `MailSender`: the SMTP server's TLS certificate is now verified, and connections on port 25 are no longer unencrypted by default. New `email` settings: `smtp_security` (`"tls"`, `"starttls"` or `"none"`; defaults to `"tls"` for port 465 and `"starttls"` otherwise) and `smtp_ca_file`. Configurations that relied on an unencrypted connection on port 25 must now specify `smtp_security: "none"`, which cannot be combined with `smtp_auth_required`.
+- !2608: Python connector `MailSender`: the SMTP server's TLS certificate is now verified, and connections on port 25 are no longer unencrypted by default. New `email` settings: `smtp_security` (`"tls"`, `"starttls"` or `"none"`; defaults to `"tls"` for port 465 and `"starttls"` otherwise) and `smtp_ca_file`. Configurations that relied on an unencrypted connection on port 25 must now specify `smtp_security: "none"`, which cannot be combined with `smtp_auth_required`.
 
 **MANUAL CHANGES REQUIRED**:
 
@@ -125,6 +125,7 @@
 
 - core#298: `PEP_GROUP_REPOSITORY_TOKEN` and `DOCS_GROUP_WRITE_REPOSITORY_TOKEN` CI variables can be removed after all projects are updated. Also update <https://docs.pages.pep.cs.ru.nl/private/ops/main/procedures_maintenance/update-gitlab-pep-group-access-tokens/> to remove the instructions for these tokens.
 
+- !2608: Configurations that relied on an unencrypted connection on port 25 must now specify `smtp_security: "none"`, which cannot be combined with `smtp_auth_required`.
 
 ## Release 1.7
 
