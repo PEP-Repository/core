@@ -28,9 +28,15 @@ struct ListQuery {
   [[nodiscard]] auto operator<=>(const ListQuery&) const = default;
 };
 
+struct ListColumnsQuery {
+  std::optional<bool> includeImplicitlyGranted;
+  std::optional<std::vector<std::string>> requireModes;
+};
+
 struct ColumnGroup {
   std::string name;
   std::vector<std::string> columns;
+  std::vector<std::string> modes;
 
   [[nodiscard]] auto operator<=>(const ColumnGroup&) const = default;
 };
