@@ -1599,7 +1599,7 @@ std::optional<int64_t> AccessManager::Backend::Storage::findUserGroupId(std::str
 }
 
 int64_t AccessManager::Backend::Storage::getUserGroupId(std::string_view name, Timestamp at) const {
-  std::optional<int64_t> userGroupId = findUserGroupId(name);
+  std::optional<int64_t> userGroupId = findUserGroupId(name, at);
   if(!userGroupId) {
     throw Error("Could not find usergroup");
   }

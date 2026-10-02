@@ -1224,6 +1224,25 @@ TEST_F(AccessManagerStorageTest, setGetMetadataUserGroup) {
   }
 }
 
+TEST_F(AccessManagerStorageTest, getMetadataKeysHistoricRenamedUserGroup) {
+  constexpr StructureMetadataType subjectType = StructureMetadataType::UserGroup;
+  const StructureMetadataKey key{"meta_group", "meta_key"};
+
+  const int64_t id = storage->createUserGroup(UserGroup("MyOriginalName", {}));
+  storage->setStructureMetadata(subjectType, "MyOriginalName", key, "meta value");
+  const Timestamp preRename = TimeNow();
+  WaitForNewTimestamp();
+  storage->modifyUserGroup("MyOriginalName", UserGroup("MyNewName", {}));
+
+  EXPECT_EQ(storage->getUserGroupId("MyNewName"), id);
+  EXPECT_EQ(storage->getUserGroupId("MyOriginalName", preRename), id) << "Should find the group by its name at that time";
+  EXPECT_ANY_THROW((void) storage->getUserGroupId("MyOriginalName")) << "Old name should no longer be valid";
+  EXPECT_ANY_THROW((void) storage->getUserGroupId("MyNewName", preRename)) << "New name should not yet be valid";
+
+  EXPECT_EQ(storage->getStructureMetadataKeys(preRename, subjectType, "MyOriginalName"), std::vector{key});
+  EXPECT_EQ(storage->getStructureMetadataKeys(TimeNow(), subjectType, "MyNewName"), std::vector{key});
+}
+
 TEST_F(AccessManagerStorageTest, getMetadataHistoric) {
   const StructureMetadataKey key{"meta_group", "meta_key"};
   const std::string value = "meta value";
