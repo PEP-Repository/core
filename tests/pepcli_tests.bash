@@ -601,6 +601,13 @@ if should_run_test user-removal-and-expiration; then
   # Remove the remaining rule, so no block rules are left behind
   pepcli --oauth-token-group "Access Administrator" token block remove "$future_block_id"
 
+  # An expiration in the past should (also) block tokens issued since then
+  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now-1 hour" +%s)" test-user test-group
+  pepcli --oauth-token "$token" query enrollment && fail "Token issued after an expiration in the past should be blocked"
+  pepcli --oauth-token-group "Access Administrator" user addTo test-user test-group # Restore membership for test_cleanup
+
   test_cleanup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
 fi
 

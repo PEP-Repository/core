@@ -10,6 +10,7 @@
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MapUtils.hpp>
 
+#include <algorithm>
 #include <ranges>
 
 #include <boost/algorithm/string/join.hpp>
@@ -21,6 +22,14 @@ namespace pep {
 namespace {
 
 const std::string LogTag("AccessManager::Backend");
+
+/// Determines the issueDateTime for block entries for a group membership with the specified expiration: tokens issued up
+/// to the expiration should be blocked. If the expiration lies in the past, tokens issued since then (up to now) should
+/// be blocked as well.
+std::optional<Timestamp> BlockTokensIssuedUntil(std::optional<Timestamp> expiration) {
+  if (!expiration) { return std::nullopt; }
+  return std::max(*expiration, TimeNow());
+}
 
 template <typename TValue>
 void EnsureMapContains(std::unordered_map<std::string, TValue>& map, std::span<const std::string> keys) {
@@ -258,7 +267,7 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
     int64_t internalUserId = storage_->getInternalUserId(x.uid);
     // Check beforehand (as well), so that we don't update token blocking if the storage mutation would fail
     storage_->ensureUserCanBeAddedToGroup(internalUserId, x.group);
-    return updateTokenBlocking(internalUserId, x.group, x.expiration, "User added to group with expiration", x.expiration)
+    return updateTokenBlocking(internalUserId, x.group, BlockTokensIssuedUntil(x.expiration), "User added to group with expiration", x.expiration)
     .op(RxSubsequently([storage=storage_, internalUserId, x] {
       storage->addUserToGroup(internalUserId, x.group, x.expiration);
       PEP_LOG(LogTag, Severity::Info) << "Added user to user group " << Logging::Escape(x.group);
@@ -279,7 +288,7 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
   .concat(RxIterate(request.updateExpiration).concat_map([this](const UpdateExpiration& x)-> rxcpp::observable<FakeVoid> {
     int64_t internalUserId = storage_->getInternalUserId(x.uid);
     storage_->ensureUserInGroup(internalUserId, x.group); // Check beforehand (as well), see above
-    return updateTokenBlocking(internalUserId, x.group, x.expiration, "User group membership expiration updated", x.expiration)
+    return updateTokenBlocking(internalUserId, x.group, BlockTokensIssuedUntil(x.expiration), "User group membership expiration updated", x.expiration)
     .op(RxSubsequently([storage=storage_, internalUserId, x] {
       storage->setExpiration(internalUserId, x.group, x.expiration);
       PEP_LOG(LogTag, Severity::Info) << "Updated expiration for user in group " << Logging::Escape(x.group);
