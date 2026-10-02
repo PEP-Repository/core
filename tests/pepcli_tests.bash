@@ -571,6 +571,9 @@ if should_run_test user-removal-and-expiration; then
   pepcli --oauth-token "$newToken" query enrollment || fail "New token, requested after the issueDateTime of the block entry, should be valid"
 
   pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+10 years" +%s)" test-user test-group
+  # A failing mutation should not change token blocking
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$($DATE_CMD -d "now+1 second" +%s)" test-user test-group \
+    && fail "Shouldn't be able to add a user to a group they are already in"
   trace sleep "${original_expiration_seconds}s"
   pepcli --oauth-token "$newToken" query enrollment || fail "Token should still be valid after original expiration has passed, but updated expiration has not yet passed"
 

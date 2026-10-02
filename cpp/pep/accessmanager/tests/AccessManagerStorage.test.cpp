@@ -554,6 +554,29 @@ TEST_F(AccessManagerStorageTest, userInGroup_can_add_and_remove_user_from_group)
   EXPECT_TRUE(storage->userInGroup("testuser", "TestGroup"));
 }
 
+TEST_F(AccessManagerStorageTest, ensureUserCanBeAddedToGroup_and_ensureUserInGroup) {
+  int64_t userId = storage->createUser("testuser");
+  int64_t groupId = storage->createUserGroup(UserGroup("TestGroup", {}));
+
+  PEP_EXPECT_THROWS_MESSAGE(storage->ensureUserCanBeAddedToGroup(userId, "NoGroup"), pep::Error, HasSubstr("No such group"));
+  EXPECT_ANY_THROW(storage->ensureUserInGroup(userId, "NoGroup"));
+
+  EXPECT_EQ(storage->ensureUserCanBeAddedToGroup(userId, "TestGroup"), groupId);
+  PEP_EXPECT_THROWS_MESSAGE(storage->ensureUserInGroup(userId, "TestGroup"), pep::Error, HasSubstr("not part of group"));
+  PEP_EXPECT_THROWS_MESSAGE(storage->setExpiration(userId, "TestGroup", {}), pep::Error, HasSubstr("not part of group"));
+  PEP_EXPECT_THROWS_MESSAGE(storage->removeUserFromGroup(userId, "TestGroup"), pep::Error, HasSubstr("not part of group"));
+
+  storage->addUserToGroup(userId, "TestGroup", {});
+  EXPECT_EQ(storage->ensureUserInGroup(userId, "TestGroup"), groupId);
+  PEP_EXPECT_THROWS_MESSAGE(storage->ensureUserCanBeAddedToGroup(userId, "TestGroup"), pep::Error, HasSubstr("already in group"));
+  PEP_EXPECT_THROWS_MESSAGE(storage->addUserToGroup(userId, "TestGroup", {}), pep::Error, HasSubstr("already in group"));
+
+  // Expired membership counts as not being in the group
+  storage->setExpiration(userId, "TestGroup", TimeNow() - 1h);
+  EXPECT_EQ(storage->ensureUserCanBeAddedToGroup(userId, "TestGroup"), groupId);
+  EXPECT_ANY_THROW(storage->ensureUserInGroup(userId, "TestGroup"));
+}
+
 TEST_F(AccessManagerStorageTest, userGroupIsEmpty) {
   const std::string group = "MyGroup";
   storage->createUserGroup(UserGroup(group, {}));

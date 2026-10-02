@@ -256,6 +256,8 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
   }
   return RxIterate(request.addUserToGroup).concat_map([this](const AddUserToGroup& x) -> rxcpp::observable<FakeVoid> {
     int64_t internalUserId = storage_->getInternalUserId(x.uid);
+    // Check beforehand (as well), so that we don't update token blocking if the storage mutation would fail
+    storage_->ensureUserCanBeAddedToGroup(internalUserId, x.group);
     return updateTokenBlocking(internalUserId, x.group, x.expiration, "User added to group with expiration", x.expiration)
     .op(RxSubsequently([storage=storage_, internalUserId, x] {
       storage->addUserToGroup(internalUserId, x.group, x.expiration);
@@ -268,6 +270,7 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
       storage->removeUserFromGroup(internalUserId, x.group);
       PEP_LOG(LogTag, Severity::Info) << "Removed user from user group " << Logging::Escape(x.group);
     };
+    storage_->ensureUserInGroup(internalUserId, x.group); // Check beforehand (as well), see above
     auto tokenBlocking = x.blockTokens
       ? updateTokenBlocking(internalUserId, x.group, TimeNow(), "User removed from group", {})
       : rxcpp::rxs::just(FakeVoid()).as_dynamic();
@@ -275,6 +278,7 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
   }))
   .concat(RxIterate(request.updateExpiration).concat_map([this](const UpdateExpiration& x)-> rxcpp::observable<FakeVoid> {
     int64_t internalUserId = storage_->getInternalUserId(x.uid);
+    storage_->ensureUserInGroup(internalUserId, x.group); // Check beforehand (as well), see above
     return updateTokenBlocking(internalUserId, x.group, x.expiration, "User group membership expiration updated", x.expiration)
     .op(RxSubsequently([storage=storage_, internalUserId, x] {
       storage->setExpiration(internalUserId, x.group, x.expiration);
