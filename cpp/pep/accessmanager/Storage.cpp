@@ -1645,8 +1645,7 @@ std::optional<std::chrono::seconds> AccessManager::Backend::Storage::getMaxAuthV
   using pep::database::having;
   auto result = RangeToOptional(
     implementor_->getCurrentRecords(c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
-      having(c(&UserGroupRecord::name) == group
-        && (is_null(&UserGroupUserRecord::expirationTimestamp) || c(&UserGroupUserRecord::expirationTimestamp) >= TicksSinceEpoch<milliseconds>(at))),
+      having(c(&UserGroupRecord::name) == group),
       &UserGroupRecord::maxAuthValiditySeconds)
     | views::transform(to_optional_seconds)
   );
