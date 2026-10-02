@@ -643,26 +643,6 @@ TEST_F(AccessManagerStorageTest, findUserGroupId_with_changed_validity) {
   EXPECT_EQ(storage->findUserGroupId(group2.name), group2_id);
 }
 
-TEST_F(AccessManagerStorageTest, getMaxAuthValidity) {
-  storage->createUserGroup(UserGroup("MyGroupWithout", {}));
-  storage->createUserGroup(UserGroup("MyGroupWith", 42s));
-  EXPECT_EQ(storage->getMaxAuthValidity("MyGroupWithout"), std::nullopt);
-  EXPECT_EQ(storage->getMaxAuthValidity("MyGroupWith"), 42s);
-  EXPECT_ANY_THROW((void) storage->getMaxAuthValidity("NotExisting"));
-
-  // Should not be affected by (expiring) group memberships
-  int64_t user = storage->createUser("MyUser");
-  storage->addUserToGroup(user, "MyGroupWith", TimeNow() - 1h);
-  EXPECT_EQ(storage->getMaxAuthValidity("MyGroupWith"), 42s);
-  EXPECT_EQ(storage->getMaxAuthValidity("MyGroupWithout"), std::nullopt);
-
-  auto beforeModification = TimeNow();
-  std::this_thread::sleep_for(2ms); // Ensure that the modification gets a later timestamp
-  storage->modifyUserGroup(UserGroup("MyGroupWith", 43s));
-  EXPECT_EQ(storage->getMaxAuthValidity("MyGroupWith"), 43s);
-  EXPECT_EQ(storage->getMaxAuthValidity("MyGroupWith", beforeModification), 42s);
-}
-
 TEST_F(AccessManagerStorageTest, changing_usergroup_name_invalidates_old_name) {
   std::string originalName = "MyGroup";
   std::string alternativeName = "MyGroupAlternative";

@@ -1641,22 +1641,6 @@ bool AccessManager::Backend::Storage::hasUserGroup(std::string_view name) const 
   return implementor_->currentRecordExists<UserGroupRecord>(true, having(c(&UserGroupRecord::name) == name));
 }
 
-std::optional<std::chrono::seconds> AccessManager::Backend::Storage::getMaxAuthValidity(const std::string& group, Timestamp at) const {
-  using pep::database::having;
-  auto result = RangeToOptional(
-    implementor_->getCurrentRecords(c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
-      having(c(&UserGroupRecord::name) == group),
-      &UserGroupRecord::maxAuthValiditySeconds)
-    | views::transform(to_optional_seconds)
-  );
-  if (!result) {
-    std::ostringstream msg;
-    msg << "Could not find group " << Logging::Escape(group);
-    throw Error(msg.str());
-  }
-  return *result;
-}
-
 bool AccessManager::Backend::Storage::userInGroup(std::string_view uid, std::string_view group) const {
   int64_t internalUserId = getInternalUserId(uid);
   return userInGroup(internalUserId, group);

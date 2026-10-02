@@ -227,7 +227,6 @@ public:
   std::optional<int64_t> findUserGroupId(std::string_view name, Timestamp at = TimeNow()) const;
   int64_t getUserGroupId(std::string_view name, Timestamp at = TimeNow()) const;
   std::optional<std::string> getUserGroupName(int64_t userGroupId, Timestamp at) const;
-  std::optional<std::chrono::seconds> getMaxAuthValidity(const std::string& group, Timestamp at = TimeNow()) const;
 
   /* Check user group membership */
   std::vector<UserGroup> getUserGroupsForUser(int64_t internalUserId, Timestamp at = TimeNow()) const;
