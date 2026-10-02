@@ -81,6 +81,22 @@ struct StoreResult {
   std::string id;
 };
 
+struct StructureMetadataQuery {
+  std::string type;
+  std::optional<std::vector<std::string>> subjects;
+  std::optional<std::vector<std::string>> keys;
+};
+
+// Not named StructureMetadataEntry, which pep:: already has
+struct StructureMetadataItem {
+  std::string subject;
+  std::string metadataGroup;
+  std::string subkey;
+  std::string value;
+
+  [[nodiscard]] auto operator<=>(const StructureMetadataItem&) const = default;
+};
+
 struct ParticipantPersonalia {
   std::string firstName;
   std::string middleName;

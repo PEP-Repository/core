@@ -2,6 +2,7 @@
 #include <pep/async/ObservableAwaiter.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxToVector.hpp>
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/client/Client.hpp>
@@ -47,6 +48,38 @@ using namespace std::ranges;
 
 namespace {
 const std::string LogTag = "Weblib";
+
+// Same names and key syntax as pepcli structure-metadata (cli/StructureMetadata.cpp)
+StructureMetadataType ParseStructureMetadataType(const std::string& type) {
+  static const std::map<std::string, StructureMetadataType> mapping{
+    {"column", StructureMetadataType::Column},
+    {"column-group", StructureMetadataType::ColumnGroup},
+    {"participant-group", StructureMetadataType::ParticipantGroup},
+    {"user", StructureMetadataType::User},
+    {"user-group", StructureMetadataType::UserGroup},
+  };
+  if (auto it = mapping.find(type); it != mapping.end()) {
+    return it->second;
+  }
+  throw std::invalid_argument("Unknown structure metadata type: " + type);
+}
+
+/// Parses "metadata_group:subkey", or "metadata_group:*" for all subkeys of the group
+StructureMetadataKey ParseStructureMetadataKey(std::string_view key) {
+  const auto separatorPos = key.find(':');
+  
+  auto group = key.substr(0, separatorPos);
+  auto subkey = separatorPos == std::string_view::npos ? std::string_view{} : key.substr(separatorPos + 1);
+  
+  if (separatorPos == std::string_view::npos || group.empty() || group == "*" || subkey.empty()) {
+    throw std::invalid_argument("Structure metadata key should be of the form 'metadata_group:subkey' or 'metadata_group:*'");
+  }
+
+  return {
+    .metadataGroup = std::string(group),
+    .subkey = subkey == "*" ? std::string() : std::string(subkey),
+  };
+}
 
 class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedConstructor<Weblib>, public boost::noncopyable {
   friend class SharedConstructor;
@@ -289,6 +322,31 @@ public:
         });
   }
 
+  /// Metadata on columns, column groups, participant groups, users or user groups
+  /// \returns \c Promise<StructureMetadataItem[]>
+  WeblibApiPromise listStructureMetadata(StructureMetadataQuery query) {
+    auto type = ParseStructureMetadataType(query.type);
+    auto keys = query.keys.value_or(std::vector<std::string>{})
+        | views::transform(ParseStructureMetadataKey)
+        | to<std::vector>();
+
+    co_return co_await onIoThread()
+        .flat_map([type, subjects = std::move(query.subjects).value_or(std::vector<std::string>{}), keys = std::move(keys)](
+            const std::shared_ptr<Weblib>& self) {
+          return self->client_->getAccessManagerProxy()->getStructureMetadata(type, subjects, keys);
+        })
+        .map([](const StructureMetadataEntry& entry) {
+          return StructureMetadataItem{
+            .subject = entry.subjectKey.subject,
+            .metadataGroup = entry.subjectKey.key.metadataGroup,
+            .subkey = entry.subjectKey.key.subkey,
+            .value = entry.value,
+          };
+        })
+        .op(RxToVector())
+        .map([](const std::shared_ptr<std::vector<StructureMetadataItem>>& items) { return *items; });
+  }
+
   /// \returns \c ReadableStream<CellEntry>
   auto list(ListQuery query) {
     return CreateReadableStreamOnMain(
@@ -477,6 +535,7 @@ EMSCRIPTEN_BINDINGS(weblib) {
       .function("internalGenerateToken", &Weblib::internalGenerateToken)
       .function("listColumns", &Weblib::listColumns)
       .function("listSubjectGroups", &Weblib::listSubjectGroups)
+      .function("listStructureMetadata", &Weblib::listStructureMetadata)
       .function("registerParticipant", &Weblib::registerParticipant)
       .function("store", &Weblib::store)
       .function("list", &Weblib::list)
