@@ -1,6 +1,5 @@
 # Common files
 add_library(${PROJECT_NAME}WebCommonlib
-    BlobMessageBatches.cpp BlobMessageBatches.hpp
     Emscripten_fwd.hpp
     EmscriptenMapBinding.hpp
     EmscriptenValPtr.cpp EmscriptenValPtr.hpp
@@ -9,6 +8,7 @@ add_library(${PROJECT_NAME}WebCommonlib
     ObservableStream.cpp ObservableStream.hpp
     ObservableStreamHelpers.cpp ObservableStreamHelpers.hpp
     OnEmscriptenThread.cpp OnEmscriptenThread.hpp
+    ReadableStreamMessageBatches.cpp ReadableStreamMessageBatches.hpp
     SetTimeout.cpp SetTimeout.hpp
     ThreadPrintable.cpp ThreadPrintable.hpp
     WeblibApiPromise.cpp WeblibApiPromise.hpp
