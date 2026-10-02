@@ -131,9 +131,9 @@ public:
   class Cell {
   private:
     Participant& participant_;
-    const std::string& columnName_; // reference to unique string in FileStore::columnNames_
+    const std::string& columnName_; ///< reference to unique string in FileStore::columnNames_
     CellVersions versions_;
-    std::shared_ptr<Entry> latest_;
+    std::shared_ptr<Entry> latest_; ///< May be nullptr, e.g. when a store is canceled
 
   public:
     Cell(Participant& participant, const std::string& columnName, bool load = false);
