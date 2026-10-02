@@ -124,6 +124,14 @@ if should_run_test basic; then
   pepcli --oauth-token-group "Research Assessor" store -p "$TEST_PARTICIPANT" -c Visit1.MRI.Func -i "$SYMLINK_TEST_DATA" &&
       fail "Storing a directory structure with symlinks withOUT the -resolve-symlinks flag unexpectedly succeeded."
 
+  # Pulling data with an invalid file extension (that may have been stored by another client) should fail gracefully
+  pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -d data-with-invalid-extension \
+    --metadataxentry "$(pepcli xentry --name fileExtension --payload "/invalid")"
+  pull_output="$(pepcli pull --output-directory "$DEST_DIR/pulled-invalid-extension" -p "$TEST_PARTICIPANT" -c DeviceHistory 2>&1)" &&
+      fail "Pulling data with an invalid file extension unexpectedly succeeded"
+  grep -qF "Invalid file name" <<< "$pull_output" || fail "Pulling data with an invalid file extension did not fail gracefully: $pull_output"
+  execute . rm -rf "$DEST_DIR/pulled-invalid-extension"
+
   RANDOM_DATA_FILE=$(make_non_inline_file "random-data.bin")
   readonly RANDOM_DATA_FILE
   pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -i "$RANDOM_DATA_FILE"
