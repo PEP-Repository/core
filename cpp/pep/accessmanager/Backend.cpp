@@ -264,11 +264,14 @@ rxcpp::observable<UserMutationResponse> AccessManager::Backend::performUserMutat
   })
   .concat(RxIterate(request.removeUserFromGroup).concat_map([this](const RemoveUserFromGroup& x)-> rxcpp::observable<FakeVoid> {
     int64_t internalUserId = storage_->getInternalUserId(x.uid);
-    return updateTokenBlocking(internalUserId, x.group, TimeNow(), "User removed from group", {})
-    .op(RxSubsequently([storage=storage_, internalUserId, x] {
+    auto removeFromStorage = [storage=storage_, internalUserId, x] {
       storage->removeUserFromGroup(internalUserId, x.group);
-    PEP_LOG(LogTag, Severity::Info) << "Removed user from user group " << Logging::Escape(x.group);
-    }));
+      PEP_LOG(LogTag, Severity::Info) << "Removed user from user group " << Logging::Escape(x.group);
+    };
+    auto tokenBlocking = x.blockTokens
+      ? updateTokenBlocking(internalUserId, x.group, TimeNow(), "User removed from group", {})
+      : rxcpp::rxs::just(FakeVoid()).as_dynamic();
+    return tokenBlocking.op(RxSubsequently(std::move(removeFromStorage)));
   }))
   .concat(RxIterate(request.updateExpiration).concat_map([this](const UpdateExpiration& x)-> rxcpp::observable<FakeVoid> {
     int64_t internalUserId = storage_->getInternalUserId(x.uid);

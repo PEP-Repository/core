@@ -413,6 +413,12 @@ if should_run_test token-block; then
   # Attempt to redo the query with the token that is no longer blocked
   pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access
 
+  # Removing a user from a user group with --dontBlockTokens should not block tokens
+  pepcli --oauth-token-group "Access Administrator" user removeFrom --dontBlockTokens userWithFreshToken integrationGroup
+  pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access ||
+      fail "Removing a user from a user group with --dontBlockTokens should not block tokens"
+  pepcli --oauth-token-group "Access Administrator" user addTo userWithFreshToken integrationGroup
+
   # Removing a user from a user group should block tokens
   pepcli --oauth-token-group "Access Administrator" user removeFrom userWithFreshToken integrationGroup
 
