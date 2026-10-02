@@ -117,6 +117,8 @@
 
 - core#3004: HTTP requests (e.g. to S3 backends and Castor) are now retried on transient errors (HTTP 408, 429, 500, 502, 503 and 504), honoring `Retry-After` headers.
 
+- Python connector `MailSender`: the SMTP server's TLS certificate is now verified, and connections on port 25 are no longer unencrypted by default. New `email` settings: `smtp_security` (`"tls"`, `"starttls"` or `"none"`; defaults to `"tls"` for port 465 and `"starttls"` otherwise) and `smtp_ca_file`. Configurations that relied on an unencrypted connection on port 25 must now specify `smtp_security: "none"`, which cannot be combined with `smtp_auth_required`.
+
 **MANUAL CHANGES REQUIRED**:
 
 - core#2961: The `StorageFacility.json` config needs to be changed to the new format (see changes above). Extract `EndPoint`, `Credentials`, `CaCertificateFile`, `UseHttps`, and `Connections` (or the subset that is used) into an object under a new `Hosts` key and give it an ID. Then change all buckets into objects with `Name` and `HostId` properties, the latter of which references the host ID.

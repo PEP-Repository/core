@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import smtplib
+import ssl
 import hashlib
 import getpass
 import os
@@ -47,6 +48,14 @@ class EmailConfig(BaseModel):
     sender: EmailStr
     smtp_server: str
     smtp_port: int = Field(..., ge=1, le=65535)
+    # How the connection to the SMTP server is secured:
+    # - "tls": implicit TLS (usually port 465)
+    # - "starttls": upgrade a plaintext connection using STARTTLS (usually port 587), failing if the server doesn't support it
+    # - "none": don't encrypt the connection at all, e.g. for a trusted relay. Cannot be combined with smtp_auth_required.
+    # Defaults to "tls" for port 465, and to "starttls" otherwise. The server's certificate is always verified.
+    smtp_security: Literal["tls", "starttls", "none"] | None = None
+    # File with the CA certificate(s) to verify the SMTP server's certificate with, instead of the system's default CAs
+    smtp_ca_file: FilePath | None = None
     reply_to: EmailStr | None = None
     smtp_username: str | None = None
     smtp_password: str | None = None
@@ -81,6 +90,19 @@ class EmailConfig(BaseModel):
                     raise ValueError(f"Error reading credentials file {creds_file}: {str(e)}")
 
         return data
+
+    @model_validator(mode='after')
+    def validate_smtp_security(self):
+        """Don't allow credentials to be sent over an unencrypted connection."""
+        if self.smtp_auth_required and self.effective_smtp_security() == "none":
+            raise ValueError("SMTP authentication requires an encrypted connection: smtp_security cannot be 'none'")
+        return self
+
+    def effective_smtp_security(self) -> Literal["tls", "starttls", "none"]:
+        """The configured smtp_security, or its default for the configured port."""
+        if self.smtp_security is not None:
+            return self.smtp_security
+        return "tls" if self.smtp_port == 465 else "starttls"
 
 
 class FooterImage(BaseModel):
@@ -483,6 +505,31 @@ class MailSender(Connector):
                     level=logging.ERROR, tag=self.LOG_TAG)
             raise RuntimeError("Unexpected state in should_send_email")
 
+    @staticmethod
+    def _connect_smtp(email_config: EmailConfig) -> smtplib.SMTP:
+        """
+        Connect to the SMTP server, securing the connection as configured
+
+        Args:
+            email_config: EmailConfig instance with SMTP settings
+        """
+        security = email_config.effective_smtp_security()
+        if security == "none":
+            return smtplib.SMTP(email_config.smtp_server, email_config.smtp_port, timeout=30)
+
+        # Unlike smtplib's default, this verifies the server's certificate and host name
+        context = ssl.create_default_context(cafile=email_config.smtp_ca_file)
+        if security == "tls":
+            return smtplib.SMTP_SSL(email_config.smtp_server, email_config.smtp_port, timeout=30, context=context)
+
+        server = smtplib.SMTP(email_config.smtp_server, email_config.smtp_port, timeout=30)
+        try:
+            server.starttls(context=context) # Raises if the server doesn't support STARTTLS
+        except BaseException:
+            server.close()
+            raise
+        return server
+
     def _send_email_with_retry(self, message, email_config: EmailConfig):
         """
         Send an email message with retry logic for transient errors
@@ -494,12 +541,7 @@ class MailSender(Connector):
         last_exception = None
         for attempt in range(email_config.max_retries + 1):
             try:
-                with smtplib.SMTP(email_config.smtp_server, email_config.smtp_port, timeout=30) as server:
-
-                    # port 587 is used for TLS, port 25 is used for non-TLS
-                    if email_config.smtp_port != 25:
-                        server.starttls()
-
+                with self._connect_smtp(email_config) as server:
                     # Only authenticate if required
                     if email_config.smtp_auth_required:
                         if not (email_config.smtp_username and email_config.smtp_password):
