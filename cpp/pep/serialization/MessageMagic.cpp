@@ -4,6 +4,8 @@
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Raw.hpp>
 
+#include <cassert>
+
 #include <boost/bimap.hpp>
 #include <xxhash.h>
 
@@ -236,11 +238,14 @@ Magics PredefinedMagics() {
     MakeMagicEntry("X509CertificateSigningRequest"),
   };
 
-  return Magics(entries.begin(), entries.end());
+  Magics result(entries.begin(), entries.end());
+  assert(result.size() == entries.size() && "Duplicate entry or message magic collision in 'PredefinedMagics'");
+  return result;
 }
 
-Magics& RegisteredMagics() {
-  static auto result = PredefinedMagics();
+/// \remark Never modified after initialization, so it can safely be accessed from multiple threads
+const Magics& RegisteredMagics() {
+  static const auto result = PredefinedMagics();
   return result;
 }
 
@@ -278,7 +283,7 @@ MessageMagic PopMessageMagic(std::string& str) {
 }
 
 MessageMagic BasicMessageMagician::EnsureRegistered(const std::string& crossPlatformName) {
-  auto& magics = RegisteredMagics();
+  const auto& magics = RegisteredMagics();
   auto pos = magics.right.find(crossPlatformName);
   if (pos != magics.right.end()) [[likely]] {
     return pos->second;
@@ -289,11 +294,9 @@ MessageMagic BasicMessageMagician::EnsureRegistered(const std::string& crossPlat
   PEP_LOG("BasicMessageMagician", Severity::Warning) << "Missing predefined message magic for the " << crossPlatformName << " type";
   assert(false && "Add this crossPlatformName to the 'PredefinedMagics' function");
 
-  // Fallback in case this crossPlatformName still wasn't included in the PredefinedMagics
-  auto entry = MakeMagicEntry(crossPlatformName);
-  auto result = entry.left;
-  magics.insert(entry);
-  return result;
+  // Fallback in case this crossPlatformName still wasn't included in the PredefinedMagics. We don't register it, so
+  // DescribeMessageMagic won't know about it, but we also don't need to synchronize access to RegisteredMagics.
+  return CalculateMessageMagic(crossPlatformName);
 }
 
 std::string_view BasicMessageMagician::SkipMessageMagic(std::string_view szMessage, MessageMagic requiredMagic) {
