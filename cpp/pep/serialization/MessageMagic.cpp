@@ -289,14 +289,17 @@ MessageMagic BasicMessageMagician::EnsureRegistered(const std::string& crossPlat
     return pos->second;
   }
 
+  MessageMagic magic = CalculateMessageMagic(crossPlatformName);
+
   // Remind developer to add newly introduced message types to the list of PredefinedMagics (above).
   // Log before asserting so that output contains the name before flunking the process.
-  PEP_LOG("BasicMessageMagician", Severity::Warning) << "Missing predefined message magic for the " << crossPlatformName << " type";
+  PEP_LOG("BasicMessageMagician", Severity::Warning)
+    << "Missing predefined message magic for the " << crossPlatformName << " type: " << std::to_string(magic);
   assert(false && "Add this crossPlatformName to the 'PredefinedMagics' function");
 
   // Fallback in case this crossPlatformName still wasn't included in the PredefinedMagics. We don't register it, so
   // DescribeMessageMagic won't know about it, but we also don't need to synchronize access to RegisteredMagics.
-  return CalculateMessageMagic(crossPlatformName);
+  return magic;
 }
 
 std::string_view BasicMessageMagician::SkipMessageMagic(std::string_view szMessage, MessageMagic requiredMagic) {
