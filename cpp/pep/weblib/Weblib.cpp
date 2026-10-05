@@ -252,10 +252,13 @@ public:
   }
 
   /// \returns \c Promise<ColumnGroup[]>
-  WeblibApiPromise listColumns() {
+  WeblibApiPromise listColumns(ListColumnsQuery query) {
     co_return co_await onIoThread()
-        .flat_map([](const std::shared_ptr<Weblib>& self) {
-          return self->client_->getAccessManagerProxy()->getAccessibleColumns(true, { "read" });
+        .flat_map([
+          includeImplicitlyGranted = query.includeImplicitlyGranted.value_or(true),
+          requireModes = std::move(query.requireModes).value_or(std::vector<std::string>{"read"})
+         ](const std::shared_ptr<Weblib>& self) {
+          return self->client_->getAccessManagerProxy()->getAccessibleColumns(includeImplicitlyGranted, requireModes);
         })
         .map([](const ColumnAccess& access) {
           return access.columnGroups
@@ -264,6 +267,7 @@ public:
               return ColumnGroup{
                   .name = name,
                   .columns = to<std::vector>(SafeIndexInto(columnGroup.columns.indices, access.columns)),
+                  .modes = columnGroup.modes,
               };
             })
             | to<std::vector>();
