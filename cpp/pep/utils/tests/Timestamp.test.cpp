@@ -227,7 +227,14 @@ TEST(Timestamp, LocalTimezone) {
   }
 #endif
 }
-#endif
+
+#else // (!)__EMSCRIPTEN__
+
+TEST(Timestamp, LocalTimezone) {
+  GTEST_SKIP() << "Emscripten takes the local time zone from JavaScript and ignores TZ";
+}
+
+#endif // !__EMSCRIPTEN__
 
 TEST(Timestamp, FromYyyyMmDd_TimezoneIndependentBehaviour) {
   using Timezone = pep::TimeZone;
