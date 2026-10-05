@@ -243,6 +243,9 @@ std::shared_ptr<FileStore::Entry> FileStore::Cell::lookup(Timestamp validAt) {
 }
 
 std::set<std::string> FileStore::Cell::pagePaths() const {
+  if (latest_ == nullptr) { // E.g. if a store was cancelled
+    return {};
+  }
   return latest_->pagePaths();
 }
 

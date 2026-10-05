@@ -1599,7 +1599,7 @@ std::optional<int64_t> AccessManager::Backend::Storage::findUserGroupId(std::str
 }
 
 int64_t AccessManager::Backend::Storage::getUserGroupId(std::string_view name, Timestamp at) const {
-  std::optional<int64_t> userGroupId = findUserGroupId(name);
+  std::optional<int64_t> userGroupId = findUserGroupId(name, at);
   if(!userGroupId) {
     throw Error("Could not find usergroup");
   }
@@ -1639,23 +1639,6 @@ std::vector<UserGroup> AccessManager::Backend::Storage::getUserGroupsForUser(int
 bool AccessManager::Backend::Storage::hasUserGroup(std::string_view name) const {
   using pep::database::having;
   return implementor_->currentRecordExists<UserGroupRecord>(true, having(c(&UserGroupRecord::name) == name));
-}
-
-std::optional<std::chrono::seconds> AccessManager::Backend::Storage::getMaxAuthValidity(const std::string& group, Timestamp at) const {
-  using pep::database::having;
-  auto result = RangeToOptional(
-    implementor_->getCurrentRecords(c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
-      having(c(&UserGroupRecord::name) == group
-        && (is_null(&UserGroupUserRecord::expirationTimestamp) || c(&UserGroupUserRecord::expirationTimestamp) >= TicksSinceEpoch<milliseconds>(at))),
-      &UserGroupRecord::maxAuthValiditySeconds)
-    | views::transform(to_optional_seconds)
-  );
-  if (!result) {
-    std::ostringstream msg;
-    msg << "Could not find group " << Logging::Escape(group);
-    throw Error(msg.str());
-  }
-  return *result;
 }
 
 bool AccessManager::Backend::Storage::userInGroup(std::string_view uid, std::string_view group) const {
@@ -1737,20 +1720,34 @@ void AccessManager::Backend::Storage::addUserToGroup(std::string_view uid, std::
   addUserToGroup(internalUserId, std::move(group), expiration);
 }
 
-void AccessManager::Backend::Storage::addUserToGroup(int64_t internalUserId, std::string group, std::optional<Timestamp> expiration) {
+int64_t AccessManager::Backend::Storage::ensureUserCanBeAddedToGroup(int64_t internalUserId, std::string_view group) const {
   std::ostringstream msg;
-  if (userInGroup(internalUserId, group)) {
-    msg << "User is already in group: " << Logging::Escape(group);
-    throw Error(msg.str());
-  }
-
   std::optional<int64_t> userGroupId = findUserGroupId(group);
   if (!userGroupId) {
-    msg << "No such group: " << Logging::Escape(group);
+    msg << "No such group: " << Logging::Escape(std::string(group));
     throw Error(msg.str());
   }
 
-  implementor_->raw.insert(UserGroupUserRecord(internalUserId, *userGroupId, expiration));
+  if (userInGroup(internalUserId, *userGroupId)) {
+    msg << "User is already in group: " << Logging::Escape(std::string(group));
+    throw Error(msg.str());
+  }
+  return *userGroupId;
+}
+
+int64_t AccessManager::Backend::Storage::ensureUserInGroup(int64_t internalUserId, std::string_view group) const {
+  int64_t userGroupId = getUserGroupId(group);
+  if (!userInGroup(internalUserId, userGroupId)) {
+    std::ostringstream msg;
+    msg << "This user is not part of group " << Logging::Escape(std::string(group));
+    throw Error(msg.str());
+  }
+  return userGroupId;
+}
+
+void AccessManager::Backend::Storage::addUserToGroup(int64_t internalUserId, std::string group, std::optional<Timestamp> expiration) {
+  int64_t userGroupId = ensureUserCanBeAddedToGroup(internalUserId, group);
+  implementor_->raw.insert(UserGroupUserRecord(internalUserId, userGroupId, expiration));
 }
 
 void AccessManager::Backend::Storage::removeUserFromGroup(std::string_view uid, std::string group) {
@@ -1759,13 +1756,7 @@ void AccessManager::Backend::Storage::removeUserFromGroup(std::string_view uid, 
 }
 
 void AccessManager::Backend::Storage::removeUserFromGroup(int64_t internalUserId, std::string group) {
-  int64_t userGroupId = getUserGroupId(group);
-  if (!userInGroup(internalUserId, userGroupId)) {
-    std::ostringstream msg;
-    msg << "This user is not part of group " << Logging::Escape(group);
-    throw Error(msg.str());
-  }
-
+  int64_t userGroupId = ensureUserInGroup(internalUserId, group);
   implementor_->raw.insert(UserGroupUserRecord(internalUserId, userGroupId, {}, true));
 }
 
@@ -2106,12 +2097,7 @@ std::optional<Timestamp> AccessManager::Backend::Storage::getExpiration(int64_t 
 }
 
 void AccessManager::Backend::Storage::setExpiration(int64_t internalUserId, const std::string& group, std::optional<Timestamp> expiration) {
-  int64_t userGroupId = getUserGroupId(group);
-  if (!userInGroup(internalUserId, userGroupId)) {
-    std::ostringstream msg;
-    msg << "This user is not part of group " << Logging::Escape(group);
-    throw Error(msg.str());
-  }
+  int64_t userGroupId = ensureUserInGroup(internalUserId, group);
   implementor_->raw.insert(UserGroupUserRecord(internalUserId, userGroupId, expiration));
 }
 }

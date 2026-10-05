@@ -87,7 +87,9 @@ std::shared_ptr<networking::HttpClient> CreateHttpClient(boost::asio::io_context
   parameters.caCertFilepath(std::move(caCertFilepath));
 
   networking::HttpClient::RetryParameters retry;
-  retry.maxDelay = 15min; // Castor may throttle us for a while, and pulling from Castor isn't time critical
+  // Castor may throttle us for a while, and pulling from Castor isn't time critical
+  retry.maxRetries = 20;
+  retry.maxDelay = 15min;
   retry.delayCallback = &GetCastorRetryDelay;
   parameters.retryParameters(std::move(retry));
 

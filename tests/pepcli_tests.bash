@@ -124,6 +124,14 @@ if should_run_test basic; then
   pepcli --oauth-token-group "Research Assessor" store -p "$TEST_PARTICIPANT" -c Visit1.MRI.Func -i "$SYMLINK_TEST_DATA" &&
       fail "Storing a directory structure with symlinks withOUT the -resolve-symlinks flag unexpectedly succeeded."
 
+  # Pulling data with an invalid file extension (that may have been stored by another client) should fail gracefully
+  pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -d data-with-invalid-extension \
+    --metadataxentry "$(pepcli xentry --name fileExtension --payload "/invalid")"
+  pull_output="$(pepcli pull --output-directory "$DEST_DIR/pulled-invalid-extension" -p "$TEST_PARTICIPANT" -c DeviceHistory 2>&1)" &&
+      fail "Pulling data with an invalid file extension unexpectedly succeeded"
+  grep -qF "Invalid file name" <<< "$pull_output" || fail "Pulling data with an invalid file extension did not fail gracefully: $pull_output"
+  execute . rm -rf "$DEST_DIR/pulled-invalid-extension" "$DEST_DIR/pulled-invalid-extension-pending" # The failed pull leaves the latter behind
+
   RANDOM_DATA_FILE=$(make_non_inline_file "random-data.bin")
   readonly RANDOM_DATA_FILE
   pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -i "$RANDOM_DATA_FILE"
@@ -413,6 +421,12 @@ if should_run_test token-block; then
   # Attempt to redo the query with the token that is no longer blocked
   pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access
 
+  # Removing a user from a user group with --dontBlockTokens should not block tokens
+  pepcli --oauth-token-group "Access Administrator" user removeFrom --dontBlockTokens userWithFreshToken integrationGroup
+  pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access ||
+      fail "Removing a user from a user group with --dontBlockTokens should not block tokens"
+  pepcli --oauth-token-group "Access Administrator" user addTo userWithFreshToken integrationGroup
+
   # Removing a user from a user group should block tokens
   pepcli --oauth-token-group "Access Administrator" user removeFrom userWithFreshToken integrationGroup
 
@@ -565,6 +579,9 @@ if should_run_test user-removal-and-expiration; then
   pepcli --oauth-token "$newToken" query enrollment || fail "New token, requested after the issueDateTime of the block entry, should be valid"
 
   pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+10 years" +%s)" test-user test-group
+  # A failing mutation should not change token blocking
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$($DATE_CMD -d "now+1 second" +%s)" test-user test-group \
+    && fail "Shouldn't be able to add a user to a group they are already in"
   trace sleep "${original_expiration_seconds}s"
   pepcli --oauth-token "$newToken" query enrollment || fail "Token should still be valid after original expiration has passed, but updated expiration has not yet passed"
 
@@ -591,6 +608,13 @@ if should_run_test user-removal-and-expiration; then
   pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should be valid again after removing the block rule that is in effect"
   # Remove the remaining rule, so no block rules are left behind
   pepcli --oauth-token-group "Access Administrator" token block remove "$future_block_id"
+
+  # An expiration in the past should (also) block tokens issued since then
+  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now-1 hour" +%s)" test-user test-group
+  pepcli --oauth-token "$token" query enrollment && fail "Token issued after an expiration in the past should be blocked"
+  pepcli --oauth-token-group "Access Administrator" user addTo test-user test-group # Restore membership for test_cleanup
 
   test_cleanup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
 fi
