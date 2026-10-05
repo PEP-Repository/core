@@ -3,8 +3,11 @@
 #include <boost/date_time/posix_time/conversion.hpp>
 #include <gtest/gtest.h>
 
+#include <array>
 #include <chrono>
 #include <cstdlib>
+#include <format>
+#include <initializer_list>
 #include <ctime>
 #include <optional>
 #include <string>
@@ -144,6 +147,27 @@ TEST(Timestamp, FromXmlDateTime_SimpleTimezones) {
   EXPECT_EQ(ptz("MST7").timestampFromXmlDateTime("2000-10-02T10:20:30-3:00"), utc("2000-10-02T13:20:30Z")) << " UTC-7, but UTC-3 specified in date string";
 }
 
+TEST(Timestamp, LocalTimezone_MatchesMktime) {
+  // Works with whatever the system's time zone is, so also on platforms where we can't set it (see below)
+  const auto local = pep::TimeZone::Local();
+  for (const auto& [year, month, day, hour] : std::initializer_list<std::array<int, 4>>{
+         {2000, 10, 2, 0}, {2026, 1, 15, 12}, {2026, 7, 15, 12}, {2026, 10, 2, 23}}) {
+    std::tm tm{};
+    tm.tm_year = year - 1900;
+    tm.tm_mon = month - 1;
+    tm.tm_mday = day;
+    tm.tm_hour = hour;
+    tm.tm_isdst = -1;
+    const auto expected = system_clock::from_time_t(std::mktime(&tm));
+    const auto xml = std::format("{:04}-{:02}-{:02}T{:02}:00:00", year, month, day, hour);
+    EXPECT_EQ(local.timestampFromXmlDateTime(xml), expected) << xml;
+    if (hour == 0) {
+      EXPECT_EQ(local.timestampFromYyyyMmDd(std::format("{:04}{:02}{:02}", year, month, day)), expected) << xml;
+    }
+  }
+}
+
+#ifndef __EMSCRIPTEN__ // Emscripten takes the local time zone from JavaScript and ignores TZ
 /// Sets the system's local time zone (via the TZ environment variable) for the duration of its lifetime
 class ScopedSystemTimeZone {
 public:
@@ -203,6 +227,7 @@ TEST(Timestamp, LocalTimezone) {
   }
 #endif
 }
+#endif
 
 TEST(Timestamp, FromYyyyMmDd_TimezoneIndependentBehaviour) {
   using Timezone = pep::TimeZone;
