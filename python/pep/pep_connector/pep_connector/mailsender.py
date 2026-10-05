@@ -364,6 +364,7 @@ class MailSender(Connector):
     """Class for sending emails via SMTP with tracking capabilities"""
 
     LOG_TAG = "MailSender"
+    SMTP_TIMEOUT_SECS = 30
 
     def __init__(self, repository: PEPRepository, config: MailSenderConfig):
         """
@@ -505,8 +506,8 @@ class MailSender(Connector):
                     level=logging.ERROR, tag=self.LOG_TAG)
             raise RuntimeError("Unexpected state in should_send_email")
 
-    @staticmethod
-    def _connect_smtp(email_config: EmailConfig) -> smtplib.SMTP:
+    @classmethod
+    def _connect_smtp(cls, email_config: EmailConfig) -> smtplib.SMTP:
         """
         Connect to the SMTP server, securing the connection as configured
 
@@ -515,14 +516,14 @@ class MailSender(Connector):
         """
         security = email_config.effective_smtp_security()
         if security == "none":
-            return smtplib.SMTP(email_config.smtp_server, email_config.smtp_port, timeout=30)
+            return smtplib.SMTP(email_config.smtp_server, email_config.smtp_port, timeout=cls.SMTP_TIMEOUT_SECS)
 
         # Unlike smtplib's default, this verifies the server's certificate and host name
         context = ssl.create_default_context(cafile=email_config.smtp_ca_file)
         if security == "tls":
-            return smtplib.SMTP_SSL(email_config.smtp_server, email_config.smtp_port, timeout=30, context=context)
+            return smtplib.SMTP_SSL(email_config.smtp_server, email_config.smtp_port, timeout=cls.SMTP_TIMEOUT_SECS, context=context)
 
-        server = smtplib.SMTP(email_config.smtp_server, email_config.smtp_port, timeout=30)
+        server = smtplib.SMTP(email_config.smtp_server, email_config.smtp_port, timeout=cls.SMTP_TIMEOUT_SECS)
         try:
             server.starttls(context=context) # Raises if the server doesn't support STARTTLS
         except BaseException:
