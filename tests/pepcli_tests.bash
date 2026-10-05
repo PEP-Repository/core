@@ -130,7 +130,7 @@ if should_run_test basic; then
   pull_output="$(pepcli pull --output-directory "$DEST_DIR/pulled-invalid-extension" -p "$TEST_PARTICIPANT" -c DeviceHistory 2>&1)" &&
       fail "Pulling data with an invalid file extension unexpectedly succeeded"
   grep -qF "Invalid file name" <<< "$pull_output" || fail "Pulling data with an invalid file extension did not fail gracefully: $pull_output"
-  execute . rm -rf "$DEST_DIR/pulled-invalid-extension"
+  execute . rm -rf "$DEST_DIR/pulled-invalid-extension" "$DEST_DIR/pulled-invalid-extension-pending" # The failed pull leaves the latter behind
 
   RANDOM_DATA_FILE=$(make_non_inline_file "random-data.bin")
   readonly RANDOM_DATA_FILE
