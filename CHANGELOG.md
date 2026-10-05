@@ -117,7 +117,7 @@
 
 - core#3004: HTTP requests (e.g. to S3 backends and Castor) are now retried on transient errors (HTTP 408, 429, 500, 502, 503 and 504), honoring `Retry-After` headers.
 
-- !2609: Fixed coversion of timestamps from local time.
+- !2609: Fixed conversion of timestamps from local time.
 
 **MANUAL CHANGES REQUIRED**:
 
