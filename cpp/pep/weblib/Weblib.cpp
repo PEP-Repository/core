@@ -10,19 +10,17 @@
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
-#include <pep/utils/File.hpp>
 #include <pep/utils/ThreadUtil.hpp>
-#include <pep/weblib/BlobMessageBatches.hpp>
 #include <pep/weblib/EmscriptenValPtr.hpp>
 #include <pep/weblib/EmscriptenVectorBinding.hpp>
 #include <pep/weblib/ObservableByteStream.hpp>
 #include <pep/weblib/ObservableStream.hpp>
 #include <pep/weblib/OnEmscriptenThread.hpp>
+#include <pep/weblib/ReadableStreamMessageBatches.hpp>
 #include <pep/weblib/ThreadPrintable.hpp>
 #include <pep/weblib/WeblibApiPromise.hpp>
 #include <pep/weblib/WeblibStructs.hpp>
 
-#include <filesystem>
 #include <numeric>
 #include <thread>
 
@@ -415,22 +413,13 @@ public:
   /// \returns \c Promise<StoreResult>
   WeblibApiPromise store(StoreQuery query) {
     // We're still on the main thread here: decide how the data will be produced
-    if (!query.blob.instanceof(val::global("Blob"))) {
-      throw std::invalid_argument("blob must be a Blob or File");
-    }
-    // A File also has name, derive fileExtension from it, like pepcli does from --input-path.
-    std::string fileExtension;
-    if (const val name = query.blob["name"]; name.isString()) {
-      fileExtension = std::filesystem::path(name.as<std::string>()).extension().string();
-    }
     messaging::MessageBatches batches =
-        BlobToMessageBatches(std::move(query.blob), messaging::DefaultPageSize, *asioWorker_);
+        ReadableStreamToMessageBatches(std::move(query.reader), messaging::DefaultPageSize, *asioWorker_);
 
     // Capture the members separately, so that the query (holding a val) does not cross to the io thread
     co_return co_await onIoThread()
         .flat_map([subject = std::move(query.subject), column = std::move(query.column),
-                   metadata = std::move(query.metadata), batches = std::move(batches),
-                   fileExtension = std::move(fileExtension)](const std::shared_ptr<Weblib>& self) {
+                   metadata = std::move(query.metadata), batches = std::move(batches)](const std::shared_ptr<Weblib>& self) {
           return self->client_->parsePpsOrIdentities({subject})
               .op(RxGetOne("PolymorphicPseudonym"))
               .map([](std::shared_ptr<std::vector<PolymorphicPseudonym>> pps) {
@@ -439,15 +428,10 @@ public:
                 }
                 return std::make_shared<PolymorphicPseudonym>(pps->front());
               })
-              .flat_map([self, column, metadata, batches, fileExtension](std::shared_ptr<PolymorphicPseudonym> pp) {
+              .flat_map([self, column, metadata, batches](std::shared_ptr<PolymorphicPseudonym> pp) {
                 std::map<std::string, MetadataXEntry> xMetadata;
                 for (const auto& [key, value] : metadata) {
                   xMetadata.emplace(key, MetadataXEntry::FromPlaintext(value, false, false));
-                }
-                // Placed after explicit fileExtension,
-                // so the derived extension fails to insert if an explicit one is present
-                if (IsValidFileExtension(fileExtension)) {
-                  xMetadata.emplace(MetadataXEntry::MakeFileExtension(fileExtension));
                 }
 
                 StoreData2Entry entry(pp, column, batches);
