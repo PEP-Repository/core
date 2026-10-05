@@ -5,6 +5,7 @@
 #include <pep/cli/DownloadMetadata.hpp>
 #include <pep/async/FakeVoid.hpp>
 #include <pep/utils/Filesystem.hpp>
+#include <pep/utils/CheckedPath.hpp>
 
 #include <rxcpp/rx-lite.hpp>
 
@@ -20,7 +21,7 @@ class DownloadDirectory : public std::enable_shared_from_this<DownloadDirectory>
   friend class SharedConstructor<DownloadDirectory>;
 
 public:
-  static const bool APPLY_FILE_EXTENSIONS_BY_DEFAULT = true;
+  static const bool ApplyFileExtensionsByDefault = true;
 
   struct ContentSpecification {
     std::vector<std::string> groups;
@@ -32,7 +33,7 @@ public:
   struct Specification {
     ContentSpecification content;
     std::string accessGroup;
-    bool applyFileExtensions = APPLY_FILE_EXTENSIONS_BY_DEFAULT;
+    bool applyFileExtensions = ApplyFileExtensionsByDefault;
 
     std::string toString() const;
     static Specification FromString(const std::string& value);
@@ -42,19 +43,18 @@ public:
     friend class DownloadDirectory;
 
   private:
-    std::shared_ptr<DownloadDirectory> mDestination;
-    RecordDescriptor mDescriptor;
-    std::filesystem::path mPath;
-    std::string mFileName;
-    size_t mFileSize;
-    size_t mWritten = 0;
-    std::shared_ptr<std::ofstream> mRaw;
-    XxHasher mHasher;
-    bool mPseudonymisationRequired{false};
-    bool mArchiveExtractingRequired{false};
+    std::shared_ptr<DownloadDirectory> destination_;
+    RecordDescriptor descriptor_;
+    CheckedPath path_;
+    CheckedFileName fileName_;
+    std::uint64_t fileSize_, written_ = 0;
+    std::shared_ptr<std::ofstream> raw_;
+    XxHasher hasher_;
+    bool pseudonymisationRequired_{false};
+    bool archiveExtractionRequired_{false};
 
   private:
-    explicit RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, std::filesystem::path path, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize);
+    explicit RecordStorageStream(std::shared_ptr<DownloadDirectory> destination, RecordDescriptor descriptor, CheckedPath path, bool pseudonymisationRequired, bool archiveExtractionRequired, std::uint64_t fileSize);
 
   public:
     // This class has reference semantics: prevent compiler from generating copy operations
@@ -66,16 +66,16 @@ public:
 
     ~RecordStorageStream() noexcept;
 
-    const RecordDescriptor& getRecordDescriptor() const noexcept { return mDescriptor; }
+    const RecordDescriptor& getRecordDescriptor() const noexcept { return descriptor_; }
 
-    std::filesystem::path getRelativePath() const;
+    CheckedPath getRelativePath() const;
 
     // Writes the given chunk to the stream. Automatically commits this stream once signaled filesize is reached.
     void write(const std::string& part, std::shared_ptr<GlobalConfiguration> globalConfig);
 
-    /*\brief Completes the process of downloading a cell. Optional pseudonymisation or extracting of archived data is done here, after all network traffic is done.
-     * The resulting file is hashed again and checked against a hash that was calculated during the writing of the file, to check for any errors in I/O.
-     */
+    /// \brief Completes the process of downloading a cell.
+    /// \details Optional pseudonymisation or extracting of archived data is done here, after all network traffic is done.
+    /// The resulting file is hashed again and checked against a hash that was calculated during the writing of the file, to check for any errors in I/O.
     void commit(std::shared_ptr<GlobalConfiguration> globalConfig);
 
     bool isCommitted() const noexcept;
@@ -93,13 +93,13 @@ public:
   };
 
 private:
-  std::filesystem::path mRoot;
-  bool mApplyFileExtensions = APPLY_FILE_EXTENSIONS_BY_DEFAULT;
-  DownloadMetadata mMetadata;
-  std::shared_ptr<GlobalConfiguration> mGlobalConfig;
+  CheckedPath root_;
+  bool applyFileExtensions_ = ApplyFileExtensionsByDefault;
+  DownloadMetadata metadata_;
+  std::shared_ptr<GlobalConfiguration> globalConfig_;
 
-  void setStoredDataHash(const RecordDescriptor& field, const std::filesystem::path& path, const std::string& fileName, XxHasher::Hash hash);
-  std::optional<XxHasher::Hash> getCurrentDataHash(const std::filesystem::path& path) const;
+  void setStoredDataHash(const RecordDescriptor& field, const CheckedPath& path, const CheckedFileName& fileName, XxHasher::Hash hash);
+  std::optional<XxHasher::Hash> getCurrentDataHash(const CheckedPath& path) const;
   std::optional<XxHasher::Hash> getCurrentDataHash(const RecordDescriptor& descriptor) const;
 
   std::vector<RecordDescriptor> getRecords(const std::function<bool(const RecordDescriptor&)>& match) const;
@@ -109,12 +109,12 @@ private:
   DownloadDirectory(const std::filesystem::path& root, std::shared_ptr<CoreClient> client, const ContentSpecification& content, std::shared_ptr<GlobalConfiguration> globalConfig, bool applyFileExtensions); // Initializes new directory
 
   std::optional<Specification> tryReadSpecification() const;
-  std::filesystem::path provideParticipantDirectory(const ParticipantIdentifier& id);
+  CheckedPath provideParticipantDirectory(const ParticipantIdentifier& id);
 
-  std::filesystem::path getDataStoragePath(const RecordDescriptor& descriptor);
+  CheckedPath getDataStoragePath(const RecordDescriptor& descriptor);
 
   bool deleteRecord(const RecordDescriptor& descriptor);
-  bool renameRecord(const RecordDescriptor& descriptor, const std::filesystem::path& newPath);
+  bool renameRecord(const RecordDescriptor& descriptor, const CheckedPath& newPath);
 
   void trackExistingPaths(filesystem::SetOfExistingPaths& dirs, filesystem::SetOfExistingPaths& files, const RecordDescriptor& descriptor) const;
   filesystem::SetOfExistingPaths getUnknownContents(const filesystem::SetOfExistingPaths& knownDirs, const filesystem::SetOfExistingPaths& knownFiles) const;
@@ -128,17 +128,17 @@ public:
 
   bool hasPristineData(const RecordDescriptor& descriptor) const;
 
-  std::shared_ptr<RecordStorageStream> create(RecordDescriptor descriptor, bool pseudonymisationRequired, bool archiveExtractionRequired, size_t fileSize);
+  std::shared_ptr<RecordStorageStream> create(RecordDescriptor descriptor, bool pseudonymisationRequired, bool archiveExtractionRequired, std::uint64_t fileSize);
   bool remove(const RecordDescriptor& descriptor); // Would be called "delete" if that weren't a keyword
   bool update(const RecordDescriptor& descriptor, const RecordDescriptor& updated);
 
   rxcpp::observable<FakeVoid> pull(std::shared_ptr<CoreClient> source, const PullOptions& options, const Progress::OnCreation& onCreateProgress);
 
-  const std::filesystem::path& getPath() const noexcept { return mRoot; }
+  const CheckedPath& getPath() const noexcept { return root_; }
   std::filesystem::path getSpecificationFilePath() const;
-  std::filesystem::path getParticipantDirectory(const ParticipantIdentifier& id) const;
-  std::optional<std::filesystem::path> getParticipantDirectoryIfExists(const ParticipantIdentifier& id) const;
-  std::optional<std::filesystem::path> getRecordFileName(const RecordDescriptor& descriptor, bool absolute = true) const;
+  CheckedPath getParticipantDirectory(const ParticipantIdentifier& id) const;
+  std::optional<CheckedPath> getParticipantDirectoryIfExists(const ParticipantIdentifier& id) const;
+  std::optional<CheckedPath> getRecordFileName(const RecordDescriptor& descriptor, bool absolute = true) const;
 
   std::vector<NonPristineEntry> getNonPristineEntries(const Progress::OnCreation& onCreateProgress) const;
   filesystem::SetOfExistingPaths getUnknownContents() const;

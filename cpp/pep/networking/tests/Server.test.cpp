@@ -9,6 +9,15 @@ using namespace std::literals;
 
 namespace {
 
+class Server : public ::testing::Test {
+public:
+  static void SetUpTestSuite() {
+#ifdef __EMSCRIPTEN__
+    GTEST_SKIP() << "Server not supported on Emscripten";
+#endif
+  }
+};
+
 class FakeProtocol : public pep::networking::ProtocolImplementor<FakeProtocol> {
   using Base = pep::networking::ProtocolImplementor<FakeProtocol>;
 
@@ -76,7 +85,7 @@ size_t FakeProtocol::Socket::unclosed_ = 0U;
 }
 
 
-TEST(Server, DiscardsUnopenedSocket) {
+TEST_F(Server, DiscardsUnopenedSocket) {
   EXPECT_EQ(0U, FakeProtocol::Socket::Instances()) << "Can't reliably count sockets. Are other (concurrently executed) tests using FakeProtocol as well?";
   EXPECT_EQ(0U, FakeProtocol::Socket::Instances()) << "Can't reliably count unclosed sockets. Are other (concurrently executed) tests using FakeProtocol as well?";
 
@@ -93,30 +102,35 @@ TEST(Server, DiscardsUnopenedSocket) {
   EXPECT_EQ(0U, FakeProtocol::Socket::Instances()) << "Server didn't discard its socket(s) upon destruction";
 }
 
-TEST(Server, UnschedulesOnDestruction) {
-  auto SHORT_TIME = 100ms;
-  auto LONG_TIME = 200ms;
+TEST_F(Server, UnschedulesOnDestruction) {
+  constexpr auto ShortTime = 100ms;
+  constexpr auto LongTime = 2 * ShortTime;
 
   boost::asio::io_context context;
 
-  auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(context, pep::networking::Tcp::ServerParameters::RANDOM_PORT));
+  auto server = pep::networking::Server::Create(pep::networking::Tcp::ServerParameters(context, pep::networking::Tcp::ServerParameters::RandomPort));
   // Don't subscribe to server->onConnectionAttempt: this test just wants to verify what happens when the server is destroyed
   server->start();
 
+  // Start measuring before we set the timer: see https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/2970
+  auto started = pep::testing::Clock::now();
+
   // Release our shared_ptr to the server after SHORT_DURATION
   boost::asio::steady_timer timer(context);
-  timer.expires_after(SHORT_TIME);
+  timer.expires_after(ShortTime);
   timer.async_wait([&server /* note: captured by reference */](const boost::system::error_code& error) {
     server.reset(); // Ensure that the server is discarded even if our test assertion doesn't hold, preventing said server from keeping the I/O context busy
     ASSERT_FALSE(error) << "Timer produced an error: " << error;
     });
 
+  // Change the value of `ShortTime` if this condition fails (often)
+  ASSERT_LT(pep::testing::MillisecondsSince(started), ShortTime) << "Timer setup was too slow for good measurements";
+
   // Have the I/O context run for at most LONG_DURATION, and measure how long it runs
-  auto started = pep::testing::Clock::now();
-  context.run_for(LONG_TIME);
+  context.run_for(LongTime);
   auto duration = pep::testing::MillisecondsSince(started);
 
   // If the server unscheduled all its work when it was destroyed, the I/O context will have stopped running at that moment
-  ASSERT_GE(duration, SHORT_TIME) << "I/O context finished before server was discarded";
-  ASSERT_LT(duration, LONG_TIME) << "I/O server kept running after server was discarded";
+  ASSERT_GE(duration, ShortTime) << "I/O context finished before server was discarded";
+  ASSERT_LT(duration, LongTime) << "I/O server kept running after server was discarded";
 }

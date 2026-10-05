@@ -1,10 +1,10 @@
 # Library providing archiving functionality based on libarchive.
 
-add_library(${PROJECT_NAME}Archivinglib STATIC
+add_library(${PROJECT_NAME}Archivinglib
     Archive.cpp Archive.hpp
     DirectoryArchive.cpp DirectoryArchive.hpp
     HashedArchive.cpp HashedArchive.hpp
-    NOPArchive.hpp
+    NoOpArchive.hpp
     PseudonymiseInputFilter.hpp
     Pseudonymiser.cpp Pseudonymiser.hpp
     Tar.cpp Tar.hpp

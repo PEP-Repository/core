@@ -9,21 +9,19 @@ namespace castor
 
 class Visit : public SimpleCastorChildObject<Visit, Study>, public SharedConstructor<Visit> {
  private:
-  std::string mName;
+  std::string name_;
 
  public:
-  static const std::string RELATIVE_API_ENDPOINT;
-  static const std::string EMBEDDED_API_NODE_NAME;
+  static const std::string RelativeApiEndpoint;
+  static const std::string EmbeddedApiNodeName;
 
-  std::string getName() const { return mName; }
+  std::string getName() const { return name_; }
 
  protected:
-  /*!
-   * \brief construct a Visit
-   *
-   * \param study The Study this visit belongs to
-   * \param json The %Json response from the Castor API for this visit
-   */
+  /// \brief construct a Visit
+  ///
+  /// \param study The Study this visit belongs to
+  /// \param json The %Json response from the Castor API for this visit
    Visit(std::shared_ptr<Study> study, JsonPtr json);
 
  private:

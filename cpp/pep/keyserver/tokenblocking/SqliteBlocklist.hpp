@@ -14,12 +14,12 @@ public:
   /// Creates a non-persistent SqlBlocklist, where the underlying data is stored in memory.
   static std::unique_ptr<SqliteBlocklist> CreateWithMemoryStorage();
 
-  /// @brief Creates a persistent SqlBlocklist, where the underlying data is stored on disk.
+  /// \brief Creates a persistent SqlBlocklist, where the underlying data is stored on disk.
   ///
-  /// If @p dbFile is a valid path then the data is synced to a sqlite database on that location.
+  /// If \p dbFile is a valid path then the data is synced to a sqlite database on that location.
   /// Will create a new database if it does not exist yet on the given location.
   ///
-  /// @throws std::runtime_error When @p dbFile is not a plain path, but something that has special meaning in Sqlite.
+  /// \throws std::runtime_error When \p dbFile is not a plain path, but something that has special meaning in Sqlite.
   ///         We reject these because otherwise we cannot guarantee correct behavior of the object.
   static std::unique_ptr<SqliteBlocklist> CreateWithStorageLocation(const std::filesystem::path& dbFile);
 
@@ -38,7 +38,7 @@ private:
 
   // using the pimpl idiom, so that we do not have to expose implementation dependencies in the header.
   struct Data;
-  std::unique_ptr<Data> mData;
+  std::unique_ptr<Data> data_;
 };
 
 } // namespace pep::tokenBlocking

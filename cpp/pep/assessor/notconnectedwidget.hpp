@@ -10,16 +10,16 @@ class NotConnectedWidget;
 class NotConnectedWidget : public QWidget {
   Q_OBJECT
 
-  pep::ConnectionStatus accessManager;
-  pep::ConnectionStatus keyServer;
-  pep::ConnectionStatus storageFacility;
+  pep::ConnectionStatus accessManager_;
+  pep::ConnectionStatus keyServer_;
+  pep::ConnectionStatus storageFacility_;
 
  public:
   explicit NotConnectedWidget(pep::ConnectionStatus accessManager, pep::ConnectionStatus keyServer, pep::ConnectionStatus storageFacility, QWidget* parent = nullptr);
   ~NotConnectedWidget() override;
 
  private:
-  Ui::NotConnectedWidget* ui;
+  Ui::NotConnectedWidget* ui_;
 
   void appendConnectionStatus(QString& destination, const std::string& server, pep::ConnectionStatus status) const;
 };

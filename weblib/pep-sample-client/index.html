@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>PEP sample web client</title>
+  <link rel="stylesheet" href="./client.css"/>
+  <script type="importmap">
+    {
+      "imports": {
+        "pep-repo-client": "./dist/pep-repo-client.mjs",
+        "pep-repo-client/utils": "./dist/pep-repo-client-utils.mjs"
+      }
+    }
+  </script>
+  <script type="module" src="./client.mjs"></script>
+</head>
+<body>
+
+<div id="loading">
+  <img src="./loading-spinner.svg" alt="Loading"/>
+  Connecting to PEP...
+</div>
+
+<div id="working" hidden>
+  <img src="./loading-spinner.svg" alt="Working"/>
+  Working...
+</div>
+
+<button id="login-btn" disabled>Login</button>
+<button id="logout-btn" disabled>Logout</button>
+<span id="user-info"></span>
+
+<div id="logged-in" hidden>
+  <button id="subject-groups-btn">List subject groups</button>
+  <button id="columns-btn">List columns</button>
+  <button id="list-btn">List</button>
+  <button id="retrieve-btn" disabled>Retrieve</button>
+  <button id="save-btn" disabled>Save large cell</button>
+  <hr/>
+  <div id="register-participant-form">
+    <label for="participant-first-name">First name</label><input id="participant-first-name"/>
+    <label for="participant-middle-name">Middle name</label><input id="participant-middle-name"/>
+    <label for="participant-last-name">Last name</label><input id="participant-last-name"/>
+    <label for="participant-date-of-birth">Date of birth</label><input id="participant-date-of-birth" type="date"/>
+  </div>
+  <button id="register-participant-btn">Register participant</button>
+  <hr/>
+  <textarea id="output" readonly></textarea>
+</div>
+
+(See browser console for logging)
+
+</body>
+</html>

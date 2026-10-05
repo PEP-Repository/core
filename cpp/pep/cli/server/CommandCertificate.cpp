@@ -7,14 +7,16 @@
 #include <rxcpp/operators/rx-concat_map.hpp>
 
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 pep::commandline::Parameters MakeCommonSupportedParameters(bool isInput, std::string_view what, std::string_view extension) {
   auto traits = pep::ServerTraits::Where([](const pep::ServerTraits& traits){ return traits.hasSigningIdentity(); });
 
-  auto ids = pep::RangeToVector(traits
-    | std::views::transform(&pep::ServerTraits::commandLineId));
-  std::ranges::sort(ids);
+  auto ids = traits
+    | views::transform(&pep::ServerTraits::commandLineId)
+    | to<std::vector>();
+  sort(ids);
 
   return pep::commandline::Parameters()
     + pep::commandline::Parameter("server", "Restrict to specified server(s)").value(pep::commandline::Value<std::string>().multiple()
@@ -31,12 +33,12 @@ pep::commandline::Parameters MakeCommonSupportedParameters(bool isInput, std::st
       .shorthand(isInput ? 'I' : 'O');
 }
 
-struct commonParams {
+struct CommonParams {
   std::vector<std::string> servers;
   std::optional<std::filesystem::path> targetFile;
   std::optional<std::filesystem::path> targetDirectory;
 
-  commonParams(bool isInput, const pep::commandline::NamedValues& parameterValues) {
+  CommonParams(bool isInput, const pep::commandline::NamedValues& parameterValues) {
     std::string fileSwitch = isInput ? "input-file" : "output-file";
     std::string directorySwitch = isInput ? "input-directory" : "output-directory";
 
@@ -53,7 +55,7 @@ struct commonParams {
 };
 
 using signingServerAction = std::function<rxcpp::observable<pep::FakeVoid>(const pep::SigningServerProxy&, const std::filesystem::path&)>;
-auto EventLoopCallBack(const commonParams& params, std::string_view extension, signingServerAction action) {
+auto EventLoopCallBack(const CommonParams& params, std::string_view extension, signingServerAction action) {
   return [params, extension, action](std::shared_ptr<pep::Client> client) {
     std::unordered_set<pep::ServerTraits> traits;
 
@@ -61,7 +63,7 @@ auto EventLoopCallBack(const commonParams& params, std::string_view extension, s
       traits = pep::ServerTraits::Where([](const pep::ServerTraits& traits){ return traits.hasSigningIdentity(); });
     }
     else {
-      traits = pep::ServerTraits::Where([params](const pep::ServerTraits& traits){ return std::ranges::find(params.servers, traits.commandLineId()) != params.servers.end(); });
+      traits = pep::ServerTraits::Where([params](const pep::ServerTraits& traits){ return contains(params.servers, traits.commandLineId()); });
     }
 
     //NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks) See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2781#note_55944
@@ -77,7 +79,7 @@ auto EventLoopCallBack(const commonParams& params, std::string_view extension, s
           targetFilePath = *params.targetFile;
         }
         else {
-          if (std::ranges::any_of(proxy->getExpectedCommonName(), boost::is_any_of(R"("*/:<>?\|)") || boost::is_from_range('\0', '\x1F'))) {
+          if (any_of(proxy->getExpectedCommonName(), boost::is_any_of(R"("*/:<>?\|)") || boost::is_from_range('\0', '\x1F'))) {
             throw std::runtime_error("Expected common name contains characters that are not allowed in filenames on some systems. Can't autodeduce target filename");
           }
           targetFilePath = params.targetDirectory.value_or(".") / std::format("PEP{}.{}", proxy->getExpectedCommonName(), extension);
@@ -101,12 +103,12 @@ protected:
   }
 
   int execute() override {
-    commonParams params(false, this->getParameterValues());
+    CommonParams params(false, this->getParameterValues());
 
     return this->executeEventLoopFor(EventLoopCallBack(params, "csr", [](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
       return proxy.requestCertificateSigningRequest().map([targetPath](const X509CertificateSigningRequest& csr) {
             WriteFile(targetPath, csr.toPem());
-            LOG(LOG_TAG, info) << "CSR is saved to \"" << targetPath.string() << '"';
+            PEP_LOG(LogTag, Severity::Info) << "CSR is saved to \"" << targetPath.string() << '"';
             return FakeVoid();
           });
     }));
@@ -125,7 +127,7 @@ protected:
   }
 
   int execute() override {
-    commonParams params(true, this->getParameterValues());
+    CommonParams params(true, this->getParameterValues());
     bool allowChangingSubject = this->getParameterValues().has("allow-changing-subject");
 
     return this->executeEventLoopFor(EventLoopCallBack(params, "chain", [allowChangingSubject](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
@@ -146,7 +148,7 @@ protected:
   }
 
   int execute() override {
-    commonParams params(true, this->getParameterValues());
+    CommonParams params(true, this->getParameterValues());
 
     return this->executeEventLoopFor(EventLoopCallBack(params, "chain", [](const SigningServerProxy& proxy, const std::filesystem::path& targetPath) -> rxcpp::observable<FakeVoid> {
       X509CertificateChain chain(X509CertificatesFromPem(ReadFile(targetPath)));

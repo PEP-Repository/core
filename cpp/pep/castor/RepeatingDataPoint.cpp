@@ -4,7 +4,7 @@
 namespace pep {
 namespace castor {
 
-const std::string RepeatingDataPoint::RELATIVE_API_ENDPOINT = "repeating-data-instance";
+const std::string RepeatingDataPoint::RelativeApiEndpoint = "repeating-data-instance";
 
 std::string RepeatingDataPoint::makeUrl() const {
   return this->getParticipant()->makeUrl() + "/data-point/repeating-data/" + this->getRepeatingDataInstance()->getId() + "/" + this->getId();
@@ -21,8 +21,8 @@ RepeatingDataPoint::RepeatingDataPoint(std::shared_ptr<RepeatingDataInstance> re
 rxcpp::observable<std::shared_ptr<RepeatingDataPoint>> RepeatingDataPoint::BulkRetrieve(std::shared_ptr<Study> study, rxcpp::observable<std::shared_ptr<RepeatingDataInstance>> rdis) {
   return BulkRetrieveChildren<RepeatingDataPoint, RepeatingDataInstance>(
     rdis,
-    GetApiRoot(study, RELATIVE_API_ENDPOINT),
-    EMBEDDED_API_NODE_NAME,
+    GetApiRoot(study, RelativeApiEndpoint),
+    EmbeddedApiNodeName,
     "repeating_data_instance_id");
 }
 

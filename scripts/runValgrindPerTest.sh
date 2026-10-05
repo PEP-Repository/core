@@ -2,7 +2,9 @@
 set -e
 
 SCRIPTSELF=$(command -v "$0")
+readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+readonly SCRIPTPATH
 
 testExe=$1
 testExeDir=$(dirname "$0")

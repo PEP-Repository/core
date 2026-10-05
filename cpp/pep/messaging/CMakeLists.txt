@@ -3,10 +3,10 @@
 # Development helper: option to disable TLS for the network connections
 option(UNENCRYPTED_MESSAGING "Use unencrypted network connections for PEP message exchange" OFF)
 if(UNENCRYPTED_MESSAGING)
-    add_definitions(-DNO_TLS)
+  add_definitions(-DNO_TLS)
 endif()
 
-add_library(${PROJECT_NAME}Messaginglib STATIC
+add_library(${PROJECT_NAME}Messaginglib
     BinaryProtocol.cpp BinaryProtocol.hpp
     Connection.cpp Connection.hpp
     ConnectionFailureException.hpp
@@ -17,6 +17,7 @@ add_library(${PROJECT_NAME}Messaginglib STATIC
     MessageSequence.cpp MessageSequence.hpp
     MessagingSerializers.cpp MessagingSerializers.hpp
     Node.cpp Node.hpp
+    ReadThrottle.hpp
     RequestHandler.cpp RequestHandler.hpp
     Requestor.cpp Requestor.hpp
     ResponseToVoid.hpp

@@ -1,5 +1,5 @@
 add_cli_install_executable(${PROJECT_NAME}Logon Logon.cpp)
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_sources(${PROJECT_NAME}Logon PRIVATE Logon.VersionInfo.rc)
 endif()
 target_link_libraries(${PROJECT_NAME}Logon

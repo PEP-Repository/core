@@ -6,7 +6,7 @@ namespace pep {
 namespace castor {
 
 TimestampedSpi::TimestampedSpi(std::shared_ptr<SurveyPackageInstance> spi, const Timestamp& completionTimestamp)
-  : mSpi(spi), mTimestamp(completionTimestamp) {
+  : spi_(spi), timestamp_(completionTimestamp) {
 }
 
 std::shared_ptr<std::vector<TimestampedSpi>> TimestampedSpi::AddTimestamps(const std::vector<std::shared_ptr<SurveyPackageInstance>> spis, const GetTimestampProperties& getTsProps) {

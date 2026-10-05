@@ -1,8 +1,12 @@
 #include <pep/content/ParticipantDeviceHistory.hpp>
 
 #include <algorithm>
+#include <functional>
+#include <ranges>
 
 #include <boost/property_tree/json_parser.hpp>
+
+using namespace std::ranges;
 
 namespace pep {
 
@@ -32,8 +36,8 @@ void ParticipantDeviceRecord::serialize(boost::property_tree::ptree& destination
 }
 
 void ParticipantDeviceHistory::onInvalid(const std::string& reason, bool throwException) {
-  if (!mInvalidReason) {
-    mInvalidReason = reason;
+  if (!invalidReason_) {
+    invalidReason_ = reason;
   }
   if (throwException) {
     throw std::runtime_error(reason);
@@ -41,9 +45,9 @@ void ParticipantDeviceHistory::onInvalid(const std::string& reason, bool throwEx
 }
 
 bool ParticipantDeviceHistory::isValid(std::string* invalidReason) const {
-  if (mInvalidReason) {
+  if (invalidReason_) {
     if (invalidReason != nullptr) {
-      *invalidReason = *mInvalidReason;
+      *invalidReason = *invalidReason_;
     }
     return false;
   }
@@ -52,8 +56,8 @@ bool ParticipantDeviceHistory::isValid(std::string* invalidReason) const {
 }
 
 ParticipantDeviceHistory::ParticipantDeviceHistory(const std::vector<ParticipantDeviceRecord>& records, bool throwIfInvalid)
-  : mRecords(records) {
-  std::sort(mRecords.begin(), mRecords.end());
+  : records_(records) {
+  sort(records_, {}, [](const ParticipantDeviceRecord& r) { return std::tie(r.time, r.type); });
   const ParticipantDeviceRecord *active = nullptr;
   std::optional<Timestamp> lastTimestamp;
   for (auto i = begin(); i != end(); ++i) {
@@ -84,8 +88,8 @@ ParticipantDeviceHistory::ParticipantDeviceHistory(const std::vector<Participant
 
 const ParticipantDeviceRecord* ParticipantDeviceHistory::getCurrent() const {
   const ParticipantDeviceRecord* result = nullptr;
-  if (!mRecords.empty()) {
-    result = &mRecords.back();
+  if (!records_.empty()) {
+    result = &records_.back();
     if (!result->isActive()) {
       result = nullptr;
     }
@@ -99,11 +103,9 @@ ParticipantDeviceHistory ParticipantDeviceHistory::Parse(const std::string& json
   boost::property_tree::read_json(source, root);
   const auto& entries = root.get_child("entries");
 
-  std::vector<ParticipantDeviceRecord> records;
-  records.reserve(entries.size());
-  for (const auto& node : entries) {
-    records.push_back(ParticipantDeviceRecord::Deserialize(node.second));
-  }
+  auto records = views::values(entries)
+    | views::transform(&ParticipantDeviceRecord::Deserialize)
+    | to<std::vector>();
 
   return ParticipantDeviceHistory(records, throwIfInvalid);
 }
@@ -111,7 +113,7 @@ ParticipantDeviceHistory ParticipantDeviceHistory::Parse(const std::string& json
 std::string ParticipantDeviceHistory::toJson() const {
   boost::property_tree::ptree entries;
 
-  for (auto record : mRecords) {
+  for (auto record : records_) {
     boost::property_tree::ptree node;
     record.serialize(node);
     entries.push_back(std::make_pair(std::string(), node));

@@ -105,7 +105,7 @@ function(add_shared_companion_files subdir)
 
   # The local page store does not automatically create its directories:
   get_build_output_directories(directories "${subdir}/storagefacility/data/myBucket")
-  foreach (dir ${directories})
+  foreach(dir ${directories})
     file(MAKE_DIRECTORY ${dir})
   endforeach()
 endfunction()
@@ -122,7 +122,7 @@ add_cli_install_executable(${PROJECT_NAME}Servers
   Main.cpp
   Servers.hpp Servers.cpp
 )
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_sources(${PROJECT_NAME}Servers PRIVATE VersionInfo.rc)
 endif()
 add_dependencies(

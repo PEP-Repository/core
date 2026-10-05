@@ -1,15 +1,11 @@
 #include <pep/morphing/RepoKeys.hpp>
 
-#include <pep/utils/BoostHexUtil.hpp>
 #include <pep/utils/CollectionUtils.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/MiscUtil.hpp>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-#include <cstddef>
-#include <span>
-#include <stdexcept>
 #include <string>
 
 using namespace pep;
@@ -17,12 +13,8 @@ using namespace pep;
 namespace {
 
 template<size_t ByteSize>
-auto ParseKey(const std::string& hex) {
-  if (hex.length() != BoostHexLength(ByteSize)) {
-    throw std::invalid_argument("Unexpected key length");
-  }
-
-  return SpanToArray(std::as_bytes(ToSizedSpan<ByteSize>(boost::algorithm::unhex(hex))));
+auto ParseKey(std::string_view hex) {
+  return SpanToArray(std::as_bytes(ToSizedSpan<ByteSize>(const_time::FromHex(hex))));
 }
 
 } // namespace

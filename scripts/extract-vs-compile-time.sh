@@ -17,11 +17,11 @@ processline() {
   
   part=$(echo "$line" | awk -F")=" '{print $1}')
   tool="${part##*/}"
-  printf "$tool\t"
+  printf '%s\t' "$tool"
   line=$(echo "$line" | awk -F")=" '{print $2}')
   
   time=$(echo "$line" | awk -Fs '{print $1}' | sed 's/\./,/g') # sed call replaces dot by comma so that Excel recognizes the number as such (on my machine)
-  printf "$time\t"
+  printf '%s\t' "$time"
   line=$(echo "$line" | awk -F[ '{print $2}')
   
   src=$(echo "$line" | awk -F] '{print $1}')
@@ -29,6 +29,6 @@ processline() {
 }
 
 buildlog="$1"
-cat $buildlog | grep "time[(]" \
+grep "time[(]" "$buildlog" \
   | sed 's/\\/\//g' \
-  | while read LINE; do processline "$LINE"; done
+  | while read -r LINE; do processline "$LINE"; done

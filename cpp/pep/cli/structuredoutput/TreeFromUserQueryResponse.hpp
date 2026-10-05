@@ -18,6 +18,7 @@ constexpr QueryKey displayId{"display-id", "Display ID"};
 constexpr QueryKey primaryId{"primary-id", "Primary ID"};
 constexpr QueryKey otherIdentifiers{"other-identifiers", "Other User Identifiers"};
 constexpr QueryKey maxAuthValidity{"max-token-validity", "Maximum Token Validity"};
+constexpr QueryKey expiration{"expiration", "Expiration"};
 
 } // namespace queryKeys
 

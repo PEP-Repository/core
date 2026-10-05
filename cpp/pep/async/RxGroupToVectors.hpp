@@ -31,16 +31,16 @@ namespace pep {
 ///     });
 /// \endcode
 template <typename TGetKey>
-struct RxGroupToVectors {
+class RxGroupToVectors {
 private:
   template <typename TItem>
   using KeyFinder = typename detail::RxToUnorderedMapOperator<TGetKey>::template KeyFinder<TItem>;
 
-  TGetKey mGetKey;
+  TGetKey getKey_;
 
 public:
   explicit RxGroupToVectors(const TGetKey& getKey)
-    : mGetKey(getKey) {
+    : getKey_(getKey) {
   }
 
   /// \param items The observable emitting individual items.
@@ -53,7 +53,7 @@ public:
     using ItemVector = std::vector<TItem>;
     using Map = std::unordered_map<Key, std::shared_ptr<ItemVector>>;
 
-    return items.group_by(mGetKey)
+    return items.group_by(getKey_)
       .flat_map([](rxcpp::grouped_observable<Key, TItem> group) {
       return group.op(RxToVector())
         .map([key = group.get_key()](std::shared_ptr<ItemVector> items) {

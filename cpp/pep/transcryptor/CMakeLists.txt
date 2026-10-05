@@ -11,7 +11,7 @@ target_link_libraries(${PROJECT_NAME}TranscryptorApilib
 verify_headers_standalone(${PROJECT_NAME}TranscryptorApilib)
 
 
-if (WITH_SERVERS)
+if(WITH_SERVERS)
   add_library(${PROJECT_NAME}Transcryptorlib
       Storage.cpp Storage.hpp
       Transcryptor.cpp Transcryptor.hpp
@@ -28,7 +28,7 @@ if (WITH_SERVERS)
   verify_headers_standalone(${PROJECT_NAME}Transcryptorlib)
 
   add_cli_install_executable(${PROJECT_NAME}Transcryptor Main.cpp)
-  if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_sources(${PROJECT_NAME}Transcryptor PRIVATE VersionInfo.rc)
   endif()
   target_link_libraries(${PROJECT_NAME}Transcryptor

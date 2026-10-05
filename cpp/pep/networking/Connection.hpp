@@ -4,17 +4,15 @@
 
 namespace pep::networking {
 
-/*!
- * \brief A Transport that's self-finalizing.
- */
+/// A Transport that's self-finalizing.
 class Connection : public Transport {
 private:
-  std::shared_ptr<Protocol::Socket> mSocket = nullptr;
-  EventSubscription mSocketConnectivityForwarding;
+  std::shared_ptr<Protocol::Socket> socket_ = nullptr;
+  EventSubscription socketConnectivityForwarding_;
 
   template <typename TResult>
   std::shared_ptr<Protocol::Socket> getSocketOrNotifyTransferFailure(const std::function<void(const TResult&)>& onTransferred) {
-    auto result = mSocket;
+    auto result = socket_;
     if (result == nullptr) {
       onTransferred(TResult::Failure(std::make_exception_ptr(std::runtime_error("Can't transfer over a disconnected socket"))));
     }

@@ -15,19 +15,19 @@ template<class T, class OnSubscribe>
 rxcpp::observable<T>
 CreateObservable(OnSubscribe callback) {
 
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
   // debug code to catch double subscriptions
   std::shared_ptr<bool> entered = std::make_shared<bool>(false);
 #endif
 
   return rxcpp::observable<>::create<T>(  //IGNORE_OBSERVABLE_CREATE as this is the declaration of CreateObservable()
   [ callback{std::move(callback)}
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
   , entered
 #endif
   ] (rxcpp::subscriber<T> subscriber) {
 
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
     assert(*entered==false /* ERROR: this observable is twice subscribed! */);
     // N.B. To pinpoint the cause of a double subscription, you can use the
     //      RxAssertNoMultipleSubscribers helper operator below.
@@ -46,7 +46,7 @@ struct RxAssertNoMultipleSubscribers {
   template <typename T, typename Source>
   rxcpp::observable<T> operator()(rxcpp::observable<T, Source> obs) const {
 
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
     return CreateObservable<T>([obs](rxcpp::subscriber<T> s){
 
       obs.subscribe(s);

@@ -23,13 +23,13 @@ protected:
       + pep::commandline::Parameter("parameter", "Parameters to pass to the executable").value(pep::commandline::Value<std::string>().positional().multiple());
   }
 
-  std::optional<pep::severity_level> syslogLogMinimumSeverityLevel() const override {
+  std::optional<pep::Severity> syslogLogMinimumSeverityLevel() const override {
     return suppressLogging();
   }
-  std::optional<pep::severity_level> consoleLogMinimumSeverityLevel() const override {
+  std::optional<pep::Severity> consoleLogMinimumSeverityLevel() const override {
     return suppressLogging();
   }
-  std::optional<pep::severity_level> fileLogMinimumSeverityLevel() const override {
+  std::optional<pep::Severity> fileLogMinimumSeverityLevel() const override {
     return suppressLogging();
   }
 

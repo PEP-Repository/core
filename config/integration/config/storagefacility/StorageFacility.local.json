@@ -35,20 +35,30 @@
       "Bucket": "myBucket"
     },
     "S3": {
-      "EndPoint": {
-        "Address": "localhost",
-        "Port": 9000,
-        "Name": "S3"
+      "Hosts": {
+        "s3proxyproxy": {
+          "EndPoint": {
+            "Address": "localhost",
+            "Port": 9000,
+            "Name": "S3"
+          },
+          "Credentials": {
+            "AccessKey": "MyAccessKey",
+            "Secret": "MySecret"
+          },
+          "CaCertificateFile": "../../pki/rootCA.cert"
+        }
       },
-      "Credentials": {
-        "AccessKey": "MyAccessKey",
-        "Secret": "MySecret"
+      "WriteToBucket": {
+        "Name": "myBucket",
+        "HostId": "s3proxyproxy"
       },
-      "WriteToBucket": "myBucket",
       "ReadFromBuckets": [
-        "myBucket"
-      ],
-      "CaCertificateFile": "../../pki/rootCA.cert"
+        {
+          "Name": "myBucket",
+          "HostId": "s3proxyproxy"
+        }
+      ]
     }
   }
 }

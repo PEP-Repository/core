@@ -10,11 +10,11 @@ namespace {
 
 class RskTranslatorTest : public ::testing::Test {
 protected:
-  static CurveScalar scalar(const std::array<uint8_t, CurveScalar::PACKEDBYTES>& packed) {
+  static CurveScalar scalar(const std::array<uint8_t, CurveScalar::PackedBytes>& packed) {
     return CurveScalar(SpanToString(packed));
   }
 
-  static CurvePoint point(const std::array<uint8_t, CurvePoint::PACKEDBYTES>& packed) {
+  static CurvePoint point(const std::array<uint8_t, CurvePoint::PackedBytes>& packed) {
     return CurvePoint(SpanToString(packed));
   }
 

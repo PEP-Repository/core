@@ -29,50 +29,42 @@ bool PtreesEqual(const boost::property_tree::ptree& p1, const boost::property_tr
   return true;
 }
 
-/*!
-  * \brief Cell content that stores JSON data.
-  * \remark Provides better comparison to existing (string) data than simple CellData does, preventing unnecessary updates being sent to PEP.
-  */
+/// \brief Cell content that stores JSON data.
+/// \remark Provides better comparison to existing (string) data than simple CellData does, preventing unnecessary updates being sent to PEP.
 class JsonCellContent : public CellContent, public SharedConstructor<JsonCellContent> {
 private:
-  mutable std::optional<std::string> mValue;
-  std::shared_ptr<boost::property_tree::ptree> mStructure;
+  mutable std::optional<std::string> value_;
+  std::shared_ptr<boost::property_tree::ptree> structure_;
 
 public:
   using SharedConstructor<JsonCellContent>::Create;
 
   explicit JsonCellContent(std::shared_ptr<boost::property_tree::ptree> structure)
-    : mStructure(structure) {
+    : structure_(structure) {
   }
 
-  /*!
-  * \brief Produces JSON corresponding with this instance's Ptree structure.
-  * \return A string containing JSON data.
-  */
+  /// \brief Produces JSON corresponding with this instance's Ptree structure.
+  /// \return A string containing JSON data.
   const std::string& getValue() const {
-    if (!mValue.has_value()) {
-      assert(mStructure != nullptr);
+    if (!value_.has_value()) {
+      assert(structure_ != nullptr);
       std::ostringstream stream;
-      boost::property_tree::write_json(stream, *mStructure);
-      mValue = std::move(stream).str();
+      boost::property_tree::write_json(stream, *structure_);
+      value_ = std::move(stream).str();
     }
-    return *mValue;
+    return *value_;
   }
 
-  /*!
-    * \brief Produces (an observable emitting) the raw (binary) data in the cell.
-    * \return (An observable emitting) the cell's raw, binary data.
-    */
+  /// \brief Produces (an observable emitting) the raw (binary) data in the cell.
+  /// \return (An observable emitting) the cell's raw, binary data.
   rxcpp::observable<std::string> getData() const override {
     return rxcpp::observable<>::just(this->getValue());
   }
 
-  /*!
-    * \brief Produces (an observable emitting) data to store if the cell should contain this instance's data, but currently contains the specified data.
-    * \param existing The data currently stored in PEP.
-    * \return (An observable emitting) this instance's data if it doesn't match the existing data.
-    * \remark An update won't be required if named Ptree nodes are ordered differently in existing data.
-    */
+  /// \brief Produces (an observable emitting) data to store if the cell should contain this instance's data, but currently contains the specified data.
+  /// \param existing The data currently stored in PEP.
+  /// \return (An observable emitting) this instance's data if it doesn't match the existing data.
+  /// \remark An update won't be required if named Ptree nodes are ordered differently in existing data.
   rxcpp::observable<std::string> getDataToStore(const std::string& existing) const override {
     boost::property_tree::ptree tree;
     std::istringstream content(existing);
@@ -83,7 +75,7 @@ public:
       // The existing data is apparently not JSON and (therefore) needs to be updated to our JSON content
       return rxcpp::observable<>::just(this->getValue());
     }
-    if (PtreesEqual(*mStructure, tree)) {
+    if (PtreesEqual(*structure_, tree)) {
       return rxcpp::observable<>::empty<std::string>();
     }
     return rxcpp::observable<>::just(this->getValue());
@@ -94,7 +86,7 @@ public:
 }
 
 StorableColumnContent::StorableColumnContent(const std::string& column, std::shared_ptr<CellContent> content, const std::string& fileExtension)
-  : mColumn(column), mContent(content), mFileExtension(fileExtension) {
+  : column_(column), content_(content), fileExtension_(fileExtension) {
 }
 
 rxcpp::observable<std::shared_ptr<StorableColumnContent>> StorableColumnContent::CreateJson(
@@ -116,7 +108,7 @@ rxcpp::observable<std::shared_ptr<StorableColumnContent>> StorableColumnContent:
 }
 
 StorableCellContent::StorableCellContent(const ColumnBoundParticipantId& cbpId, const std::string& column, std::shared_ptr<const CellContent> content, const std::string& fileExtension)
-  : mCbpId(cbpId), mColumn(column), mContent(content), mFileExtension(fileExtension) {
+  : cbpId_(cbpId), column_(column), content_(content), fileExtension_(fileExtension) {
 }
 
 }

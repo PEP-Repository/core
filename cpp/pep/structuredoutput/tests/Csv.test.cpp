@@ -1,4 +1,4 @@
-#include <gmock/gmock.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <pep/structuredoutput/Csv.hpp>
@@ -12,7 +12,7 @@ TEST(structuredOutputCsv, FromEmptyTableWithHeader) {
   const auto emptyTable = Table::FromSeparateHeaderAndData({"name", "value 1", "value 2"}, {});
 
   EXPECT_EQ(csv::to_string(emptyTable), "");
-  EXPECT_EQ(csv::to_string(emptyTable, csv::Config{ .force_header = true }), "\"name\";\"value 1\";\"value 2\"\n");
+  EXPECT_EQ(csv::to_string(emptyTable, csv::Config{ .forceHeader = true }), "\"name\";\"value 1\";\"value 2\"\n");
 }
 
 TEST(structuredOutputCsv, FromPopulatedTableWithHeader) {
@@ -45,13 +45,13 @@ TEST(structuredOutputCsv, UsesTheDelimiterFromTheConfig) {
 TEST(structuredOutputCsv, DoubleQuotesInRecordFieldsAreEscaped) {
   const auto table = Table::EmptyWithHeader({"...\"a\"\"b\"..."});
 
-  EXPECT_EQ(csv::to_string(table, csv::Config{ .force_header = true }), "\"...\"\"a\"\"\"\"b\"\"...\"\n");
+  EXPECT_EQ(csv::to_string(table, csv::Config{ .forceHeader = true }), "\"...\"\"a\"\"\"\"b\"\"...\"\n");
 }
 
 TEST(structuredOutputCsv, DoubleQuotesInHeaderFieldsAreEscaped) {
   const auto table = Table::FromSeparateHeaderAndData({"...\"...\"\"..."}, {});
 
-  EXPECT_EQ(csv::to_string(table, csv::Config{ .force_header = true }), "\"...\"\"...\"\"\"\"...\"\n");
+  EXPECT_EQ(csv::to_string(table, csv::Config{ .forceHeader = true }), "\"...\"\"...\"\"\"\"...\"\n");
 }
 
 }

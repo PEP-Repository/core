@@ -35,18 +35,24 @@ The following steps are to be performed in the project repository's "development
     git stage pep
     ```
 
-  - [ ] Update your "DTAP" submodule to the new release. If you use default names and settings, from the git root directory:
+  - [ ] Update your "DTAP" submodule (which refers to the `pep/ops` project, not to `pep/dtap`) to the new release. If you use default names and settings, from the git root directory:
 
     ```shell
     cd dtap
     git fetch
-    git checkout release-X.Y
+    git checkout main
     git submodule update --recursive --init
+    ```
+  - [ ] Take note of the current commit sha, e.g. with `git log`
+  - Stage the updated "DTAP" submodule:
+    ```shell
     cd ..
     git stage dtap
     ```
 
-  - [ ] Edit your project's `.gitlab-ci.yml` file. If it `include`s prefab CI files from `pep/core` and/or `pep/ops`, update the `ref`s of those `include`s to the new release branch name, i.e. `release-X.Y`.
+  - [ ] Edit your project's `.gitlab-ci.yml` file:
+    - [ ] If it `include`s prefab CI files from `pep/core`: update the `ref`s of those `include`s to the new release branch name, i.e. `release-X.Y`.
+    - [ ] If it `include`s prefab CI files from `pep/ops`: update the `ref`s of those `include`s to commit sha of the "DTAP" submodule noted earlier
   - [ ] Commit the upgraded submodules and CI logic:
 
     ```shell

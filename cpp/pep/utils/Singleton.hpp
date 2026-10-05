@@ -43,20 +43,20 @@ private:
   }
 
 public:
-  /// \brief Destructor
+  /// Destructor
   ~Singleton() noexcept {
     assert(InstanceAddress() == this);
     InstanceAddress() = nullptr;
   }
 
-  /// \brief No copy construction: we only allow a single instance
+  /// No copy construction: we only allow a single instance
   Singleton(const Singleton&) = delete;
-  /// \brief No copy assignment: we only allow a single instance
+  /// No copy assignment: we only allow a single instance
   Singleton& operator=(const Singleton&) = delete;
 
-  /// \brief No move construction: we'd need to perform magic on our static InstanceAddress
+  /// No move construction: we'd need to perform magic on our static InstanceAddress
   Singleton(Singleton&& other) = delete;
-  /// \brief No move assignment: we'd need to perform magic on our static InstanceAddress
+  /// No move assignment: we'd need to perform magic on our static InstanceAddress
   Singleton& operator=(Singleton&& other) = delete;
 };
 

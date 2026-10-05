@@ -5,7 +5,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <pep/application/Application.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
@@ -17,6 +17,7 @@
 using namespace pep;
 using namespace pep::cli;
 using namespace std::string_literals;
+using namespace std::ranges;
 
 namespace {
 
@@ -75,7 +76,7 @@ protected:
     return ChildCommandOf::getSupportedParameters()
         + commandline::Parameter("type", "The structure type to alter metadata for")
         .value(commandline::Value<std::string>().positional().required()
-          .allow(std::views::keys(MetadataTypeMapping)));
+          .allow(views::keys(MetadataTypeMapping)));
   }
 
   std::vector<std::shared_ptr<Command>> createChildCommands() override;
@@ -148,11 +149,11 @@ protected:
          values = this->getParameterValues()](const std::shared_ptr<CoreClient>& client) -> rxcpp::observable<FakeVoid> {
           auto subjects = values.getOptionalMultiple<std::string>("subject");
           auto keyStrs = values.getOptionalMultiple<std::string>("key");
-          std::vector<StructureMetadataKey> keys;
-          keys.reserve(keyStrs.size());
-          std::ranges::transform(keyStrs, std::back_inserter(keys), [](std::string_view key) {
-            return ParseMetadataKey(key, true);
-          });
+          auto keys = keyStrs
+            | views::transform([](std::string_view key) {
+              return ParseMetadataKey(key, true);
+            })
+            | to<std::vector>();
 
           bool json = values.has("json");
 
@@ -164,7 +165,7 @@ protected:
             return getEntries.map([root](const StructureMetadataEntry& entry) -> FakeVoid {
               root->add(RawPtreePath(entry.subjectKey.subject) / RawPtreePath(entry.subjectKey.key.toString()), entry.value);
               return {};
-            }).op(RxBeforeCompletion([root] {
+            }).op(RxSubsequently([root] {
               write_json(std::cout, *root);
             }));
           }
@@ -173,7 +174,7 @@ protected:
             return getEntries.map([root](StructureMetadataEntry entry) -> FakeVoid {
               (*root)[std::move(entry.subjectKey.subject)][std::move(entry.subjectKey.key)] = std::move(entry.value);
               return {};
-            }).op(RxBeforeCompletion([root] {
+            }).op(RxSubsequently([root] {
               for (const auto& [subject, meta] : *root) {
                 std::cout << "==== " << subject << " ====\n";
                 for (const auto& [key, value] : meta) {
@@ -214,7 +215,7 @@ protected:
 
       auto value = values.getOptional<std::string>("value");
       if (!value) {
-        LOG(LOG_TAG, info) << "Reading value from stdin (use --value to specify in command instead)";
+        PEP_LOG(LogTag, Severity::Info) << "Reading value from stdin (use --value to specify in command instead)";
 
         auto setStdinBinary = SetBinaryFileMode::ForStdin();
         std::ostringstream ss;

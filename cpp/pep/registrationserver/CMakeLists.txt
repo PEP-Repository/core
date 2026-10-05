@@ -10,7 +10,7 @@ target_link_libraries(${PROJECT_NAME}RegistrationServerApilib
 verify_headers_standalone(${PROJECT_NAME}RegistrationServerApilib)
 
 
-if (WITH_SERVERS)
+if(WITH_SERVERS)
   add_library(${PROJECT_NAME}RegistrationServerlib
       RegistrationServer.cpp RegistrationServer.hpp
   )
@@ -22,7 +22,7 @@ if (WITH_SERVERS)
     SQLite::SQLite3
   )
   if(WITH_CASTOR)
-      target_link_libraries(${PROJECT_NAME}RegistrationServerlib ${PROJECT_NAME}Castorlib)
+    target_link_libraries(${PROJECT_NAME}RegistrationServerlib ${PROJECT_NAME}Castorlib)
   endif()
   verify_headers_standalone(${PROJECT_NAME}RegistrationServerlib)
 
@@ -36,10 +36,10 @@ if (WITH_SERVERS)
   )
 
   if(WITH_CASTOR)
-      target_compile_definitions(${PROJECT_NAME}RegistrationServerlib PUBLIC WITH_CASTOR)
-      if(DEFINED CASTOR_API_KEY_DIR)
-          configure_executable_companion("${CASTOR_API_KEY_DIR}/CastorAPIKey.json")
-      endif()
+    target_compile_definitions(${PROJECT_NAME}RegistrationServerlib PUBLIC WITH_CASTOR)
+    if(DEFINED CASTOR_API_KEY_DIR)
+      configure_executable_companion("${CASTOR_API_KEY_DIR}/CastorAPIKey.json")
+    endif()
   endif()
 
   configure_service_debugging(RegistrationServer)

@@ -10,7 +10,7 @@ namespace pep {
 namespace castor {
 
 StudyAspect::StudyAspect(const std::string& slug, const std::string& spColumn, std::shared_ptr<CastorStorageDefinition> storage)
-  : mSlug(slug), mSpColumn(spColumn), mStorage(storage) {
+  : slug_(slug), spColumn_(spColumn), storage_(storage) {
 }
 
 rxcpp::observable<StudyAspect> StudyAspect::GetAll(rxcpp::observable<ShortPseudonymDefinition> sps) {

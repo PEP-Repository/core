@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 # shellcheck disable=SC3043  # `local` may not be defined in POSIX sh
+# shellcheck disable=SC2154  # chr_* constants are assigned in the sourced sh-utils.sh
 
 set_opts() {
   set -eu -o noglob
@@ -8,10 +9,8 @@ set_opts
 
 scriptdir="$(realpath "$(dirname -- "$0")")"
 
-fail() {
-  >&2 echo "$@"
-  exit 1
-}
+# shellcheck source=scripts/sh-utils.sh
+. "$scriptdir/sh-utils.sh"
 
 # `&& true` prevents quitting for nonzero exit code
 getopt --test >/dev/null && true
@@ -71,50 +70,14 @@ if [ -n "${dtap_dir+defined}" ]; then
   dtap_dir="$(realpath "$dtap_dir")"
 fi
 
-chr_tab="$(printf '\t')"
-# A cross-platform sh-compatible way to put just a newline into a variable (`$(...)` strips trailing newlines)
-chr_lf="$(printf '\nX')"
-chr_lf="${chr_lf%X}"
-chr_crlf="$(printf '\r\nX')"
-chr_crlf="${chr_crlf%X}"
-
-# Echo without newlines or processed escapes (which some sh implementations do)
-raw_echo() {
-  printf %s "$*"
-}
-
-# Ensure nonempty line ends with a newline
-raw_echo_trailing_newline() {
-  local str="$*"
-  raw_echo "$str"
-  # Nonempty & does not end with newline?
-  if [ -n "$str" ] && [ "${str%"$chr_lf"}" = "$str" ]; then
-    echo
-  fi
-}
-
-# Forwards 0/1 exit code, exits for other exit codes
-# Usage: `if command_returning_0_1 || boolean; then ...; fi`, invert with `! boolean`
-boolean() {
-  case "$?" in
-    0|1) return "$?" ;;
-    *) exit "$?" ;;
-  esac
-}
-
-# Check if a list where all lines end in \n contains a line
-list_contains() {
-  local list="$1"
-  local needle="$2"
-
-  # == grep --quiet --line-regexp --fixed-strings (long form not supported on BusyBox)
-  raw_echo "$list" | grep -qxF "$needle" || boolean
-}
-
 gitlab_dir_api() {
   local dir="$1"
   shift
-  "$scriptdir/gitlab-api.sh" "$dir" "${api_key:?Pass --api-key}" "$@"
+  "$scriptdir/gitlab-api.sh" --git-dir "$dir" --api-key "${api_key:?Pass --api-key}" "$@"
+}
+
+gitlab_foss_packages() {
+  "$scriptdir/gitlab-packages.sh" --git-dir "$foss_dir" --api-key "${api_key:?Pass --api-key}" "$@"
 }
 
 # 1. Make sure that we are not in a shallow repository,
@@ -141,17 +104,6 @@ prepare_git_repo() {
   fi
 
   git remote set-head origin --auto >&2  # Make sure we have origin/HEAD pointing to the main branch
-}
-
-# Convert special characters in name just like GitLab does for e.g. $CI_COMMIT_REF_SLUG.
-# Based on slugify from GitLab https://gitlab.com/gitlab-org/gitlab/-/blob/9e379cc4edba7fbe4777b6b7267c43eb81cd04cd/gems/gitlab-utils/lib/gitlab/utils.rb#L56-67
-slugify() {
-  local name="$1"
-  raw_echo "$name" |
-    tr '[:upper:]' '[:lower:]' |
-    tr -c '[:alnum:]' '-' |  # == tr --complement
-    cut -c '-63' |  # == cut --characters=-63
-    sed 's/^-*//;s/-*$//'
 }
 
 confirm_deletion() {
@@ -367,36 +319,17 @@ delete_container_repository() {
   gitlab_dir_api "$dir" delete "registry/repositories/$image_repo" >&2
 }
 
-# ==== Common package version cleanup code ====
-
-# https://docs.gitlab.com/ee/api/packages.html#for-a-project
-list_project_package_versions() {
-  local dir="$1"
-  gitlab_dir_api "$dir" get-multipage 'packages?package_type=generic'
-}
-
-delete_package_version() {
-  local dir="$1"
-  local ver_obj="$2"  # Package version object
-
-  local id
-  id="$(raw_echo "$ver_obj" | jq --raw-output .id)"
-  # https://docs.gitlab.com/ee/api/container_registry.html#delete-a-registry-repository-tag
-  gitlab_dir_api "$dir" delete "packages/$id" >&2
-}
-
-
 # ================================================
 # ==== PEP FOSS binaries_for_* branch cleanup ====
 # ================================================
 # See https://gitlab.pep.cs.ru.nl/pep/core/-/branches?state=all&sort=updated_desc&search=binaries_for_.
-# binaries_for_* branches are created by run_foss_pipeline in config-dockerfiles.sh and not cleaned up on timeout etc.
+# binaries_for_* branches are created by scripts/provide-binaries.sh and not cleaned up on timeout etc.
 
 # See https://docs.gitlab.com/api/pipelines/#list-project-pipelines
 list_running_foss_pipelines() {
   # Running pipelines in the last two hours
   local pipelines
-  pipelines="$(gitlab_dir_api "$foss_dir" get-multipage 'pipelines?scope=running' --data-urlencode "updated_after=$(date -Iseconds -d@"$((`date +%s` - 7200))")")"
+  pipelines="$(gitlab_dir_api "$foss_dir" get-multipage 'pipelines?scope=running' --data-urlencode "updated_after=$(gnu_date -Iseconds -d@"$(($(date +%s) - 7200))")")"
   raw_echo "$pipelines" | jq --raw-output '.[].id'
 }
 
@@ -521,14 +454,16 @@ list_used_foss_package_versions() {
 list_foss_package_versions() {
   >&2 echo "Listing package versions..."
   local versions
-  versions="$(set_opts && list_project_package_versions "$foss_dir")"
+  versions="$(set_opts && gitlab_foss_packages list generic)"
   # Split from assignment because we don't have pipefail
   raw_echo "$versions" | jq --compact-output '.[]'
 }
 
 delete_foss_package_version() {
   local ver_obj="$1"
-  delete_package_version "$foss_dir" "$ver_obj"
+  gitlab_foss_packages delete generic \
+    "$(raw_echo "$ver_obj" | jq --raw-output .name)" \
+    "$(raw_echo "$ver_obj" | jq --raw-output .version)" >&2
 }
 
 # Command to clean PEP FOSS unused package versions
@@ -539,6 +474,49 @@ clean_foss_packages() {
     .version \
     "\"\(.name)$chr_tab\(.version)$chr_tab(\(._links.web_path))\"" \
     delete_foss_package_version
+}
+
+
+# ====================================================
+# ==== PEP FOSS npm package versions cleanup ====
+# ====================================================
+# See https://gitlab.pep.cs.ru.nl/pep/core/-/packages.
+# Each version is a semver string; the commit SHA is stored as an npm dist-tag.
+# We keep versions whose dist-tag matches a protected branch/tag commit SHA,
+# but in theory all missing versions can be rebuilt automatically.
+
+# Keep the versions whose dist-tag matches a protected branch/tag commit SHA, for any npm package
+list_used_foss_npm_package_versions() {
+  local all_dist_tags
+  all_dist_tags=$(gitlab_foss_packages npm-dist-tags)
+
+  list_protected_commits "$foss_dir" | while read -r sha; do
+    raw_echo "$all_dist_tags" | jq --raw-output --arg sha "$sha" '.[] | .[$sha] // empty'
+  done
+}
+
+list_foss_npm_package_versions() {
+  >&2 echo "Listing npm package versions..."
+  local versions
+  versions="$(set_opts && gitlab_foss_packages list npm)"
+  raw_echo "$versions" | jq --compact-output '.[]'
+}
+
+delete_foss_npm_package_version() {
+  local ver_obj="$1"
+  gitlab_foss_packages delete npm \
+    "$(raw_echo "$ver_obj" | jq --raw-output .name)" \
+    "$(raw_echo "$ver_obj" | jq --raw-output .version)" >&2
+}
+
+# Command to clean PEP FOSS unused npm package versions
+clean_foss_npm_packages() {
+  generic_cleanup 'PEP FOSS npm package cleanup' 'npm package versions' \
+    list_used_foss_npm_package_versions \
+    list_foss_npm_package_versions \
+    .version \
+    "\"\(.name)$chr_tab\(.version)$chr_tab(\(._links.web_path))\"" \
+    delete_foss_npm_package_version
 }
 
 
@@ -761,6 +739,7 @@ clean_foss() {
   clean_foss_binaries_for_branches
   clean_docker_build_containers
   clean_foss_packages
+  clean_foss_npm_packages
   clean_foss_containers
 }
 clean_dtap() {
@@ -776,6 +755,8 @@ case $command in
     clean_docker_build_containers ;;
   clean-foss-packages)
     clean_foss_packages ;;
+  clean-foss-npm-packages)
+    clean_foss_npm_packages ;;
   clean-foss-containers)
     clean_foss_containers ;;
   clean-dtap-branches)

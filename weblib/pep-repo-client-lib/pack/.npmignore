@@ -1,0 +1,4 @@
+# This file cannot be in the root package directory as it will be overridden by `files` in package.json: https://docs.npmjs.com/cli/v11/configuring-npm/package-json#files
+
+# Do not include tests in package
+*.spec.*

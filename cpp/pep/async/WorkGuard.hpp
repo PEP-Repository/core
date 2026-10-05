@@ -10,7 +10,7 @@ namespace pep {
 class WorkGuard : boost::noncopyable {
 private:
   struct Implementor;
-  std::unique_ptr<Implementor> mImplementor;
+  std::unique_ptr<Implementor> implementor_;
 
 public:
   explicit WorkGuard(boost::asio::io_context& context);

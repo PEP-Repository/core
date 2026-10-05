@@ -1,5 +1,5 @@
+#include <pep/serialization/tests/VerifyBackwardCompatible.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
-#include <pep/utils/VerifyBackwardCompatibleSerialization.hpp>
 #include <gtest/gtest.h>
 
 TEST(SignedTicket2, ClassesHaveBackwardCompatibleSerialization) {

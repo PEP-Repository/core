@@ -9,7 +9,7 @@ if [ -z "$USER_QUERY_JSON" ]; then
 fi
 
 # Extract user groups into an array
-mapfile -t USER_GROUPS < <(echo "$USER_QUERY_JSON" | jq -r '."All User Groups" | keys[]')
+mapfile -t USER_GROUPS < <(echo "$USER_QUERY_JSON" | jq -r '."user-groups"[].name')
 
 if [ ${#USER_GROUPS[@]} -eq 0 ]; then
     echo "Error: No user groups found"
@@ -17,7 +17,7 @@ if [ ${#USER_GROUPS[@]} -eq 0 ]; then
 fi
 
 # Display menu
-echo "PEP Workshop, select UserGroup:"
+echo "PEP Tutorial, select UserGroup:"
 echo "=========================="
 for i in "${!USER_GROUPS[@]}"; do
     echo "$((i+1))) ${USER_GROUPS[$i]}"

@@ -55,7 +55,7 @@ int SingleCellCommand::execute() {
       .flat_map([this, client, column](pep::PolymorphicPseudonym pp) {
       const auto& parameterValues = this->getParameterValues();
 
-      pep::requestTicket2Opts tOpts;
+      pep::RequestTicket2Opts tOpts;
       tOpts.pps = { pp };
       tOpts.columns = { column };
       tOpts.modes = this->ticketAccessModes();
@@ -78,12 +78,12 @@ rxcpp::observable<pep::FakeVoid> SingleCellCommand::WriteJson(std::ostream& dest
 
     destination << '\n'
       << "\t{\n"
-      << "\t\t\"timestamp\": " << TicksSinceEpoch<std::chrono::milliseconds>(entry.mTimestamp) << ",\n"
-      << "\t\t\"pp\": \"" << entry.mLocalPseudonyms->mPolymorphic.text() << "\",\n"
-      << "\t\t\"column\": \"" << entry.mColumn << "\",\n"
+      << "\t\t\"timestamp\": " << TicksSinceEpoch<std::chrono::milliseconds>(entry.timestamp) << ",\n"
+      << "\t\t\"pp\": \"" << entry.localPseudonyms->polymorphic.text() << "\",\n"
+      << "\t\t\"column\": \"" << entry.column << "\",\n"
       << "\t\t\"id\": ";
-    if (entry.mId.has_value()) {
-      destination << '"' << boost::algorithm::hex(*entry.mId) << '"';
+    if (entry.id.has_value()) {
+      destination << '"' << boost::algorithm::hex(*entry.id) << '"';
     }
     else {
       destination << "null";
@@ -105,7 +105,7 @@ std::vector<std::string> SingleCellModificationCommand::ticketAccessModes() cons
 }
 
 rxcpp::observable<pep::FakeVoid> SingleCellModificationCommand::processCell(std::shared_ptr<pep::CoreClient> client, const pep::IndexedTicket2& ticket, const pep::PolymorphicPseudonym& pp, const std::string& column) {
-  pep::storeData2Opts opts;
+  pep::StoreData2Opts opts;
   opts.ticket = pep::MakeSharedCopy(ticket);
   opts.forceTicket = true;
   return this->performModification(client, opts, pep::MakeSharedCopy(pp), column);

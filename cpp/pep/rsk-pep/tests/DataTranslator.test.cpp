@@ -15,7 +15,7 @@ namespace {
 
 class DataTranslatorTest : public ::testing::Test {
 protected:
-  static CurveScalar scalar(const std::array<uint8_t, CurveScalar::PACKEDBYTES>& packed) {
+  static CurveScalar scalar(const std::array<uint8_t, CurveScalar::PackedBytes>& packed) {
     return CurveScalar(SpanToString(packed));
   }
 

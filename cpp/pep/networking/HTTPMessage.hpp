@@ -20,16 +20,15 @@ class HTTPMessage {
 public:
   using HeaderMap = std::map<std::string, std::string, CaseInsensitiveCompare>;
 
-protected:
-  HeaderMap headers;
-  std::vector<std::shared_ptr<std::string>> bodyparts;
+private:
+  HeaderMap headers_;
+  std::vector<std::shared_ptr<std::string>> bodyparts_;
 
-  /*!
-    * \brief Construct a message
-    *
-    * \param body Body of the message
-    * \param headers HTTP headers of the message
-    */
+protected:
+  /// \brief Construct a message
+  ///
+  /// \param body Body of the message
+  /// \param headers HTTP headers of the message
   HTTPMessage(std::string body, HeaderMap headers);
 
   HTTPMessage(
@@ -60,39 +59,35 @@ public:
   std::map<std::string, std::string> getBodyAsFormData() const;
 
   std::vector<std::shared_ptr<std::string>>& getBodyparts() {
-    return this->bodyparts;
+    return this->bodyparts_;
   }
 };
 
 //! A HTTP Response
 class HTTPResponse : public HTTPMessage {
 private:
-  unsigned int statuscode{};
-  std::string statusMessage;
+  unsigned int statuscode_{};
+  std::string statusMessage_;
 
 public:
   //! Construct an empty response 
   HTTPResponse() = default;
-  /*!
-   * \brief construct a new response
-   * 
-   * \param status String containing the status code and message, e.g. "404 Not Found"
-   * \param body Body of the Request
-   * \param headers HTTP headers of the request
-   * \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
-   */
+  /// \brief construct a new response
+  ///
+  /// \param status String containing the status code and message, e.g. "404 Not Found"
+  /// \param body Body of the Request
+  /// \param headers HTTP headers of the request
+  /// \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
   HTTPResponse(const std::string& status, std::string body = "",
           HeaderMap headers = {},
           bool completeHeaders=true);
-  /*!
-   * \brief construct a new response
-   * 
-   * \param statuscode The status code, e.g. 404
-   * \param statusMessage The status message e.g. "Not Found"
-   * \param body Body of the Request
-   * \param headers HTTP headers of the request
-   * \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
-   */
+  /// \brief construct a new response
+  ///
+  /// \param statuscode The status code, e.g. 404
+  /// \param statusMessage The status message e.g. "Not Found"
+  /// \param body Body of the Request
+  /// \param headers HTTP headers of the request
+  /// \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
   HTTPResponse(unsigned int statuscode, std::string statusMessage, std::string body = "",
           HeaderMap headers = {},
           bool completeHeaders=true);
@@ -102,20 +97,20 @@ public:
 
   //! \return HTTP status code of the response
   unsigned int getStatusCode() const {
-    return statuscode;
+    return statuscode_;
   }
 
   void setStatusCode(unsigned int statuscode) {
-    this->statuscode = statuscode;
+    statuscode_ = statuscode;
   }
 
   //! \return Status message of the response
   const std::string& getStatusMessage() const {
-    return statusMessage;
+    return statusMessage_;
   }
 
   void setStatusMessage(std::string statusMessage) {
-    this->statusMessage = std::move(statusMessage);
+    statusMessage_ = std::move(statusMessage);
   }
 
   void completeHeaders();
@@ -124,16 +119,14 @@ public:
 //! A HTTP Request
 class HTTPRequest : public HTTPMessage {
 public:
-  /*!
-    * \brief Construct a new Request
-    *
-    * \param host header to use for the Request
-    * \param method HTTP Method of the Request
-    * \param uri URI to request
-    * \param body Body of the Request
-    * \param headers HTTP headers of the request
-    * \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
-    */
+  /// \brief Construct a new Request
+  ///
+  /// \param host header to use for the Request
+  /// \param method HTTP Method of the Request
+  /// \param uri URI to request
+  /// \param body Body of the Request
+  /// \param headers HTTP headers of the request
+  /// \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
   HTTPRequest(
     std::string host,
     networking::HttpMethod method,
@@ -142,15 +135,13 @@ public:
     HeaderMap headers = {},
     bool completeHeaders = true);
 
-  /*!
-    * \brief Construct a new Request
-    *
-    * \param method HTTP Method of the Request
-    * \param uri URI to request
-    * \param body Body of the Request
-    * \param headers HTTP headers of the request
-    * \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
-    */
+  /// \brief Construct a new Request
+  ///
+  /// \param method HTTP Method of the Request
+  /// \param uri URI to request
+  /// \param body Body of the Request
+  /// \param headers HTTP headers of the request
+  /// \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
   HTTPRequest(
     networking::HttpMethod method,
     boost::urls::url uri,
@@ -158,16 +149,14 @@ public:
     HeaderMap headers = {},
     bool completeHeaders = true);
 
-  /*!
-    * \brief Construct a new Request
-    *
-    * \param host header to use for the Request
-    * \param method HTTP Method of the Request
-    * \param uri URI to request
-    * \param bodyparts Body of the Request
-    * \param headers HTTP headers of the request
-    * \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
-    */
+  /// \brief Construct a new Request
+  ///
+  /// \param host header to use for the Request
+  /// \param method HTTP Method of the Request
+  /// \param uri URI to request
+  /// \param bodyparts Body of the Request
+  /// \param headers HTTP headers of the request
+  /// \param completeHeaders shall we set "Host" and "Content-Length" headers for you?
   HTTPRequest(
     std::string host,
     networking::HttpMethod method,
@@ -186,19 +175,19 @@ public:
 
   //! \return HTTP Method of the request
   const networking::HttpMethod& getMethod() const {
-    return mMethod;
+    return method_;
   }
 
   const std::string& getHost() const {
-    return mHost;
+    return host_;
   }
 
   const boost::urls::url& uri() const {
-    return mUri;
+    return uri_;
   }
 
   boost::urls::url& uri() {
-    return mUri;
+    return uri_;
   }
 
   void completeHeaders();
@@ -206,9 +195,9 @@ public:
 private:
   void ensureHeader(const std::string& key, const std::string& value);
 
-  std::string mHost;
-  networking::HttpMethod mMethod;
-  boost::urls::url mUri;
+  std::string host_;
+  networking::HttpMethod method_;
+  boost::urls::url uri_;
 };
 
 }

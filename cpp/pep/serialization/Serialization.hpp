@@ -1,6 +1,5 @@
 #pragma once
 
-#include <pep/serialization/Error.hpp>
 #include <pep/serialization/ProtocolBufferedSerializer.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 
@@ -8,9 +7,8 @@
 
 namespace pep {
 
-// Convenience class for serialization routines
-class Serialization {
-public:
+// Convenience struct for serialization routines
+struct Serialization {
   // You should only use this function for tiny objects.
   template <typename T>
   static typename Serializer<T>::ProtocolBufferType
@@ -45,11 +43,14 @@ public:
   static void AssignFromRepeatedProtocolBuffer(
       ResultCollection& destination,
       ::google::protobuf::RepeatedPtrField<typename Serializer<std::ranges::range_value_t<ResultCollection>>::ProtocolBufferType>&& source) {
-    using T = std::ranges::range_value_t<ResultCollection>;
+    using namespace std::ranges;
+    using T = range_value_t<ResultCollection>;
     using ProtoT = typename Serializer<T>::ProtocolBufferType;
-    destination = RangeToCollection<ResultCollection>(source | std::views::transform([](ProtoT& sourceElem) {
-      return FromProtocolBuffer(std::move(sourceElem));
-    }));
+    destination = source
+      | views::transform([](ProtoT& sourceElem) {
+        return FromProtocolBuffer(std::move(sourceElem));
+      })
+      | to<ResultCollection>();
   }
 
   template <typename T>

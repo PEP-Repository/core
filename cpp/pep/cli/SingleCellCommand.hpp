@@ -32,7 +32,7 @@ protected:
   std::vector<std::string> ticketAccessModes() const override;
   rxcpp::observable<pep::FakeVoid> processCell(std::shared_ptr<pep::CoreClient> client, const pep::IndexedTicket2& ticket, const pep::PolymorphicPseudonym& pp, const std::string& column) override;
 
-  virtual rxcpp::observable<pep::FakeVoid> performModification(std::shared_ptr<pep::CoreClient> client, const pep::storeData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) = 0;
+  virtual rxcpp::observable<pep::FakeVoid> performModification(std::shared_ptr<pep::CoreClient> client, const pep::StoreData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) = 0;
 };
 
 }

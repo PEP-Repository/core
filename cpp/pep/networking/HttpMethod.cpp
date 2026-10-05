@@ -7,9 +7,9 @@ namespace {
 
 const boost::bimap<HttpMethod::Value, std::string> HTTP_METHOD_STRING_MAPPINGS = []() {
   boost::bimap<HttpMethod::Value, std::string> result;
-  result.insert({ HttpMethod::GET, "GET" });
-  result.insert({ HttpMethod::POST, "POST" });
-  result.insert({ HttpMethod::PUT, "PUT" });
+  result.insert({ HttpMethod::Get, "GET" });
+  result.insert({ HttpMethod::Post, "POST" });
+  result.insert({ HttpMethod::Put, "PUT" });
   return result;
   }();
 
@@ -33,7 +33,7 @@ auto GetHttpMethodMappedValue(const TView& mapSide, const TValue& value) {
 }
 
 std::string HttpMethod::toString() const {
-  return GetHttpMethodMappedValue(HTTP_METHOD_STRING_MAPPINGS.left, mValue);
+  return GetHttpMethodMappedValue(HTTP_METHOD_STRING_MAPPINGS.left, value_);
 }
 
 HttpMethod HttpMethod::FromString(const std::string& str) {

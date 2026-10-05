@@ -34,41 +34,25 @@ class RegistrationServer : public SigningServer {
    public:
     Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config);
 
-    /*!
-     * \return PEP client used to store data
-     */
+    /// \return PEP client used to store data
     std::shared_ptr<CoreClient> getClient() const;
-    /*!
-     * \param client PEP client used to store data
-     */
+    /// \param client PEP client used to store data
     void setClient(const std::shared_ptr<CoreClient> client);
 
-    /*!
-     * \return Path to the shadow storage file
-     */
+    /// \return Path to the shadow storage file
     const std::filesystem::path& getShadowStorageFile() const;
-    /*!
-     * \param shadowStorageFile Path to the shadow storage file
-     */
+    /// \param shadowStorageFile Path to the shadow storage file
     void setShadowStorageFile(const std::filesystem::path& shadowStorageFile);
 
-    /*!
-     * \return Public key of the shadow storage
-     */
+    /// \return Public key of the shadow storage
     const AsymmetricKey& getShadowPublicKey() const;
-    /*!
-     * \param shadowPublicKey Public key of the shadow storage
-     */
+    /// \param shadowPublicKey Public key of the shadow storage
     void setShadowPublicKey(const AsymmetricKey& shadowPublicKey);
 
 #ifdef WITH_CASTOR
-    /*!
-     * \return The Castor client connection
-     */
+    /// \return The Castor client connection
     std::shared_ptr<castor::CastorConnection> getCastorConnection() const;
-    /*!
-     * \param castorConnection The Castor client connection
-     */
+    /// \param castorConnection The Castor client connection
     void setCastorConnection(std::shared_ptr <castor::CastorConnection> castorConnection);
 #endif
 
@@ -76,11 +60,11 @@ class RegistrationServer : public SigningServer {
     void check() const override;
 
    private:
-    std::shared_ptr<CoreClient> client;
-    std::filesystem::path shadowStorageFile;
-    AsymmetricKey shadowPublicKey;
+    std::shared_ptr<CoreClient> client_;
+    std::filesystem::path shadowStorageFile_;
+    AsymmetricKey shadowPublicKey_;
 #ifdef WITH_CASTOR
-    std::shared_ptr<castor::CastorConnection> castorConnection;
+    std::shared_ptr<castor::CastorConnection> castorConnection_;
 #endif
   };
 
@@ -102,14 +86,14 @@ private:
 private:
   class ShortPseudonymCache;
 
-  ::sqlite3* pShadowStorage = nullptr;
-  std::shared_ptr<CoreClient> pClient;
-  AsymmetricKey shadowPublicKey;
-  std::shared_ptr<RxCache<std::shared_ptr<GlobalConfiguration>>> mGlobalConfiguration;
-  std::shared_ptr<ShortPseudonymCache> mShortPseudonyms;
+  ::sqlite3* shadowStorage_ = nullptr;
+  std::shared_ptr<CoreClient> client_;
+  AsymmetricKey shadowPublicKey_;
+  std::shared_ptr<RxCache<std::shared_ptr<GlobalConfiguration>>> globalConfiguration_;
+  std::shared_ptr<ShortPseudonymCache> shortPseudonyms_;
 #ifdef WITH_CASTOR
-  std::shared_ptr<castor::CastorConnection> mCastorConnection;
-  std::shared_ptr<RxCache<std::shared_ptr<castor::Study>>> mCastorStudies;
+  std::shared_ptr<castor::CastorConnection> castorConnection_;
+  std::shared_ptr<RxCache<std::shared_ptr<castor::Study>>> castorStudies_;
 
   std::shared_ptr<castor::CastorConnection> getCastorConnection() const;
   rxcpp::observable<std::shared_ptr<castor::Participant>> storeShortPseudonymInCastor(std::shared_ptr<castor::Study> study, ShortPseudonymDefinition definition);
@@ -118,31 +102,25 @@ private:
 
   rxcpp::observable<ShortPseudonymDefinition> getShortPseudonymDefinitions() const;
 
-  /*!
-   * \brief Opens the shadow storage DB.
-   *
-   * \return TRUE if the database was created, FALSE if not.
-   */
+  /// \brief Opens the shadow storage DB.
+  ///
+  /// \return TRUE if the database was created, FALSE if not.
   bool openDatabase(const std::filesystem::path& file);
 
   void closeDatabase() noexcept;
 
-  /*!
-   * \brief Gets all (participant and short) pseudonyms from Storage Facility, and initializes shadow storage if it doesn't exist.
-   *
-   * \return An observable emitting all (participant and short) pseudonyms known by Storage Facility.
-   */
+  /// \brief Gets all (participant and short) pseudonyms from Storage Facility, and initializes shadow storage if it doesn't exist.
+  ///
+  /// \return An observable emitting all (participant and short) pseudonyms known by Storage Facility.
   rxcpp::observable<std::string> initPseudonymStorage(const std::filesystem::path& shadowStorageFile);
 
   size_t countShadowStoredEntries() const;
 
-  /*!
-   * \brief Store the tag and short pseudonym encrypted in the shadow SQLite database together with the encrypted identifier. It returns the SQLite return code for the query.
-   *
-   * \param encryptedIdentifier The encrypted identifier provided by the client
-   * \param tag The tag of short pseudonym to be stored
-   * \param shortPseudonym The short pseudonym to be stored
-   */
+  /// \brief Store the tag and short pseudonym encrypted in the shadow SQLite database together with the encrypted identifier. It returns the SQLite return code for the query.
+  ///
+  /// \param encryptedIdentifier The encrypted identifier provided by the client
+  /// \param tag The tag of short pseudonym to be stored
+  /// \param shortPseudonym The short pseudonym to be stored
   void storeShortPseudonymShadow(const std::string& encryptedIdentifier, const std::string& tag, const std::string& shortPseudonym);
 };
 

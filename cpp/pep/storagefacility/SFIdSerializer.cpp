@@ -7,8 +7,8 @@ SFId Serializer<SFId>::fromProtocolBuffer(proto::SFId&& source) const {
 }
 
 void Serializer<SFId>::moveIntoProtocolBuffer(proto::SFId& dest, SFId value) const {
-  *dest.mutable_path() = std::move(value.mPath);
-  dest.set_time(static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(value.mTime)));
+  *dest.mutable_path() = std::move(value.path);
+  dest.set_time(static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(value.time)));
 }
 
 }

@@ -44,7 +44,7 @@ void InsertPseudonym(std::string& data, const std::string& pseudonym, const std:
 
 void CreateFile(const Path& path, const std::string& contents) {
   std::filesystem::create_directories(path.parent_path());
-  std::ofstream out(path.string(), std::ios::out | std::ios::binary);
+  std::ofstream out(path, std::ios::out | std::ios::binary);
   out.write(contents.data(), static_cast<std::streamsize>(contents.length()));
   out.close();
 }
@@ -52,6 +52,7 @@ void CreateFile(const Path& path, const std::string& contents) {
 void CreateFilePair(const Path& inputPath, const Path& expectedPath, const std::string& oldPseudonym, const std::string& newPseudonym, size_t fileSize) {
   std::vector<size_t> positions = GeneratePositions(fileSize, oldPseudonym.length());
   std::string binaryContent(fileSize, '\0');
+  //NOLINTNEXTLINE(modernize-use-ranges) std::ranges::iota needs libc++ 23; unavailable on our Emscripten/Apple Clang floor
   std::iota(binaryContent.begin(), binaryContent.end(), '\0');
   InsertPseudonym(binaryContent, oldPseudonym, positions);
   CreateFile(inputPath, binaryContent);
@@ -109,8 +110,8 @@ TEST_F(PseudonymiserTest, SingleSmallFile) {
   // Arrange
   Path textPathOutput = basePath / "SingleSmallOutput.txt";
   pep::Pseudonymiser ps{oldPseudonym};
-  auto in = std::ifstream(oldPseudonymFilename.string(), std::ios::binary);
-  auto out = std::ofstream(textPathOutput.string(), std::ios::binary);
+  auto in = std::ifstream(oldPseudonymFilename, std::ios::binary);
+  auto out = std::ofstream(textPathOutput, std::ios::binary);
   auto writeTostream = [&out](const char* c, const std::streamsize l) {out.write(c, l); out.flush(); };
 
   // Act
@@ -125,8 +126,8 @@ TEST_F(PseudonymiserTest, ShorterPseudonym) {
   // Arrange
   Path textPathOutput = basePath / "ShorterPseudonym.txt";
   pep::Pseudonymiser ps{oldPseudonym, newShorterPseudonym};
-  auto in = std::ifstream(oldPseudonymFilename.string(), std::ios::binary);
-  auto out = std::ofstream(textPathOutput.string(), std::ios::binary);
+  auto in = std::ifstream(oldPseudonymFilename, std::ios::binary);
+  auto out = std::ofstream(textPathOutput, std::ios::binary);
   auto writeTostream = [&out](const char* c, const std::streamsize l) {out.write(c, l); out.flush(); };
 
   // Act
@@ -142,8 +143,8 @@ TEST_F(PseudonymiserTest, LongerPseudonym) {
   // Arrange
   Path textPathOutput = basePath / "LongerPseudonym.txt";
   pep::Pseudonymiser ps{oldPseudonym, newLongerPseudonym};
-  auto in = std::ifstream(oldPseudonymFilename.string(), std::ios::binary);
-  auto out = std::ofstream(textPathOutput.string(), std::ios::binary);
+  auto in = std::ifstream(oldPseudonymFilename, std::ios::binary);
+  auto out = std::ofstream(textPathOutput, std::ios::binary);
   auto writeTostream = [&out](const char* c, const std::streamsize l) {out.write(c, l); out.flush(); };
 
   // Act
@@ -159,8 +160,8 @@ TEST_F(PseudonymiserTest, BinaryFile) {
   // Arrange
   Path binaryPathOutput = basePath / "MediumBinaryOutput.bin";
   pep::Pseudonymiser ps{oldPseudonym};
-  auto in = std::ifstream(binaryPathOldPseudonym.string(), std::ios::binary);
-  auto out = std::ofstream(binaryPathOutput.string(), std::ios::binary);
+  auto in = std::ifstream(binaryPathOldPseudonym, std::ios::binary);
+  auto out = std::ofstream(binaryPathOutput, std::ios::binary);
   auto writeTostream = [&out](const char* c, const std::streamsize l) {out.write(c, l); out.flush(); };
 
   // Act

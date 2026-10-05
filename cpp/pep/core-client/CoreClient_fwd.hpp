@@ -3,8 +3,8 @@
 namespace pep {
 
 struct HistoryResult;
-struct requestTicket2Opts;
-struct storeData2Opts;
+struct RequestTicket2Opts;
+struct StoreData2Opts;
 struct EnumerateResult;
 struct EnumerateAndRetrieveResult;
 struct RetrievePage;

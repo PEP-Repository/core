@@ -12,6 +12,8 @@
 #include <pep/utils/File.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-distinct.hpp>
@@ -22,7 +24,10 @@
 
 #include <boost/algorithm/string/split.hpp>
 
+#include <utility>
+
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 
@@ -61,41 +66,41 @@ protected:
 
 class FileExtensionRequiringChildCommand : public ChildCommandOf<CommandFileExtension> {
 private:
-  std::weak_ptr<pep::CoreClient> mClient;
-  std::shared_ptr<pep::RxCache<std::shared_ptr<const pep::ColumnAccess>>> mMetaReadableColumnGroups;
-  std::shared_ptr<pep::RxCache<std::string>> mAccessibleParticipantGroups;
+  std::weak_ptr<pep::CoreClient> client_;
+  std::shared_ptr<pep::RxCache<std::shared_ptr<const pep::ColumnAccess>>> metaReadableColumnGroups_;
+  std::shared_ptr<pep::RxCache<std::string>> accessibleParticipantGroups_;
 
 protected:
   using ColumnExtensions = std::map<std::string, std::string>;
 
   rxcpp::observable<std::shared_ptr<const pep::ColumnAccess>> getMetaReadableColumnGroups(std::shared_ptr<pep::CoreClient> client) {
-    if (mMetaReadableColumnGroups == nullptr) {
-      mMetaReadableColumnGroups = pep::CreateRxCache([client]() {
+    if (metaReadableColumnGroups_ == nullptr) {
+      metaReadableColumnGroups_ = pep::CreateRxCache([client]() {
         return client->getAccessManagerProxy()->getAccessibleColumns(true, { "read-meta" })
           .op(pep::RxGetOne("column access specification"))
           .map([](pep::ColumnAccess access) {
             return PtrAsConst(pep::MakeSharedCopy(std::move(access)));
           });
         });
-      if (mClient.lock() == nullptr) {
-        mClient = client;
+      if (client_.lock() == nullptr) {
+        client_ = client;
       }
     }
 
-    assert(mClient.lock() == client);
-    return mMetaReadableColumnGroups->observe();
+    assert(client_.lock() == client);
+    return metaReadableColumnGroups_->observe();
   }
 
   rxcpp::observable<std::string> getAccessibleParticipantGroups(std::shared_ptr<pep::CoreClient> client) {
-    if (mAccessibleParticipantGroups == nullptr) {
-      mAccessibleParticipantGroups = pep::CreateRxCache([client]() {
+    if (accessibleParticipantGroups_ == nullptr) {
+      accessibleParticipantGroups_ = pep::CreateRxCache([client]() {
         return client->getAccessManagerProxy()->getAccessibleParticipantGroups(true)
           .flat_map([](const pep::ParticipantGroupAccess& access) {
           std::set<std::string> result;
           for (const auto& group : access.participantGroups) {
             const auto& modes = group.second;
-            if (std::find(modes.cbegin(), modes.cend(), "access") != modes.cend()
-              && std::find(modes.cbegin(), modes.cend(), "enumerate") != modes.cend()) {
+            if (contains(modes, "access")
+              && contains(modes, "enumerate")) {
               result.emplace(group.first);
             }
           }
@@ -104,19 +109,19 @@ protected:
           .distinct()
           .op(pep::RxToSet())
           .flat_map([](std::shared_ptr<std::set<std::string>> groups) -> rxcpp::observable<std::string> {
-          if (groups->find("*") != groups->cend()) {
+          if (groups->contains("*")) {
             return rxcpp::observable<>::just(std::string("*"));
           }
           return pep::RxIterate(std::move(*groups));
           });
         });
-      if (mClient.lock() == nullptr) {
-        mClient = client;
+      if (client_.lock() == nullptr) {
+        client_ = client;
       }
     }
 
-    assert(mClient.lock() == client);
-    return mAccessibleParticipantGroups->observe();
+    assert(client_.lock() == client);
+    return accessibleParticipantGroups_->observe();
   }
 
   rxcpp::observable<std::string> getMetaReadableColumns(std::shared_ptr<pep::CoreClient> client) {
@@ -134,11 +139,9 @@ protected:
         std::cerr << "Skipping inaccessible column group " << group << std::endl;
       }
       else {
-        const auto& indices = position->second.columns.mIndices;
-        columns.reserve(indices.size());
-        for (auto i : indices) {
-          columns.emplace_back(access->columns[i]);
-        }
+        columns = position->second.columns.indices
+          | views::transform([&access](uint32_t index) { return access->columns[index]; })
+          | to<std::vector>();
       }
       return pep::RxIterate(std::move(columns));
         });
@@ -205,7 +208,7 @@ protected:
         [](std::shared_ptr<ColumnExtensions> all, std::shared_ptr<ColumnExtensions> sub) {
           for (auto entry : *sub) {
             const auto& key = entry.first;
-            if (all->find(key) != all->cend()) {
+            if (all->contains(key)) {
               throw std::runtime_error("Multiple extensions specified for column " + key);
             }
             [[maybe_unused]] auto emplaced = all->emplace(entry).second;
@@ -220,7 +223,7 @@ protected:
         std::shared_ptr<std::set<std::string>> accessible = std::get<1>(context);
         auto i = required->begin();
         while (i != required->end()) {
-          if (accessible->find(i->first) == accessible->cend()) {
+          if (!accessible->contains(i->first)) {
             std::cerr << "Skipping inaccessible column " << i->first << std::endl;
             i = required->erase(i);
           }
@@ -234,13 +237,13 @@ protected:
 
   class Update {
   private:
-    pep::StoreMetadata2Entry mStoreEntry;
-    pep::LocalPseudonym mParticipantAlias;
-    std::optional<std::string> mPreviousExtension;
+    pep::StoreMetadata2Entry storeEntry_;
+    pep::LocalPseudonym participantAlias_;
+    std::optional<std::string> previousExtension_;
 
     static std::optional<std::string> GetExtension(const pep::EnumerateResult& enumResult) {
-      auto position = enumResult.mMetadata.extra().find("fileExtension");
-      if (position == enumResult.mMetadata.extra().cend()) {
+      auto position = enumResult.metadata.extra().find("fileExtension");
+      if (position == enumResult.metadata.extra().cend()) {
         return std::nullopt;
       }
       return position->second.plaintext();
@@ -248,25 +251,25 @@ protected:
 
 
     Update(const pep::EnumerateResult& enumResult, const std::optional<std::string>& currentExtension, const std::string& correctExtension)
-      : mStoreEntry(pep::MakeSharedCopy(enumResult.mLocalPseudonyms->mPolymorphic), enumResult.mColumn),
-      mParticipantAlias(*enumResult.mAccessGroupPseudonym),
-      mPreviousExtension(currentExtension) {
-      assert(mPreviousExtension == GetExtension(enumResult));
+      : storeEntry_(pep::MakeSharedCopy(enumResult.localPseudonyms->polymorphic), enumResult.column),
+      participantAlias_(*enumResult.accessGroupPseudonym),
+      previousExtension_(currentExtension) {
+      assert(previousExtension_ == GetExtension(enumResult));
 
       // Initialize the storage entry with current metadata values (from the entry that we'll overwrite)
-      mStoreEntry.mXMetadata = enumResult.mMetadata.extra();
+      storeEntry_.xMetadata = enumResult.metadata.extra();
       // Overwrite file extension entry with the correct value
-      mStoreEntry.mXMetadata["fileExtension"] = pep::MetadataXEntry::FromPlaintext(correctExtension, false, false);
+      storeEntry_.xMetadata["fileExtension"] = pep::MetadataXEntry::FromPlaintext(correctExtension, false, false);
     }
 
   public:
-    const pep::StoreMetadata2Entry& getStoreEntry() const noexcept { return mStoreEntry; }
-    const pep::LocalPseudonym& getParticipantAlias() const noexcept { return mParticipantAlias; }
-    const std::optional<std::string>& getPreviousExtension() const noexcept { return mPreviousExtension; }
+    const pep::StoreMetadata2Entry& getStoreEntry() const noexcept { return storeEntry_; }
+    const pep::LocalPseudonym& getParticipantAlias() const noexcept { return participantAlias_; }
+    const std::optional<std::string>& getPreviousExtension() const noexcept { return previousExtension_; }
 
     std::string getAssignedExtension() const {
-      auto position = mStoreEntry.mXMetadata.find("fileExtension");
-      assert(position != mStoreEntry.mXMetadata.cend());
+      auto position = storeEntry_.xMetadata.find("fileExtension");
+      assert(position != storeEntry_.xMetadata.cend());
       return position->second.plaintext();
     }
 
@@ -286,18 +289,18 @@ protected:
   }
 
   static void ReportParticipantAndColumn(std::ostream& destination, const pep::EnumerateResult& enumResult) {
-    return ReportParticipantAndColumn(destination, *enumResult.mAccessGroupPseudonym, enumResult.mColumn);
+    return ReportParticipantAndColumn(destination, *enumResult.accessGroupPseudonym, enumResult.column);
   }
 
   static void ReportParticipantAndColumn(std::ostream& destination, const Update& update) {
-    return ReportParticipantAndColumn(destination, update.getParticipantAlias(), update.getStoreEntry().mColumn);
+    return ReportParticipantAndColumn(destination, update.getParticipantAlias(), update.getStoreEntry().column);
   }
 
 private:
   std::optional<Update> getUpdateFor(const pep::EnumerateResult& enumResult, const ColumnExtensions& requiredExtensions) {
     auto verbose = this->getParameterValues().has("verbose");
 
-    auto required = requiredExtensions.find(enumResult.mColumn);
+    auto required = requiredExtensions.find(enumResult.column);
     if (required == requiredExtensions.cend()) { // This column has no associated expected file extension
       if (verbose) {
         std::cout << "Skipping ";
@@ -345,38 +348,38 @@ protected:
 
         class Counts {
         private:
-          std::optional<std::chrono::steady_clock::time_point> mStartTime;
-          size_t mTotalColumns = 0U;
-          size_t mColumnsSeen = 0U;
-          size_t mCellsSeen = 0U;
-          size_t mUpdatesSeen = 0U;
+          std::optional<std::chrono::steady_clock::time_point> startTime_;
+          size_t totalColumns_ = 0U;
+          size_t columnsSeen_ = 0U;
+          size_t cellsSeen_ = 0U;
+          size_t updatesSeen_ = 0U;
 
         public:
           void start(size_t totalColumns) {
-            assert(!mStartTime.has_value());
-            mStartTime = std::chrono::steady_clock::now();
-            mTotalColumns = totalColumns;
+            assert(!startTime_.has_value());
+            startTime_ = std::chrono::steady_clock::now();
+            totalColumns_ = totalColumns;
           }
 
           void processingColumns(size_t count) {
-            mColumnsSeen += count;
+            columnsSeen_ += count;
           }
 
           void processingCells(size_t count) {
-            mCellsSeen += count;
+            cellsSeen_ += count;
           }
 
           void processingUpdates(size_t count) {
-            mUpdatesSeen += count;
+            updatesSeen_ += count;
           }
 
           void reportProgress() const {
-            assert(mStartTime.has_value());
-            if (mTotalColumns != 0U && mColumnsSeen < mTotalColumns) {
-              double completed = static_cast<double>(mColumnsSeen) / static_cast<double>(mTotalColumns);
+            assert(startTime_.has_value());
+            if (totalColumns_ != 0U && columnsSeen_ < totalColumns_) {
+              double completed = static_cast<double>(columnsSeen_) / static_cast<double>(totalColumns_);
               assert(completed >= 0.0);
               assert(completed <= 1.0);
-              auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - *mStartTime);
+              auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - *startTime_);
               auto total = elapsed / completed;
               auto remaining = total - elapsed;
 
@@ -387,13 +390,21 @@ protected:
                 << std::endl;
             }
             else {
-              std::cout << mUpdatesSeen << " assignable out of " << mCellsSeen << " total cells processed in " << pep::chrono::ToString(std::chrono::steady_clock::now() - *mStartTime) << std::endl;
+              std::cout << updatesSeen_ << " assignable out of " << cellsSeen_ << " total cells processed in " << pep::chrono::ToString(std::chrono::steady_clock::now() - *startTime_) << std::endl;
             }
           }
         };
 
         auto counts = std::make_shared<Counts>();
 
+#if defined(__GNUC__) && !defined(__clang__)
+# pragma GCC diagnostic push
+// GCC (15.2, -O3) in Flatpak reports uninitialized use of its own scalar-replacement temporaries ("SR.<number>") in the
+// std::shared_ptr copy constructors that it inlines into the lambda captures below. The captured values are
+// always initialized, so these diagnostics are false positives.
+# pragma GCC diagnostic ignored "-Wuninitialized"
+# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
         return this->getRequiredColumnExtensions(client)
           .concat_map([counts](std::shared_ptr<ColumnExtensions> columnExtensions) {
           counts->start(columnExtensions->size());
@@ -401,14 +412,15 @@ protected:
             })
           .concat_map([this, client, ownResult, pgs, pps, counts](std::shared_ptr<ColumnExtensions> columnExtensions) {
           counts->processingColumns(columnExtensions->size());
-          pep::requestTicket2Opts ticketRequest;
+          pep::RequestTicket2Opts ticketRequest;
           ticketRequest.modes.emplace_back("read-meta");
           ticketRequest.includeAccessGroupPseudonyms = true;
           ticketRequest.participantGroups = *pgs;
           ticketRequest.pps = *pps;
 
-          ticketRequest.columns.reserve(columnExtensions->size());
-          std::transform(columnExtensions->cbegin(), columnExtensions->cend(), std::back_inserter(ticketRequest.columns), [](const auto& pair) {return pair.first; });
+          ticketRequest.columns = *columnExtensions
+            | views::keys
+            | to<std::vector>();
 
           return client->requestTicket2(ticketRequest)
             .flat_map([client](const pep::IndexedTicket2& ticket) {return client->enumerateData(ticket.getTicket()); })
@@ -439,6 +451,9 @@ protected:
             });
           });
       });
+#if defined(__GNUC__) && !defined(__clang__)
+# pragma GCC diagnostic pop
+#endif
 
     if (connectivityResult != 0) {
       return connectivityResult;
@@ -501,9 +516,7 @@ protected:
       return rxcpp::observable<>::just(true);
     }
 
-    std::vector<pep::StoreMetadata2Entry> storeEntries;
-    storeEntries.reserve(updates.size());
-    std::transform(updates.cbegin(), updates.cend(), std::back_inserter(storeEntries), [verbose = this->getParameterValues().has("verbose")](const Update& update) {
+    auto storeEntries = updates | views::transform([verbose = this->getParameterValues().has("verbose")](const Update& update) {
       if (verbose) {
         const auto& previous = update.getPreviousExtension();
         if (previous.has_value()) {
@@ -517,7 +530,8 @@ protected:
         std::cout << '\n';
       }
       return update.getStoreEntry();
-      });
+      })
+      | to<std::vector>();
     std::cout.flush();
 
     return client->updateMetadata2(storeEntries)
@@ -553,15 +567,15 @@ public:
   }
 
 private:
-  std::shared_ptr<std::vector<pep::PolymorphicPseudonym>> mPps;
-  std::shared_ptr<pep::SignedTicket2> mTicket;
+  std::shared_ptr<std::vector<pep::PolymorphicPseudonym>> pps_;
+  std::shared_ptr<pep::SignedTicket2> ticket_;
 
   rxcpp::observable<std::shared_ptr<pep::SignedTicket2>> getTicket(std::shared_ptr<pep::CoreClient> client) {
-    if (mTicket != nullptr) {
-      return rxcpp::observable<>::just(mTicket);
+    if (ticket_ != nullptr) {
+      return rxcpp::observable<>::just(ticket_);
     }
 
-    auto opts = std::make_shared<pep::requestTicket2Opts>();
+    auto opts = std::make_shared<pep::RequestTicket2Opts>();
     opts->modes = { "read-meta", "write-meta" };
     opts->includeAccessGroupPseudonyms = true;
     opts->columns = MultiCellQuery::GetColumns(this->getParameterValues());
@@ -576,7 +590,7 @@ private:
       return client->requestTicket2(*opts);
         })
       .map([this](const pep::IndexedTicket2& ticket) {
-          return this->mTicket = ticket.getTicket();
+          return this->ticket_ = ticket.getTicket();
         });
   }
 
@@ -599,7 +613,7 @@ protected:
       .map([this](std::shared_ptr<pep::SignedTicket2> ticket) {
       auto extension = this->getParameterValues().get<std::string>("extension");
       auto result = std::make_shared<ColumnExtensions>();
-      for (const auto& column : ticket->openWithoutCheckingSignature().mColumns) {
+      for (const auto& column : ticket->openWithoutCheckingSignature().columns) {
         [[maybe_unused]] auto emplaced = result->emplace(column, extension).second;
         assert(emplaced);
       }
@@ -612,13 +626,13 @@ protected:
   }
 
   rxcpp::observable<std::shared_ptr<std::vector<pep::PolymorphicPseudonym>>> getPpsToProcess(std::shared_ptr<pep::CoreClient> client) override {
-    if (mPps != nullptr) {
-      return rxcpp::observable<>::just(mPps);
+    if (pps_ != nullptr) {
+      return rxcpp::observable<>::just(pps_);
     }
 
     return MultiCellQuery::GetPps(this->getParameterValues(), client)
       .op(pep::RxToVector())
-      .tap([this](std::shared_ptr<std::vector<pep::PolymorphicPseudonym>> pps) { this->mPps = pps; });
+      .tap([this](std::shared_ptr<std::vector<pep::PolymorphicPseudonym>> pps) { this->pps_ = pps; });
   }
 
 };
@@ -631,17 +645,17 @@ public:
 
 private:
   struct ParticipantSpecification {
-    enum Kind {
-      PARTICIPANT,
-      SHORT_PSEUDONYM
+    enum class Kind {
+      Participant,
+      ShortPseudonym
     };
 
     [[nodiscard]] static std::string KindToString(Kind kind) {
       switch (kind) {
-        case PARTICIPANT: return "Participant";
-        case SHORT_PSEUDONYM: return "Short pseudonym";
+      case Kind::Participant: return "Participant";
+      case Kind::ShortPseudonym: return "Short pseudonym";
       }
-      throw std::runtime_error("Unsupported participant specification kind: " + std::to_string(pep::ToUnderlying(kind)));
+      throw std::runtime_error("Unsupported participant specification kind: " + std::to_string(std::to_underlying(kind)));
     }
 
     Kind kind;
@@ -673,8 +687,8 @@ private:
   }
 
   rxcpp::observable<std::shared_ptr<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>>> getParticipantSpecs(std::shared_ptr<pep::CoreClient> client) {
-    return this->getParticipantSpecs(client, ParticipantSpecification::Kind::SHORT_PSEUDONYM, &MultiCellQuery::GetPpsForShortPseudonyms)
-      .concat(this->getParticipantSpecs(client, ParticipantSpecification::Kind::PARTICIPANT, &MultiCellQuery::GetPpsForParticipantSpecs))
+    return this->getParticipantSpecs(client, ParticipantSpecification::Kind::ShortPseudonym, &MultiCellQuery::GetPpsForShortPseudonyms)
+      .concat(this->getParticipantSpecs(client, ParticipantSpecification::Kind::Participant, &MultiCellQuery::GetPpsForParticipantSpecs))
       .reduce( // Join both maps into one
         std::make_shared<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>>(),
         [](std::shared_ptr<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>> all, std::shared_ptr<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>> some) {
@@ -729,15 +743,16 @@ protected:
         .flat_map([this, client](std::shared_ptr<std::map<pep::PolymorphicPseudonym, std::set<ParticipantSpecification>>> specs) {
         const auto& vm = this->getParameterValues();
 
-        pep::requestTicket2Opts opts;
+        pep::RequestTicket2Opts opts;
         opts.modes = { "read-meta" };
         opts.includeAccessGroupPseudonyms = true;
         opts.participantGroups = MultiCellQuery::GetParticipantGroups(vm);
         opts.columnGroups = MultiCellQuery::GetColumnGroups(vm);
         opts.columns = MultiCellQuery::GetColumns(vm);
 
-        opts.pps.reserve(specs->size());
-        std::transform(specs->cbegin(), specs->cend(), std::back_inserter(opts.pps), [](const auto& pair) {return pair.first; });
+        opts.pps = *specs
+          | views::keys
+          | to<std::vector>();
 
         return client->requestTicket2(opts)
           .flat_map([client](pep::IndexedTicket2 indexed) {
@@ -746,15 +761,15 @@ protected:
           .map([this, specs](const std::vector<std::shared_ptr<pep::EnumerateResult>>& result) {
           for (const auto& entryPtr : result) {
             const auto& entry = *entryPtr;
-            auto position = specs->find(entry.mLocalPseudonyms->mPolymorphic);
+            auto position = specs->find(entry.localPseudonyms->polymorphic);
             if (position != specs->cend()) { // If this participant was identified by the user on the command line, report back using that identifier
               for (auto& spec : position->second) {
-                this->reportFileExtension(spec.str(), entry.mColumn, entry.mMetadata.extra());
+                this->reportFileExtension(spec.str(), entry.column, entry.metadata.extra());
               }
             }
             else { // This PP was (only) requested as part of a participant group: we don't have a user-requested identifier for it
-              assert(entry.mAccessGroupPseudonym != nullptr);
-              this->reportFileExtension("Local pseudonym " + entry.mAccessGroupPseudonym->text(), entry.mColumn, entry.mMetadata.extra());
+              assert(entry.accessGroupPseudonym != nullptr);
+              this->reportFileExtension("Local pseudonym " + entry.accessGroupPseudonym->text(), entry.column, entry.metadata.extra());
             }
           }
           return pep::FakeVoid();

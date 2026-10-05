@@ -4,7 +4,7 @@
 #include <pep/application/Application.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/utils/Exceptions.hpp>
-#include <pep/async/RxBeforeCompletion.hpp>
+#include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
@@ -23,29 +23,32 @@
 #include <filesystem>
 
 using namespace pep::cli;
+using namespace std::ranges;
 namespace pt = boost::property_tree;
 
 namespace {
 
-struct participantData {
+constexpr char CsvNewline = '\n';
+
+struct ParticipantData {
   uint32_t localPseudonymsIndex;
   pt::ptree data;
 };
 
-using datalist = std::vector<participantData>;
+using DataList = std::vector<ParticipantData>;
 
-struct studyData {
-  std::unordered_map<std::string, datalist> steps;
-  std::unordered_map<std::string, datalist> reports;
+struct StudyData {
+  std::unordered_map<std::string, DataList> steps;
+  std::unordered_map<std::string, DataList> reports;
 };
 
-struct castorData {
-  std::unordered_map<std::string, studyData> studies;
+struct CastorData {
+  std::unordered_map<std::string, StudyData> studies;
   std::unordered_map<uint32_t, std::string> participantIds;
 };
 
-const std::string castorColumnPrefix = "Castor.";
-const size_t castorColumnPrefixLength = castorColumnPrefix.length();
+const std::string CastorColumnPrefix = "Castor.";
+const size_t CastorColumnPrefixLength = CastorColumnPrefix.length();
 
 class CommandCastor : public ChildCommandOf<CliApplication> {
 public:
@@ -61,15 +64,12 @@ private:
     }
 
   private:
-    const char csvNewline = '\n';
-    std::string csvSeparator;
+    std::string csvSeparator_;
 
     std::string csvEscape(std::string value) {
       size_t quotePos = value.find('"');
-      bool useQuotes = value.find(csvSeparator) != std::string::npos
-        || value.find(' ') != std::string::npos
-        || value.find('\n') != std::string::npos
-        || value.find('\r') != std::string::npos
+      bool useQuotes = value.contains(csvSeparator_)
+        || value.find_first_of(" \n\r") != std::string::npos
         || quotePos != std::string::npos;
       while (quotePos != std::string::npos) {
         value.replace(quotePos, 1, "\"\"");
@@ -80,7 +80,7 @@ private:
       return value;
     }
 
-    void writeDataFiles(const std::unordered_map<std::string, datalist>& tables, const std::unordered_map<uint32_t, std::string>& participantIds, const std::filesystem::path& dir) {
+    void writeDataFiles(const std::unordered_map<std::string, DataList>& tables, const std::unordered_map<uint32_t, std::string>& participantIds, const std::filesystem::path& dir) {
       std::filesystem::create_directories(dir);
 
       for (const auto& [tablename, table] : tables) {
@@ -92,9 +92,9 @@ private:
           size_t added = AddMissingColumns(columns, row.data);
           if (added > 0) {
             std::string commas;
-            commas.reserve(added * csvSeparator.length());
+            commas.reserve(added * csvSeparator_.length());
             for (size_t i = 0; i < added; i++) {
-              commas.append(csvSeparator);
+              commas.append(csvSeparator_);
             }
             for (std::string& row : rows) {
               row.append(commas);
@@ -103,7 +103,7 @@ private:
 
           std::string newRow = participantId;
           for (const std::string& column : columns) {
-            newRow.append(csvSeparator);
+            newRow.append(csvSeparator_);
             newRow.append(csvEscape(row.data.get<std::string>(column, "")));
           }
           rows.push_back(std::move(newRow));
@@ -116,11 +116,11 @@ private:
         }
         os << "participantIdentifier";
         for (const std::string& column : columns) {
-          os << csvSeparator << csvEscape(column);
+          os << csvSeparator_ << csvEscape(column);
         }
-        os << csvNewline;
+        os << CsvNewline;
         for (const std::string& row : rows) {
-          os << row << csvNewline;
+          os << row << CsvNewline;
         }
         os.close();
       }
@@ -130,7 +130,7 @@ private:
       columns.reserve(ptree.size());
       size_t startSize = columns.size();
       for (const auto& entry : ptree) {
-        if (std::find(columns.begin(), columns.end(), entry.first) == columns.end()) {
+        if (!contains(columns, entry.first)) {
           columns.push_back(entry.first);
         }
       }
@@ -149,37 +149,37 @@ private:
     int execute() override {
       const auto& values = this->getParameterValues();
 
-      csvSeparator = values.get<std::string>("separator");
+      csvSeparator_ = values.get<std::string>("separator");
 
       auto dir = values.get<std::filesystem::path>("output-directory");
 
       if (std::filesystem::exists(dir) && values.has("force")) {
-        LOG(LOG_TAG, pep::info) << "Output directory " << dir << " exists.  Removing ..."
+        PEP_LOG(LogTag, pep::Severity::Info) << "Output directory " << dir << " exists.  Removing ..."
                   << std::endl;
         std::filesystem::remove_all(dir);
         std::filesystem::create_directories(dir);
       }
 
       if (!std::filesystem::exists(dir)) {
-        LOG(LOG_TAG, pep::info) << "Output directory " << dir << " does not exist.  "
+        PEP_LOG(LogTag, pep::Severity::Info) << "Output directory " << dir << " does not exist.  "
                   << "Creating ..." << std::endl;
         std::filesystem::create_directories(dir);
       }
 
       if (!std::filesystem::is_directory(dir)) {
-        LOG(LOG_TAG, pep::error) << "output directory " << dir
+        PEP_LOG(LogTag, pep::Severity::Error) << "output directory " << dir
               << " is not a directory" << std::endl;
         return 5;
       } else {
         if (std::filesystem::directory_iterator(dir) != std::filesystem::directory_iterator()) {
-          LOG(LOG_TAG, pep::error) << "output directory " << dir << " is not empty"
+          PEP_LOG(LogTag, pep::Severity::Error) << "output directory " << dir << " is not empty"
                     << std::endl;
           return 5;
         }
       }
 
       return this->executeEventLoopFor([this, dir](std::shared_ptr<pep::CoreClient> client) {
-        pep::enumerateAndRetrieveData2Opts earOpts;
+        pep::EnumerateAndRetrieveData2Opts earOpts;
         earOpts.groups = {"*"};
         earOpts.columnGroups = {"Castor"};
         earOpts.columns = {"ParticipantIdentifier"};
@@ -187,49 +187,49 @@ private:
         earOpts.dataSizeLimit = 0;
 
         return client->enumerateAndRetrieveData2(earOpts).reduce(
-          castorData(),
-          [](castorData data, pep::EnumerateAndRetrieveResult earResult) {
-            if(earResult.mColumn == "ParticipantIdentifier") {
-              data.participantIds.emplace(earResult.mLocalPseudonymsIndex, earResult.mData);
+          CastorData(),
+          [](CastorData data, pep::EnumerateAndRetrieveResult earResult) {
+            if(earResult.column == "ParticipantIdentifier") {
+              data.participantIds.emplace(earResult.localPseudonymsIndex, earResult.data);
             }
-            else if(earResult.mColumn.starts_with(castorColumnPrefix)) {
-              std::string studyName = earResult.mColumn.substr(castorColumnPrefixLength,
-                earResult.mColumn.find_first_of('.', castorColumnPrefixLength) - castorColumnPrefixLength);
+            else if(earResult.column.starts_with(CastorColumnPrefix)) {
+              std::string studyName = earResult.column.substr(CastorColumnPrefixLength,
+                earResult.column.find_first_of('.', CastorColumnPrefixLength) - CastorColumnPrefixLength);
 
               auto& study = data.studies[studyName];
-              std::istringstream iss(earResult.mData);
+              std::istringstream iss(earResult.data);
               pt::ptree dataTree;
               pt::read_json(iss, dataTree);
 
               if(auto crf = dataTree.get_child_optional("crf")) {
-                study.steps[earResult.mColumn].push_back({earResult.mLocalPseudonymsIndex, *crf});
+                study.steps[earResult.column].push_back({earResult.localPseudonymsIndex, *crf});
               }
               else {
-                LOG(LOG_TAG, pep::warning) << "warning: Castor data is malformed. Missing crf data" << std::endl;
+                PEP_LOG(LogTag, pep::Severity::Warning) << "warning: Castor data is malformed. Missing crf data" << std::endl;
               }
               if(auto reports = dataTree.get_child_optional("reports")) {
                 if(!reports->empty()) {
                   for(const auto& [reportname, report] : *reports) {
                     for(const auto& [rdiName, repeatingDataInstance] : report) {
                       if(rdiName != "") {
-                        LOG(LOG_TAG, pep::warning) << "warning: Castor data is malformed. Report instances should be an array without keys" << std::endl;
+                        PEP_LOG(LogTag, pep::Severity::Warning) << "warning: Castor data is malformed. Report instances should be an array without keys" << std::endl;
                       }
                       else {
-                        study.reports[earResult.mColumn + "." + reportname].push_back({earResult.mLocalPseudonymsIndex, repeatingDataInstance});
+                        study.reports[earResult.column + "." + reportname].push_back({earResult.localPseudonymsIndex, repeatingDataInstance});
                       }
                     }
                   }
                 }
               }
               else {
-                LOG(LOG_TAG, pep::warning) << "warning: Castor data is malformed. Missing reports data" << std::endl;
+                PEP_LOG(LogTag, pep::Severity::Warning) << "warning: Castor data is malformed. Missing reports data" << std::endl;
               }
             }
             return data;
           },
-          [](castorData data) { return data; }
+          [](CastorData data) { return data; }
         ).map(
-          [this, dir](castorData data){
+          [this, dir](CastorData data){
             for(const auto& [studyname, study] : data.studies) {
               const std::filesystem::path stepsdir = dir / studyname / "steps";
               const std::filesystem::path reportsdir = dir / studyname / "reports";
@@ -237,7 +237,7 @@ private:
               this->writeDataFiles(study.steps, data.participantIds, stepsdir);
               this->writeDataFiles(study.reports, data.participantIds, reportsdir);
             }
-            LOG(LOG_TAG, pep::info) << "   ... done!" << std::endl;
+            PEP_LOG(LogTag, pep::Severity::Info) << "   ... done!" << std::endl;
             return pep::FakeVoid();
           });
         });
@@ -289,13 +289,13 @@ private:
             .op(pep::RxGetOne())
             .map([](const pep::AmaQueryResponse& response) {
             auto config = std::make_shared<CurrentConfig>();
-            for (const auto& column : response.mColumns) {
-              [[maybe_unused]] auto emplaced = config->existing.emplace(column.mName);
+            for (const auto& column : response.columns) {
+              [[maybe_unused]] auto emplaced = config->existing.emplace(column.name);
               assert(emplaced.second);
             }
-            const auto& castorGroup = std::find_if(response.mColumnGroups.cbegin(), response.mColumnGroups.cend(), [](const pep::AmaQRColumnGroup& group) {return group.mName == "Castor"; });
-            if (castorGroup != response.mColumnGroups.cend()) {
-              for (const auto& column : castorGroup->mColumns) {
+            const auto& castorGroup = find(response.columnGroups, "Castor", &pep::AmaQRColumnGroup::name);
+            if (castorGroup != response.columnGroups.cend()) {
+              for (const auto& column : castorGroup->columns) {
                 [[maybe_unused]] auto emplaced = config->grouped.emplace(column);
                 assert(emplaced.second);
               }
@@ -305,8 +305,8 @@ private:
             .concat_map([required](std::shared_ptr<CurrentConfig> config) {
               return required
                 .map([config](ColumnStatus column) {
-                column.exists = (config->existing.find(column.name) != config->existing.cend());
-                column.grouped = (config->grouped.find(column.name) != config->grouped.cend());
+                column.exists = config->existing.contains(column.name);
+                column.grouped = config->grouped.contains(column.name);
                 return column;
                   });
               })
@@ -346,7 +346,7 @@ private:
               std::cout << std::endl;
             },
             [](std::exception_ptr) { /* do nothing */},
-            []() { LOG(LOG_TAG, pep::info) << "   ... done!" << std::endl; }
+            []() { PEP_LOG(LogTag, pep::Severity::Info) << "   ... done!" << std::endl; }
           ).op(pep::RxInstead(pep::FakeVoid()));
         });
     }
@@ -418,7 +418,7 @@ private:
             << std::endl;
         }, [](std::exception_ptr) { /* do nothing */},
             []() {
-          LOG(LOG_TAG, pep::info) << "   ... done!" << std::endl;
+          PEP_LOG(LogTag, pep::Severity::Info) << "   ... done!" << std::endl;
         }).op(pep::RxInstead(pep::FakeVoid()));
         });
     }
@@ -435,7 +435,7 @@ private:
     private:
       static pep::FakeVoid ReportColumnNameMappings(const pep::ColumnNameMappings& mappings) {
         auto entries = mappings.getEntries();
-        std::sort(entries.begin(), entries.end(), [](const pep::ColumnNameMapping& lhs, const pep::ColumnNameMapping& rhs) { return lhs.original.getValue() < rhs.original.getValue(); });
+        sort(entries, {}, [](const pep::ColumnNameMapping& entry) -> decltype(auto) { return entry.original.getValue(); });
         for (const auto& entry : entries) {
           std::cout << std::quoted(entry.original.getValue()) << " --> " << std::quoted(entry.mapped.getValue()) << std::endl;
         }
@@ -453,9 +453,9 @@ private:
         return this->executeEventLoopFor([this](std::shared_ptr<pep::CoreClient> client) {
           return this->getAffectedMappings(*client->getAccessManagerProxy())
             .map(ReportColumnNameMappings)
-            .op(pep::RxBeforeCompletion(
+            .op(pep::RxSubsequently(
               []() {
-                LOG(LOG_TAG, pep::info) << "   ... done!" << std::endl;
+                PEP_LOG(LogTag, pep::Severity::Info) << "   ... done!" << std::endl;
               }));
           });
       }

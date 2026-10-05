@@ -5,8 +5,8 @@
 namespace pep {
 
 rxcpp::observable<AuthorizationResult> BrowserAuthorization(
-  std::shared_ptr<boost::asio::io_context> io_context,
-  std::function<std::string (std::string redirectUri)> getAuthorizeUri
+  std::shared_ptr<boost::asio::io_context> ioContext,
+  OAuthClient::GetAuthorizeUriFn getAuthorizeUri
 );
 
 }

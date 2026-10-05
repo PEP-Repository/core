@@ -248,9 +248,9 @@ func (c *AccessManagerConn) RequestEncryptionKey(sk *CertifiedSigningPrivateKey,
 func (c *AccessManagerConn) RequestEncryptionKeys(sk *CertifiedSigningPrivateKey,
 	ticket *SignedTicket2, metadata []*Metadata, keys []*Triple, blind bool) (
 	[]Triple, error) {
-	blindmode := pep_proto.KeyBlindMode_BLIND_MODE_UNBLIND
+	blindmode := pep_proto.KeyBlindMode_Unblind
 	if blind {
-		blindmode = pep_proto.KeyBlindMode_BLIND_MODE_BLIND
+		blindmode = pep_proto.KeyBlindMode_Blind
 	}
 	entries := make([]*pep_proto.KeyRequestEntry, len(keys))
 	for i := 0; i < len(keys); i++ {

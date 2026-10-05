@@ -5,6 +5,9 @@
 namespace pep::structuredOutput {
 
 std::vector<std::string> ToIndividualStrings(FormatFlags flags) {
+  static_assert(
+      FormatFlags::All == (FormatFlags::Csv | FormatFlags::Json | FormatFlags::Yaml),
+      "every format must be handled below");
   std::vector<std::string> strs{};
   if (HasFlags(flags, FormatFlags::Csv)) { strs.emplace_back("csv"); }
   if (HasFlags(flags, FormatFlags::Json)) { strs.emplace_back("json"); }
@@ -14,7 +17,6 @@ std::vector<std::string> ToIndividualStrings(FormatFlags flags) {
 
 std::string ToSingleString(FormatFlags flags, std::string_view separator) {
   if (flags == FormatFlags::None) { return "none"; }
-  if (flags == FormatFlags::All) { return "all"; }
   return boost::join(ToIndividualStrings(flags), separator);
 }
 

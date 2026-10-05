@@ -2,7 +2,7 @@
 # Access Manager, Transcryptor, and Storage Facility.
 # For (client connectivity to) other servers, see the "pepClientlib".
 
-add_library(${PROJECT_NAME}CoreClientlib STATIC
+add_library(${PROJECT_NAME}CoreClientlib
     CoreClient.AesKeys.cpp
     CoreClient.Data.EnumAndRetrieve.cpp
     CoreClient.Data.Read.cpp

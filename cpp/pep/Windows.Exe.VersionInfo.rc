@@ -22,36 +22,36 @@
 // Make VERSIONINFO fields fit in 16 bits, see https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource & https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1341
 // Note: Windows doesn't complain when it would be too large, it just truncates it.
 #if (PEP_VERSION_BUILD -1 == -1) // Local development version
-# define VER_BUILD 0
+# define PEP_VER_BUILD 0
 #else // Gitlab CI build
-# define VER_BUILD PEP_VERSION_BUILD
+# define PEP_VER_BUILD PEP_VERSION_BUILD
 #endif
 
 #if (PEP_VERSION_REVISION -1 == -1) // Local development version
-# define VER_REVISION 0
+# define PEP_VER_REVISION 0
 #else // Gitlab CI build
-# define VER_REVISION PEP_VERSION_REVISION
+# define PEP_VER_REVISION PEP_VERSION_REVISION
 #endif
 
 // XXXVERSION directives must be delimited by commas
-// We don't include the revision (i.e. CI job number, which is a 400k+ value) in VERSION_NUM because it doesn't fit the 16 available bits
-#define VERSION_NUM PEP_VERSION_MAJOR,PEP_VERSION_MINOR,VER_BUILD
+// We don't include the revision (i.e. CI job number, which is a 400k+ value) in PEP_VERSION_NUM because it doesn't fit the 16 available bits
+#define PEP_VERSION_NUM PEP_VERSION_MAJOR,PEP_VERSION_MINOR,PEP_VER_BUILD
 
 // "XxxVersion" strings must be delimited by full stops (periods)
-#define VERSION_STR BOOST_PP_STRINGIZE(PEP_VERSION_MAJOR.PEP_VERSION_MINOR.VER_BUILD.VER_REVISION)
+#define PEP_VERSION_STR BOOST_PP_STRINGIZE(PEP_VERSION_MAJOR.PEP_VERSION_MINOR.PEP_VER_BUILD.PEP_VER_REVISION)
 
 // Settings related to localization
-#define LOC_LANGUAGE_ENGLISH        0409
-#define LOC_CHARSET_MULTILINGUAL    04E4
-#define LOC_LANGUAGE                LOC_LANGUAGE_ENGLISH
-#define LOC_CHARSET                 LOC_CHARSET_MULTILINGUAL
+#define PEP_LOC_LANGUAGE_ENGLISH        0409
+#define PEP_LOC_CHARSET_MULTILINGUAL    04E4
+#define PEP_LOC_LANGUAGE                PEP_LOC_LANGUAGE_ENGLISH
+#define PEP_LOC_CHARSET                 PEP_LOC_CHARSET_MULTILINGUAL
 
 // Define a VERSIONINFO resource as documented on https://docs.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     VERSION_NUM
-PRODUCTVERSION  VERSION_NUM // Note that "ProductVersion" string (below) is used for file -> Properties -> Details
+FILEVERSION     PEP_VERSION_NUM
+PRODUCTVERSION  PEP_VERSION_NUM // Note that "ProductVersion" string (below) is used for file -> Properties -> Details
 FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
 FILEFLAGS       VS_FF_DEBUG
 #else
 FILEFLAGS       0x0L
@@ -61,16 +61,16 @@ FILETYPE        VFT_APP
 {
   BLOCK "StringFileInfo"
   {
-    BLOCK BOOST_PP_STRINGIZE(BOOST_PP_CAT(LOC_LANGUAGE, LOC_CHARSET))
+    BLOCK BOOST_PP_STRINGIZE(BOOST_PP_CAT(PEP_LOC_LANGUAGE, PEP_LOC_CHARSET))
     {
       VALUE "CompanyName",      "Radboud University"
       VALUE "FileDescription",  PEP_EXE_DESCRIPTION
-      VALUE "FileVersion",      VERSION_STR // Note that FILEVERSION fixed-info field (above) is used for file -> Properties -> Details
+      VALUE "FileVersion",      PEP_VERSION_STR // Note that FILEVERSION fixed-info field (above) is used for file -> Properties -> Details
       VALUE "InternalName",     PEP_EXE_FILENAME
       VALUE "LegalCopyright",   "Copyright Radboud University. All rights reserved."
       VALUE "ProductName",      "Polymorphic encryption and pseudonymisation for personalised healthcare"
       VALUE "OriginalFilename", PEP_EXE_FILENAME ".exe"
-      VALUE "ProductVersion",   VERSION_STR
+      VALUE "ProductVersion",   PEP_VERSION_STR
       VALUE "CompanyShortName", "RU"
       VALUE "ProductShortName", "PEP"
     }
@@ -78,6 +78,6 @@ FILETYPE        VFT_APP
 
   BLOCK "VarFileInfo"
   {
-    VALUE "Translation", BOOST_PP_CAT(0x, LOC_LANGUAGE) BOOST_PP_CAT(0x, LOC_CHARSET)
+    VALUE "Translation", BOOST_PP_CAT(0x, PEP_LOC_LANGUAGE) BOOST_PP_CAT(0x, PEP_LOC_CHARSET)
   }
 }

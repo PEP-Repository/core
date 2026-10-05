@@ -5,18 +5,18 @@
 
 namespace {
 
-const std::string LOG_TAG = "PEP Assessor branding";
+const std::string LogTag = "PEP Assessor branding";
 
 }
 
 Branding::Branding(const QString& logoPath, const QString& projectName)
-  : mLogo(logoPath), mProjectName(projectName) {
+  : logo_(logoPath), projectName_(projectName) {
 }
 
 void Branding::showLogo(QLabel& host) const {
   host.setScaledContents(false);
   host.setAlignment(Qt::AlignCenter);
-  host.setPixmap(mLogo.scaled(host.size(), Qt::KeepAspectRatio));
+  host.setPixmap(logo_.scaled(host.size(), Qt::KeepAspectRatio));
 }
 
 Branding Branding::Get(const pep::Configuration& configuration, const std::string& path) {
@@ -26,7 +26,7 @@ Branding Branding::Get(const pep::Configuration& configuration, const std::strin
   auto configured = configuration.get<std::optional<BrandingConfiguration>>(path);
   if (configured) {
     if (configured->projectName.empty()) {
-      LOG(LOG_TAG, pep::warning) << "Empty project name configured; using generic value";
+      PEP_LOG(LogTag, pep::Severity::Warning) << "Empty project name configured; using generic value";
     }
     else {
       projectName = QString::fromStdString(configured->projectName);
@@ -37,7 +37,7 @@ Branding Branding::Get(const pep::Configuration& configuration, const std::strin
         logoPath = QString::fromStdString(configured->projectLogo.string());
       }
       else {
-        LOG(LOG_TAG, pep::warning) << "Project logo could not be found at " << configured->projectLogo << "; using PEP logo";
+        PEP_LOG(LogTag, pep::Severity::Warning) << "Project logo could not be found at " << configured->projectLogo << "; using PEP logo";
       }
     }
   }

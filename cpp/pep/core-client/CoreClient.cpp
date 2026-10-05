@@ -2,7 +2,6 @@
 #include <pep/async/RxCache.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxRequireCount.hpp>
-#include <pep/async/RxToSet.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/key-components/KeyComponentSerializers.hpp>
@@ -13,7 +12,9 @@
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/utils/CollectionUtils.hpp>
+#include <pep/utils/MapUtils.hpp>
+
+#include <ranges>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -30,16 +31,18 @@
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 
 namespace {
 
-const std::string LOG_TAG ("CoreClient");
+const std::string LogTag ("CoreClient");
 
 bool ModesInclude(const std::vector<std::string>& required, std::vector<std::string> provided) {
   auto begin = provided.cbegin(), end = provided.cend();
   // If a "read" privilege is held, ensure that the corresponding (implicitly included) "read-meta" privilege is in the array as well
-  if (std::find(begin, end, "read") != end && std::find(begin, end, "read-meta") == end) {
+  if (find(begin, end, "read") != end && find(begin, end, "read-meta") == end) {
     provided.push_back("read-meta");
 
     // Ensure that iterators are valid after vector update
@@ -47,7 +50,7 @@ bool ModesInclude(const std::vector<std::string>& required, std::vector<std::str
     end = provided.cend();
   }
   // If a "write-meta" privilege is held, ensure that the corresponding (implicitly included) "write" privilege is in the array as well
-  if (std::find(begin, end, "write-meta") != end && std::find(begin, end, "write") == end) {
+  if (find(begin, end, "write-meta") != end && find(begin, end, "write") == end) {
     provided.push_back("write");
   }
   return IsSubset(required, provided);
@@ -57,25 +60,26 @@ bool ModesInclude(const std::vector<std::string>& required, std::vector<std::str
 
 CoreClient::CoreClient(const Builder& builder) :
   MessageSigner(builder.getSigningIdentity()),
-  io_context(builder.getIoContext()), keysFilePath(builder.getKeysFilePath()),
-  caCertFilepath(builder.getCaCertFilepath()),
-  rootCAs(std::make_shared<X509RootCertificates>(X509CertificatesFromPem(ReadFile(builder.getCaCertFilepath())))),
-  privateKeyData(builder.getPrivateKeyData()),
-  privateKeyPseudonyms(builder.getPrivateKeyPseudonyms()),
-  systemPublicKeys(builder.getSystemPublicKeys()),
-  accessManagerEndPoint(builder.getAccessManagerEndPoint()),
-  storageFacilityEndPoint(builder.getStorageFacilityEndPoint()),
-  transcryptorEndPoint(builder.getTranscryptorEndPoint()) {
+  ioContext_(builder.getIoContext()),
+  keysFilePath_(builder.getKeysFilePath()),
+  caCertFilepath_(builder.getCaCertFilepath()),
+  rootCAs_(std::make_shared<X509RootCertificates>(X509CertificatesFromPem(ReadFile(builder.getCaCertFilepath())))),
+  privateKeyData_(builder.getPrivateKeyData()),
+  privateKeyPseudonyms_(builder.getPrivateKeyPseudonyms()),
+  systemPublicKeys_(builder.getSystemPublicKeys()),
+  accessManagerEndPoint_(builder.getAccessManagerEndPoint()),
+  storageFacilityEndPoint_(builder.getStorageFacilityEndPoint()),
+  transcryptorEndPoint_(builder.getTranscryptorEndPoint()) {
 
-  accessManagerProxy = tryConnectServerProxy<AccessManagerProxy>(accessManagerEndPoint);
-  storageFacilityProxy = tryConnectServerProxy<StorageFacilityProxy>(storageFacilityEndPoint);
-  transcryptorProxy = tryConnectServerProxy<TranscryptorProxy>(transcryptorEndPoint);
+  accessManagerProxy_ = tryConnectServerProxy<AccessManagerProxy>(accessManagerEndPoint_);
+  storageFacilityProxy_ = tryConnectServerProxy<StorageFacilityProxy>(storageFacilityEndPoint_);
+  transcryptorProxy_ = tryConnectServerProxy<TranscryptorProxy>(transcryptorEndPoint_);
 
-  if (keysFilePath.has_value()) {
-    enrollmentSubject.get_observable().subscribe(
-      [keysFilePath = *keysFilePath](const EnrolledPartyKeys& result){
-        LOG(LOG_TAG, debug) << "Writing new keys to \"" << keysFilePath.string() << '"';
-        std::ofstream sf(keysFilePath.string());
+  if (keysFilePath_.has_value()) {
+    enrollmentSubject_.get_observable().subscribe(
+      [keysFilePath = *keysFilePath_](const EnrolledPartyKeys& result){
+        PEP_LOG(LogTag, Severity::Debug) << "Writing new keys to \"" << keysFilePath.string() << '"';
+        std::ofstream sf(keysFilePath);
         boost::property_tree::ptree keysConfig;
         SerializeProperties(keysConfig, result);
         boost::property_tree::write_json(sf, keysConfig);
@@ -99,8 +103,8 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
       .reduce(
         std::make_shared<std::unordered_map<std::string, PolymorphicPseudonym>>(),
         [this](std::shared_ptr<std::unordered_map<std::string, PolymorphicPseudonym>> all, const LocalPseudonyms& entry) {
-          auto decrypted = entry.mAccessGroup->decrypt(privateKeyPseudonyms);
-          all->emplace(decrypted.text(), entry.mPolymorphic); // Don't assert that it's emplaced; we may be processing idsAndOrPps that refer to the same participant
+          auto decrypted = decryptLocalPseudonym(entry.accessGroup.value());
+          all->emplace(decrypted.text(), entry.polymorphic); // Don't assert that it's emplaced; we may be processing idsAndOrPps that refer to the same participant
           return all;
         }
       );
@@ -138,7 +142,7 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
             auto pseudonymStart = userPseudFormat.stripPrefix(participantIdOrPP);
             return ppsByLp->observe()
               .map([i, participantIdOrPP, pseudonymStart](std::shared_ptr<std::unordered_map<std::string, PolymorphicPseudonym>> ppsByLp) {
-              auto position = std::find_if(ppsByLp->cbegin(), ppsByLp->cend(), [pseudonymStart](const auto& pair) {return boost::starts_with(pair.first, pseudonymStart); });
+              auto position = find_if(*ppsByLp, [pseudonymStart](const auto& pair) {return boost::starts_with(pair.first, pseudonymStart); });
               if (position == ppsByLp->cend()) {
                 throw std::runtime_error("Can't find local pseudonym matching " + participantIdOrPP);
               }
@@ -175,11 +179,11 @@ rxcpp::observable<std::shared_ptr<std::vector<PolymorphicPseudonym>>> CoreClient
 }
 
 PolymorphicPseudonym CoreClient::generateParticipantPolymorphicPseudonym(const std::string& participantSID) {
-  return PolymorphicPseudonym::FromIdentifier(systemPublicKeys.globalPseudonymEncryptionKey, participantSID);
+  return PolymorphicPseudonym::FromIdentifier(systemPublicKeys_.globalPseudonymEncryptionKey, participantSID);
 }
 
 LocalPseudonym CoreClient::decryptLocalPseudonym(const EncryptedLocalPseudonym& encrypted) const {
-  return encrypted.decrypt(privateKeyPseudonyms);
+  return encrypted.decrypt(privateKeyPseudonyms());
 }
 
 std::shared_ptr<CoreClient> CoreClient::OpenClient(const Configuration& config,
@@ -197,41 +201,36 @@ void CoreClient::Builder::initialize(
   assert(io_context != nullptr && "Caller must provide an I/O context");
 
   try {
-    std::filesystem::path keysFile;
-    std::optional<std::filesystem::path> shadowPublicKeyFile;
+    this->setCaCertFilepath(config.get<std::filesystem::path>("CaCertificateFile"));
+    this->setSystemPublicKeys(config.get<SystemPublicKeys>("SystemPublicKeys"));
 
-    try {
-      // See #1797: the keys file must be (read from and) written to the cwd
-      // because the config's directory may be read-only (e.g. on Windows installations).
-      keysFile = std::filesystem::current_path() / config.get<std::string>("EnrolledPartyKeysFile");
+    auto serverEndPoints = config.get_child("ServerEndPoints");
 
-      this->setCaCertFilepath(config.get<std::filesystem::path>("CaCertificateFile"));
-      this->setSystemPublicKeys(config.get<SystemPublicKeys>("SystemPublicKeys"));
+    if (auto amConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::AccessManager().configNode())) {
+      this->setAccessManagerEndPoint(*amConfig);
+    }
 
-      auto serverEndPoints = config.get_child("ServerEndPoints");
+    if (auto tcConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::Transcryptor().configNode())) {
+      this->setTranscryptorEndPoint(*tcConfig);
+    }
 
-      if (auto amConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::AccessManager().configNode())) {
-        this->setAccessManagerEndPoint(*amConfig);
-      }
-
-      if (auto tcConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::Transcryptor().configNode())) {
-        this->setTranscryptorEndPoint(*tcConfig);
-      }
-
-      if (auto sfConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::StorageFacility().configNode())) {
-        this->setStorageFacilityEndPoint(*sfConfig);
-      }
-    } catch (std::exception& e) {
-      LOG(LOG_TAG, error) << "Error with configuration file: " << e.what();
-      std::cerr << "Error with configuration file: " << e.what() << std::endl;
-      throw;
+    if (auto sfConfig = serverEndPoints.get<std::optional<EndPoint>>(ServerTraits::StorageFacility().configNode())) {
+      this->setStorageFacilityEndPoint(*sfConfig);
     }
 
     if (persistKeysFile) {
+      // See #1797: the keys file must be (read from and) written to the cwd
+      // because the config's directory may be read-only (e.g. on Windows installations).
+      // However, fall back to keys file at config dir, if it exists.
+      // This is useful for the RegistrationServer for an integration test on base data with pepServers, for example.
+      const auto workingDirKeysFile = std::filesystem::current_path() / config.get<std::string>("EnrolledPartyKeysFile");
+      const auto configDirKeysFile = config.get<std::filesystem::path>("EnrolledPartyKeysFile");
+      auto keysFile = !exists(workingDirKeysFile) && exists(configDirKeysFile) ? configDirKeysFile : workingDirKeysFile;
+
       // Ensure that CoreClient writes future enrollment data to file...
       this->setKeysFilePath(keysFile);
       // ...and try to load previously persisted keys from it
-      if (std::filesystem::exists(keysFile)) {
+      if (exists(keysFile)) {
         Configuration keysConfig = Configuration::FromFile(keysFile);
         try {
           EnrolledPartyKeys enrolledPartyKeys = keysConfig.get<EnrolledPartyKeys>("");
@@ -244,25 +243,25 @@ void CoreClient::Builder::initialize(
             this->setSigningIdentity(MakeSharedCopy(*enrolledPartyKeys.signingIdentity));
           }
         } catch (const UnsupportedEnrollmentSchemeError& ex) {
-          LOG(LOG_TAG, info) << "Skipped loading keys file from a different version (" << ex.what() << ")";
+          PEP_LOG(LogTag, Severity::Info) << "Skipped loading keys file from a different version (" << ex.what() << ")";
         }
       }
       else {
-        LOG(LOG_TAG, info) << "Skipped loading keys file because it does not exist";
+        PEP_LOG(LogTag, Severity::Info) << "Skipped loading keys file because it does not exist";
       }
     }
 
     this->setIoContext(io_context);
   } catch (std::exception& e) {
-    LOG(LOG_TAG, error) << "Error with configuration file: " << e.what() << std::endl;
+    PEP_LOG(LogTag, Severity::Error) << "Error with configuration file: " << e.what() << std::endl;
     std::cerr << "Error with configuration file: " << e.what() << std::endl;
     throw;
   }
 }
 
 
-rxcpp::observable<int> CoreClient::getRegistrationExpiryObservable() {
-  return registrationSubject.get_observable();
+rxcpp::observable<FakeVoid> CoreClient::getRegistrationExpiryObservable() {
+  return registrationSubject_.get_observable();
 }
 
 bool CoreClient::AddServerProxy(ServerProxies& destination, const ServerTraits& traits, std::shared_ptr<const ServerProxy> proxy) {
@@ -275,16 +274,24 @@ bool CoreClient::AddServerProxy(ServerProxies& destination, const ServerTraits& 
   return false;
 }
 
+const ElgamalPrivateKey& CoreClient::privateKeyPseudonyms() const {
+  return privateKeyPseudonyms_ ? *privateKeyPseudonyms_ : throw std::runtime_error("Private pseudonym key not set");
+}
+
+const ElgamalPrivateKey& CoreClient::privateKeyData() const {
+  return privateKeyData_ ? *privateKeyData_ : throw std::runtime_error("Private data key not set");
+}
+
 std::shared_ptr<const StorageFacilityProxy> CoreClient::getStorageFacilityProxy(bool require) const {
-  return GetConstServerProxy(storageFacilityProxy, ServerTraits::StorageFacility(), require);
+  return GetConstServerProxy(storageFacilityProxy_, ServerTraits::StorageFacility(), require);
 }
 
 std::shared_ptr<const TranscryptorProxy> CoreClient::getTranscryptorProxy(bool require) const {
-  return GetConstServerProxy(transcryptorProxy, ServerTraits::Transcryptor(), require);
+  return GetConstServerProxy(transcryptorProxy_, ServerTraits::Transcryptor(), require);
 }
 
 std::shared_ptr<const AccessManagerProxy> CoreClient::getAccessManagerProxy(bool require) const {
-  return GetConstServerProxy(accessManagerProxy, ServerTraits::AccessManager(), require);
+  return GetConstServerProxy(accessManagerProxy_, ServerTraits::AccessManager(), require);
 }
 
 CoreClient::ServerProxies CoreClient::getServerProxies(bool requireAll) const {
@@ -307,30 +314,30 @@ std::shared_ptr<const ServerProxy> CoreClient::getServerProxy(const ServerTraits
 }
 
 const std::shared_ptr<boost::asio::io_context>& CoreClient::getIoContext() const {
-  return io_context;
+  return ioContext_;
 }
 
 rxcpp::observable<FakeVoid> CoreClient::shutdown() {
   return rxcpp::rxs::empty<FakeVoid>()
-    .merge(accessManagerProxy ? accessManagerProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
-    .merge(storageFacilityProxy ? storageFacilityProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
-    .merge(transcryptorProxy ? transcryptorProxy->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(accessManagerProxy_ ? accessManagerProxy_->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(storageFacilityProxy_ ? storageFacilityProxy_->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
+    .merge(transcryptorProxy_ ? transcryptorProxy_->shutdown() : rxcpp::rxs::empty<FakeVoid>().as_dynamic())
     .last();
 }
 
 rxcpp::observable<std::shared_ptr<GlobalConfiguration>> CoreClient::getGlobalConfiguration() {
-  if (mGlobalConf != nullptr) {
-    return rxcpp::observable<>::just(mGlobalConf);
+  if (globalConf_ != nullptr) {
+    return rxcpp::observable<>::just(globalConf_);
   }
 
   return getAccessManagerProxy(true)->requestGlobalConfiguration()
-    .map([this](const GlobalConfiguration& gc) {return mGlobalConf = MakeSharedCopy(gc); });
+    .map([this](const GlobalConfiguration& gc) {return globalConf_ = MakeSharedCopy(gc); });
 }
 
 std::shared_ptr<WorkerPool> CoreClient::getWorkerPool() {
-  if (mWorkerPool == nullptr)
-    mWorkerPool = WorkerPool::getShared();
-  return mWorkerPool;
+  if (workerPool_ == nullptr)
+    workerPool_ = WorkerPool::getShared();
+  return workerPool_;
 }
 
 rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>>> CoreClient::findPpsForShortPseudonyms(const std::vector<std::string>& sps, const std::optional<StudyContext>& studyContext) {
@@ -357,17 +364,17 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
 
     return this->getAccessManagerProxy()->getAccessibleParticipantGroups(true)
       .flat_map([this, allSps, columns](const ParticipantGroupAccess& access) {
-      pep::enumerateAndRetrieveData2Opts opts;
+      pep::EnumerateAndRetrieveData2Opts opts;
       for (const auto& [pg, modes] : access.participantGroups) {
-        if (std::find(modes.begin(), modes.end(), "access") != modes.end()
-          && std::find(modes.begin(), modes.end(), "enumerate") != modes.end()) {
+        if (contains(modes, "access")
+          && contains(modes, "enumerate")) {
           opts.groups.push_back(pg);
         }
       }
       if (opts.groups.empty()) {
         throw std::runtime_error("Cannot do shortpseudonym lookup. User does not have the appropriate access to any participant group");
       }
-      std::copy(columns->cbegin(), columns->cend(), std::back_inserter(opts.columns));
+      opts.columns = *columns | to<std::vector>();
 
       return this->enumerateAndRetrieveData2(opts);
         });
@@ -375,11 +382,11 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
     .reduce(
       std::make_shared<std::vector<std::optional<PolymorphicPseudonym>>>(allSps->size()),
       [allSps](std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym>>> result, const EnumerateAndRetrieveResult& ear) {
-        assert(ear.mDataSet);
-        auto position = allSps->find(ear.mData);
+        assert(ear.dataSet);
+        auto position = allSps->find(ear.data);
         if (position != allSps->cend()) {
           auto index = position->second;
-          (*result)[index] = ear.mLocalPseudonyms->mPolymorphic;
+          (*result)[index] = ear.localPseudonyms->polymorphic;
         }
         return result;
       });
@@ -400,24 +407,25 @@ rxcpp::observable<PolymorphicPseudonym> CoreClient::findPPforShortPseudonym(std:
 rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
 {
   return this->getAccessManagerProxy()->getAccessibleParticipantGroups(true).flat_map([this](ParticipantGroupAccess participantGroupAccess) {
-    requestTicket2Opts tOpts;
+    RequestTicket2Opts tOpts;
     tOpts.modes = { "read" };
     tOpts.includeAccessGroupPseudonyms = true;
     for (auto& [participantGroup, modes] : participantGroupAccess.participantGroups) {
-      if (std::find(modes.begin(), modes.end(), "access") != modes.end()
-          && std::find(modes.begin(), modes.end(), "enumerate") != modes.end()) {
+      if (contains(modes, "access")
+          && contains(modes, "enumerate")) {
         tOpts.participantGroups.push_back(participantGroup);
       }
     }
     return requestTicket2(tOpts);
   }).flat_map([this](IndexedTicket2 ticket) {
-    return RxIterate(ticket.getTicket()->open(*rootCAs, getEnrolledGroup()).mAccessSubjects);
+    return RxIterate(ticket.getTicket()->open(*rootCAs_, getEnrolledGroup()).accessSubjects);
   });
 
 }
 
-rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket2Opts& opts) {
-  LOG(LOG_TAG, debug) << "requestTicket";
+rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(
+    const RequestTicket2Opts &opts) {
+  PEP_LOG(LogTag, Severity::Debug) << "requestTicket";
 
   if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())
       && IsSubset(opts.participantGroups, opts.ticket->getParticipantGroups())
@@ -431,12 +439,12 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(const requestTicket
   }
   assert(ContainsUniqueValues(opts.pps));
   return getAccessManagerProxy(true)->requestIndexedTicket(ClientSideTicketRequest2{
-      .mModes = opts.modes,
-      .mParticipantGroups = opts.participantGroups,
-      .mAccessSubjects = opts.pps,
-      .mColumnGroups = opts.columnGroups,
-      .mColumns = opts.columns,
-      .mIncludeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});
+      .modes = opts.modes,
+      .participantGroups = opts.participantGroups,
+      .accessSubjects = opts.pps,
+      .columnGroups = opts.columnGroups,
+      .columns = opts.columns,
+      .includeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});
 }
 
 

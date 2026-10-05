@@ -7,7 +7,7 @@ Bytes Serializer<Bytes>::fromProtocolBuffer(proto::Bytes&& source) const {
 }
 
 void Serializer<Bytes>::moveIntoProtocolBuffer(proto::Bytes& dest, Bytes value) const {
-  *dest.mutable_data() = std::move(value.mData);
+  *dest.mutable_data() = std::move(value.data);
 }
 
 } // namespace pep

@@ -8,15 +8,38 @@
 set -eu
 
 SCRIPTSELF=$(command -v "$0")
+readonly SCRIPTSELF
 SCRIPTPATH="$( cd "$(dirname "$SCRIPTSELF")" || exit ; pwd -P )"
+readonly SCRIPTPATH
+
+# shellcheck source=scripts/sh-utils.sh
+. "$SCRIPTPATH/sh-utils.sh"
 
 no_project=false
+git_dir=''
+api_key=''
+token_opt=''
+token_header='PRIVATE-TOKEN'
 while [ "$#" != 0 ]; do
   case "$1" in
     --no-project) # Do not prefix API URL with project
       no_project=true ;;
+    # A CI job token ($CI_JOB_TOKEN) is only accepted in its own header:
+    # https://docs.gitlab.com/ci/jobs/ci_job_token/#rest-api-authentication
+    --api-key|--job-token)
+      if [ -n "$token_opt" ]; then
+        >&2 echo "$0: Specify only one of --api-key and --job-token"
+        exit 2
+      fi
+      token_opt="$1"
+      if [ "$token_opt" = --job-token ]; then
+        token_header='JOB-TOKEN'
+      fi
+      shift; api_key="${1:?Expected value for $token_opt}" ;;
+    --git-dir)
+      shift; git_dir="${1:?Expected value for --git-dir}" ;;
     --help|-h)
-      echo "Usage: '$0' [--no-project] <git-dir> <api-key> <command> <rel-path> [curl args...]"
+      echo "Usage: '$0' [--no-project] --git-dir <dir> (--api-key <key> | --job-token <token>) <command> <rel-path> [curl args...]"
       exit ;;
     --)
       shift
@@ -29,9 +52,9 @@ while [ "$#" != 0 ]; do
   shift
 done
 
-git_dir="${1:?Expected git dir}"; shift
-api_key="${1:?Expected API key}"; shift
-command="${1:?Expected command}"; shift
+readonly git_dir="${git_dir:?Expected --git-dir}"
+readonly api_key="${api_key:?Expected --api-key or --job-token}"
+readonly command="${1:?Expected command}"; shift
 rel_path="${1?:Expected URL path}"; shift
 # Further arguments are passed verbatim to the "curl" command(s) that we issue
 
@@ -41,13 +64,6 @@ if ! $no_project; then
   project_path=$("$SCRIPTPATH"/gitdir.sh origin-path "$git_root")
   project_id=$("$SCRIPTPATH"/url.sh encode "${project_path}")
 fi
-
-contains() {
-  string="$1"
-  substring="$2"
-  # `&& true` prevents quitting for nonzero exit code
-  [ "${string#*"$substring"}" != "$string" ] && true
-}
 
 request() {
   method=$(echo "$1" | tr "[:lower:]" "[:upper:]")
@@ -70,7 +86,7 @@ request() {
             --fail \
             --retry 7 \
             --request "$method" \
-            --header "PRIVATE-TOKEN: $api_key" \
+            --header "$token_header: $api_key" \
             --header "Cache-Control: no-cache" \
             "$url" "$@"; then
     >&2 echo "Error while sending $method request to $url" "$@"
@@ -87,14 +103,17 @@ get_multipage() {
     delim="&"
   fi
 
-  # Use printf '%s' instead of echo to prevent character escapes from being interpreted
-
   joined=""
   ipage=1
   while [ "$ipage" -ne 0 ]; do
     # per_page=100 is the maximum allowed, so like this we minimize the number of requests
     page=$(request get "${rel_path}${delim}per_page=100&page=$ipage" "$@")
-    if [ "$(printf '%s' "$page" | jq length)" -eq 0 ]; then
+    # jq length would fail on anything not a json array, and treating that as a nonempty page would loop over pages forever
+    page_length=$(raw_echo "$page" | jq 'if type == "array" then length else null end' 2>/dev/null) || page_length=null
+    if [ "$page_length" = null ]; then
+      fail "Expected a JSON array from $rel_path (page $ipage), got: $page"
+    fi
+    if [ "$page_length" -eq 0 ]; then
       ipage=0
     else
       # Join with newline (string escapes are not a thing in sh)
@@ -104,7 +123,7 @@ $page"
     fi
   done
   
-  printf '%s' "$joined" | jq ".[]" | jq -s
+  raw_echo "$joined" | jq ".[]" | jq -s
 }
 
 case $command in

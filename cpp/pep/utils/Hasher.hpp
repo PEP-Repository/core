@@ -7,7 +7,7 @@
 namespace pep {
 
 class HasherBase : private boost::noncopyable {
-  bool mFinished = false;
+  bool finished_ = false;
 
 protected:
   void update(std::istream& source);

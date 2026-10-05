@@ -7,8 +7,8 @@ namespace pep {
 namespace {
 class ServersApplication : public Application {
 protected:
-  std::optional<pep::severity_level> consoleLogMinimumSeverityLevel() const override {
-    return pep::severity_level::info;
+  std::optional<Severity> consoleLogMinimumSeverityLevel() const override {
+    return Severity::Info;
   }
 
   std::string getDescription() const override {

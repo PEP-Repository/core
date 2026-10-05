@@ -1,11 +1,14 @@
 #include <pep/cli/MultiCellQuery.hpp>
 #include <pep/async/RxDistinct.hpp>
+#include <pep/async/RxIterate.hpp>
 #include <pep/core-client/CoreClient.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+
+#include <ranges>
 
 using namespace pep::cli;
 
@@ -42,10 +45,9 @@ rxcpp::observable<MultiCellQuery::ParticipantSpecAndPp> MultiCellQuery::GetPpsFo
     .flat_map([sps](std::shared_ptr<std::vector<std::optional<pep::PolymorphicPseudonym>>> pps) {
     assert(sps->size() == pps->size());
     return pep::CreateObservable<MultiCellQuery::ParticipantSpecAndPp>([sps, pps](rxcpp::subscriber<MultiCellQuery::ParticipantSpecAndPp> subscriber) {
-      for (size_t i = 0U; i < sps->size(); ++i) {
-        const auto& pp = (*pps)[i];
+      for (auto [sp, pp] : std::views::zip(*sps, *pps)) {
         if (pp.has_value()) {
-          subscriber.on_next(MultiCellQuery::ParticipantSpecAndPp{ (*sps)[i], *pp });
+          subscriber.on_next(MultiCellQuery::ParticipantSpecAndPp{ sp, *pp });
         }
       }
       subscriber.on_completed();

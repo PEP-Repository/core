@@ -1,14 +1,13 @@
-# Provide system libraries (perhaps including targets that build external code)...
-include("system-libs.cmake")
-
 option(WARNINGS_AS_ERROR "Treat compiler & linter warnings as errors" ON)
 option(DEPRECATED_WARNINGS_AS_ERROR "With WARNINGS_AS_ERROR, also issue errors for deprecated symbols" ON)
 
 option(ENABLE_CLANG_TIDY "Enable clang-tidy")
 if(ENABLE_CLANG_TIDY)
   message(STATUS "Clang-Tidy enabled")
+
   set(clang_tidy_profile_dir "${CMAKE_BINARY_DIR}/clang-tidy-profile/")
   option(PROFILE_CLANG_TIDY "Individually profile (benchmark) clang-tidy checks and store results to ${clang_tidy_profile_dir}. Build target clang-tidy-stats for stats")
+
   set(clang_tidy_opts)
   if(PROFILE_CLANG_TIDY)
     list(APPEND clang_tidy_opts "--enable-check-profile" "--store-check-profile=${clang_tidy_profile_dir}")
@@ -21,27 +20,48 @@ if(ENABLE_CLANG_TIDY)
     set_directory_properties(PROPERTIES ADDITIONAL_CLEAN_FILES ${clang_tidy_profile_dir})
   endif()
   if(WARNINGS_AS_ERROR)
-    list(APPEND clang_tidy_opts "--warnings-as-errors=*")
+    list(APPEND clang_tidy_opts "--warnings-as-errors=*,-clang-diagnostic-#pragma-messages")
   endif()
   if(CMAKE_COLOR_DIAGNOSTICS)
     list(APPEND clang_tidy_opts --use-color)
   endif()
-  find_program(CLANG_TIDY_PROGRAM clang-tidy)
+
+  # Note: It seems that this does not work with older Clang (e.g. 18)
+  if(DEFINED EMSCRIPTEN)
+    # Add clang arguments that are normally added by the em++ wrapper,
+    # or are implicit in the clang binary that ships with Emscripten.
+    list(APPEND clang_tidy_opts
+      # CMAKE_LIBRARY_ARCHITECTURE & EMSCRIPTEN_SYSROOT are set by Emscripten's CMake toolchain file
+      "--extra-arg=--target=${CMAKE_LIBRARY_ARCHITECTURE}"
+      "--extra-arg=--sysroot=${EMSCRIPTEN_SYSROOT}"
+      # Prevent error including e.g. <xlocale.h>.
+      # Btw: Shouldn't this be in `CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES`?
+      #  See https://github.com/emscripten-core/emscripten/issues/23444.
+      "--extra-arg=-iwithsysroot/include/compat"
+    )
+  endif()
+
   # Recompile when .clang-tidy changes
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/.clang-tidy")
   file(SHA256 "${CMAKE_SOURCE_DIR}/.clang-tidy" clang_tidy_hash)
-  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts} "--extra-arg=-DPEP_DUMMY_CLANG_TIDY_HASH=${clang_tidy_hash}")
+  list(APPEND clang_tidy_opts "--extra-arg=-DPEP_DUMMY_CLANG_TIDY_HASH=${clang_tidy_hash}")
+
+  find_program(CLANG_TIDY_PROGRAM clang-tidy)
+  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts})
 endif()
 
 # Always enable certain compiler warnings if using either GCC or Clang
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   function(warn_no_error language)
+    include(CheckCompilerFlag)
+    # Speedup: skip linking
+    set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY) # Set locally
+
     foreach(warn_name IN LISTS ARGN)
       set(flag "-W${warn_name}")
       set(supported_var "FLAG_SUPPORTED_${language}_${flag}")
       escape_cache_var_name(supported_var)
       if(NOT DEFINED ${supported_var})
-        include(CheckCompilerFlag)
         check_compiler_flag("${language}" "${flag}" ${supported_var})
       endif()
       if(${supported_var})
@@ -179,49 +199,58 @@ endif()
 
 # For MSVC, bump up the warning level from level 1 (default) to 3
 # TODO: See if we can bump this to /W4 or /Wall ?
-if (MSVC)
+if(MSVC)
   # Ref: https://learn.microsoft.com/en-us/cpp/build/reference/compiler-option-warning-level?view=msvc-170
   add_compile_options("/W3")
 endif()
 
 # Treat warnings as errors
-if (WARNINGS_AS_ERROR)
-    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
-    endif()
+if(WARNINGS_AS_ERROR)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+  endif()
 
-    if (MSVC)
-        add_compile_options("/WX")
-        if(NOT DEPRECATED_WARNINGS_AS_ERROR)
-          # We're disabling this warning completely since I don't think it's possible to exclude specific warnings from /WX
-          add_compile_options("/wd4996")  # Your code uses a function, class member, variable, or typedef that's marked deprecated.
-        endif()
+  if(MSVC)
+    add_compile_options("/WX")
+    if(NOT DEPRECATED_WARNINGS_AS_ERROR)
+      # We're disabling this warning completely since I don't think it's possible to exclude specific warnings from /WX
+      add_compile_options("/wd4996")  # Your code uses a function, class member, variable, or typedef that's marked deprecated.
+    endif()
+  else()
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+      # AppleClang warns about libraries passed twice to the linker, for example:
+      # pepcorelib uses OpenSSL, Qt uses OpenSSL, pepLogon uses both of these, so will get OpenSSL twice.
+      # This is not a problem, but AppleClang complains, so we silence that with -no_warn_duplicate_libraries.
+      # To deduplicate them, there is https://cmake.org/cmake/help/latest/policy/CMP0156.html,
+      # but for some reason enabling that doesn't work for our project, at least with Conan,
+      # even though it does work for a minimal test project.
+      set(FATAL_WARNING_OPTION "-Wl,-fatal_warnings,-no_warn_duplicate_libraries")
     else()
-      if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
-        # AppleClang warns about libraries passed twice to the linker, for example:
-        # pepcorelib uses OpenSSL, Qt uses OpenSSL, pepLogon uses both of these, so will get OpenSSL twice.
-        # This is not a problem, but AppleClang complains, so we silence that with -no_warn_duplicate_libraries.
-        # To deduplicate them, there is https://cmake.org/cmake/help/latest/policy/CMP0156.html,
-        # but for some reason enabling that doesn't work for our project, at least with Conan,
-        # even though it does work for a minimal test project.
-        set(FATAL_WARNING_OPTION "-Wl,-fatal_warnings,-no_warn_duplicate_libraries")
-      else()
-        set(FATAL_WARNING_OPTION "-Wl,--fatal-warnings")
-      endif()
-
-      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FATAL_WARNING_OPTION}")
-      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${FATAL_WARNING_OPTION}")
+      set(FATAL_WARNING_OPTION "-Wl,--fatal-warnings")
     endif()
+
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FATAL_WARNING_OPTION}")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${FATAL_WARNING_OPTION}")
+  endif()
 endif()
 
 option(ENABLE_SANITIZERS "Enable Address Sanitizer and UB Sanitizer" OFF)
-if (ENABLE_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+if(ENABLE_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   message(STATUS "ENABLE_SANITIZERS=${ENABLE_SANITIZERS}, compiling with ASan and UBSan enabled")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
 endif()
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  option(ENABLE_COVERAGE "Enable code coverage instrumentation" OFF)
+  if(ENABLE_COVERAGE)
+    message(STATUS "ENABLE_COVERAGE=${ENABLE_COVERAGE}, compiling with coverage instrumentation enabled")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
+  endif()
+endif()
+
 # TODO: Why do we disable this optimization when using GCC?
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-reorder-blocks -fno-reorder-blocks-and-partition")
 endif()
 
@@ -249,6 +278,14 @@ add_compile_definitions(
   "BUILD_TARGET=\"${CMAKE_SYSTEM_NAME}\""
 )
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  # Location of the Sparkle framework, used on macOS for application auto-updates.
+  # This is provided as a cache variable by the Conan build
+  # (see docker-build/builder/conan/conanfile.py).
+  # assessor, cli, assert that it is set.
+  set(SPARKLE_LIBRARY "" CACHE FILEPATH "Path to the Sparkle.framework used for macOS application updates")
+endif()
+
 function(add_windows_manifest target)
   if(WIN32)
     set(WINDOWS_MANIFEST_ASSEMBLY_NAME Pep.Pep.${target})
@@ -257,33 +294,47 @@ function(add_windows_manifest target)
   endif()
 endfunction()
 
+## Set options for library headers ##
+if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_LOG_USE_NATIVE_SYSLOG")
+endif()
+# Tell Boost::Process to use std::filesystem
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_PROCESS_USE_STD_FS")
+##
+
 # Add executable that will be installed by `cmake --install --component ${name}`
 # When installing, you need to specify the component to avoid errors about missing files when you did not build all targets
+# For Emscripten, also adds a shebang
 function(add_install_executable name)
   add_executable(${ARGV})
+  make_js_file_executable(${name})
   add_windows_manifest(${name})
   include(GNUInstallDirs)
-  install(TARGETS ${name} COMPONENT ${name}
+  if(CMAKE_CROSSCOMPILING)
+    install(TARGETS ${name} COMPONENT ${name})
+  else()
+    install(TARGETS ${name} COMPONENT ${name}
 
-    # Copy runtime dependencies.
-    # This calls a tool on the produced binary to list what shared library names it requires,
-    # and then finds these libraries in directories including ${CONAN_RUNTIME_LIB_DIRS}
-    RUNTIME_DEPENDENCIES
+      # Copy runtime dependencies.
+      # This calls a tool on the produced binary to list what shared library names it requires,
+      # and then finds these libraries in directories including ${CONAN_RUNTIME_LIB_DIRS}
+      RUNTIME_DEPENDENCIES
       # Exclude these names
       PRE_EXCLUDE_REGEXES
-        [[^api-ms-]]  # Skip Windows Universal C Runtime
-        [[^ext-ms-]]  # Skip Windows APIs
-        [[^libc\.so]] [[^libgcc_s\.so]] [[^libm\.so]] [[^libstdc\+\+\.so]]  # Skip Unix STL
+      [[^api-ms-]]  # Skip Windows Universal C Runtime
+      [[^ext-ms-]]  # Skip Windows APIs
+      [[^libc\.so]] [[^libgcc_s\.so]] [[^libm\.so]] [[^libstdc\+\+\.so]]  # Skip Unix STL
       # Exclude these paths
       POST_EXCLUDE_REGEXES
-        [[[/\\]system32[/\\].*\.dll$]]  # Skip Windows OS DLLs
-        [[^/lib]] [[^/usr/lib]] [[^/usr/local/lib]]  # Skip Unix system shared libs
+      [[[/\\]system32[/\\].*\.dll$]]  # Skip Windows OS DLLs
+      [[^/lib]] [[^/usr/lib]] [[^/usr/local/lib]]  # Skip Unix system shared libs
       DIRECTORIES ${CONAN_RUNTIME_LIB_DIRS}
 
-    #TODO This may not be what we want
-    BUNDLE DESTINATION "${CMAKE_INSTALL_BINDIR}"  # Required for MACOSX_BUNDLE
-    FRAMEWORK DESTINATION "${CMAKE_INSTALL_BINDIR}"  # Also for macOS
-  )
+      #TODO This may not be what we want
+      BUNDLE DESTINATION "${CMAKE_INSTALL_BINDIR}"  # Required for MACOSX_BUNDLE
+      FRAMEWORK DESTINATION "${CMAKE_INSTALL_BINDIR}"  # Also for macOS
+    )
+  endif()
 endfunction()
 
 # Add executable accepting our --autocomplete flag that should be installed
@@ -321,7 +372,7 @@ endfunction()
 function(verify_headers_standalone target)
   # Only create the additional target if the option is enabled
   if(VERIFY_HEADERS_STANDALONE)
-  # Only create the additional target if there are headers to verify
+    # Only create the additional target if there are headers to verify
     get_target_headers(headers "${target}")
     if(headers)
       add_library("${target}_StandaloneHeaders")
@@ -352,29 +403,41 @@ endfunction()
 # Given a service (base) name, prepares the build system for debugging of that service,
 # adding target dependencies and copying files.
 function(configure_service_debugging service_name)
-    string(TOLOWER ${service_name} service_name_lowercase)
-    add_dependencies(${PROJECT_NAME}${service_name} ${service_name_lowercase}_pki)
-    configure_debug_command_line_parameter(${PROJECT_NAME}${service_name} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${service_name}.json)
+  string(TOLOWER ${service_name} service_name_lowercase)
+  add_dependencies(${PROJECT_NAME}${service_name} ${service_name_lowercase}_pki)
+  configure_debug_command_line_parameter(${PROJECT_NAME}${service_name} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${service_name}.json)
 endfunction()
 
 set(CMAKE_LINK_LIBRARIES_ONLY_TARGETS ON)  # Check dependencies in target_link_libraries exist at config time
 
-# Retrieve value from legacy cache variable
-if(NOT DEFINED BUILD_CLIENT)
-  set(BUILD_CLIENT ON)
-endif()
-option(WITH_ASSESSOR "Build Assessor GUI software" ${BUILD_CLIENT})
-if(NOT WITH_ASSESSOR)
-  message(STATUS "WITH_ASSESSOR=${WITH_ASSESSOR}")
-endif()
+if(NOT DEFINED EMSCRIPTEN)
+  # Retrieve value from legacy cache variable
+  if(NOT DEFINED BUILD_CLIENT)
+    set(BUILD_CLIENT ON)
+  endif()
+  option(WITH_ASSESSOR "Build Assessor GUI software" ${BUILD_CLIENT})
+  if(NOT WITH_ASSESSOR)
+    message(STATUS "WITH_ASSESSOR=${WITH_ASSESSOR}")
+  endif()
 
-# Retrieve value from legacy cache variable
-if(NOT DEFINED BUILD_SERVERS)
-  set(BUILD_SERVERS ON)
-endif()
-option(WITH_SERVERS "Build the ${PROJECT_NAME} servers" ${BUILD_SERVERS})
-if(NOT WITH_SERVERS)
-  message(STATUS "WITH_SERVERS=${WITH_SERVERS}")
+  # Retrieve value from legacy cache variable
+  if(NOT DEFINED BUILD_SERVERS)
+    set(BUILD_SERVERS ON)
+  endif()
+  option(WITH_SERVERS "Build the ${PROJECT_NAME} servers" ${BUILD_SERVERS})
+  if(NOT WITH_SERVERS)
+    message(STATUS "WITH_SERVERS=${WITH_SERVERS}")
+  endif()
+
+  option(WITH_LOGON "Build ${PROJECT_NAME}Logon" ON)
+  if(NOT WITH_LOGON)
+    message(STATUS "WITH_LOGON=${WITH_LOGON}")
+  endif()
+
+  option(WITH_CASTOR "Enable Castor API functionality" ON)
+  if(NOT WITH_CASTOR)
+    message(STATUS "WITH_CASTOR=${WITH_CASTOR}")
+  endif()
 endif()
 
 option(WITH_BENCHMARK "Build benchmark" ON)
@@ -382,32 +445,22 @@ if(NOT WITH_BENCHMARK)
   message(STATUS "WITH_BENCHMARK=${WITH_BENCHMARK}")
 endif()
 
-option(WITH_LOGON "Build ${PROJECT_NAME}Logon" ON)
-if(NOT WITH_LOGON)
-  message(STATUS "WITH_LOGON=${WITH_LOGON}")
-endif()
-
-option(WITH_CASTOR "Enable Castor API functionality" ON)
-if(NOT WITH_CASTOR)
-  message(STATUS "WITH_CASTOR=${WITH_CASTOR}")
-endif()
-
 # Sets directory for CastorAPIKey.json if it is found inside the projects repository
-if (NOT CASTOR_API_KEY_DIR AND "${CMAKE_CURRENT_LIST_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}/cpp/pep")
+if(NOT CASTOR_API_KEY_DIR AND "${CMAKE_CURRENT_LIST_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}/cpp/pep")
   get_filename_component(CORE_PARENT_DIR ${CMAKE_SOURCE_DIR} DIRECTORY)
-  if (EXISTS "${CORE_PARENT_DIR}/ops/keys/CastorAPIKey.json")
-    SET(CASTOR_API_KEY_DIR "${CORE_PARENT_DIR}/ops/keys")
+  if(EXISTS "${CORE_PARENT_DIR}/ops/keys/CastorAPIKey.json")
+    set(CASTOR_API_KEY_DIR "${CORE_PARENT_DIR}/ops/keys")
     message(STATUS "Directory for CastorAPIKey.json is automatically defaulted to: ${CASTOR_API_KEY_DIR}")
   endif()
 endif()
-if (CASTOR_API_KEY_DIR)
+if(CASTOR_API_KEY_DIR)
   # Interpret (possibly relative) Castor API key dir spec in relation to where CMake was invoked
   get_filename_component(CASTOR_API_KEY_DIR ${CASTOR_API_KEY_DIR} ABSOLUTE BASE_DIR ${CMAKE_BINARY_DIR})
 endif()
 
 option(ENABLE_OAUTH_TEST_USERS "Show a list of test users for OAuth when opening the authorization endpoint in your browser." ON)
 if(ENABLE_OAUTH_TEST_USERS)
-    add_compile_definitions(ENABLE_OAUTH_TEST_USERS)
+  add_compile_definitions(ENABLE_OAUTH_TEST_USERS)
 endif()
 
 ## Unconditional components
@@ -474,6 +527,10 @@ if(WITH_SERVERS)
   add_subdirectory(service-application)
 endif()
 
+if(DEFINED EMSCRIPTEN)
+  add_subdirectory(weblib)
+endif()
+
 ## Conditional dependencies required by multiple components
 # Please keep conditions in sync with conanfile.py
 
@@ -481,7 +538,7 @@ if(WITH_ASSESSOR OR WITH_LOGON OR WITH_SERVERS)
   add_subdirectory(httpserver)
 endif()
 
-if(WITH_ASSESSOR OR WITH_LOGON)
+if(WITH_ASSESSOR OR WITH_LOGON OR DEFINED EMSCRIPTEN)
   add_subdirectory(oauth-client)
 endif()
 
@@ -545,3 +602,13 @@ foreach(target IN LISTS all_targets)
     endif()
   endforeach()
 endforeach()
+
+find_package(Doxygen QUIET)
+if(Doxygen_FOUND)
+  set(DOXYGEN_EXTRACT_ALL YES)
+  set(DOXYGEN_WARN_IF_UNDOCUMENTED NO)
+  set(WARN_IF_INCOMPLETE_DOC NO)
+  doxygen_add_docs(pep-doxygen
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+  )
+endif()

@@ -11,9 +11,9 @@ class DeviceWidget : public QWidget {
   Q_OBJECT
 
  private:
-  Ui::DeviceWidget* ui;
-  pep::DeviceRegistrationDefinition mDefinition;
-  QString mDeviceId;
+  Ui::DeviceWidget* ui_;
+  pep::DeviceRegistrationDefinition definition_;
+  QString deviceId_;
 
  public:
   explicit DeviceWidget(const pep::DeviceRegistrationDefinition& definition, QWidget* parent);

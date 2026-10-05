@@ -14,60 +14,61 @@ struct SchemaError : std::logic_error {
   };
   SchemaError(std::string table, Reason reason);
 
-  std::string mTable;
-  Reason mReason;
+  std::string table;
+  Reason reason;
 };
 
+/// \brief Represents an SQL "HAVING" clause
+/// \tparam T An expression that records must match (to be included in the result set)
+/// \remark Defined with a (fully) lowercase name so it matches other sqlite_orm constructs
 template<typename T>
 struct having {
-  explicit having(T&& expr) : mExpr(std::move(expr)) {}
-  T mExpr;
+  explicit having(T&& expr) : expr_(std::move(expr)) {}
+  T expr_;
 };
 
-/// @brief Non-template base class for Storage<> (defined below).
+/// Non-template base class for Storage<> (defined below).
 struct BasicStorage {
-  /// @brief Whether the storage is stored on a persistent medium (TRUE) or in memory (FALSE)
+  /// Whether the storage is stored on a persistent medium (TRUE) or in memory (FALSE)
   const bool isPersistent;
 
-  /// @brief Specify this as the "path" to construct a Storage<> that's non-persistent, i.e. backed by memory
-  static const char* const STORE_IN_MEMORY;
+  /// Specify this as the "path" to construct a Storage<> that's non-persistent, i.e. backed by memory
+  static const char* const StoreInMemory;
 
 private:
   template <auto MakeRaw> friend struct Storage;
   explicit BasicStorage(const std::string& path);
 };
 
-/* !
- * \brief Helper for storage using sqlite-orm.
- * \tparam MakeRaw A function that accepts an std::string and returns the result of invoking sqlite_orm::make_storage with that string.
- *
- * \code
- *   struct Person { std::string name };
- *
- *   auto MakeRawStorage(std::string path) {
- *     using namespace sqlite_orm;
- *     return make_storage(std::move(path),
- *       make_table("People",
- *         make_column("name", &Person::name)));
- *   }
- *
- *   using MyStorage = pep::database::Storage<MakeRawStorage>;
- * \endcode
- *
- * \remark A.o. usable to hide storage details behind the pimpl idiom:
- *         - in the .hpp, declare (but don't define) a MyStorage class.
- *         - in the .cpp, define MyStorage to e.g. inherit from pep::database::Storage<> instead of being a typedef/alias.
- */
+/// \brief Helper for storage using sqlite-orm.
+/// \tparam MakeRaw A function that accepts an std::string and returns the result of invoking sqlite_orm::make_storage with that string.
+///
+/// \code
+///   struct Person { std::string name };
+///
+///   auto MakeRawStorage(std::string path) {
+///     using namespace sqlite_orm;
+///     return make_storage(std::move(path),
+///       make_table("People",
+///         make_column("name", &Person::name)));
+///   }
+///
+///   using MyStorage = pep::database::Storage<MakeRawStorage>;
+/// \endcode
+///
+/// \remark A.o. usable to hide storage details behind the pimpl idiom:
+///         - in the .hpp, declare (but don't define) a MyStorage class.
+///         - in the .cpp, define MyStorage to e.g. inherit from pep::database::Storage<> instead of being a typedef/alias.
 template <auto MakeRaw>
 struct Storage : public BasicStorage {
-  /// @brief The raw sqlite_orm storage type
+  /// The raw sqlite_orm storage type
   using Raw = decltype(MakeRaw(std::string()));
 
-  /// @brief The raw sqlite_orm storage
+  /// The raw sqlite_orm storage
   Raw raw;
 
-  /// @brief Constructor
-  /// @param path The path to the sqlite database file. Pass STORE_IN_MEMORY to initialize non-persistent storage.
+  /// \brief Constructor
+  /// \param path The path to the sqlite database file. Pass StoreInMemory to initialize non-persistent storage.
   explicit Storage(std::string path)
     : BasicStorage(path), raw(MakeRaw(std::move(path))) {}
 
@@ -77,7 +78,7 @@ struct Storage : public BasicStorage {
   /// \throws std::system_error if sqlite produces errors
   /// \returns true if changes have been made, false if the whole database schema was already in sync.
   bool syncSchema(bool allow_old_column_removal = false) {
-    LOG("database::Storage", info) << "Syncing database schema...";
+    PEP_LOG("database::Storage", Severity::Info) << "Syncing database schema...";
     try {
       auto simulateResults = raw.sync_schema_simulate(true);
       for(const auto& [tableName, result] : simulateResults) {
@@ -107,7 +108,7 @@ struct Storage : public BasicStorage {
         [](auto result){ return result.second != sqlite_orm::sync_schema_result::already_in_sync; }) != syncResults.end();
     }
     catch (const std::system_error& e) {
-      LOG("database::Storage", error) << "  failed: " << e.what();
+      PEP_LOG("database::Storage", Severity::Error) << "  failed: " << e.what();
       throw;
     }
   }
@@ -189,10 +190,10 @@ template <auto MakeRaw> template <Record RecordType, typename havingT>
   auto result = raw.iterate(select(
     columns(max(&RecordType::seqno)),
     where(std::move(whereCondition)),
-    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
+    std::apply(PEP_WRAP_FN(group_by), RecordType::RecordIdentifier)
     // SQLite will pick this column from the row with the max() value:
     // https://www.sqlite.org/lang_select.html#bareagg
-    .having(c(&RecordType::tombstone) == false && havingCondition.mExpr),
+    .having(c(&RecordType::tombstone) == false && havingCondition.expr_),
     limit(1)
   ));
   return result.begin() != result.end();
@@ -207,8 +208,8 @@ template <auto MakeRaw> template <Record RecordType, typename havingT, typename.
     // https://www.sqlite.org/lang_select.html#bareagg
     columns(max(&RecordType::seqno), selectColumns...),
     where(whereCondition),
-    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
-    .having(c(&RecordType::tombstone) == false && havingCondition.mExpr)
+    std::apply(PEP_WRAP_FN(group_by), RecordType::RecordIdentifier)
+    .having(c(&RecordType::tombstone) == false && havingCondition.expr_)
   )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
 }
 
@@ -221,7 +222,7 @@ template <auto MakeRaw> template <Record RecordType, typename... ColTypes>
     // https://www.sqlite.org/lang_select.html#bareagg
     columns(max(&RecordType::seqno), selectColumns...),
     where(whereCondition),
-    std::apply(PEP_WrapFn(group_by), RecordType::RecordIdentifier)
+    std::apply(PEP_WRAP_FN(group_by), RecordType::RecordIdentifier)
     .having(c(&RecordType::tombstone) == false)
   )) | std::views::transform([](auto tuple) { return TryUnwrapTuple(TupleTail(std::move(tuple))); });
 

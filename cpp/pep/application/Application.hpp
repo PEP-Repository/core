@@ -1,16 +1,18 @@
 #pragma once
 
 #include <optional>
+#include <span>
+#include <vector>
 
 #include <boost/type_traits/is_base_of.hpp>
 
 #include <pep/application/CommandLineCommand.hpp>
-#include <pep/utils/Configuration.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
 #include <pep/utils/Log.hpp>
 
 #define PEP_DEFINE_C_MAIN_FUNCTION(applicationType) \
   int main(int argc, char* argv[]) { \
-    return pep::Application::Run< applicationType >(argc, argv); \
+    return pep::Application::Run< applicationType >(std::span<const char* const>(argv, static_cast<std::size_t>(argc))); \
   }
 
 /* Windows discriminates between the "subsystem" that an application is compiled for:
@@ -43,33 +45,31 @@ namespace pep {
 
 class Application : public commandline::Command {
  private:
-  static Application* instance_;
-  static bool usingConsoleLog_;
+  std::vector<std::string> args_;
 
-  int mArgc = -1;
-  char** mArgv = nullptr;
+  std::optional<std::filesystem::path> configDirectory_;
+  bool showVersionInfo_ = false;
 
-  std::optional<std::filesystem::path> mConfigDirectory;
-  bool mShowVersionInfo = false;
+  static std::vector<std::string> ConvertArguments(std::span<const char* const> args);
 
   static int RunWithoutError(std::function<int()> implementor) noexcept;
   static bool ReportTermination(std::exception_ptr exception) noexcept;
 
 #ifdef _WIN32
-  static int InvokeWithArgcArgv(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd, std::function<int(int, char**)> invoke);
+  static int InvokeWithArgs(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd, std::function<int(std::vector<std::string> args)> invoke);
 #endif
 
   template <typename TDerived>
-  static int RunApplicationInstance(int argc, char* argv[]) { //NOLINT(modernize-avoid-c-arrays)
+  static int RunApplicationInstance(std::vector<std::string> args) {
     static_assert(boost::is_base_of<Application, TDerived>::value, "Call this function only with classes that inherit pep::Application");
 
     TDerived instance;
-    return instance.run(argc, argv);
+    return instance.run(std::move(args));
   }
 
-  int run(int argc, char* argv[]); //NOLINT(modernize-avoid-c-arrays)
+  int run(std::vector<std::string> args);
 
-  bool mInitializeLoggingOnceFlag = false;  ///< Tracks if initializeLoggingOnce was called
+  bool initializeLoggingOnceFlag_ = false;  ///< Tracks if initializeLoggingOnce was called
   void initializeLoggingOnce();
 
   std::filesystem::path rawConfigDirectory() const;
@@ -82,13 +82,12 @@ class Application : public commandline::Command {
 
   std::string getName() const override;
 
-  int getArgc() const;
-  char** getArgv() const;
+  const std::vector<std::string>& getArgs() const { return args_; }
 
   virtual bool useUnwinder() const;
-  virtual std::optional<severity_level> syslogLogMinimumSeverityLevel() const;
-  virtual std::optional<severity_level> consoleLogMinimumSeverityLevel() const;
-  virtual std::optional<severity_level> fileLogMinimumSeverityLevel() const;
+  virtual std::optional<Severity> syslogLogMinimumSeverityLevel() const;
+  virtual std::optional<Severity> consoleLogMinimumSeverityLevel() const;
+  virtual std::optional<Severity> fileLogMinimumSeverityLevel() const;
   commandline::Parameters getSupportedParameters() const override;
   std::optional<int> processLexedParameters(const commandline::LexedValues& lexed) override;
   void finalizeParameters() override;
@@ -103,9 +102,9 @@ class Application : public commandline::Command {
   ~Application() override;
 
   template <class TDerived>
-  static int Run(int argc, char* argv[]) noexcept { //NOLINT(modernize-avoid-c-arrays)
-    return RunWithoutError([argc, argv]() { //NOLINT(modernize-avoid-c-arrays)
-      return RunApplicationInstance<TDerived>(argc, argv);
+  static int Run(std::span<const char* const> args) noexcept {
+    return RunWithoutError([args] {
+      return RunApplicationInstance<TDerived>(ConvertArguments(args));
     });
   }
 
@@ -113,7 +112,7 @@ class Application : public commandline::Command {
   template <class TDerived>
   static int Run(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) noexcept {
     return RunWithoutError([hInstance, hPrevInstance, lpCmdLine, nShowCmd]() {
-      return InvokeWithArgcArgv(hInstance, hPrevInstance, lpCmdLine, nShowCmd, &RunApplicationInstance<TDerived>);
+      return InvokeWithArgs(hInstance, hPrevInstance, lpCmdLine, nShowCmd, &RunApplicationInstance<TDerived>);
     });
   }
 #endif

@@ -40,7 +40,7 @@ namespace {
   
   TEST(S3, AH_get_unreserved) {
     HttpRequest r("example.amazonaws.com",
-      pep::networking::HttpMethod::GET, url("/-._~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"), "", {
+      pep::networking::HttpMethod::Get, url("/-._~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"), "", {
         {"Host", "example.amazonaws.com"},
         {"X-Amz-Date", "20150830T123600Z"}
       }, false);
@@ -54,7 +54,7 @@ namespace {
 
   TEST(S3, AH_get_utf8) {
     HttpRequest r("example.amazonaws.com",
-        pep::networking::HttpMethod::GET, url().set_path("/\xe1\x88\xb4"), "", {
+        pep::networking::HttpMethod::Get, url().set_path("/\xe1\x88\xb4"), "", {
             {"Host", "example.amazonaws.com"},
             {"X-Amz-Date", "20150830T123600Z"}
           }, false);
@@ -70,7 +70,7 @@ namespace {
 
   TEST(S3, AH_get_vanilla) {
     HttpRequest r("example.amazonaws.com",
-        pep::networking::HttpMethod::GET, url("/"), "", {
+        pep::networking::HttpMethod::Get, url("/"), "", {
             {"Host", "example.amazonaws.com"},
             {"X-Amz-Date", "20150830T123600Z"}
           }, false);
@@ -84,7 +84,7 @@ namespace {
 
   TEST(S3, AH_get_vanilla_empty_query_key) {
     HttpRequest r("example.amazonaws.com",
-        pep::networking::HttpMethod::GET, url("/?Param1=value1"), "", {
+        pep::networking::HttpMethod::Get, url("/?Param1=value1"), "", {
           {"Host", "example.amazonaws.com"},
           {"X-Amz-Date", "20150830T123600Z"}
         }, false);
@@ -100,7 +100,7 @@ namespace {
   
   TEST(S3, AH_get_vanilla_empty_query_order_key_case) {
     HttpRequest r("example.amazonaws.com",
-        pep::networking::HttpMethod::GET, url("/?Param2=value2&Param1=value1"), "", {
+        pep::networking::HttpMethod::Get, url("/?Param2=value2&Param1=value1"), "", {
           {"Host", "example.amazonaws.com"},
           {"X-Amz-Date", "20150830T123600Z"}
         }, false);
@@ -114,7 +114,7 @@ namespace {
 
   TEST(S3, AH_get_vanilla_query_unreserved) {
     HttpRequest r("example.amazonaws.com",
-        pep::networking::HttpMethod::GET, url("/?-._~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz=-._~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"), "", {
+        pep::networking::HttpMethod::Get, url("/?-._~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz=-._~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"), "", {
           {"Host", "example.amazonaws.com"},
           {"X-Amz-Date", "20150830T123600Z"}
         }, false);
@@ -128,7 +128,7 @@ namespace {
 
   TEST(S3, AH_get_vanilla_utf8_query) {
     HttpRequest r("example.amazonaws.com",
-        pep::networking::HttpMethod::GET, url("/").set_query("\xe1\x88\xb4=bar"), "", {
+        pep::networking::HttpMethod::Get, url("/").set_query("\xe1\x88\xb4=bar"), "", {
           {"Host", "example.amazonaws.com"},
           {"X-Amz-Date", "20150830T123600Z"}
         }, false);
@@ -142,7 +142,7 @@ namespace {
 
   TEST(S3, AH_post_header_key_case) {
     HttpRequest r("example.amazonaws.com",
-        pep::networking::HttpMethod::POST, url("/"), "", {
+        pep::networking::HttpMethod::Post, url("/"), "", {
           {"Host", "example.amazonaws.com"},
           {"X-Amz-Date", "20150830T123600Z"}
         }, false);
@@ -156,7 +156,7 @@ namespace {
 
   TEST(S3, AH_post_header_key_sort) {
     HttpRequest r("example.amazonaws.com",
-        pep::networking::HttpMethod::POST, url("/"), "", {
+        pep::networking::HttpMethod::Post, url("/"), "", {
           {"Host", "example.amazonaws.com"},
           {"My-Header1", "value1"},
           {"X-Amz-Date", "20150830T123600Z"}
@@ -172,7 +172,7 @@ namespace {
 
   TEST(S3, AH_post_header_value_case) {
     HttpRequest r("example.amazonaws.com",
-        pep::networking::HttpMethod::POST, url("/"), "", {
+        pep::networking::HttpMethod::Post, url("/"), "", {
           {"Host", "example.amazonaws.com"},
           {"My-Header1", "VALUE1"},
           {"X-Amz-Date", "20150830T123600Z"}
@@ -191,7 +191,7 @@ namespace {
 
   TEST(S3, AH_post_vanilla_empty_query_value) {
     HttpRequest r("example.amazonaws.com",
-        pep::networking::HttpMethod::POST, url("/?Param1=value1"), "", {
+        pep::networking::HttpMethod::Post, url("/?Param1=value1"), "", {
           {"Host", "example.amazonaws.com"},
           {"X-Amz-Date", "20150830T123600Z"}
         }, false);
@@ -212,7 +212,7 @@ namespace {
     // but not in the .authz file.  Not including the content-length header
     // gives the authorization header mentioned in the .authz-file:
     HttpRequest r("example.amazonaws.com",
-        pep::networking::HttpMethod::POST, url("/"), "Param1=value1", {
+        pep::networking::HttpMethod::Post, url("/"), "Param1=value1", {
           {"Content-Type", "application/x-www-form-urlencoded"},
           {"Host", "example.amazonaws.com"},
           {"X-Amz-Date", "20150830T123600Z"},
@@ -244,7 +244,7 @@ namespace {
   TEST(S3, AH_post_x_www_form_urlencoded_parameters) {
       
     HttpRequest r("example.amazonaws.com",
-        pep::networking::HttpMethod::POST, url("/"), "Param1=value1", {
+        pep::networking::HttpMethod::Post, url("/"), "Param1=value1", {
           {"Content-Type", "application/x-www-form-urlencoded; charset=utf-8"},
           {"Host", "example.amazonaws.com"},
           {"X-Amz-Date", "20150830T123600Z"},
@@ -286,7 +286,7 @@ namespace {
 
   TEST(S3, SpaceInAccessKey) {
     HttpRequest r("example.amazonaws.com",
-        pep::networking::HttpMethod::GET, url("/"), "", {
+        pep::networking::HttpMethod::Get, url("/"), "", {
           {"Host", "example.amazonaws.com"},
           {"X-Amz-Date", "20150830T123600Z"}
         }, false);

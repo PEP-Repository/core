@@ -77,17 +77,12 @@ lipo_app_files() {
 
     export -f merge_dylibs
 
-    # Search for executable files in the MacOS directory, execute a merge function using bash command strings, in this case $0 refers to the first argument passed
-    for dir in "$app_dir1/Contents/Plugins" "$app_dir1/Contents/Resources" "$app_dir1/Contents/MacOS"; do
+    # Search for executable files, execute a merge function using bash command strings, in this case $0 refers to the first argument passed.
+    for dir in "$app_dir1/Contents/Plugins" "$app_dir1/Contents/Resources" "$app_dir1/Contents/MacOS" "$app_dir1/Contents/Frameworks"; do
         if [[ -d "$dir" ]]; then
             find "$dir" -type f -exec bash -c 'file "$0" | grep -q "Mach-O" && ! file "$0" | grep -q "universal binary"' {} \; -exec bash -c 'merge_dylibs "$0" "$1" "$2" "$3"' {} "$app_dir1" "$app_dir2" "$target_dir" \;
         fi
     done
-
-    # The depth is set to 1 to avoid merging any frameworks themselves, as they need some manual consideration
-    if [[ -d "$app_dir1/Contents/Frameworks" ]]; then
-        find "$app_dir1/Contents/Frameworks" -maxdepth 1 -type f -exec bash -c 'file "$0" | grep -q "Mach-O" && ! file "$0" | grep -q "universal binary"' {} \; -exec bash -c 'merge_dylibs "$0" "$1" "$2" "$3"' {} "$app_dir1" "$app_dir2" "$target_dir" \;
-    fi
   }
 
 # Call the function with the app directories, for PEPAssessor
@@ -101,3 +96,14 @@ lipo_app_files "x86_64/macOS_artifacts/download_tool_app/$PEP_MACOS_DOWNLOAD_TOO
 
 # And for PEP Upload Tool
 lipo_app_files "x86_64/macOS_artifacts/upload_tool_app/$PEP_MACOS_UPLOAD_TOOL_APP_NAME.app" "arm64/macOS_artifacts/upload_tool_app/$PEP_MACOS_UPLOAD_TOOL_APP_NAME.app" "universal/macOS_artifacts/upload_tool_app/$PEP_MACOS_UPLOAD_TOOL_APP_NAME.app"
+
+# Universalize the Sparkle generate_appcast tool (staged per-arch by macos-ci-build-app-bins.sh),
+# so the macos-generate-appcast job has a tool that runs regardless of the runner's architecture.
+generate_appcast_x86="x86_64/macOS_artifacts/sparkle-tools/generate_appcast"
+generate_appcast_arm="arm64/macOS_artifacts/sparkle-tools/generate_appcast"
+if [[ ! -f "$generate_appcast_x86" ]] || [[ ! -f "$generate_appcast_arm" ]]; then
+    echo "Error: generate_appcast missing for one or both architectures"
+    exit 1
+fi
+mkdir -p "universal/macOS_artifacts/sparkle-tools"
+lipo -create "$generate_appcast_x86" "$generate_appcast_arm" -output "universal/macOS_artifacts/sparkle-tools/generate_appcast"

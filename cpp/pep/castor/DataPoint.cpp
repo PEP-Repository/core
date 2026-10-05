@@ -14,10 +14,10 @@ std::string MakeApiRoot(std::shared_ptr<CastorObject> parent, const std::string&
 
 }
 
-const std::string DataPointBase::EMBEDDED_API_NODE_NAME = "items";
+const std::string DataPointBase::EmbeddedApiNodeName = "items";
 
 DataPointBase::DataPointBase(JsonPtr json)
-    : CastorObject(json, "field_id"), mValue(GetFromPtree<std::string>(*json, "field_value")) {
+    : CastorObject(json, "field_id"), value_(GetFromPtree<std::string>(*json, "field_value")) {
 }
 
 std::string DataPointBase::GetApiRoot(std::shared_ptr<Study> study, const std::string& relative) {

@@ -12,7 +12,7 @@ public:
   std::string renderTemplate(std::filesystem::path templatePath, const Data& data);
 
 private:
-  inja::Environment mEnvironment;
+  inja::Environment environment_;
 };
 
 }

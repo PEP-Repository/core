@@ -18,6 +18,7 @@
 #include <iterator>
 #include <ranges>
 #include <set>
+#include <utility>
 
 #include <sqlite_orm/sqlite_orm.h>
 
@@ -27,6 +28,7 @@
 #include <unordered_set>
 
 using std::chrono::milliseconds;
+using namespace std::ranges;
 
 namespace pep {
 
@@ -35,7 +37,7 @@ namespace {
 const std::vector<std::string> emptyVector{}; // Used as a default for optional vectors.
 using namespace sqlite_orm;
 
-const std::string LOG_TAG("AccessManager::Backend::Storage");
+const std::string LogTag("AccessManager::Backend::Storage");
 
 using id_pair_set = std::unordered_set<std::pair<int64_t, int64_t>,
   boost::hash<std::pair<int64_t, int64_t>>>;
@@ -55,7 +57,7 @@ std::optional<uint64_t> to_optional_uint64(std::optional<std::chrono::seconds> v
 }
 
 // This function defines the database scheme used.
-auto am_create_db(const std::string& path) {
+auto CreateAmDb(const std::string& path) {
   return make_storage(path,
     make_table("SelectStarPseudonyms",
       make_column("LocalPseudonym",
@@ -211,7 +213,8 @@ auto am_create_db(const std::string& path) {
       make_column("timestamp", &UserGroupUserRecord::timestamp),
       make_column("tombstone", &UserGroupUserRecord::tombstone),
       make_column("internalUserId", &UserGroupUserRecord::internalUserId),
-      make_column("userGroupId", &UserGroupUserRecord::userGroupId)),
+      make_column("userGroupId", &UserGroupUserRecord::userGroupId),
+      make_column("expirationTimestamp", &UserGroupUserRecord::expirationTimestamp)),
 
     make_index("idx_StructureMetadata",
       &StructureMetadataRecord::subjectType,
@@ -236,26 +239,26 @@ auto am_create_db(const std::string& path) {
 }
 
 // Can't be a typedef because we need to forward declare it for our pimpl idiom
-struct AccessManager::Backend::Storage::Implementor : database::Storage<am_create_db> {
+struct AccessManager::Backend::Storage::Implementor : database::Storage<CreateAmDb> {
   using Storage::Storage;
 };
 
 void AccessManager::Backend::Storage::ensureInitialized() {
-  mImplementor->syncSchema();
+  implementor_->syncSchema();
 
-  if (mImplementor->raw.count<ColumnGroupRecord>(limit(1)) != 0)
+  if (implementor_->raw.count<ColumnGroupRecord>(limit(1)) != 0)
     return;
 
-  LOG(LOG_TAG, warning) << "Database seems uninitialized.  Initializing ...";
+  PEP_LOG(LogTag, Severity::Warning) << "Database seems uninitialized.  Initializing ...";
 
   // Column groups
-  mImplementor->raw.insert(ColumnGroupRecord("*"));
-  mImplementor->raw.insert(ColumnGroupRecord("ShortPseudonyms"));
-  mImplementor->raw.insert(ColumnGroupRecord("CastorShortPseudonyms"));
-  mImplementor->raw.insert(ColumnGroupRecord("WatchData"));
-  mImplementor->raw.insert(ColumnGroupRecord("Castor"));
-  mImplementor->raw.insert(ColumnGroupRecord("Device"));
-  mImplementor->raw.insert(ColumnGroupRecord("VisitAssessors"));
+  implementor_->raw.insert(ColumnGroupRecord("*"));
+  implementor_->raw.insert(ColumnGroupRecord("ShortPseudonyms"));
+  implementor_->raw.insert(ColumnGroupRecord("CastorShortPseudonyms"));
+  implementor_->raw.insert(ColumnGroupRecord("WatchData"));
+  implementor_->raw.insert(ColumnGroupRecord("Castor"));
+  implementor_->raw.insert(ColumnGroupRecord("Device"));
+  implementor_->raw.insert(ColumnGroupRecord("VisitAssessors"));
 
   // Column with identically-named single column column-group.
   for (const auto& c : {
@@ -264,9 +267,9 @@ void AccessManager::Backend::Storage::ensureInitialized() {
       "ParticipantInfo",
       "ParticipantIdentifier",
       "StudyContexts"}) {
-    mImplementor->raw.insert(ColumnGroupRecord(c));
-    mImplementor->raw.insert(ColumnRecord(c));
-    mImplementor->raw.insert(ColumnGroupColumnRecord(c, c));
+    implementor_->raw.insert(ColumnGroupRecord(c));
+    implementor_->raw.insert(ColumnRecord(c));
+    implementor_->raw.insert(ColumnGroupColumnRecord(c, c));
   }
 
   // Column group access
@@ -274,48 +277,48 @@ void AccessManager::Backend::Storage::ensureInitialized() {
 
   // Registration sever
   const auto registrationServer = *ServerTraits::RegistrationServer().enrollmentSubject(true);
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", registrationServer, "access"));
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", registrationServer, "enumerate"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ShortPseudonyms", registrationServer, "read"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ShortPseudonyms", registrationServer, "write"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ParticipantIdentifier", registrationServer, "read"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("ParticipantIdentifier", registrationServer, "write"));
+  implementor_->raw.insert(ParticipantGroupAccessRuleRecord("*", registrationServer, "access"));
+  implementor_->raw.insert(ParticipantGroupAccessRuleRecord("*", registrationServer, "enumerate"));
+  implementor_->raw.insert(ColumnGroupAccessRuleRecord("ShortPseudonyms", registrationServer, "read"));
+  implementor_->raw.insert(ColumnGroupAccessRuleRecord("ShortPseudonyms", registrationServer, "write"));
+  implementor_->raw.insert(ColumnGroupAccessRuleRecord("ParticipantIdentifier", registrationServer, "read"));
+  implementor_->raw.insert(ColumnGroupAccessRuleRecord("ParticipantIdentifier", registrationServer, "write"));
 
   // "Pull castor" server
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", "PullCastor", "access"));
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", "PullCastor", "enumerate"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("CastorShortPseudonyms", "PullCastor", "read"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("Castor", "PullCastor", "read"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("Castor", "PullCastor", "write"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("Device", "PullCastor", "read"));
+  implementor_->raw.insert(ParticipantGroupAccessRuleRecord("*", "PullCastor", "access"));
+  implementor_->raw.insert(ParticipantGroupAccessRuleRecord("*", "PullCastor", "enumerate"));
+  implementor_->raw.insert(ColumnGroupAccessRuleRecord("CastorShortPseudonyms", "PullCastor", "read"));
+  implementor_->raw.insert(ColumnGroupAccessRuleRecord("Castor", "PullCastor", "read"));
+  implementor_->raw.insert(ColumnGroupAccessRuleRecord("Castor", "PullCastor", "write"));
+  implementor_->raw.insert(ColumnGroupAccessRuleRecord("Device", "PullCastor", "read"));
 
   // Research assessor
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", UserGroup::ResearchAssessor, "access"));
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", UserGroup::ResearchAssessor, "enumerate"));
+  implementor_->raw.insert(ParticipantGroupAccessRuleRecord("*", UserGroup::ResearchAssessor, "access"));
+  implementor_->raw.insert(ParticipantGroupAccessRuleRecord("*", UserGroup::ResearchAssessor, "enumerate"));
   for (const auto& cg : {
       "ShortPseudonyms", "WatchData", "Device", "ParticipantIdentifier", "ParticipantInfo", "StudyContexts", "VisitAssessors", "IsTestParticipant" })
-    mImplementor->raw.insert(ColumnGroupAccessRuleRecord(cg, UserGroup::ResearchAssessor, "read"));
+    implementor_->raw.insert(ColumnGroupAccessRuleRecord(cg, UserGroup::ResearchAssessor, "read"));
   for (const auto& cg : {"Device", "ParticipantInfo", "StudyContexts", "VisitAssessors", "IsTestParticipant" })
-    mImplementor->raw.insert(ColumnGroupAccessRuleRecord(cg, UserGroup::ResearchAssessor, "write"));
+    implementor_->raw.insert(ColumnGroupAccessRuleRecord(cg, UserGroup::ResearchAssessor, "write"));
 
   // Monitor
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", UserGroup::Monitor, "access"));
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", UserGroup::Monitor, "enumerate"));
+  implementor_->raw.insert(ParticipantGroupAccessRuleRecord("*", UserGroup::Monitor, "access"));
+  implementor_->raw.insert(ParticipantGroupAccessRuleRecord("*", UserGroup::Monitor, "enumerate"));
   for (const auto& cg : {
       "ShortPseudonyms", "Device", "ParticipantIdentifier", "StudyContexts", "VisitAssessors", "IsTestParticipant" })
-    mImplementor->raw.insert(ColumnGroupAccessRuleRecord(cg, UserGroup::Monitor, "read"));
+    implementor_->raw.insert(ColumnGroupAccessRuleRecord(cg, UserGroup::Monitor, "read"));
 
   // Data administrator
   // DA has unchecked access to all participant groups: don't grant explicit privileges. See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1923#note_22224
   for (const auto& cg : {"ShortPseudonyms", "WatchData",
       "ParticipantIdentifier", "Device", "Castor", "StudyContexts", "VisitAssessors", "IsTestParticipant" })
-    mImplementor->raw.insert(ColumnGroupAccessRuleRecord(cg, UserGroup::DataAdministrator, "read"));
+    implementor_->raw.insert(ColumnGroupAccessRuleRecord(cg, UserGroup::DataAdministrator, "read"));
 
   // Watchdog
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", UserGroup::Watchdog, "access")); // TODO reduce
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord("*", UserGroup::Watchdog, "enumerate")); // TODO reduce
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("Canary", UserGroup::Watchdog, "read"));
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord("Canary", UserGroup::Watchdog, "write"));
+  implementor_->raw.insert(ParticipantGroupAccessRuleRecord("*", UserGroup::Watchdog, "access")); // TODO reduce
+  implementor_->raw.insert(ParticipantGroupAccessRuleRecord("*", UserGroup::Watchdog, "enumerate")); // TODO reduce
+  implementor_->raw.insert(ColumnGroupAccessRuleRecord("Canary", UserGroup::Watchdog, "read"));
+  implementor_->raw.insert(ColumnGroupAccessRuleRecord("Canary", UserGroup::Watchdog, "write"));
 
 
 #if defined(ENABLE_OAUTH_TEST_USERS) && defined(AUTO_POPULATE_USER_DB)
@@ -324,43 +327,47 @@ void AccessManager::Backend::Storage::ensureInitialized() {
   createUserGroup(UserGroup(UserGroup::ResearchAssessor, std::nullopt));
   createUserGroup(UserGroup(UserGroup::Monitor, std::nullopt));
   createUserGroup(UserGroup(UserGroup::DataAdministrator, std::chrono::days{1}));
+  createUserGroup(UserGroup(UserGroup::RepositoryManager, std::nullopt));
   createUserGroup(UserGroup(UserGroup::AccessAdministrator, std::nullopt));
   createUserGroup(UserGroup(UserGroup::SystemAdministrator, std::nullopt));
 
   auto assessorId = createUser("assessor@main.pep.cs.ru.nl");
   auto monitorId = createUser("monitor@main.pep.cs.ru.nl");
   auto dataadminId = createUser("dataadmin@main.pep.cs.ru.nl");
+  auto repomanagerId = createUser("repomanager@main.pep.cs.ru.nl");
   auto accessadminId = createUser("accessadmin@main.pep.cs.ru.nl");
   auto systemadminId = createUser("systemadmin@main.pep.cs.ru.nl");
   auto multihatId = createUser("multihat@main.pep.cs.ru.nl");
 
-  addUserToGroup(assessorId, UserGroup::ResearchAssessor);
-  addUserToGroup(monitorId, UserGroup::Monitor);
-  addUserToGroup(dataadminId, UserGroup::DataAdministrator);
-  addUserToGroup(accessadminId, UserGroup::AccessAdministrator);
-  addUserToGroup(systemadminId, UserGroup::SystemAdministrator);
+  addUserToGroup(assessorId, UserGroup::ResearchAssessor, {});
+  addUserToGroup(monitorId, UserGroup::Monitor, {});
+  addUserToGroup(dataadminId, UserGroup::DataAdministrator, {});
+  addUserToGroup(repomanagerId, UserGroup::RepositoryManager, {});
+  addUserToGroup(accessadminId, UserGroup::AccessAdministrator, {});
+  addUserToGroup(systemadminId, UserGroup::SystemAdministrator, {});
 
-  addUserToGroup(multihatId, UserGroup::ResearchAssessor);
-  addUserToGroup(multihatId, UserGroup::Monitor);
-  addUserToGroup(multihatId, UserGroup::DataAdministrator);
-  addUserToGroup(multihatId, UserGroup::AccessAdministrator);
-  addUserToGroup(multihatId, UserGroup::SystemAdministrator);
+  addUserToGroup(multihatId, UserGroup::ResearchAssessor, {});
+  addUserToGroup(multihatId, UserGroup::Monitor, {});
+  addUserToGroup(multihatId, UserGroup::DataAdministrator, {});
+  addUserToGroup(multihatId, UserGroup::RepositoryManager, {});
+  addUserToGroup(multihatId, UserGroup::AccessAdministrator, {});
+  addUserToGroup(multihatId, UserGroup::SystemAdministrator, {});
 
 #endif //ENABLE_OAUTH_TEST_USERS
 
 
-  LOG(LOG_TAG, info) << "  ... done";
+  PEP_LOG(LogTag, Severity::Info) << "  ... done";
 }
 
 std::set<std::string> AccessManager::Backend::Storage::ensureSynced() {
-  LOG(LOG_TAG, info) << "Checking whether to create/remove columns ...";
+  PEP_LOG(LogTag, Severity::Info) << "Checking whether to create/remove columns ...";
   std::set<std::string> allColumns;
   for (auto& col : this->getColumns(TimeNow())) {
     allColumns.insert(col.name);
   }
-  auto ensureColumnExists = [implementor = mImplementor, &allColumns](const std::string& column) {
-    if (allColumns.count(column) == 0) {
-      LOG(LOG_TAG, warning) << "  adding column " << column;
+  auto ensureColumnExists = [implementor = implementor_, &allColumns](const std::string& column) {
+    if (!allColumns.contains(column)) {
+      PEP_LOG(LogTag, Severity::Warning) << "  adding column " << column;
       allColumns.insert(column);
       implementor->raw.insert(ColumnRecord(column));
     }
@@ -368,8 +375,8 @@ std::set<std::string> AccessManager::Backend::Storage::ensureSynced() {
 
   // Create a column for each visit's administering assessor
   std::set<std::string> visitAssessorColumns;
-  for (const auto& context : mGlobalConf->getStudyContexts().getItems()) {
-    for (const auto& column : mGlobalConf->getVisitAssessorColumns(context)) {
+  for (const auto& context : globalConf_->getStudyContexts().getItems()) {
+    for (const auto& column : globalConf_->getVisitAssessorColumns(context)) {
       ensureColumnExists(column);
       visitAssessorColumns.insert(column);
     }
@@ -378,7 +385,7 @@ std::set<std::string> AccessManager::Backend::Storage::ensureSynced() {
 
   // Create a column for each short pseudonym
   std::set<std::string> spColumns, castorSpColumns;
-  for (const auto& sp : mGlobalConf->getShortPseudonyms()) {
+  for (const auto& sp : globalConf_->getShortPseudonyms()) {
     auto column = sp.getColumn().getFullName();
     spColumns.insert(column);
     if (sp.getCastor()) {
@@ -391,7 +398,7 @@ std::set<std::string> AccessManager::Backend::Storage::ensureSynced() {
 
   // Create a column for each device (history) definition
   std::set<std::string> deviceColumns;
-  for (const auto& device : mGlobalConf->getDevices()) {
+  for (const auto& device : globalConf_->getDevices()) {
     auto& column = device.columnName;
     deviceColumns.insert(column);
     ensureColumnExists(column);
@@ -405,11 +412,11 @@ std::set<std::string> AccessManager::Backend::Storage::ensureSynced() {
 }
 
 void AccessManager::Backend::Storage::checkConfig(const std::set<std::string>& allColumns) const {
-  for (const auto &colSpec : mGlobalConf->getColumnSpecifications()) {
+  for (const auto &colSpec : globalConf_->getColumnSpecifications()) {
     const std::string &name = colSpec.getColumn();
-    if (allColumns.find(name) == allColumns.end()) {
+    if (!allColumns.contains(name)) {
       // Just warn, the column may be created later
-      LOG(LOG_TAG, warning) << "Column " << Logging::Escape(name) << " mentioned in column_specifications does not exist";
+      PEP_LOG(LogTag, Severity::Warning) << "Column " << Logging::Escape(name) << " mentioned in column_specifications does not exist";
     }
     // Associated short pseudonym column is already checked in GlobalConfiguration::GlobalConfiguration,
     // and was created above
@@ -417,11 +424,11 @@ void AccessManager::Backend::Storage::checkConfig(const std::set<std::string>& a
 }
 
 void AccessManager::Backend::Storage::ensureUpToDate() {
-  LOG(LOG_TAG, info) << "Checking whether to remove participant-group-access-rules ...";
+  PEP_LOG(LogTag, Severity::Info) << "Checking whether to remove participant-group-access-rules ...";
   // Remove explicit PGARs for Data Administrator: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/1923#note_22224
   auto pgars = getParticipantGroupAccessRules(TimeNow(), {.userGroups = std::vector<std::string>{UserGroup::DataAdministrator}});
   for (const auto& pgar : pgars) {
-    LOG(LOG_TAG, info) << "Removing " << Logging::Escape(pgar.mode) << " access to " << Logging::Escape(pgar.participantGroup) << " participant-group for role " << Logging::Escape(pgar.userGroup);
+    PEP_LOG(LogTag, Severity::Info) << "Removing " << Logging::Escape(pgar.mode) << " access to " << Logging::Escape(pgar.participantGroup) << " participant-group for role " << Logging::Escape(pgar.userGroup);
     this->removeParticipantGroupAccessRule(pgar.participantGroup, pgar.userGroup, pgar.mode);
   }
 
@@ -430,15 +437,15 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
    * Therefore, we now use CurvePoint::packString. This method updates existing entries from the old serialization to the new.
    * See issue #1212
    */
-  LOG(LOG_TAG, info) << "Checking whether the serialization of local pseudonyms is up to date";
-  auto selectStarPseudonymRecordCountTotal = mImplementor->raw.count<SelectStarPseudonymRecord>();
-  auto selectStarPseudonymRecordCountOldFormat = mImplementor->raw.count<SelectStarPseudonymRecord>(where(length(&SelectStarPseudonymRecord::localPseudonym) > CurvePoint::PACKEDBYTES &&
-      length(&SelectStarPseudonymRecord::polymorphicPseudonym) > ElgamalEncryption::PACKEDBYTES));
-  auto participantGroupParticipantRecordCountTotal = mImplementor->raw.count<ParticipantGroupParticipantRecord>();
-  auto participantGroupParticipantRecordCountOldFormat = mImplementor->raw.count<ParticipantGroupParticipantRecord>(where(length(&ParticipantGroupParticipantRecord::localPseudonym) > CurvePoint::PACKEDBYTES));
+  PEP_LOG(LogTag, Severity::Info) << "Checking whether the serialization of local pseudonyms is up to date";
+  auto selectStarPseudonymRecordCountTotal = implementor_->raw.count<SelectStarPseudonymRecord>();
+  auto selectStarPseudonymRecordCountOldFormat = implementor_->raw.count<SelectStarPseudonymRecord>(where(length(&SelectStarPseudonymRecord::localPseudonym) > CurvePoint::PackedBytes &&
+      length(&SelectStarPseudonymRecord::polymorphicPseudonym) > ElgamalEncryption::PackedBytes));
+  auto participantGroupParticipantRecordCountTotal = implementor_->raw.count<ParticipantGroupParticipantRecord>();
+  auto participantGroupParticipantRecordCountOldFormat = implementor_->raw.count<ParticipantGroupParticipantRecord>(where(length(&ParticipantGroupParticipantRecord::localPseudonym) > CurvePoint::PackedBytes));
 
   if (selectStarPseudonymRecordCountOldFormat == 0 && participantGroupParticipantRecordCountOldFormat == 0) {
-    LOG(LOG_TAG, info) << "everything up to date";
+    PEP_LOG(LogTag, Severity::Info) << "everything up to date";
   }
   else if (selectStarPseudonymRecordCountTotal != selectStarPseudonymRecordCountOldFormat) {
     throw std::runtime_error("Some selectStarPseudonymRecords appear to be updated, but some are in the old format. This should not happen! Either all are updated, or all still need to be updated. "
@@ -449,60 +456,60 @@ void AccessManager::Backend::Storage::ensureUpToDate() {
       + std::to_string(participantGroupParticipantRecordCountOldFormat) + " records out of total of " + std::to_string(participantGroupParticipantRecordCountTotal) + " have the old format");
   }
   else {
-    std::filesystem::path backupDirectory = this->mStoragePath.parent_path();
+    std::filesystem::path backupDirectory = this->storagePath_.parent_path();
     std::filesystem::create_directories(backupDirectory);
-    std::filesystem::path backupPath = backupDirectory / (this->mStoragePath.stem().string() + "_before_lp_and_pp_reserialization" + this->mStoragePath.extension().string());
+    std::filesystem::path backupPath = backupDirectory / (this->storagePath_.stem().string() + "_before_lp_and_pp_reserialization" + this->storagePath_.extension().string());
     if (std::filesystem::exists(backupPath)) {
       throw std::runtime_error("LP and PP format was not up to date, so an upgrade was attempted. But the backup file "
         + backupPath.string() + " already exists. An upgrade was apparently already attempted, but failed. Manual correction is required.");
     }
-    std::filesystem::copy_file(this->mStoragePath, backupPath);
-    LOG(LOG_TAG, info) << "Backed up storage to \"" << backupPath.string() << "\". Backup is " << std::filesystem::file_size(backupPath) << " bytes.";
-    auto transactionGuard = mImplementor->raw.transaction_guard();
-    for (auto record : mImplementor->raw.iterate<SelectStarPseudonymRecord>()) {
-      CurvePoint localPseudonymAsPoint = Serialization::FromString<CurvePoint>(SpanToString(record.localPseudonym));
-      record.localPseudonym = RangeToVector(localPseudonymAsPoint.pack());
-      ElgamalEncryption polymorphicPseudonymAsElgamalEncryption = Serialization::FromString<ElgamalEncryption>(SpanToString(record.polymorphicPseudonym));
-      record.polymorphicPseudonym = RangeToVector(polymorphicPseudonymAsElgamalEncryption.pack());
-      mImplementor->raw.update(record);
+    std::filesystem::copy_file(this->storagePath_, backupPath);
+    PEP_LOG(LogTag, Severity::Info) << "Backed up storage to \"" << backupPath.string() << "\". Backup is " << std::filesystem::file_size(backupPath) << " bytes.";
+    auto transactionGuard = implementor_->raw.transaction_guard();
+    for (auto record : implementor_->raw.iterate<SelectStarPseudonymRecord>()) {
+      CurvePoint localPseudonymAsPoint = Serialization::FromString<CurvePoint>(std::string_view(record.localPseudonym));
+      record.localPseudonym = localPseudonymAsPoint.pack() | to<std::vector>();
+      ElgamalEncryption polymorphicPseudonymAsElgamalEncryption = Serialization::FromString<ElgamalEncryption>(std::string_view(record.polymorphicPseudonym));
+      record.polymorphicPseudonym = polymorphicPseudonymAsElgamalEncryption.pack() | to<std::vector>();
+      implementor_->raw.update(record);
     }
 
-    for (auto record : mImplementor->raw.iterate<ParticipantGroupParticipantRecord>()) {
-      CurvePoint localPseudonymAsPoint = Serialization::FromString<CurvePoint>(SpanToString(record.localPseudonym));
-      record.localPseudonym = RangeToVector(localPseudonymAsPoint.pack());
-      mImplementor->raw.update(record);
+    for (auto record : implementor_->raw.iterate<ParticipantGroupParticipantRecord>()) {
+      CurvePoint localPseudonymAsPoint = Serialization::FromString<CurvePoint>(std::string_view(record.localPseudonym));
+      record.localPseudonym = localPseudonymAsPoint.pack() | to<std::vector>();
+      implementor_->raw.update(record);
     }
     transactionGuard.commit();
-    LOG(LOG_TAG, info) << "all records have been updated";
+    PEP_LOG(LogTag, Severity::Info) << "all records have been updated";
   }
 
   //DisplayIds and PrimaryIds where introduced at the same time. So if there are primaryIds already in the DB, we can also assume that the upgrade already happened before.
   //Furthermore, because we check that there are no primaryIds, in the auto-assignment we don't have to worry about whether identifiers are primaryIds or not.
-  if (mImplementor->raw.count(&UserIdRecord::seqno, where(c(&UserIdRecord::isDisplayId) == 1 || c(&UserIdRecord::isPrimaryId) == 1), limit(1)) == 0) {
-    LOG(LOG_TAG, info) << "There are no displayIds in the database yet. Auto-assigning...";
+  if (implementor_->raw.count(&UserIdRecord::seqno, where(c(&UserIdRecord::isDisplayId) == 1 || c(&UserIdRecord::isPrimaryId) == 1), limit(1)) == 0) {
+    PEP_LOG(LogTag, Severity::Info) << "There are no displayIds in the database yet. Auto-assigning...";
     size_t countAssigned = 0;
     size_t countUnassigned = 0;
-    auto displayIdTransactionGuard = mImplementor->raw.transaction_guard();
-    for (auto userId : mImplementor->getCurrentRecords(true, &UserIdRecord::internalUserId)) {
+    auto displayIdTransactionGuard = implementor_->raw.transaction_guard();
+    for (auto userId : implementor_->getCurrentRecords(true, &UserIdRecord::internalUserId)) {
       auto firstIdentifier = RangeToOptional(
-        mImplementor->raw.select(&UserIdRecord::identifier,
+        implementor_->raw.select(&UserIdRecord::identifier,
         where(c(&UserIdRecord::internalUserId) == userId),
         order_by(&UserIdRecord::seqno).asc(),
         limit(1)));
       if (firstIdentifier) {
-        if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId && c(&UserIdRecord::identifier) == *firstIdentifier)) {
-          mImplementor->raw.insert(UserIdRecord(userId, *firstIdentifier, UserIdFlags::IsDisplayId));
+        if (implementor_->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId && c(&UserIdRecord::identifier) == *firstIdentifier)) {
+          implementor_->raw.insert(UserIdRecord(userId, *firstIdentifier, UserIdFlags::IsDisplayId));
           countAssigned++;
         }
-        else if (mImplementor->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId)) {
+        else if (implementor_->currentRecordExists<UserIdRecord>(c(&UserIdRecord::internalUserId) == userId)) {
           countUnassigned++;
         }
       }
     }
     displayIdTransactionGuard.commit();
-    LOG(LOG_TAG, info) << "A displayId has been assigned to " << countAssigned << " records.";
+    PEP_LOG(LogTag, Severity::Info) << "A displayId has been assigned to " << countAssigned << " records.";
     if (countUnassigned > 0) {
-      LOG(LOG_TAG, warning) << "No displayId could be automatically assigned to " << countUnassigned << " records";
+      PEP_LOG(LogTag, Severity::Warning) << "No displayId could be automatically assigned to " << countUnassigned << " records";
     }
   }
 }
@@ -513,25 +520,25 @@ void AccessManager::Backend::Storage::removeOrphanedRecords() {
   auto cgars = getColumnGroupAccessRules(now);
   for (auto& cgar : cgars) {
     if (hasColumnGroup(cgar.columnGroup) == false) {
-      LOG(LOG_TAG, warning) << "Removing " << Logging::Escape(cgar.mode) << " access to " << Logging::Escape(cgar.columnGroup) << " column-group for role " << Logging::Escape(cgar.userGroup)<< ", as the column-group is removed.";
+      PEP_LOG(LogTag, Severity::Warning) << "Removing " << Logging::Escape(cgar.mode) << " access to " << Logging::Escape(cgar.columnGroup) << " column-group for role " << Logging::Escape(cgar.userGroup)<< ", as the column-group is removed.";
       removeColumnGroupAccessRule(cgar.columnGroup, cgar.userGroup, cgar.mode);
     }
   }
   auto pgars = getParticipantGroupAccessRules(now);
   for (auto& pgar : pgars) {
     if (hasParticipantGroup(pgar.participantGroup) == false) {
-      LOG(LOG_TAG, warning) << "Removing " << Logging::Escape(pgar.mode) << " access to " << Logging::Escape(pgar.participantGroup) << " participant-group for role " << Logging::Escape(pgar.userGroup) << ", as the participant-group is removed.";
+      PEP_LOG(LogTag, Severity::Warning) << "Removing " << Logging::Escape(pgar.mode) << " access to " << Logging::Escape(pgar.participantGroup) << " participant-group for role " << Logging::Escape(pgar.userGroup) << ", as the participant-group is removed.";
       removeParticipantGroupAccessRule(pgar.participantGroup, pgar.userGroup, pgar.mode);
     }
   }
   auto cgcs = getColumnGroupColumns(now);
   for (auto& cgc : cgcs) {
     if (hasColumnGroup(cgc.columnGroup) == false) {
-      LOG(LOG_TAG, warning) << "Removing column-group membership of " << Logging::Escape(cgc.column) << " to " << Logging::Escape(cgc.columnGroup) << ", as the column-group is removed.";
+      PEP_LOG(LogTag, Severity::Warning) << "Removing column-group membership of " << Logging::Escape(cgc.column) << " to " << Logging::Escape(cgc.columnGroup) << ", as the column-group is removed.";
       removeColumnFromGroup(cgc.column, cgc.columnGroup);
     }
     else if (hasColumn(cgc.column) == false) {
-      LOG(LOG_TAG, warning) << "Removing column-group membership of " << Logging::Escape(cgc.column) << " to " << Logging::Escape(cgc.columnGroup) << ", as the column is removed.";
+      PEP_LOG(LogTag, Severity::Warning) << "Removing column-group membership of " << Logging::Escape(cgc.column) << " to " << Logging::Escape(cgc.columnGroup) << ", as the column is removed.";
       removeColumnFromGroup(cgc.column, cgc.columnGroup);
     }
   }
@@ -544,10 +551,8 @@ void AccessManager::Backend::Storage::removeOrphanedRecords() {
 }
 
 void AccessManager::Backend::Storage::syncColumnGroupContents(const std::string& columnGroup, const std::set<std::string>& requiredColumns) {
-  using namespace std::ranges;
-
-  auto groupColumns = RangeToCollection<std::set>(
-    mImplementor->getCurrentRecords(
+  std::set groupColumns(std::from_range,
+    implementor_->getCurrentRecords(
       c(&ColumnGroupColumnRecord::columnGroup) == columnGroup,
       &ColumnGroupColumnRecord::column)
   );
@@ -557,20 +562,20 @@ void AccessManager::Backend::Storage::syncColumnGroupContents(const std::string&
   std::set<std::string> strayColumns;
   set_difference(groupColumns, requiredColumns, std::inserter(strayColumns, strayColumns.begin()));
   for (auto& column : strayColumns) {
-    LOG(LOG_TAG, warning) << "  removing column "
+    PEP_LOG(LogTag, Severity::Warning) << "  removing column "
       << column << " from column-group " << columnGroup;
-    mImplementor->raw.insert(ColumnGroupColumnRecord(column, columnGroup, true));
+    implementor_->raw.insert(ColumnGroupColumnRecord(column, columnGroup, true));
   }
   for (auto& column : missingColumns) {
-    LOG(LOG_TAG, warning) << "  adding column " << column << " to column-group " << columnGroup;
-    mImplementor->raw.insert(ColumnGroupColumnRecord(column, columnGroup));
+    PEP_LOG(LogTag, Severity::Warning) << "  adding column " << column << " to column-group " << columnGroup;
+    implementor_->raw.insert(ColumnGroupColumnRecord(column, columnGroup));
   }
 }
 
 AccessManager::Backend::Storage::Storage( const std::filesystem::path& path, std::shared_ptr<GlobalConfiguration> globalConf) {
-  mStoragePath = path;
-  mImplementor = std::make_shared<Implementor>(path.string());
-  mGlobalConf = globalConf;
+  storagePath_ = path;
+  implementor_ = std::make_shared<Implementor>(path.string());
+  globalConf_ = globalConf;
 
   ensureInitialized();
   auto allColumns = ensureSynced();
@@ -584,15 +589,15 @@ AccessManager::Backend::Storage::Storage( const std::filesystem::path& path, std
   //   - are all times in the past
 
   // Cache select(*) pseudonym list
-  LOG(LOG_TAG, info) << "Caching SELECT(*) pseudonym list ...";
-  for (const auto& record : mImplementor->raw.iterate<SelectStarPseudonymRecord>())
-    mLpToPpMap.emplace(
+  PEP_LOG(LogTag, Severity::Info) << "Caching SELECT(*) pseudonym list ...";
+  for (const auto& record : implementor_->raw.iterate<SelectStarPseudonymRecord>())
+    lpToPpMap_.emplace(
       record.getLocalPseudonym(),
       record.getPolymorphicPseudonym()
     );
 
   removeOrphanedRecords();
-  LOG(LOG_TAG, info) << "Ready to accept requests!";
+  PEP_LOG(LogTag, Severity::Info) << "Ready to accept requests!";
 }
 
 namespace { // TODO: move together with other anonymously-scoped code (at top of source)
@@ -670,34 +675,27 @@ const std::unordered_map<std::string, decltype(&ComputeChecksumImpl<SelectStarPs
 }
 
 std::vector<std::string> AccessManager::Backend::Storage::getChecksumChainNames() {
-  std::vector<std::string> ret;
-  ret.reserve(computeChecksumImpls.size());
-  for (const auto& pair : computeChecksumImpls) {
-    ret.push_back(pair.first);
-  }
-  return ret;
+  return views::keys(computeChecksumImpls) | to<std::vector>();
 }
 
 void AccessManager::Backend::Storage::computeChecksum(const std::string& chain,
       std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
       uint64_t& checkpoint) {
-  if (computeChecksumImpls.count(chain) == 0)
+  if (!computeChecksumImpls.contains(chain))
     throw Error("No such checksum chain");
-  computeChecksumImpls.at(chain)(mImplementor, maxCheckpoint, checksum, checkpoint);
+  computeChecksumImpls.at(chain)(implementor_, maxCheckpoint, checksum, checkpoint);
 }
 
 std::vector<PolymorphicPseudonym> AccessManager::Backend::Storage::getPPs() {
-  return RangeToVector(std::views::values(mLpToPpMap));
+  return lpToPpMap_ | views::values | to<std::vector>();
 }
 
 std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> AccessManager::Backend::Storage::getPpGroups(std::span<const std::string> participantGroups) {
-  using namespace std::ranges;
-
   std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/> ppsAndGroups;
 
   // Insert all participants for "*" if it was requested
-  if (find(participantGroups, "*") != participantGroups.end()) {
-    for (const auto& pp : views::values(mLpToPpMap)) {
+  if (contains(participantGroups, "*")) {
+    for (const auto& pp : views::values(lpToPpMap_)) {
       ppsAndGroups[pp].insert("*");
     }
   }
@@ -705,28 +703,28 @@ std::unordered_map<PolymorphicPseudonym, std::unordered_set<std::string> /*parti
   // Handle requested participantGroups
   {
     // Retrieve participant LPs with groups
-    auto lpsAndGroups = mImplementor->getCurrentRecords(
-      in(&ParticipantGroupParticipantRecord::participantGroup, RangeToVector(participantGroups)),
+    auto lpsAndGroups = implementor_->getCurrentRecords(
+      in(&ParticipantGroupParticipantRecord::participantGroup, to<std::vector>(participantGroups)),
       &ParticipantGroupParticipantRecord::localPseudonym,
       &ParticipantGroupParticipantRecord::participantGroup);
     // Map LPs to PPs
     for (auto [localPseudonymPack, participantGroup] : lpsAndGroups) {
-      ppsAndGroups[mLpToPpMap.at(LocalPseudonym::FromPacked(SpanToString(localPseudonymPack)))].insert(std::move(participantGroup));
+      ppsAndGroups[lpToPpMap_.at(LocalPseudonym::FromPacked(std::string_view(localPseudonymPack)))].insert(std::move(participantGroup));
     }
   }
   return ppsAndGroups;
 }
 
 bool AccessManager::Backend::Storage::hasLocalPseudonym(const LocalPseudonym& localPseudonym) {
-  return mLpToPpMap.contains(localPseudonym);
+  return lpToPpMap_.contains(localPseudonym);
 }
 
 void AccessManager::Backend::Storage::storeLocalPseudonymAndPP(
   const LocalPseudonym& localPseudonym,
   const PolymorphicPseudonym& polymorphicPseudonym) {
   auto rerandPolymorphicPseudonym = polymorphicPseudonym.rerandomize();
-  mLpToPpMap.emplace(localPseudonym, rerandPolymorphicPseudonym);
-  mImplementor->raw.insert(SelectStarPseudonymRecord(localPseudonym, rerandPolymorphicPseudonym));
+  lpToPpMap_.emplace(localPseudonym, rerandPolymorphicPseudonym);
+  implementor_->raw.insert(SelectStarPseudonymRecord(localPseudonym, rerandPolymorphicPseudonym));
 }
 
 
@@ -736,14 +734,12 @@ void AccessManager::Backend::Storage::storeLocalPseudonymAndPP(
 bool AccessManager::Backend::Storage::hasParticipantGroup(const std::string& name) {
   if (name == "*") { return true; }
 
-  return mImplementor->currentRecordExists<ParticipantGroupRecord>(
+  return implementor_->currentRecordExists<ParticipantGroupRecord>(
     c(&ParticipantGroupRecord::name) == name);
 }
 
 std::set<ParticipantGroup> AccessManager::Backend::Storage::getParticipantGroups(const Timestamp& timestamp, const ParticipantGroupFilter& filter) const {
-  using namespace std::ranges;
-  return RangeToCollection<std::set>(
-    mImplementor->getCurrentRecords(
+  return implementor_->getCurrentRecords(
       c(&ParticipantGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp) &&
       (!filter.participantGroups.has_value()
         || in(&ParticipantGroupRecord::name, filter.participantGroups.value_or(emptyVector))),
@@ -751,7 +747,7 @@ std::set<ParticipantGroup> AccessManager::Backend::Storage::getParticipantGroups
     | views::transform([](std::string name) {
       return ParticipantGroup(std::move(name));
     })
-  );
+    | to<std::set>();
 }
 
 void AccessManager::Backend::Storage::createParticipantGroup(const std::string& name) {
@@ -760,7 +756,7 @@ void AccessManager::Backend::Storage::createParticipantGroup(const std::string& 
     msg << "Participant-group " << Logging::Escape(name) << " already exists";
     throw Error(msg.str());
   }
-  mImplementor->raw.insert(ParticipantGroupRecord(name));
+  implementor_->raw.insert(ParticipantGroupRecord(name));
 }
 
 void AccessManager::Backend::Storage::removeParticipantGroup(const std::string& name, const bool force) {
@@ -770,7 +766,7 @@ void AccessManager::Backend::Storage::removeParticipantGroup(const std::string& 
     throw Error(msg.str());
   }
 
-  auto guard = mImplementor->raw.transaction_guard();
+  auto guard = implementor_->raw.transaction_guard();
 
   const Timestamp now = TimeNow();
 
@@ -810,33 +806,31 @@ void AccessManager::Backend::Storage::removeParticipantGroup(const std::string& 
   }
 
   // Tombstone participant group
-  mImplementor->raw.insert(ParticipantGroupRecord(name, true));
+  implementor_->raw.insert(ParticipantGroupRecord(name, true));
 
   guard.commit();
 }
 
 /* Core operations on ParticipantGroupParticipants */
 bool AccessManager::Backend::Storage::hasParticipantInGroup(const LocalPseudonym& localPseudonym, const std::string& participantGroup) {
-  return mImplementor->currentRecordExists<ParticipantGroupParticipantRecord>(
-    c(&ParticipantGroupParticipantRecord::localPseudonym) == RangeToVector(localPseudonym.pack())
+  return implementor_->currentRecordExists<ParticipantGroupParticipantRecord>(
+    c(&ParticipantGroupParticipantRecord::localPseudonym) == to<std::vector>(localPseudonym.pack())
     && c(&ParticipantGroupParticipantRecord::participantGroup) == participantGroup);
 }
 
 std::set<ParticipantGroupParticipant> AccessManager::Backend::Storage::getParticipantGroupParticipants(
   const Timestamp& timestamp, const ParticipantGroupParticipantFilter& filter) const {
-  using namespace std::ranges;
-
   std::vector<std::vector<char>> serializedLocalPseudonyms;
   // create a serialized vector of the LocalPseudonyms for look up.
   if (filter.localPseudonyms.has_value()) {
-    serializedLocalPseudonyms = RangeToVector(*filter.localPseudonyms
+    serializedLocalPseudonyms = *filter.localPseudonyms
       | views::transform([](const LocalPseudonym& localPseudonym) {
-        return RangeToVector(localPseudonym.pack());
-      }));
+        return to<std::vector>(localPseudonym.pack());
+      })
+      | to<std::vector>();
   }
 
-  return RangeToCollection<std::set>(
-    mImplementor->getCurrentRecords(
+  return implementor_->getCurrentRecords(
       c(&ParticipantGroupParticipantRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.participantGroups.has_value()
         || in(&ParticipantGroupParticipantRecord::participantGroup, filter.participantGroups.value_or(emptyVector)))
@@ -848,7 +842,7 @@ std::set<ParticipantGroupParticipant> AccessManager::Backend::Storage::getPartic
       auto& [participantGroup, localPseudonym] = tuple;
       return ParticipantGroupParticipant(std::move(participantGroup), std::move(localPseudonym));
     })
-  );
+    | to<std::set>();
 }
 
 void AccessManager::Backend::Storage::addParticipantToGroup(const LocalPseudonym& localPseudonym, const std::string& participantGroup) {
@@ -867,7 +861,7 @@ void AccessManager::Backend::Storage::addParticipantToGroup(const LocalPseudonym
     throw Error("No such participant known");
   }
 
-  mImplementor->raw.insert(ParticipantGroupParticipantRecord(localPseudonym, participantGroup));
+  implementor_->raw.insert(ParticipantGroupParticipantRecord(localPseudonym, participantGroup));
 }
 
 void AccessManager::Backend::Storage::removeParticipantFromGroup(const LocalPseudonym& localPseudonym, const std::string& participantGroup) {
@@ -878,7 +872,7 @@ void AccessManager::Backend::Storage::removeParticipantFromGroup(const LocalPseu
     throw Error(msg.str());
   }
 
-  mImplementor->raw.insert(ParticipantGroupParticipantRecord(localPseudonym, participantGroup, true));
+  implementor_->raw.insert(ParticipantGroupParticipantRecord(localPseudonym, participantGroup, true));
 }
 
 
@@ -887,7 +881,7 @@ bool AccessManager::Backend::Storage::hasParticipantGroupAccessRule(
     const std::string& participantGroup,
     const std::string& userGroup,
     const std::string& mode) {
-  return mImplementor->currentRecordExists<ParticipantGroupAccessRuleRecord>(
+  return implementor_->currentRecordExists<ParticipantGroupAccessRuleRecord>(
     c(&ParticipantGroupAccessRuleRecord::participantGroup) == participantGroup
     && c(&ParticipantGroupAccessRuleRecord::userGroup) == userGroup
     && c(&ParticipantGroupAccessRuleRecord::mode) == mode);
@@ -895,9 +889,7 @@ bool AccessManager::Backend::Storage::hasParticipantGroupAccessRule(
 
 std::set<ParticipantGroupAccessRule> AccessManager::Backend::Storage::getParticipantGroupAccessRules(
   const Timestamp& timestamp, const ParticipantGroupAccessRuleFilter& filter) const {
-  using namespace std::ranges;
-  return RangeToCollection<std::set>(
-    mImplementor->getCurrentRecords(
+  return implementor_->getCurrentRecords(
       c(&ParticipantGroupAccessRuleRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.participantGroups.has_value()
         || in(&ParticipantGroupAccessRuleRecord::participantGroup, filter.participantGroups.value_or(emptyVector)))
@@ -912,7 +904,7 @@ std::set<ParticipantGroupAccessRule> AccessManager::Backend::Storage::getPartici
       auto& [participantGroup, userGroup, mode] = tuple;
       return ParticipantGroupAccessRule(std::move(participantGroup), std::move(userGroup), std::move(mode));
     })
-  );
+    | to<std::set>();
 }
 
 void AccessManager::Backend::Storage::createParticipantGroupAccessRule(
@@ -942,7 +934,7 @@ void AccessManager::Backend::Storage::createParticipantGroupAccessRule(
         throw Error(msg.str());
   }
 
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord(participantGroup, userGroup, mode));
+  implementor_->raw.insert(ParticipantGroupAccessRuleRecord(participantGroup, userGroup, mode));
 }
 
 void AccessManager::Backend::Storage::removeParticipantGroupAccessRule(
@@ -956,19 +948,25 @@ void AccessManager::Backend::Storage::removeParticipantGroupAccessRule(
         throw Error(msg.str());
   }
 
-  mImplementor->raw.insert(ParticipantGroupAccessRuleRecord(participantGroup, userGroup, mode, true));
+  implementor_->raw.insert(ParticipantGroupAccessRuleRecord(participantGroup, userGroup, mode, true));
 }
 
 
 /* Core operations on Columns */
 bool AccessManager::Backend::Storage::hasColumn(const std::string& name) {
-  return mImplementor->currentRecordExists<ColumnRecord>(c(&ColumnRecord::name) == name);
+  return implementor_->currentRecordExists<ColumnRecord>(c(&ColumnRecord::name) == name);
+}
+
+std::optional<std::string> AccessManager::Backend::Storage::getColumnCaseInsensitive(const std::string& name) {
+  auto results = implementor_->getCurrentRecords<ColumnRecord>(
+    (c(&ColumnRecord::name) == name).collate_nocase(),
+    &ColumnRecord::name);
+  if (results.begin() == results.end()) { return std::nullopt; }
+  return *results.begin();
 }
 
 std::set<Column> AccessManager::Backend::Storage::getColumns(const Timestamp& timestamp, const ColumnFilter& filter) const {
-  using namespace std::ranges;
-  return RangeToCollection<std::set>(
-    mImplementor->getCurrentRecords(
+  return implementor_->getCurrentRecords(
       c(&ColumnRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.columns.has_value()
         || in(&ColumnRecord::name, filter.columns.value_or(emptyVector))),
@@ -976,17 +974,24 @@ std::set<Column> AccessManager::Backend::Storage::getColumns(const Timestamp& ti
     | views::transform([](std::string name) {
       return Column(std::move(name));
     })
-  );
+    | to<std::set>();
 }
 
 void AccessManager::Backend::Storage::createColumn(const std::string& name) {
-  if (hasColumn(name)) {
+  if (auto existingName = getColumnCaseInsensitive(name)) {
     std::ostringstream msg;
-    msg << "Column " << Logging::Escape(name) << " already exists";
+    msg << "Column " << Logging::Escape(*existingName) << " already exists";
     throw Error(msg.str());
   }
-  mImplementor->raw.insert(ColumnRecord(name));
-  mImplementor->raw.insert(ColumnGroupColumnRecord(name, "*"));
+  if (!IsValidPortableFileName(name)) {
+    std::ostringstream msg;
+    msg << "Invalid column name: " << Logging::Escape(name) << ". "
+        "Columns must be valid file names for all supported platforms, "
+        "see restrictions at https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions";
+    throw Error(std::move(msg).str());
+  }
+  implementor_->raw.insert(ColumnRecord(name));
+  implementor_->raw.insert(ColumnGroupColumnRecord(name, "*"));
 }
 
 void AccessManager::Backend::Storage::removeColumn(const std::string& name) {
@@ -995,7 +1000,7 @@ void AccessManager::Backend::Storage::removeColumn(const std::string& name) {
     msg << "Column " << Logging::Escape(name) << " does not exist";
     throw Error(msg.str());
   }
-  auto guard = mImplementor->raw.transaction_guard();
+  auto guard = implementor_->raw.transaction_guard();
 
   const Timestamp now = TimeNow();
 
@@ -1011,22 +1016,20 @@ void AccessManager::Backend::Storage::removeColumn(const std::string& name) {
   }
 
   // Tombstone column
-  mImplementor->raw.insert(ColumnRecord(name, true));
+  implementor_->raw.insert(ColumnRecord(name, true));
   // Remove from column group *
-  mImplementor->raw.insert(ColumnGroupColumnRecord(name, "*", true));
+  implementor_->raw.insert(ColumnGroupColumnRecord(name, "*", true));
 
   guard.commit();
 }
 
 /* Core operations on ColumnGroups */
 bool AccessManager::Backend::Storage::hasColumnGroup(const std::string& name) {
-  return mImplementor->currentRecordExists<ColumnGroupRecord>(c(&ColumnGroupRecord::name) == name);
+  return implementor_->currentRecordExists<ColumnGroupRecord>(c(&ColumnGroupRecord::name) == name);
 }
 
 std::set<ColumnGroup> AccessManager::Backend::Storage::getColumnGroups(const Timestamp& timestamp, const ColumnGroupFilter& filter) const {
-  using namespace std::ranges;
-  return RangeToCollection<std::set>(
-    mImplementor->getCurrentRecords(
+  return implementor_->getCurrentRecords(
       c(&ColumnGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.columnGroups.has_value()
         || in(&ColumnGroupRecord::name, filter.columnGroups.value_or(emptyVector))),
@@ -1034,7 +1037,7 @@ std::set<ColumnGroup> AccessManager::Backend::Storage::getColumnGroups(const Tim
     | views::transform([](std::string name) {
       return ColumnGroup(std::move(name));
     })
-  );
+    | to<std::set>();
 }
 
 void AccessManager::Backend::Storage::createColumnGroup(const std::string& name) {
@@ -1043,7 +1046,7 @@ void AccessManager::Backend::Storage::createColumnGroup(const std::string& name)
     msg << "Columngroup " << Logging::Escape(name) << " already exists";
     throw Error(msg.str());
   }
-  mImplementor->raw.insert(ColumnGroupRecord(name));
+  implementor_->raw.insert(ColumnGroupRecord(name));
 }
 
 void AccessManager::Backend::Storage::removeColumnGroup(const std::string& name, const bool force) {
@@ -1052,7 +1055,7 @@ void AccessManager::Backend::Storage::removeColumnGroup(const std::string& name,
     msg << "Column-group " << Logging::Escape(name) << " does not exist";
     throw Error(msg.str());
   }
-  auto guard = mImplementor->raw.transaction_guard();
+  auto guard = implementor_->raw.transaction_guard();
 
   const Timestamp now = TimeNow();
 
@@ -1094,7 +1097,7 @@ void AccessManager::Backend::Storage::removeColumnGroup(const std::string& name,
   }
 
   // If we ended up here, it is safe to remove the columnGroup.
-  mImplementor->raw.insert(ColumnGroupRecord(name, true));
+  implementor_->raw.insert(ColumnGroupRecord(name, true));
 
   guard.commit();
 }
@@ -1102,15 +1105,13 @@ void AccessManager::Backend::Storage::removeColumnGroup(const std::string& name,
 /* Core operations on ColumnGroupColumns */
 bool AccessManager::Backend::Storage::hasColumnInGroup(
     const std::string& column, const std::string& columnGroup) {
-  return mImplementor->currentRecordExists<ColumnGroupColumnRecord>(
+  return implementor_->currentRecordExists<ColumnGroupColumnRecord>(
     c(&ColumnGroupColumnRecord::column) == column
     && c(&ColumnGroupColumnRecord::columnGroup) == columnGroup);
 }
 
 std::set<ColumnGroupColumn> AccessManager::Backend::Storage::getColumnGroupColumns(const Timestamp& timestamp, const ColumnGroupColumnFilter& filter) const {
-  using namespace std::ranges;
-  return RangeToCollection<std::set>(
-    mImplementor->getCurrentRecords(
+  return implementor_->getCurrentRecords(
       c(&ColumnGroupColumnRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.columnGroups.has_value()
         || in(&ColumnGroupColumnRecord::columnGroup, filter.columnGroups.value_or(emptyVector)))
@@ -1122,7 +1123,7 @@ std::set<ColumnGroupColumn> AccessManager::Backend::Storage::getColumnGroupColum
       auto& [columnGroup, column] = tuple;
       return ColumnGroupColumn(std::move(columnGroup), std::move(column));
     })
-  );
+    | to<std::set>();
 }
 
 void AccessManager::Backend::Storage::addColumnToGroup(
@@ -1141,7 +1142,7 @@ void AccessManager::Backend::Storage::addColumnToGroup(
     msg << "No such column-group: " << Logging::Escape(columnGroup);
     throw Error(msg.str());
   }
-  mImplementor->raw.insert(ColumnGroupColumnRecord(column, columnGroup));
+  implementor_->raw.insert(ColumnGroupColumnRecord(column, columnGroup));
 }
 
 void AccessManager::Backend::Storage::removeColumnFromGroup(
@@ -1152,7 +1153,7 @@ void AccessManager::Backend::Storage::removeColumnFromGroup(
         << "column-group " << Logging::Escape(columnGroup);
     throw Error(msg.str());
   }
-  mImplementor->raw.insert(ColumnGroupColumnRecord(column, columnGroup, true));
+  implementor_->raw.insert(ColumnGroupColumnRecord(column, columnGroup, true));
 }
 
 /* Core operations on ColumnGroup Access Rules */
@@ -1160,16 +1161,14 @@ bool AccessManager::Backend::Storage::hasColumnGroupAccessRule(
     const std::string& columnGroup,
     const std::string& userGroup,
     const std::string& mode) {
-  return mImplementor->currentRecordExists<ColumnGroupAccessRuleRecord>(
+  return implementor_->currentRecordExists<ColumnGroupAccessRuleRecord>(
     c(&ColumnGroupAccessRuleRecord::columnGroup) == columnGroup
     && c(&ColumnGroupAccessRuleRecord::userGroup) == userGroup
     && c(&ColumnGroupAccessRuleRecord::mode) == mode);
 }
 
 std::set<ColumnGroupAccessRule> AccessManager::Backend::Storage::getColumnGroupAccessRules(const Timestamp& timestamp, const ColumnGroupAccessRuleFilter& filter) const {
-  using namespace std::ranges;
-  return RangeToCollection<std::set>(
-    mImplementor->getCurrentRecords(
+  return implementor_->getCurrentRecords(
       c(&ColumnGroupAccessRuleRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
       && (!filter.columnGroups.has_value()
         || in(&ColumnGroupAccessRuleRecord::columnGroup, filter.columnGroups.value_or(emptyVector)))
@@ -1184,7 +1183,7 @@ std::set<ColumnGroupAccessRule> AccessManager::Backend::Storage::getColumnGroupA
       auto& [columnGroup, userGroup, mode] = tuple;
       return ColumnGroupAccessRule(std::move(columnGroup), std::move(userGroup), std::move(mode));
     })
-  );
+    | to<std::set>();
 }
 
 void AccessManager::Backend::Storage::createColumnGroupAccessRule(
@@ -1213,7 +1212,7 @@ void AccessManager::Backend::Storage::createColumnGroupAccessRule(
         throw Error(msg.str());
   }
 
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord(
+  implementor_->raw.insert(ColumnGroupAccessRuleRecord(
       columnGroup, userGroup, mode));
 }
 
@@ -1228,14 +1227,14 @@ void AccessManager::Backend::Storage::removeColumnGroupAccessRule(
         throw Error(msg.str());
   }
 
-  mImplementor->raw.insert(ColumnGroupAccessRuleRecord(
+  implementor_->raw.insert(ColumnGroupAccessRuleRecord(
       columnGroup, userGroup, mode, true));
 }
 
 /* Core operations on Column Name Mappings */
 std::vector<ColumnNameMapping> AccessManager::Backend::Storage::getAllColumnNameMappings() const {
   std::vector<ColumnNameMapping> result;
-  for (auto& record : mImplementor->raw.iterate<ColumnNameMappingRecord>()) {
+  for (auto& record : implementor_->raw.iterate<ColumnNameMappingRecord>()) {
     result.push_back(record.toLiveObject());
   }
   return result;
@@ -1243,7 +1242,7 @@ std::vector<ColumnNameMapping> AccessManager::Backend::Storage::getAllColumnName
 
 std::optional<ColumnNameMapping> AccessManager::Backend::Storage::getColumnNameMapping(const ColumnNameSection& original) const {
   // Would have liked to use raw.get_no_throw<ColumnNameMappingRecord>(original.getValue()), but I can't get primary key string columns to work
-  auto found = mImplementor->raw.get_all<ColumnNameMappingRecord>(where((c(&ColumnNameMappingRecord::original) == original.getValue())));
+  auto found = implementor_->raw.get_all<ColumnNameMappingRecord>(where((c(&ColumnNameMappingRecord::original) == original.getValue())));
   assert(found.size() < 2);
   if (found.empty()) {
     return std::nullopt;
@@ -1254,7 +1253,7 @@ std::optional<ColumnNameMapping> AccessManager::Backend::Storage::getColumnNameM
 void AccessManager::Backend::Storage::createColumnNameMapping(const ColumnNameMapping& mapping) {
   auto record = ColumnNameMappingRecord::FromLiveObject(mapping);
   try {
-    mImplementor->raw.insert(record);
+    implementor_->raw.insert(record);
   }
   catch (const std::system_error&) {
     if (getColumnNameMapping(mapping.original)) {
@@ -1270,7 +1269,7 @@ void AccessManager::Backend::Storage::updateColumnNameMapping(const ColumnNameMa
   if (!getColumnNameMapping(mapping.original)) {
     throw Error("No mapping found for that original name");
   }
-  mImplementor->raw.update_all(set(c(&ColumnNameMappingRecord::mapped) = record.mapped),
+  implementor_->raw.update_all(set(c(&ColumnNameMappingRecord::mapped) = record.mapped),
     where(c(&ColumnNameMappingRecord::original) == record.original));
   assert(getColumnNameMapping(mapping.original).has_value());
   assert(getColumnNameMapping(mapping.original)->original.getValue() == record.original);
@@ -1283,14 +1282,14 @@ void AccessManager::Backend::Storage::deleteColumnNameMapping(const ColumnNameSe
   if (!getColumnNameMapping(original)) {
     throw Error("No mapping found for that original name");
   }
-  mImplementor->raw.remove_all<ColumnNameMappingRecord>(where(c(&ColumnNameMappingRecord::original) == original.getValue()));
+  implementor_->raw.remove_all<ColumnNameMappingRecord>(where(c(&ColumnNameMappingRecord::original) == original.getValue()));
   assert(!getColumnNameMapping(original));
 }
 
 void AccessManager::Backend::Storage::ensureNoUserData() const {
-  int countUserIds = mImplementor->raw.count<UserIdRecord>();
-  int countUserGroups = mImplementor->raw.count<UserGroupRecord>();
-  int countUserGroupUsers = mImplementor->raw.count<UserGroupUserRecord>();
+  int countUserIds = implementor_->raw.count<UserIdRecord>();
+  int countUserGroups = implementor_->raw.count<UserGroupRecord>();
+  int countUserGroupUsers = implementor_->raw.count<UserGroupUserRecord>();
 
   if (countUserIds > 0 || countUserGroups > 0 || countUserGroupUsers > 0) {
     std::ostringstream msg;
@@ -1304,7 +1303,7 @@ void AccessManager::Backend::Storage::ensureNoUserData() const {
 
 MigrateUserDbToAccessManagerResponse AccessManager::Backend::Storage::migrateUserDb(
     const std::filesystem::path& dbPath) {
-#if BUILD_HAS_DEBUG_FLAVOR()
+#if PEP_BUILD_HAS_DEBUG_FLAVOR()
   try {
     ensureNoUserData();
   }
@@ -1313,11 +1312,11 @@ MigrateUserDbToAccessManagerResponse AccessManager::Backend::Storage::migrateUse
   }
 #endif
   auto authserverStorage = std::make_shared<LegacyAuthserverStorage>(dbPath);
-  auto transactionGuard = std::make_shared<internal::transaction_guard_t>(mImplementor->raw.transaction_guard());
+  auto transactionGuard = std::make_shared<internal::transaction_guard_t>(implementor_->raw.transaction_guard());
 
   // Migrate UserIdRecords
   for(auto& userId : authserverStorage->getUserIdRecords()) {
-    mImplementor->raw.insert(userId);
+    implementor_->raw.insert(userId);
   }
 
   // Migrate UserGroupRecords
@@ -1342,7 +1341,7 @@ MigrateUserDbToAccessManagerResponse AccessManager::Backend::Storage::migrateUse
       }
       userGroup.userGroupId = *id;
     }
-    mImplementor->raw.insert(userGroup);
+    implementor_->raw.insert(userGroup);
   }
 
   // Migrate UserGroupUserRecords
@@ -1357,7 +1356,7 @@ MigrateUserDbToAccessManagerResponse AccessManager::Backend::Storage::migrateUse
       throw Error(msg.str());
     }
     userGroupUser.userGroupId = *userGroupId;
-    mImplementor->raw.insert(userGroupUser);
+    implementor_->raw.insert(userGroupUser);
   }
 
   transactionGuard->commit();
@@ -1365,7 +1364,7 @@ MigrateUserDbToAccessManagerResponse AccessManager::Backend::Storage::migrateUse
 }
 
 int64_t AccessManager::Backend::Storage::getNextInternalUserId() const {
-  auto currentMax = mImplementor->raw.max(&UserIdRecord::internalUserId);
+  auto currentMax = implementor_->raw.max(&UserIdRecord::internalUserId);
   if (currentMax) {
     return *currentMax + 1;
   }
@@ -1373,7 +1372,7 @@ int64_t AccessManager::Backend::Storage::getNextInternalUserId() const {
 }
 
 int64_t AccessManager::Backend::Storage::getNextUserGroupId() const {
-  auto currentMax = mImplementor->raw.max(&UserGroupRecord::userGroupId);
+  auto currentMax = implementor_->raw.max(&UserGroupRecord::userGroupId);
   if (currentMax) {
     return *currentMax + 1;
   }
@@ -1404,7 +1403,7 @@ void AccessManager::Backend::Storage::removeUser(int64_t internalUserId) {
         oss << ", ";
         first = false;
       }
-      oss << group.mName;
+      oss << group.name;
     }
     throw Error(oss.str());
   }
@@ -1415,7 +1414,7 @@ void AccessManager::Backend::Storage::removeUser(int64_t internalUserId) {
   }
 
   for(auto& uid : getAllIdentifiersForUser(internalUserId))
-    mImplementor->raw.insert(UserIdRecord(internalUserId, uid, UserIdFlags::None, true));
+    implementor_->raw.insert(UserIdRecord(internalUserId, uid, UserIdFlags::None, true));
 }
 
 void AccessManager::Backend::Storage::addIdentifierForUser(std::string_view uid, std::string identifier, UserIdFlags flags, CaseSensitivity caseSensitivity) {
@@ -1428,7 +1427,7 @@ void AccessManager::Backend::Storage::addIdentifierForUser(int64_t internalUserI
     const auto caseSensitiveStr = std::string{(caseSensitivity == CaseSensitive) ? "case-sensitive" : "case-insensitive"};
     throw Error("The (" + caseSensitiveStr + ") user identifier already exists");
   }
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), flags));
+  implementor_->raw.insert(UserIdRecord(internalUserId, std::move(identifier), flags));
 }
 
 void AccessManager::Backend::Storage::removeIdentifierForUser(std::string identifier) {
@@ -1452,7 +1451,7 @@ void AccessManager::Backend::Storage::removeIdentifierForUser(int64_t internalUs
     throw Error("Cannot remove the display identifier for a user. First set a different display identifier, then you can remove this one.");
   }
 
-  mImplementor->raw.insert(UserIdRecord(internalUserId, std::move(identifier), UserIdFlags::None, true));
+  implementor_->raw.insert(UserIdRecord(internalUserId, std::move(identifier), UserIdFlags::None, true));
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(std::string_view identifier, CaseSensitivity caseSensitivity, Timestamp at) const {
@@ -1468,13 +1467,11 @@ int64_t AccessManager::Backend::Storage::getInternalUserId(std::string_view iden
 }
 
 std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const std::vector<std::string>& identifiers, CaseSensitivity caseSensitivity, Timestamp at) const {
-  using namespace std::ranges;
-
   const auto toOptional = [](auto&& range) -> std::optional<int64_t> {
-    const auto vector = RangeToVector(std::forward<decltype(range)>(range));
+    const auto vector = to<std::vector>(std::forward<decltype(range)>(range));
     if (vector.empty()) { return std::nullopt; }
 
-    const auto allEqual = std::equal(++vector.begin(), vector.end(), vector.begin()); // compares adjacent elements
+    const auto allEqual = equal(++vector.begin(), vector.end(), vector.begin(), vector.end() - 1); // compares adjacent elements
     if (!allEqual) { throw Error{"Failed to resolve to a unique internal user id: found multiple matching users"}; }
 
     return vector.front();
@@ -1487,17 +1484,17 @@ std::optional<int64_t> AccessManager::Backend::Storage::findInternalUserId(const
 
   // There is some code duplication that is hard to remove, because the types passed to toOptional are different
   return (caseSensitivity == CaseSensitive)
-      ? toOptional(mImplementor->getCurrentRecords(
+      ? toOptional(implementor_->getCurrentRecords(
             timeCondition && in(&UserIdRecord::identifier, identifiers),
             &UserIdRecord::internalUserId))
-      : toOptional(mImplementor->getCurrentRecords(
+      : toOptional(implementor_->getCurrentRecords(
             timeCondition && in(lower(&UserIdRecord::identifier), toLower(identifiers)),
             &UserIdRecord::internalUserId));
 }
 
 std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifiersForUser(int64_t internalUserId, Timestamp at) const {
-  return RangeToCollection<std::unordered_set>(
-    mImplementor->getCurrentRecords(
+  return to<std::unordered_set>(
+    implementor_->getCurrentRecords(
       c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
       && c(&UserIdRecord::internalUserId) == internalUserId,
       &UserIdRecord::identifier)
@@ -1506,13 +1503,13 @@ std::unordered_set<std::string> AccessManager::Backend::Storage::getAllIdentifie
 
 std::optional<std::string> AccessManager::Backend::Storage::getPrimaryIdentifierForUser(int64_t internalUserId, Timestamp at) const {
   using namespace pep::database;
-  return RangeToOptional(mImplementor->getCurrentRecords(c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
+  return RangeToOptional(implementor_->getCurrentRecords(c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
         && c(&UserIdRecord::internalUserId) == internalUserId, having(c(&UserIdRecord::isPrimaryId) == true), &UserIdRecord::identifier));
 }
 
 std::optional<std::string> AccessManager::Backend::Storage::getDisplayIdentifierForUser(int64_t internalUserId, Timestamp at) const {
   using namespace pep::database;
-  return RangeToOptional(mImplementor->getCurrentRecords(c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
+  return RangeToOptional(implementor_->getCurrentRecords(c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
         && c(&UserIdRecord::internalUserId) == internalUserId, having(c(&UserIdRecord::isDisplayId) == true), &UserIdRecord::identifier));
 }
 
@@ -1529,15 +1526,15 @@ void AccessManager::Backend::Storage::setPrimaryIdentifierForUser(int64_t intern
   }
 
   auto currentDisplayIdentifier = getDisplayIdentifierForUser(internalUserId);
-  auto transactionGuard = mImplementor->raw.transaction_guard();
+  auto transactionGuard = implementor_->raw.transaction_guard();
   if (currentPrimaryIdentifier) {
-    mImplementor->raw.insert(UserIdRecord(
+    implementor_->raw.insert(UserIdRecord(
         internalUserId,
         *currentPrimaryIdentifier,
         FlagsIf(UserIdFlags::IsDisplayId, currentDisplayIdentifier == *currentPrimaryIdentifier)));
   }
   UserIdFlags flags = UserIdFlags::IsPrimaryId | FlagsIf(UserIdFlags::IsDisplayId, currentDisplayIdentifier == uid);
-  mImplementor->raw.insert(UserIdRecord(
+  implementor_->raw.insert(UserIdRecord(
       internalUserId,
       std::move(uid),
       flags));
@@ -1556,9 +1553,9 @@ void AccessManager::Backend::Storage::unsetPrimaryIdentifierForUser(int64_t inte
     throw Error("This user identifier is not the current primary identifier.");
   }
 
-  auto transactionGuard = mImplementor->raw.transaction_guard();
+  auto transactionGuard = implementor_->raw.transaction_guard();
   auto currentDisplayIdentifier = getDisplayIdentifierForUser(internalUserId);
-  mImplementor->raw.insert(UserIdRecord(
+  implementor_->raw.insert(UserIdRecord(
       internalUserId,
       std::move(*currentPrimaryIdentifier),
       FlagsIf(UserIdFlags::IsDisplayId, currentDisplayIdentifier == uid)));
@@ -1578,15 +1575,15 @@ void AccessManager::Backend::Storage::setDisplayIdentifierForUser(int64_t intern
   }
 
   auto currentPrimaryIdentifier = getPrimaryIdentifierForUser(internalUserId);
-  auto transactionGuard = mImplementor->raw.transaction_guard();
+  auto transactionGuard = implementor_->raw.transaction_guard();
   if (currentDisplayIdentifier) {
-    mImplementor->raw.insert(UserIdRecord(
+    implementor_->raw.insert(UserIdRecord(
         internalUserId,
         *currentDisplayIdentifier,
         FlagsIf(UserIdFlags::IsPrimaryId, currentPrimaryIdentifier == *currentDisplayIdentifier)));
   }
   UserIdFlags flags = UserIdFlags::IsDisplayId | FlagsIf(UserIdFlags::IsPrimaryId, currentPrimaryIdentifier == uid);
-  mImplementor->raw.insert(UserIdRecord(
+  implementor_->raw.insert(UserIdRecord(
       internalUserId,
       std::move(uid),
       flags));
@@ -1595,14 +1592,14 @@ void AccessManager::Backend::Storage::setDisplayIdentifierForUser(int64_t intern
 
 std::optional<int64_t> AccessManager::Backend::Storage::findUserGroupId(std::string_view name, Timestamp at) const {
   using pep::database::having;
-  return RangeToOptional(mImplementor->getCurrentRecords(
+  return RangeToOptional(implementor_->getCurrentRecords(
     c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
       having(c(&UserGroupRecord::name) == name),
       &UserGroupRecord::userGroupId));
 }
 
 int64_t AccessManager::Backend::Storage::getUserGroupId(std::string_view name, Timestamp at) const {
-  std::optional<int64_t> userGroupId = findUserGroupId(name);
+  std::optional<int64_t> userGroupId = findUserGroupId(name, at);
   if(!userGroupId) {
     throw Error("Could not find usergroup");
   }
@@ -1611,7 +1608,7 @@ int64_t AccessManager::Backend::Storage::getUserGroupId(std::string_view name, T
 
 std::optional<std::string> AccessManager::Backend::Storage::getUserGroupName(int64_t userGroupId, Timestamp at) const {
   return RangeToOptional(
-    mImplementor->getCurrentRecords(
+    implementor_->getCurrentRecords(
       c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at)
       && c(&UserGroupRecord::userGroupId) == userGroupId,
       &UserGroupRecord::name)
@@ -1619,46 +1616,29 @@ std::optional<std::string> AccessManager::Backend::Storage::getUserGroupName(int
 }
 
 std::vector<UserGroup> AccessManager::Backend::Storage::getUserGroupsForUser(int64_t internalUserId, Timestamp at) const {
-  using namespace std::ranges;
-  std::vector<int64_t> groupIds = RangeToCollection<std::vector>(
-    mImplementor->getCurrentRecords(
+  using namespace pep::database;
+  std::vector<int64_t> groupIds = to<std::vector>(
+    implementor_->getCurrentRecords(
       c(&UserGroupUserRecord::internalUserId) == internalUserId
       && c(&UserGroupUserRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
+      having(is_null(&UserGroupUserRecord::expirationTimestamp) || c(&UserGroupUserRecord::expirationTimestamp) >= TicksSinceEpoch<milliseconds>(at)),
       &UserGroupUserRecord::userGroupId)
   );
 
-  return RangeToCollection<std::vector>(
-    mImplementor->getCurrentRecords(
+  return implementor_->getCurrentRecords(
       in(&UserGroupRecord::userGroupId, groupIds)
       && c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
         &UserGroupRecord::name, &UserGroupRecord::maxAuthValiditySeconds)
-  | views::transform([](auto tuple) {
-    auto& [name, maxAuthValiditySeconds] = tuple;
-    return UserGroup(name, maxAuthValiditySeconds ? std::make_optional(std::chrono::seconds(*maxAuthValiditySeconds)) : std::nullopt);
-  })
-  );
+    | views::transform([](auto tuple) {
+      auto& [name, maxAuthValiditySeconds] = tuple;
+      return UserGroup(name, maxAuthValiditySeconds ? std::make_optional(std::chrono::seconds(*maxAuthValiditySeconds)) : std::nullopt);
+    })
+    | to<std::vector>();
 }
 
 bool AccessManager::Backend::Storage::hasUserGroup(std::string_view name) const {
   using pep::database::having;
-  return mImplementor->currentRecordExists<UserGroupRecord>(true, having(c(&UserGroupRecord::name) == name));
-}
-
-std::optional<std::chrono::seconds> AccessManager::Backend::Storage::getMaxAuthValidity(const std::string& group, Timestamp at) const {
-  using namespace std::ranges;
-  using pep::database::having;
-  auto result = RangeToOptional(
-    mImplementor->getCurrentRecords(c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(at),
-      having(c(&UserGroupRecord::name) == group),
-      &UserGroupRecord::maxAuthValiditySeconds)
-    | views::transform(to_optional_seconds)
-  );
-  if (!result) {
-    std::ostringstream msg;
-    msg << "Could not find group " << Logging::Escape(group);
-    throw Error(msg.str());
-  }
-  return *result;
+  return implementor_->currentRecordExists<UserGroupRecord>(true, having(c(&UserGroupRecord::name) == name));
 }
 
 bool AccessManager::Backend::Storage::userInGroup(std::string_view uid, std::string_view group) const {
@@ -1672,29 +1652,34 @@ bool AccessManager::Backend::Storage::userInGroup(int64_t internalUserId, std::s
 
 bool AccessManager::Backend::Storage::userInGroup(int64_t internalUserId,
                                                   int64_t userGroupId) const {
-  return mImplementor->currentRecordExists<UserGroupUserRecord>(
+  using namespace pep::database;
+  Timestamp at = TimeNow();
+  return implementor_->currentRecordExists<UserGroupUserRecord>(
     c(&UserGroupUserRecord::internalUserId) == internalUserId
-    && c(&UserGroupUserRecord::userGroupId) == userGroupId);
+    && c(&UserGroupUserRecord::userGroupId) == userGroupId,
+    having(is_null(&UserGroupUserRecord::expirationTimestamp) || c(&UserGroupUserRecord::expirationTimestamp) >= TicksSinceEpoch<milliseconds>(at)));
 }
 
 bool AccessManager::Backend::Storage::userGroupIsEmpty(int64_t userGroupId) const {
-  return !mImplementor->currentRecordExists<UserGroupUserRecord>(
-    c(&UserGroupUserRecord::userGroupId) == userGroupId);
+  using namespace pep::database;
+  return !implementor_->currentRecordExists<UserGroupUserRecord>(
+    c(&UserGroupUserRecord::userGroupId) == userGroupId,
+    having(is_null(&UserGroupUserRecord::expirationTimestamp) || c(&UserGroupUserRecord::expirationTimestamp) >= TicksSinceEpoch<milliseconds>(TimeNow())));
 }
 
 int64_t AccessManager::Backend::Storage::createUserGroup(UserGroup userGroup) {
-  if (hasUserGroup(userGroup.mName)) {
+  if (hasUserGroup(userGroup.name)) {
     std::ostringstream msg;
-    msg << "User group " << Logging::Escape(userGroup.mName) << " already exists";
+    msg << "User group " << Logging::Escape(userGroup.name) << " already exists";
     throw Error(msg.str());
   }
   int64_t userGroupId = getNextUserGroupId();
-  mImplementor->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.mName), to_optional_uint64(userGroup.mMaxAuthValidity)));
+  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.name), to_optional_uint64(userGroup.maxAuthValidity)));
   return userGroupId;
 }
 
 void AccessManager::Backend::Storage::modifyUserGroup(UserGroup userGroup) {
-  modifyUserGroup(userGroup.mName, userGroup);
+  modifyUserGroup(userGroup.name, userGroup);
 }
 
 void AccessManager::Backend::Storage::modifyUserGroup(std::string_view name, UserGroup userGroup) {
@@ -1705,7 +1690,7 @@ void AccessManager::Backend::Storage::modifyUserGroup(std::string_view name, Use
   }
 
   auto userGroupId = getUserGroupId(name);
-  mImplementor->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.mName), to_optional_uint64(userGroup.mMaxAuthValidity)));
+  implementor_->raw.insert(UserGroupRecord(userGroupId, std::move(userGroup.name), to_optional_uint64(userGroup.maxAuthValidity)));
 }
 
 void AccessManager::Backend::Storage::removeUserGroup(std::string name) {
@@ -1727,28 +1712,42 @@ void AccessManager::Backend::Storage::removeUserGroup(std::string name) {
     removeStructureMetadata(StructureMetadataType::UserGroup, *userGroupId, std::move(key));
   }
 
-  mImplementor->raw.insert(UserGroupRecord(*userGroupId, name, std::nullopt, true));
+  implementor_->raw.insert(UserGroupRecord(*userGroupId, name, std::nullopt, true));
 }
 
-void AccessManager::Backend::Storage::addUserToGroup(std::string_view uid, std::string group) {
+void AccessManager::Backend::Storage::addUserToGroup(std::string_view uid, std::string group, std::optional<Timestamp> expiration) {
   int64_t internalUserId = getInternalUserId(uid);
-  addUserToGroup(internalUserId, std::move(group));
+  addUserToGroup(internalUserId, std::move(group), expiration);
 }
 
-void AccessManager::Backend::Storage::addUserToGroup(int64_t internalUserId, std::string group) {
+int64_t AccessManager::Backend::Storage::ensureUserCanBeAddedToGroup(int64_t internalUserId, std::string_view group) const {
   std::ostringstream msg;
-  if (userInGroup(internalUserId, group)) {
-    msg << "User is already in group: " << Logging::Escape(group);
-    throw Error(msg.str());
-  }
-
   std::optional<int64_t> userGroupId = findUserGroupId(group);
   if (!userGroupId) {
-    msg << "No such group: " << Logging::Escape(group);
+    msg << "No such group: " << Logging::Escape(std::string(group));
     throw Error(msg.str());
   }
 
-  mImplementor->raw.insert(UserGroupUserRecord(internalUserId, *userGroupId));
+  if (userInGroup(internalUserId, *userGroupId)) {
+    msg << "User is already in group: " << Logging::Escape(std::string(group));
+    throw Error(msg.str());
+  }
+  return *userGroupId;
+}
+
+int64_t AccessManager::Backend::Storage::ensureUserInGroup(int64_t internalUserId, std::string_view group) const {
+  int64_t userGroupId = getUserGroupId(group);
+  if (!userInGroup(internalUserId, userGroupId)) {
+    std::ostringstream msg;
+    msg << "This user is not part of group " << Logging::Escape(std::string(group));
+    throw Error(msg.str());
+  }
+  return userGroupId;
+}
+
+void AccessManager::Backend::Storage::addUserToGroup(int64_t internalUserId, std::string group, std::optional<Timestamp> expiration) {
+  int64_t userGroupId = ensureUserCanBeAddedToGroup(internalUserId, group);
+  implementor_->raw.insert(UserGroupUserRecord(internalUserId, userGroupId, expiration));
 }
 
 void AccessManager::Backend::Storage::removeUserFromGroup(std::string_view uid, std::string group) {
@@ -1757,26 +1756,19 @@ void AccessManager::Backend::Storage::removeUserFromGroup(std::string_view uid, 
 }
 
 void AccessManager::Backend::Storage::removeUserFromGroup(int64_t internalUserId, std::string group) {
-  int64_t userGroupId = getUserGroupId(group);
-  if (!userInGroup(internalUserId, userGroupId)) {
-    std::ostringstream msg;
-    msg << "This user is not part of group " << Logging::Escape(group);
-    throw Error(msg.str());
-  }
-
-  mImplementor->raw.insert(UserGroupUserRecord(internalUserId, userGroupId, true));
+  int64_t userGroupId = ensureUserInGroup(internalUserId, group);
+  implementor_->raw.insert(UserGroupUserRecord(internalUserId, userGroupId, {}, true));
 }
 
 UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQuery& query) {
-  using namespace std::ranges;
+  using namespace pep::database;
 
-  auto timestamp = query.mAt ? *query.mAt : TimeNow();
+  auto timestamp = query.at ? *query.at : TimeNow();
 
   // Select groups matching group filter
-  auto groups = RangeToCollection<std::map<int64_t, UserGroup>>(
-    mImplementor->getCurrentRecords(
+  auto groups = implementor_->getCurrentRecords(
       c(&UserGroupRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-      && instr(&UserGroupRecord::name, query.mGroupFilter) /*true if filter is empty*/,
+      && instr(&UserGroupRecord::name, query.groupFilter) /*true if filter is empty*/,
       &UserGroupRecord::userGroupId,
       &UserGroupRecord::name,
       &UserGroupRecord::maxAuthValiditySeconds)
@@ -1784,13 +1776,13 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
       auto& [userGroupId, name, maxAuthValiditySeconds] = tuple;
       return std::make_pair(userGroupId, UserGroup(std::move(name), to_optional_seconds(maxAuthValiditySeconds)));
     })
-  );
+    | to<std::map>();
 
   std::map<int64_t, QRUser> usersInfo;
   // List users matching user filter
-  for (auto internalId: mImplementor->getCurrentRecords(
+  for (auto internalId: implementor_->getCurrentRecords(
          c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-         && instr(lower(&UserIdRecord::identifier), boost::to_lower_copy(query.mUserFilter)) /*true if filter is empty*/,
+         && instr(lower(&UserIdRecord::identifier), boost::to_lower_copy(query.userFilter)) /*true if filter is empty*/,
          &UserIdRecord::internalUserId)) {
     // Add internalId, we add all identifiers below
     usersInfo.try_emplace(internalId);
@@ -1798,61 +1790,67 @@ UserQueryResponse AccessManager::Backend::Storage::executeUserQuery(const UserQu
 
   std::unordered_set<int64_t> groupsWithUsers;
   // List group memberships for filtered groups & users
-  for (auto tuple: mImplementor->getCurrentRecords(
+  for (auto tuple: implementor_->getCurrentRecords(
          c(&UserGroupUserRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-         && (query.mGroupFilter.empty()
+         && (query.groupFilter.empty()
            || in(&UserGroupUserRecord::userGroupId,
              // Avoid passing list to query when not filtered
-             RangeToVector(views::keys(!query.mGroupFilter.empty() ? groups : Default<decltype(groups)>))) )
-         && (query.mUserFilter.empty()
+             to<std::vector>(views::keys(!query.groupFilter.empty() ? groups : Default<decltype(groups)>))) )
+         && (query.userFilter.empty()
            || in(&UserGroupUserRecord::internalUserId,
              // Avoid passing list to query when not filtered
-             RangeToVector(views::keys(!query.mUserFilter.empty() ? usersInfo : Default<decltype(usersInfo)>)))),
+             to<std::vector>(views::keys(!query.userFilter.empty() ? usersInfo : Default<decltype(usersInfo)>)))),
+             having(is_null(&UserGroupUserRecord::expirationTimestamp) || c(&UserGroupUserRecord::expirationTimestamp) >= TicksSinceEpoch<milliseconds>(timestamp)),
          &UserGroupUserRecord::userGroupId,
-         &UserGroupUserRecord::internalUserId)) {
-    auto& [userGroupId, internalUserId] = tuple;
+         &UserGroupUserRecord::internalUserId,
+         &UserGroupUserRecord::expirationTimestamp)) {
+    auto& [userGroupId, internalUserId, expirationTimestamp] = tuple;
     assert(groups.contains(userGroupId));
-    usersInfo.at(internalUserId).mGroups.push_back(groups.at(userGroupId).mName);
+    std::optional<Timestamp> expiration;
+    if (expirationTimestamp) {
+      expiration = Timestamp(milliseconds(*expirationTimestamp));
+    }
+    usersInfo.at(internalUserId).groups.push_back({groups.at(userGroupId).name, expiration});
     groupsWithUsers.insert(userGroupId);
   }
 
   // Backpropagate user filter to filter groups
-  if (!query.mUserFilter.empty()) {
+  if (!query.userFilter.empty()) {
     // Remove groups without selected users
     std::erase_if(groups, [&groupsWithUsers](const std::pair<int64_t, UserGroup>& keyValuePair) {
       return !groupsWithUsers.contains(keyValuePair.first);
     });
   }
   // Backpropagate group filter to filter users
-  if (!query.mGroupFilter.empty()) {
+  if (!query.groupFilter.empty()) {
     erase_if(usersInfo, [](const std::pair<int64_t, QRUser>& userInfo) {
-      return userInfo.second.mGroups.empty();
+      return userInfo.second.groups.empty();
     });
   }
 
   // Fetch all identifiers for the selected users,
   //  not just the ones that satisfy the specific user identifier filter
-  for (auto tuple: mImplementor->getCurrentRecords(
+  for (auto tuple: implementor_->getCurrentRecords(
          c(&UserIdRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-         && in(&UserIdRecord::internalUserId, RangeToVector(views::keys(usersInfo))),
+         && in(&UserIdRecord::internalUserId, to<std::vector>(views::keys(usersInfo))),
          &UserIdRecord::internalUserId, &UserIdRecord::identifier, &UserIdRecord::isPrimaryId, &UserIdRecord::isDisplayId)) {
     auto& [internalId, identifier, isPrimaryId, isDisplayId] = tuple;
 
     QRUser& user = usersInfo.at(internalId);
     if (isDisplayId) {
-      user.mDisplayId = identifier;
+      user.displayId = identifier;
     }
     if (isPrimaryId) {
-      user.mPrimaryId = identifier;
+      user.primaryId = identifier;
     }
     if (!isPrimaryId && !isDisplayId) {
-      user.mOtherUids.push_back(std::move(identifier));
+      user.otherUids.push_back(std::move(identifier));
     }
   }
 
   return UserQueryResponse{
-    RangeToVector(std::move(usersInfo) | views::values),
-    RangeToVector(std::move(groups) | views::values)
+    to<std::vector>(std::move(usersInfo) | views::values),
+    to<std::vector>(std::move(groups) | views::values)
   };
 }
 
@@ -1911,11 +1909,9 @@ std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureM
   if (HasInternalId(subjectType)) {
     return getStructureMetadataKeys(timestamp, subjectType, getInternalSubjectId(subjectType, subject, timestamp));
   }
-  using namespace std::ranges;
-  return RangeToVector(
-    mImplementor->getCurrentRecords(
+  return implementor_->getCurrentRecords(
       c(&StructureMetadataRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-      && c(&StructureMetadataRecord::subjectType) == ToUnderlying(subjectType)
+      && c(&StructureMetadataRecord::subjectType) == std::to_underlying(subjectType)
       && c(&StructureMetadataRecord::subject) == subject,
       &StructureMetadataRecord::metadataGroup,
       &StructureMetadataRecord::subkey)
@@ -1923,7 +1919,7 @@ std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureM
       auto& [metadataGroup, subkey] = tuple;
       return StructureMetadataKey(std::move(metadataGroup), std::move(subkey));
     })
-  );
+    | to<std::vector>();
 }
 
 std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureMetadataKeys(
@@ -1931,11 +1927,9 @@ std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureM
     StructureMetadataType subjectType,
     int64_t internalSubjectId) const {
   assert(HasInternalId(subjectType));
-  using namespace std::ranges;
-  return RangeToVector(
-    mImplementor->getCurrentRecords(
+  return implementor_->getCurrentRecords(
       c(&StructureMetadataRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-      && c(&StructureMetadataRecord::subjectType) == ToUnderlying(subjectType)
+      && c(&StructureMetadataRecord::subjectType) == std::to_underlying(subjectType)
       && c(&StructureMetadataRecord::internalSubjectId) == internalSubjectId,
       &StructureMetadataRecord::metadataGroup,
       &StructureMetadataRecord::subkey)
@@ -1943,12 +1937,10 @@ std::vector<StructureMetadataKey> AccessManager::Backend::Storage::getStructureM
       auto& [metadataGroup, subkey] = tuple;
       return StructureMetadataKey(std::move(metadataGroup), std::move(subkey));
     })
-  );
+    | to<std::vector>();
 }
 
 std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructureMetadata(const Timestamp timestamp, StructureMetadataType subjectType, const StructureMetadataFilter& filter) const {
-  using namespace std::ranges;
-
   bool hasInternalId = HasInternalId(subjectType);
 
   std::vector<std::reference_wrapper<const std::string>> metadataGroupFilters;
@@ -1970,15 +1962,14 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructur
     }
   }
 
-  return RangeToVector(
-    mImplementor->getCurrentRecords(
+  return implementor_->getCurrentRecords(
       c(&StructureMetadataRecord::timestamp) <= TicksSinceEpoch<milliseconds>(timestamp)
-      && c(&StructureMetadataRecord::subjectType) == ToUnderlying(subjectType)
+      && c(&StructureMetadataRecord::subjectType) == std::to_underlying(subjectType)
       // If we have no subject filters, we return all subjects. If we do have subject filters, we either need to check directly, or via internalId.
       // If we have a non-empty filter, it is still possible that internalSubjectIds is empty. because no subjects match the filter.
       // But in that case, we don't want to return everything. That is why we don't check the emptiness of internalSubjectIds.
       && (filter.subjects.empty() || hasInternalId || in(&StructureMetadataRecord::subject, filter.subjects))
-      && (filter.subjects.empty() || !hasInternalId || in(&StructureMetadataRecord::internalSubjectId, RangeToVector(views::keys(internalSubjectIds))))
+      && (filter.subjects.empty() || !hasInternalId || in(&StructureMetadataRecord::internalSubjectId, to<std::vector>(views::keys(internalSubjectIds))))
       && ((metadataGroupFilters.empty() && metadataKeyFilters.empty())
         || in(&StructureMetadataRecord::metadataGroup, metadataGroupFilters)
         || in(conc(conc(&StructureMetadataRecord::metadataGroup, ":"), &StructureMetadataRecord::subkey), metadataKeyFilters)),
@@ -2009,10 +2000,10 @@ std::vector<StructureMetadataEntry> AccessManager::Backend::Storage::getStructur
           .subject = std::move(subject),
           .key = {std::move(metadataGroup), std::move(subkey)}
         },
-        .value = RangeToCollection<std::string>(value)
+        .value = to<std::string>(value)
       };
     })
-  );
+    | to<std::vector>();
 }
 
 void AccessManager::Backend::Storage::setStructureMetadata(StructureMetadataType subjectType, std::string subject, StructureMetadataKey key, std::string_view value) {
@@ -2035,7 +2026,7 @@ void AccessManager::Backend::Storage::setStructureMetadata(StructureMetadataType
   }
 
   if (internalSubjectId) {
-    mImplementor->raw.insert(StructureMetadataRecord(
+    implementor_->raw.insert(StructureMetadataRecord(
       subjectType,
       *internalSubjectId,
       std::move(key.metadataGroup),
@@ -2043,7 +2034,7 @@ void AccessManager::Backend::Storage::setStructureMetadata(StructureMetadataType
       std::vector(value.begin(), value.end())));
   }
   else {
-    mImplementor->raw.insert(StructureMetadataRecord(
+    implementor_->raw.insert(StructureMetadataRecord(
       subjectType,
       std::move(subject),
       std::move(key.metadataGroup),
@@ -2060,13 +2051,13 @@ void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataT
   }
 
   const auto keys = getStructureMetadataKeys(TimeNow(), subjectType, subject);
-  if (std::ranges::find(keys, key) == keys.end()) {
+  if (!contains(keys, key)) {
     std::ostringstream msg;
     msg << Logging::Escape(subject) << " does not exist or does not contain metadata key "
         << Logging::Escape(key.toString());
     throw Error(std::move(msg).str());
   }
-  mImplementor->raw.insert(StructureMetadataRecord(
+  implementor_->raw.insert(StructureMetadataRecord(
       subjectType,
       std::move(subject),
       std::move(key.metadataGroup),
@@ -2079,14 +2070,14 @@ void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataT
   assert(HasInternalId(subjectType));
   const auto keys = getStructureMetadataKeys(TimeNow(), subjectType, internalSubjectId);
 
-  if (std::ranges::find(keys, key) == keys.end()) {
+  if (!contains(keys, key)) {
     std::ostringstream msg;
     msg << "subject does not exist or does not contain metadata key "
         << Logging::Escape(key.toString());
     throw Error(std::move(msg).str());
   }
 
-  mImplementor->raw.insert(StructureMetadataRecord(
+  implementor_->raw.insert(StructureMetadataRecord(
       subjectType,
       internalSubjectId,
       std::move(key.metadataGroup),
@@ -2095,4 +2086,18 @@ void AccessManager::Backend::Storage::removeStructureMetadata(StructureMetadataT
       true));
 }
 
+std::optional<Timestamp> AccessManager::Backend::Storage::getExpiration(int64_t internalUserId, const std::string& group) const {
+  int64_t userGroupId = getUserGroupId(group);
+  std::optional<std::optional<database::UnixMillis>> result = RangeToOptional(implementor_->getCurrentRecords<UserGroupUserRecord>(c(&UserGroupUserRecord::internalUserId) == internalUserId
+    && c(&UserGroupUserRecord::userGroupId) == userGroupId, &UserGroupUserRecord::expirationTimestamp));
+  if (result && *result) {
+    return Timestamp(milliseconds(**result));
+  }
+  return {};
+}
+
+void AccessManager::Backend::Storage::setExpiration(int64_t internalUserId, const std::string& group, std::optional<Timestamp> expiration) {
+  int64_t userGroupId = ensureUserInGroup(internalUserId, group);
+  implementor_->raw.insert(UserGroupUserRecord(internalUserId, userGroupId, expiration));
+}
 }

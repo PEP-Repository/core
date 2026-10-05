@@ -1,0 +1,53 @@
+{
+  "name": "pep-repo-client-lib",
+  "version": "0.0.0",
+  "description": "PEP repository web client library",
+  "type": "module",
+  "exports": {
+    ".": "./pack/dist/pep.mjs",
+    "./utils": "./pack/dist/utils.mjs"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./pack/dist/*"
+      ]
+    }
+  },
+  "// scripts.prepare": "Transitive local dependencies are not automatically installed: https://docs.npmjs.com/cli/v11/configuring-npm/package-json#local-paths",
+  "scripts": {
+    "prepare": "cd ../pep-repo-client-wasm && npm install",
+    "prepack": "tsc",
+    "types:check": "tsc --noEmit",
+    "build": "tsc",
+    "build:watch": "tsc --watch --preserveWatchOutput",
+    "test": "mocha",
+    "build-web-tests": "webpack --mode=development"
+  },
+  "files": [
+    "./pack/dist/**/*.mjs",
+    "./pack/dist/**/*.d.mts"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.pep.cs.ru.nl/pep/core.git"
+  },
+  "dependencies": {
+    "pep-repo-client-wasm": "file:../pep-repo-client-wasm"
+  },
+  "bundleDependencies": [
+    "pep-repo-client-wasm"
+  ],
+  "devDependencies": {
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.19.15",
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "ts-loader": "^9.5.4",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "webpack": "^5.105.4",
+    "webpack-cli": "^6.0.1"
+  }
+}

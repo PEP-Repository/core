@@ -15,7 +15,7 @@ target_link_libraries(${PROJECT_NAME}StorageFacilityApilib
 verify_headers_standalone(${PROJECT_NAME}StorageFacilityApilib)
 
 
-if (WITH_SERVERS)
+if(WITH_SERVERS)
   add_library(${PROJECT_NAME}StorageFacilitylib
       EntryContent.cpp EntryContent.hpp
       EntryName.cpp EntryName.hpp
@@ -23,6 +23,7 @@ if (WITH_SERVERS)
       PersistedEntryProperties.cpp PersistedEntryProperties.hpp
       FileStore.cpp FileStore.hpp
       PageStore.cpp PageStore.hpp
+      PendingBytesLimiter.cpp PendingBytesLimiter.hpp
       S3.cpp S3.hpp
       S3Client.cpp S3Client.hpp
       S3Credentials.hpp
@@ -51,7 +52,7 @@ if (WITH_SERVERS)
   stage_s3proxy("${PROJECT_NAME}StorageFacility_s3proxy" "")
 
   add_cli_install_executable(${PROJECT_NAME}StorageFacility Main.cpp)
-  if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_sources(${PROJECT_NAME}StorageFacility PRIVATE VersionInfo.rc)
   endif()
 
@@ -69,7 +70,7 @@ if (WITH_SERVERS)
 
   # The local page store does not automatically create its directories:
   get_build_output_directories(directories "data/myBucket")
-  foreach (dir ${directories})
+  foreach(dir ${directories})
     file(MAKE_DIRECTORY ${dir})
   endforeach()
 
@@ -83,10 +84,10 @@ if (WITH_SERVERS)
           TLSStorageFacility.key TLSStorageFacility.chain
   )
 
-  if (WITH_TESTS)
+  if(WITH_TESTS)
     add_unit_tests(StorageFacility EXTRA_ARGS "--launch-s3proxy")
     add_dependencies(${PROJECT_NAME}StorageFacilityUnitTests ${PROJECT_NAME}StorageFacility_s3proxy storagefacility_pki)
-  endif ()
+  endif()
 
   add_cli_install_executable(${PROJECT_NAME}MakeS3request MakeS3request.cpp)
   target_link_libraries(${PROJECT_NAME}MakeS3request

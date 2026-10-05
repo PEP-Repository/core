@@ -33,6 +33,6 @@ class LocalSettings {
   static std::unique_ptr<LocalSettings>& getInstance ();
 
   protected:
-    boost::property_tree::ptree mPropertyTree;
+    boost::property_tree::ptree propertyTree_;
 };
 }

@@ -5,7 +5,7 @@
 #include <pep/utils/Shared.hpp>
 #include <pep/archiving/Archive.hpp>
 
-struct archive;
+struct archive; // Forward declares type provided by libarchive
 
 namespace pep {
 
@@ -14,7 +14,7 @@ class Tar : public SharedConstructor<Tar>, public Archive {
 public:
   Tar(const Tar&) = delete; //prevent copies of the archive* pointer
   ~Tar() override;
-  void nextEntry(const std::filesystem::path& path, int64_t size) override;
+  void nextEntry(const CheckedPath& path, int64_t size) override;
   void writeData(const char* c, const std::streamsize l) override;
   void writeData(std::string_view data) override;
   void closeEntry() override {}
@@ -25,8 +25,8 @@ public:
 private:
   Tar(std::shared_ptr<std::ostream> stream);
 
-  std::shared_ptr<std::ostream> mStream;
-  archive* mArchive;
+  std::shared_ptr<std::ostream> stream_;
+  archive* archive_;
 };
 
 }

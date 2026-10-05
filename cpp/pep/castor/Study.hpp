@@ -19,20 +19,18 @@ class RepeatingData;
 //! A study in Castor
 class Study : public CastorObject, public SharedConstructor<Study> {
  private:
-  std::string mName;
-  std::string mSlug;
+  std::string name_;
+  std::string slug_;
 
  public:
-  std::shared_ptr<CastorConnection> getConnection() const override { return mConnection; }
+  std::shared_ptr<CastorConnection> getConnection() const override { return connection_; }
 
-  /*!
-   * \brief Create a participant in this study.
-   *
-   * The site of the participant will be the default site of this study.
-   *
-   * \param participantId The ID (short pseudonym) for this participant
-   * \return An observable that, if no error occurs, emits the created participant
-   */
+  /// \brief Create a participant in this study.
+  ///
+  /// The site of the participant will be the default site of this study.
+  ///
+  /// \param participantId The ID (short pseudonym) for this participant
+  /// \return An observable that, if no error occurs, emits the created participant
   rxcpp::observable<std::shared_ptr<Participant>> createParticipant(const std::string& participantId);
 
   //! \return An observable that, if no error occurs, emits a Participant for all participants in this study
@@ -57,11 +55,9 @@ class Study : public CastorObject, public SharedConstructor<Study> {
 
   rxcpp::observable<std::shared_ptr<Field>> getFields();
 
-  /*!
-   * \brief Set the default site for this study
-   *
-   * \param abbreviation The abbreviation of the site
-   */
+  /// \brief Set the default site for this study
+  ///
+  /// \param abbreviation The abbreviation of the site
   void setDefaultSiteAbbreviation(const std::string& abbreviation);
 
   //! \return A url that can be used to retrieve this study from the Castor API
@@ -81,17 +77,15 @@ class Study : public CastorObject, public SharedConstructor<Study> {
   rxcpp::observable<std::shared_ptr<Visit>> getVisits();
 
  protected:
-  /*!
-   * \brief Construct a new Study
-   * \param connection The CastorConnection to use for API requests related to this study
-   * \param json The %Json response from the Castor API for this study
-   */
+  /// \brief Construct a new Study
+  /// \param connection The CastorConnection to use for API requests related to this study
+  /// \param json The %Json response from the Castor API for this study
   Study(std::shared_ptr<CastorConnection> connection, JsonPtr json);
 
  private:
-  std::shared_ptr<CastorConnection> mConnection;
-  std::optional<std::string> mDefaultSiteAbbrev;
-  std::optional<std::string> mDefaultSiteId;
+  std::shared_ptr<CastorConnection> connection_;
+  std::optional<std::string> defaultSiteAbbrev_;
+  std::optional<std::string> defaultSiteId_;
 
   //! \return Observable that, if no error occurs, emits the ID of the default site of the study. This will not emit any updates to the default site
   rxcpp::observable<std::string> getDefaultSiteId();

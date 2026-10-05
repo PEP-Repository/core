@@ -1,10 +1,13 @@
 #include <pep/application/CommandLineParameter.hpp>
 
 #include <numeric>
+#include <ranges>
 #include <utility>
 #include <iostream>
 
 #include <boost/algorithm/string/join.hpp>
+
+using namespace std::ranges;
 
 namespace pep {
 namespace commandline {
@@ -14,38 +17,38 @@ std::string CommandPath::toString() const {
 }
 
 Parameter::Parameter(const std::string& name, const std::optional<std::string>& description)
-  : mName(name), mDescription(description) {
+  : name_(name), description_(description) {
   assert(description == std::nullopt || !description->empty());
 }
 
 Parameter Parameter::alias(const SwitchAnnouncement& alias) const {
   auto announcements = this->getAnnouncements();
-  if (announcements.find(alias) != announcements.cend()) {
-    throw std::runtime_error("Switch " + mName + " already has announcement " + alias.string());
+  if (announcements.contains(alias)) {
+    throw std::runtime_error("Switch " + name_ + " already has announcement " + alias.string());
   }
 
   Parameter result = *this;
-  [[maybe_unused]] auto emplaced = result.mAliases.emplace(alias).second;
+  [[maybe_unused]] auto emplaced = result.aliases_.emplace(alias).second;
   assert(emplaced);
   return result;
 }
 
 Parameter Parameter::forwardingAlias(std::function<ParameterTransformationResult(Command&, const NamedValues&)> transformer) const {
   assert(transformer && "Forwarding transformer for parameter must be provided");
-  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine forwardingAlias() and noLongerSupported() on the same parameter");
-  assert(!mTransformer && "Cannot apply multiple transformers to the same parameter");
+  assert(!noLongerSupportedMessage_.has_value() && "Cannot combine forwardingAlias() and noLongerSupported() on the same parameter");
+  assert(!transformer_ && "Cannot apply multiple transformers to the same parameter");
 
   auto result = *this;
-  result.mTransformer = std::move(transformer);
+  result.transformer_ = std::move(transformer);
   return result;
 }
 
 Parameter Parameter::rename(const std::string& newParamName) const {
-  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine rename() and noLongerSupported() on the same parameter");
-  assert(!mTransformer && "Cannot apply multiple transformers to the same parameter");
-  assert(!mDeprecationMessage.has_value() && "Cannot apply deprecated() before rename() on the same parameter");
+  assert(!noLongerSupportedMessage_.has_value() && "Cannot combine rename() and noLongerSupported() on the same parameter");
+  assert(!transformer_ && "Cannot apply multiple transformers to the same parameter");
+  assert(!deprecationMessage_.has_value() && "Cannot apply deprecated() before rename() on the same parameter");
 
-  const std::string oldName = mName;
+  const std::string oldName = name_;
   return this->forwardingAlias([oldName, newParamName](Command&, const NamedValues& values) {
     NamedValues toAdd;
     toAdd.set(newParamName, values.at(oldName));
@@ -54,36 +57,36 @@ Parameter Parameter::rename(const std::string& newParamName) const {
 }
 
 Parameter Parameter::deprecated(const std::string& message) const {
-  assert(!mNoLongerSupportedMessage.has_value() && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
-  assert(!mDeprecationMessage.has_value() && "Cannot apply deprecated() multiple times to the same parameter");
+  assert(!noLongerSupportedMessage_.has_value() && "Cannot combine deprecated() and noLongerSupported() on the same parameter");
+  assert(!deprecationMessage_.has_value() && "Cannot apply deprecated() multiple times to the same parameter");
 
   auto result = *this;
-  result.mDeprecationMessage = message;
+  result.deprecationMessage_ = message;
   return result;
 }
 
 Parameter Parameter::noLongerSupported(const std::string& message) const {
-  assert(!mTransformer && "Cannot combine forwardingAlias() and noLongerSupported() on the same parameter");
+  assert(!transformer_ && "Cannot combine forwardingAlias() and noLongerSupported() on the same parameter");
 
   auto result = *this;
-  result.mNoLongerSupportedMessage = message;
+  result.noLongerSupportedMessage_ = message;
   return result;
 }
 
 SwitchAnnouncement Parameter::getCanonicalAnnouncement() const {
-  return SwitchAnnouncement(mName);
+  return SwitchAnnouncement(name_);
 }
 
 std::set<SwitchAnnouncement> Parameter::getAnnouncements() const {
-  auto result = mAliases;
+  auto result = aliases_;
   [[maybe_unused]] auto emplaced = result.emplace(this->getCanonicalAnnouncement()).second;
   assert(emplaced);
   return result;
 }
 
 ParameterTransformationResult Parameter::transform(Command& self, const NamedValues& values) const {
-  assert(mTransformer && "No transformer configured for parameter");
-  return mTransformer(self, values);
+  assert(transformer_ && "No transformer configured for parameter");
+  return transformer_(self, values);
 }
 
 void Parameter::lex(ProvidedValues& destination, std::queue<std::string>& source) const {
@@ -107,23 +110,23 @@ Values Parameter::parse(const ProvidedValues& lexed) const {
   auto v = this->getValueSpecification();
   if (v != nullptr) {
     if (lexed.size() > 1U && !v->allowsMultiple()) {
-      throw std::runtime_error("Parameter '" + mName + "' provided multiple times");
+      throw std::runtime_error("Parameter '" + name_ + "' provided multiple times");
     }
     for (const auto& unparsed : lexed) {
       if (!unparsed.has_value()) {
-        throw std::runtime_error("Parameter '" + mName + "' requires a value but none was provided");
+        throw std::runtime_error("Parameter '" + name_ + "' requires a value but none was provided");
       }
       try {
         result.add(v->parse(*unparsed));
       }
       catch (const std::exception& error) {
-        throw std::runtime_error("Parameter '" + mName + "': " + error.what());
+        throw std::runtime_error("Parameter '" + name_ + "': " + error.what());
       }
     }
   }
   else {
     if (lexed.size() > 1U) {
-      throw std::runtime_error("Parameter '" + mName + "' provided multiple times");
+      throw std::runtime_error("Parameter '" + name_ + "' provided multiple times");
     }
     result.add(std::nullopt);
   }
@@ -133,7 +136,7 @@ Values Parameter::parse(const ProvidedValues& lexed) const {
 
 bool Parameter::isLackingValue(const ProvidedValues& lexed) const noexcept {
   if (this->getValueSpecification()) {
-    return std::any_of(lexed.cbegin(), lexed.cend(), [](const ProvidedValue &val) {
+    return any_of(lexed, [](const ProvidedValue &val) {
       return !val.has_value();
     });
   }
@@ -147,7 +150,7 @@ void Parameter::finalize(Values& destination) const {
       v->finalize(destination);
     }
     catch (const std::runtime_error& error) {
-      throw std::runtime_error("Parameter '" + mName + "': " + error.what());
+      throw std::runtime_error("Parameter '" + name_ + "': " + error.what());
     }
   }
 }
@@ -178,7 +181,7 @@ bool Parameter::allowsMultiple() const noexcept {
 
 std::optional<std::string> Parameter::getInvocationSummary(bool indicateOptionality) const {
   if (this->isPositional()) {
-    return this->getInvocationSummary(std::string(), mName, indicateOptionality);
+    return this->getInvocationSummary(std::string(), name_, indicateOptionality);
   }
   auto announcement = this->getCanonicalAnnouncement();
   return this->getInvocationSummary(announcement.getPrefix(), announcement.getText(), indicateOptionality);
@@ -190,7 +193,7 @@ std::unordered_map<SwitchAnnouncement, std::string> Parameter::getAliasInvocatio
     return result;
   }
 
-  for (const auto& alias : mAliases) {
+  for (const auto& alias : aliases_) {
     auto entry = this->getInvocationSummary(alias.getPrefix(), alias.getText(), false);
     assert(entry.has_value());
     result.emplace(alias, *entry);
@@ -225,7 +228,7 @@ std::optional<std::string> Parameter::getInvocationSummary(const std::string& pr
   }
 
   if (v->isPositional()) {
-    return optionalityLeft + mName + further + optionalityRight; // [name] or [name [...]] or <name> or <name [...]>
+    return optionalityLeft + name_ + further + optionalityRight; // [name] or [name [...]] or <name> or <name [...]>
   }
 
   auto result = announcement + " <value>";
@@ -243,9 +246,9 @@ void Parameter::writeHelpText(std::ostream& destination) const {
   if (this->isDocumented()) {
     auto summary = this->getInvocationSummary(false);
 
-    assert(mDescription.has_value());
+    assert(description_.has_value());
     assert(summary.has_value());
-    WriteHelpItem(destination, *summary, *mDescription);
+    WriteHelpItem(destination, *summary, *description_);
 
     auto v = this->getValueSpecification();
     if (v != nullptr) {
@@ -255,33 +258,24 @@ void Parameter::writeHelpText(std::ostream& destination) const {
 }
 
 void Parameters::writeHelpText(std::ostream& destination) const {
-  this->writeHelpText(destination, "Switches", mNamed);
-  this->writeHelpText(destination, "Parameters", mPositional);
+  this->writeHelpText(destination, "Switches", named_);
+  this->writeHelpText(destination, "Parameters", positional_);
 
   using Entry = std::tuple<SwitchAnnouncement, std::string, std::string>;
   std::vector<Entry> entries;
-  for (const auto& parameter : mEntries) {
+  for (const auto& parameter : entries_) {
     auto canonical = parameter.getInvocationSummary(false);
     for (const auto& alias : parameter.getAliasInvocationSummaries()) {
       assert(canonical.has_value());
       entries.push_back(std::make_tuple(alias.first, alias.second, *canonical));
     }
   }
-  struct CompareAliasText {
-    inline bool operator()(const Entry& lhs, const Entry& rhs) const {
-      const auto& left = std::get<0>(lhs).getText();
-      const auto& right = std::get<0>(rhs).getText();
-      return std::less<std::string>()(left, right);
-    }
-  };
-  std::sort(entries.begin(), entries.end(), CompareAliasText());
+  sort(entries, {}, [](const Entry& entry) -> decltype(auto) { return std::get<0>(entry).getText(); });
 
-  bool announce = true;
+  if (!entries.empty()) {
+    destination << "\nSwitch aliases: \n";
+  }
   for (const auto& entry : entries) {
-    if (announce) {
-      destination << "\nSwitch aliases: \n";
-      announce = false;
-    }
     WriteHelpItem(destination, std::get<1>(entry), "Alias for " + std::get<2>(entry)); // TODO: indent so that text for --proper-aliases and -shorthands is aligned
   }
 }
@@ -301,8 +295,8 @@ Parameters Parameters::operator +(const std::vector<Parameter>& parameters) cons
 }
 
 const Parameter* Parameters::find(const std::string& name) const {
-  auto pos = std::find_if(mEntries.cbegin(), mEntries.cend(), [&name](const Parameter& candidate) {return candidate.getName() == name; });
-  if (pos == mEntries.cend()) {
+  auto pos = std::ranges::find(entries_, name, &Parameter::getName);
+  if (pos == entries_.cend()) {
     return nullptr;
   }
   return &*pos;
@@ -313,11 +307,11 @@ void Parameters::writeHelpText(std::ostream& destination, const std::string& hea
     const std::vector<Parameter>& parameters;
     bool operator()(Index lhs, Index rhs) const { return std::less<std::string>()(parameters[lhs].getName(), parameters[rhs].getName()); }
   };
-  std::sort(indices.begin(), indices.end(), CompareParameterNamesByIndex{ mEntries });
+  sort(indices, CompareParameterNamesByIndex{ entries_ });
 
   auto announce = true;
   for (auto index : indices) {
-    const auto& parameter = mEntries[index];
+    const auto& parameter = entries_[index];
     if (parameter.isDocumented()) {
       if (announce) {
         destination << '\n' << header << ":\n";
@@ -329,44 +323,44 @@ void Parameters::writeHelpText(std::ostream& destination, const std::string& hea
 }
 
 void Parameters::add(const Parameter& parameter) {
-  auto index = mEntries.size();
+  auto index = entries_.size();
 
   // Exception safe update: create a copy of our announcements to work with
-  auto byAnnouncement = mByAnnouncement;
+  auto byAnnouncement = byAnnouncement_;
   for (const auto& announcement : parameter.getAnnouncements()) {
     auto emplaced = byAnnouncement.emplace(announcement.string(), index);
     if (!emplaced.second) {
-      auto existing = mEntries[emplaced.first->second];
+      auto existing = entries_[emplaced.first->second];
       throw std::runtime_error("Announcement " + announcement.string() + " is claimed by multiple switches: " + parameter.getName() + " and " + existing.getName());
     }
   }
   // No conflicting announcements: update our state
-  (parameter.isPositional() ? mPositional : mNamed).push_back(index);
-  std::swap(mByAnnouncement, byAnnouncement);
+  (parameter.isPositional() ? positional_ : named_).push_back(index);
+  std::swap(byAnnouncement_, byAnnouncement);
 
-  mEntries.push_back(parameter);
+  entries_.push_back(parameter);
 }
 
 LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const terminated) const {
   if (terminated) *terminated = false;
   LexedValues result;
 
-  auto positionalIt = mPositional.cbegin();
+  auto positionalIt = positional_.cbegin();
   enum class PositionalType { None, Named, Unnamed } positionalSeen = PositionalType::None;
 
   while (!arguments.empty()) {
     const auto& token = arguments.front();
 
-    if (token == SwitchAnnouncement::STOP_PROCESSING) {
-      arguments.pop(); // discard the STOP_PROCESSING token from remaining arguments
+    if (token == SwitchAnnouncement::StopProcessing) {
+      arguments.pop(); // discard the StopProcessing token from remaining arguments
       if (terminated) *terminated = true;
       break;
     }
 
     const Parameter* s{};
-    if (auto named = mByAnnouncement.find(token); named != mByAnnouncement.cend()) { // The current token is a "--name" or "-shorthand" announcement
+    if (auto named = byAnnouncement_.find(token); named != byAnnouncement_.cend()) { // The current token is a "--name" or "-shorthand" announcement
       arguments.pop(); // Discard the announcement from remaining arguments
-      s = &mEntries[named->second];
+      s = &entries_[named->second];
       if (s->isPositional()) {
         if (positionalSeen == PositionalType::Unnamed) {
           throw std::runtime_error("Cannot mix named and unnamed positional parameters");
@@ -375,7 +369,7 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
       }
     }
     else { // Not an announcement: process as an unnamed positional parameter
-      if (positionalIt == mPositional.cend()) {
+      if (positionalIt == positional_.cend()) {
         // We don't support any further positionals, so the token is not for us.
         break;
       }
@@ -389,7 +383,7 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
       }
       positionalSeen = PositionalType::Unnamed;
 
-      s = &mEntries[*positionalIt];
+      s = &entries_[*positionalIt];
       assert(s->isPositional());
 
       auto valueSpec = s->getValueSpecification();
@@ -408,7 +402,7 @@ LexedValues Parameters::lex(std::queue<std::string>& arguments, bool* const term
 NamedValues Parameters::parse(const LexedValues& lexed) const {
   NamedValues result;
 
-  for (const auto& s : mEntries) {
+  for (const auto& s : entries_) {
     const auto& name = s.getName();
     auto position = lexed.find(name);
     if (position != lexed.cend()) {
@@ -420,7 +414,7 @@ NamedValues Parameters::parse(const LexedValues& lexed) const {
 }
 
 void Parameters::finalize(NamedValues& parsed) const {
-  for (const auto& s : mEntries) {
+  for (const auto& s : entries_) {
     const auto& name = s.getName();
     if (!parsed.has(name)) {
       Values tmp;
@@ -433,7 +427,7 @@ void Parameters::finalize(NamedValues& parsed) const {
 }
 
 const Parameter* Parameters::currentSwitchRequiringValue(const LexedValues& lexed) const noexcept {
-  for (const Parameter& s : mEntries) {
+  for (const Parameter& s : entries_) {
     // If specified without value
     if (auto position = lexed.find(s.getName()); position != lexed.cend()) {
       if (s.isLackingValue(position->second)) {
@@ -445,8 +439,8 @@ const Parameter* Parameters::currentSwitchRequiringValue(const LexedValues& lexe
 }
 
 const Parameter* Parameters::firstPositional(const LexedValues& lexed) const noexcept {
-  for (const Index i : mPositional) {
-    const Parameter& s = mEntries[i];
+  for (const Index i : positional_) {
+    const Parameter& s = entries_[i];
     if (!lexed.contains(s.getName()) || s.allowsMultiple()) {
       return &s;
     }
@@ -456,7 +450,7 @@ const Parameter* Parameters::firstPositional(const LexedValues& lexed) const noe
 
 std::vector<const Parameter*> Parameters::getSwitchesToAutocomplete(const LexedValues& lexed) const noexcept {
   std::vector<const Parameter*> params;
-  for (const auto& param : mEntries) {
+  for (const auto& param : entries_) {
     if (!param.isDocumented()) {
       continue;
     }
@@ -469,27 +463,24 @@ std::vector<const Parameter*> Parameters::getSwitchesToAutocomplete(const LexedV
 }
 
 bool Parameters::hasRequired() const {
-  return std::any_of(mEntries.cbegin(), mEntries.cend(), [](const Parameter& s) {return s.isRequired(); });
+  return any_of(entries_, &Parameter::isRequired);
 }
 
 bool Parameters::hasInfinitePositional() const noexcept {
-  return std::any_of(mEntries.cbegin(), mEntries.cend(), [](const Parameter& s) {return s.allowsMultiple(); });
+  return any_of(entries_, &Parameter::allowsMultiple);
 }
 
 std::vector<std::string> Parameters::getInvocationSummary() const {
   std::vector<std::optional<std::string>> optionals;
-  optionals.reserve(mEntries.size());
+  optionals.reserve(entries_.size());
+  optionals.append_range(named_ | views::transform([this](Index index) {return entries_[index].getInvocationSummary(true); }));
+  optionals.append_range(positional_ | views::transform([this](Index index) {return entries_[index].getInvocationSummary(true); }));
 
-  auto position = std::back_inserter(optionals);
-  position = std::transform(mNamed.cbegin(), mNamed.cend(), position, [this](Index index) {return mEntries[index].getInvocationSummary(true); });
-  std::transform(mPositional.cbegin(), mPositional.cend(), position, [this](Index index) {return mEntries[index].getInvocationSummary(true); });
+  std::erase(optionals, std::nullopt);
 
-  optionals.erase(std::remove(optionals.begin(), optionals.end(), std::nullopt), optionals.end());
-
-  std::vector<std::string> result;
-  result.reserve(optionals.size());
-  std::transform(optionals.cbegin(), optionals.cend(), std::back_inserter(result), [](const std::optional<std::string> entry) {return *entry; });
-  return result;
+  return optionals
+    | views::transform([](const std::optional<std::string>& entry) {return *entry; })
+    | to<std::vector>();
 }
 
 }

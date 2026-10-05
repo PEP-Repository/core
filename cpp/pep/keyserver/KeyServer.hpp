@@ -16,33 +16,25 @@ public:
 
     ServerTraits serverTraits() const noexcept override { return ServerTraits::KeyServer(); }
 
-    const std::optional<X509Identity>& getClientCa() const { return mClientCa; }
+    const std::optional<X509Identity>& getClientCa() const { return clientCa_; }
 
-    /*!
-     * \return The oauth token secret, shared with the authentication server
-     */
+    /// \return The oauth token secret, shared with the authentication server
     const std::string& getOauthTokenSecret() const;
-    /*!
-     * \param oauthTokenSecret The oauth token secret, shared with the authentication server
-     */
+    /// \param oauthTokenSecret The oauth token secret, shared with the authentication server
     void setOauthTokenSecret(const std::string& oauthTokenSecret);
 
-    /*!
-     * \return The path where the blocklist of the keyserver is stored on disk
-     */
+    /// \return The path where the blocklist of the keyserver is stored on disk
     const std::filesystem::path& getBlocklistStoragePath() const;
-    /*!
-     * \param path The path where the blocklist of the keyserver is stored on disk
-     */
+    /// \param path The path where the blocklist of the keyserver is stored on disk
     void setBlocklistStoragePath(const std::filesystem::path& path);
 
   protected:
     void check() const override;
 
   private:
-    std::optional<X509Identity> mClientCa;
-    std::string mOauthTokenSecret;
-    std::filesystem::path mBlocklistStoragePath;
+    std::optional<X509Identity> clientCa_;
+    std::string oauthTokenSecret_;
+    std::filesystem::path blocklistStoragePath_;
   };
 
 public:
@@ -63,9 +55,9 @@ private:
 
   bool isValid(const OAuthToken& authToken, const std::string& commonName, const std::string& organisationalUnit) const;
 
-  X509Identity mClientCa;
-  std::string mOauthTokenSecret;
-  std::unique_ptr<tokenBlocking::Blocklist> mBlocklist;
+  X509Identity clientCa_;
+  std::string oauthTokenSecret_;
+  std::unique_ptr<tokenBlocking::Blocklist> blocklist_;
 };
 
 } // namespace pep

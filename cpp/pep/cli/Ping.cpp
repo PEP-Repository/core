@@ -4,9 +4,12 @@
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
 
+#include <ranges>
+
 #include <rxcpp/operators/rx-map.hpp>
 
 using namespace pep::cli;
+using namespace std::ranges;
 
 namespace {
 
@@ -35,7 +38,7 @@ private:
       if (printDrift) {
         std::cout
           << duration_cast<std::chrono::milliseconds>(
-            pep::TimeNow() - response.mTimestamp
+            pep::TimeNow() - response.timestamp()
           ).count();
       } else {
         std::cout << "Received response";
@@ -54,12 +57,11 @@ protected:
   pep::commandline::Parameters getSupportedParameters() const override {
     auto traits = pep::ServerTraits::All();
 
-    std::vector<std::string> serverIds;
-    serverIds.reserve(traits.size());
-    std::transform(traits.cbegin(), traits.cend(), std::back_inserter(serverIds),
-      [](const pep::ServerTraits& single) {return single.commandLineId(); });
+    auto serverIds = traits
+      | views::transform(&pep::ServerTraits::commandLineId)
+      | to<std::vector>();
     // Sort by command line ID: produces nicely sorted child commands
-    std::sort(serverIds.begin(), serverIds.end());
+    sort(serverIds);
 
     return ChildCommandOf<CliApplication>::getSupportedParameters()
       + pep::commandline::Parameter("server", "Server to ping").value(pep::commandline::Value<std::string>().required().allow(serverIds))
@@ -73,7 +75,7 @@ protected:
     auto printCertificateChain = parameterValues.has("print-certificate-chain");
     auto printDrift = parameterValues.has("print-drift");
     if (printDrift && printCertificateChain) {
-      LOG(LOG_TAG, pep::error) << "--print-drift and --print-certificate-chain"
+      PEP_LOG(LogTag, pep::Severity::Error) << "--print-drift and --print-certificate-chain"
         << " can not be combined.";
       return 3;
     }
@@ -85,7 +87,7 @@ protected:
     assert(traits.has_value());
 
     if (printCertificateChain && !traits->hasSigningIdentity()) {
-      LOG(LOG_TAG, pep::error) << traits->description() << " does not produce a certificate chain to print";
+      PEP_LOG(LogTag, pep::Severity::Error) << traits->description() << " does not produce a certificate chain to print";
       return 3;
     }
 

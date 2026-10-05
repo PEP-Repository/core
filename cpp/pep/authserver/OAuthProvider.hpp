@@ -19,24 +19,19 @@ class AuthserverBackend;
 
 class OAuthProvider : public std::enable_shared_from_this<OAuthProvider>, public SharedConstructor<OAuthProvider> {
 public:
-  static const std::string RESPONSE_TYPE_CODE;
-  static const std::string GRANT_TYPE_AUTHORIZATION_CODE;
+  static const std::string ResponseTypeCode;
+  static const std::string GrantTypeAuthorizationCode;
 
-// Prevent build failure due to ERROR_ACCESS_DENIED being defined (to a numeric value). See #1051
-#pragma push_macro("ERROR_ACCESS_DENIED")
-#undef ERROR_ACCESS_DENIED
-  static const std::string ERROR_INVALID_REQUEST;
-  static const std::string ERROR_INVALID_CLIENT;
-  static const std::string ERROR_ACCESS_DENIED;
-  static const std::string ERROR_UNAUTHORIZED_CLIENT;
-  static const std::string ERROR_UNSUPPORTED_RESPONSE_TYPE;
-  static const std::string ERROR_UNSUPPORTED_GRANT_TYPE;
-  static const std::string ERROR_INVALID_SCOPE;
-  static const std::string ERROR_SERVER_ERROR;
-  static const std::string ERROR_TEMPORARILY_UNAVAILABLE;
-  static const std::string ERROR_INVALID_GRANT;
-
-#pragma pop_macro("ERROR_ACCESS_DENIED")
+  static const std::string ErrorInvalidRequest;
+  static const std::string ErrorInvalidClient;
+  static const std::string ErrorAccessDenied;
+  static const std::string ErrorUnauthorizedClient;
+  static const std::string ErrorUnsupportedResponseType;
+  static const std::string ErrorUnsupportedGrantType;
+  static const std::string ErrorInvalidScope;
+  static const std::string ErrorServerError;
+  static const std::string ErrorTemporarilyUnavailable;
+  static const std::string ErrorInvalidGrant;
 
   class Parameters {
     public:
@@ -47,25 +42,27 @@ public:
       const std::string& getSpoofKey() const;
       const std::optional<std::filesystem::path>& getHttpsCertificateFile() const;
       std::shared_ptr<boost::asio::io_context> getIoContext() const;
+      const std::vector<boost::urls::url>& getExtraRedirectUris() const { return extraRedirectUris_; }
 
       void check() const;
 
     private:
-      uint16_t httpPort = 0;
-      std::chrono::seconds activeGrantExpiration = std::chrono::seconds::zero();
-      std::string spoofKey;
+      uint16_t httpPort_ = 0;
+      std::chrono::seconds activeGrantExpiration_ = std::chrono::seconds::zero();
+      std::string spoofKey_;
       //On production environments, there is an apache2 server that handles HTTPS. But for local testing we want HTTPS, and therefore a certificate.
       //If this is left unset, plain HTTP is used
       //TODO: determine if we indeed want/need HTTPS for local testing, or whether we can use plain HTTP instead (HttpClient supports it)
-      std::optional<std::filesystem::path> httpsCertificateFile;
-      std::shared_ptr<boost::asio::io_context> io_context;
+      std::optional<std::filesystem::path> httpsCertificateFile_;
+      std::shared_ptr<boost::asio::io_context> ioContext_;
+      std::vector<boost::urls::url> extraRedirectUris_;
   };
 
   ~OAuthProvider();
 private:
   OAuthProvider(const Parameters& params, std::shared_ptr<AuthserverBackend> authserverBackend);
 
-  struct grant {
+  struct Grant {
     std::string clientId;
     std::string humanReadableId;
     UserGroup usergroup;
@@ -73,30 +70,27 @@ private:
     std::string codeChallenge;
     std::optional<std::chrono::seconds> validity; //std::nullopt if no long lived token is requested
     std::chrono::time_point<std::chrono::steady_clock> createdAt; //We don't care about the actual clock time, we only want to measure the time that has passed. Therefore: steady_clock.
-
-    grant(const std::string& clientId, const std::string& humanReadableId, UserGroup usergroup, const std::string& redirectUri, const std::string& codeChallenge, std::optional<std::chrono::seconds> validity)
-      : clientId(clientId), humanReadableId(humanReadableId), usergroup(std::move(usergroup)), redirectUri(redirectUri), codeChallenge(codeChallenge), validity(validity), createdAt(std::chrono::steady_clock::now()) {}
   };
 
-  void addActiveGrant(const std::string& code, grant g);
-  std::optional<grant> getActiveGrant(const std::string& code);
+  void addActiveGrant(const std::string& code, Grant g);
+  std::optional<Grant> getActiveGrant(const std::string& code);
 
   rxcpp::observable<HTTPResponse> handleAuthorizationRequest(HTTPRequest request, std::string remoteIp);
   HTTPResponse handleTokenRequest(HTTPRequest request, std::string remoteIp);
   HTTPResponse handleCodeRequest(HTTPRequest request, std::string remoteIp);
 
+  const std::vector<boost::urls::url>& getRegisteredRedirectURIs(const std::string& clientId);
 
-  std::unordered_set<std::string> getRegisteredRedirectURIs(const std::string& clientId);
+  std::shared_ptr<HTTPServer> httpServer_;
+  std::unordered_map<std::string, Grant> activeGrants_;
+  rxcpp::composite_subscription activeGrantsCleanupSubscription_;
+  std::chrono::seconds activeGrantExpiration_;
+  std::string spoofKey_;
+  std::shared_ptr<AuthserverBackend> authserverBackend_;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
+  std::vector<boost::urls::url> allowedRedirectUris_;
 
-  std::shared_ptr<HTTPServer> httpServer;
-  std::unordered_map<std::string, grant> activeGrants;
-  rxcpp::composite_subscription activeGrantsCleanupSubscription;
-  std::chrono::seconds activeGrantExpiration;
-  std::string spoofKey;
-  std::shared_ptr<AuthserverBackend> authserverBackend;
-  std::shared_ptr<boost::asio::io_context> io_context;
-
-  TemplateEnvironment mTemplates;
+  TemplateEnvironment templates_;
   friend class SharedConstructor<OAuthProvider>;
 };
 }

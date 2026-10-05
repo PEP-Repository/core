@@ -1,4 +1,4 @@
-#include <gmock/gmock.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <pep/structuredoutput/Table.hpp>
@@ -26,6 +26,14 @@ TEST(structuredOutputTable, EmptyWithHeader_setsTheRecordSize) {
 
 TEST(structuredOutputTable, EmptyWithHeader_throwsIfHeaderIsEmpty) {
   EXPECT_THROW(Table::EmptyWithHeader({}), std::runtime_error);
+}
+
+TEST(structuredOutputTable, throwsIfHeaderContainsDuplicateColumnNames) {
+  // Output formats that key records by column name cannot represent a table with a duplicate name, so we don't allow it
+  EXPECT_THROW(Table::EmptyWithHeader({"id", "visit", "id"}), std::runtime_error);
+  EXPECT_THROW(Table::FromSeparateHeaderAndData({"id", "visit", "id"}, {"pseudonym", "1", "subject 7"}), std::runtime_error);
+
+  EXPECT_NO_THROW(Table::EmptyWithHeader({"id", "visit", "ID"})) << "column names should be compared exactly";
 }
 
 TEST(structuredOutputTable, FromSeparateHeaderAndData_retainsDataPassedAtCreation) {
@@ -147,12 +155,28 @@ TEST(structuredOutputTable, Records_FieldsCanBeOverwritten) {
   EXPECT_THAT(table.records().back(), ElementsAre("banana", "yellow"));
 }
 
-TEST(structuredOutputTable, Header_FieldsCanBeOverwritten) {
+TEST(structuredOutputTable, RenameColumn) {
   auto table = Table::FromSeparateHeaderAndData({"fruit", "???"}, {"apple", "green", "banana", "yellow"});
 
-  table.header()[1] = "color";
+  table.renameColumn(1, "color");
 
   EXPECT_THAT(table.header(), ElementsAre("fruit", "color"));
+  EXPECT_THAT(table.records().front(), ElementsAre("apple", "green")) << "records should be left alone";
+}
+
+TEST(structuredOutputTable, RenameColumn_keepsColumnNamesUnique) {
+  auto table = Table::FromSeparateHeaderAndData({"fruit", "color"}, {"apple", "green"});
+
+  EXPECT_THROW(table.renameColumn(1, "fruit"), std::runtime_error);
+  EXPECT_THAT(table.header(), ElementsAre("fruit", "color")) << "a rejected rename should not modify the header";
+
+  EXPECT_NO_THROW(table.renameColumn(1, "color")) << "renaming a column to the name it already has is not a clash";
+}
+
+TEST(structuredOutputTable, RenameColumn_throwsIfThereIsNoColumnAtTheIndex) {
+  auto table = Table::FromSeparateHeaderAndData({"fruit", "color"}, {"apple", "green"});
+
+  EXPECT_THROW(table.renameColumn(2, "size"), std::out_of_range);
 }
 
 TEST(structuredOutputTable, ForEachFieldInColumn) {

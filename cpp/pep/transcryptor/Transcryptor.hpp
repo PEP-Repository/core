@@ -19,8 +19,8 @@ class Transcryptor : public KeyComponentServer {
   class Metrics : public RegisteredMetrics {
    public:
     Metrics(std::shared_ptr<prometheus::Registry> registry);
-    prometheus::Summary& transcryptor_request_duration;
-    prometheus::Gauge& transcryptor_log_size;
+    prometheus::Summary& transcryptorRequestDuration;
+    prometheus::Gauge& transcryptorLogSize;
   };
 
  public:
@@ -42,17 +42,17 @@ class Transcryptor : public KeyComponentServer {
     std::optional<ElgamalPrivateKey> getPseudonymKey() const;
     void setPseudonymKey(const ElgamalPrivateKey& key);
 
-    const EndPoint& getAccessManagerEndPoint() const { return accessManagerEndPoint; }
+    const EndPoint& getAccessManagerEndPoint() const { return accessManagerEndPoint_; }
 
    protected:
     void check() const override;
 
    private:
-    std::optional<ElgamalPrivateKey> pseudonymKey;
-    std::shared_ptr<TranscryptorStorage> storage;
-    std::optional<ServerVerifiers> verifiers;
+    std::optional<ElgamalPrivateKey> pseudonymKey_;
+    std::shared_ptr<TranscryptorStorage> storage_;
+    std::optional<ServerVerifiers> verifiers_;
 
-    EndPoint accessManagerEndPoint;
+    EndPoint accessManagerEndPoint_;
   };
 
 public:
@@ -75,14 +75,14 @@ private:
     const std::vector<LocalPseudonyms>& pseuds);
 
 private:
-  std::shared_ptr<WorkerPool> mWorkerPool;
-  std::optional<ElgamalPrivateKey> mPseudonymKey;
-  AccessManagerProxy mAccessManagerProxy;
-  std::shared_ptr<TranscryptorStorage> mStorage;
-  std::shared_ptr<Metrics> lpMetrics;
-  ServerVerifiers mVerifiers;
-  uintmax_t mNextTranscryptorRequestNumber = 1U;
-  uintmax_t mNextLogIssuedTicketRequestNumber = 1U;
+  std::shared_ptr<WorkerPool> workerPool_;
+  std::optional<ElgamalPrivateKey> pseudonymKey_;
+  AccessManagerProxy accessManagerProxy_;
+  std::shared_ptr<TranscryptorStorage> storage_;
+  std::shared_ptr<Metrics> lpMetrics_;
+  ServerVerifiers verifiers_;
+  uintmax_t nextTranscryptorRequestNumber_ = 1U;
+  uintmax_t nextLogIssuedTicketRequestNumber_ = 1U;
 };
 
 }

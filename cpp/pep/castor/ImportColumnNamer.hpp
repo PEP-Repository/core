@@ -13,7 +13,7 @@ namespace castor {
   
 class ImportColumnNamer {
 private:
-  ColumnNameMappings mMappings;
+  ColumnNameMappings mappings_;
 
 private:
   std::string joinColumnNameSections(const std::string& prefix, const std::vector<std::string>& sections) const;

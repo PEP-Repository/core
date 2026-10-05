@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/crypto/Timestamp.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <string>
 
@@ -17,7 +17,7 @@ struct TokenIdentifier final {
 };
 
 /// Returns true iff rhs has the same subject and user-group as rhs and was issued at the same time or later.
-/// @note A token supersedes itself under this definition.
+/// \note A token supersedes itself under this definition.
 inline bool Supersedes(const TokenIdentifier& lhs, const TokenIdentifier& rhs) {
   return lhs.subject == rhs.subject && lhs.userGroup == rhs.userGroup && lhs.issueDateTime >= rhs.issueDateTime;
 }

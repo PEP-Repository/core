@@ -11,14 +11,14 @@ enum class Delimiter : char { Comma = ',', Semicolon = ';', Tab = '\t' };
 struct Config final {
   // With European regional settings on Windows, MS Excel expects semicolon delimiters by default, when importing CSV
   Delimiter delimiter = Delimiter::Semicolon;  ///< The character used to delimit individual fields
-  bool force_header = false; ///< Produce a header even if there's no data
+  bool forceHeader = false; ///< Produce a header even if there's no data
 };
 
 /// Appends the CSV representation of the table object to the stream.
 std::ostream& append(std::ostream&, const Table&, Config = {});
 
 /// Converts a table to string.
-/// @details This is a small wrapper around append for convenience.
+/// \details This is a small wrapper around append for convenience.
 std::string to_string(const Table&, Config = {});
 
 } // namespace pep::structuredOutput::csv

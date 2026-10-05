@@ -9,29 +9,29 @@ namespace pep {
 template <typename T>
 class VectorOfVectors {
 private:
-  std::vector<std::vector<T>> mItems;
-  size_t mSize{};
+  std::vector<std::vector<T>> items_;
+  size_t size_{};
 
 public:
   class const_iterator;
 
-  const_iterator begin() const { return const_iterator(mItems.begin(), mItems.end()); }
-  const_iterator end() const { return const_iterator(mItems.end(), mItems.end()); }
+  const_iterator begin() const { return const_iterator(items_.begin(), items_.end()); }
+  const_iterator end() const { return const_iterator(items_.end(), items_.end()); }
 
   void clear() noexcept {
-    mItems.clear();
-    mSize = 0U;
+    items_.clear();
+    size_ = 0U;
   }
 
   VectorOfVectors& operator +=(std::vector<T> v) {
     if (!v.empty()) {
-      mSize += mItems.emplace_back(std::move(v)).size();
+      size_ += items_.emplace_back(std::move(v)).size();
     }
     return *this;
   }
 
   size_t size() const noexcept {
-    return mSize;
+    return size_;
   }
 };
 
@@ -40,44 +40,44 @@ class VectorOfVectors<T>::const_iterator {
   friend class VectorOfVectors<T>;
 
 private:
-  using VectorIterator = typename decltype(VectorOfVectors<T>::mItems)::const_iterator;
-  VectorIterator mPosition;
-  VectorIterator mEnd;
+  using VectorIterator = typename decltype(VectorOfVectors<T>::items_)::const_iterator;
+  VectorIterator position_;
+  VectorIterator end_;
 
   using ItemIterator = typename std::vector<T>::const_iterator;
-  std::optional<ItemIterator> mItem;
+  std::optional<ItemIterator> item_;
 
   void placeOnVectorBegin() {
-    if (mPosition == mEnd) {
-      mItem = std::nullopt;
+    if (position_ == end_) {
+      item_ = std::nullopt;
     }
     else {
-      mItem = mPosition->begin();
+      item_ = position_->begin();
     }
   }
 
   const_iterator(VectorIterator position, VectorIterator end)
-    : mPosition(std::move(position)), mEnd(std::move(end)) {
+    : position_(std::move(position)), end_(std::move(end)) {
     this->placeOnVectorBegin();
   }
 
 public:
   const T& operator*() const {
-    assert(mItem.has_value());
-    return **mItem;
+    assert(item_.has_value());
+    return **item_;
   }
 
   const T* operator->() const { return &**this; }
 
   const_iterator& operator++() {
     // Move to next item within current vector
-    assert(mItem.has_value());
-    auto& i = *mItem;
+    assert(item_.has_value());
+    auto& i = *item_;
     ++i;
 
     // If we moved past current vector's end, move to next vector
-    if (i == mPosition->end()) {
-      ++mPosition;
+    if (i == position_->end()) {
+      ++position_;
       this->placeOnVectorBegin();
     }
 
@@ -85,7 +85,7 @@ public:
   }
 
   bool operator==(const const_iterator& other) const noexcept {
-    return mPosition == other.mPosition && mItem == other.mItem;
+    return position_ == other.position_ && item_ == other.item_;
   }
 
   bool operator!=(const const_iterator& other) const noexcept { return !(*this == other); }

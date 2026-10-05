@@ -36,13 +36,13 @@ public:
     void check() const;
 
   private:
-    EndPoint accessManagerEndpoint;
-    std::shared_ptr<messaging::ServerConnection> accessManager;
-    std::shared_ptr<const X509Identity> signingIdentity;
-    std::chrono::seconds tokenExpiration = std::chrono::seconds::zero();
-    std::string oauthTokenSecret;
-    std::optional<std::filesystem::path> storageFile;
-    std::shared_ptr<X509RootCertificates> rootCertificates;
+    EndPoint accessManagerEndpoint_;
+    std::shared_ptr<messaging::ServerConnection> accessManager_;
+    std::shared_ptr<const X509Identity> signingIdentity_;
+    std::chrono::seconds tokenExpiration_ = std::chrono::seconds::zero();
+    std::string oauthTokenSecret_;
+    std::optional<std::filesystem::path> storageFile_;
+    std::shared_ptr<X509RootCertificates> rootCertificates_;
   };
 
 public:
@@ -56,13 +56,11 @@ public:
       const std::string &primaryId,
       const std::vector<std::string> &alternativeIds);
 
-  /**
-   * \brief Generate an OAuth Token
-   * \param uid The uid of the user to generate a token for
-   * \param group The user group to generate a token for. It is possible to generate tokens for users/groups unknown to the authserver.
-   * \param expirationTime The time at which the token will expire
-   * \return The generated OAuthToken
-   */
+  /// \brief Generate an OAuth Token
+  /// \param uid The uid of the user to generate a token for
+  /// \param group The user group to generate a token for. It is possible to generate tokens for users/groups unknown to the authserver.
+  /// \param expirationTime The time at which the token will expire
+  /// \return The generated OAuthToken
   OAuthToken getToken(const std::string& uid, const std::string& group, const Timestamp& expirationTime) const;
   OAuthToken getToken(const std::string& uid,
                       const UserGroup& group,
@@ -74,9 +72,9 @@ public:
 private:
   void migrateDatabase(const std::filesystem::path& storageFile);
 
-  std::shared_ptr<AccessManagerProxy> mAccessManager;
-  std::chrono::seconds mTokenExpiration;
-  std::string mOauthTokenSecret;
+  std::shared_ptr<AccessManagerProxy> accessManager_;
+  std::chrono::seconds tokenExpiration_;
+  std::string oauthTokenSecret_;
 };
 
 }

@@ -21,11 +21,14 @@
 
 #include <filesystem>
 #include <iostream>
+#include <ranges>
 #include <thread>
 
 #ifdef _WIN32
 #include <windows.h>
 #endif /*_WIN32*/
+
+using namespace std::ranges;
 
 namespace {
 
@@ -84,7 +87,7 @@ class PepAssessorApplication : public pep::Application {
 
     if (!result) {
       auto pid = assessorPid->get();
-      LOG("Startup", pep::info) << "Terminating because a pepAssessor instance is already running with PID " << pid;
+      PEP_LOG("Startup", pep::Severity::Info) << "Terminating because a pepAssessor instance is already running with PID " << pid;
 #ifdef _WIN32
       BringToForeground(pid);
 #endif
@@ -103,7 +106,7 @@ class PepAssessorApplication : public pep::Application {
 
     // Allow types to be passed as arguments in signal->slot
     qRegisterMetaType<pep::ParticipantDeviceHistory>("pep::ParticipantDeviceHistory");
-    qRegisterMetaType<pep::severity_level>("pep::severity_level");
+    qRegisterMetaType<pep::Severity>("pep::Severity");
 
     pep::Configuration config = this->loadMainConfigFile();
     auto io_context = std::make_shared<boost::asio::io_context>();
@@ -140,7 +143,7 @@ class PepAssessorApplication : public pep::Application {
   }
 
  protected:
-  std::optional<pep::severity_level> syslogLogMinimumSeverityLevel() const override {
+  std::optional<pep::Severity> syslogLogMinimumSeverityLevel() const override {
     return std::nullopt;
   }
 
@@ -154,10 +157,17 @@ class PepAssessorApplication : public pep::Application {
   }
 
   int execute() override {
-    //QApplication must be instantiated before being used to pass in the client config
-    auto argc = this->getArgc();
-    auto argv = this->getArgv();
-    QApplication pepAssessor(argc, argv);
+    // QApplication must be instantiated before being used to pass in the client config.
+    // Pass empty arguments because if we want to support Qt arguments we'd probably need to parse these *first*.
+    // Qt does want the program name, though.
+    std::vector<std::string> args{getName()};
+    auto argv = args | views::transform([](std::string& arg) { return arg.data(); }) | to<std::vector>();
+    int argc = static_cast<int>(argv.size());
+    argv.emplace_back(); // argv[argc] must be nullptr, see https://eel.is/c++draft/basic.start.main#2.2
+    QApplication pepAssessor(argc, argv.data());
+    args.resize(static_cast<std::size_t>(argc));
+    argv.resize(args.size() + 1);
+    argv.back() = nullptr;
 
     // Terminate if there's another PEP Assessor running to prevent later failure, e.g. w.r.t. the port receiving the OAuth token after logon
     if (!EnsureOnlyInstance(&pepAssessor)) {
@@ -183,8 +193,7 @@ class PepAssessorApplication : public pep::Application {
 
 }
 
-/*! \brief Main(s). Program entry point(s)
- *
- * \return int exit code.
- */
+/// \brief Main(s). Program entry point(s)
+///
+/// \return int exit code.
 PEP_DEFINE_MAIN_FUNCTION(PepAssessorApplication)

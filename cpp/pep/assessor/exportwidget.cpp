@@ -7,6 +7,7 @@
 
 #include <cassert>
 #include <fstream>
+#include <ranges>
 #include <QFileDialog>
 #include <QStandardPaths>
 #include <pep/gui/QTrxGui.hpp>
@@ -19,9 +20,11 @@
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
 
+using namespace std::ranges;
+
 namespace {
 
-const QString ALL_FILES_WILDCARD =
+const QString AllFilesWildcard =
 #ifdef _WIN32
 "*.*"
 #else
@@ -30,10 +33,9 @@ const QString ALL_FILES_WILDCARD =
 ;
 
 void SortAndInsert(std::vector<std::shared_ptr<ExportableItem>>& dest, std::vector<std::shared_ptr<ExportableShortPseudonymItem>>& source) {
-  std::sort(source.begin(), source.end(), [](const std::shared_ptr<ExportableItem>& lhs, const std::shared_ptr<ExportableItem>& rhs) { // Sort SPs to make them easier to find in the UI
-    return lhs->getDescription() < rhs->getDescription();
-            });
-  dest.insert(dest.end(), source.cbegin(), source.cend());
+  // Sort SPs to make them easier to find in the UI
+  sort(source, {}, [](const auto& item) { return item->getDescription(); });
+  dest.append_range(source);
 }
 
 }
@@ -56,7 +58,7 @@ void ExportWidget::WriteParticipantData(const QList<std::shared_ptr<ExportableIt
     if (expandDetails && expander) {
       (*expander)(table, cellContent);
       assert(!table.empty());
-      assert(std::find_if(table.cbegin(), table.cend(), [](const ExportDataRow& row) {return row.empty(); }) == table.cend());
+      assert(none_of(table, [](const ExportDataRow& row) { return row.empty(); }));
     }
     else {
       auto& row = table.emplace_back();
@@ -79,7 +81,7 @@ void ExportWidget::WriteParticipantDataCartesian(ExportDataTable& destination, c
   else {
     for (const auto& row : *own) {
       ExportDataRow values(parentData);
-      values.insert(values.cend(), row.cbegin(), row.cend());
+      values.append_range(row);
       WriteParticipantDataCartesian(destination, values, own + 1, end);
     }
   }
@@ -99,10 +101,8 @@ void ExportWidget::WriteCartesianToDestination(std::ostream& destination, const 
         const auto& cellContent = *cell;
 
         // Escape value if needed
-        auto escape = std::find_if(cellContent.begin(), cellContent.end(), [](char c) {
-          return (c == '"') || (c == ',');
-                                   });
-        if (escape != cellContent.end()) {
+        const bool escape = cellContent.find_first_of("\",") != std::string::npos;
+        if (escape) {
           destination << '"' << boost::replace_all_copy(cellContent, "\"", "\"\"") << '"';
         }
         else {
@@ -124,41 +124,42 @@ void ExportWidget::WriteCartesianToDestination(std::ostream& destination, const 
 
 ExportWidget::ExportWidget(const pep::GlobalConfiguration& configuration, const pep::StudyContext& studyContext, const pep::UserRole& role, VisitCaptionsByContext visitCaptionsByContext, std::shared_ptr<pep::CoreClient> client, QWidget* parent) :
   QWidget(parent),
-  ui(new Ui::ExportWidget),
-  mStudyContext(studyContext),
-  mMultiSelect(role.canCrossTabulate())
+  ui_(new Ui::ExportWidget),
+  studyContext_(studyContext),
+  multiSelect_(role.canCrossTabulate())
 {
-  mPepClient = client;
-  mAllItems = this->getAllExportableItems(configuration, studyContext);
+  pepClient_ = client;
+  allItems_ = this->getAllExportableItems(configuration, studyContext);
 
-  ui->setupUi(this);
+  ui_->setupUi(this);
 
   //NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) QListWidget takes ownership of QListWidgetItem
-  for (const auto& item : mAllItems) {
+  for (const auto& item : allItems_) {
     auto caption = createCaption(item);
-    auto listItem = new QListWidgetItem(caption, ui->listWidget);
-    if (mMultiSelect) {
+    auto listItem = new QListWidgetItem(caption, ui_->listWidget);
+    if (multiSelect_) {
       listItem->setFlags(listItem->flags() | Qt::ItemIsUserCheckable);
       listItem->setCheckState(Qt::Unchecked);
     }
   }
 
-  if (!mMultiSelect) {
-    QObject::connect(ui->listWidget, &QListWidget::itemSelectionChanged, this, &ExportWidget::on_selectedItemChanged);
-    QObject::connect(ui->listWidget, &QListWidget::itemActivated, this, &ExportWidget::on_itemActivated);
+  QObject::connect(ui_->exportButton, &QPushButton::clicked, this, &ExportWidget::onExportButtonClicked);
+  if (!multiSelect_) {
+    QObject::connect(ui_->listWidget, &QListWidget::itemSelectionChanged, this, &ExportWidget::onSelectedItemChanged);
+    QObject::connect(ui_->listWidget, &QListWidget::itemActivated, this, &ExportWidget::onItemActivated);
   }
   else {
-    QObject::connect(ui->listWidget, &QListWidget::itemChanged, this, &ExportWidget::on_itemChanged);
+    QObject::connect(ui_->listWidget, &QListWidget::itemChanged, this, &ExportWidget::onItemChanged);
   }
 }
 
 ExportWidget::~ExportWidget()
 {
-  delete ui;
+  delete ui_;
 }
 
 void ExportWidget::doFocus() {
-  ui->listWidget->setFocus();
+  ui_->listWidget->setFocus();
 }
 
 
@@ -227,41 +228,42 @@ QString ExportWidget::getVisitCaption(const unsigned visitNumber) {
     throw std::runtime_error("Please provide a 1-based visit number (as opposed to a 0-based index)");
   }
   auto index = visitNumber - 1;
-  if (index < mVisitCaptions.size()) {
-    return QString::fromStdString(mVisitCaptions.at(index));
+  if (index < visitCaptions_.size()) {
+    return QString::fromStdString(visitCaptions_.at(index));
   }
   return tr("Visit %1").arg(visitNumber);
 }
 
 
-void ExportWidget::on_selectedItemChanged() {
+void ExportWidget::onSelectedItemChanged() {
   this->updateSelectionState();
 }
 
-void ExportWidget::on_itemChanged(QListWidgetItem* item) {
+void ExportWidget::onItemChanged(QListWidgetItem* item) {
   this->updateSelectionState();
 }
 
 void ExportWidget::updateSelectionState() {
   auto selected = getSelectedItems();
-  ui->exportButton->setEnabled(!selected.empty());
-  ui->expandDetailsCheckBox->setEnabled(std::find_if(selected.cbegin(), selected.cend(), [](const std::shared_ptr<ExportableItem>& item) {return item->getDetailExpander(); }) != selected.cend());
+  ui_->exportButton->setEnabled(!selected.empty());
+  ui_->expandDetailsCheckBox->setEnabled(any_of(selected,
+    [](const std::shared_ptr<ExportableItem>& item) { return item->getDetailExpander().has_value(); }));
 }
 
 QList<std::shared_ptr<ExportableItem>> ExportWidget::getSelectedItems() const {
   QList<std::shared_ptr<ExportableItem>> result;
 
-  if (mMultiSelect) { // Selection depends on each item's check state, which must be inspected individually: see https://stackoverflow.com/a/29240727
-    for (auto i = 0; i < ui->listWidget->count(); ++i) {
-      if (ui->listWidget->item(i)->checkState() == Qt::Checked) {
-        result.push_back(mAllItems[static_cast<unsigned>(i)]);
+  if (multiSelect_) { // Selection depends on each item's check state, which must be inspected individually: see https://stackoverflow.com/a/29240727
+    for (auto i = 0; i < ui_->listWidget->count(); ++i) {
+      if (ui_->listWidget->item(i)->checkState() == Qt::Checked) {
+        result.push_back(allItems_[static_cast<unsigned>(i)]);
       }
     }
   }
   else { // Selection depends on highlight
-    auto row = ui->listWidget->currentRow();
+    auto row = ui_->listWidget->currentRow();
     if (row >= 0) {
-      result.push_back(mAllItems[static_cast<size_t>(row)]);
+      result.push_back(allItems_[static_cast<size_t>(row)]);
     }
   }
 
@@ -269,11 +271,11 @@ QList<std::shared_ptr<ExportableItem>> ExportWidget::getSelectedItems() const {
 }
 
 
-void ExportWidget::on_itemActivated(QListWidgetItem* item) {
+void ExportWidget::onItemActivated(QListWidgetItem* item) {
   this->doExport();
 }
 
-void ExportWidget::on_exportButton_clicked() {
+void ExportWidget::onExportButtonClicked() {
   this->doExport();
 }
 
@@ -281,7 +283,7 @@ std::string ExportWidget::getExportFilename(const QList<std::shared_ptr<Exportab
   QString caption;
   switch (items.size()) {
   case 0:
-    emit this->sendMessage(tr("Export failed: %1").arg(tr("No items are selected for export")), pep::error);
+    emit this->sendMessage(tr("Export failed: %1").arg(tr("No items are selected for export")), pep::Severity::Error);
     return {};
   case 1:
     caption = this->createCaption(*items.cbegin());
@@ -294,7 +296,7 @@ std::string ExportWidget::getExportFilename(const QList<std::shared_ptr<Exportab
   auto fileName = QFileDialog::getSaveFileName(this,
     tr("Export %1").arg(caption),
     QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + QDir::separator() + caption + ".csv",
-    tr("Comma-separated values (*.csv);;All Files (%1)").arg(ALL_FILES_WILDCARD));
+    tr("Comma-separated values (*.csv);;All Files (%1)").arg(AllFilesWildcard));
   return fileName.toStdString();
 }
 
@@ -305,49 +307,47 @@ void ExportWidget::doExport() {
     return;
   }
   try {
-    auto expandDetails = ui->expandDetailsCheckBox->isChecked();
+    auto expandDetails = ui_->expandDetailsCheckBox->isChecked();
     auto file = std::make_shared<std::ofstream>();
     file->open(fileName);
 
     if (!file->is_open()) {
-      emit this->sendMessage(tr("Export failed: %1").arg(tr("Could not open file for writing")), pep::error);
+      emit this->sendMessage(tr("Export failed: %1").arg(tr("Could not open file for writing")), pep::Severity::Error);
       return;
     }
 
     this->getParticipantData(selected)
-      .observe_on(observe_on_gui())
+      .observe_on(ObserveOnGui())
       .subscribe(
         [entries = std::make_shared<QList<std::shared_ptr<ExportableItem>>>(selected), file, expandDetails](const std::map<std::string, std::string>& data) {WriteParticipantData(*entries, data, *file, expandDetails); },
         [this, file](std::exception_ptr ep) {
-          emit this->sendMessage(tr("Export failed: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::error);
+          emit this->sendMessage(tr("Export failed: %1").arg(QString::fromStdString(pep::GetExceptionMessage(ep))), pep::Severity::Error);
     file->close();
         },
         [this, file]() {
-          emit this->sendMessage(tr("Data exported"), pep::info);
+          emit this->sendMessage(tr("Data exported"), pep::Severity::Info);
         file->close();
         }
         );
   }
   catch (const std::exception& e) {
-    emit this->sendMessage(tr("Export failed: %1").arg(e.what()), pep::error);
+    emit this->sendMessage(tr("Export failed: %1").arg(e.what()), pep::Severity::Error);
   }
 }
 
 rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipantData(const QList<std::shared_ptr<ExportableItem>>& items) {
-  pep::enumerateAndRetrieveData2Opts opts;
+  pep::EnumerateAndRetrieveData2Opts opts;
   opts.groups = { "*" };
   opts.columns = { "StudyContexts" };
-  for (const auto& item : items) {
-    opts.columns.push_back(item->getSourceColumnName());
-  }
+  opts.columns.append_range(items | views::transform([](const auto& item) { return item->getSourceColumnName(); }));
 
   using ParticipantData = std::map<std::string, std::string>;
-  return mPepClient->enumerateAndRetrieveData2(opts) // Get study contexts, plus values for all requested columns
+  return pepClient_->enumerateAndRetrieveData2(opts) // Get study contexts, plus values for all requested columns
       .reduce( // Associate participant indices with values for that participant
           std::make_shared<std::unordered_map<uint32_t, ParticipantData>>(),
           [](std::shared_ptr<std::unordered_map<uint32_t, ParticipantData>> entries,
           const pep::EnumerateAndRetrieveResult& result) {
-            (*entries)[result.mLocalPseudonymsIndex][result.mColumn] = result.mData;
+            (*entries)[result.localPseudonymsIndex][result.column] = result.data;
             return entries;
           })
       // Convert observable<std::unordered_map<entry>> to observable<entry>
@@ -356,12 +356,18 @@ rxcpp::observable<std::map<std::string, std::string>> ExportWidget::getParticipa
       })
       // Convert to std::nullopt for participants that don't match the user's context
       .map([this](std::pair<const uint32_t, ParticipantData> entry) -> std::optional<ParticipantData> {
-        if (!mStudyContext.matches(entry.second["StudyContexts"])) {
+        if (!studyContext_.matches(entry.second["StudyContexts"])) {
           return std::nullopt;
         }
         entry.second.erase("StudyContexts");
+        if (entry.second.empty()) {
+          // Discard participants that have a "StudyContexts" but none of the requested items.
+          // See https://gitlab.pep.cs.ru.nl/pep/ppp-config/-/work_items/217#note_63288
+          return std::nullopt;
+        }
         return std::move(entry.second);
       })
       // Exclude (std::nullopt) entries for participants that didn't match the user's context
+      // or didn't have (data for) the requested item(s).
       .op(pep::RxFilterNullopt());
 }

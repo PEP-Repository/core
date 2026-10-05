@@ -7,9 +7,9 @@ class InterProcessMemory : public QObject {
   Q_OBJECT
 
 private:
-  QSharedMemory* mImplementor = nullptr;
-  size_t mSize = 0U;
-  bool mCreator = false;
+  QSharedMemory* implementor_ = nullptr;
+  size_t size_ = 0U;
+  bool creator_ = false;
 
 private:
   void lockedInvoke(std::function<void()> callback) const;
@@ -28,7 +28,7 @@ public:
   void write(const void* data, void* oldData = nullptr);
   void read(void* data) const;
 
-  inline bool isCreator() const noexcept { return mCreator; }
+  inline bool isCreator() const noexcept { return creator_; }
 };
 
 
@@ -38,33 +38,33 @@ class InterProcess : public QObject {
   static_assert(std::is_default_constructible<T>::value, "InterProcess<> template parameter must be default constructible");
 
 private:
-  InterProcessMemory* mImplementor;
+  InterProcessMemory* implementor_;
 
 public:
   // Creates an inter-process value or attaches to an existing one. If the value was created, it is initialized to initValue.
   // Use the "createdValue" method to determine if the value was created by this instance.
   InterProcess(const QString& id, const T& initValue, QObject* parent = nullptr)
-    : QObject(parent), mImplementor(new InterProcessMemory(id, &initValue, sizeof(const T), this)) {
+    : QObject(parent), implementor_(new InterProcessMemory(id, &initValue, sizeof(const T), this)) {
   }
 
   // Prevent shallow copies (deep copies currently not supported)
   InterProcess(const InterProcess& other) = delete;
   InterProcess& operator =(const InterProcess& other) = delete;
 
-  inline bool createdValue() const noexcept { return mImplementor->isCreator(); }
+  inline bool createdValue() const noexcept { return implementor_->isCreator(); }
 
   T get() const {
     T result {};
-    mImplementor->read(&result);
+    implementor_->read(&result);
     return result;
   }
 
   T set(const T& value) { // Returns old value
     T result {};
-    mImplementor->write(&value, &result);
+    implementor_->write(&value, &result);
     return result;
   }
 
   explicit operator T() const { return get(); }
-  InterProcess& operator =(const T& value) { mImplementor->write(&value); return *this; }
+  InterProcess& operator =(const T& value) { implementor_->write(&value); return *this; }
 };

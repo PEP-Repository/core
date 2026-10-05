@@ -11,6 +11,8 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/format.hpp>
 
+using namespace std::ranges;
+
 namespace pep {
 namespace commandline {
 
@@ -44,7 +46,7 @@ int Command::issueCommandLineHelp(const std::optional<std::string>& error) {
     fullSelf = parent.command + ' ' + fullSelf;
   }
 
-  std::reverse(parents.begin(), parents.end());
+  reverse(parents);
 
   auto parameters = this->getSupportedParameters();
   auto children = this->createChildCommands();
@@ -66,7 +68,7 @@ int Command::issueCommandLineHelp(const std::optional<std::string>& error) {
   auto arguments = parameters.getInvocationSummary();
   if (!children.empty()) {
     char pre = '[', post = ']';
-    if (std::all_of(children.cbegin(), children.cend(), [](std::shared_ptr<Command> child) {
+    if (all_of(children, [](std::shared_ptr<Command> child) {
       assert(!child->getSupportedParameters().empty()); // Should have at least the --help switch
       return child->hasRequiredArgument(); })) {
       pre = '<';
@@ -123,10 +125,10 @@ int Command::execute() {
 }
 
 const NamedValues& Command::getParameterValues() const {
-  if (!mParameterValues.has_value()) {
+  if (!parameterValues_.has_value()) {
     throw std::runtime_error("Switch values cannot be obtained before a command line has been parsed");
   }
-  return *mParameterValues;
+  return *parameterValues_;
 }
 
 bool Command::hasRequiredArgument() {
@@ -137,18 +139,18 @@ bool Command::hasRequiredArgument() {
 }
 
 std::optional<int> Command::processLexedParameters(const LexedValues& lexed) {
-  assert(!mParametersLexed);
-  if (lexed.find("help") != lexed.cend()) {
+  assert(!parametersLexed_);
+  if (lexed.contains("help")) {
     return this->issueCommandLineHelp(std::nullopt);
   }
-  mParametersLexed = true;
+  parametersLexed_ = true;
   return std::nullopt;
 }
 
 void Command::finalizeParameters() {
-  assert(!mParametersFinalized); // Prevent this method from being invoked multiple times
-  this->getSupportedParameters().finalize(*mParameterValues);
-  mParametersFinalized = true;
+  assert(!parametersFinalized_); // Prevent this method from being invoked multiple times
+  this->getSupportedParameters().finalize(*parameterValues_);
+  parametersFinalized_ = true;
 }
 
 std::optional<int> Command::applyParameterTransformations(const Parameters& parameters, std::queue<std::string>& remainingArgs, bool isLeafDispatch) {
@@ -162,12 +164,12 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
   // Step 2: Apply transformations for each parameter that has one
   for (const auto& param : parameters) {
     // Skip parameters without transformers or not present in command line
-    if (!param.hasTransformer() || !mParameterValues->has(param.getName())) {
+    if (!param.hasTransformer() || !parameterValues_->has(param.getName())) {
       continue;
     }
     
     // Apply the transformation (e.g., forwarding alias)
-    auto transformResult = param.transform(*this, *mParameterValues);
+    auto transformResult = param.transform(*this, *parameterValues_);
 
     // In leaf dispatch mode, parameters cannot forward to different commands
     assert((transformResult.childPath.empty() || !isLeafDispatch) && 
@@ -190,13 +192,13 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
 
     // Merge parameters, ensure no conflicting parameter additions (i.e., same parameter added by multiple transformations)
     for (const auto& [key, vals] : transformResult.toAdd) {
-      assert((mergedToAdd.find(key) == mergedToAdd.end())
+      assert(!mergedToAdd.has(key)
              && "Programmer error: Multiple transformed parameters specified conflicting parameter additions.");
       mergedToAdd.set(key, vals);
     }
 
     // Remove the transformed parameter from current values
-    mParameterValues->erase(param.getName());
+    parameterValues_->erase(param.getName());
     anyTransformed = true;
   }
 
@@ -209,7 +211,7 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
   Command* ancestor = (dispatchAncestor != nullptr) ? dispatchAncestor : this;
 
   // Step 7: Merge current parameter values with transformed values
-  NamedValues leafValues = *mParameterValues;
+  NamedValues leafValues = *parameterValues_;
   for (const auto& [key, vals] : mergedToAdd) {
     leafValues.set(key, vals);
   }
@@ -220,9 +222,9 @@ std::optional<int> Command::applyParameterTransformations(const Parameters& para
 
 int Command::dispatchTo(CommandPath childPath, NamedValues leafValues, std::queue<std::string> leafArgs) {
 
-  // Ensure mParameterValues is initialized for intermedaite command.
-  if (!mParameterValues.has_value()) {
-    mParameterValues.emplace();
+  // Ensure parameterValues_ is initialized for intermedaite command.
+  if (!parameterValues_.has_value()) {
+    parameterValues_.emplace();
   }
 
   // This isn't the leaf command yet, forward to child specified by childPath
@@ -249,9 +251,7 @@ int Command::routeToDescendant(CommandPath childPath, NamedValues leafValues, st
   if (childPath.segments.size() > 1U) {
     remaining.segments.assign(childPath.segments.begin() + 1, childPath.segments.end());
   }
-  auto child = std::find_if(children.cbegin(), children.cend(), [&childName](const std::shared_ptr<Command>& c) {
-    return c->getName() == childName;
-  });
+  auto child = find(children, childName, &Command::getName);
 
   assert(child != children.cend() && "Programmer error: a command is forwarded to an invalid child path.");
   
@@ -264,14 +264,14 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
   try {
     auto parameters = this->getSupportedParameters();
 
-    if (!mParameterValues.has_value()) {
-      mParameterValues.emplace();
+    if (!parameterValues_.has_value()) {
+      parameterValues_.emplace();
     }
     // Step 1: Leaf dispatch mode: merge pre-built values from transformations
     if (isLeafDispatch) {
       assert(preMergedValues.has_value() && "Leaf dispatch requires pre-merged values");
       for (const auto& [key, vals] : *preMergedValues) {
-        mParameterValues->set(key, vals);
+        parameterValues_->set(key, vals);
       }
       // Validate parameters that came from transformations
       for (const auto& param : parameters) {
@@ -283,7 +283,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
                  "Programmer error: Parameter forwarding cannot target a no-longer-supported parameter. This makes no sense.");
         }
       }
-      mParametersFinalized = false; 
+      parametersFinalized_ = false; 
     }
     
     // Step 2: Lex and parse remaining arguments
@@ -292,7 +292,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
       auto lexed = parameters.lex(arguments);
 
       // Step 3: Handle autocomplete requests
-      if (!isLeafDispatch && lexed.find("autocomplete") != lexed.end()) {
+      if (!isLeafDispatch && lexed.contains("autocomplete")) {
         return this->printAutocompleteInfo(argumentsCopy);
       }
 
@@ -300,7 +300,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
       if (auto result = this->processLexedParameters(lexed)) {
         return *result;
       }
-      assert(mParametersLexed);
+      assert(parametersLexed_);
 
       // Step 5: Validate that extra arguments can be passed to a child command. See #2041.
       if (!isLeafDispatch && children.empty() && !arguments.empty()) {
@@ -310,23 +310,23 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
       // Step 6: Parse lexed values and merge into parameter values
       auto parsed = parameters.parse(lexed);
       if (isLeafDispatch) {
-        // Leaf dispatch: merge parsed values into existing mParameterValues
+        // Leaf dispatch: merge parsed values into existing parameterValues_
         for (const auto& [key, vals] : parsed) {
-          mParameterValues->set(key, vals);
+          parameterValues_->set(key, vals);
         }
-        mParametersLexed = true;
+        parametersLexed_ = true;
       } else {
-        // Normal mode: replace mParameterValues and finalize
-        mParameterValues = std::move(parsed);
+        // Normal mode: replace parameterValues_ and finalize
+        parameterValues_ = std::move(parsed);
       }
     } else {
       // Leaf dispatch with no arguments: just mark as lexed
-      mParametersLexed = true;
+      parametersLexed_ = true;
     }
 
     // Step 7: Check for no-longer-supported parameters (fail fast before warnings)
     for (const auto& param : parameters) {
-      if (param.isNoLongerSupported() && mParameterValues->has(param.getName())) {
+      if (param.isNoLongerSupported() && parameterValues_->has(param.getName())) {
         std::cerr << "Error: The parameter '--" << param.getName() << "' is no longer supported. " << *param.getNoLongerSupportedMessage() << std::endl;
         return EXIT_FAILURE;
       }
@@ -339,7 +339,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
 
     // Step 9: Show deprecation warnings for parameters
     for (const auto& param : parameters) {
-      if (param.getDeprecationMessage().has_value() && mParameterValues->has(param.getName())) {
+      if (param.getDeprecationMessage().has_value() && parameterValues_->has(param.getName())) {
         std::cerr << "Warning: '--" << param.getName() << "' is deprecated. " << *param.getDeprecationMessage() << std::endl;
       }
     }
@@ -351,7 +351,7 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
 
     // Step 11: Finalize parameters (no more transformations allowed after this)
     this->finalizeParameters();
-    assert(mParametersFinalized);
+    assert(parametersFinalized_);
 
   }
   catch (const std::exception& error) {
@@ -359,16 +359,14 @@ int Command::process(std::queue<std::string>& arguments, bool isLeafDispatch, st
   }
 
   // Step 12: Optionally dispatch to child command
-  assert(std::all_of(children.cbegin(), children.cend(), [this](const std::shared_ptr<Command>& child) { return child->getParentCommand() == this; }));
+  assert(all_of(children, [this](const std::shared_ptr<Command>& child) { return child->getParentCommand() == this; }));
   if (!children.empty()) {
     if (arguments.empty()) {
       return this->issueCommandLineHelp("No command specified.");
     }
     std::string command = arguments.front();
     arguments.pop();
-    auto child = std::find_if(children.cbegin(), children.cend(), [&command](const std::shared_ptr<Command>& child) {
-      return child->getName() == command;
-    });
+    auto child = find(children, command, &Command::getName);
     if (child == children.cend()) {
       return this->issueCommandLineHelp("Unsupported command '" + command + "' issued to " + this->getName() + GetGlobWarning(command));
     }
@@ -415,7 +413,7 @@ int Command::printAutocompleteInfo(std::queue<std::string>& arguments) {
       // Complete parameter switches
       auto completeParams = parameters.getSwitchesToAutocomplete(lexed);
       // Put required parameters first
-      std::ranges::stable_sort(completeParams, std::greater{}, &Parameter::isRequired);
+      stable_sort(completeParams, std::greater{}, &Parameter::isRequired);
       complete.parameters(completeParams);
     }
   }
@@ -445,7 +443,7 @@ int Command::autocompleteChildCommand(std::queue<std::string>& arguments) {
   else { // We have child commands
     std::string command = arguments.front();
     arguments.pop();
-    auto child = std::ranges::find_if(children, [&command](const std::shared_ptr<Command>& child) {
+    auto child = find_if(children, [&command](const std::shared_ptr<Command>& child) {
       return child->getName() == command && !child->isUndocumented();
     });
     if (child == children.cend()) {

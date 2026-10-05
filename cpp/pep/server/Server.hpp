@@ -10,45 +10,33 @@
 
 namespace pep {
 
-/*!
-* \brief A facility that handles requests. Base class for PEP's various server types.
-*/
+/// \brief A facility that handles requests. Base class for PEP's various server types.
 class Server : public messaging::RequestHandler, public std::enable_shared_from_this<Server> {
 public:
   virtual ~Server() = default;
 
-  /*!
-  * \brief Parameters required by the server.
-  */
+  /// \brief Parameters required by the server.
   class Parameters;
 
-  /*!
-  * \brief Produces a human-readable description of the server.
-  * \return A string describing the server (type).
-  */
-  const std::string& describe() const { return mServerTraits.description(); }
+  /// \brief Produces a human-readable description of the server.
+  /// \return A string describing the server (type).
+  const std::string& describe() const { return serverTraits_.description(); }
 
-  const ServerTraits& getServerTraits() const noexcept { return mServerTraits; }
+  const ServerTraits& getServerTraits() const noexcept { return serverTraits_; }
 
-  /*!
-  * \brief Produces the path where the server stores its data (if any).
-  * \return A path to the server's (primary) storage location, or std::nullopt if the server doesn't store data.
-  */
+  /// \brief Produces the path where the server stores its data (if any).
+  /// \return A path to the server's (primary) storage location, or std::nullopt if the server doesn't store data.
   virtual std::optional<std::filesystem::path> getStoragePath() { return std::nullopt; }
 
-  /*!
-  * \brief Produces the number of uncaught (read) exceptions encountered by the server('s network exposure).
-  * \return The number of uncaught (read) exceptions.
-  */
-  unsigned int getNumberOfUncaughtReadExceptions() const noexcept { return mUncaughtReadExceptions; }
+  /// \brief Produces the number of uncaught (read) exceptions encountered by the server('s network exposure).
+  /// \return The number of uncaught (read) exceptions.
+  unsigned int getNumberOfUncaughtReadExceptions() const noexcept { return uncaughtReadExceptions_; }
 
-  /*!
-  * \brief Registers an uncaught (read) exception encountered by the server('s network exposure).
-  */
-  void registerUncaughtReadException(std::exception_ptr) { ++mUncaughtReadExceptions; }
+  /// \brief Registers an uncaught (read) exception encountered by the server('s network exposure).
+  void registerUncaughtReadException(std::exception_ptr) { ++uncaughtReadExceptions_; }
 
 protected:
-  std::shared_ptr<prometheus::Registry> mRegistry;
+  std::shared_ptr<prometheus::Registry> registry_;
 
   Server(std::shared_ptr<Parameters> parameters);
 
@@ -71,9 +59,9 @@ protected:
     throw Error("Does not support checksum chains");
   }
 
-  const std::shared_ptr<boost::asio::io_context>& getIoContext() const noexcept { return mIoContext; }
-  std::shared_ptr<X509RootCertificates> getRootCAs() const noexcept { return mRootCAs; }
-  EGCache& getEgCache() { return mEGCache; }
+  const std::shared_ptr<boost::asio::io_context>& getIoContext() const noexcept { return ioContext_; }
+  std::shared_ptr<X509RootCertificates> getRootCAs() const noexcept { return rootCAs_; }
+  EGCache& getEgCache() { return eGCache_; }
 
   static std::filesystem::path EnsureDirectoryPath(std::filesystem::path);
 
@@ -88,7 +76,7 @@ private:
 
     std::chrono::steady_clock::time_point startupTime;
 
-    prometheus::Gauge& uncaughtExceptions_count;
+    prometheus::Gauge& uncaughtExceptionsCount;
 
     prometheus::Gauge& diskUsageProportion;
     prometheus::Gauge& diskUsageTotal;
@@ -110,21 +98,19 @@ private:
     prometheus::Gauge& uptimeMetric;
   };
 
-  std::shared_ptr<Metrics> mMetrics;
-  EGCache& mEGCache; // <- for metrics
-  unsigned int mUncaughtReadExceptions = 0;
-  ServerTraits mServerTraits;
-  std::shared_ptr<boost::asio::io_context> mIoContext;
-  std::shared_ptr<X509RootCertificates> mRootCAs;
+  std::shared_ptr<Metrics> metrics_;
+  EGCache& eGCache_; // <- for metrics
+  unsigned int uncaughtReadExceptions_ = 0;
+  ServerTraits serverTraits_;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
+  std::shared_ptr<X509RootCertificates> rootCAs_;
 };
 
 
-/*!
-* \brief Parameters required by the server.
-*/
+/// \brief Parameters required by the server.
 class Server::Parameters {
 private:
-  std::shared_ptr<boost::asio::io_context> mIoContext;
+  std::shared_ptr<boost::asio::io_context> ioContext_;
   std::filesystem::path rootCACertificatesFilePath_;
   std::shared_ptr<X509RootCertificates> rootCAs_;
 
@@ -132,45 +118,33 @@ protected:
   virtual void check() const {}
 
 public:
-  /*!
-  * \brief Constructor.
-  * \param ioContext The I/O context associated with the server.
-  * \param config The configuration for the server.
-  */
+  /// \brief Constructor.
+  /// \param ioContext The I/O context associated with the server.
+  /// \param config The configuration for the server.
   Parameters(std::shared_ptr<boost::asio::io_context> ioContext, const Configuration& config);
 
-  /*!
-   * \brief Destructor.
-   */
+  /// \brief Destructor.
   virtual ~Parameters() noexcept = default;
 
   virtual ServerTraits serverTraits() const noexcept = 0;
 
-  /*!
-   * \brief Validates these parameters, raising an exception if they're not valid.
-   * \return A reference to this instance.
-   */
+  /// \brief Validates these parameters, raising an exception if they're not valid.
+  /// \return A reference to this instance.
   const Parameters& ensureValid() const {
     this->check();
     return *this;
   }
 
-  /*!
-   * \brief Produces the I/O context associated with this server.
-   * \return The I/O context associated with this server.
-   */
-  const std::shared_ptr<boost::asio::io_context>& getIoContext() const noexcept { return mIoContext; }
+  /// \brief Produces the I/O context associated with this server.
+  /// \return The I/O context associated with this server.
+  const std::shared_ptr<boost::asio::io_context>& getIoContext() const noexcept { return ioContext_; }
 
-  /*!
-   * \brief Produces the path to the file containing the root CA certificate(s) for this server's constellation.
-   * \return The path to the file containing this server's constellation's root CA certificate(s).
-   */
+  /// \brief Produces the path to the file containing the root CA certificate(s) for this server's constellation.
+  /// \return The path to the file containing this server's constellation's root CA certificate(s).
   const std::filesystem::path& getRootCACertificatesFilePath() const noexcept { return rootCACertificatesFilePath_; }
 
-  /*!
-   * \brief Produces the root CA certificate(s) for this server's constellation.
-   * \return (A reference to) this server's constellation's root CA certificate(s).
-   */
+  /// \brief Produces the root CA certificate(s) for this server's constellation.
+  /// \return (A reference to) this server's constellation's root CA certificate(s).
   std::shared_ptr<X509RootCertificates> getRootCAs() const noexcept { return rootCAs_; }
 };
 

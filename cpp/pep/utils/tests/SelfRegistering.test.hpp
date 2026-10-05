@@ -14,19 +14,19 @@ template <typename TDerived>
 class TestableSelfRegistering : public pep::SelfRegistering<TDerived, TestRegistrar> {
 protected:
   TestableSelfRegistering(const char* constructorFile) noexcept
-    : mConstructorFile(constructorFile) {
+    : constructorFile_(constructorFile) {
   }
 
 public:
-  const char* getConstructorFile() const noexcept { return mConstructorFile; }
+  const char* getConstructorFile() const noexcept { return constructorFile_; }
 
 private:
-  const char* mConstructorFile;
+  const char* constructorFile_;
 };
 
 
 class TestRegistrar {
-  template <class TDerived, class TRegistrar, bool REGISTER>
+  template <class TDerived, class TRegistrar, bool registerDerived>
   friend class pep::SelfRegistering;
 
 public:
@@ -69,13 +69,10 @@ public:
   }
 
   static bool KnowsType(const std::string& typeName) {
-    const auto& traits = RegisteredTypeTraits();
-    auto end = traits.cend();
-    auto position = std::find_if(traits.cbegin(), traits.cend(), [typeName](const RegisteredTraits& instance) {
+    return std::ranges::any_of(RegisteredTypeTraits(), [typeName](const RegisteredTraits& instance) {
       // Match as substring: caller will (likely) specify just class name "Xyz" while the "pretty name" contains decorations, e.g. "class ns::sub::Xyz"
-      return instance.prettyName.find(typeName) != std::string::npos;
+      return instance.prettyName.contains(typeName);
       });
-    return position != end;
   }
 };
 

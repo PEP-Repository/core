@@ -23,7 +23,7 @@ PtreeAccess<boost::property_tree::ptree>::ReturnType PtreeAccess<boost::property
   catch (...) {
     std::ostringstream json;
     boost::property_tree::write_json(json, parent);
-    LOG("Castor", error) << "Error \"" << GetExceptionMessage(std::current_exception())
+    PEP_LOG("Castor", Severity::Error) << "Error \"" << GetExceptionMessage(std::current_exception())
       << "\" occurred attempting to find path \"" << path << "\" in the property tree with the following JSON representation:\n"
       << json.str();
     throw;
@@ -46,7 +46,7 @@ void ReadJsonIntoPtree(boost::property_tree::ptree& destination, const std::stri
     boost::property_tree::read_json(stream, destination);
   }
   catch (...) {
-    LOG("Castor", error) << "Error \"" << GetExceptionMessage(std::current_exception())
+    PEP_LOG("Castor", Severity::Error) << "Error \"" << GetExceptionMessage(std::current_exception())
       << "\" occurred attempting to read the following data as JSON:\n"
       << source;
     throw;

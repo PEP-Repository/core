@@ -6,18 +6,16 @@
 
 namespace pep {
 
-  /**
-   * A worker thread that work can be added to, multiple times.
-   * If the thread is not running, it will be started
-   * If all work is finished, the thread will stop
-   * If the thread is running, extra work will be queued
-   */
+  /// A worker thread that work can be added to, multiple times.
+  /// If the thread is not running, it will be started
+  /// If all work is finished, the thread will stop
+  /// If the thread is running, extra work will be queued
 class SingleWorker : private boost::noncopyable {
 private:
-  std::thread mThread;
-  std::unique_ptr<boost::asio::io_context> mIoContext;
-  std::unique_ptr<WorkGuard> mWorkGuard;
-  std::mutex mMutex;
+  std::thread thread_;
+  std::unique_ptr<boost::asio::io_context> ioContext_;
+  std::unique_ptr<WorkGuard> workGuard_;
+  std::mutex mutex_;
 
   void ensureRunning();
 
@@ -33,10 +31,10 @@ public:
 
   template<typename F>
   void doWork(F func) {
-    std::lock_guard lockGuard(mMutex); //If multiple threads enter this method, we can get problems with e.g. joining or starting mThread multiple times, or mWorkGuard being set to std::nullopt, before work has been posted.
+    std::lock_guard lockGuard(mutex_); //If multiple threads enter this method, we can get problems with e.g. joining or starting thread_ multiple times, or workGuard_ being set to std::nullopt, before work has been posted.
     ensureRunning();
-    boost::asio::post(*mIoContext, std::move(func));
-    mWorkGuard.reset(); //We have posted work to the io_context. Once that is finished, the io_context is allowed to stop.
+    boost::asio::post(*ioContext_, std::move(func));
+    workGuard_.reset(); //We have posted work to the io_context. Once that is finished, the io_context is allowed to stop.
   }
 };
 

@@ -11,13 +11,13 @@ namespace detail {
 
 /// Implementor class for RxInstead<> function (below).
 template <typename T>
-struct RxInsteadOperator {
+class RxInsteadOperator {
 private:
-  T mReplacement;
+  T replacement_;
 
 public:
   explicit RxInsteadOperator(const T& replacement)
-    : mReplacement(replacement) {
+    : replacement_(replacement) {
   }
 
   template <typename TItem, typename SourceOperator>
@@ -28,8 +28,8 @@ public:
     return items
       .ignore_elements()
       .reduce(
-        mReplacement,
-        [](const T& replacement, const TItem&) {assert(false); return  replacement; } // Should never be called due to .ignore_elements() above
+        replacement_,
+        [](const T& replacement, const TItem&) {assert(false); return replacement; } // Should never be called due to .ignore_elements() above
       );
   }
 };
@@ -37,13 +37,12 @@ public:
 }
 
 
-/*! \brief Exhausts a source observable, then emits a single (specified) item.
+/// \brief Exhausts a source observable, then emits a single (specified) item.
 /// \code
 ///   myObs.op(RxInstead(justThisItem))
 /// \endcode
- * \param item The item to emit instead of the source observable's items.
- * \remark Mainly intended to help with collections that cannot (easily) be constructed by means of .reduce.
- */
+/// \param item The item to emit instead of the source observable's items.
+/// \remark Mainly intended to help with collections that cannot (easily) be constructed by means of .reduce.
 template <typename T>
 detail::RxInsteadOperator<T> RxInstead(const T& item) {
   return detail::RxInsteadOperator<T>(item);

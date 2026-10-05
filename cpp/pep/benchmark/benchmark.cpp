@@ -4,6 +4,7 @@
 
 #include <openssl/rand.h>
 
+#include <algorithm>
 #include <random>
 #include <vector>
 
@@ -17,6 +18,8 @@
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 
+using namespace std::ranges;
+
 namespace {
 void SetBytesProcessed(benchmark::State& state, size_t bytesPerIteration)
 {
@@ -28,6 +31,12 @@ void SetBytesProcessed(benchmark::State& state, size_t bytesPerIteration)
 
 // Silence errors about `auto _`
 //NOLINTBEGIN(clang-analyzer-deadcode.DeadStores)
+
+#ifdef __clang__
+// For Clang >22: Silence warning about __COUNTER__, which now apparently is a C2y extension
+# pragma clang diagnostic ignored "-Wunknown-warning-option"
+# pragma clang diagnostic ignored "-Wc2y-extensions"
+#endif
 
 static void BM_CurvePointUnpack(benchmark::State& state) {
   std::string packed(boost::algorithm::unhex(std::string(
@@ -195,7 +204,9 @@ static void BM_GenerateKeyFactor(benchmark::State& state) {
     .reshuffle{},
     .rekey = pep::KeyFactorSecret(pep::RandomArray<64>()),
   });
-  auto fakeDerCertificate = pep::RangeToCollection<std::string>(std::views::iota(0, 970));
+  auto fakeDerCertificate = views::iota(0, 970)
+    | views::transform([](int i) { return static_cast<char>(i); })
+    | to<std::string>();
   const pep::RekeyRecipient recipient(1, std::move(fakeDerCertificate));
   for (auto _ : state)
     benchmark::DoNotOptimize(rsk.generateKeyFactor(recipient));
@@ -259,8 +270,7 @@ static void BM_PageSerialize(benchmark::State& state) {
   for (auto _ : state) {
     if (i == pages.size()) {
       state.PauseTiming();
-      for (size_t j = 0; j < pages.size(); j++)
-        pages[j] = page;
+      fill(pages, page);
       i = 0;
       state.ResumeTiming();
     }
@@ -289,30 +299,30 @@ BENCHMARK(BM_PageDeserialize);
 static pep::EncryptionKeyRequest CreateRandomEncryptionKeyRequest() {
   pep::EncryptionKeyRequest ret;
   pep::Ticket2 ticket;
-  ticket.mModes = {"read", "write"};
+  ticket.modes = {"read", "write"};
   for (int i = 0; i < 200; i++)
-    ticket.mColumns.push_back("Column" + std::to_string(i));
-  ticket.mUserGroup = "some user group";
+    ticket.columns.push_back("Column" + std::to_string(i));
+  ticket.userGroup = "some user group";
   auto p1 = pep::LocalPseudonym::Random();
   auto p4 = pep::LocalPseudonym::Random();
   for (int i = 0; i < 600; i++) {
     auto q = pep::ElgamalPublicKey::Random();
     pep::LocalPseudonyms lp;
-    lp.mAccessManager = p1.encrypt(q);
-    lp.mPolymorphic = pep::PolymorphicPseudonym::FromIdentifier(q, "1234");
-    lp.mStorageFacility = p4.encrypt(q);
-    ticket.mAccessSubjects.push_back(lp);
+    lp.accessManager = p1.encrypt(q);
+    lp.polymorphic = pep::PolymorphicPseudonym::FromIdentifier(q, "1234");
+    lp.storageFacility = p4.encrypt(q);
+    ticket.accessSubjects.push_back(lp);
   }
   auto identity = pep::X509Identity::MakeSelfSigned("Benchmarker, inc.", "PepBenchmark");
-  ret.mTicket2 = std::make_shared<pep::SignedTicket2>(
+  ret.ticket2 = std::make_shared<pep::SignedTicket2>(
       ticket, identity);
   for (uint32_t i = 0; i < 1000; i++) {
     pep::KeyRequestEntry kre;
-    kre.mMetadata.setTag("some tag" + std::to_string(i));
-    kre.mPseudonymIndex = i;
+    kre.metadata.setTag("some tag" + std::to_string(i));
+    kre.pseudonymIndex = i;
     auto p = pep::CurvePoint::Random();
-    kre.mPolymorphEncryptionKey = pep::EncryptedKey(p, p);
-    ret.mEntries.push_back(std::move(kre));
+    kre.polymorphEncryptionKey = pep::EncryptedKey(p, p);
+    ret.entries.push_back(std::move(kre));
   }
   return ret;
 }
@@ -353,21 +363,21 @@ static void BM_KeyRequestCopy(benchmark::State& state) {
 }
 BENCHMARK(BM_KeyRequestCopy);
 
-const std::string SAMPLE_SHA256_DIGEST = "abcdefghijklmnopqrstuvwxyz123456"; // Digest length of 256 bits = 32 bytes
+const std::string SampleSha256Digest = "abcdefghijklmnopqrstuvwxyz123456"; // Digest length of 256 bits = 32 bytes
 
 static void BM_SignDigest(benchmark::State& state) {
   pep::AsymmetricKeyPair keypair = pep::AsymmetricKeyPair::GenerateKeyPair();
   for (auto _ : state)
-    benchmark::DoNotOptimize(keypair.getPrivateKey().signDigestSha256(SAMPLE_SHA256_DIGEST));
+    benchmark::DoNotOptimize(keypair.getPrivateKey().signDigestSha256(SampleSha256Digest));
   state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_SignDigest);
 
 static void BM_VerifyDigest(benchmark::State& state) {
   pep::AsymmetricKeyPair keypair = pep::AsymmetricKeyPair::GenerateKeyPair();
-  auto sig = keypair.getPrivateKey().signDigestSha256(SAMPLE_SHA256_DIGEST);
+  auto sig = keypair.getPrivateKey().signDigestSha256(SampleSha256Digest);
   for (auto _ : state)
-    benchmark::DoNotOptimize(keypair.getPublicKey().verifyDigestSha256(SAMPLE_SHA256_DIGEST, sig));
+    benchmark::DoNotOptimize(keypair.getPublicKey().verifyDigestSha256(SampleSha256Digest, sig));
   state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_VerifyDigest);
@@ -396,15 +406,15 @@ static void BM_RNG_RandomBytes(benchmark::State& state) {
 }
 BENCHMARK(BM_RNG_RandomBytes);
 
-template <std::uniform_random_bit_generator URBG>
+template <std::uniform_random_bit_generator TUrbg>
 static void BM_RNG_URBG(benchmark::State& state) {
-  URBG gen;
+  TUrbg gen;
   std::array<
-    typename URBG::result_type,
-    NumRandomBytes / sizeof(typename URBG::result_type)
+    typename TUrbg::result_type,
+    NumRandomBytes / sizeof(typename TUrbg::result_type)
   > buffer{};
   for (auto _ : state) {
-    std::ranges::generate(buffer, std::ref(gen));
+    generate(buffer, std::ref(gen));
     benchmark::DoNotOptimize(buffer);
   }
   SetBytesProcessed(state, std::span(buffer).size_bytes());

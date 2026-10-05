@@ -4,6 +4,11 @@
 #include <boost/algorithm/string/join.hpp>
 #include <gtest/gtest.h>
 
+#include <ranges>
+#include <utility>
+
+using namespace std::ranges;
+
 namespace {
 
 template <typename T> using ServerProperties = std::unordered_map<pep::ServerTraits, T>;
@@ -30,7 +35,7 @@ struct ServerPropertyValue<std::string> : public BasicServerPropertyValue<std::s
 
 template <typename T>
 struct ServerPropertyValue<T, std::enable_if_t<std::is_enum_v<T>>> : public BasicServerPropertyValue<T> {
-  static std::string ToString(const T& value) { return std::to_string(pep::ToUnderlying(value)); }
+  static std::string ToString(const T& value) { return std::to_string(std::to_underlying(value)); }
 };
 
 template <typename T>
@@ -69,10 +74,11 @@ void VerifyServersHaveUniqueProperties(const std::unordered_set<pep::ServerTrait
 
   // Aggregate the properties for all servers
   using Plain = std::remove_const_t<std::remove_reference_t<T>>;
-  ServerProperties<Plain> properties;
-  std::transform(servers.begin(), servers.end(), std::inserter(properties, properties.begin()), [getProperty](const pep::ServerTraits& server) {
-    return std::make_pair(server, getProperty(server));
-    });
+  auto properties = servers
+    | views::transform([getProperty](const pep::ServerTraits& server) {
+      return std::make_pair(server, getProperty(server));
+      })
+    | to<ServerProperties<Plain>>();
 
   // Compare each server('s property) against each other server('s property)
   using Value = ServerPropertyValue<Plain>;

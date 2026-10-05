@@ -16,13 +16,12 @@ void AddCheckBox(boost::property_tree::ptree& destination, const std::string& na
 
   std::set<std::string> selectedValues;
   boost::split(selectedValues, value, std::bind_front(std::equal_to{}, ';'));
-  auto unfound = selectedValues.cend();
 
   using ptree_path = boost::property_tree::ptree::path_type;
   ptree_path root(name);
 
   for (const auto& option : optionGroup->getOptions()) {
-    auto selected = (selectedValues.find(option.first) != unfound);
+    auto selected = selectedValues.contains(option.first);
     destination.put(root / ptree_path(option.first), selected);
   }
 }
@@ -30,20 +29,20 @@ void AddCheckBox(boost::property_tree::ptree& destination, const std::string& na
 }
 
 FieldValue::FieldValue(std::shared_ptr<Field> field, std::shared_ptr<DataPointBase> dataPoint)
-  : mField(field), mDataPoint(dataPoint) {
+  : field_(field), dataPoint_(dataPoint) {
 }
 
 void FieldValue::addTo(boost::property_tree::ptree& destination) const {
-  auto type = mField->getType();
-  auto name = mField->getVariableName();
+  auto type = field_->getType();
+  auto name = field_->getVariableName();
 
   std::string value;
-  if (mDataPoint != nullptr) {
-    value = mDataPoint->getValue();
+  if (dataPoint_ != nullptr) {
+    value = dataPoint_->getValue();
   }
 
-  if (type == Field::TYPE_CHECKBOX) {
-    AddCheckBox(destination, name, value, mField->getOptionGroup());
+  if (type == Field::TypeCheckbox) {
+    AddCheckBox(destination, name, value, field_->getOptionGroup());
   }
   else {
     destination.put(name, value);

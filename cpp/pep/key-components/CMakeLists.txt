@@ -11,7 +11,7 @@ target_link_libraries(${PROJECT_NAME}KeyComponentApilib
 verify_headers_standalone(${PROJECT_NAME}KeyComponentApilib)
 
 
-if (WITH_SERVERS)
+if(WITH_SERVERS)
   add_library(${PROJECT_NAME}KeyComponentServerlib
     KeyComponentServer.cpp KeyComponentServer.hpp
   )

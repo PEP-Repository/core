@@ -83,17 +83,17 @@ font-weight: bold;</string>
        </property>
        <property name="styleSheet">
         <string notr="true">QWidget {
-	border-radius: 0.5em;
-	color: #CA0B5E;
-	padding: 0.5em;
+  border-radius: 0.5em;
+  color: #CA0B5E;
+  padding: 0.5em;
 }
 QWidget:hover {
-	background-color: rgba(202,11,94,0.8);
-	color: white;
+  background-color: rgba(202,11,94,0.8);
+  color: white;
 }
 QWidget:disabled {
-	color: grey;
-	border-color: grey;
+  color: grey;
+  border-color: grey;
 }
 </string>
        </property>
@@ -186,23 +186,23 @@ QWidget:disabled {
            </property>
            <property name="styleSheet">
             <string notr="true">QWidget {
-	border: 0.05em solid #CA0B5E;
-	border-radius: 0.25em;
-	color: #CA0B5E;
-	padding: 0.5em;
-	font-size: 13pt;
-	outline: none;
+  border: 0.05em solid #CA0B5E;
+  border-radius: 0.25em;
+  color: #CA0B5E;
+  padding: 0.5em;
+  font-size: 13pt;
+  outline: none;
 }
 QWidget:focus {
-	border: 0.1em solid #CA0B5E;
+  border: 0.1em solid #CA0B5E;
 }
 QWidget:hover {
-	background-color: rgba(202,11,94,0.8);
-	color: white;
+  background-color: rgba(202,11,94,0.8);
+  color: white;
 }
 QWidget:disabled {
-	color: grey;
-	border-color: grey;
+  color: grey;
+  border-color: grey;
 }
 </string>
            </property>
@@ -258,29 +258,29 @@ QTabWidget::tab-bar {
 }
 
 QTabBar {
-	font-size: 14pt;
+  font-size: 14pt;
 }
 
 QTabBar::tab {
     color: #CA0B5E;
-	border: 0.05em solid transparent;
+  border: 0.05em solid transparent;
     border-top-left-radius: 0.25em;
     border-top-right-radius: 0.25em;
-	min-width: 4em;
-	margin-right: 0.4em;
-	border-bottom: none;
-	padding: 0.5em;
+  min-width: 4em;
+  margin-right: 0.4em;
+  border-bottom: none;
+  padding: 0.5em;
 }
 QTabBar::tab:selected {
     background-color: #CA0B5E;
-	color: white;
+  color: white;
     border: 0.05em solid #CA0B5E;
-	border-bottom: none;
+  border-bottom: none;
 }
 
 QTabBar::tab:hover {
     border: 0.05em solid #CA0B5E;
-	border-bottom: none;
+  border-bottom: none;
 }</string>
       </property>
       <layout class="QHBoxLayout" name="content" stretch="1,0">

@@ -65,15 +65,15 @@ void Server::establishConnection() {
 }
 
 std::shared_ptr<Protocol::ClientParameters> Server::createClientParameters() const {
-  assert(mComponent != nullptr);
-  return mComponent->createClientParameters();
+  assert(component_ != nullptr);
+  return component_->createClientParameters();
 }
 
 void Server::shutdown() {
   if (this->status() != Status::Uninitialized && this->status() < Status::Finalizing) {
     this->setStatus(Status::Finalizing);
   }
-  mComponent.reset(); // Base (Node) class will invoke its close method
+  component_.reset(); // Base (Node) class will invoke its close method
   Node::shutdown();
 }
 

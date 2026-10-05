@@ -3,12 +3,12 @@
 namespace pep {
 
 SignedBase::SignedBase(std::string data, const X509Identity& identity)
-  : mData(std::move(data)), mSignature(Signature::Make(mData, identity)) {
+  : data_(std::move(data)), signature_(Signature::Make(data_, identity)) {
 }
 
 Signatory SignedBase::validate(const X509RootCertificates& rootCAs) const {
-  return mSignature.validate(
-    mData,
+  return signature_.validate(
+    data_,
     rootCAs,
     std::nullopt,
     std::chrono::hours{1}
@@ -16,11 +16,11 @@ Signatory SignedBase::validate(const X509RootCertificates& rootCAs) const {
 }
 
 MessageSigner::MessageSigner(std::shared_ptr<const X509Identity> signingIdentity) noexcept
-  : mSigningIdentity(std::move(signingIdentity)) {
+  : signingIdentity_(std::move(signingIdentity)) {
 }
 
 std::shared_ptr<const X509Identity> MessageSigner::getSigningIdentity(bool require) const {
-  auto result = mSigningIdentity;
+  auto result = signingIdentity_;
   if (require && result == nullptr) {
     throw std::runtime_error("No signing identity available");
   }
@@ -28,7 +28,7 @@ std::shared_ptr<const X509Identity> MessageSigner::getSigningIdentity(bool requi
 }
 
 void MessageSigner::setSigningIdentity(std::shared_ptr<const X509Identity> signingIdentity) noexcept {
-  mSigningIdentity = std::move(signingIdentity);
+  signingIdentity_ = std::move(signingIdentity);
 }
 
 }

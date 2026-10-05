@@ -9,7 +9,7 @@
 namespace pep {
 
 SigningServer::SigningServer(std::shared_ptr<Parameters> parameters)
-  : Server(parameters), MessageSigner(parameters->getSigningIdentity()), mIdentityFiles(parameters->getIdentityFilesConfig()) {
+  : Server(parameters), MessageSigner(parameters->getSigningIdentity()), identityFiles_(parameters->getIdentityFilesConfig()) {
   RegisterRequestHandlers(*this,
     &SigningServer::handlePingRequest,
     &SigningServer::handleCsrRequest,
@@ -18,7 +18,7 @@ SigningServer::SigningServer(std::shared_ptr<Parameters> parameters)
 }
 
 messaging::MessageBatches SigningServer::handlePingRequest(std::shared_ptr<PingRequest> request) {
-  return messaging::BatchSingleMessage(Serialization::ToString(this->sign(PingResponse(request->mId))));
+  return messaging::BatchSingleMessage(Serialization::ToString(this->sign(PingResponse(request->id()))));
 }
 
 messaging::MessageBatches SigningServer::handleCsrRequest(std::shared_ptr<SignedCsrRequest> signedRequest) {
@@ -26,9 +26,9 @@ messaging::MessageBatches SigningServer::handleCsrRequest(std::shared_ptr<Signed
   UserGroup::EnsureAccess({UserGroup::SystemAdministrator}, signatory.organizationalUnit(), "Requesting CSRs");
 
   AsymmetricKeyPair newKeyPair = AsymmetricKeyPair::GenerateKeyPair();
-  mNewPrivateKey = newKeyPair.getPrivateKey();
+  newPrivateKey_ = newKeyPair.getPrivateKey();
   CsrResponse response(
-  X509CertificateSigningRequest::CreateWithSubjectFromExistingCertificate(newKeyPair, mIdentityFiles->identity()->getCertificateChain().leaf()));
+  X509CertificateSigningRequest::CreateWithSubjectFromExistingCertificate(newKeyPair, identityFiles_->identity()->getCertificateChain().leaf()));
   return messaging::BatchSingleMessage(Serialization::ToString(sign(response)));
 }
 
@@ -38,36 +38,36 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementRequest(std
 
   const auto& request = certified.message;
 
-  if (!mNewPrivateKey) {
+  if (!newPrivateKey_) {
     throw Error("Cannot replace certificate for server, since the server does not have a new private key.");
   }
 
-  if (!request.getCertificateChain().certifiesPrivateKey(*mNewPrivateKey)) {
+  if (!request.certificateChain.certifiesPrivateKey(*newPrivateKey_)) {
     throw Error("Cannot replace certificate for server, since the certificate does not match the new private key of the server.");
   }
 
-  if (request.getCertificateChain().leaf().hasTLSServerEKU()) {
+  if (request.certificateChain.leaf().hasTLSServerEKU()) {
     throw Error("Cannot replace certificate for server, since it is a TLS certificate. It must be a PEP certificate.");
   }
 
-  if (!request.allowChangingSubject() && !request.getCertificateChain().leaf().hasSameSubject(mIdentityFiles->identity()->getCertificateChain().leaf())) {
+  if (!request.allowChangingSubject && !request.certificateChain.leaf().hasSameSubject(identityFiles_->identity()->getCertificateChain().leaf())) {
     throw Error("New certificate has a different subject from the current certificate. Use --allow-changing-subject to force replacing the certificate.");
   }
 
   auto traits = getServerTraits();
-  if (!traits.signingIdentityMatches(request.getCertificateChain())) {
+  if (!traits.signingIdentityMatches(request.certificateChain)) {
     throw Error("Signing identity of the new certificate does not match that of the server");
   }
 
-  if (!IsServerSigningCertificate(mIdentityFiles->identity()->getCertificateChain().leaf())) {
+  if (!IsServerSigningCertificate(identityFiles_->identity()->getCertificateChain().leaf())) {
     throw std::runtime_error("New certificate is not a server signing certificate");
   }
 
-  if (!request.getCertificateChain().verify(*getRootCAs())) {
+  if (!request.certificateChain.verify(*getRootCAs())) {
     throw Error("Cannot replace certificate for server, since the new certificate chain cannot be verified.");
   }
 
-  *mIdentityFiles->identity() = X509Identity(*mNewPrivateKey, request.getCertificateChain());
+  *identityFiles_->identity() = X509Identity(*newPrivateKey_, request.certificateChain);
 
   return messaging::BatchSingleMessage(Serialization::ToString(this->sign(CertificateReplacementResponse()))); //Sign with the new certificate, so requestor can check that it is correctly deployed
 }
@@ -78,27 +78,27 @@ messaging::MessageBatches SigningServer::handleCertificateReplacementCommitReque
 
   const auto& request = certified.message;
 
-  if (request.getCertificateChain() != mIdentityFiles->identity()->getCertificateChain()) {
+  if (request.certificateChain != identityFiles_->identity()->getCertificateChain()) {
     throw Error("Cannot commit replaced certificate for server, since the certificate chain in the request does not match the current certificate chain of the server");
   }
 
-  if (!mNewPrivateKey) {
+  if (!newPrivateKey_) {
     throw Error("Cannot commit replaced certificate for server, since the server does not have a new private key.");
   }
 
-  if (mIdentityFiles->identity()->getPrivateKey() != *mNewPrivateKey) {
+  if (identityFiles_->identity()->getPrivateKey() != *newPrivateKey_) {
     throw Error("Cannot commit the certificate and private key that are currently in use, because the current private key is different from the new private key.");
   }
 
-  WriteFile(mIdentityFiles->getPrivateKeyFilePath(), mIdentityFiles->identity()->getPrivateKey().toPem());
-  WriteFile(mIdentityFiles->getCertificateChainFilePath(), X509CertificatesToPem(mIdentityFiles->identity()->getCertificateChain().certificates()));
-  mNewPrivateKey = std::nullopt;
+  WriteFile(identityFiles_->getPrivateKeyFilePath(), identityFiles_->identity()->getPrivateKey().toPem());
+  WriteFile(identityFiles_->getCertificateChainFilePath(), X509CertificatesToPem(identityFiles_->identity()->getCertificateChain().certificates()));
+  newPrivateKey_ = std::nullopt;
 
   return messaging::BatchSingleMessage(Serialization::ToString(CertificateReplacementCommitResponse()));
 }
 
 SigningServer::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> io_context, const Configuration& config)
-  : Server::Parameters(io_context, config), mIdentityFiles(MakeSharedCopy(X509IdentityFiles::FromConfig(config.get_child("SigningIdentity"), *getRootCAs()))) {
+  : Server::Parameters(io_context, config), identityFiles_(MakeSharedCopy(X509IdentityFiles::FromConfig(config.get_child("SigningIdentity"), *getRootCAs()))) {
 }
 
 }
