@@ -33,6 +33,16 @@ constexpr auto SystemLocalTimeZone = "SYSTEM_TIME_ZONE";
 
 const bpt::ptime UnixEpochPtime(BoostDateFromStd(sys_days{}));
 
+/// Interprets a wall-clock time in the system's local time zone and returns the corresponding UTC time
+bpt::ptime UtcFromSystemLocalTime(bpt::ptime local) {
+  // c_local_adjustor (which uses the C library's localtime) only converts from UTC to local time, so we determine the
+  // UTC offset at an estimate of the UTC time, and then once more at the improved estimate in case the first one ended
+  // up on the other side of a DST transition.
+  using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
+  const auto offsetAt = [](bpt::ptime utc) { return Adjustor::utc_to_local(utc) - utc; };
+  return local - offsetAt(local - offsetAt(local));
+}
+
 /// Converts strings to pep::Timestamp values
 class TimestampParser {
 public:
@@ -82,8 +92,7 @@ protected:
     }
     if (parsed.zone() == nullptr) {
       if (timeZone_ == SystemLocalTimeZone) {
-        using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
-        return TimestampFromBoostPtime(Adjustor::utc_to_local(bpt::ptime(parsed.utc_time())));
+        return TimestampFromBoostPtime(UtcFromSystemLocalTime(parsed.utc_time()));
       }
       auto offset = blt::posix_time_zone(timeZone_).base_utc_offset();
       parsed+=offset;
@@ -146,8 +155,7 @@ protected:
     }
 
     if (timeZone_ == SystemLocalTimeZone) {
-      using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
-      return TimestampFromBoostPtime(Adjustor::utc_to_local(bpt::ptime(parsedDate)));
+      return TimestampFromBoostPtime(UtcFromSystemLocalTime(bpt::ptime(parsedDate)));
     }
 
     const auto localTime = blt::local_date_time{
