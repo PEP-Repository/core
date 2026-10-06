@@ -47,7 +47,7 @@ sequenceDiagram
   TS->>-AM: Translated AM, SF, user pseudonyms, log ID
 
   Note over AM,TS: Phase 3: Identification
-  Note over AM: Store access subjects
+  Note over AM: Store client provided PPs
   Note over AM: Decrypt AM pseudonyms
   Note over AM: Check subject access
   opt Write request with new PPs
@@ -72,3 +72,9 @@ Some details that were not captured in the diagram:
 - The RSK proofs cover the Access Manager, Storage Facility, Transcryptor,
   and, if requested, the user.
 - The per-subject access check in phase 3 is skipped if the user group is `DataAdministrator`
+- In the step `Store client provided PPs` we make sure that all pseudonyms,
+  that are explicitly mentioned in the request ticket,
+  are stored in a database on the AM,
+  if and only if the ticket request includes write mode.
+  Only write mode tickets can insert previously unseen PPs into the database.
+  This excludes PPs that were requested only via a subject group.
