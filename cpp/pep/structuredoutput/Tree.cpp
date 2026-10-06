@@ -26,6 +26,7 @@ json ObjectFromHeaderAndRecord(ConstRecordRef header, ConstRecordRef record) {
 
   auto object = json::object();
   for (auto [name, field] : views::zip(header, record)) { object.emplace(name, field); }
+  assert(object.size() == record.size()); // no fields dropped, because Table guarantees unique column names
   return object;
 }
 

@@ -4,11 +4,17 @@
 #include <pep/networking/Tls.hpp>
 #include <pep/async/CreateObservable.hpp>
 #include <pep/async/OnAsio.hpp>
+#include <pep/async/RxTimeout.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/lexical_cast.hpp>
+
+#include <rxcpp/operators/rx-concat_map.hpp>
+
+#include <chrono>
 
 using namespace std::ranges;
 
@@ -45,6 +51,44 @@ std::string FormatHttpUrl(bool tls, const EndPoint& endPoint) {
   }
 
   return result;
+}
+
+using RetryDelay = HttpClient::RetryParameters::Delay;
+
+/// \remark Clients shouldn't automatically retry non-idempotent requests unless they know the original request wasn't applied,
+///         see https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2 . Of our methods, only POST isn't idempotent.
+bool IsRetryableError(HttpMethod method, unsigned statusCode) {
+  switch (statusCode) {
+  case 408: // Request Timeout: server "did not receive a complete request message" (RFC 9110 section 15.5.9)
+  case 429: // Too Many Requests: rate limiting (RFC 6585 section 4), i.e. the server refused to handle the request
+  case 503: // Service Unavailable: server "is currently unable to handle the request" (RFC 9110 section 15.6.4)
+    return true; // The server (presumably) didn't apply the request, so resending is harmless
+  case 500: // Internal Server Error
+  case 502: // Bad Gateway
+  case 504: // Gateway Timeout
+    return method != HttpMethod::Post; // The server (or upstream) may have (partially) applied the request, so only resend idempotent requests
+  default:
+    return false;
+  }
+}
+
+/// \brief Parses the value of a "Retry-After" header, which is either a number of seconds or an HTTP-date.
+/// \return The delay, or std::nullopt if the value couldn't be parsed.
+/// \remark See https://www.rfc-editor.org/rfc/rfc9110#field.retry-after
+std::optional<RetryDelay> ParseRetryAfter(std::string_view value) {
+  if (std::chrono::seconds::rep seconds{};
+    boost::conversion::try_lexical_convert(value, seconds)) {
+    return std::chrono::seconds{seconds};
+  }
+
+  // Parsing as a number didn't work, try to parse as timestamp:
+  try {
+    // Round up, since the server wants us to wait at least until the specified time
+    return std::chrono::ceil<RetryDelay>(TimestampFromHttpDate(value) - TimeNow());
+  }
+  catch (const std::exception&) {
+    return std::nullopt;
+  }
 }
 
 boost::urls::url UrlPlusRelative(const boost::urls::url& url, const std::string& relative) {
@@ -179,7 +223,12 @@ rxcpp::observable<HTTPResponse> HttpClient::sendRequest(HTTPRequest request) {
   }
 
   request.completeHeaders();
-  auto sendable = MakeSharedCopy(std::move(request));
+  return this->sendAttempt(MakeSharedCopy(std::move(request)), 0U);
+}
+
+rxcpp::observable<HTTPResponse> HttpClient::sendAttempt(std::shared_ptr<const HTTPRequest> request, unsigned retries) {
+  // Give each attempt its own instance so that "unpend" can't confuse it with an earlier attempt
+  auto sendable = MakeSharedCopy(*request);
   onRequest.notify(sendable);
 
   return CreateObservable<HTTPResponse>([self = SharedFrom(*this), sendable](rxcpp::subscriber<HTTPResponse> subscriber) {
@@ -189,7 +238,53 @@ rxcpp::observable<HTTPResponse> HttpClient::sendRequest(HTTPRequest request) {
     subscriber.add([self, sendable]() { self->unpend(sendable); });
 
     self->ensureSend();
-    }).subscribe_on(ObserveOnAsio(parameters_.ioContext()));
+    }).subscribe_on(ObserveOnAsio(parameters_.ioContext()))
+    .concat_map([self = SharedFrom(*this), request, retries](const HTTPResponse& response) -> rxcpp::observable<HTTPResponse> {
+      auto delay = self->getRetryDelay(*request, response, retries);
+      if (!delay.has_value()) {
+        return rxcpp::observable<>::just(response);
+      }
+
+      PEP_LOG(LogTag, Severity::Warning) << "Received HTTP status " << response.getStatusCode() << " for " << request->uri()
+        << "; resending in " << *delay << " (retry " << (retries + 1U) << " of " << self->parameters_.retryParameters().maxRetries << ')';
+      auto& ioContext = self->parameters_.ioContext();
+      return RxAsioTimer(*delay, ioContext, ObserveOnAsio(ioContext))
+        .concat_map([self, request, retries, response](const FakeVoid&) -> rxcpp::observable<HTTPResponse> {
+          if (!self->isRunning()) { // We were shut down while waiting
+            return rxcpp::observable<>::just(response);
+          }
+          return self->sendAttempt(request, retries + 1U);
+          });
+    });
+}
+
+std::optional<std::chrono::milliseconds> HttpClient::getRetryDelay(const HTTPRequest& request, const HTTPResponse& response, unsigned retries) const {
+  const auto& parameters = parameters_.retryParameters();
+  if (retries >= parameters.maxRetries || !IsRetryableError(request.getMethod(), response.getStatusCode())) {
+    return std::nullopt;
+  }
+
+  std::optional<RetryDelay> requested;
+  if (parameters.delayCallback) {
+    requested = parameters.delayCallback(response);
+  }
+  if (!requested.has_value() && response.hasHeader("Retry-After")) {
+    auto header = response.header("Retry-After");
+    requested = ParseRetryAfter(header);
+    if (!requested.has_value()) {
+      PEP_LOG(LogTag, Severity::Warning) << "Ignoring unparseable Retry-After header value: " << header;
+    }
+  }
+
+  if (!requested.has_value()) {
+    return std::chrono::ceil<std::chrono::milliseconds>(parameters.backoff.timeoutAfter(retries));
+  }
+  if (*requested > parameters.maxDelay) {
+    PEP_LOG(LogTag, Severity::Warning) << "Not resending HTTP request for " << request.uri() << " (status " << response.getStatusCode()
+      << "): requested delay of " << *requested << " exceeds maximum of " << parameters.maxDelay;
+    return std::nullopt;
+  }
+  return std::max(*requested, RetryDelay::zero());
 }
 
 void HttpClient::stop() {
