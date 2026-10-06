@@ -18,6 +18,10 @@
 
 - Fixed number formatting in YAML output. Integers outside the 32-bit range are no longer truncated, and floating point numbers are written in their shortest exact form.
 
+- core#3008: Restructured the code that handles ticket request, into a process with 4 meaningful phases.
+  This makes it easier to maintain and extend. The documentation was updated to reflect the new structure of the process.
+  - Changed: `docs/public/crypto/ticket_request.md` has been updated
+
 - core#2958: parameter `expiration` for `pepcli token request` is now marked as required.
 
 - #2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
