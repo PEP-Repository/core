@@ -8,9 +8,6 @@
 
 - core#3008: Restructured the code that handles ticket request, into a process with 4 meaningful phases.
   This makes it easier to maintain and extend. The documentation was updated to reflect the new structure of the process.
-  - Changed: The log message for unchecked access for access administrators has been updated:
-    - new format: `Granting <UserGroup> unchecked access to <Count> subject(s)`
-    - old format: `Granting <UserGroup> unchecked access to <Count> participant(s)`
   - Changed: `docs/public/crypto/ticket_request.md` has been updated
 
 - core#2958: parameter `expiration` for `pepcli token request` is now marked as required.
