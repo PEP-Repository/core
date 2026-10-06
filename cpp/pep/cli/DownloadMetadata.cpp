@@ -86,7 +86,7 @@ const Timestamp& RecordDescriptor::getPayloadBlindingTimestamp() const noexcept 
   return blindingTimestamp_;
 }
 
-CheckedFileName RecordDescriptor::getFileName(bool includingExtension) const noexcept {
+CheckedFileName RecordDescriptor::getFileName(bool includingExtension) const {
   auto name = this->getColumn();
 
   if (includingExtension) {

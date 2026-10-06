@@ -42,8 +42,7 @@ void SerializeJsonAsYaml(std::ostream& stream, const YamlConfig& config, nlohman
   };
 
   if (node.is_null()) { stream << "null\n"; }
-  else if (node.is_number_integer()) { stream << std::to_string(node.get<int>()) + "\n"; }
-  else if (node.is_number_float()) { stream << std::to_string(node.get<double>()) + "\n"; }
+  else if (node.is_number()) { stream << node.dump() << "\n"; }
   else if (node.is_boolean()) { stream << (node.get<bool>() ? "true\n" : "false\n"); }
   else if (node.empty()) {
     stream << (node.is_array() ? "[]" : "{}");

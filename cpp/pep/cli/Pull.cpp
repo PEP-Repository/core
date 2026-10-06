@@ -20,6 +20,7 @@
 #include <pep/structuredoutput/Csv.hpp>
 #include <pep/structuredoutput/FormatFlags.hpp>
 #include <pep/structuredoutput/Json.hpp>
+#include <pep/structuredoutput/Yaml.hpp>
 #include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/utils/File.hpp>
@@ -399,8 +400,8 @@ void ExecuteExports(const so::FormatFlags formats, const ExportContext ctx) {
   if (HasFlags(formats, so::FormatFlags::Json)) {
     exportAs("json", [&table](std::ofstream& stream) { so::json::append(stream, table); });
   }
-  if (HasFlags(formats, so::FormatFlags::Json)) {
-    exportAs("yaml", [&table](std::ofstream& stream) { so::json::append(stream, table); });
+  if (HasFlags(formats, so::FormatFlags::Yaml)) {
+    exportAs("yaml", [&table](std::ofstream& stream) { so::yaml::append(stream, table); });
   }
 }
 

@@ -127,6 +127,18 @@ TEST(FileStore, Basic) {
   }
 }
 
+TEST(FileStore, PagePathsWithEmptyCell) {
+  Context context;
+  auto store = context.store;
+
+  // Create a cell without committing an entry to it, e.g. like when a store is cancelled
+  auto change = store->modifyEntry(pep::EntryName(pep::LocalPseudonym::Random(), "test"), true);
+  ASSERT_NE(nullptr, change);
+  change.reset();
+
+  EXPECT_TRUE(store->pagePaths().empty());
+}
+
 TEST(FileStore, PathTraversal) {
   Context context;
   auto store = context.store;

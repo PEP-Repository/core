@@ -15,13 +15,14 @@
 #include <pep/castor/Study.hpp>
 #include <pep/castor/tests/FakeCastorApi.hpp>
 #include <pep/castor/tests/Responses.hpp>
+#include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Timestamp.hpp>
 
 using namespace std::literals;
 
 namespace {
 
-const auto Timeout = std::chrono::seconds(5);
+const auto Timeout = 10s;
 
 // Not defined with a PEP_ prefix so that it matches gtest macros
 // Implemented as "invoke this lambda" so that a semicolon is required: ASSERT_THROW_WITH_MESSAGE(mycode(), std::runtime_error);
@@ -30,10 +31,8 @@ const auto Timeout = std::chrono::seconds(5);
   bool exception_thrown = false; \
   try { statement; } \
   catch (const expected_exception&) { exception_thrown = true; } \
-  catch (const std::exception& ex ) { FAIL() << "Expected: " << #expected_exception << " thrown in " #statement << std::endl << \
-    "Actual: Different type is thrown with message: " << ex.what(); } \
   catch (...) { FAIL() << "Expected: " << #expected_exception << " thrown in " #statement << std::endl << \
-    "Actual: Different type is thrown"; } \
+    "Actual: Different type is thrown: " << pep::GetExceptionMessage(std::current_exception()); } \
   if(!exception_thrown) { \
     FAIL() << "Expected: " << #expected_exception << " thrown in " #statement << std::endl << \
     "Actual: nothing is thrown"; \

@@ -52,7 +52,6 @@ private:
   int64_t getNextUserGroupId() const;
   bool hasUserGroup(std::string_view name) const;
   bool userInGroup(int64_t internalUserId, int64_t userGroupId) const;
-  std::optional<std::chrono::seconds> getMaxAuthValidity(const std::string& group, Timestamp at = TimeNow()) const;
 
   std::optional<int64_t> findInternalSubjectId(StructureMetadataType subjectType, std::string_view subject, Timestamp at = TimeNow()) const;
   /// Try to find the internalId for the userGroup with the given name. Throws if not found.
@@ -234,6 +233,12 @@ public:
   bool userInGroup(std::string_view uid, std::string_view group) const;
   bool userInGroup(int64_t internalUserId, std::string_view group) const;
   bool userGroupIsEmpty(int64_t userGroupId) const;
+  /// Throws if the user cannot be added to the group, i.e. if the group doesn't exist or the user is already in it.
+  /// \return The userGroupId
+  int64_t ensureUserCanBeAddedToGroup(int64_t internalUserId, std::string_view group) const;
+  /// Throws if the group doesn't exist or the user is not in it.
+  /// \return The userGroupId
+  int64_t ensureUserInGroup(int64_t internalUserId, std::string_view group) const;
 
   /* Manage user groups */
   int64_t createUserGroup(UserGroup userGroup);
