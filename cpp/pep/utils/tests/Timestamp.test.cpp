@@ -28,14 +28,15 @@ TEST(Timestamp, FromXmlDateTime) {
   EXPECT_EQ(xml("2023-01-31T00:32:32+00:00"), 1675125152000_unixMs);
   EXPECT_EQ(xml("2023-01-31T00:32:32-00:00"), 1675125152000_unixMs);
   EXPECT_EQ(xml("2023-01-31T00:32:32Z"), 1675125152000_unixMs);
-  EXPECT_EQ(xml("2024-02-29T13:00:00Z"), 1709211600000_unixMs) << "leap day should be accepted";
-  EXPECT_EQ(xml("1998-12-31T23:59:60Z"), 915148800000_unixMs) << "leap second should be accepted";
+  EXPECT_EQ(xml("2024-02-29T13:00:00Z"), 1709211600000_unixMs) << "leap day should work";
+  EXPECT_EQ(xml("1998-12-31T23:59:60Z"), 915148800000_unixMs) << "leap second should work";
 
   // Dates with (non-zero) UTC offset
   EXPECT_EQ(xml("2025-08-21T15:03:54+02:00"), 1755781434000_unixMs);
 
   // Date+times with fractional seconds
-  EXPECT_EQ(xml("2025-08-21T15:03:54.711354649+02:00"), 1755781434711_unixMs);
+  EXPECT_EQ(xml("2023-01-31T00:32:32.42Z"), 1675125152420_unixMs) << "short fractional seconds should work";
+  EXPECT_EQ(xml("2025-08-21T15:03:54.711354649+02:00"), 1755781434711_unixMs) << "long fractional seconds with timezone should work";
 
   // Bad dates: not following format
   EXPECT_THROW(xml(""), std::runtime_error);
