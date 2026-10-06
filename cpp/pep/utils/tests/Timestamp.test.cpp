@@ -28,24 +28,32 @@ TEST(Timestamp, FromXmlDateTime) {
   EXPECT_EQ(xml("2023-01-31T00:32:32+00:00"), 1675125152000_unixMs);
   EXPECT_EQ(xml("2023-01-31T00:32:32-00:00"), 1675125152000_unixMs);
   EXPECT_EQ(xml("2023-01-31T00:32:32Z"), 1675125152000_unixMs);
-  EXPECT_EQ(xml("2024-02-29T13:00:00Z"), 1709211600000_unixMs); // leap day;
+  EXPECT_EQ(xml("2024-02-29T13:00:00Z"), 1709211600000_unixMs) << "leap day should work";
+  EXPECT_EQ(xml("1998-12-31T23:59:60Z"), 915148800000_unixMs) << "leap second should work";
 
   // Dates with (non-zero) UTC offset
   EXPECT_EQ(xml("2025-08-21T15:03:54+02:00"), 1755781434000_unixMs);
 
   // Date+times with fractional seconds
-  EXPECT_EQ(xml("2025-08-21T15:03:54.711354649+02:00"), 1755781434711_unixMs);
+  EXPECT_EQ(xml("2023-01-31T00:32:32.42Z"), 1675125152420_unixMs) << "short fractional seconds should work";
+  EXPECT_EQ(xml("2025-08-21T15:03:54.711354649+02:00"), 1755781434711_unixMs) << "long fractional seconds with timezone should work";
 
   // Bad dates: not following format
   EXPECT_THROW(xml(""), std::runtime_error);
-  //EXPECT_THROW(xml("2023-01-31 00:32:32"), std::runtime_error);
-  EXPECT_THROW(xml("31-01-2023T00:32:32Z"), std::runtime_error);
+  EXPECT_THROW(xml("2023-01-31 00:32:32"), std::runtime_error);
+  EXPECT_THROW(xml("2026-10-155234345"), std::runtime_error);
+  EXPECT_THROW(xml("31-01-2023T00:32:32Z"), std::runtime_error) << "dd-mm-yyyy should be rejected";
+  EXPECT_THROW(xml("2026-10-15100:32:32Z"), std::runtime_error) << "wrong date-time separator should be rejected";
+  EXPECT_THROW(xml("2026-10-15T00132:32Z"), std::runtime_error) << "wrong time separator should be rejected";
 
   // Non-existing dates
-  EXPECT_THROW(xml("2027-11-00T00:00:00Z"), std::runtime_error);
-  EXPECT_THROW(xml("2027-11-32T00:00:00Z"), std::runtime_error);
-  EXPECT_THROW(xml("2027-00-15T00:00:00Z"), std::runtime_error);
-  EXPECT_THROW(xml("2027-13-15T00:00:00Z"), std::runtime_error);
+  EXPECT_THROW(xml("2027-11-00T00:00:00Z"), std::runtime_error) << "zero day should be rejected";
+  EXPECT_THROW(xml("2027-11-32T00:00:00Z"), std::runtime_error) << "out-of-range day should be rejected";
+  EXPECT_THROW(xml("2027-00-15T00:00:00Z"), std::runtime_error) << "zero month should be rejected";
+  EXPECT_THROW(xml("2027-13-15T00:00:00Z"), std::runtime_error) << "out-of-range month should be rejected";
+  EXPECT_THROW(xml("2023-01-31T25:00:00Z"), std::runtime_error) << "out-of-range hours should be rejected";
+  EXPECT_THROW(xml("2023-01-31T00:60:00Z"), std::runtime_error) << "out-of-range minutes should be rejected";
+  EXPECT_THROW(xml("2023-01-31T00:00:61Z"), std::runtime_error) << "out-of-range seconds should be rejected";
   EXPECT_THROW(xml("2027-02-29T00:00:00Z"), std::runtime_error); // feb 29, but not leap year
 }
 
