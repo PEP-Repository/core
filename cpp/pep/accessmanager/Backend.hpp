@@ -35,7 +35,7 @@ public:
 
   /// \brief Check whether or not the userGroup at the timestamp is granted the access modes for the participantGroups.
   /// \throws Error when not all access modes are granted.
-  void checkParticipantGroupAccess(std::span<const std::string> participantGroups, const std::string& userGroup, const std::vector<std::string>& modes, const Timestamp& timestamp);
+  void checkParticipantGroupAccess(std::span<const std::string> participantGroups, const std::string& userGroup, std::span<const std::string> modes, const Timestamp& timestamp);
 
   /// \brief Fill the pre_PPs vector with polymorph pseudonyms found in the participantGroup. For each participantGroup, add an entry to the participantGroupMap containing all indexes
   ///        of the pps that are in the participantGroup.

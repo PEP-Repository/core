@@ -406,7 +406,7 @@ void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
 
 void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::string> participantGroups,
                                                        const std::string& userGroup,
-                                                       const std::vector<std::string>& modes,
+                                                       std::span<const std::string> modes,
                                                        const Timestamp& timestamp) {
   if (userGroup == UserGroup::DataAdministrator && !participantGroups.empty()) {
     PEP_LOG(LogTag, Severity::Info)
