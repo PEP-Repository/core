@@ -23,6 +23,10 @@ public:
     Timeout minTimeout() const noexcept { return minTimeout_; }
     Timeout maxTimeout() const noexcept { return maxTimeout_; }
     BackoffFactor backoffFactor() const noexcept { return backoffFactor_; }
+
+    /// \brief Produces the timeout to use after a specified number of consecutive failures.
+    /// \param failures The number of preceding consecutive failures (so 0 produces the minTimeout).
+    Timeout timeoutAfter(unsigned failures) const noexcept;
   };
 
   using RetryHandler = std::function<void(const boost::system::error_code&)>;

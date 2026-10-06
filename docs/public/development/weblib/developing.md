@@ -489,14 +489,18 @@ Emscripten [compiler settings](https://emscripten.org/docs/tools_reference/setti
 - Direct sockets not supported in browser ([yet?](https://github.com/WICG/direct-sockets/blob/main/docs/explainer.md))
 - WebSockets: connect with HTTP, then switch protocols
 - Proxied by websockify
-- PEP speaks TLS (via OpenSSL) over plaintext WebSocket (`ws://`)
+- PEP speaks TLS (via OpenSSL) inside the WebSocket, end-to-end
+- Local development: plaintext WebSocket (`ws://`)
+- Deployed: secure WebSocket (`wss://`, `-DPEP_WEBLIB_USE_WSS=ON`)
+  - Browsers block `ws://` from `https://` pages (mixed content)
+  - websockify terminates `wss://` with the public certificate of Apache (mod_md), PEP's own tls CA isn't [trusted](https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2768) by the browser (see core#2768)
+- Debug socket traffic with `-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-sSOCKET_DEBUG` (very verbose, so not on by default)
 
 <div data-marpit-fragment markdown>
 
 Future work:
 
 - Support WebSockets directly in PEP
-- Use secure WebSockets (requires [trusted CA](https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2768))
 </div>
 
 ---

@@ -157,7 +157,7 @@ void ApplyConfiguration(Table& table, const Config& config, const std::filesyste
       InlineColumn(table, col, readWithCache);
     }
     else {
-      table.header()[col] += config.fileReferencePostfix;
+      table.renameColumn(col, table.header()[col] + config.fileReferencePostfix);
       ApplyStyleToColumn(table, col, config.pathStyle);
     }
   }

@@ -1,12 +1,24 @@
 #include <cassert>
 #include <iterator>
 #include <pep/structuredoutput/Table.hpp>
+#include <pep/utils/MapUtils.hpp>
 #include <ranges>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
 namespace pep::structuredOutput {
+namespace {
+
+/// \throws std::runtime_error if \p header contains the same column name more than once
+void EnsureColumnNamesAreUnique(const std::vector<std::string>& header) {
+  if (const auto duplicate = TryFindDuplicateValue(header)) {
+    throw std::runtime_error{"Error setting Table header: duplicate column name \"" + *duplicate + "\"."};
+  }
+}
+
+} // namespace
 
 Table::RecordRef Table::emplace_back(std::vector<std::string> record) {
   if (record.size() != recordSize_) {
@@ -39,6 +51,18 @@ Table::Table(std::vector<std::string> header, std::vector<std::string> data, std
   if (data_.size() % recordSize_ != 0) {
     throw std::runtime_error{"Error creating Table: number of fields is not a multiple of the record size."};
   }
+
+  EnsureColumnNamesAreUnique(header_);
+}
+
+void Table::renameColumn(std::size_t index, std::string name) {
+  if (index >= header_.size()) { throw std::out_of_range{"Error renaming Table column: no column at that index."}; }
+
+  auto renamed = header_;
+  renamed[index] = std::move(name);
+  EnsureColumnNamesAreUnique(renamed);
+
+  header_ = std::move(renamed);
 }
 
 Table::RecordRef Table::asMutable(ConstRecordRef ref) {

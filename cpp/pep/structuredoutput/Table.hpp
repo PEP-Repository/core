@@ -27,6 +27,7 @@ public:
 
   /// Creates an empty table from just a header
   /// \throws std::runtime_error if \p header is empty
+  /// \throws std::runtime_error if \p header contains the same column name more than once
   static Table EmptyWithHeader(std::vector<std::string> header) {
     const auto rowSize = header.size(); // because we want to pass the size as it was before moving
     return Table(std::move(header), {}, rowSize);
@@ -34,6 +35,7 @@ public:
 
   /// Creates a table by cutting up a flat vector of strings into records that match the size of the header
   /// \throws std::runtime_error if \p header is empty
+  /// \throws std::runtime_error if \p header contains the same column name more than once
   /// \throws std::runtime_error if the size of \p data is not a multiple of the size of \p header
   static Table FromSeparateHeaderAndData(std::vector<std::string> header, std::vector<std::string> data) {
     const auto rowSize = header.size(); // because we want to pass the size as it was before moving
@@ -43,8 +45,12 @@ public:
   /// The name of every column in the table in order
   ConstRecordRef header() const noexcept { return {ConstRecordRef{header_.begin(), header_.end()}}; }
 
-  /// The name of every column in the table in order
-  RecordRef header() noexcept { return asMutable(std::as_const(*this).header()); }
+  /// Renames the column at \p index
+  /// \details Column names aren't handed out for modification directly, because several output formats key their
+  /// records by column name and can't represent a table in which a name occurs more than once.
+  /// \throws std::out_of_range if \p index is not the index of a column in this table
+  /// \throws std::runtime_error if \p name is already the name of another column
+  void renameColumn(std::size_t index, std::string name);
 
   /// All records in the table.
   /// \details The header is not considered to be a record and is thus not included.

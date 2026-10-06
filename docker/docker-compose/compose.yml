@@ -301,6 +301,16 @@ volumes:
   # This is where mod_md stores the Let's Encrypt certificates and related files. Makes sure we don't run into rate limits when the container is restarted a lot.
   acme_certificates:
 
+configs:
+  websockify_proxies:
+    content: |
+      ${WEB_PORT_NUMBER_PREFIX:-155}01 accessmanager:${PORT_NUMBER_PREFIX}01
+      ${WEB_PORT_NUMBER_PREFIX:-155}11 keyserver:${PORT_NUMBER_PREFIX}11
+      ${WEB_PORT_NUMBER_PREFIX:-155}12 authserver:${PORT_NUMBER_PREFIX}12
+      ${WEB_PORT_NUMBER_PREFIX:-155}16 transcryptor:${PORT_NUMBER_PREFIX}16
+      ${WEB_PORT_NUMBER_PREFIX:-155}18 registrationserver:${PORT_NUMBER_PREFIX}18
+      ${WEB_PORT_NUMBER_PREFIX:-155}19 storagefacility:${PORT_NUMBER_PREFIX}19
+
 # We should only set depends_on in the compose.override.yml, because in a more distributed environment we don't want it at the compose level.
 services:
   # Core PEP Services
@@ -458,6 +468,32 @@ services:
     logging:
       <<: *logging-pipeline-authserver-apache
     profiles: ["authserver"]
+
+  websockify:
+    image: "${DOCKER_IMAGE_BASE}/websockify:${DOCKER_IMAGE_TAG}"
+    container_name: "websockify"
+    restart: always
+    # The networks of all proxied services: storagefacility is only on pepnetwork, authserver only on authservernetwork
+    networks:
+      - default
+      - pepnetwork
+      - authservernetwork
+    ports:
+      - "${WEB_PORT_NUMBER_PREFIX:-155}01:${WEB_PORT_NUMBER_PREFIX:-155}01" # accessmanager
+      - "${WEB_PORT_NUMBER_PREFIX:-155}11:${WEB_PORT_NUMBER_PREFIX:-155}11" # keyserver
+      - "${WEB_PORT_NUMBER_PREFIX:-155}12:${WEB_PORT_NUMBER_PREFIX:-155}12" # authserver
+      - "${WEB_PORT_NUMBER_PREFIX:-155}16:${WEB_PORT_NUMBER_PREFIX:-155}16" # transcryptor
+      - "${WEB_PORT_NUMBER_PREFIX:-155}18:${WEB_PORT_NUMBER_PREFIX:-155}18" # registrationserver
+      - "${WEB_PORT_NUMBER_PREFIX:-155}19:${WEB_PORT_NUMBER_PREFIX:-155}19" # storagefacility
+    configs:
+      - source: websockify_proxies
+        target: /config/proxies.conf
+    # Secure websockets needs public CA certs, mount apache's mod_md certs. The environment should still pass
+    # --cert and --key as the command, to point to the right files in /certs.
+    volumes:
+      - acme_certificates:/certs:ro
+      - /etc/localtime:/etc/localtime:ro
+    profiles: ["websockify"]
 
   # Supporting Services
   watchdog:

@@ -4,8 +4,13 @@
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <limits>
+#include <sstream>
+
 namespace {
 namespace yaml = pep::structuredOutput::yaml;
+using pep::structuredOutput::Table;
 using pep::structuredOutput::Tree;
 using json = nlohmann::ordered_json;
 
@@ -263,6 +268,38 @@ TEST(structuredOutputYaml, EmptyArrayComments) {
       "  - # item count: 2\n"
       "    - 3\n"
       "    - 4\n");
+}
+
+TEST(structuredOutputYaml, FromPopulatedTableWithHeader) {
+  const auto table = Table::FromSeparateHeaderAndData({"fruit", "color"}, {"apple", "red", "pear", "green"});
+
+  std::ostringstream stream;
+  yaml::append(stream, table) << "---\n"; // chaining needs the same stream back
+
+  EXPECT_EQ(
+      std::move(stream).str(),
+      "metadata:\n"
+      "  header:\n"
+      "    - \"fruit\"\n"
+      "    - \"color\"\n"
+      "data:\n"
+      "  - fruit: \"apple\"\n"
+      "    color: \"red\"\n"
+      "  - fruit: \"pear\"\n"
+      "    color: \"green\"\n"
+      "---\n");
+}
+
+TEST(structuredOutputYaml, IntegersBeyondIntRange) {
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(5'000'000'000)), "5000000000\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(-5'000'000'000)), "-5000000000\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(std::numeric_limits<std::uint64_t>::max())), "18446744073709551615\n");
+}
+
+TEST(structuredOutputYaml, FloatsUseShortestRepresentation) {
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(1.5)), "1.5\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(2.0)), "2.0\n") << "should remain recognizable as a float";
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(1e-9)), "1e-09\n") << "small values should not be rounded to zero";
 }
 
 } // namespace
