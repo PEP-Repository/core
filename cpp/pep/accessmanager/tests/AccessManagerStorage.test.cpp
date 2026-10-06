@@ -554,6 +554,29 @@ TEST_F(AccessManagerStorageTest, userInGroup_can_add_and_remove_user_from_group)
   EXPECT_TRUE(storage->userInGroup("testuser", "TestGroup"));
 }
 
+TEST_F(AccessManagerStorageTest, ensureUserCanBeAddedToGroup_and_ensureUserInGroup) {
+  int64_t userId = storage->createUser("testuser");
+  int64_t groupId = storage->createUserGroup(UserGroup("TestGroup", {}));
+
+  PEP_EXPECT_THROWS_MESSAGE(storage->ensureUserCanBeAddedToGroup(userId, "NoGroup"), pep::Error, HasSubstr("No such group"));
+  EXPECT_ANY_THROW(storage->ensureUserInGroup(userId, "NoGroup"));
+
+  EXPECT_EQ(storage->ensureUserCanBeAddedToGroup(userId, "TestGroup"), groupId);
+  PEP_EXPECT_THROWS_MESSAGE(storage->ensureUserInGroup(userId, "TestGroup"), pep::Error, HasSubstr("not part of group"));
+  PEP_EXPECT_THROWS_MESSAGE(storage->setExpiration(userId, "TestGroup", {}), pep::Error, HasSubstr("not part of group"));
+  PEP_EXPECT_THROWS_MESSAGE(storage->removeUserFromGroup(userId, "TestGroup"), pep::Error, HasSubstr("not part of group"));
+
+  storage->addUserToGroup(userId, "TestGroup", {});
+  EXPECT_EQ(storage->ensureUserInGroup(userId, "TestGroup"), groupId);
+  PEP_EXPECT_THROWS_MESSAGE(storage->ensureUserCanBeAddedToGroup(userId, "TestGroup"), pep::Error, HasSubstr("already in group"));
+  PEP_EXPECT_THROWS_MESSAGE(storage->addUserToGroup(userId, "TestGroup", {}), pep::Error, HasSubstr("already in group"));
+
+  // Expired membership counts as not being in the group
+  storage->setExpiration(userId, "TestGroup", TimeNow() - 1h);
+  EXPECT_EQ(storage->ensureUserCanBeAddedToGroup(userId, "TestGroup"), groupId);
+  EXPECT_ANY_THROW(storage->ensureUserInGroup(userId, "TestGroup"));
+}
+
 TEST_F(AccessManagerStorageTest, userGroupIsEmpty) {
   const std::string group = "MyGroup";
   storage->createUserGroup(UserGroup(group, {}));
@@ -1199,6 +1222,25 @@ TEST_F(AccessManagerStorageTest, setGetMetadataUserGroup) {
     MetadataMap expected{{subject, {{key, value}}}};
     ASSERT_EQ(metaMap, expected) << "metadata should be added";
   }
+}
+
+TEST_F(AccessManagerStorageTest, getMetadataKeysHistoricRenamedUserGroup) {
+  constexpr StructureMetadataType subjectType = StructureMetadataType::UserGroup;
+  const StructureMetadataKey key{"meta_group", "meta_key"};
+
+  const int64_t id = storage->createUserGroup(UserGroup("MyOriginalName", {}));
+  storage->setStructureMetadata(subjectType, "MyOriginalName", key, "meta value");
+  const Timestamp preRename = TimeNow();
+  WaitForNewTimestamp();
+  storage->modifyUserGroup("MyOriginalName", UserGroup("MyNewName", {}));
+
+  EXPECT_EQ(storage->getUserGroupId("MyNewName"), id);
+  EXPECT_EQ(storage->getUserGroupId("MyOriginalName", preRename), id) << "Should find the group by its name at that time";
+  EXPECT_ANY_THROW((void) storage->getUserGroupId("MyOriginalName")) << "Old name should no longer be valid";
+  EXPECT_ANY_THROW((void) storage->getUserGroupId("MyNewName", preRename)) << "New name should not yet be valid";
+
+  EXPECT_EQ(storage->getStructureMetadataKeys(preRename, subjectType, "MyOriginalName"), std::vector{key});
+  EXPECT_EQ(storage->getStructureMetadataKeys(TimeNow(), subjectType, "MyNewName"), std::vector{key});
 }
 
 TEST_F(AccessManagerStorageTest, getMetadataHistoric) {

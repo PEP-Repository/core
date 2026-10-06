@@ -46,7 +46,7 @@ public:
   const Timestamp& getBlindingTimestamp() const noexcept { return blindingTimestamp_; }
   const Timestamp& getPayloadBlindingTimestamp() const noexcept;
 
-  CheckedFileName getFileName(bool includingExtension = true) const noexcept;
+  CheckedFileName getFileName(bool includingExtension = true) const;
   const std::map<std::string, MetadataXEntry>& getExtra() const noexcept { return extra_; }
 
   bool operator ==(const RecordDescriptor& other) const;
