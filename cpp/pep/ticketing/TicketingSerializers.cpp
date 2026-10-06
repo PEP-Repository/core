@@ -128,6 +128,10 @@ void Serializer<TicketRequest2>::moveIntoProtocolBuffer(proto::TicketRequest2& d
     *dest.mutable_access_subjects(),
     value.accessSubjects
     | views::transform(&PolymorphicPseudonym::getValidElgamalEncryption));
+  Serialization::AssignToRepeatedProtocolBuffer(
+    *dest.mutable_reference_subjects(),
+    value.referenceSubjects
+    | views::transform(&PolymorphicPseudonym::getValidElgamalEncryption));
 }
 
 SignedTicketRequest2 Serializer<SignedTicketRequest2>::fromProtocolBuffer(proto::SignedTicketRequest2&& source) const {
