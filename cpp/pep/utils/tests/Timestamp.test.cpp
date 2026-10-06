@@ -39,7 +39,7 @@ TEST(Timestamp, FromXmlDateTime) {
 
   // Bad dates: not following format
   EXPECT_THROW(xml(""), std::runtime_error);
-  //EXPECT_THROW(xml("2023-01-31 00:32:32"), std::runtime_error);
+  EXPECT_THROW(xml("2023-01-31 00:32:32"), std::runtime_error);
   EXPECT_THROW(xml("2026-10-155234345"), std::runtime_error);
   EXPECT_THROW(xml("31-01-2023T00:32:32Z"), std::runtime_error) << "dd-mm-yyyy should be rejected";
   EXPECT_THROW(xml("2026-10-15100:32:32Z"), std::runtime_error) << "wrong date-time separator should be rejected";
