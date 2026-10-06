@@ -4,7 +4,19 @@
 
 - repo#42: description
 
-## Changes in upcoming release (1.8)
+## Changes in upcoming release (1.9)
+
+...
+
+---------------
+*Past changes, do not edit (except by person doing release):*
+
+
+## Release 1.8
+
+- Fixed `pepcli pull --export yaml` to now actually export the data to a yaml file.
+
+- Fixed number formatting in YAML output. Integers outside the 32-bit range are no longer truncated, and floating point numbers are written in their shortest exact form.
 
 - core#2958: parameter `expiration` for `pepcli token request` is now marked as required.
 
@@ -103,14 +115,19 @@
 
 - core#2973: Added `-o "&:shared_libs=all"` option (not supported for MSVC) to build PEP libraries as shared libraries while developing, see `README.md`.
 
+- core#3004: HTTP requests (e.g. to S3 backends and Castor) are now retried on transient errors (HTTP 408, 429, 500, 502, 503 and 504), honoring `Retry-After` headers.
+
+- !2608: Python connector `MailSender`: the SMTP server's TLS certificate is now verified, and connections on port 25 are no longer unencrypted by default. New `email` settings: `smtp_security` (`"tls"`, `"starttls"` or `"none"`; defaults to `"tls"` for port 465 and `"starttls"` otherwise) and `smtp_ca_file`. Configurations that relied on an unencrypted connection on port 25 must now specify `smtp_security: "none"`, which cannot be combined with `smtp_auth_required`.
+
+- !2609: Fixed conversion of timestamps from local time.
+
 **MANUAL CHANGES REQUIRED**:
 
 - core#2961: The `StorageFacility.json` config needs to be changed to the new format (see changes above). Extract `EndPoint`, `Credentials`, `CaCertificateFile`, `UseHttps`, and `Connections` (or the subset that is used) into an object under a new `Hosts` key and give it an ID. Then change all buckets into objects with `Name` and `HostId` properties, the latter of which references the host ID.
 
 - core#298: `PEP_GROUP_REPOSITORY_TOKEN` and `DOCS_GROUP_WRITE_REPOSITORY_TOKEN` CI variables can be removed after all projects are updated. Also update <https://docs.pages.pep.cs.ru.nl/private/ops/main/procedures_maintenance/update-gitlab-pep-group-access-tokens/> to remove the instructions for these tokens.
 
----------------
-*Past changes, do not edit (except by person doing release):*
+- !2608: Configurations that relied on an unencrypted connection on port 25 must now specify `smtp_security: "none"`, which cannot be combined with `smtp_auth_required`.
 
 ## Release 1.7
 
