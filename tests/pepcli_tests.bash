@@ -1286,12 +1286,10 @@ if should_run_test purging; then
 
   test_setup "$PURGE_CONFIG"
 
-  # Get (empty) list of purge cycles
+  # Get (possibly non-empty) list of previous purge cycles
   pepcli --oauth-token-group "Research Assessor" purge list && fail "Purge cycles should not be listable by Research Assessor"
   purges="$(pepcli --oauth-token-group "Data Administrator" purge list)"
-  if [ "$(echo -n "$purges" | wc -l)" -ne 0 ]; then
-    fail "Expected no purge cycle(s) but got:\n$purges"
-  fi
+  initial_purge_count="$(echo -n "$purges" | wc -l)"
   
   # Create some history
   pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c PurgeTest -d One
@@ -1324,8 +1322,10 @@ if should_run_test purging; then
   cycle="$(pepcli --oauth-token-group "Data Administrator" purge back-catalog -r)"
   
   purges="$(pepcli --oauth-token-group "Repository Manager" purge list)"
-  if [ "$(echo "$purges" | wc -l)" -ne 1 ]; then
-    fail "Expected a single purge cycle but got:\n$purges"
+  current_purge_count="$(echo "$purges" | wc -l)"
+  added_purge_count="$(($current_purge_count - $initial_purge_count))"
+  if [ "$added_purge_count" -ne 1 ]; then
+    fail "Expected to have added a single purge cycle but got $added_purge_count. Output was:\n$purges"
   fi
   
   # (Try to) cancel a purge cycle
@@ -1334,15 +1334,18 @@ if should_run_test purging; then
   pepcli --oauth-token-group "Data Administrator" purge cancel "$cycle"
 
   purges="$(pepcli --oauth-token-group "Repository Manager" purge list)"
-  if [ "$(echo -n "$purges" | wc -l)" -ne 0 ]; then
-    fail "Expected no purge cycles after cancellation but got:\n$purges"
+  current_purge_count="$(echo "$purges" | wc -l)"
+  if [ $current_purge_count -ne $initial_purge_count ]; then
+    fail "Expected no added purge cycles after cancellation but got $current_purge_count instead of expected $initial_purge_count. Output was:\n$purges"
   fi
 
   # Define/request a purge cycle that we'll actually apply
   cycle="$(pepcli --oauth-token-group "Data Administrator" purge back-catalog -r)"
   purges="$(pepcli --oauth-token-group "Repository Manager" purge list)"
-  if [ "$(echo "$purges" | wc -l)" -ne 1 ]; then
-    fail "Expected a single purge cycle but got:\n$purges"
+  current_purge_count="$(echo "$purges" | wc -l)"
+  added_purge_count="$(($current_purge_count - $initial_purge_count))"
+  if [ "$added_purge_count" -ne 1 ]; then
+    fail "Expected to have added a single purge cycle but got $added_purge_count. Output was:\n$purges"
   fi
   
   # (Try to) confirm/apply the purge cycle
