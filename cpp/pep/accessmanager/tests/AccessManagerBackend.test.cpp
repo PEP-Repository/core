@@ -237,7 +237,7 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_happy) {
   // Existing column
   request.columns.push_back(constants.w_col);
 
-  backend->checkTicketRequest(request);
+  EXPECT_NO_THROW(backend->checkTicketRequest(request));
 }
 
 TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_both_pp_and_pgs) {
@@ -289,18 +289,13 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_non_existing_pg_cg_
 }
 
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_happy) {
-
-  std::vector<std::string> modes{"access", "enumerate"};
-  Timestamp timestamp = TimeNow();
-  backend->checkParticipantGroupAccess(std::vector{constants.pg1}, constants.userGroup1, modes, timestamp);
-  // No thrown exceptions means correct behaviour.
+  EXPECT_NO_THROW(backend->checkParticipantGroupAccess({constants.pg1}, constants.userGroup1, {"access", "enumerate"}, TimeNow()));
 }
 
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_no_access) {
-  std::vector<std::string> modes{"access", "enumerate"};
-  Timestamp timestamp = TimeNow();
+  const auto modes = std::vector<std::string>{"access", "enumerate"};
   try {
-    backend->checkParticipantGroupAccess(std::vector{constants.pg2}, constants.userGroup1, modes, timestamp);
+    backend->checkParticipantGroupAccess(std::vector{constants.pg2}, constants.userGroup1, modes, TimeNow());
     FAIL() << "This should not have run without exceptions.";
   }
   catch (const Error& e) {
@@ -334,8 +329,7 @@ TEST_F(AccessManagerBackendTest, checkTicketForEncryptionKeyRequest_happy) {
   request->entries.push_back({entry});
 
 
-  backend->checkTicketForEncryptionKeyRequest(request, ticket);
-  // No thrown exceptions means correct behaviour.
+  EXPECT_NO_THROW(backend->checkTicketForEncryptionKeyRequest(request, ticket));
 }
 
 TEST_F(AccessManagerBackendTest, handleColumnAccessRequest_happy) {
@@ -353,7 +347,6 @@ TEST_F(AccessManagerBackendTest, handleColumnAccessRequest_happy) {
 
   EXPECT_EQ(actual.columns, expected.columns);
   EXPECT_EQ(actual.columnGroups, expected.columnGroups);
-
 }
 
 TEST_F(AccessManagerBackendTest, handleColumnAccessRequest_happy_include_implicit) {
@@ -385,13 +378,12 @@ TEST_F(AccessManagerBackendTest, assertColumnAccess_no_access) {
   EXPECT_EQ(result.columns.size(), 0);
 }
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy) {
-  backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
+  EXPECT_NO_THROW(backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, TimeNow()));
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy_star_participant) {
-
   // Research Assessor has no access to the participantgroup localPseudonym1 is in, but does have access to "*". This should pass.
-  backend->checkParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
+  EXPECT_NO_THROW(backend->checkParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, TimeNow()));
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_no_access) {
