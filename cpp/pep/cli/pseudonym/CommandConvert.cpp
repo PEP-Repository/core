@@ -89,7 +89,7 @@ int CommandPseudonym::CommandConvert::execute() {
       }
 
       pep::RequestTicket2Opts tOpts;
-      tOpts.pps = {pp};
+      tOpts.accessSubjects = {pp};
       tOpts.modes = {"read"};
       tOpts.includeAccessGroupPseudonyms = true;
 

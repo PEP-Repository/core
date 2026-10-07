@@ -430,19 +430,21 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(
   if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())
       && IsSubset(opts.participantGroups, opts.ticket->getParticipantGroups())
       && IsSubset(opts.columnGroups, opts.ticket->getColumnGroups())
-      && IsSubset(opts.pps, opts.ticket->getAccessSubjects())
+      && IsSubset(opts.accessSubjects, opts.ticket->getAccessSubjects())
+      && IsSubset(opts.referenceSubjects, opts.ticket->getReferenceSubjects())
       && IsSubset(opts.columns, opts.ticket->getColumns())) {
     return rxcpp::observable<>::just(*opts.ticket);
   }
   if (opts.forceTicket) {
     return rxcpp::observable<>::error<IndexedTicket2>(std::runtime_error("Query out of scope of provided Ticket"));
   }
-  assert(ContainsUniqueValues(opts.pps));
+  assert(ContainsUniqueValues(opts.accessSubjects));
+  assert(ContainsUniqueValues(opts.referenceSubjects));
   return getAccessManagerProxy(true)->requestIndexedTicket(ClientSideTicketRequest2{
       .modes = opts.modes,
       .participantGroups = opts.participantGroups,
-      .accessSubjects = opts.pps,
-      .referenceSubjects = {},
+      .accessSubjects = opts.accessSubjects,
+      .referenceSubjects = opts.referenceSubjects,
       .columnGroups = opts.columnGroups,
       .columns = opts.columns,
       .includeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});
