@@ -6,6 +6,8 @@
 
 ## Changes in upcoming release (1.9)
 
+- core#2962: `pepcli pseudonym convert` no longer requires access to the subject associated with the pseudonym.
+
 - core#3008: Restructured the code that handles ticket request, into a process with 4 meaningful phases.
   This makes it easier to maintain and extend. The documentation was updated to reflect the new structure of the process.
   - Changed: `docs/public/crypto/ticket_request.md` has been updated
