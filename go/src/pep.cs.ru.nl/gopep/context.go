@@ -399,21 +399,22 @@ func (ctx *Context) EnumerateAndReadFiles(opts EnumerateAndOpenFilesOptions) (
 	return ret, fs, nil
 }
 
-// Reads file histories on the storage facility for the given polymorphic
-// pseudonym and query.
-func (ctx *Context) HistoryAndReadFiles(opts EnumerateAndOpenFilesOptions) (
-	[][]byte, []FileInfo, error) {
-	rs, fs, err := ctx.HistoryAndOpenFiles(opts)
-	if err != nil {
-		return nil, nil, err
+func (ctx *Context) ReadIfUnpurged(info *FileInfo) ([]byte, error) {
+	if info.PurgedAt == nil {
+		return nil, nil
 	}
 	
-	ret, err := ReadOpenFiles(rs)
+	fr, err := ctx.OpenFile(info)
 	if err != nil {
-		return nil, nil, err
+		return nil, fmt.Errorf("OpenFile: %v", err)
 	}
 	
-	return ret, fs, nil
+	buf, err := ioutil.ReadAll(fr)
+	if err != nil {
+		return nil, fmt.Errorf("ioutil.ReadAll: %v", err)
+	}
+	
+	return buf, nil
 }
 
 // Reads all contents from the given file readers

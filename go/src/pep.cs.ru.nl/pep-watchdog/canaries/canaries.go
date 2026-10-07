@@ -29,8 +29,6 @@ func Get() (
 	missingCanaries []CanaryFileRecord,
 	err error) {
 
-	expectedValues := make(map[string]int)
-
 	// Retrieve list of canary files from local database
 	err = shared.Db.Find(&records, nil)
 	if err != nil {
@@ -44,38 +42,48 @@ func Get() (
 		return nil, nil, nil, fmt.Errorf("DerivePolymorphicPseudonym: %v", err)
 	}
 
-	bufs, fileInfos, err := shared.Pep.HistoryAndReadFiles(
-		pep.EnumerateAndOpenFilesOptions{
+	fileInfos, err := shared.Pep.FileVersions(
+		pep.EnumerateFilesOptions{
 			AccessSubjects: []*pep.Triple{pp},
 			Columns: []string{
 				shared.Conf.CanaryFile.Tag},
 		})
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("HistoryAndReadFiles: %v", err)
+		return nil, nil, nil, fmt.Errorf("FileVersions: %v", err)
 	}
-
-	// Check if files are missing
-	for index, buf := range bufs {
-		expectedValues[string(buf)] = index
-	}
-	for _, r := range records {
-		if _, ok := expectedValues[string(r.Value)]; !ok {
+	
+	// Check if files are missing or corrupted
+	for index, r := range records {
+		if index > len(fileInfos) {
 			missingCanaries = append(missingCanaries, r)
 		} else {
-			expectedValues[string(r.Value)] = -1
+			fileInfo := fileInfos[index]
+			buf, err := shared.Pep.ReadIfUnpurged(&fileInfo)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("ReadIfUnpurged: %v", err)
+			}
+			
+			if buf != nil { // Can only check contents if the entry wasn't purged
+				if string(buf) != string(r.Value) {
+					missingCanaries = append(missingCanaries, r) // TODO: report corrupted instead
+				}
+			}
 		}
 	}
 
-	for val, index := range expectedValues {
-		if index >= 0 {
-			fileInfo := fileInfos[index]
-			unknownCanaries = append(unknownCanaries,
-				CanaryFileRecord{
-					Created:     fileInfo.Metadata.Timestamp,
-					Identifier2: fileInfo.Identifier,
-					Value:       []byte(val),
-				})
+	for index := len(records); index < len(fileInfos); index++ {
+		fileInfo := fileInfos[index]
+		val, err := shared.Pep.ReadIfUnpurged(&fileInfo)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("ReadIfUnpurged: %v", err)
 		}
+
+		unknownCanaries = append(unknownCanaries,
+			CanaryFileRecord{
+				Created:     fileInfo.Metadata.Timestamp,
+				Identifier2: fileInfo.Identifier,
+				Value:       val,
+			})
 	}
 
 	return
