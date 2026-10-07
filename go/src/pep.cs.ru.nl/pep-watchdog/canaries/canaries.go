@@ -31,7 +31,7 @@ func Get() (
 
 	expectedValues := make(map[string]int)
 
-	// Retreive list of canary files from local database
+	// Retrieve list of canary files from local database
 	err = shared.Db.Find(&records, nil)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("db.Find: %v", err)
