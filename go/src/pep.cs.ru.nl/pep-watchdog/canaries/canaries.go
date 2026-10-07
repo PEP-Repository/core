@@ -37,7 +37,7 @@ func Get() (
 		return nil, nil, nil, fmt.Errorf("db.Find: %v", err)
 	}
 
-	//  Retreive canary files from storage facility
+	//  Retrieve canary files from storage facility
 	pp, err := shared.Pep.DerivePolymorphicPseudonym(
 		shared.Conf.CanaryFile.Identity)
 	if err != nil {
