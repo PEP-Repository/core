@@ -508,6 +508,13 @@ func (c *StorageFacilityConn) History2(
 		}
 		fs[i].Column = cols[colIdx]
 		fs[i].Pseudonyms = &pps[ppIdx]
+		if entries[i].PurgedAt != nil {
+			millis := entries[i].PurgedAt.EpochMillis
+			if millis != 0 {
+				purged := time.Unix(millis/1000, (millis%1000)*1000000)
+				fs[i].PurgedAt = &purged
+			}
+		}
 	}
 	
 	return fs, nil
