@@ -351,7 +351,14 @@ Transcryptor::handleLogIssuedTicketRequest(
   auto ticket = request->ticket.openForLogging(*getRootCAs(), serialized);
   PEP_LOG(LogTag, LogIssuedTicketRequestLoggingSeverity) << "LogIssuedTicket request " << requestNumber << " opened ticket";
 
-  auto hash = ComputePseudonymHash(ticket.accessSubjects);
+  const auto hash = [&ticket]() -> std::string {
+    // Hash all pseudonyms on the ticket in the order the Transcryptor returned them
+    std::vector<LocalPseudonyms> allPseudonyms;
+    allPseudonyms.reserve(ticket.accessSubjects.size() + ticket.referenceSubjects.size());
+    allPseudonyms.insert(allPseudonyms.end(), ticket.accessSubjects.begin(), ticket.accessSubjects.end());
+    allPseudonyms.insert(allPseudonyms.end(), ticket.referenceSubjects.begin(), ticket.referenceSubjects.end());
+    return ComputePseudonymHash(allPseudonyms);
+  }();
   PEP_LOG(LogTag, LogIssuedTicketRequestLoggingSeverity) << "LogIssuedTicket request " << requestNumber << " calculated hash";
 
   storage_->logIssuedTicket(
