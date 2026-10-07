@@ -289,7 +289,7 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_non_existing_pg_cg_
 }
 
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_happy) {
-  EXPECT_NO_THROW(backend->checkParticipantGroupAccess({constants.pg1}, constants.userGroup1, {"access", "enumerate"}, TimeNow()));
+  EXPECT_NO_THROW(backend->checkParticipantGroupAccess(std::vector{constants.pg1}, constants.userGroup1, std::vector<std::string>{"access", "enumerate"}, TimeNow()));
 }
 
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_no_access) {
