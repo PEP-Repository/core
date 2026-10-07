@@ -1339,7 +1339,6 @@ fi
 ####################
 
 if should_run_test purging; then
-
   PURGE_CONFIG='{
     "columnGroups": [{
       "name": "PurgeTestGroup",
@@ -1350,6 +1349,7 @@ if should_run_test purging; then
 
   test_setup "$PURGE_CONFIG"
   
+  # Counts purge cycles in "pepcli purge list" output
   count_purges() {
     cli_output="$1"
     # Filter empty lines to prevent off-by-one when CLI output only contains a (single) newline
@@ -1357,9 +1357,9 @@ if should_run_test purging; then
   }
 
   # Get (possibly non-empty) list of initial (previous) purge cycles
-  pepcli --oauth-token-group "Research Assessor" purge list && fail "Purge cycles should not be listable by Research Assessor"
   initial_purge_count="$(count_purges "$(pepcli --oauth-token-group "Data Administrator" purge list)")"
   
+  # Fails if "pepcli purge list" doesn't produce the expected number of cycles
   expect_purge_count() {
     when="$1"
     expected="$2"
@@ -1371,6 +1371,10 @@ if should_run_test purging; then
       return 1
     fi
   }
+  
+  # Validate access control
+  pepcli --oauth-token-group "Research Assessor" purge list && fail "Purge cycles should not be listable by Research Assessor"
+  pepcli --oauth-token-group "Access Administrator" purge list && fail "Purge cycles should not be listable by Access Administrator"
   
   # Create some history
   pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c PurgeTest -d One
@@ -1403,7 +1407,7 @@ if should_run_test purging; then
   cycle="$(pepcli --oauth-token-group "Data Administrator" purge back-catalog -r)"
   expect_purge_count "First definition" "$(($initial_purge_count + 1))"
   
-  # (Try to) cancel a purge cycle
+  # (Try to) cancel the defined purge cycle
   pepcli --oauth-token-group "Research Assessor"  purge cancel "$cycle" && fail "Purge cycle should not be cancellable by Research Assessor"
   pepcli --oauth-token-group "Repository Manager" purge cancel "$cycle" && fail "Purge cycle should not be cancellable by Repository Manager"
   pepcli --oauth-token-group "Data Administrator" purge cancel "$cycle"
