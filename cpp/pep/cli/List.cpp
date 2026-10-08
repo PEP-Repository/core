@@ -297,11 +297,14 @@ protected:
         ctx->printRemainingPseudsToReport(client);
         
         // Convert ptree to Tree and output with selected format
-        auto tree = pep::structuredOutput::Tree::FromPropertyTree(ctx->results);
+        // An empty ptree node would be converted to an empty string, but we want to output an empty array as top level result
+        auto tree = ctx->results.empty()
+          ? pep::structuredOutput::Tree::FromJson(nlohmann::ordered_json::array())
+          : pep::structuredOutput::Tree::FromPropertyTree(ctx->results);
         if (ctx->format == "json") {
           pep::structuredOutput::json::append(std::cout, tree) << std::endl;
         } else {
-          pep::structuredOutput::yaml::append(std::cout, tree) << std::endl;
+          pep::structuredOutput::yaml::append(std::cout, tree) << std::flush; // yaml output already ends with a newline
         }
         
         ctx->printQueryInfo();

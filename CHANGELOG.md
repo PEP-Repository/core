@@ -16,13 +16,15 @@
 
 ## Release 1.8
 
+- core#3010: `pepcli list` now outputs an empty array instead of an empty string when there are no results.
+
 - Fixed `pepcli pull --export yaml` to now actually export the data to a yaml file.
 
 - Fixed number formatting in YAML output. Integers outside the 32-bit range are no longer truncated, and floating point numbers are written in their shortest exact form.
 
 - core#2958: parameter `expiration` for `pepcli token request` is now marked as required.
 
-- #2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
+- core#2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
 
 - core#2488: Added command `pepcli pseudonym convert`, which converts a pseudonym of any form into a polymorphic, local, or brief-local pseudonym.
 
