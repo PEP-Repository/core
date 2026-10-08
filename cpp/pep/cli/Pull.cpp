@@ -244,7 +244,7 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
       .map([ctx](const auto &access) {
       const pep::ParticipantGroupAccess &pga = std::get<0>(access);
       ctx->content.groups.append_range(pga.participantGroups
-        | views::filter([](const auto& pgWithModes) { return contains(pgWithModes.second, "access"); })
+        | views::filter([](const auto& pgWithModes) { return HasFlags(pgWithModes.second, pep::SubjectAccessModes::Access); })
         | views::keys);
 
       const pep::ColumnAccess &ca = std::get<1>(access);

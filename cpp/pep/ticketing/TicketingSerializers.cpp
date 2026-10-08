@@ -41,7 +41,7 @@ Ticket2 Serializer<Ticket2>::fromProtocolBuffer(proto::Ticket2&& source) const {
 
   result.modes = ColumnAccessModes::None;
   for (auto& mode : *source.mutable_modes())
-    result.modes |= ParseMode(mode);
+    result.modes |= ParseColumnAccessMode(mode);
   result.columns = *source.mutable_columns() | views::as_rvalue | to<std::vector>();
 
   Serialization::AssignFromRepeatedProtocolBuffer(result.accessSubjects,
@@ -98,7 +98,7 @@ TicketRequest2 Serializer<TicketRequest2>::fromProtocolBuffer(proto::TicketReque
   TicketRequest2 result;
   result.modes = ColumnAccessModes::None;
   for (auto& mode : *source.mutable_modes())
-    result.modes |= ParseMode(mode);
+    result.modes |= ParseColumnAccessMode(mode);
   result.participantGroups = *source.mutable_participant_groups() | views::as_rvalue | to<std::vector>();
   result.columnGroups = *source.mutable_column_groups() | views::as_rvalue | to<std::vector>();
   result.columns = *source.mutable_columns() | views::as_rvalue | to<std::vector>();

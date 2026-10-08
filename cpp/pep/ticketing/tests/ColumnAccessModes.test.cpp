@@ -36,30 +36,30 @@ TEST(ColumnAccessModes, ToSingleStringUsesTheSeparatorFromTheCaller) {
   EXPECT_EQ(ToSingleString(ColumnAccessModes::Read | ColumnAccessModes::Write, ", "), "read, write");
 }
 
-TEST(ColumnAccessModes, ParseModeAcceptsEveryMode) {
-  EXPECT_EQ(ParseMode("read"), ColumnAccessModes::Read);
-  EXPECT_EQ(ParseMode("read-meta"), ColumnAccessModes::ReadMeta);
-  EXPECT_EQ(ParseMode("write"), ColumnAccessModes::Write);
-  EXPECT_EQ(ParseMode("write-meta"), ColumnAccessModes::WriteMeta);
-  EXPECT_EQ(ParseMode("enumerate"), ColumnAccessModes::_bogus_AmaTranscryptionOnly);
+TEST(ColumnAccessModes, ParseColumnAccessModeAcceptsEveryMode) {
+  EXPECT_EQ(ParseColumnAccessMode("read"), ColumnAccessModes::Read);
+  EXPECT_EQ(ParseColumnAccessMode("read-meta"), ColumnAccessModes::ReadMeta);
+  EXPECT_EQ(ParseColumnAccessMode("write"), ColumnAccessModes::Write);
+  EXPECT_EQ(ParseColumnAccessMode("write-meta"), ColumnAccessModes::WriteMeta);
+  EXPECT_EQ(ParseColumnAccessMode("enumerate"), ColumnAccessModes::_bogus_AmaTranscryptionOnly);
 }
 
-TEST(ColumnAccessModes, ParseModeRejectsUnknownModes) {
-  EXPECT_THROW(ParseMode("access"), Error);
-  EXPECT_THROW(ParseMode("Read"), Error) << "mode names are case sensitive";
-  EXPECT_THROW(ParseMode(""), Error);
+TEST(ColumnAccessModes, ParseColumnAccessModeRejectsUnknownModes) {
+  EXPECT_THROW(ParseColumnAccessMode("access"), Error);
+  EXPECT_THROW(ParseColumnAccessMode("Read"), Error) << "mode names are case sensitive";
+  EXPECT_THROW(ParseColumnAccessMode(""), Error);
 }
 
 TEST(ColumnAccessModes, IndividualNameParsingRoundtrip) {
   for (const auto name : {"read", "read-meta", "write", "write-meta", "enumerate"}) {
-    EXPECT_EQ(ToSingleString(ParseMode(name)), name);
+    EXPECT_EQ(ToSingleString(ParseColumnAccessMode(name)), name);
   }
 }
 
-TEST(ColumnAccessModes, ParseModesCombinesTheNames) {
-  EXPECT_EQ(ParseModes(std::vector<std::string>{}), ColumnAccessModes::None);
-  EXPECT_EQ(ParseModes(std::vector<std::string>{"read"}), ColumnAccessModes::Read);
-  EXPECT_EQ(ParseModes(std::vector<std::string>{"read-meta", "write-meta"}),
+TEST(ColumnAccessModes, ParseColumnAccessModesCombinesTheNames) {
+  EXPECT_EQ(ParseColumnAccessModes(std::vector<std::string>{}), ColumnAccessModes::None);
+  EXPECT_EQ(ParseColumnAccessModes(std::vector<std::string>{"read"}), ColumnAccessModes::Read);
+  EXPECT_EQ(ParseColumnAccessModes(std::vector<std::string>{"read-meta", "write-meta"}),
       ColumnAccessModes::ReadMeta | ColumnAccessModes::WriteMeta);
 }
 

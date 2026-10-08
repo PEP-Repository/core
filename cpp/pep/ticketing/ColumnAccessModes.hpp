@@ -49,10 +49,10 @@ std::string ToSingleString(ColumnAccessModes modes, std::string_view separator =
 
 /// Interpret \p name (like "read") as an individual mode.
 /// \throws Error if \p name doesn't denote a known mode.
-ColumnAccessModes ParseMode(std::string_view name);
+ColumnAccessModes ParseColumnAccessMode(std::string_view name);
 
 /// Interpret \p names as a combination of modes.
 /// \throws Error if one of \p names doesn't denote a known mode.
-ColumnAccessModes ParseModes(const std::span<const std::string> names);
+ColumnAccessModes ParseColumnAccessModes(const std::span<const std::string> names);
 
 } // namespace pep

@@ -523,7 +523,7 @@ struct AccessManager::TicketRequestContext {
   std::size_t numAllAccessSubjects{};
   std::unordered_map<std::string, IndexList> columnGroupMap{};
   std::unordered_map<std::string, IndexList> subjectGroupMap{};
-  std::vector<std::string> requiredSubjectModes;
+  SubjectAccessModes requiredSubjectModes;
   TranscryptorRequest tsReq;
   TranscryptorRequestEntries tsReqEntries{};
   std::optional<PseudonymTranslator::Recipient> userRecipient;
@@ -554,8 +554,8 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
         .userGroup = certified.signatory.organizationalUnit()},
     .pps = request.accessSubjects,
     .requiredSubjectModes = request.participantGroups.empty()
-      ? std::vector<std::string>{"access"}
-      : std::vector<std::string>{"access", "enumerate"},
+      ? SubjectAccessModes::Access
+      : (SubjectAccessModes::Access | SubjectAccessModes::Enumerate),
     .tsReq {.request = std::move(signedRequest) },
     .userRecipient = request.includeUserGroupPseudonyms
       ? std::optional{RecipientForCertificate(signature.certificateChain().leaf())}

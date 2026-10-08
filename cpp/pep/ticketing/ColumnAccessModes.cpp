@@ -31,17 +31,17 @@ std::string ToSingleString(const ColumnAccessModes modes, const std::string_view
   return boost::join(ToIndividualStrings(modes), separator);
 }
 
-ColumnAccessModes ParseMode(const std::string_view str) {
+ColumnAccessModes ParseColumnAccessMode(const std::string_view str) {
   for (const auto& [mode, name] : columnAccessModeNames) {
     if (str == name) { return mode; }
   }
   throw Error("Unknown column access mode " + Logging::Escape(std::string(str)));
 }
 
-ColumnAccessModes ParseModes(const std::span<const std::string> names) {
+ColumnAccessModes ParseColumnAccessModes(const std::span<const std::string> names) {
   auto result = ColumnAccessModes::None;
   for (const auto& name : names) {
-    result |= ParseMode(name);
+    result |= ParseColumnAccessMode(name);
   }
   return result;
 }
