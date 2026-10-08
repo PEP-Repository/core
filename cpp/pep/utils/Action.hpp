@@ -95,7 +95,7 @@ struct ActionResultAdapter<void> {
 /// \return The function's return value
 /// \remark Adapts heterogeneous (e.g. templated) function invocations to an \ref Action and passes that Action to the
 ///         \ref performer for invocation, allowing the invocation to be performed by non-templated code (that e.g.
-///         performs setup and/or teardown).
+///         performs setup and teardown).
 /// \code
 ///   class Database {
 ///   private:
