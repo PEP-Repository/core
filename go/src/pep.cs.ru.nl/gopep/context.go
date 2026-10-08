@@ -514,8 +514,9 @@ func (ctx *Context) FileVersions(opts EnumerateFilesOptions) (
 	// Collect IDs of stored data versions
 	var ids [][]byte
 	for i := 0; i < len(hs); i++ {
-		if len(hs[i].Identifier) > 0 { // Skip deletions
-			ids = append(ids, []byte(hs[i].Identifier))
+		h := hs[i]
+		if h.PurgedAt == nil && len(h.Identifier) > 0 { // Skip purges and deletions
+			ids = append(ids, []byte(h.Identifier))
 		}
 	}
 	
