@@ -10,6 +10,8 @@
   This makes it easier to maintain and extend. The documentation was updated to reflect the new structure of the process.
   - Changed: `docs/public/crypto/ticket_request.md` has been updated
 
+- core#2313: Added `pepcli purge` suite of commands, which irrecoverably remove cell versions from the repository.
+
 ---------------
 *Past changes, do not edit (except by person doing release):*
 
