@@ -234,7 +234,7 @@ include:
 # Must be last in rules, as it will not run more rules
 .set-enable-linter-and-terminate-rules:
   rules:
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
+    - if: "'$[[ inputs.autolinting ]]' == 'linted' || $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
       variables:
         ENABLE_LINTER: yes
     - if: "'$[[ inputs.autolinting ]]' != 'linted'"
@@ -843,7 +843,7 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
 ubuntu-lts-release-manual-lint:
   extends: .ubuntu-lts-release-base
   rules:
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+    - if: "'$[[ inputs.autolinting ]]' != 'linted' && $CI_COMMIT_REF_NAME != $PEP_FOSS_DEVELOPMENT_BRANCH"
       when: manual
       allow_failure: true
     - when: never
@@ -909,7 +909,7 @@ ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
 ubuntu-rolling-debug-manual-lint:
   extends: .ubuntu-rolling-debug-base
   rules:
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+    - if: "'$[[ inputs.autolinting ]]' != 'linted' && $CI_COMMIT_REF_NAME != $PEP_FOSS_DEVELOPMENT_BRANCH"
       when: manual
       allow_failure: true
     - when: never
