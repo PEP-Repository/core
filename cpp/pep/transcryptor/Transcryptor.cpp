@@ -162,7 +162,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
 
   struct Context {
     uintmax_t requestNumber{};
-    std::vector<std::string> modes;
+    ColumnAccessModes modes = ColumnAccessModes::None;
     bool includeUserGroupPseudonyms{};
     SignedTicketRequest2 ticketRequest;
     std::optional<PseudonymTranslator::Recipient> userRecipient;
@@ -368,7 +368,7 @@ Transcryptor::handleLogIssuedTicketRequest(
     request->id,
     hash,
     std::move(ticket.columns),
-    std::move(ticket.modes),
+    ticket.modes,
     ticket.userGroup,
     ticket.timestamp
   );

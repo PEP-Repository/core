@@ -308,7 +308,7 @@ public:
                 .referenceSubjects = {},
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
                 .columns = std::move(query->columns).value_or(std::vector<std::string>{}),
-                .modes = {"read"}, //TODO support more modes. Should this method be split with an explicit ticket request?
+                .modes = ColumnAccessModes::Read, //TODO support more modes. Should this method be split with an explicit ticket request?
                 .includeAccessGroupPseudonyms = true,
               });
           });

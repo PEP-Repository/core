@@ -660,7 +660,7 @@ std::string AccessManager::identifyTicketRequestSubjects(TicketRequestContext& c
       ctx.server->backend_->checkParticipantAccess(ctx.ticket.userGroup, localPseudonym, ctx.requiredSubjectModes, ctx.ticket.timestamp);
     }
     const auto isClientProvidedAccessSubject = i < ctx.numClientProvidedAccessSubjects;
-    if (isClientProvidedAccessSubject && !ctx.server->backend_->hasLocalPseudonym(localPseudonym) && ctx.ticket.hasMode("write")) {
+    if (isClientProvidedAccessSubject && !ctx.server->backend_->hasLocalPseudonym(localPseudonym) && ImpliesModes(ctx.ticket.modes, ColumnAccessModes::Write)) {
       ctx.server->backend_->storeLocalPseudonymAndPP(localPseudonym, accessSubject.polymorphic);
     }
   }
@@ -762,7 +762,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     auto& [participantGroup, list] = entry;
     TicketRequest2 ticketRequest;
     ticketRequest.participantGroups = {participantGroup};
-    ticketRequest.modes = {"enumerate"};
+    ticketRequest.modes = ColumnAccessModes::Enumerate;
     ticketRequest.accessSubjects = list;
     std::string data = Serialization::ToString(ticketRequest);
     TranscryptorRequest tsRequest{

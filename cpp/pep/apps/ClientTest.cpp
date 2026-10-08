@@ -168,7 +168,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
             << boost::algorithm::hex(id) << std::endl;
 
         RequestTicket2Opts tOpts;
-        tOpts.modes = {"read"};
+        tOpts.modes = ColumnAccessModes::Read;
         tOpts.accessSubjects = {pp.rerandomize()};
         tOpts.columns = {"ParticipantInfo"};
         return client->requestTicket2(tOpts).flat_map(

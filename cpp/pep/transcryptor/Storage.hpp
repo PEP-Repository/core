@@ -50,7 +50,7 @@ private:
 
   std::string logTicketRequest(
     const std::vector<LocalPseudonym>& localPseudonyms,
-    const std::vector<std::string>& modes,
+    ColumnAccessModes modes,
     SignedTicketRequest2 ticketRequest,
     std::string pseudonymHash);
 
@@ -58,7 +58,7 @@ private:
     const std::string& id,
     const std::string& pseudonymHash,
     std::vector<std::string> columns,
-    std::vector<std::string> modes,
+    ColumnAccessModes modes,
     const std::string& accessGroup,
     Timestamp timestamp);
 

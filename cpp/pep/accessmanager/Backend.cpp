@@ -14,6 +14,7 @@
 #include <ranges>
 
 #include <boost/algorithm/string/join.hpp>
+#include <sstream>
 
 using namespace std::ranges;
 
@@ -488,13 +489,14 @@ std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillPart
 
 std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnGroupsAndCheckAccess(const std::string& userGroup,
                                                              const std::vector<std::string>& columnGroups,
-                                                             const std::vector<std::string>& modes,
+                                                             const ColumnAccessModes modes,
                                                              Timestamp at,
                                                              std::vector<std::string>& columns) {
   ColumnAccessRequest request;
   request.includeImplicitlyGranted = true;
   // All columns and Columngroups this usergroup has access to.
   auto columnAccess = handleColumnAccessRequest(request, userGroup);
+  const auto requiredModes = ToIndividualStrings(modes);
   std::vector<std::string> errorMessageParts;
 
   // process columnGroups
@@ -506,7 +508,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
     }
     else {
       auto availableModes = iterator->second.modes;
-      for (auto& mode : modes) {
+      for (auto& mode : requiredModes) {
         if (!contains(availableModes, mode)) {
           errorMessageParts.push_back("Access denied to " + Logging::Escape(userGroup) + " for mode "
                                       + Logging::Escape(mode) + " to column-group " + Logging::Escape(cg));
@@ -522,7 +524,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
     auto associatedColumnGroups = cgcs
       | views::transform(&ColumnGroupColumn::columnGroup)
       | to<std::vector>();
-    for (const auto& requiredMode : modes) {
+    for (const auto& requiredMode : requiredModes) {
       // If we find the required access mode in ANY of the associated columngroups, all is well.
       bool accessGranted = any_of(associatedColumnGroups, [&](const std::string& cg) {
         auto groupPropsIt = columnAccess.columnGroups.find(cg);
@@ -569,17 +571,15 @@ void AccessManager::Backend::checkTicketForEncryptionKeyRequest(std::shared_ptr<
   std::unordered_set<std::string> ticketCols{ticket.columns.begin(), ticket.columns.end()};
 
   for (auto const& entry : request->entries) {
-    std::string mode;
-    if (entry.keyBlindMode == KeyBlindMode::Blind)
-      mode = "write";
-    else if (entry.keyBlindMode == KeyBlindMode::Unblind)
-      mode = "read";
-    else
+    const ColumnAccessModes requiredMode = [blindmode = entry.keyBlindMode] {
+      if (blindmode == KeyBlindMode::Blind) return ColumnAccessModes::Write;
+      if (blindmode == KeyBlindMode::Unblind) return ColumnAccessModes::Read;
       throw Error("Unexpected KeyBlindMode");
+    }();
 
-    if (!ticket.hasMode(mode)) {
+    if (!ImpliesModes(ticket.modes, requiredMode)) {
       std::ostringstream msg;
-      msg << "Access denied: ticket does not grant access mode " << mode;
+      msg << "Access denied: ticket does not grant access mode " << ToSingleString(requiredMode);
       throw Error(msg.str());
     }
 

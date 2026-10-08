@@ -64,7 +64,7 @@ public:
   std::vector<std::string> getColumnGroups() const;
   std::vector<std::string> getParticipantGroups() const;
   std::vector<std::string> getColumns() const;
-  std::vector<std::string> getModes() const;
+  ColumnAccessModes getModes() const;
   std::vector<PolymorphicPseudonym> getAccessSubjects() const;
   std::vector<PolymorphicPseudonym> getReferenceSubjects() const;
 };

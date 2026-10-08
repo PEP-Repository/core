@@ -39,7 +39,9 @@ Ticket2 Serializer<Ticket2>::fromProtocolBuffer(proto::Ticket2&& source) const {
     std::move(*source.mutable_timestamp()));
   result.userGroup = std::move(*source.mutable_user_group());
 
-  result.modes = *source.mutable_modes() | views::as_rvalue | to<std::vector>();
+  result.modes = ColumnAccessModes::None;
+  for (auto& mode : *source.mutable_modes())
+    result.modes |= ParseMode(mode);
   result.columns = *source.mutable_columns() | views::as_rvalue | to<std::vector>();
 
   Serialization::AssignFromRepeatedProtocolBuffer(result.accessSubjects,
@@ -53,8 +55,9 @@ Ticket2 Serializer<Ticket2>::fromProtocolBuffer(proto::Ticket2&& source) const {
 void Serializer<Ticket2>::moveIntoProtocolBuffer(proto::Ticket2& dest, Ticket2 value) const {
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.timestamp);
   *dest.mutable_user_group() = std::move(value.userGroup);
-  dest.mutable_modes()->Reserve(static_cast<int>(value.modes.size()));
-  for (auto& x : value.modes)
+  auto modes = ToIndividualStrings(value.modes);
+  dest.mutable_modes()->Reserve(static_cast<int>(modes.size()));
+  for (auto& x : modes)
     dest.add_modes(std::move(x));
   dest.mutable_columns()->Reserve(static_cast<int>(value.columns.size()));
   for (auto& x : value.columns)
@@ -93,7 +96,9 @@ void Serializer<SignedTicket2>::moveIntoProtocolBuffer(proto::SignedTicket2& des
 
 TicketRequest2 Serializer<TicketRequest2>::fromProtocolBuffer(proto::TicketRequest2&& source) const {
   TicketRequest2 result;
-  result.modes = *source.mutable_modes() | views::as_rvalue | to<std::vector>();
+  result.modes = ColumnAccessModes::None;
+  for (auto& mode : *source.mutable_modes())
+    result.modes |= ParseMode(mode);
   result.participantGroups = *source.mutable_participant_groups() | views::as_rvalue | to<std::vector>();
   result.columnGroups = *source.mutable_column_groups() | views::as_rvalue | to<std::vector>();
   result.columns = *source.mutable_columns() | views::as_rvalue | to<std::vector>();
@@ -109,8 +114,9 @@ TicketRequest2 Serializer<TicketRequest2>::fromProtocolBuffer(proto::TicketReque
 }
 
 void Serializer<TicketRequest2>::moveIntoProtocolBuffer(proto::TicketRequest2& dest, TicketRequest2 value) const {
-  dest.mutable_modes()->Reserve(static_cast<int>(value.modes.size()));
-  for (auto& x : value.modes)
+  auto modes = ToIndividualStrings(value.modes);
+  dest.mutable_modes()->Reserve(static_cast<int>(modes.size()));
+  for (auto& x : modes)
     dest.add_modes(std::move(x));
   dest.mutable_participant_groups()->Reserve(static_cast<int>(value.participantGroups.size()));
   for (auto& x : value.participantGroups)
