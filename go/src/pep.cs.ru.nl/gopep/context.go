@@ -465,10 +465,42 @@ func (ctx *Context) FileHistory(pp *Triple, column string) (
 	}
 	
 	// Get history entries
-	return ctx.sfConn.History2(
+	ret, err := ctx.sfConn.History2(
 		signingKey,
 		ticket,
 	)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Replace degenerate FileInfo for un-purged entries to
+	// provide a.o. Metadata and EncryptedKey
+	var indices []int
+	var ids [][]byte
+	
+	for i, entry := range ret {
+		if entry.PurgedAt == nil && len(entry.Identifier) > 0 { // Un-purged and not a deletion
+			indices = append(indices, i)
+			ids = append(ids, []byte(entry.Identifier))
+		}
+	}
+	
+	if len(indices) == 0 { // No metadata entries to retrieve
+		return ret, nil
+	}
+	
+	unpurged, err := ctx.sfConn.RetrieveMetadata2(
+		ids, signingKey, ticket)
+	if err != nil {
+		return nil, err
+	}
+	
+	for i, entry := range(unpurged) {
+		index := indices[i]
+		ret[index] = entry // Replace history-only FileInfo by full instance
+	}
+	
+	return ret, nil
 }
 
 // Opens a file on the storage facility using a FileInfo object returned
