@@ -112,6 +112,7 @@ struct ActionResultAdapter<void> {
 ///       return PerformAsAction(std::bind_front(&Database::invokeInTransaction, this),
 ///         std::forward<TFunction>(function), std::forward<TArgs>(args)...);
 ///     }
+///   };
 /// \endcode
 template <typename TPerformer, typename TFunction, typename... TArgs>
 decltype(auto) PerformAsAction(TPerformer&& performer, TFunction&& function, TArgs&&... args) {
