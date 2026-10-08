@@ -99,7 +99,7 @@ struct ActionResultAdapter<void> {
 /// \code
 ///   class Database {
 ///   private:
-///     struct Implementor;
+///     struct Implementor; // Defined in .cpp
 ///     std::unique_ptr<Implementor> pImpl_;
 ///
 ///     void invokeInTransaction(const Action& action); // Defined in .cpp so it can access *pImpl_
