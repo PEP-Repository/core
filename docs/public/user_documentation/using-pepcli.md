@@ -839,14 +839,14 @@ Instead of a `--participant <spec>`, the caller may also specify a `--short-pseu
 - the `timestamp` field indicates when the change to the cell was made.
 - the `pp` field identifies the subject ("row") to which the cell belongs.
 - the `column` is the name of the column.
-- the `id` is an identifier for the data that was stored in the cell. If the value is `null`, that cell version does not have associated data because the cell was [deleted](#delete).
+- the `id` is an identifier for the data that was stored in the cell. If the value is `null`, the cell version does not have associated data because the cell was [deleted](#delete).
 - if the cell version has been [purged](#purge), the `purgedAt` timestamp will specify the time at which that cell version became inaccessible to users.
 
 Non-`null` values of the `id` field can be passed to the [`pepcli get`](#get) command's `-i` switch to retrieve the data that was stored in the cell for that version. Note that this will yield an error for purged cell versions.
 
 ## purge
 
-The `purge` command's various sub-commands allow data to be irrevocably removed from the repository's history. Whereas PEP normally retains copies of all (over)[written](#store) or [deleted](#delete) data, the `purge` commands discard data versions from the repository in such a way that they cannot be recovered. **Purging is therefore a destructive action** and users should exercise caution wielding these commands. To prevent accidental data loss and to increase security, purging requires users with two different administrative roles to work together:
+The `purge` command's various sub-commands allow data to be irrevocably removed from the repository's history. Whereas PEP normally retains copies of all (over)[written](#store) or [deleted](#delete) data, the `purge` commands discard data versions from the repository in such a way that they cannot be recovered. **Purging is therefore a destructive action** and users should exercise caution wielding these commands. To prevent accidental data loss and to increase security, purging requires approval from users with two different administrative roles:
 
 1. a `Data Administrator` must define (i.e. request) a purge cycle, after which
 2. a `Repository Manager` must [confirm](#purge-confirm) (i.e. apply) that purge cycle.
