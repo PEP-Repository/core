@@ -310,28 +310,6 @@ func (ctx *Context) GenerateEncryptionKey() (*Triple, []byte, error) {
 	return &pKey, SymmetricKeyFromPoint(&p), nil
 }
 
-// Open file versions on the storage facility.
-func (ctx *Context) HistoryAndOpenFiles(opts EnumerateAndOpenFilesOptions) (
-	[]*FileReader, []FileInfo, error) {
-	fs, err := ctx.FileVersions(
-		EnumerateFilesOptions{
-			ParticipantGroups:     opts.ParticipantGroups,
-			ColumnGroups:          opts.ColumnGroups,
-			AccessSubjects:        opts.AccessSubjects,
-			Columns:               opts.Columns,
-		})
-	if err != nil {
-		return nil, nil, fmt.Errorf("FileVersions: %v", err)
-	}
-	
-	rs, err := ctx.OpenFiles(fs)
-	if err != nil {
-		return nil, nil, fmt.Errorf("OpenFiles: %v", err)
-	}
-	
-	return rs, fs, nil
-}
-
 // Open files on the storage facility that have previously been enumerated.
 func (ctx *Context) OpenFiles(fs []FileInfo) (
 	[]*FileReader, error) {
@@ -491,46 +469,24 @@ func (ctx *Context) EnumerateFiles(opts EnumerateFilesOptions) (
 	return fs, nil
 }
 
-// Get file versions on the storage facility for the given polymorphic
-// pseudonym and query.
-func (ctx *Context) FileVersions(opts EnumerateFilesOptions) (
+func (ctx *Context) FileHistory(pp *Triple, column string) (
 	[]FileInfo, error) {
-
+	
 	// Request ticket
-	ticket, signingKey, err := ctx.GetTicketAndSigningKey(opts)
+	ticket, signingKey, err := ctx.GetTicketAndSigningKey(
+		EnumerateFilesOptions{
+			AccessSubjects: []*Triple{pp},
+			Columns:        []string{column},
+		})
 	if err != nil {
 		return nil, err
 	}
-
+	
 	// Get history entries
-	hs, err := ctx.sfConn.History2(
+	return ctx.sfConn.History2(
 		signingKey,
 		ticket,
 	)
-	if err != nil {
-		return nil, err
-	}
-	
-	// Collect IDs of stored data versions
-	var ids [][]byte
-	for i := 0; i < len(hs); i++ {
-		h := hs[i]
-		if h.PurgedAt == nil && len(h.Identifier) > 0 { // Skip purges and deletions
-			ids = append(ids, []byte(h.Identifier))
-		}
-	}
-	
-	if len(ids) == 0 {
-		return []FileInfo{}, nil
-	}
-	
-	// Retrieve data
-	fs, err := ctx.sfConn.RetrieveMetadata2(ids, signingKey, ticket)
-		if err != nil {
-		return nil, err
-	}
-
-	return fs, nil
 }
 
 // Opens a file on the storage facility using a FileInfo object returned

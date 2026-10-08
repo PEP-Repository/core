@@ -129,10 +129,6 @@ func (stressor *stressorImp) doOne() error {
 	}
 	
 	hash := hasher.Sum(nil)
-	o := pep.EnumerateAndOpenFilesOptions{
-		AccessSubjects: []*pep.Triple{pp},
-		Columns:        []string{shared.Conf.Stressor.Column},
-	}
 
 	// Read file conf.Stressor.ReadCount times
 	//   by conf.Stressor.ReaderCount readers.
@@ -148,22 +144,25 @@ func (stressor *stressorImp) doOne() error {
 			}
 		}
 
-		fileReaders, _, err := readerCtx.HistoryAndOpenFiles(o)
+		history, err := readerCtx.FileHistory(pp, shared.Conf.Stressor.Column)
 		if err != nil {
 			return fmt.Errorf(
-				"failed to read PEP-file: %v", err)
+				"failed to read PEP-history: %v", err)
 		}
-
-		if len(fileReaders) == 0 {
+		
+		if len(history) == 0 {
 			return fmt.Errorf("PEP-file vanished!")
 		}
 
-		if len(fileReaders) > 1 {
+		if len(history) > 1 {
 			return fmt.Errorf("Stored one PEP-file, but " +
 				"retrieved several!")
 		}
 
-		r := fileReaders[0]
+		r, err := readerCtx.OpenFile(&history[0])
+		if err != nil {
+			return fmt.Errorf("OpenFile: %v", err)
+		}
 
 		readerHasher := sha256.New()
 		if _, err := io.Copy(readerHasher, r); err != nil {

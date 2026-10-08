@@ -2,6 +2,7 @@ package canaries
 
 import (
 	"fmt"
+	"io/ioutil"
 	"time"
 
 	pep "pep.cs.ru.nl/gopep"
@@ -23,6 +24,24 @@ type CanaryFileRecord struct {
 	Value       []byte `yaml:",flow"`
 }
 
+func ReadIfUnpurged(info *pep.FileInfo) ([]byte, error) {
+	if info.PurgedAt == nil {
+		return nil, nil
+	}
+	
+	fr, err := shared.Pep.OpenFile(info)
+	if err != nil {
+		return nil, fmt.Errorf("OpenFile: %v", err)
+	}
+	
+	buf, err := ioutil.ReadAll(fr)
+	if err != nil {
+		return nil, fmt.Errorf("ioutil.ReadAll: %v", err)
+	}
+	
+	return buf, nil
+}
+
 func Get() (
 	records []CanaryFileRecord,
 	unknownCanaries []CanaryFileRecord,
@@ -42,14 +61,10 @@ func Get() (
 		return nil, nil, nil, fmt.Errorf("DerivePolymorphicPseudonym: %v", err)
 	}
 
-	fileInfos, err := shared.Pep.FileVersions(
-		pep.EnumerateFilesOptions{
-			AccessSubjects: []*pep.Triple{pp},
-			Columns: []string{
-				shared.Conf.CanaryFile.Tag},
-		})
+	fileInfos, err := shared.Pep.FileHistory(
+		pp, shared.Conf.CanaryFile.Tag)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("FileVersions: %v", err)
+		return nil, nil, nil, fmt.Errorf("FileHistory: %v", err)
 	}
 	
 	// Check if files are missing or corrupted
@@ -57,10 +72,9 @@ func Get() (
 		if index > len(fileInfos) {
 			missingCanaries = append(missingCanaries, r)
 		} else {
-			fileInfo := fileInfos[index]
-			buf, err := shared.Pep.ReadIfUnpurged(&fileInfo)
+			buf, err := ReadIfUnpurged(&fileInfos[index])
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("ReadIfUnpurged: %v", err)
+				return nil, nil, nil, err
 			}
 			
 			if buf != nil { // Can only check contents if the entry wasn't purged
@@ -73,9 +87,9 @@ func Get() (
 
 	for index := len(records); index < len(fileInfos); index++ {
 		fileInfo := fileInfos[index]
-		val, err := shared.Pep.ReadIfUnpurged(&fileInfo)
+		val, err := ReadIfUnpurged(&fileInfo)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("ReadIfUnpurged: %v", err)
+			return nil, nil, nil, err
 		}
 
 		unknownCanaries = append(unknownCanaries,
