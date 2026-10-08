@@ -377,24 +377,6 @@ func (ctx *Context) EnumerateAndReadFiles(opts EnumerateAndOpenFilesOptions) (
 	return ret, fs, nil
 }
 
-func (ctx *Context) ReadIfUnpurged(info *FileInfo) ([]byte, error) {
-	if info.PurgedAt == nil {
-		return nil, nil
-	}
-	
-	fr, err := ctx.OpenFile(info)
-	if err != nil {
-		return nil, fmt.Errorf("OpenFile: %v", err)
-	}
-	
-	buf, err := ioutil.ReadAll(fr)
-	if err != nil {
-		return nil, fmt.Errorf("ioutil.ReadAll: %v", err)
-	}
-	
-	return buf, nil
-}
-
 // Reads all contents from the given file readers
 func ReadOpenFiles(rs []*FileReader) ([][]byte, error) {
 	ret := make([][]byte, len(rs))
