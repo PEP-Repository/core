@@ -25,7 +25,7 @@ type CanaryFileRecord struct {
 }
 
 func ReadIfUnpurged(info *pep.FileInfo) ([]byte, error) {
-	if info.PurgedAt == nil {
+	if info.PurgedAt != nil {
 		return nil, nil
 	}
 	
