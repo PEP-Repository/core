@@ -489,13 +489,13 @@ func (ctx *Context) FileHistory(pp *Triple, column string) (
 		return ret, nil
 	}
 	
-	unpurged, err := ctx.sfConn.RetrieveMetadata2(
+	full, err := ctx.sfConn.RetrieveMetadata2(
 		ids, signingKey, ticket)
 	if err != nil {
 		return nil, err
 	}
 	
-	for i, entry := range(unpurged) {
+	for i, entry := range(full) {
 		index := indices[i]
 		ret[index] = entry // Replace history-only FileInfo by full instance
 	}
