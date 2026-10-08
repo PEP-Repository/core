@@ -485,7 +485,7 @@ func (ctx *Context) FileHistory(pp *Triple, column string) (
 		}
 	}
 	
-	if len(indices) == 0 { // No metadata entries to retrieve
+	if len(ids) == 0 { // No metadata entries to retrieve
 		return ret, nil
 	}
 	
