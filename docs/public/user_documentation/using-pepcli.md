@@ -828,7 +828,7 @@ The command accepts an optional `--imported-only` switch. If specified, the comm
 
 ## history
 
-PEP retains a full history of all data that has ever been stored in the repository. When a non-empty cell is overwritten (using [`pepcli store`](#store)) or `pepcli delete`d, the repository doesn't discard the previous (version of the) data. Instead the repository retains the old data, but will present an updated version of the cell to users that access the current (latest or "rolling") data set. Users with `Data Administrator` privileges can list all changes that have ever been applied to a (specific) cell:
+PEP retains a full history of all data that has ever been stored in the repository. When a non-empty cell is overwritten (using [`pepcli store`](#store)) or [`pepcli delete`](#delete)d, the repository doesn't discard the previous (version of the) data. Instead the repository retains the old data, but will present an updated version of the cell to users that access the current (latest or "rolling") data set. Users with `Data Administrator` privileges can list all changes that have ever been applied to a (specific) cell:
 
 ```plaintext
 pepcli history --column <column> --participant <spec>
