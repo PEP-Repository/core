@@ -605,43 +605,58 @@ ubuntu-lts-debug:
     - !reference [.ubuntu-build-base, before_script]
     - |
       if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
-        mkdir -p "$CI_PROJECT_DIR/profiles"
-        rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
-        export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
+        rm -rf "$CI_PROJECT_DIR/profiles"
+        mkdir -p "$CI_PROJECT_DIR/profiles/unit" "$CI_PROJECT_DIR/profiles/integration"
+        export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/unit/%p-%m.profraw"
       fi
   script:
     - !reference [.ubuntu-build-base, script]
+      # Keep integration test profiles separate, so we can also report unit test coverage on its own
+    - |
+      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
+        export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/integration/%p-%m.profraw"
+      fi
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
-    - | 
+    - |
        if [ "${ENABLE_COVERAGE:-OFF}" != "ON" ]; then
          echo "Skipping code coverage processing steps"
          exit 0
        fi
 
       # Merge raw profile files from profiles directory
-    - llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
+    - llvm-profdata merge -sparse profiles/unit/*.profraw -o unit-coverage.profdata
+    - llvm-profdata merge -sparse profiles/unit/*.profraw profiles/integration/*.profraw -o combined-coverage.profdata
 
     - |
        BINARIES=""
        for BINARY in $UNIT_TESTS_ALL_NATIVE $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
-         BINARIES="$BINARIES --object $BUILD_DIRECTORY/$BINARY"
+         BINARIES="$BINARIES -object $BUILD_DIRECTORY/$BINARY"
        done
-    
+
     - IGNORE_REGEX=".*(proto/generated/|/tests/|/apps/).*"
 
-      # Generate HTML report
+      # Generate HTML reports
+    - llvm-cov show $BINARIES
+        -instr-profile=unit-coverage.profdata
+        -ignore-filename-regex="$IGNORE_REGEX"
+        -project-title="Unit Test Coverage"
+        -show-directory-coverage
+        -coverage-watermark=90,60
+        -format=html
+        -output-dir=htmlcov/unit
     - llvm-cov show $BINARIES
         -instr-profile=combined-coverage.profdata
-        --ignore-filename-regex="$IGNORE_REGEX"
-        --project-title="Combined Coverage (Unit + Integration)"
-        --show-directory-coverage
+        -ignore-filename-regex="$IGNORE_REGEX"
+        -project-title="Combined Coverage (Unit + Integration)"
+        -show-directory-coverage
+        -coverage-watermark=90,60
         -format=html
-        -output-dir=htmlcov
+        -output-dir=htmlcov/combined
 
       # Export to lcov format using llvm-cov
     - llvm-cov export $BINARIES
         -instr-profile=combined-coverage.profdata
-        --ignore-filename-regex="$IGNORE_REGEX"
+        -ignore-filename-regex="$IGNORE_REGEX"
         -format=lcov > coverage.lcov
 
       # Convert lcov to Cobertura XML using lcov_cobertura
@@ -676,12 +691,18 @@ pages:
     - if: "'$[[ inputs.test_coverage ]]' == 'coverage' && $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
   #language=sh
   script:
-    - if [ ! -f htmlcov/index.html ]; then
+    - if [ ! -f htmlcov/unit/index.html ] || [ ! -f htmlcov/combined/index.html ]; then
     -   echo "No coverage report was produced by the ubuntu-lts-debug job."
     -   exit 1
     - fi
     - rm -rf public
     - mv htmlcov public
+    - echo '<!doctype html><title>Code Coverage</title>
+        <h1>Code Coverage</h1>
+        <ul>
+        <li><a href="unit/index.html">Unit tests only</a></li>
+        <li><a href="combined/index.html">Combined (unit + integration tests)</a></li>
+        </ul>' > public/index.html
   artifacts:
     paths:
       - public/
