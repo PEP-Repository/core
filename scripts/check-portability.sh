@@ -170,16 +170,14 @@ check 'stat-c' \
 check 'head-tail-negative' \
     "${cmd_start}(head|tail)${not_cmd_end}-n[[:space:]]-[[:digit:]]" \
     'A negative count is GNU-only, use a portable alternative'
-# Matches a recursive option, including one combined with other short options (e.g. -rf, -RP).
-cp_recursive='(-[[:alpha:]]*[rRa][[:alpha:]]*|--recursive|--archive)'
 # Matches an argument ending in a slash, optionally followed by a closing quote ( " or ') (e.g. src/ or "$dir/").
 arg_trailing_slash="/[\"']?"
 # Matches the start of a next argument, so the argument before it is a source and not the destination.
 # The end of the command, a comment and a line continuation do not count as a next argument.
 # Inside a bracket expression a backslash is literal, so \ here is the backslash of a line continuation.
 next_arg="[[:space:]]+[^${cmd_end_chars}#[:space:]\\]"
-check 'cp-r-trailing-slash' \
-    "${cmd_start}cp${not_cmd_end}${cp_recursive}${word_end}${same_cmd}${arg_trailing_slash}${next_arg}" \
+check 'cp-trailing-slash' \
+    "${cmd_start}cp${not_cmd_end}${arg_trailing_slash}${next_arg}" \
     'BSD cp copies the contents of a source ending in /, GNU cp copies the directory itself. Drop the trailing slash, or write "src/." to copy the contents on both'
 
 if [ -n "$any_failed" ]; then
