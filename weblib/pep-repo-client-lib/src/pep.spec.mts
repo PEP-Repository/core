@@ -95,12 +95,12 @@ describe('Pep', () => {
         },
         {
           name: 'ParticipantInfo',
-          modes: {read: true, readMeta: true, write: false, writeMeta: false},
+          modes: {read: true, readMeta: true},
           columns: ['ParticipantInfo'],
         },
         {
           name: 'ParticipantIdentifier',
-          modes: {read: true, readMeta: true, write: false, writeMeta: false},
+          modes: {read: true, readMeta: true},
           columns: ['ParticipantIdentifier'],
         },
       ]);
@@ -119,7 +119,7 @@ describe('Pep', () => {
     it('should list the name and modes of each subject group', async () => {
       const subjectGroups = await pep.runHandleWasmException(() => pep.listSubjectGroups());
       expect(subjectGroups).to.containSubset([
-        {name: '*', modes: {access: true, enumerate: false}},
+        {name: '*', modes: {access: true}},
         {name: 'WasmTestSubjectGroup'},
       ]);
       expect(subjectGroups.find(group => group.name === 'WasmTestSubjectGroup')?.modes)
