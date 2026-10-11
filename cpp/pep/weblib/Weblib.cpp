@@ -24,10 +24,10 @@
 #include <pep/weblib/WeblibApiPromise.hpp>
 #include <pep/weblib/WeblibStructs.hpp>
 
-#include <algorithm>
 #include <filesystem>
 #include <functional>
 #include <numeric>
+#include <stdexcept>
 #include <thread>
 
 #include <emscripten/emscripten.h>
@@ -95,12 +95,42 @@ User ToUser(QRUser user) {
   };
 }
 
-/// Sorts access modes and removes duplicates
-std::vector<std::string> NormalizeModes(std::vector<std::string> modes) {
-  std::ranges::sort(modes);
-  auto duplicates = std::ranges::unique(modes);
-  modes.erase(duplicates.begin(), duplicates.end());
-  return modes;
+ColumnGroupAccessModes ParseColumnGroupAccessModes(const std::vector<std::string>& modes, const std::string& columnGroup) {
+  ColumnGroupAccessModes result;
+  for (const auto& mode : modes) {
+    if (mode == "read") {
+      result.read = true;
+    }
+    else if (mode == "write") {
+      result.write = true;
+    }
+    else if (mode == "read-meta") {
+      result.readMeta = true;
+    }
+    else if (mode == "write-meta") {
+      result.writeMeta = true;
+    }
+    else {
+      throw std::runtime_error("Unsupported access mode '" + mode + "' encountered for column group '" + columnGroup + "'");
+    }
+  }
+  return result;
+}
+
+SubjectGroupAccessModes ParseSubjectGroupAccessModes(const std::vector<std::string>& modes, const std::string& subjectGroup) {
+  SubjectGroupAccessModes result;
+  for (const auto& mode : modes) {
+    if (mode == "access") {
+      result.access = true;
+    }
+    else if (mode == "enumerate") {
+      result.enumerate = true;
+    }
+    else {
+      throw std::runtime_error("Unsupported access mode '" + mode + "' encountered for subject group '" + subjectGroup + "'");
+    }
+  }
+  return result;
 }
 
 class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedConstructor<Weblib>, public boost::noncopyable {
@@ -328,7 +358,7 @@ public:
               const auto& [name, columnGroup] = entry;
               return ColumnGroup{
                   .name = name,
-                  .modes = NormalizeModes(columnGroup.modes),
+                  .modes = ParseColumnGroupAccessModes(columnGroup.modes, name),
                   .columns = to<std::vector>(SafeIndexInto(columnGroup.columns.indices, access.columns)),
               };
             })
@@ -342,13 +372,13 @@ public:
     co_return co_await onIoThread()
         .flat_map([](const std::shared_ptr<Weblib>& self) {
           return self->client_->getAccessManagerProxy()->getAccessibleParticipantGroups(true);
-        }).map([](ParticipantGroupAccess access) {
+        }).map([](const ParticipantGroupAccess& access) {
           return access.participantGroups
-            | views::transform([](auto& entry) {
-              auto& [name, modes] = entry;
+            | views::transform([](const auto& entry) {
+              const auto& [name, modes] = entry;
               return SubjectGroup{
                   .name = name,
-                  .modes = NormalizeModes(std::move(modes)),
+                  .modes = ParseSubjectGroupAccessModes(modes, name),
               };
             })
             | to<std::vector>();

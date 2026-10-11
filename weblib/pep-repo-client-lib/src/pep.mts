@@ -73,44 +73,55 @@ export interface EnrolledUser {
   userGroup: string;
 }
 
-/** `read` implies `read-meta`, and `write-meta` implies `write`. Implied modes are always included. */
-export type ColumnAccessMode = 'read' | 'write' | 'read-meta' | 'write-meta';
+/** `read` implies `readMeta`, and `writeMeta` implies `write`. Implied modes are always set. */
+export interface ColumnGroupAccessModes {
+  read: boolean;
+  readMeta: boolean;
+  write: boolean;
+  writeMeta: boolean;
+}
 
 /** `enumerate` is needed to list cells, `access` to retrieve them */
-export type SubjectGroupAccessMode = 'access' | 'enumerate';
+export interface SubjectGroupAccessModes {
+  access: boolean;
+  enumerate: boolean;
+}
 
 export interface ColumnGroup {
   name: string;
-  modes: ColumnAccessMode[];
+  modes: ColumnGroupAccessModes;
   columns: string[];
 }
 
 export interface AccessibleColumn {
   name: string;
   /** Combined from all column groups containing this column */
-  modes: ColumnAccessMode[];
+  modes: ColumnGroupAccessModes;
 }
 
 /** Get the access modes per column, sorted by column name, from the result of {@link Pep.listColumns} */
 export function getColumnModes(columnGroups: ColumnGroup[]): AccessibleColumn[] {
-  const columnModes = new Map<string, Set<ColumnAccessMode>>();
+  const columnModes = new Map<string, ColumnGroupAccessModes>();
   for (const group of columnGroups) {
     for (const column of group.columns) {
-      let modes = columnModes.get(column);
-      if (!modes) {
-        columnModes.set(column, modes = new Set());
-      }
-      group.modes.forEach(mode => modes.add(mode));
+      const modes = columnModes.get(column);
+      columnModes.set(column, modes ? {
+        read: modes.read || group.modes.read,
+        readMeta: modes.readMeta || group.modes.readMeta,
+        write: modes.write || group.modes.write,
+        writeMeta: modes.writeMeta || group.modes.writeMeta,
+      } : {...group.modes});
     }
   }
+  /** TODO: perhaps we'd probably want to use localeCompare() at some point, or sort in cpp */
   return [...columnModes]
-      .map(([name, modes]) => ({name, modes: [...modes].sort()}))
+      .map(([name, modes]) => ({name, modes}))
       .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
 }
 
 export interface SubjectGroup {
   name: string;
-  modes: SubjectGroupAccessMode[];
+  modes: SubjectGroupAccessModes;
 }
 
 export interface ParticipantPersonalia extends Omit<rawTypes.ParticipantPersonalia, 'dateOfBirth'> {
