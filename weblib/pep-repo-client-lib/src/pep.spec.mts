@@ -92,23 +92,23 @@ describe('Pep', () => {
         },
         {
           name: 'ParticipantInfo',
-          modes: ['read', 'read-meta'],
+          modes: {read: true, readMeta: true, write: false, writeMeta: false},
           columns: ['ParticipantInfo'],
         },
         {
           name: 'ParticipantIdentifier',
-          modes: ['read', 'read-meta'],
+          modes: {read: true, readMeta: true, write: false, writeMeta: false},
           columns: ['ParticipantIdentifier'],
         },
       ]);
       expect(columnGroups.find(group => group.name === 'WasmTestColumnGroup')?.modes)
-          .to.deep.equal(['read', 'read-meta', 'write']);
+          .to.deep.equal({read: true, readMeta: true, write: true, writeMeta: false});
     });
 
     it('should allow getting the modes for every column', async () => {
       const columns = getColumnModes(await pep.runHandleWasmException(() => pep.listColumns()));
       expect(columns.find(column => column.name === 'WasmTestColumn')?.modes)
-          .to.deep.equal(['read', 'read-meta', 'write']);
+          .to.deep.equal({read: true, readMeta: true, write: true, writeMeta: false});
     });
   });
 
@@ -116,11 +116,11 @@ describe('Pep', () => {
     it('should list the name and modes of each subject group', async () => {
       const subjectGroups = await pep.runHandleWasmException(() => pep.listSubjectGroups());
       expect(subjectGroups).to.containSubset([
-        {name: '*', modes: ['access']},
+        {name: '*', modes: {access: true, enumerate: false}},
         {name: 'WasmTestSubjectGroup'},
       ]);
       expect(subjectGroups.find(group => group.name === 'WasmTestSubjectGroup')?.modes)
-          .to.deep.equal(['access', 'enumerate']);
+          .to.deep.equal({access: true, enumerate: true});
     });
   });
 

@@ -50,6 +50,13 @@ PEP_BINDINGS(ListQuery,
   mode
 )
 
+PEP_BINDINGS(ColumnGroupAccessModes,
+  read,
+  readMeta,
+  write,
+  writeMeta
+)
+
 PEP_BINDINGS(ColumnGroup,
   name,
   modes,
@@ -59,6 +66,11 @@ PEP_BINDINGS(ColumnGroup,
 PEP_BINDINGS(EnrolledUser,
   userGroup,
   user
+)
+
+PEP_BINDINGS(SubjectGroupAccessModes,
+  access,
+  enumerate
 )
 
 PEP_BINDINGS(SubjectGroup,

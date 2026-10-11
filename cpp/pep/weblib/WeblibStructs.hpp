@@ -30,11 +30,20 @@ struct ListQuery {
   [[nodiscard]] auto operator<=>(const ListQuery&) const = default;
 };
 
+/// Access modes of the enrolled User Group to a column group, including implied ones
+struct ColumnGroupAccessModes {
+  bool read = false;
+  bool readMeta = false;
+  bool write = false;
+  bool writeMeta = false;
+
+  [[nodiscard]] auto operator<=>(const ColumnGroupAccessModes&) const = default;
+};
+
 /// Used in the result of listColumns
 struct ColumnGroup {
   std::string name;
-  /// Access modes of the enrolled user ("read", "write", "read-meta", "write-meta"), including implied ones
-  std::vector<std::string> modes;
+  ColumnGroupAccessModes modes;
   std::vector<std::string> columns;
 
   [[nodiscard]] auto operator<=>(const ColumnGroup&) const = default;
@@ -47,11 +56,18 @@ struct EnrolledUser {
   [[nodiscard]] auto operator<=>(const EnrolledUser&) const = default;
 };
 
+/// Access modes of the enrolled User Group to a subject group: \c enumerate to list cells, \c access to retrieve them
+struct SubjectGroupAccessModes {
+  bool access = false;
+  bool enumerate = false;
+
+  [[nodiscard]] auto operator<=>(const SubjectGroupAccessModes&) const = default;
+};
+
 /// Used in the result of listSubjectGroups
 struct SubjectGroup {
   std::string name;
-  /// Access modes of the enrolled user: "enumerate" to list cells, "access" to retrieve them
-  std::vector<std::string> modes;
+  SubjectGroupAccessModes modes;
 
   [[nodiscard]] auto operator<=>(const SubjectGroup&) const = default;
 };
