@@ -9,7 +9,7 @@ namespace pep::cli {
 
 namespace {
 
-constexpr const char* DestructiveWarning = "Falsifies repository history, making it impossible to re-download exact copies of data sets that include purged items.";
+constexpr const char* DestructiveWarning = "Makes it impossible to (re-)download (exact copies of) data sets that include purged items.";
 
 void OutputPurgeCycle(const PurgeCycle& cycle, std::ostream& destination = std::cout) {
   destination
