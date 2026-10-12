@@ -1151,7 +1151,7 @@ messaging::MessageBatches StorageFacility::handlePurgeListRequest(std::shared_pt
   UserGroup::EnsureAccess({ UserGroup::DataAdministrator, UserGroup::RepositoryManager }, accessGroup);
 
   auto cycles = sqlite_->getPurgeCycles();
-  return rxcpp::observable<>::iterate(cycles)
+  return rxcpp::observable<>::iterate(std::move(cycles))
     .map([](PurgeCycle cycle) -> messaging::MessageSequence {
         return rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(cycle)));
       });
