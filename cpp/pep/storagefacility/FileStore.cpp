@@ -328,8 +328,7 @@ messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
   }
   auto payload = content->payload();
   assert(payload != nullptr);
-  const auto& cell = this->getCell();
-  return payload->readPage(cell.participant().fileStore().pagestore_, cell.entryName(), index);
+  return payload->readPage(this->getFileStore().pagestore_, this->getCell().entryName(), index);
 }
 
 void FileStore::Entry::save() const {
