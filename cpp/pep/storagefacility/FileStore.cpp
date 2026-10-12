@@ -369,7 +369,7 @@ std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& 
     if (!entry->getPurgedAt()) {
       return EntryChange::Create(*entry);
     }
-    // else entry is purged: let default handling (below) create a fresh EntryChange
+    // else entry is purged: ignore the "createIfNeeded" parameter and let default handling (below) create a fresh EntryChange
   }
   else if (!createIfNeeded) {
     // Entry doesn't exist yet and caller doesn't want to create a new one
