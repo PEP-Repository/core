@@ -508,15 +508,16 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       LocalPseudonym pseud = sfentry->getName().pseudonym();
       std::string column = sfentry->getName().column();
 
-      DataEnumerationEntry2 entry;
-      entry.metadata = server->compileMetadata(column, *sfentry);
-      // TODO execute rerandomization in WorkerPool
-      entry.polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey());
-      entry.fileSize = sfcontent->payload()->size();
-      entry.id = id;
-      entry.index = static_cast<uint32_t>(i);
-      entry.columnIndex = indices.getColumnIndex(column);
-      entry.pseudonymIndex = indices.getPseudonymIndex(pseud);
+      DataEnumerationEntry2 entry{
+        .id = id,
+        .metadata = server->compileMetadata(column, *sfentry),
+        // TODO execute rerandomization in WorkerPool
+        .polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey()),
+        .fileSize = sfcontent->payload()->size(),
+        .columnIndex = indices.getColumnIndex(column),
+        .pseudonymIndex = indices.getPseudonymIndex(pseud),
+        .index = static_cast<uint32_t>(i),
+      };
       response->entries.push_back(std::move(entry));
 
       // Prevent individual DataEnumerationResponse2 messages from becoming too large
