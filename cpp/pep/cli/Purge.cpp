@@ -72,6 +72,7 @@ protected:
 class CommandPurge::Confirm : public ChildCommandOf<CommandPurge> {
 public:
   explicit Confirm(CommandPurge& parent);
+  std::optional<std::string> getAdditionalDescription() const override;
   commandline::Parameters getSupportedParameters() const override;
 
 protected:
@@ -156,6 +157,10 @@ int CommandPurge::Cancel::execute() {
 
 CommandPurge::Confirm::Confirm(CommandPurge& parent)
   : ChildCommandOf<CommandPurge>("confirm", "Confirm and start a purge cycle", parent) {}
+
+std::optional<std::string> CommandPurge::Confirm::getAdditionalDescription() const {
+  return DestructiveWarning;
+}
 
 commandline::Parameters CommandPurge::Confirm::getSupportedParameters() const {
   return ChildCommandOf<CommandPurge>::getSupportedParameters()
