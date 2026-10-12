@@ -1200,14 +1200,8 @@ messaging::MessageBatches StorageFacility::handlePurgeConfirmationRequest(std::s
         throw Error("Purge cycle has already been applied");
       }
 
-      // (Overly) defensive programming: each purge cycle must have a unique 'applied' timestamp to ensure history consistency
-      auto existing = sqlite_->getPurgeCycles();
-      auto timestamp = TimeNow();
-      while (ContainsWhere(existing, [timestamp](const PurgeCycle& cycle) { return cycle.applied == timestamp; })) {
-        timestamp = TimeNow();
-      }
 
-      result.applied = timestamp;
+      result.applied = this->getUniqueChangeTimestamp();
       sqlite_->updatePurgeCycle(result);
       fileStore_->applyPurgeCycle(result);
 
@@ -1297,6 +1291,18 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
         throw Error("Back catalog contains no cell versions");
       }
       return sqlite_->getPurgeCycle(id);
+    });
+}
+
+Timestamp StorageFacility::getUniqueChangeTimestamp() const {
+  return sqlite_->atomically([this]() {
+      // Prevent collision with purge cycle 'applied' timestamps to ensure history consistency
+      auto existing = sqlite_->getPurgeCycles();
+      auto result = TimeNow();
+      while (ContainsWhere(existing, [result](const PurgeCycle& cycle) { return cycle.applied == result; })) {
+        result = TimeNow();
+      }
+      return result;
     });
 }
 
