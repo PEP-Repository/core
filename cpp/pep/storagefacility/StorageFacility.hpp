@@ -129,7 +129,7 @@ private:
 
   Metadata compileMetadata(std::string column, const FileStore::Entry& entry);
   PurgeCycle createPurgeCycle(PurgeCycle::Definition definition);
-  Timestamp getUniqueChangeTimestamp() const;
+  Timestamp getUniqueChangeTimestamp();
 
   template <typename TEntry>
   using GetEntryContent = std::function<std::unique_ptr<EntryContent>(const TEntry&)>;
@@ -155,6 +155,7 @@ private:
   boost::asio::steady_timer timer_;
   const uint8_t parallelisationWidth_ = 0; // passed to RxParallelConcat
   const uint64_t dataSizeResolution_;
+  Timestamp lastChangeTimestamp_{};
 };
 
 }

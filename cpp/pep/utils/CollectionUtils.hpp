@@ -151,13 +151,4 @@ requires (std::ranges::sized_range<decltype(src)> && std::ranges::sized_range<de
   return result;
 }
 
-[[nodiscard]] bool ContainsWhere(std::ranges::input_range auto&& range, auto&& predicate) {
-  using Value = std::ranges::range_value_t<decltype(range)>;
-  static_assert(std::is_invocable_v<decltype(predicate), const Value&>, "Predicate parameter type must match the range's item type");
-  static_assert(std::is_invocable_r_v<bool, decltype(predicate), const Value&>, "Predicate must return a boolean");
-
-  auto end = range.end();
-  return std::find_if(range.begin(), end, predicate) != end;
-}
-
 }

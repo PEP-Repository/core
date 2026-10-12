@@ -823,7 +823,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
             },
             [this, server, subscriber, ctx, hasher, getResponse]() { // file close
               ctx->throttleAttachment.reset();
-              auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
+              auto time = this->getUniqueChangeTimestamp(); // Make all entries available/valid at the same moment: see #1631
               for (auto [entry, entryId, i] : views::zip(ctx->entries, ctx->ids, views::iota(0uz))) {
                 try {
                   auto id = encryptId(entry->getName().string(), time);
@@ -949,7 +949,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
     changes.push_back(entryChange);
   }
 
-  auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
+  auto time = this->getUniqueChangeTimestamp(); // Make all entries available/valid at the same moment: see #1631
   MetadataUpdateResponse2 response;
   for (const auto& change : changes) {
     auto id = this->encryptId(change->getName().string(), time);
@@ -1294,14 +1294,24 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
     });
 }
 
-Timestamp StorageFacility::getUniqueChangeTimestamp() const {
+Timestamp StorageFacility::getUniqueChangeTimestamp() {
   return sqlite_->atomically([this]() {
       // Prevent collision with purge cycle 'applied' timestamps to ensure history consistency
-      auto existing = sqlite_->getPurgeCycles();
+      auto existing = sqlite_->getPurgeCycles()
+        | views::transform([](const PurgeCycle& cycle) { return cycle.applied; })
+        | to<std::set>();
+      // Prevent collision with the last (supposedly unique) timestamp that we produced
+      existing.emplace(lastChangeTimestamp_);
+
+      // Get current timestamp until it's unique
       auto result = TimeNow();
-      while (ContainsWhere(existing, [result](const PurgeCycle& cycle) { return cycle.applied == result; })) {
+      while (existing.contains(result)) {
         result = TimeNow();
       }
+
+      // Prevent next invocation from producing the same value
+      lastChangeTimestamp_ = result;
+
       return result;
     });
 }
