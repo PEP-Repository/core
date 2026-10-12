@@ -260,15 +260,18 @@ std::set<std::string> FileStore::pagePaths() const {
 }
 
 void FileStore::persistPendingPurges() {
+  // If there is a purge cycle that has been confirmed/applied but not (fully) persisted yet...
   auto pending = sqlite_.getPurgeCycles()
     | std::views::filter([](const PurgeCycle& cycle) { return cycle.applied && !cycle.completed; })
     | std::ranges::to<std::vector>();
 
   if (!pending.empty()) {
     std::scoped_lock lock(purgePersistenceMux_);
-    if (!purgePersistence_.joinable()) {
+    if (!purgePersistence_.joinable()) { // ... and the persistence thread isn't already running...
+      // ... find the oldest unpersisted cycle...
       auto i = std::ranges::min_element(pending, {}, &PurgeCycle::applied);
       assert(i != pending.end());
+      // ... and start a (new) persistence thread now to process it.
       purgePersistence_ = std::thread([self = SharedFrom(*this), cycle = *i]() { self->persistPurgeCycleAsync(cycle); });
     }
   }

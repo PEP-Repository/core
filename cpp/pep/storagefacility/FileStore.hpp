@@ -128,7 +128,7 @@ public:
     Timestamp getValidFrom() const noexcept { return validFrom_; }
 
     std::optional<Timestamp> getPurgedAt() const { return purgedAt_; }
-    void markPurged(Timestamp at);
+    void markPurged(Timestamp at); // in memory
     void throwErrorIfPurged(const std::string& logContext) const;
     std::set<std::string> pagePaths() const;
 
@@ -137,7 +137,7 @@ public:
     void save() const;
     static std::shared_ptr<Entry> TryLoad(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension = std::nullopt);
     static std::shared_ptr<Entry> Load(Cell& cell, Timestamp timestamp);
-    static void EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Timestamp version);
+    static void EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Timestamp version); // on disk
   };
 
   struct CellVersion {
@@ -175,8 +175,8 @@ public:
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
 
     std::set<std::string> pagePaths() const; // for latest version
-    void applyPurgeCycle(const PurgeCycle& cycle);
-    void ensurePurgePersisted(Timestamp purgedAt, Timestamp cellVersion);
+    void applyPurgeCycle(const PurgeCycle& cycle); // in memory
+    void ensurePurgePersisted(Timestamp purgedAt, Timestamp cellVersion); // on disk
   };
 
   class Participant {
@@ -204,8 +204,8 @@ public:
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
 
     std::set<std::string> pagePaths() const; // for latest version
-    void applyPurgeCycle(const PurgeCycle& cycle);
-    void ensurePurgePersisted(Timestamp purgedAt, const std::string& column, Timestamp version);
+    void applyPurgeCycle(const PurgeCycle& cycle); // in memory
+    void ensurePurgePersisted(Timestamp purgedAt, const std::string& column, Timestamp version); // on disk
   };
 
 private:
@@ -256,8 +256,8 @@ public:
   }
 
   std::set<std::string> pagePaths() const; // for latest version
-  void applyPurgeCycle(const PurgeCycle& cycle);
-  void persistPendingPurges();
+  void applyPurgeCycle(const PurgeCycle& cycle); // in memory
+  void persistPendingPurges(); // on disk
 };
 
 }
