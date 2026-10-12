@@ -256,7 +256,7 @@ public:
   }
 
   std::set<std::string> pagePaths() const; // for latest version
-  void applyPurgeCycle(const PurgeCycle& cycle); // synchronously in memory
+  void applyPurgeCycle(const PurgeCycle& cycle); // synchronously in memory and asynchronously on disk
   void persistPendingPurges(); // asynchronously on disk
 };
 
