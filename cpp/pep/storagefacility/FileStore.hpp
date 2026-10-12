@@ -71,7 +71,6 @@ public:
     bool isTombstone() const { return content_ == nullptr; }
     uint64_t payloadSize() const;
     bool isOriginalPayloadOwner() const;
-
   };
 
   /// \brief Represents a pending update to a cell. A new Entry will be created when an EntryChange is commit()ted.
