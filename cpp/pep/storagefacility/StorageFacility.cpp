@@ -1274,11 +1274,11 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
           for (const FileStore::Cell* cell : participant->cells()) {
             const FileStore::CellVersions& versions = cell->versions();
             auto end = versions.end();
-            if (!versions.empty()) { // Don't purge the last (current) cell version
+            if (!versions.empty()) { // Don't purge the last/latest/current cell version
               --end;
             }
             for (auto i = versions.begin(); i != end; ++i) {
-              if (!i->purgedAt) {
+              if (!i->purgedAt) { // If this cell version isn't purged yet...
                 storagefacility::SqliteStorage::CellVersionSpec version{
                   .cell = EntryName(participant->name(), cell->columnName()),
                   .timestamp = i->validFrom,
