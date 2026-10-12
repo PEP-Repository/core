@@ -1360,7 +1360,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
 
 StorageFacility::~StorageFacility() noexcept = default;
 
-FileStore::Metrics StorageFacility::getRoundedFileStoreMetrics(const std::set<std::string>& columns) {
+FileStore::Metrics StorageFacility::getRoundedFileStoreMetrics(const std::set<std::string>& columns) const {
   auto precise = fileStore_->getMetrics(columns);
 
   auto round = [blockSize = dataSizeResolution_](uint64_t bytes) {
