@@ -32,8 +32,6 @@ private:
   int64_t ensureRowId(const std::string& name);
   int64_t ensureColumnId(const std::string& name);
 
-  void deletePurgeCycleRecord(int64_t id);
-
 public:
   struct CellVersionSpec;
   class ConstraintViolation;

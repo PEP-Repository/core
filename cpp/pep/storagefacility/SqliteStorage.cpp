@@ -166,10 +166,6 @@ int64_t SqliteStorage::ensureColumnId(const std::string& name) {
   return *result;
 }
 
-void SqliteStorage::deletePurgeCycleRecord(int64_t id) {
-  implementor_->raw.remove<PurgeCycleRecord>(id);
-}
-
 SqliteStorage::SqliteStorage(std::filesystem::path file)
   : implementor_(std::make_unique<Implementor>(file.string())) {
   implementor_->syncSchema();
@@ -214,7 +210,7 @@ void SqliteStorage::deletePurgeCycle(PurgeCycle::Id id) {
   return this->atomically([this, id]() {
       using namespace sqlite_orm;
       implementor_->raw.remove_all<PurgeEntryRecord>(where(c(&PurgeEntryRecord::cycle) == id));
-      this->deletePurgeCycleRecord(id);
+      implementor_->raw.remove<PurgeCycleRecord>(id);
     });
 }
 
