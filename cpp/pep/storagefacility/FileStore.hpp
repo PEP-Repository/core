@@ -238,7 +238,7 @@ private:
   Participant* getParticipant(const std::string& name) const;
   Participant& provideParticipant(const std::string& name);
 
-  void persistPurgeCycleAsync(PurgeCycle cycle);
+  void persistPurgeCycleAsync(PurgeCycle cycle); // Entry point for the purgePersistence_ thread
 
 public:
   PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;
@@ -256,8 +256,8 @@ public:
   }
 
   std::set<std::string> pagePaths() const; // for latest version
-  void applyPurgeCycle(const PurgeCycle& cycle); // in memory
-  void persistPendingPurges(); // on disk
+  void applyPurgeCycle(const PurgeCycle& cycle); // synchronously in memory
+  void persistPendingPurges(); // asynchronously on disk
 };
 
 }
