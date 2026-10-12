@@ -49,6 +49,14 @@ const std::string LogTag("StorageFacility");
 
 const std::string FileStore::Entry::FileExtension = ".entry";
 
+FileStore::Metrics& FileStore::Metrics::operator+=(const Metrics& rhs) {
+  entryCount += rhs.entryCount;
+  totalBytes += rhs.totalBytes;
+  rollingBytes += rhs.rollingBytes;
+
+  return *this;
+}
+
 EntryContent::MetadataEntry FileStore::makeMetadataEntry(std::string key, std::string value) {
   auto pos = metadataValues_.emplace(std::move(key), std::set<std::string>()).first;
   auto valuePos = pos->second.emplace(std::move(value)).first;
@@ -122,9 +130,7 @@ FileStore::FileStore(
     }
   }
 
-  size_t entryCount{};
-  uint64_t totalPayloadBytes_{}, rollingPayloadBytes_{};
-  this->getMetrics(entryCount, totalPayloadBytes_, rollingPayloadBytes_);
+  auto entryCount = this->getMetrics().entryCount;
 
   duration<double> seconds(steady_clock::now() - start_time);
   std::ostringstream message;
@@ -178,21 +184,12 @@ FileStore::Cell::Cell(Participant& participant, const std::string& columnName, b
   }
 }
 
-void FileStore::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {
-  entryCount = 0U;
-  totalPayloadBytes = 0U;
-  rollingPayloadBytes = 0U;
-
+FileStore::Metrics FileStore::getMetrics(const std::set<std::string>& columns) const {
+  Metrics result;
   for (const auto& participant : participants_) {
-    size_t subEntryCount{};
-    uint64_t subTotalPayloadBytes{}, subRollingPayloadBytes{};
-
-    participant->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes, columns);
-
-    entryCount += subEntryCount;
-    totalPayloadBytes += subTotalPayloadBytes;
-    rollingPayloadBytes += subRollingPayloadBytes;
+    result += participant->getMetrics(columns);
   }
+  return result;
 }
 
 
@@ -527,17 +524,20 @@ CheckedPath FileStore::Cell::path() const {
   return this->participant().path() / CheckedFileName(columnName_);
 }
 
-void FileStore::Cell::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const {
-  entryCount = versions_.size();
+FileStore::Metrics FileStore::Cell::getMetrics() const {
+  Metrics result{
+    .entryCount = versions_.size(),
+    .totalBytes = 0U,
+    .rollingBytes = latest_ ? latest_->payloadSize() : 0U,
+  };
 
-  totalPayloadBytes = 0U;
   for (const auto& version : versions_) {
     if (version.isOriginalPayloadOwner) {
-      totalPayloadBytes += version.payloadSize;
+      result.totalBytes += version.payloadSize;
     }
   }
 
-  rollingPayloadBytes = latest_ ? latest_->payloadSize() : 0U;
+  return result;
 }
 
 void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
@@ -583,21 +583,16 @@ CheckedPath FileStore::Participant::path() const {
   return this->fileStore().metaDir() / CheckedFileName(name_);
 }
 
-void FileStore::Participant::getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const {
-  entryCount = 0U;
-  totalPayloadBytes = 0U;
-  rollingPayloadBytes = 0U;
+FileStore::Metrics FileStore::Participant::getMetrics(const std::set<std::string>& columns) const {
+  FileStore::Metrics result;
 
   for (const auto& cell : cells_) {
     if (columns.empty() || columns.contains(cell->columnName())) {
-      size_t subEntryCount{};
-      uint64_t subTotalPayloadBytes{}, subRollingPayloadBytes{};
-      cell->getMetrics(subEntryCount, subTotalPayloadBytes, subRollingPayloadBytes);
-      entryCount += subEntryCount;
-      totalPayloadBytes += subTotalPayloadBytes;
-      rollingPayloadBytes += subRollingPayloadBytes;
+      result += cell->getMetrics();
     }
   }
+
+  return result;
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Participant::lookup(const std::string& column, Timestamp validAt) {
