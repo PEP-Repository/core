@@ -112,8 +112,9 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
 }
 
 void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
-  assert(cycle.applied && !cycle.completed);
+  // Entry point for the purgePersistence_ thread
 
+  assert(cycle.applied && !cycle.completed);
   try {
     for (auto version : sqlite_.getIncludedCellVersions(cycle.id)) {
       this->getParticipant(version.cell.participant())->ensurePurgePersisted(*cycle.applied, version.cell.column(), version.timestamp);
@@ -124,7 +125,9 @@ void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
     sqlite_.updatePurgeCycle(updated);
   }
   catch (...) {
+    // Eat all exceptions to prevent the thread from taking down the entire process
     PEP_LOG(LogTag, Severity::Error) << "Encountered exception persisting purge cycle " << cycle.id << ": " << GetExceptionMessage(std::current_exception());
+    // Since the cycle hasn't been marked "completed" in sqlite_, we'll (let the ASIO thread) retry with a new purgePersistence_ thread
   }
 
   post(*ioContext_, [self = SharedFrom(*this)]() { // Let the ASIO thread...
@@ -135,7 +138,7 @@ void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
         self->purgePersistence_.join();
         assert(!self->purgePersistence_.joinable());
       }
-      // ... then start a new persistence thread if any more cycles need to be persisted
+      // ... then start a new persistence thread if any (more) cycles need to be persisted
       self->persistPendingPurges();
     });
 }
