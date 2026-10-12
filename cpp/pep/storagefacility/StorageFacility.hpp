@@ -129,7 +129,7 @@ private:
 
   Metadata compileMetadata(std::string column, const FileStore::Entry& entry);
   PurgeCycle createPurgeCycle(PurgeCycle::Definition definition);
-  Timestamp getUniqueChangeTimestamp();
+  Timestamp getUniqueChangeTimestamp(bool forPurgeCycle);
 
   template <typename TEntry>
   using GetEntryContent = std::function<std::unique_ptr<EntryContent>(const TEntry&)>;
