@@ -1217,11 +1217,11 @@ FileStore::Metrics StorageFacility::getRoundedFileStoreMetrics(const std::set<st
   auto precise = fileStore_->getMetrics(columns);
 
   auto round = [blockSize = dataSizeResolution_](uint64_t bytes) {
-    auto blocks = bytes / blockSize;
-    if (bytes % blockSize != 0U) {
-      ++blocks;
-    }
-    return blocks * blockSize;
+      auto blocks = bytes / blockSize;
+      if (bytes % blockSize != 0U) {
+        ++blocks;
+      }
+      return blocks * blockSize;
     };
 
   return FileStore::Metrics{
