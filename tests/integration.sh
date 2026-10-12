@@ -524,12 +524,6 @@ execute . mkdir -p "$DEST_DIR"
 
 ####################
 
-if should_run_test dump-shadow; then
-  execute . "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepDumpShadowAdministration" --loglevel "$CLIENT_LOGLEVEL" dump ShadowAdministration.key registrationserver/ShadowShortPseudonyms.sqlite
-fi
-
-####################
-
 if should_run_test watchdog; then
   execute watchdog "$BUILD_DIR/go/src/pep.cs.ru.nl/pep-watchdog/pep-watchdog" -oneshot -instant-stressor
 fi

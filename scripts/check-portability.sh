@@ -140,8 +140,15 @@ cmd_start='(^|[^[:alnum:]_])'
 # Either a non-alphanumeric, underscore or hyphen character, or the end of the line.
 word_end='([^[:alnum:]_.-]|$)'
 
+# Characters that end a command: a pipe, a semicolon, or & (which also covers &&).
+# Meant for use inside a bracket expression, e.g. [^${cmd_end_chars}].
+cmd_end_chars='|;&'
+
+# Regex fragment matching any text that stays within the current command.
+same_cmd="[^${cmd_end_chars}]*"
+
 # Regex fragment matching arguments that stay within the current command.
-not_cmd_end='[[:space:]][^|;&]*'
+not_cmd_end="[[:space:]]${same_cmd}"
 
 # These are some common portability issues, the list is not complete. Please extend with more checks as needed.
 # NOTE: Short options combined into a single argument (e.g. -iP, -xzf) are not detected by these checks.
@@ -163,6 +170,15 @@ check 'stat-c' \
 check 'head-tail-negative' \
     "${cmd_start}(head|tail)${not_cmd_end}-n[[:space:]]-[[:digit:]]" \
     'A negative count is GNU-only, use a portable alternative'
+# Matches an argument ending in a slash, optionally followed by a closing quote ( " or ') (e.g. src/ or "$dir/").
+arg_trailing_slash="/[\"']?"
+# Matches the start of a next argument, so the argument before it is a source and not the destination.
+# The end of the command, a comment and a line continuation do not count as a next argument.
+# Inside a bracket expression a backslash is literal, so \ here is the backslash of a line continuation.
+next_arg="[[:space:]]+[^${cmd_end_chars}#[:space:]\\]"
+check 'cp-trailing-slash' \
+    "${cmd_start}cp${not_cmd_end}${arg_trailing_slash}${next_arg}" \
+    'BSD cp copies the contents of a source ending in /, GNU cp copies the directory itself. Drop the trailing slash, or write "src/." to copy the contents on both'
 
 if [ -n "$any_failed" ]; then
     >&2 echo

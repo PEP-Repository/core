@@ -52,7 +52,7 @@ int CommandUser::CommandUserQuery::execute() {
       if (displayConfig.format() == so::Format::Json) {
         so::json::append(std::cout, tree, std::get<so::JsonConfig>(displayConfig.formatConfig)) << std::endl;
       } else {
-        so::yaml::append(std::cout, tree, std::get<so::YamlConfig>(displayConfig.formatConfig)) << std::endl;
+        so::yaml::append(std::cout, tree, std::get<so::YamlConfig>(displayConfig.formatConfig)) << std::flush; // yaml output already ends with a newline
       }
 
       // Warn for users without displayId

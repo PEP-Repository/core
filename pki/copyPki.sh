@@ -8,4 +8,4 @@ cp PEPAuthserver.chain  PEPAuthserver.key  TLSAuthserver.chain  TLSAuthserver.ke
 cp PEPRegistrationServer.chain  PEPRegistrationServer.key  TLSRegistrationServer.chain  TLSRegistrationServer.key "$targetdir/registrationserver/"
 cp PEPTranscryptor.chain  PEPTranscryptor.key  TLSTranscryptor.chain  TLSTranscryptor.key "$targetdir/transcryptor/"
 cp pepClientCA.chain  pepClientCA.key  TLSKeyServer.chain  TLSKeyServer.key "$targetdir/keyserver/"
-cp -r s3certs/  PEPStorageFacility.chain  PEPStorageFacility.key  TLSStorageFacility.chain  TLSStorageFacility.key "$targetdir/storagefacility/"
+cp -r s3certs  PEPStorageFacility.chain  PEPStorageFacility.key  TLSStorageFacility.chain  TLSStorageFacility.key "$targetdir/storagefacility/"

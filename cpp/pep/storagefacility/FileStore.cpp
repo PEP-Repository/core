@@ -499,8 +499,7 @@ void FileStore::Entry::save(const std::string& extension) const {
   XXH64_hash_t hash = XXH64(content.data(), content.length(), 0ULL);
 
   this->getCell().participant().fileStore().fileSystem_.write([this, &extension, &content, hash]() {
-      //TODO(workaround) Implicit conversion triggers GCC -Wconversion ("choosing ... over ...")
-      std::filesystem::path tempfile = this->getFilePath(".tmp").path();
+      std::filesystem::path tempfile = this->getFilePath(".tmp");
       std::ofstream outfile;
       outfile.open(tempfile, std::ios::binary | std::ios::out | std::ios::trunc);
       if (!outfile.is_open())
