@@ -438,7 +438,7 @@ std::set<std::string> FileStore::Entry::pagePaths() const {
   if (this->getPurgedAt()) {
     return {};
   }
-  return EntryBase::getPagePaths();
+  return this->getPagePaths();
 }
 
 messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
