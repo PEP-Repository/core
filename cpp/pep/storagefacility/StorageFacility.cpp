@@ -1260,7 +1260,7 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
 
   return sqlite_->atomically([this, definition]() {
       auto id = sqlite_->createPurgeCycle(PurgeCycle{
-        .id = 0,
+        .id{}, // ignored during insertion
         .definition = std::move(definition),
         .announced = TimeNow(),
         .applied{},
