@@ -1337,6 +1337,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()) {
 
+  // Resume persisting purges that were not completed when the the process ran last time
   fileStore_->persistPendingPurges();
 
   RegisterRequestHandlers(*this,
