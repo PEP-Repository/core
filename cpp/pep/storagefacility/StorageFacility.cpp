@@ -1214,7 +1214,7 @@ messaging::MessageBatches StorageFacility::handlePurgeConfirmationRequest(std::s
       return result;
     });
 
-  return messaging::BatchSingleMessage(result);
+  return messaging::BatchSingleMessage(std::move(result));
 }
 
 std::string StorageFacility::encryptId(std::string path, Timestamp time) {
