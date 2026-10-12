@@ -1307,10 +1307,10 @@ Timestamp StorageFacility::getUniqueChangeTimestamp(bool forPurgeCycle) {
       }
 
       // Get current timestamp until it's unique
-      auto result = TimeNow();
-      while (existing.contains(result)) {
+      Timestamp result;
+      do {
         result = TimeNow();
-      }
+      } while (existing.contains(result));
 
       if (!forPurgeCycle) {
         // Prevent next invocation from producing the same value for a purge cycle
