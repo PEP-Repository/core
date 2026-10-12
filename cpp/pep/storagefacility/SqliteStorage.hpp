@@ -9,6 +9,9 @@
 
 namespace pep::storagefacility {
 
+/// SQLite database (file) frontend for Storage Facility.
+/// \remark Public methods are thread safe. (Private methods require caller to synchronize.)
+///         Callers can synchronize (over multiple method calls) by means of the "atomically" method.
 class SqliteStorage final {
 private:
   struct Implementor;
