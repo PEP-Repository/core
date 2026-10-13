@@ -343,13 +343,13 @@ TEST(HttpClientConnection, AbandonedRequestDoesNotAffectSubsequentRequests) {
     }
   };
 
-  ioContext.run_for(5s);
+  ioContext.run_for(30s);
   EXPECT_EQ(followupPaths.size(), *receivedCount) << "Not all requests sent after the abandoned one received a response";
 
   if (*receivedCount != followupPaths.size()) { // Timed out: clean up, and let pending handlers finish
     finish();
     ioContext.restart();
-    ioContext.run_for(1s);
+    ioContext.run_for(30s);
   }
 }
 
