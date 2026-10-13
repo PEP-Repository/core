@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/utils/PropertyBasedContainer.hpp>
 #include <cstdint>
 #include <optional>
 
@@ -30,5 +31,7 @@ public:
   /// \return The result of the checksum (calculation).
   virtual Result get(const std::optional<Checkpoint>& maxCheckpoint) = 0;
 };
+
+using ChecksumChains = PropertyBasedContainer<std::unique_ptr<ChecksumChain>, &ChecksumChain::name>::set;
 
 }
