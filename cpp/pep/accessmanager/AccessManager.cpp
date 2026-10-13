@@ -576,7 +576,7 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
 
   // Append the pps of reference subjects after the pps of access subjects
   ctx->numAllAccessSubjects = ctx->pps.size();
-  for (const auto& pp : ctx->request.referenceSubjects) { ctx->pps.emplace_back(pp); }
+  ctx->pps.append_range(ctx->request.referenceSubjects);
 
   // Check columns and column groups; ticket.columns is unfolded in place
   ctx->columnGroupMap = backend_->unfoldColumnGroupsAndCheckAccess(

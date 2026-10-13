@@ -355,8 +355,8 @@ Transcryptor::handleLogIssuedTicketRequest(
     // Hash all pseudonyms on the ticket in the order the Transcryptor returned them
     std::vector<LocalPseudonyms> allPseudonyms;
     allPseudonyms.reserve(ticket.accessSubjects.size() + ticket.referenceSubjects.size());
-    allPseudonyms.insert(allPseudonyms.end(), ticket.accessSubjects.begin(), ticket.accessSubjects.end());
-    allPseudonyms.insert(allPseudonyms.end(), ticket.referenceSubjects.begin(), ticket.referenceSubjects.end());
+    allPseudonyms.append_range(ticket.accessSubjects);
+    allPseudonyms.append_range(ticket.referenceSubjects);
     return ComputePseudonymHash(allPseudonyms);
   }();
   PEP_LOG(LogTag, LogIssuedTicketRequestLoggingSeverity) << "LogIssuedTicket request " << requestNumber << " calculated hash";
