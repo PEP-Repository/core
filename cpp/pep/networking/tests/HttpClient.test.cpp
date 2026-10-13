@@ -6,8 +6,15 @@
 #include <pep/httpserver/HTTPServer.hpp>
 #include <pep/networking/HttpClient.hpp>
 #include <pep/utils/Defer.hpp>
+#include <pep/utils/Exceptions.hpp>
 
 #include <atomic>
+
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/read_until.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <boost/asio/streambuf.hpp>
+#include <boost/asio/write.hpp>
 
 namespace {
 
@@ -69,6 +76,101 @@ void RegisterAndRetrieve(AsyncHttpServer& server, const std::string& relativeUri
 
   EXPECT_TRUE(*received) << "Didn't receive a response for HTTP request to " << relativeUri.c_str();
 }
+
+/* Minimal HTTP server that keeps connections open between requests (unlike our civetweb-based HTTPServer).
+ * It responds to every request with the request's path as the body. Responses to requests for SlowPath are delayed,
+ * and the onSlowRequest callback is invoked when such a request is received.
+ */
+class KeepAliveHttpServer : boost::noncopyable {
+public:
+  static inline const std::string SlowPath = "/slow";
+  std::function<void()> onSlowRequest;
+
+private:
+  class Session : public std::enable_shared_from_this<Session> {
+  private:
+    KeepAliveHttpServer& server_;
+    boost::asio::streambuf buffer_;
+
+  public:
+    boost::asio::ip::tcp::socket socket;
+    boost::asio::steady_timer timer;
+
+    Session(KeepAliveHttpServer& server, boost::asio::ip::tcp::socket socket)
+      : server_(server), socket(std::move(socket)), timer(this->socket.get_executor()) {
+    }
+
+    void readRequest() {
+      boost::asio::async_read_until(socket, buffer_, "\r\n\r\n", [self = shared_from_this()](const boost::system::error_code& error, size_t size) {
+        if (error) {
+          return;
+        }
+        auto begin = boost::asio::buffers_begin(self->buffer_.data());
+        std::istringstream header(std::string(begin, begin + static_cast<std::ptrdiff_t>(size)));
+        self->buffer_.consume(size);
+
+        std::string method, path;
+        header >> method >> path;
+        if (path == SlowPath) {
+          if (self->server_.onSlowRequest) {
+            self->server_.onSlowRequest();
+          }
+          self->timer.expires_after(100ms);
+          self->timer.async_wait([self, path](const boost::system::error_code& error) {
+            if (!error) {
+              self->respond(path);
+            }
+            });
+        }
+        else {
+          self->respond(path);
+        }
+        });
+    }
+
+    void respond(const std::string& body) {
+      auto response = std::make_shared<std::string>("HTTP/1.1 200 OK\r\nContent-Length: " + std::to_string(body.size()) + "\r\n\r\n" + body);
+      boost::asio::async_write(socket, boost::asio::buffer(*response), [self = shared_from_this(), response](const boost::system::error_code& error, size_t) {
+        if (!error) {
+          self->readRequest();
+        }
+        });
+    }
+  };
+
+  boost::asio::ip::tcp::acceptor acceptor_;
+  std::vector<std::shared_ptr<Session>> sessions_;
+
+  void accept() {
+    acceptor_.async_accept([this](const boost::system::error_code& error, boost::asio::ip::tcp::socket socket) {
+      if (error) {
+        return;
+      }
+      auto session = std::make_shared<Session>(*this, std::move(socket));
+      sessions_.push_back(session);
+      session->readRequest();
+      this->accept();
+      });
+  }
+
+public:
+  explicit KeepAliveHttpServer(boost::asio::io_context& ioContext)
+    : acceptor_(ioContext, boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address("127.0.0.1"), 0)) {
+    this->accept();
+  }
+
+  uint16_t port() const { return acceptor_.local_endpoint().port(); }
+
+  void stop() {
+    boost::system::error_code ignored;
+    acceptor_.close(ignored);
+    for (const auto& session : sessions_) {
+      session->timer.cancel();
+      session->socket.close(ignored);
+    }
+    sessions_.clear();
+  }
+};
 
 using RetryParameters = pep::networking::HttpClient::RetryParameters;
 
@@ -201,6 +303,57 @@ TEST_F(HttpClient, LimitsRetries) {
   parameters.maxRetries = 0;
   std::tie(response, served) = RetrieveWithRetries(server, "/disabled", { pep::HTTPResponse(503U, "Service Unavailable") }, parameters);
   EXPECT_EQ(served, 1U);
+}
+
+// Not part of the HttpClient fixture: this test uses its own server
+TEST(HttpClientConnection, AbandonedRequestDoesNotAffectSubsequentRequests) {
+  boost::asio::io_context ioContext;
+  KeepAliveHttpServer server(ioContext);
+
+  auto client = pep::networking::HttpClient::Create(pep::networking::HttpClient::Parameters(ioContext, boost::urls::url("http://127.0.0.1:" + std::to_string(server.port()))));
+  client->start();
+
+  const std::vector<std::string> followupPaths = { "/first", "/second", "/third" };
+  auto receivedCount = std::make_shared<size_t>(0);
+
+  auto finish = [client, &server]() {
+    client->shutdown();
+    server.stop();
+  };
+
+  auto abandoned = client->sendRequest(client->makeRequest(pep::networking::HttpMethod::Get, KeepAliveHttpServer::SlowPath))
+    .subscribe(
+      [](const pep::HTTPResponse&) { ADD_FAILURE() << "Received response for abandoned request"; },
+      [](const std::exception_ptr&) { ADD_FAILURE() << "Received error for abandoned request"; }
+    );
+
+  // When the server has received the slow request, the client is waiting for its response: abandon the request and send new ones.
+  // Previously the client then sent new requests over the same connection, and read the abandoned request's response for them.
+  server.onSlowRequest = [&]() {
+    abandoned.unsubscribe();
+    for (const auto& path : followupPaths) {
+      client->sendRequest(client->makeRequest(pep::networking::HttpMethod::Get, path))
+        .subscribe(
+          [path, receivedCount, &followupPaths, &finish](const pep::HTTPResponse& response) {
+            EXPECT_EQ(200U, response.getStatusCode()) << "for request to " << path;
+            EXPECT_EQ(path, response.getBody()) << "Received response for another request";
+            if (++*receivedCount == followupPaths.size()) {
+              finish();
+            }
+          },
+          [path](const std::exception_ptr& error) { ADD_FAILURE() << "Request to " << path << " failed: " << pep::GetExceptionMessage(error); }
+        );
+    }
+  };
+
+  ioContext.run_for(5s);
+  EXPECT_EQ(followupPaths.size(), *receivedCount) << "Not all requests sent after the abandoned one received a response";
+
+  if (*receivedCount != followupPaths.size()) { // Timed out: clean up, and let pending handlers finish
+    finish();
+    ioContext.restart();
+    ioContext.run_for(1s);
+  }
 }
 
 }
