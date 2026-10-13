@@ -774,19 +774,13 @@ void TranscryptorStorage::removeOutdatedRecords() {
 void TranscryptorStorage::computeChecksum(const std::string& chain,
       std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
       uint64_t& checkpoint) {
-  auto position = checksumChains_.find(chain);
-  if (position == checksumChains_.cend()) {
-    throw Error("No such checksum chain");
-  }
-
-  auto result = (*position)->get(maxCheckpoint);
+  auto result = checksumChains_[chain].get(maxCheckpoint);
   checksum = result.checksum;
   checkpoint = result.checkpoint;
 }
 
 std::vector<std::string> TranscryptorStorage::getChecksumChainNames() {
-  return checksumChains_
-    | views::transform([](const auto& chain) { return chain->name(); })
+  return checksumChains_.names()
     | to<std::vector>();
 }
 

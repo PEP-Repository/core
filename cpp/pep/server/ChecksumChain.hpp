@@ -33,6 +33,15 @@ public:
   virtual Result get(const std::optional<Checkpoint>& maxCheckpoint) = 0;
 };
 
-using ChecksumChains = PropertyBasedContainer<std::unique_ptr<ChecksumChain>, &ChecksumChain::name>::set;
+
+class ChecksumChains {
+private:
+  PropertyBasedContainer<std::unique_ptr<ChecksumChain>, &ChecksumChain::name>::set items_;
+
+public:
+  void insert(std::unique_ptr<ChecksumChain> chain);
+  std::set<std::string> names() const;
+  ChecksumChain& operator[](const std::string& name);
+};
 
 }
