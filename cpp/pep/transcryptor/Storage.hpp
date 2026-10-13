@@ -1,9 +1,6 @@
 #pragma once
 
-#include <string>
 #include <vector>
-#include <optional>
-#include <unordered_map>
 
 #include <pep/rsk/Proofs.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>

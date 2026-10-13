@@ -3,6 +3,7 @@
 #include <pep/utils/PropertyBasedContainer.hpp>
 #include <cstdint>
 #include <optional>
+#include <string>
 
 namespace pep {
 
