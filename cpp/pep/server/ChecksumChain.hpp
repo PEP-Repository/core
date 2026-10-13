@@ -5,7 +5,14 @@
 
 namespace pep {
 
-struct ChecksumChain {
+class ChecksumChain {
+private:
+  std::string name_;
+
+protected:
+  ChecksumChain(std::string name) noexcept : name_(std::move(name)) {}
+
+public:
   using Checksum = uint64_t;
   using Checkpoint = uint64_t;
 
@@ -15,6 +22,8 @@ struct ChecksumChain {
   };
 
   virtual ~ChecksumChain() noexcept = default;
+
+  const std::string& name() const noexcept { return name_; }
 
   /// \brief Returns the checksum chain's value at the highest available checkpoint not exceeding the specified one.
   /// \param maxCheckpoint The maximum checkpoint value to include in the checksum, or nullopt to include all available checkpoints.

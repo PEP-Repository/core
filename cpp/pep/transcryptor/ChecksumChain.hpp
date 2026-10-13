@@ -28,11 +28,10 @@ private:
   };
 
   TranscryptorStorageBackend& storage_;
-  std::string name_;
   Result lastResult_ = InitialResult;
 
 protected:
-  explicit ChecksumChain(TranscryptorStorageBackend& storage, std::string name) noexcept : storage_(storage), name_(std::move(name)) {}
+  ChecksumChain(TranscryptorStorageBackend& storage, std::string name) noexcept : pep::ChecksumChain(std::move(name)), storage_(storage) {}
 
   TranscryptorStorageBackend& storage() const noexcept { return storage_; }
 
@@ -42,8 +41,6 @@ protected:
   static int64_t CheckpointToSeqNo(Checkpoint checkpoint) noexcept;
 
 public:
-  const std::string& name() const noexcept { return name_; }
-
   /// \remark Caches the last computed result to prevent excessive (re-)calculation.
   Result get(const std::optional<Checkpoint>& maxCheckpoint) override;
 };

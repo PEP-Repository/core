@@ -23,7 +23,7 @@ ChecksumChain::Result ChecksumChain::get(const std::optional<Checkpoint>& maxChe
 
   if (max < lastResult_.checkpoint) {
     PEP_LOG("Transcryptor checksum chains", Severity::Info) << "Discarding pre-calculated checksum for checkpoint " << lastResult_.checkpoint
-      << " for chain " << name_
+      << " for chain " << this->name()
       << " because earlier checkpoint " << max << " has been requested";
     lastResult_ = InitialResult;
   }
