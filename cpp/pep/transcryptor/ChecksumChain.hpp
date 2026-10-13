@@ -36,7 +36,7 @@ protected:
 
   TranscryptorStorageBackend& storage() const noexcept { return storage_; }
 
-  virtual Result calculate(const Result& partial, uint64_t maxCheckpoint) const = 0;
+  virtual Result recalculate(const Result& partial, uint64_t maxCheckpoint) const = 0;
 
   static uint64_t SeqNoToCheckpoint(int64_t seqNo) noexcept;
   static int64_t CheckpointToSeqNo(uint64_t checkpoint) noexcept;

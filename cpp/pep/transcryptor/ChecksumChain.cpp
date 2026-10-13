@@ -30,7 +30,7 @@ ChecksumChain::Result ChecksumChain::get(uint64_t maxCheckpoint) {
   }
 
   assert(maxCheckpoint >= FirstRecordCheckpoint);
-  return lastResult_ = this->calculate(lastResult_, maxCheckpoint);
+  return lastResult_ = this->recalculate(lastResult_, maxCheckpoint);
 }
 
 }
