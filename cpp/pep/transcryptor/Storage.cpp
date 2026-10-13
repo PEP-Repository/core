@@ -575,7 +575,7 @@ namespace {
 template <typename TRecord>
 class ChecksumChainFor : public transcryptor::ChecksumChain {
 protected:
-  Result recalculate(const Result& partial, uint64_t maxCheckpoint) const override {
+  Result recalculate(const Result& partial, Checkpoint maxCheckpoint) const override {
     assert(partial.checkpoint < maxCheckpoint);
     auto result = partial;
 

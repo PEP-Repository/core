@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include <pep/server/ChecksumChain.hpp>
 #include <memory>
 #include <string>
 #include <boost/noncopyable.hpp>
@@ -15,15 +15,15 @@ namespace transcryptor {
 /// \remark Caches the last calculated result, allowing it to be
 ///         - produced from memory instead of recalculated when re-requested for the same checkpoint (as PEP's Watchdog is prone to do).
 ///         - used as a partial result for the calculation of checksums at later checkpoints, eliminating more (needless re-)calculations.
-class ChecksumChain : boost::noncopyable {
+class ChecksumChain : boost::noncopyable, public pep::ChecksumChain {
 protected:
-  static constexpr uint64_t EmptyTableCheckpoint = 1;
-  static constexpr uint64_t FirstRecordCheckpoint = EmptyTableCheckpoint + 1U; // Record sequence number 0 (zero) is checkpoint 2
+  static constexpr Checkpoint EmptyTableCheckpoint = 1;
+  static constexpr Checkpoint FirstRecordCheckpoint = EmptyTableCheckpoint + 1U; // Record sequence number 0 (zero) is checkpoint 2
 
 public:
   struct Result {
-    uint64_t checksum = 0;
-    uint64_t checkpoint = EmptyTableCheckpoint;
+    Checksum checksum = 0;
+    Checkpoint checkpoint = EmptyTableCheckpoint;
   };
 
 private:
@@ -36,10 +36,10 @@ protected:
 
   TranscryptorStorageBackend& storage() const noexcept { return storage_; }
 
-  virtual Result recalculate(const Result& partial, uint64_t maxCheckpoint) const = 0;
+  virtual Result recalculate(const Result& partial, Checkpoint maxCheckpoint) const = 0;
 
-  static uint64_t SeqNoToCheckpoint(int64_t seqNo) noexcept;
-  static int64_t CheckpointToSeqNo(uint64_t checkpoint) noexcept;
+  static Checkpoint SeqNoToCheckpoint(int64_t seqNo) noexcept;
+  static int64_t CheckpointToSeqNo(Checkpoint checkpoint) noexcept;
 
 public:
   virtual ~ChecksumChain() noexcept = default;
@@ -48,7 +48,7 @@ public:
 
   /// \brief Returns the checksum chain's value at the highest available checkpoint not exceeding the specified one
   /// \remark Caches the last computed result to prevent excessive (re-)calculation.
-  Result get(uint64_t maxCheckpoint);
+  Result get(Checkpoint maxCheckpoint);
 };
 
 

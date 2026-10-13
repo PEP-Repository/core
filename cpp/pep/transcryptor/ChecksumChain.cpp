@@ -5,16 +5,16 @@
 
 namespace pep::transcryptor {
 
-uint64_t ChecksumChain::SeqNoToCheckpoint(int64_t seqNo) noexcept {
+ChecksumChain::Checkpoint ChecksumChain::SeqNoToCheckpoint(int64_t seqNo) noexcept {
   return FirstRecordCheckpoint + static_cast<uint64_t>(seqNo);
 }
 
-int64_t ChecksumChain::CheckpointToSeqNo(uint64_t checkpoint) noexcept {
+int64_t ChecksumChain::CheckpointToSeqNo(Checkpoint checkpoint) noexcept {
   assert(checkpoint >= FirstRecordCheckpoint);
   return static_cast<int64_t>(checkpoint - FirstRecordCheckpoint);
 }
 
-ChecksumChain::Result ChecksumChain::get(uint64_t maxCheckpoint) {
+ChecksumChain::Result ChecksumChain::get(Checkpoint maxCheckpoint) {
   if (maxCheckpoint < EmptyTableCheckpoint) {
     throw std::runtime_error("Invalid checkpoint " + std::to_string(maxCheckpoint));
   }
