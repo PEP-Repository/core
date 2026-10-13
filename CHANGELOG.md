@@ -10,6 +10,8 @@
   This makes it easier to maintain and extend. The documentation was updated to reflect the new structure of the process.
   - Changed: `docs/public/crypto/ticket_request.md` has been updated
 
+- core!2527: For projects using nginx (e.g. for s3proxy), modify `etc/params/proxy` to change `proxy_set_header Host $host;` to `proxy_set_header Host $http_host;` (or just replace by the version in pep/core>).
+
 ---------------
 *Past changes, do not edit (except by person doing release):*
 
