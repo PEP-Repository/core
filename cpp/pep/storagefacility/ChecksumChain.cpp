@@ -7,8 +7,10 @@ namespace {
 
 class FilesChecksumChain : public ChecksumChain {
 protected:
-  virtual uint64_t addCellVersion(uint64_t checksum, const FileStore::CellVersion& version) const override {
-    return checksum ^ version.checksumSubstitute;
+  virtual Result addCellVersion(Result result, const FileStore::CellVersion& version) override {
+    result.checksum ^= version.checksumSubstitute;
+    // result.checkpoint is updated by this->addCell (who is calling us)
+    return result;
   }
 
 public:
@@ -17,7 +19,11 @@ public:
 
 class EntryCountChecksumChain : public ChecksumChain {
 protected:
-  virtual uint64_t addCellVersion(uint64_t checksum, const FileStore::CellVersion& version) const override { return ++checksum; }
+  virtual Result addCellVersion(Result result, const FileStore::CellVersion& version) override {
+    result.checksum++;
+    // result.checkpoint is updated by this->addCell (who is calling us)
+    return result;
+  }
 
 public:
   explicit EntryCountChecksumChain(const FileStore& fileStore) : ChecksumChain(fileStore, "entry-count") {}
@@ -35,12 +41,12 @@ ChecksumChain::ChecksumChain(const FileStore& fileStore, std::string name) noexc
   : pep::ChecksumChain(std::move(name)), fileStore_(fileStore) {
 }
 
-ChecksumChain::Result ChecksumChain::addCell(Result result, Checkpoint max, const FileStore::Cell& cell) const {
+ChecksumChain::Result ChecksumChain::addCell(Result result, Checkpoint max, const FileStore::Cell& cell) {
   for (const auto& version : cell.versions()) {
     auto versionCheckpoint = TimestampToCheckpoint(version.validFrom);
     if (versionCheckpoint <= max) {
-      result.checkpoint = std::max(result.checkpoint, versionCheckpoint);
-      result.checksum = this->addCellVersion(result.checksum, version);
+      result = this->addCellVersion(result, version);
+      result.checkpoint = std::max(result.checkpoint, versionCheckpoint); // Saves duplicate code in this->addCellVersion
     }
   }
   return result;
