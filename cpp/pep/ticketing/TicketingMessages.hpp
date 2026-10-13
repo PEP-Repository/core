@@ -73,6 +73,13 @@ struct ClientSideTicketRequest2 {
   bool includeUserGroupPseudonyms = false;
 };
 
+/// Removes duplicate pseudonyms from a ticket request, in place.
+///
+/// - Collapses duplicates within `accessSubjects` and within `referenceSubjects`.
+/// - A pseudonym occurring in both lists is kept in `accessSubjects` and removed from `referenceSubjects`.
+/// - Does not preserve order: both lists are sorted as a side effect.
+void ResolveDuplicatePseudonyms(ClientSideTicketRequest2&);
+
 struct TicketRequest2 : public ClientSideTicketRequest2 {
   bool requestIndexedTicket{};
 };
