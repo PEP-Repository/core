@@ -44,7 +44,7 @@ protected:
 public:
   virtual ~ChecksumChain() noexcept = default;
 
-  std::string name() const noexcept { return name_; }
+  const std::string& name() const noexcept { return name_; }
 
   /// \brief Returns the checksum chain's value at the highest available checkpoint not exceeding the specified one
   /// \remark Caches the last computed result to prevent excessive (re-)calculation.
