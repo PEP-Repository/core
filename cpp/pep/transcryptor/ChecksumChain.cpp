@@ -14,7 +14,7 @@ int64_t ChecksumChain::CheckpointToSeqNo(uint64_t checkpoint) noexcept {
   return static_cast<int64_t>(checkpoint - FirstRecordCheckpoint);
 }
 
-ChecksumChain::Result ChecksumChain::get(std::shared_ptr<TranscryptorStorageBackend> storage, uint64_t maxCheckpoint) {
+ChecksumChain::Result ChecksumChain::get(uint64_t maxCheckpoint) {
   if (maxCheckpoint < EmptyTableCheckpoint) {
     throw std::runtime_error("Invalid checkpoint " + std::to_string(maxCheckpoint));
   }
@@ -30,7 +30,7 @@ ChecksumChain::Result ChecksumChain::get(std::shared_ptr<TranscryptorStorageBack
   }
 
   assert(maxCheckpoint >= FirstRecordCheckpoint);
-  return lastResult_ = this->calculate(storage, lastResult_, maxCheckpoint);
+  return lastResult_ = this->calculate(lastResult_, maxCheckpoint);
 }
 
 }

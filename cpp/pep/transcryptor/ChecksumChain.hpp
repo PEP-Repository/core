@@ -27,13 +27,16 @@ public:
   };
 
 private:
+  TranscryptorStorageBackend& storage_;
   std::string name_;
   Result lastResult_;
 
 protected:
-  explicit ChecksumChain(std::string name) noexcept : name_(std::move(name)) {}
+  explicit ChecksumChain(TranscryptorStorageBackend& storage, std::string name) noexcept : storage_(storage), name_(std::move(name)) {}
 
-  virtual Result calculate(std::shared_ptr<TranscryptorStorageBackend> storage, const Result& partial, uint64_t maxCheckpoint) const = 0;
+  TranscryptorStorageBackend& storage() const noexcept { return storage_; }
+
+  virtual Result calculate(const Result& partial, uint64_t maxCheckpoint) const = 0;
 
   static uint64_t SeqNoToCheckpoint(int64_t seqNo) noexcept;
   static int64_t CheckpointToSeqNo(uint64_t checkpoint) noexcept;
@@ -45,7 +48,7 @@ public:
 
   /// \brief Returns the checksum chain's value at the highest available checkpoint not exceeding the specified one
   /// \remark Caches the last computed result to prevent excessive (re-)calculation.
-  Result get(std::shared_ptr<TranscryptorStorageBackend> storage, uint64_t maxCheckpoint);
+  Result get(uint64_t maxCheckpoint);
 };
 
 
