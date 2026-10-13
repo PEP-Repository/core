@@ -28,13 +28,16 @@ TEST_PARTICIPANT="$(openssl rand -base64 12)"
 
 if should_run_test basic; then
   # Test --loglevel
-  # `|&` redirects both stdout & stderr
-  # `tee /dev/stderr` is to print message to console as well as grepping. We need `|| true` because of SIGPIPE.
-  if ! execute . "$PEPCLI_COMMAND" query --help |& (tee /dev/stderr || true) | grep -qF '<info>'; then
+  # Capture (stdout and stderr) before grepping: piping pepcli into `grep -q` would make it fail with SIGPIPE whenever
+  # grep exits on a match before pepcli is done writing, which `pipefail` turns into a failure of the whole pipeline.
+  loglevel_output="$(execute . "$PEPCLI_COMMAND" query --help 2>&1)"
+  printf '%s\n' "$loglevel_output" >&2
+  if ! grep -qF '<info>' <<< "$loglevel_output"; then
     # pepcli prints info message with version
     fail 'Default loglevel should include info log messages'
   fi
-  if execute . "$PEPCLI_COMMAND" --loglevel warning query --help |& grep -qF '<info>'; then
+  loglevel_output="$(execute . "$PEPCLI_COMMAND" --loglevel warning query --help 2>&1)"
+  if grep -qF '<info>' <<< "$loglevel_output"; then
     fail 'warning loglevel should should not include info messages'
   fi
 
@@ -121,6 +124,14 @@ if should_run_test basic; then
   pepcli --oauth-token-group "Research Assessor" store -p "$TEST_PARTICIPANT" -c Visit1.MRI.Func -i "$SYMLINK_TEST_DATA" &&
       fail "Storing a directory structure with symlinks withOUT the -resolve-symlinks flag unexpectedly succeeded."
 
+  # Pulling data with an invalid file extension (that may have been stored by another client) should fail gracefully
+  pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -d data-with-invalid-extension \
+    --metadataxentry "$(pepcli xentry --name fileExtension --payload "/invalid")"
+  pull_output="$(pepcli pull --output-directory "$DEST_DIR/pulled-invalid-extension" -p "$TEST_PARTICIPANT" -c DeviceHistory 2>&1)" &&
+      fail "Pulling data with an invalid file extension unexpectedly succeeded"
+  grep -qF "Invalid file name" <<< "$pull_output" || fail "Pulling data with an invalid file extension did not fail gracefully: $pull_output"
+  execute . rm -rf "$DEST_DIR/pulled-invalid-extension" "$DEST_DIR/pulled-invalid-extension-pending" # The failed pull leaves the latter behind
+
   RANDOM_DATA_FILE=$(make_non_inline_file "random-data.bin")
   readonly RANDOM_DATA_FILE
   pepcli store -p "$TEST_PARTICIPANT" -c DeviceHistory -i "$RANDOM_DATA_FILE"
@@ -169,6 +180,80 @@ if should_run_test basic; then
   pepcli --oauth-token-group "Data Administrator" ama columnGroup remove MRI --force
   pepcli --oauth-token-group "Data Administrator" ama column remove Visit1.MRI.Func
 
+fi
+
+####################
+
+if should_run_test registration; then
+  # Completing a participant's registration makes the Registration Server generate their short pseudonyms. This
+  # environment has no Castor connection, so the server can't create the Castor participants that some short
+  # pseudonyms require. We store placeholders for those first, so that the server only generates the others.
+  short_pseudonyms="$(jq --compact-output .short_pseudonyms "$DATA_DIR/accessmanager/GlobalConfiguration.json")"
+  mapfile -t castor_columns < <(jq --raw-output '.[] | select(.castor) | .column' <<< "$short_pseudonyms")
+  mapfile -t generated_columns < <(jq --raw-output '.[] | select(.castor | not) | .column' <<< "$short_pseudonyms")
+  if [ "${#castor_columns[@]}" -eq 0 ] || [ "${#generated_columns[@]}" -eq 0 ]; then
+    fail "Expected the configuration to define both Castor and other short pseudonyms"
+  fi
+
+  registered_ids=()
+  pepcli --oauth-token-group "Access Administrator" ama cgar create ShortPseudonyms "Research Assessor" write
+  for _ in 1 2; do # Multiple participants, whose short pseudonyms must all differ
+    id="$(pepcli --oauth-token-group "Research Assessor" register id | grep "identifier:" | cut -d':' -f2 | tr -d '[:space:]')"
+    [ -n "$id" ] || fail "Could not generate a participant ID"
+    registered_ids+=("$id")
+    for column in "${castor_columns[@]}"; do
+      pepcli --oauth-token-group "Research Assessor" store -p "$id" -c "$column" -d CastorPlaceholder --file-extension .txt
+    done
+  done
+  pepcli --oauth-token-group "Access Administrator" ama cgar remove ShortPseudonyms "Research Assessor" write
+
+  # Returns the participant's short pseudonyms as a JSON object mapping columns to values
+  stored_short_pseudonyms() {
+    pepcli --oauth-token-group "Research Assessor" list -p "$1" -C ShortPseudonyms | jq --compact-output '.[0].data'
+  }
+
+  shadow_entries=()
+  for id in "${registered_ids[@]}"; do
+    pepcli --oauth-token-group "Research Assessor" register ensure-complete "$id"
+    stored="$(stored_short_pseudonyms "$id")"
+    for column in "${generated_columns[@]}"; do
+      definition="$(jq --compact-output --arg column "$column" '.[] | select(.column == $column)' <<< "$short_pseudonyms")"
+      prefix="$(jq --raw-output .prefix <<< "$definition")"
+      length="$(jq --raw-output .length <<< "$definition")"
+      value="$(jq --raw-output --arg column "$column" '.[$column] // empty' <<< "$stored")"
+      # Generated short pseudonyms consist of the prefix, the configured number of digits, and two check digits
+      [[ "$value" =~ ^${prefix}[0-9]{$((length + 2))}$ ]] || fail "Participant $id has invalid short pseudonym \"$value\" in column $column"
+      shadow_entries+=("$id;$column:$value")
+    done
+    for column in "${castor_columns[@]}"; do
+      value="$(jq --raw-output --arg column "$column" '.[$column]' <<< "$stored")"
+      [ "$value" = CastorPlaceholder ] || fail "Registration replaced participant $id's Castor short pseudonym in column $column"
+    done
+
+    # Completing a complete registration changes nothing
+    pepcli --oauth-token-group "Research Assessor" register ensure-complete "$id"
+    [ "$(stored_short_pseudonyms "$id")" = "$stored" ] || fail "Repeated registration completion changed participant $id's short pseudonyms"
+  done
+
+  duplicates="$(printf '%s\n' "${shadow_entries[@]}" | cut -d: -f2 | sort | uniq --repeated)"
+  [ -z "$duplicates" ] || fail "Registration generated duplicate short pseudonyms: $duplicates"
+
+  # The Registration Server also stores the short pseudonyms in its shadow administration
+  shadow="$(execute . "$BUILD_DIR/cpp/pep/apps/$BUILD_MODE/pepDumpShadowAdministration" --loglevel "$CLIENT_LOGLEVEL" dump ShadowAdministration.key registrationserver/ShadowShortPseudonyms.sqlite)"
+  for entry in "${shadow_entries[@]}"; do
+    grep --quiet --fixed-strings --line-regexp "$entry" <<< "$shadow" || fail "Shadow administration lacks entry $entry"
+  done
+
+  # Delete the short pseudonyms, so that later tests (also in reruns on the same data) don't find them
+  pepcli --oauth-token-group "Access Administrator" ama cgar create ShortPseudonyms "Research Assessor" write
+  for id in "${registered_ids[@]}"; do
+    for column in "${castor_columns[@]}" "${generated_columns[@]}"; do
+      pepcli --oauth-token-group "Research Assessor" delete -p "$id" -c "$column"
+    done
+    remaining="$(pepcli --oauth-token-group "Research Assessor" list -p "$id" -C ShortPseudonyms | jq '[.[]?.data // {} | length] | add // 0')"
+    [ "$remaining" = 0 ] || fail "$remaining of participant $id's short pseudonyms were not deleted"
+  done
+  pepcli --oauth-token-group "Access Administrator" ama cgar remove ShortPseudonyms "Research Assessor" write
 fi
 
 ####################
@@ -410,6 +495,12 @@ if should_run_test token-block; then
   # Attempt to redo the query with the token that is no longer blocked
   pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access
 
+  # Removing a user from a user group with --dontBlockTokens should not block tokens
+  pepcli --oauth-token-group "Access Administrator" user removeFrom --dontBlockTokens userWithFreshToken integrationGroup
+  pepcli --oauth-token "$TOKEN_TEST_USER_TOKEN" query column-access ||
+      fail "Removing a user from a user group with --dontBlockTokens should not block tokens"
+  pepcli --oauth-token-group "Access Administrator" user addTo userWithFreshToken integrationGroup
+
   # Removing a user from a user group should block tokens
   pepcli --oauth-token-group "Access Administrator" user removeFrom userWithFreshToken integrationGroup
 
@@ -562,16 +653,42 @@ if should_run_test user-removal-and-expiration; then
   pepcli --oauth-token "$newToken" query enrollment || fail "New token, requested after the issueDateTime of the block entry, should be valid"
 
   pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+10 years" +%s)" test-user test-group
+  # A failing mutation should not change token blocking
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$($DATE_CMD -d "now+1 second" +%s)" test-user test-group \
+    && fail "Shouldn't be able to add a user to a group they are already in"
   trace sleep "${original_expiration_seconds}s"
   pepcli --oauth-token "$newToken" query enrollment || fail "Token should still be valid after original expiration has passed, but updated expiration has not yet passed"
 
   blocked_token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
   pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should be valid"
-  pepcli --oauth-token-group "Access Administrator" token block create --issuedBefore "unix:$($DATE_CMD -d "now" +%s)" --block-start "unix:$($DATE_CMD -d "now+5 seconds" +%s)" --message "Manually blocked" test-user test-group
+  # Block rules are created without --issuedBefore, so they apply to all tokens issued up to now (including blocked_token).
+  # Prints the id of the created block rule
+  create_token_block() {
+    pepcli --oauth-token-group "Access Administrator" token block create "$@" test-user test-group | sed -n '2s/^"\([0-9]*\)";.*$/\1/p'
+  }
+  # A rule with a block-start far in the future is not yet in effect, so the token should still be valid
+  future_block_id="$(create_token_block --block-start "unix:$($DATE_CMD -d "now+10 years" +%s)" --message "Blocked in the future")"
+  [ -n "$future_block_id" ] || fail "Could not determine id of created block rule"
   pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should still be valid, before block-start timestamp"
+  # A rule without block-start is in effect immediately, so the token should be blocked
+  immediate_block_id="$(create_token_block --message "Manually blocked")"
+  [ -n "$immediate_block_id" ] || fail "Could not determine id of created block rule"
+  pepcli --oauth-token "$blocked_token" query enrollment && fail "Token should be blocked by block rule without block-start timestamp"
+  # Updating the expiration of the group membership should not lift the manual block
   pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+20 years" +%s)" test-user test-group
-  trace sleep 5s
   pepcli --oauth-token "$blocked_token" query enrollment && fail "Manually blocked token should not be unblocked by updating the expiration of the group membership"
+  # Removing the rule that is in effect should unblock the token (which also shows that the future rule is still not in effect)
+  pepcli --oauth-token-group "Access Administrator" token block remove "$immediate_block_id"
+  pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should be valid again after removing the block rule that is in effect"
+  # Remove the remaining rule, so no block rules are left behind
+  pepcli --oauth-token-group "Access Administrator" token block remove "$future_block_id"
+
+  # An expiration in the past should (also) block tokens issued since then
+  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now-1 hour" +%s)" test-user test-group
+  pepcli --oauth-token "$token" query enrollment && fail "Token issued after an expiration in the past should be blocked"
+  pepcli --oauth-token-group "Access Administrator" user addTo test-user test-group # Restore membership for test_cleanup
 
   test_cleanup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
 fi
@@ -735,7 +852,28 @@ if should_run_test structured-output; then
     fail "Output to stdout ($CSV_STDOUT_PATH) is different from output to file ($CSV_PATH)."
   fi
 
+  # Pull with a supplementary export
+  execute . rm -f "$DEST_DIR/export.json" "$DEST_DIR/export.yaml"
+
+  pepcli --oauth-token-group soUsers pull\
+    -P soSubjects -C soData --output-directory "$DEST_DIR/pulled-data" --force --export yaml
+  # There is no yaml parser available here, so the format is recognized by an unindented, unquoted block mapping key.
+  YAML_CONTENT=$(execute . cat "$DEST_DIR/export.yaml")
+  echo "$YAML_CONTENT" | grep -qE '^data:$' \
+    || fail "Expected $DEST_DIR/export.yaml to hold yaml, but it holds [$YAML_CONTENT]"
+  echo "$YAML_CONTENT" | grep -q '"soData.shortText": "yellow"' \
+    || fail "Expected $DEST_DIR/export.yaml to hold the pulled data, but it holds [$YAML_CONTENT]"
+  execute . rm -f "$DEST_DIR/export.yaml"
+
+  pepcli --oauth-token-group soUsers pull\
+    -P soSubjects -C soData --output-directory "$DEST_DIR/pulled-data" --force --export json
+  # jq parses the file, which fails for anything that is not json, and then looks the pulled data up by column name
+  JSON_CONTENT=$(execute . cat "$DEST_DIR/export.json")
+  echo "$JSON_CONTENT" | jq -e '.data[] | select(."soData.shortText" == "yellow")' > /dev/null \
+    || fail "Expected $DEST_DIR/export.json to hold the pulled data as json, but it holds [$JSON_CONTENT]"
+
   # Clean up
+  execute . rm -f "$DEST_DIR/export.json" "$DEST_DIR/export.yaml"
   execute . rm -rf "$DEST_DIR/pulled-data"
 
   test_cleanup "$SO_CONFIG"

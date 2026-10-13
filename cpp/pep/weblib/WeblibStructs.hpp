@@ -5,6 +5,8 @@
 #include <pep/weblib/Emscripten_fwd.hpp>
 #include <pep/weblib/EmscriptenValPtr.hpp>
 
+#include <emscripten/val.h>
+
 #include <rxcpp/rx-lite.hpp>
 
 #include <compare>
@@ -66,6 +68,17 @@ struct CellData {
   CellData(const CellEntry* entry, emscripten::val contentReadableStream);
 
   [[nodiscard]] emscripten::val content() const;
+};
+
+struct StoreQuery {
+  std::string subject;
+  std::string column;
+  emscripten::val blob;
+  std::unordered_map<std::string, std::string> metadata;
+};
+
+struct StoreResult {
+  std::string id;
 };
 
 struct ParticipantPersonalia {

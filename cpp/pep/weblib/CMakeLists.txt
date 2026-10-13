@@ -1,5 +1,6 @@
 # Common files
 add_library(${PROJECT_NAME}WebCommonlib
+    BlobMessageBatches.cpp BlobMessageBatches.hpp
     Emscripten_fwd.hpp
     EmscriptenMapBinding.hpp
     EmscriptenValPtr.cpp EmscriptenValPtr.hpp
@@ -57,6 +58,18 @@ set_target_properties(${PROJECT_NAME}Weblib PROPERTIES
 
 set(PEP_WEBLIB_ENVIRONMENT "web,node" CACHE STRING "Environment(s) to build ${PROJECT_NAME}Weblib for")
 
+# Browsers refuse plain ws:// connections from a page served over https, except to localhost.
+# So a web client that is served over https must use secure WebSockets (wss://), with a publicly trusted certificate
+# We use websockify for this (see docker/websockify/). PEP's own TLS still runs inside the WSS (double encryption), TODO: fix, core#3003.
+# Plain ws:// is enough for local development on http://localhost.
+option(PEP_WEBLIB_USE_WSS "Use secure WebSockets (wss://) instead of plain ws://" OFF)
+
+if(PEP_WEBLIB_USE_WSS)
+  set(WEBSOCKET_SCHEME "wss://")
+else()
+  set(WEBSOCKET_SCHEME "ws://")
+endif()
+
 # See https://emscripten.org/docs/tools_reference/settings_reference.html
 target_link_options(${PROJECT_NAME}Weblib PRIVATE
     "-sENVIRONMENT=${PEP_WEBLIB_ENVIRONMENT}"
@@ -81,6 +94,7 @@ target_link_options(${PROJECT_NAME}Weblib PRIVATE
     -sNO_SUPPORT_LONGJMP # We're not using this
     -sTEXTDECODER=2 # Do not generate polyfill for old browsers not supporting TextDecoder
     -sFETCH # For emscripten_fetch
+    -sWEBSOCKET_URL=${WEBSOCKET_SCHEME}
     -sNO_INVOKE_RUN # We call callMain ourselves
     # noExitRuntime required for -sNO_EXIT_RUNTIME
     -sINCOMING_MODULE_JS_API=thisProgram,noExitRuntime

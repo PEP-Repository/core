@@ -3,7 +3,14 @@
 #include <boost/date_time/posix_time/conversion.hpp>
 #include <gtest/gtest.h>
 
+#include <array>
 #include <chrono>
+#include <cstdlib>
+#include <format>
+#include <initializer_list>
+#include <ctime>
+#include <optional>
+#include <string>
 
 using namespace std::chrono;
 using namespace std::literals;
@@ -21,25 +28,51 @@ TEST(Timestamp, FromXmlDateTime) {
   EXPECT_EQ(xml("2023-01-31T00:32:32+00:00"), 1675125152000_unixMs);
   EXPECT_EQ(xml("2023-01-31T00:32:32-00:00"), 1675125152000_unixMs);
   EXPECT_EQ(xml("2023-01-31T00:32:32Z"), 1675125152000_unixMs);
-  EXPECT_EQ(xml("2024-02-29T13:00:00Z"), 1709211600000_unixMs); // leap day;
+  EXPECT_EQ(xml("2024-02-29T13:00:00Z"), 1709211600000_unixMs) << "leap day should work";
+  EXPECT_EQ(xml("1998-12-31T23:59:60Z"), 915148800000_unixMs) << "leap second should work";
 
   // Dates with (non-zero) UTC offset
   EXPECT_EQ(xml("2025-08-21T15:03:54+02:00"), 1755781434000_unixMs);
 
   // Date+times with fractional seconds
-  EXPECT_EQ(xml("2025-08-21T15:03:54.711354649+02:00"), 1755781434711_unixMs);
+  EXPECT_EQ(xml("2023-01-31T00:32:32.42Z"), 1675125152420_unixMs) << "short fractional seconds should work";
+  EXPECT_EQ(xml("2025-08-21T15:03:54.711354649+02:00"), 1755781434711_unixMs) << "long fractional seconds with timezone should work";
 
   // Bad dates: not following format
   EXPECT_THROW(xml(""), std::runtime_error);
-  //EXPECT_THROW(xml("2023-01-31 00:32:32"), std::runtime_error);
-  EXPECT_THROW(xml("31-01-2023T00:32:32Z"), std::runtime_error);
+  EXPECT_THROW(xml("2023-01-31 00:32:32"), std::runtime_error);
+  EXPECT_THROW(xml("2026-10-155234345"), std::runtime_error);
+  EXPECT_THROW(xml("31-01-2023T00:32:32Z"), std::runtime_error) << "dd-mm-yyyy should be rejected";
+  EXPECT_THROW(xml("2026-10-15100:32:32Z"), std::runtime_error) << "wrong date-time separator should be rejected";
+  EXPECT_THROW(xml("2026-10-15T00132:32Z"), std::runtime_error) << "wrong time separator should be rejected";
 
   // Non-existing dates
-  EXPECT_THROW(xml("2027-11-00T00:00:00Z"), std::runtime_error);
-  EXPECT_THROW(xml("2027-11-32T00:00:00Z"), std::runtime_error);
-  EXPECT_THROW(xml("2027-00-15T00:00:00Z"), std::runtime_error);
-  EXPECT_THROW(xml("2027-13-15T00:00:00Z"), std::runtime_error);
+  EXPECT_THROW(xml("2027-11-00T00:00:00Z"), std::runtime_error) << "zero day should be rejected";
+  EXPECT_THROW(xml("2027-11-32T00:00:00Z"), std::runtime_error) << "out-of-range day should be rejected";
+  EXPECT_THROW(xml("2027-00-15T00:00:00Z"), std::runtime_error) << "zero month should be rejected";
+  EXPECT_THROW(xml("2027-13-15T00:00:00Z"), std::runtime_error) << "out-of-range month should be rejected";
+  EXPECT_THROW(xml("2023-01-31T25:00:00Z"), std::runtime_error) << "out-of-range hours should be rejected";
+  EXPECT_THROW(xml("2023-01-31T00:60:00Z"), std::runtime_error) << "out-of-range minutes should be rejected";
+  EXPECT_THROW(xml("2023-01-31T00:00:61Z"), std::runtime_error) << "out-of-range seconds should be rejected";
   EXPECT_THROW(xml("2027-02-29T00:00:00Z"), std::runtime_error); // feb 29, but not leap year
+}
+
+TEST(Timestamp, FromHttpDate) {
+  EXPECT_EQ(pep::TimestampFromHttpDate("Sun, 06 Nov 1994 08:49:37 GMT"), 784111777000_unixMs);
+  EXPECT_EQ(pep::TimestampFromHttpDate("Thu, 29 Feb 2024 13:00:00 GMT"), 1709211600000_unixMs); // leap day
+  EXPECT_EQ(pep::TimestampFromHttpDate("Fri, 31 Dec 9999 23:59:59 GMT"), pep::Timestamp(sys_days{9999y / December / 31d}) + 23h + 59min + 59s);
+
+  // Unsupported (obsolete) formats
+  EXPECT_THROW((void) pep::TimestampFromHttpDate("Sunday, 06-Nov-94 08:49:37 GMT"), std::runtime_error); // RFC 850
+  EXPECT_THROW((void) pep::TimestampFromHttpDate("Sun Nov  6 08:49:37 1994"), std::runtime_error); // asctime
+
+  // Bad dates
+  EXPECT_THROW((void) pep::TimestampFromHttpDate(""), std::runtime_error);
+  EXPECT_THROW((void) pep::TimestampFromHttpDate("Sun, 06 Nov 1994 08:49:37"), std::runtime_error); // missing "GMT"
+  EXPECT_THROW((void) pep::TimestampFromHttpDate("Sun, 06 Nov 1994 08:49:37 GMT trailing"), std::runtime_error);
+  EXPECT_THROW((void) pep::TimestampFromHttpDate("Sun, 06 Foo 1994 08:49:37 GMT"), std::runtime_error);
+  EXPECT_THROW((void) pep::TimestampFromHttpDate("Sat, 29 Feb 2025 00:00:00 GMT"), std::runtime_error); // feb 29, but not leap year
+  EXPECT_THROW((void) pep::TimestampFromHttpDate("Sun, 06 Nov 1994 24:00:00 GMT"), std::runtime_error);
 }
 
 TEST(Timestamp, FromYyyyMmDd) {
@@ -121,6 +154,95 @@ TEST(Timestamp, FromXmlDateTime_SimpleTimezones) {
   EXPECT_EQ(ptz("UTC").timestampFromXmlDateTime("2000-10-02T10:20:30+7:00"), utc("2000-10-02T03:20:30Z")) << " UTC, but UTC+7 specified in date string";
   EXPECT_EQ(ptz("MST7").timestampFromXmlDateTime("2000-10-02T10:20:30-3:00"), utc("2000-10-02T13:20:30Z")) << " UTC-7, but UTC-3 specified in date string";
 }
+
+TEST(Timestamp, LocalTimezone_MatchesMktime) {
+  // Works with whatever the system's time zone is, so also on platforms where we can't set it (see below)
+  const auto local = pep::TimeZone::Local();
+  for (const auto& [year, month, day, hour] : std::initializer_list<std::array<int, 4>>{
+         {2000, 10, 2, 0}, {2026, 1, 15, 12}, {2026, 7, 15, 12}, {2026, 10, 2, 23}}) {
+    std::tm tm{};
+    tm.tm_year = year - 1900;
+    tm.tm_mon = month - 1;
+    tm.tm_mday = day;
+    tm.tm_hour = hour;
+    tm.tm_isdst = -1;
+    const auto expected = system_clock::from_time_t(std::mktime(&tm));
+    const auto xml = std::format("{:04}-{:02}-{:02}T{:02}:00:00", year, month, day, hour);
+    EXPECT_EQ(local.timestampFromXmlDateTime(xml), expected) << xml;
+    if (hour == 0) {
+      EXPECT_EQ(local.timestampFromYyyyMmDd(std::format("{:04}{:02}{:02}", year, month, day)), expected) << xml;
+    }
+  }
+}
+
+#ifndef __EMSCRIPTEN__ // Emscripten takes the local time zone from JavaScript and ignores TZ
+/// Sets the system's local time zone (via the TZ environment variable) for the duration of its lifetime
+class ScopedSystemTimeZone {
+public:
+  explicit ScopedSystemTimeZone(const char* tz) {
+    //NOLINTNEXTLINE(concurrency-mt-unsafe) Tests are single-threaded
+    if (const char* original = std::getenv("TZ")) { original_ = original; }
+    set(tz);
+  }
+  ~ScopedSystemTimeZone() { set(original_ ? original_->c_str() : nullptr); }
+  ScopedSystemTimeZone(const ScopedSystemTimeZone&) = delete;
+  ScopedSystemTimeZone& operator=(const ScopedSystemTimeZone&) = delete;
+
+private:
+  static void set(const char* tz) {
+#ifdef _WIN32
+    _putenv_s("TZ", tz ? tz : "");
+    _tzset();
+#else
+    //NOLINTBEGIN(concurrency-mt-unsafe) Tests are single-threaded
+    if (tz) { setenv("TZ", tz, 1); }
+    else { unsetenv("TZ"); }
+    tzset();
+    //NOLINTEND(concurrency-mt-unsafe)
+#endif
+  }
+
+  std::optional<std::string> original_;
+};
+
+TEST(Timestamp, LocalTimezone) {
+  constexpr auto utc = [](std::string_view str){return pep::TimeZone::Utc().timestampFromXmlDateTime(str);}; // reference function
+  const auto local = pep::TimeZone::Local();
+
+  {
+    const ScopedSystemTimeZone tz("MSK-3"); // UTC+3
+    EXPECT_EQ(local.timestampFromYyyyMmDd("20001002"), utc("2000-10-01T21:00:00Z"));
+    EXPECT_EQ(local.timestampFromXmlDateTime("2000-10-02"), utc("2000-10-01T21:00:00Z"));
+    EXPECT_EQ(local.timestampFromXmlDateTime("2000-10-02T10:20:30.5"), utc("2000-10-02T07:20:30.5Z"));
+    EXPECT_EQ(local.timestampFromXmlDateTime("2000-10-02T10:20:30Z"), utc("2000-10-02T10:20:30Z")) << "Explicit zone should take precedence";
+  }
+  {
+    const ScopedSystemTimeZone tz("MST7"); // UTC-7
+    EXPECT_EQ(local.timestampFromYyyyMmDd("20001002"), utc("2000-10-02T07:00:00Z"));
+    EXPECT_EQ(local.timestampFromXmlDateTime("2000-10-02T20:20:30"), utc("2000-10-03T03:20:30Z"));
+  }
+#ifndef _WIN32 // The Windows CRT does not support DST rules in TZ
+  {
+    const ScopedSystemTimeZone tz("CET-1CEST,M3.5.0,M10.5.0/3");
+    EXPECT_EQ(local.timestampFromYyyyMmDd("20220115"), utc("2022-01-14T23:00:00Z")) << "UTC+1 (no DST)";
+    EXPECT_EQ(local.timestampFromYyyyMmDd("20230505"), utc("2023-05-04T22:00:00Z")) << "UTC+2 (DST)";
+    EXPECT_EQ(local.timestampFromXmlDateTime("2026-10-02T12:00:00"), utc("2026-10-02T10:00:00Z")) << "UTC+2 (DST)";
+    // Around DST transitions: 2026-03-29 02:00 CET -> 03:00 CEST, 2026-10-25 03:00 CEST -> 02:00 CET
+    EXPECT_EQ(local.timestampFromXmlDateTime("2026-03-29T01:30:00"), utc("2026-03-29T00:30:00Z")) << "Just before DST start";
+    EXPECT_EQ(local.timestampFromXmlDateTime("2026-03-29T03:30:00"), utc("2026-03-29T01:30:00Z")) << "Just after DST start";
+    EXPECT_EQ(local.timestampFromXmlDateTime("2026-10-25T01:30:00"), utc("2026-10-24T23:30:00Z")) << "Just before DST end";
+    EXPECT_EQ(local.timestampFromXmlDateTime("2026-10-25T03:30:00"), utc("2026-10-25T02:30:00Z")) << "Just after DST end";
+  }
+#endif
+}
+
+#else // (!)__EMSCRIPTEN__
+
+TEST(Timestamp, LocalTimezone) {
+  GTEST_SKIP() << "Emscripten takes the local time zone from JavaScript and ignores TZ";
+}
+
+#endif // !__EMSCRIPTEN__
 
 TEST(Timestamp, FromYyyyMmDd_TimezoneIndependentBehaviour) {
   using Timezone = pep::TimeZone;

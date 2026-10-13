@@ -1,8 +1,23 @@
 # Ticket request
 
-A user requests a ticket for access to certain participants and columns. They either specify a list of subject groups or polymorphic pseudonyms.
-The servers will translate the PPs and return encrypted local pseudonyms for servers and the user in the ticket.
-The ticket can be presented to e.g. the Storage Facility later on.
+A user requests a ticket for access to certain data subjects and columns.
+They either specify a list of subject groups or polymorphic pseudonyms (PPs).
+The Access Manager (AM) and the Transcryptor (TS) will translate the PPs and
+return encrypted local pseudonyms (LPs) for the servers and the user in the ticket.
+The ticket can be presented to e.g. the Storage Facility (SF) later on.
+
+Processing a ticket request is done in four phases:
+
+| Phase | Name | Summary | TS involved |
+| ----- | ---- | --- | --------------------- |
+| 1 | Admission | Initial acceptance of the request | No |
+| 2 | Transcryption | Translating the pseudonyms | Yes |
+| 3 | Identification | Check access on requested subjects | No |
+| 4 | Issuance | Create and return a valid ticket | Yes |
+
+The AM can never issue a valid ticket on its own.
+The TS needs to be involved in phase 2 to translate the pseudonyms,
+and then again in phase 4 to co-sign the ticket.
 
 ```mermaid
 sequenceDiagram
@@ -11,47 +26,55 @@ sequenceDiagram
   participant AM as Access Manager
   participant TS as Transcryptor
 
-  User->>+AM: Subject groups or PPs, columns,<br/>signature + log signature
+  User->>+AM: Subject groups or PPs, columns, signature + log signature
 
-    %% Space to prevent parsing error in GitLab
-    AM-->>AM: #32;
-    note right of AM: Check signature
-    note right of AM: Check column access
-    opt Request with subject groups
-      note right of AM: Check subject group access
-      note right of AM: Retrieve PPs from DB
-      note right of AM: Re-randomize PPs
-    end
-    note right of AM: RSK with proof on PPs for AM, SF, TS, user
+  Note over AM,TS: Phase 1: Admission
+  Note over AM: Check signatures
+  opt With subject groups
+    Note over AM: Check group access
+    Note over AM: Resolve to PPs
+  end
+  Note over AM: Check column access
 
-    AM->>+TS: User request with only log signature#59;<br/>PPs, partial pseudonyms, proofs
+  Note over AM,TS: Phase 2: Transcryption
+  Note over AM: Re-randomize stored PPs
+  Note over AM: RSK each PP with proof
+  AM->>+TS: User request with only the log signature, PPs, partial pseudonyms, proofs
+  Note over TS: Check log signature
+  Note over TS: Check proofs
+  Note over TS: Finish RSK
+  Note over TS: Log request
+  TS->>-AM: Translated AM, SF, user pseudonyms, log ID
 
-      TS-->>TS: #32;
-      note right of TS: Check log signature
-      note right of TS: Check RSK proofs for AM, SF, TS from PP
-      note right of TS: Finish RSK for AM, SF, TS, user
-      note right of TS: Log: user request with only log signature#59;<br/>TS pseudonyms#59; access modes#59;<br/>hash of PPs & translated AM, SF, user pseudonyms
+  Note over AM,TS: Phase 3: Identification
+  Note over AM: Store client provided PPs
+  Note over AM: Decrypt AM pseudonyms
+  Note over AM: Check subject access
+  opt Write request with new PPs
+    Note over AM: Store PPs for LPs
+  end
 
-    TS->>-AM: PPs & translated AM, SF, user pseudonyms#59; log ID
+  Note over AM,TS: Phase 4: Issuance
+  Note over AM: Create and sign ticket
+  AM->>+TS: Ticket signed by AM, log ID
+  Note over TS: Check signature
+  Note over TS: Check against the log
+  Note over TS: Log ticket
+  Note over TS: Sign ticket
+  TS->>-AM: TS ticket signature
+  Note over AM: Add TS signature
 
-    AM-->>AM: #32;
-    note right of AM: Check participant access<br/>(using decrypted AM pseudonyms)
-    opt Write request with PPs
-      note right of AM: Add PPs for LPs to DB
-    end
-    note right of AM: Create ticket signed by AM with<br/>timestamp#59; access modes#59; columns#59; user group#59;<br/>PPs & translated AM, SF, user pseudonyms
-
-    AM->>+TS: Ticket signed by AM, log ID
-
-      TS-->>TS: #32;
-      note right of TS: Check signature
-      note right of TS: Log: log ID, columns, timestamp
-      note right of TS: Sign ticket
-
-    TS->>-AM: TS ticket signature
-
-    AM-->>AM: #32;
-    note right of AM: Add TS signature to ticket
-
-  AM->>-User: Ticket signed by AM & TS
+  AM->>-User: Ticket signed by AM and TS
 ```
+
+Some details that were not captured in the diagram:
+
+- The RSK proofs cover the Access Manager, Storage Facility, Transcryptor,
+  and, if requested, the user.
+- The per-subject access check in phase 3 is skipped if the user group is `DataAdministrator`
+- In the step `Store client provided PPs` we make sure that all pseudonyms,
+  that are explicitly mentioned in the request ticket,
+  are stored in a database on the AM,
+  if and only if the ticket request includes write mode.
+  Only write mode tickets can insert previously unseen PPs into the database.
+  This excludes PPs that were requested only via a subject group.

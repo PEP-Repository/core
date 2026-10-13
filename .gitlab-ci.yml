@@ -198,6 +198,7 @@ variables:
   IMAGE_PEP_TUTORIAL_LATEST:    ${CI_REGISTRY}/pep-public/core/pep-tutorial:latest
   # authserver itself is now part of the pep-services container, so we only need a separate apache/shibboleth container
   IMAGE_PEP_AUTHSERVER_APACHE: ${CI_REGISTRY}/${CI_PROJECT_PATH}/authserver_apache
+  IMAGE_PEP_WEBSOCKIFY:        ${CI_REGISTRY}/${CI_PROJECT_PATH}/websockify
 
   # Environment variables:
   # Use color for gtest output
@@ -233,7 +234,7 @@ include:
 # Must be last in rules, as it will not run more rules
 .set-enable-linter-and-terminate-rules:
   rules:
-    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
+    - if: "'$[[ inputs.autolinting ]]' == 'linted' || $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
       variables:
         ENABLE_LINTER: yes
     - if: "'$[[ inputs.autolinting ]]' != 'linted'"
@@ -524,6 +525,7 @@ retrieve-lockfile:
     -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
     -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
     -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
+    -DPEP_WEBLIB_USE_WSS=${PEP_WEBLIB_USE_WSS:-OFF}
     -DENABLE_COVERAGE=${ENABLE_COVERAGE:-OFF}
 
 .ubuntu-build-base:
@@ -603,43 +605,58 @@ ubuntu-lts-debug:
     - !reference [.ubuntu-build-base, before_script]
     - |
       if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
-        mkdir -p "$CI_PROJECT_DIR/profiles"
-        rm -f "$CI_PROJECT_DIR/profiles/"*.profraw 2>/dev/null || true
-        export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/%p-%m.profraw"
+        rm -rf "$CI_PROJECT_DIR/profiles"
+        mkdir -p "$CI_PROJECT_DIR/profiles/unit" "$CI_PROJECT_DIR/profiles/integration"
+        export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/unit/%p-%m.profraw"
       fi
   script:
     - !reference [.ubuntu-build-base, script]
+      # Keep integration test profiles separate, so we can also report unit test coverage on its own
+    - |
+      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
+        export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/integration/%p-%m.profraw"
+      fi
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
-    - | 
+    - |
        if [ "${ENABLE_COVERAGE:-OFF}" != "ON" ]; then
          echo "Skipping code coverage processing steps"
          exit 0
        fi
 
       # Merge raw profile files from profiles directory
-    - llvm-profdata merge -sparse profiles/*.profraw -o combined-coverage.profdata
+    - llvm-profdata merge -sparse profiles/unit/*.profraw -o unit-coverage.profdata
+    - llvm-profdata merge -sparse profiles/unit/*.profraw profiles/integration/*.profraw -o combined-coverage.profdata
 
     - |
        BINARIES=""
        for BINARY in $UNIT_TESTS_ALL_NATIVE $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
-         BINARIES="$BINARIES --object $BUILD_DIRECTORY/$BINARY"
+         BINARIES="$BINARIES -object $BUILD_DIRECTORY/$BINARY"
        done
-    
+
     - IGNORE_REGEX=".*(proto/generated/|/tests/|/apps/).*"
 
-      # Generate HTML report
+      # Generate HTML reports
+    - llvm-cov show $BINARIES
+        -instr-profile=unit-coverage.profdata
+        -ignore-filename-regex="$IGNORE_REGEX"
+        -project-title="Unit Test Coverage"
+        -show-directory-coverage
+        -coverage-watermark=90,60
+        -format=html
+        -output-dir=htmlcov/unit
     - llvm-cov show $BINARIES
         -instr-profile=combined-coverage.profdata
-        --ignore-filename-regex="$IGNORE_REGEX"
-        --project-title="Combined Coverage (Unit + Integration)"
-        --show-directory-coverage
+        -ignore-filename-regex="$IGNORE_REGEX"
+        -project-title="Combined Coverage (Unit + Integration)"
+        -show-directory-coverage
+        -coverage-watermark=90,60
         -format=html
-        -output-dir=htmlcov
+        -output-dir=htmlcov/combined
 
       # Export to lcov format using llvm-cov
     - llvm-cov export $BINARIES
         -instr-profile=combined-coverage.profdata
-        --ignore-filename-regex="$IGNORE_REGEX"
+        -ignore-filename-regex="$IGNORE_REGEX"
         -format=lcov > coverage.lcov
 
       # Convert lcov to Cobertura XML using lcov_cobertura
@@ -659,6 +676,37 @@ ubuntu-lts-debug:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+
+# Publish the HTML coverage report to core pages
+pages:
+  stage: publish
+  tags: [docker-small]
+  image: alpine:latest
+  variables:
+    GIT_STRATEGY: none
+  needs:
+    - job: ubuntu-lts-debug
+      artifacts: true
+  rules:
+    - if: "'$[[ inputs.test_coverage ]]' == 'coverage' && $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
+  #language=sh
+  script:
+    - if [ ! -f htmlcov/unit/index.html ] || [ ! -f htmlcov/combined/index.html ]; then
+    -   echo "No coverage report was produced by the ubuntu-lts-debug job."
+    -   exit 1
+    - fi
+    - rm -rf public
+    - mv htmlcov public
+    - echo '<!doctype html><title>Code Coverage</title>
+        <h1>Code Coverage</h1>
+        <ul>
+        <li><a href="unit/index.html">Unit tests only</a></li>
+        <li><a href="combined/index.html">Combined (unit + integration tests)</a></li>
+        </ul>' > public/index.html
+  artifacts:
+    paths:
+      - public/
+    expire_in: 7d
 
 # To test the effect of removing Castor integration
 ubuntu-lts-debug-without-castor:
@@ -816,7 +864,7 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
 ubuntu-lts-release-manual-lint:
   extends: .ubuntu-lts-release-base
   rules:
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+    - if: "'$[[ inputs.autolinting ]]' != 'linted' && $CI_COMMIT_REF_NAME != $PEP_FOSS_DEVELOPMENT_BRANCH"
       when: manual
       allow_failure: true
     - when: never
@@ -882,7 +930,7 @@ ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
 ubuntu-rolling-debug-manual-lint:
   extends: .ubuntu-rolling-debug-base
   rules:
-    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
+    - if: "'$[[ inputs.autolinting ]]' != 'linted' && $CI_COMMIT_REF_NAME != $PEP_FOSS_DEVELOPMENT_BRANCH"
       when: manual
       allow_failure: true
     - when: never
@@ -1190,6 +1238,7 @@ weblib-release:
     - .weblib-base
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
+    PEP_WEBLIB_USE_WSS: "ON"
 
 weblib-integration:
   extends:
@@ -1238,12 +1287,16 @@ docker-images:
                           --tag "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST"
                           --build-arg "STAGING_DIRECTORY=$STAGING_DIRECTORY"
                           --build-arg "BASE_IMAGE=$RUNTIME_IMAGE_UBUNTU_LTS" .
+    # Folder Dockerfiles
     - docker buildx build --pull
                           --push
                           --tag "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" "docker/docker-compose"
     - docker buildx build --pull
                           --push
                           --tag "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" "docker/apache"
+    - docker buildx build --pull
+                          --push
+                          --tag "$IMAGE_PEP_WEBSOCKIFY:$IMAGE_TAG_TEST" "docker/websockify"
       ### Build derived images, these should be built after the base images
     - docker buildx build --pull
                           --push --file "docker/pep-scheduler.Dockerfile"
@@ -1457,6 +1510,7 @@ retag-pep-docker-images:
     - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_CLIENT:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CLIENT:$IMAGE_TAG"
     - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_COMPOSE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_COMPOSE:$IMAGE_TAG"
     - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_AUTHSERVER_APACHE:$IMAGE_TAG"
+    - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_WEBSOCKIFY:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_WEBSOCKIFY:$IMAGE_TAG"
     - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SCHEDULER:$IMAGE_TAG"
     - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_CONNECTOR:$IMAGE_TAG"
 

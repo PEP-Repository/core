@@ -5,6 +5,7 @@
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/async/CreateObservable.hpp>
+#include <pep/async/RxBeforeTermination.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Hasher.hpp>
 #include <pep/async/RxIterate.hpp>
@@ -173,6 +174,16 @@ StorageFacility::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry
     .Name("pep_rolling_payload_bytes")
     .Help("Total bytes in payload(page)s of current/latest/rolling data, rounded to configured resolution")
     .Register(*registry)
+    .Add({})),
+  pendingPageBytes(prometheus::BuildGauge()
+    .Name("pep_sf_pending_page_bytes")
+    .Help("Total size of the incoming pages that have been received but are not stored yet")
+    .Register(*registry)
+    .Add({})),
+  readingPaused(prometheus::BuildGauge()
+    .Name("pep_sf_reading_paused")
+    .Help("Whether we've stopped reading incoming data because too many pages are waiting to be stored (1) or not (0)")
+    .Register(*registry)
     .Add({}))
 { }
 
@@ -187,6 +198,10 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
     // See the declaration/definition of the fields for default values
     ReadOptionalNonZeroConfigValue(parallelisationWidth_, config, "ParallelisationWidth");
     ReadOptionalNonZeroConfigValue(dataSizeResolution_, config, "DataSizeResolution");
+    ReadOptionalNonZeroConfigValue(maxPendingPagesMiB_, config, "MaxPendingPagesMiB");
+    if (maxPendingPagesMiB_ > std::numeric_limits<uint64_t>::max() / (1024U * 1024U)) {
+      throw std::runtime_error("MaxPendingPagesMiB is too large");
+    }
 
     encIdKeyFile = config.get<std::filesystem::path>("EncIdKeyFile");
     storagePath_ = config.get<std::filesystem::path>("StoragePath");
@@ -493,15 +508,16 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       LocalPseudonym pseud = sfentry->getName().pseudonym();
       std::string column = sfentry->getName().column();
 
-      DataEnumerationEntry2 entry;
-      entry.metadata = server->compileMetadata(column, *sfentry);
-      // TODO execute rerandomization in WorkerPool
-      entry.polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey());
-      entry.fileSize = sfcontent->payload()->size();
-      entry.id = id;
-      entry.index = static_cast<uint32_t>(i);
-      entry.columnIndex = indices.getColumnIndex(column);
-      entry.pseudonymIndex = indices.getPseudonymIndex(pseud);
+      DataEnumerationEntry2 entry{
+        .id = id,
+        .metadata = server->compileMetadata(column, *sfentry),
+        // TODO execute rerandomization in WorkerPool
+        .polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey()),
+        .fileSize = sfcontent->payload()->size(),
+        .columnIndex = indices.getColumnIndex(column),
+        .pseudonymIndex = indices.getPseudonymIndex(pseud),
+        .index = static_cast<uint32_t>(i),
+      };
       response->entries.push_back(std::move(entry));
 
       // Prevent individual DataEnumerationResponse2 messages from becoming too large
@@ -658,6 +674,7 @@ template <typename TRequest>
 messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
   std::shared_ptr<Signed<TRequest>> signedRequest,
   messaging::MessageSequence tail,
+  std::shared_ptr<messaging::ReadThrottle> throttle,
   bool requireContentOverwrite,
   const GetEntryContent<typename TRequest::Entry> getEntryContent,
   const GetDataAlterationResponse& getResponse) {
@@ -678,6 +695,8 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
       std::vector<std::string> errors;
       std::vector<uint64_t> fileSizes;
       decltype(time) startTime;
+      // While set, we stop reading from the connection that delivers our tail when too many pages (of all requests) are waiting to be stored
+      std::unique_ptr<PendingBytesLimiter::Attachment> throttleAttachment;
     };
     auto ctx = std::make_shared<StreamContext>();
 
@@ -726,9 +745,10 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
     auto hasher = std::make_shared<XxHasher>(0ULL);
 
     return CreateObservable<messaging::MessageSequence>(
-      [ctx, server, request, tail, hasher, this, getResponse](
+      [ctx, server, request, tail, throttle, hasher, this, getResponse](
         rxcpp::subscriber<messaging::MessageSequence>
         subscriber) {
+        ctx->throttleAttachment = pendingPages_->attach(throttle);
         tail.map(
           [server, subscriber, ctx, request]
           (std::shared_ptr<std::string> rawPage) // incoming page
@@ -750,6 +770,11 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
               // An exception will be raised by the call (below) to Serialization::FromString<DataPayloadPage>
             }
 
+            // Account for the page until it has been stored (or discarded). This is what keeps memory usage in check:
+            // if pages arrive faster than we can store them, we stop reading until enough of them have been dealt with.
+            // (In a shared_ptr, because the callbacks that hold on to it must be copyable.)
+            auto pending = std::make_shared<PendingBytesLimiter::Reservation>(server->pendingPages_->reserve(rawPage->size()));
+
             auto page = Serialization::FromString<DataPayloadPage>(*rawPage);
 
             // Note that .at() tests bounds.
@@ -763,7 +788,11 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
             return sfentry->appendPage(rawPage, fs, page.pageNumber).tap(
               [server, rawPage](const std::string& md5hash) {
                 server->metrics_->dataStoredBytes.Increment(static_cast<double>(rawPage->size()));
-              });
+              })
+              .op(RxBeforeTermination([pending](const std::optional<std::exception_ptr>&) {
+                // Also released when the observable is destroyed without terminating, e.g. when the request fails or is cancelled
+                pending->release();
+              }));
           })
           .as_dynamic()
           // We can't use merge here because the md5hashes need to be added to
@@ -774,12 +803,14 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
               hasher->update(md5hash);
             },
             [subscriber, ctx](std::exception_ptr e) { // error handler
+              ctx->throttleAttachment.reset();
               for (auto& handle : ctx->entries) {
                 std::move(*handle).cancel();
               }
               subscriber.on_error(e);
             },
             [this, server, subscriber, ctx, hasher, getResponse]() { // file close
+              ctx->throttleAttachment.reset();
               auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
               for (auto [entry, entryId, i] : views::zip(ctx->entries, ctx->ids, views::iota(0uz))) {
                 try {
@@ -815,7 +846,8 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 
 messaging::MessageBatches StorageFacility::handleDataStoreRequest2(
   std::shared_ptr<SignedDataStoreRequest2> signedRequest,
-  messaging::MessageSequence tail) {
+  messaging::MessageSequence tail,
+  std::shared_ptr<messaging::ReadThrottle> throttle) {
   auto getEntryContent = [filestore = fileStore_](const DataStoreEntry2& entry) {
     auto metadata = filestore->makeMetadataMap(entry.metadata.extra());
     return std::make_unique<EntryContent>(
@@ -836,7 +868,7 @@ messaging::MessageBatches StorageFacility::handleDataStoreRequest2(
       std::move(resp));
   };
 
-  return this->handleDataAlterationRequest<DataStoreRequest2>(signedRequest, tail, false, getEntryContent, getResponse);
+  return this->handleDataAlterationRequest<DataStoreRequest2>(signedRequest, tail, std::move(throttle), false, getEntryContent, getResponse);
 }
 
 messaging::MessageBatches
@@ -943,7 +975,7 @@ StorageFacility::handleDataDeleteRequest2(std::shared_ptr<SignedDataDeleteReques
   };
 
   auto tail = rxcpp::observable<>::empty<std::shared_ptr<std::string>>();
-  return this->handleDataAlterationRequest<DataDeleteRequest2>(signedRequest, tail, true, getEntryContent, getResponse);
+  return this->handleDataAlterationRequest<DataDeleteRequest2>(signedRequest, tail, nullptr, true, getEntryContent, getResponse);
 }
 
 std::vector<std::optional<LocalPseudonym>> StorageFacility::decryptLocalPseudonyms(const std::vector<LocalPseudonyms>& source, std::vector<uint32_t> const *indices) const {
@@ -1055,9 +1087,7 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
 
   const auto& request = certified.message;
 
-  size_t entryCount{};
-  uint64_t totalBytes{}, rollingBytes{};
-  this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.columns);
+  auto metrics = this->getRoundedFileStoreMetrics(request.columns);
 
   auto countBlocks = [blockSize = dataSizeResolution_](uint64_t bytes) {
       assert(bytes % blockSize == 0U); // Values produced by this->getFileStoreMetrics are rounded to dataSizeResolution_
@@ -1066,8 +1096,8 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
 
   return messaging::BatchSingleMessage(DataSizeResponse{
     .blockSize = dataSizeResolution_,
-    .totalBlocks = countBlocks(totalBytes),
-    .rollingBlocks = countBlocks(rollingBytes),
+    .totalBlocks = countBlocks(metrics.totalBytes),
+    .rollingBlocks = countBlocks(metrics.rollingBytes),
     });
 }
 
@@ -1162,6 +1192,10 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
     parameters->getIoContext(),
     registry_)),
   metrics_(std::make_shared<Metrics>(registry_)),
+  pendingPages_(PendingBytesLimiter::Create(
+    parameters->getMaxPendingPagesBytes(),
+    parameters->getMaxPendingPagesBytes() / 2U, // Only resume reading when there's decent room again, to prevent flapping
+    PendingBytesLimiter::Gauges{ .pendingBytes = &metrics_->pendingPageBytes, .paused = &metrics_->readingPaused })),
   timer_(*parameters->getIoContext()),
   parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()) {
@@ -1180,9 +1214,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   statsTimer({});
 }
 
-void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns) {
-  uint64_t total{}, rolling{};
-  fileStore_->getMetrics(entryCount, total, rolling, columns);
+FileStore::Metrics StorageFacility::getRoundedFileStoreMetrics(const std::set<std::string>& columns) const {
+  auto precise = fileStore_->getMetrics(columns);
 
   auto round = [blockSize = dataSizeResolution_](uint64_t bytes) {
       auto blocks = bytes / blockSize;
@@ -1192,18 +1225,19 @@ void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedT
       return blocks * blockSize;
     };
 
-  roundedTotalBytes = round(total);
-  roundedRollingBytes = round(rolling);
+  return FileStore::Metrics{
+    .entryCount = precise.entryCount,
+    .totalBytes = round(precise.totalBytes),
+    .rollingBytes = round(precise.rollingBytes),
+  };
 }
 
 void StorageFacility::updateFileStoreMetrics() {
-  size_t entryCount{};
-  uint64_t totalPayloadBytes{}, rollingPayloadBytes{};
-  this->getFileStoreMetrics(entryCount, totalPayloadBytes, rollingPayloadBytes);
+  auto rounded = this->getRoundedFileStoreMetrics();
 
-  metrics_->entriesIncludingHistory.Set(static_cast<double>(entryCount));
-  metrics_->totalPayloadBytes.Set(static_cast<double>(totalPayloadBytes));
-  metrics_->rollingPayloadBytes.Set(static_cast<double>(rollingPayloadBytes));
+  metrics_->entriesIncludingHistory.Set(static_cast<double>(rounded.entryCount));
+  metrics_->totalPayloadBytes.Set(static_cast<double>(rounded.totalBytes));
+  metrics_->rollingPayloadBytes.Set(static_cast<double>(rounded.rollingBytes));
 }
 
 }

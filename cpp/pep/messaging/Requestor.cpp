@@ -33,13 +33,10 @@ Requestor::~Requestor() noexcept {
     PEP_LOG(LogTag, Severity::Error)
       << "outstanding requests list is not empty:";
     for (const auto& kv : entries_) {
-      std::string msgType = "(too short)";
       auto msg = kv.second.message;
-      if (msg->size() >= sizeof(MessageMagic))
-        msgType = DescribeMessageMagic(*msg);
       PEP_LOG(LogTag, Severity::Error)
         << " streamid " << kv.first
-        << " " << msgType;
+        << " " << DescribeMessageMagic(*msg);
     }
     assert(false);
   }

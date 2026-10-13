@@ -23,6 +23,7 @@ if(WITH_SERVERS)
       PersistedEntryProperties.cpp PersistedEntryProperties.hpp
       FileStore.cpp FileStore.hpp
       PageStore.cpp PageStore.hpp
+      PendingBytesLimiter.cpp PendingBytesLimiter.hpp
       S3.cpp S3.hpp
       S3Client.cpp S3Client.hpp
       S3Credentials.hpp

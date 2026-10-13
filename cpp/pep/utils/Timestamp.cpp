@@ -2,7 +2,10 @@
 
 #include <pep/utils/StringStream.hpp>
 
+#include <ctime>
 #include <format>
+#include <iomanip>
+#include <locale>
 #include <regex>
 #include <sstream>
 #include <stdexcept>
@@ -29,6 +32,16 @@ namespace {
 constexpr auto SystemLocalTimeZone = "SYSTEM_TIME_ZONE";
 
 const bpt::ptime UnixEpochPtime(BoostDateFromStd(sys_days{}));
+
+/// Interprets a wall-clock time in the system's local time zone and returns the corresponding UTC time
+bpt::ptime UtcFromSystemLocalTime(bpt::ptime local) {
+  // c_local_adjustor (which uses the C library's localtime) only converts from UTC to local time, so we determine the
+  // UTC offset at an estimate of the UTC time, and then once more at the improved estimate in case the first one ended
+  // up on the other side of a DST transition.
+  using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
+  const auto offsetAt = [](bpt::ptime utc) { return Adjustor::utc_to_local(utc) - utc; };
+  return local - offsetAt(local - offsetAt(local));
+}
 
 /// Converts strings to pep::Timestamp values
 class TimestampParser {
@@ -66,9 +79,29 @@ protected:
     // Note that %Q is not supported for input, so we use the broader %ZP, which also handles simple offsets
     //TODO If boost ever starts using actual POSIX timezones instead of the inverse, the timezone offset here has to be reversed
 
+    // Boost's parser is lenient: it skips over mismatching separators and normalizes out-of-range time fields
+    // (e.g. 25:00 becomes 01:00 the next day), so we validate the structure and the time ranges ourselves.
+    static const std::regex format(R"(\d{4}-\d{2}-\d{2}(?:T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{1,2}:\d{2})?)?)");
+    const std::string input(str);
+    if (std::smatch match; !std::regex_match(input, match, format)) {
+      throw std::invalid_argument("Not in yyyy-mm-dd[Thh:mm:ss[.f][Z|+-hh:mm]] format");
+    }
+    else if (match[1].matched) {
+      const auto hours = std::stoi(match[1]), minutes = std::stoi(match[2]), seconds = std::stoi(match[3]);
+      if (hours > 24 || (hours == 24 && (minutes != 0 || seconds != 0))) { // Allow 24:00:00
+        throw std::range_error("hours out of range");
+      }
+      if (minutes >= 60) {
+        throw std::range_error("minutes out of range");
+      }
+      if (seconds > 60) { // Allow for leap seconds
+        throw std::range_error("seconds out of range");
+      }
+    }
+
     blt::local_date_time parsed(boost::date_time::not_a_date_time);
     {
-      std::istringstream ss{std::string(str)};
+      std::istringstream ss{input};
       ss.exceptions(std::ios_base::badbit | std::ios_base::failbit);
       auto facet = new blt::local_time_input_facet("%Y-%m-%dT%H:%M:%S%F%ZP");
       ss.imbue(std::locale(ss.getloc(), facet));
@@ -79,8 +112,7 @@ protected:
     }
     if (parsed.zone() == nullptr) {
       if (timeZone_ == SystemLocalTimeZone) {
-        using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
-        return TimestampFromBoostPtime(Adjustor::utc_to_local(bpt::ptime(parsed.utc_time())));
+        return TimestampFromBoostPtime(UtcFromSystemLocalTime(parsed.utc_time()));
       }
       auto offset = blt::posix_time_zone(timeZone_).base_utc_offset();
       parsed+=offset;
@@ -91,6 +123,33 @@ protected:
 
 private:
   std::string timeZone_;
+};
+
+class HttpDateParser final : public TimestampParser {
+public:
+  HttpDateParser() : TimestampParser{"HTTP-date"} {}
+
+protected:
+  Timestamp parseImpl(std::string_view str) override {
+    std::tm tm{};
+    {
+      std::istringstream ss{std::string(str)};
+      ss.exceptions(std::ios_base::badbit | std::ios_base::failbit);
+      ss.imbue(std::locale::classic()); // Day and month names are always in English
+      // Not including " GMT" in the format, since std::get_time doesn't fail if the input ends before the format's literal text does
+      ss >> std::get_time(&tm, "%a, %d %b %Y %H:%M:%S");
+      if (auto remaining = GetUnparsed(ss); remaining != " GMT") {
+        throw std::invalid_argument(std::format("Expected \" GMT\" but got \"{}\"", remaining));
+      }
+    }
+
+    const year_month_day date{year{tm.tm_year + 1900}, month{static_cast<unsigned>(tm.tm_mon + 1)}, day{static_cast<unsigned>(tm.tm_mday)}};
+    if (!date.ok()) {
+      throw std::invalid_argument("Invalid date");
+    }
+    // Convert to Timestamp first: adding hours and minutes to sys_days may overflow if their rep is 32 bits (e.g. on Emscripten)
+    return Timestamp{sys_days{date}} + hours{tm.tm_hour} + minutes{tm.tm_min} + seconds{tm.tm_sec};
+  }
 };
 
 class YyyyMmDdDateParser final : public TimestampParser {
@@ -116,8 +175,7 @@ protected:
     }
 
     if (timeZone_ == SystemLocalTimeZone) {
-      using Adjustor = boost::date_time::c_local_adjustor<bpt::ptime>;
-      return TimestampFromBoostPtime(Adjustor::utc_to_local(bpt::ptime(parsedDate)));
+      return TimestampFromBoostPtime(UtcFromSystemLocalTime(bpt::ptime(parsedDate)));
     }
 
     const auto localTime = blt::local_date_time{
@@ -177,6 +235,10 @@ std::string TimestampToXmlDateTime(Timestamp time) {
   ss.imbue(std::locale(ss.getloc(), facet));
   ss << TimestampToBoostPtime(time);
   return std::move(ss).str();
+}
+
+Timestamp TimestampFromHttpDate(std::string_view httpDate) {
+  return HttpDateParser{}.parse(httpDate);
 }
 
 Timestamp TimeZone::timestampFromYyyyMmDd(std::string_view yyyyMmDd) const {

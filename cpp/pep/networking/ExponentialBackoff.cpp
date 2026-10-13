@@ -9,6 +9,14 @@ ExponentialBackoff::Parameters::Parameters(Timeout minTimeout, Timeout maxTimeou
   assert(backoffFactor_ > 1);
 }
 
+ExponentialBackoff::Timeout ExponentialBackoff::Parameters::timeoutAfter(unsigned failures) const noexcept {
+  auto result = minTimeout_;
+  for (unsigned i = 0; i < failures && result < maxTimeout_; ++i) {
+    result *= backoffFactor_;
+  }
+  return std::min(result, maxTimeout_);
+}
+
 std::optional<ExponentialBackoff::Timeout> ExponentialBackoff::retry(ExponentialBackoff::RetryHandler handler) {
   if (timer_.expiry() > Timer::clock_type::now()) { //Do not retry if a retry is already queued
     return {};

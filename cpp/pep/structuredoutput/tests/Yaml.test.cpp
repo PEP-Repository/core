@@ -4,8 +4,13 @@
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <limits>
+#include <sstream>
+
 namespace {
 namespace yaml = pep::structuredOutput::yaml;
+using pep::structuredOutput::Table;
 using pep::structuredOutput::Tree;
 using json = nlohmann::ordered_json;
 
@@ -74,6 +79,23 @@ TEST(structuredOutputYaml, ArrayOfObjects) {
           Tree::FromJson(
               {{{"name", "Alice"}, {"age", 25}, {"is_student", true}},
                {{"name", "Bob"}, {"age", 30}, {"is_student", false}}})),
+      "- name: \"Alice\"\n"
+      "  age: 25\n"
+      "  is_student: true\n"
+      "- name: \"Bob\"\n"
+      "  age: 30\n"
+      "  is_student: false\n");
+}
+
+TEST(structuredOutputYaml, ArrayOfObjectsFourSpaces) {
+  // The keys of an object in an array line up with the first key, which follows the "- ".
+  // At the top level that gives the same layout as with two spaces.
+  EXPECT_EQ(
+      yaml::to_string(
+          Tree::FromJson(
+              {{{"name", "Alice"}, {"age", 25}, {"is_student", true}},
+               {{"name", "Bob"}, {"age", 30}, {"is_student", false}}}),
+          {.indentation = pep::structuredOutput::WhitespaceFormat::FourSpaces}),
       "- name: \"Alice\"\n"
       "  age: 25\n"
       "  is_student: true\n"
@@ -217,6 +239,38 @@ TEST(structuredOutputYaml, Indentation) {
       "            - 3\n");
 }
 
+TEST(structuredOutputYaml, IndentationOfArraysOfObjects) {
+  // An array is indented one level below its key and each element starts with "- ".
+  // The keys of an object element line up with its first key, right after the "- ";
+  // anything nested deeper is indented one more level below the key it belongs to.
+  const auto tree = Tree::FromJson(
+      {{"people",
+        {{{"name", "Alice"}, {"address", {{"city", "Utrecht"}}}, {"pets", {"cat"}}},
+         {{"name", "Bob"}}}}});
+
+  // Two spaces (default)
+  EXPECT_EQ(
+      yaml::to_string(tree, {.indentation = pep::structuredOutput::WhitespaceFormat::TwoSpaces}),
+      "people:\n"
+      "  - name: \"Alice\"\n"
+      "    address:\n"
+      "      city: \"Utrecht\"\n"
+      "    pets:\n"
+      "      - \"cat\"\n"
+      "  - name: \"Bob\"\n");
+
+  // Four spaces
+  EXPECT_EQ(
+      yaml::to_string(tree, {.indentation = pep::structuredOutput::WhitespaceFormat::FourSpaces}),
+      "people:\n"
+      "    - name: \"Alice\"\n"
+      "      address:\n"
+      "          city: \"Utrecht\"\n"
+      "      pets:\n"
+      "          - \"cat\"\n"
+      "    - name: \"Bob\"\n");
+}
+
 TEST(structuredOutputYaml, EmptyArrayComments) {
   const auto tree = Tree::FromJson(
       {{"empty_array", json::array()},
@@ -263,6 +317,54 @@ TEST(structuredOutputYaml, EmptyArrayComments) {
       "  - # item count: 2\n"
       "    - 3\n"
       "    - 4\n");
+}
+
+TEST(structuredOutputYaml, FromPopulatedTableWithHeader) {
+  const auto table = Table::FromSeparateHeaderAndData({"fruit", "color"}, {"apple", "red", "pear", "green"});
+
+  std::ostringstream stream;
+  yaml::append(stream, table) << "---\n"; // chaining needs the same stream back
+
+  EXPECT_EQ(
+      std::move(stream).str(),
+      "metadata:\n"
+      "  header:\n"
+      "    - \"fruit\"\n"
+      "    - \"color\"\n"
+      "data:\n"
+      "  - fruit: \"apple\"\n"
+      "    color: \"red\"\n"
+      "  - fruit: \"pear\"\n"
+      "    color: \"green\"\n"
+      "---\n");
+}
+
+TEST(structuredOutputYaml, FromPopulatedTableWithHeaderFourSpaces) {
+  const auto table = Table::FromSeparateHeaderAndData({"fruit", "color"}, {"apple", "red", "pear", "green"});
+
+  EXPECT_EQ(
+      yaml::to_string(table, {.indentation = pep::structuredOutput::WhitespaceFormat::FourSpaces}),
+      "metadata:\n"
+      "    header:\n"
+      "        - \"fruit\"\n"
+      "        - \"color\"\n"
+      "data:\n"
+      "    - fruit: \"apple\"\n"
+      "      color: \"red\"\n"
+      "    - fruit: \"pear\"\n"
+      "      color: \"green\"\n");
+}
+
+TEST(structuredOutputYaml, IntegersBeyondIntRange) {
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(5'000'000'000)), "5000000000\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(-5'000'000'000)), "-5000000000\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(std::numeric_limits<std::uint64_t>::max())), "18446744073709551615\n");
+}
+
+TEST(structuredOutputYaml, FloatsUseShortestRepresentation) {
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(1.5)), "1.5\n");
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(2.0)), "2.0\n") << "should remain recognizable as a float";
+  EXPECT_EQ(yaml::to_string(Tree::FromJson(1e-9)), "1e-09\n") << "small values should not be rounded to zero";
 }
 
 } // namespace

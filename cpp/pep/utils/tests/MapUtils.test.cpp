@@ -8,6 +8,61 @@ namespace {
 template <typename T>
 auto CopyPointerToOptional(T* ptr) -> std::optional<T> { return ptr ? std::optional{*ptr} : std::nullopt; }
 
+TEST(MapUtils, ReserveToMatch) {
+  std::vector<int> container;
+  {
+    const auto property = "capacity increases to match source";
+    pep::ReserveToMatch(container, std::vector<int>());
+    EXPECT_GE(container.capacity(), 0) << property; // edge case
+    pep::ReserveToMatch(container, std::vector<char>(10));
+    EXPECT_GE(container.capacity(), 10) << property;
+    pep::ReserveToMatch(container, std::vector<bool>(100));
+    EXPECT_GE(container.capacity(), 100) << property;
+  }
+  {
+    const auto property = "capacity never decreases";
+    pep::ReserveToMatch(container, std::vector<int>(1));
+    EXPECT_GE(container.capacity(), 100) << property;
+    pep::ReserveToMatch(container, std::vector<int>()); // edge case
+    EXPECT_GE(container.capacity(), 100) << property;
+  }
+}
+
+TEST(MapUtils, MakeUnorderedPointerSet) {
+  using namespace std::ranges;
+
+  const auto original = std::vector{'A', 'B', 'C', 'C', 'C', 'B', 'D'};
+  const auto pointsToOriginal = [&original](auto* ptr) {
+    return any_of(original, [ptr](const auto& val) { return std::addressof(val) == ptr; });
+  };
+  const auto pointsToAddress = [](auto* address) { return [address](auto* ptr) { return ptr == address; }; };
+  const auto pointsToValue = [](auto value) { return [value](auto* ptr) { return *ptr == value; }; };
+
+  const auto result = pep::MakeUnorderedPointerSet(original);
+
+  {
+    const auto property = "returns (first) a pointer to each unique value";
+    EXPECT_TRUE(all_of(result.first, pointsToOriginal)) << property;
+    EXPECT_EQ(count_if(result.first, pointsToValue('A')), 1) << property;
+    EXPECT_EQ(count_if(result.first, pointsToValue('B')), 1) << property;
+    EXPECT_EQ(count_if(result.first, pointsToValue('C')), 1) << property;
+    EXPECT_EQ(count_if(result.first, pointsToValue('D')), 1) << property;
+  }
+  {
+    const auto property = "returns (second) a pointer to each duplicate value";
+    EXPECT_TRUE(all_of(result.second, pointsToOriginal)) << property;
+    EXPECT_EQ(count_if(result.second, pointsToValue('B')), 1) << property;
+    EXPECT_EQ(count_if(result.second, pointsToValue('C')), 2) << property;
+  }
+  {
+    const auto property = "returns exactly one pointer to each value";
+    const auto isReturnedOnce = [&](auto& value) {
+      return count_if(result.first, pointsToAddress(&value)) + count_if(result.second, pointsToAddress(&value)) == 1;
+    };
+    EXPECT_TRUE(all_of(original, isReturnedOnce)) << property;
+  }
+}
+
 TEST(MapUtils, IsSubset) {
   // empty set is subset of every other set
   EXPECT_TRUE(pep::IsSubset(std::vector<int>{}, std::vector<int>{}));
@@ -35,6 +90,19 @@ TEST(MapUtils, TryFindDuplicateValue) {
   // Make sure it supports const values
   std::vector<int> constVec{1, 1};
   EXPECT_EQ(CopyPointerToOptional(pep::TryFindDuplicateValue(constVec)), 1);
+}
+
+TEST(MiscUtil, TryFindCommonValue) {
+  EXPECT_EQ(CopyPointerToOptional(pep::TryFindCommonValue(std::vector{3, 2, 1}, std::vector{4, 6, 5})), std::nullopt);
+  EXPECT_EQ(CopyPointerToOptional(pep::TryFindCommonValue(std::vector{1, 1}, std::vector{2, 2})), std::nullopt);
+  EXPECT_EQ(CopyPointerToOptional(pep::TryFindCommonValue(std::vector{3, 4, 5}, std::vector{4, 6, 7})), 4);
+  EXPECT_EQ(CopyPointerToOptional(pep::TryFindCommonValue(std::vector{1, 1 ,3, 2}, std::vector{2, 4, 4, 5})), 2);
+  EXPECT_THAT(CopyPointerToOptional(pep::TryFindCommonValue(std::vector{2, 3, 1}, std::vector{2, 4, 3})), testing::AnyOf(2, 3));
+
+  // edge cases: passing an empty list as argument
+  EXPECT_EQ(CopyPointerToOptional(pep::TryFindCommonValue(std::vector{1, 1}, std::vector<int>{})), std::nullopt);
+  EXPECT_EQ(CopyPointerToOptional(pep::TryFindCommonValue(std::vector<int>{}, std::vector<int>{2, 2})), std::nullopt);
+  EXPECT_EQ(CopyPointerToOptional(pep::TryFindCommonValue(std::vector<int>{}, std::vector<int>{})), std::nullopt);
 }
 
 TEST(MapUtils, ContainsUniqueValues) {

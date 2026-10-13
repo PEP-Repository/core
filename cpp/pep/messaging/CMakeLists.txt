@@ -17,6 +17,7 @@ add_library(${PROJECT_NAME}Messaginglib
     MessageSequence.cpp MessageSequence.hpp
     MessagingSerializers.cpp MessagingSerializers.hpp
     Node.cpp Node.hpp
+    ReadThrottle.hpp
     RequestHandler.cpp RequestHandler.hpp
     Requestor.cpp Requestor.hpp
     ResponseToVoid.hpp
