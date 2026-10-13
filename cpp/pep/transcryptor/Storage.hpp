@@ -1,15 +1,11 @@
 #pragma once
 
-#include <string>
 #include <vector>
-#include <optional>
-#include <unordered_map>
 
 #include <pep/rsk/Proofs.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
 #include <pep/transcryptor/ChecksumChain.hpp>
-#include <pep/utils/PropertyBasedContainer.hpp>
 
 #include <filesystem>
 
@@ -19,7 +15,7 @@ class TranscryptorStorage {
 private:
   std::shared_ptr<TranscryptorStorageBackend> storage_;
   std::string path_;
-  PropertyBasedContainer<std::unique_ptr<transcryptor::ChecksumChain>, &transcryptor::ChecksumChain::name>::set checksumChains_;
+  ChecksumChains checksumChains_;
 
   void ensureInitialized();
   void ensureInitialized_unguarded(bool& migrated);

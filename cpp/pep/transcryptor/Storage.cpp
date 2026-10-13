@@ -576,7 +576,7 @@ namespace {
 template <typename TRecord>
 class ChecksumChainFor : public transcryptor::ChecksumChain {
 protected:
-  Result calculate(std::shared_ptr<TranscryptorStorageBackend> storage, const Result& partial, uint64_t maxCheckpoint) const override {
+  Result recalculate(const Result& partial, Checkpoint maxCheckpoint) const override {
     assert(partial.checkpoint < maxCheckpoint);
     auto result = partial;
 
@@ -586,7 +586,7 @@ protected:
       minSeqNo = CheckpointToSeqNo(partial.checkpoint); // ... only process records (with sequence numbers) that aren't included in the partial result yet
     }
 
-    for (const auto& record : storage->raw.iterate<TRecord>(
+    for (const auto& record : this->storage().raw.iterate<TRecord>(
       where(c(&TRecord::seqno) > minSeqNo // Only process entries that aren't included in the "partial" result yet
         && c(&TRecord::seqno) <= CheckpointToSeqNo(maxCheckpoint)))) { // Only process entries up to (and including) the specified "maxCheckpoint"
 
@@ -599,7 +599,7 @@ protected:
   }
 
 public:
-  explicit ChecksumChainFor(std::string name) noexcept : ChecksumChain(std::move(name)) {}
+  explicit ChecksumChainFor(TranscryptorStorageBackend& storage, std::string name) noexcept : ChecksumChain(storage, std::move(name)) {}
 };
 
 [[nodiscard]] std::string CertificateHash(const X509Certificate& cert) {
@@ -616,15 +616,15 @@ TranscryptorStorage::TranscryptorStorage(
   removeOutdatedRecords();
 
   // Can't assign an { initializer-list } to checksumChains_ because it requires copy construction of the elements, which std::unique_ptr<> doesn't support
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<MigrationRecord>>("migration"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<TicketRequestRecord>>("ticket-request"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<TicketIssueRecord>>("ticket-issue"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<PseudonymSetRecord>>("pseudonym-set"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<PseudonymSetPseudonymRecord>>("pseudonym-set-pseudonym"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<ColumnSetRecord>>("column-set"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<ColumnSetColumnRecord>>("column-set-column"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<ModeSetRecord>>("mode-set"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<ModeSetModeRecord>>("mode-set-mode"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<MigrationRecord>>(*storage_, "migration"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<TicketRequestRecord>>(*storage_, "ticket-request"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<TicketIssueRecord>>(*storage_, "ticket-issue"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<PseudonymSetRecord>>(*storage_, "pseudonym-set"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<PseudonymSetPseudonymRecord>>(*storage_, "pseudonym-set-pseudonym"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<ColumnSetRecord>>(*storage_, "column-set"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<ColumnSetColumnRecord>>(*storage_, "column-set-column"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<ModeSetRecord>>(*storage_, "mode-set"));
+  checksumChains_.insert(std::make_unique<ChecksumChainFor<ModeSetModeRecord>>(*storage_, "mode-set-mode"));
 }
 
 // Makes sure that the database is correctly initialized.  Adds columns
@@ -775,19 +775,13 @@ void TranscryptorStorage::removeOutdatedRecords() {
 void TranscryptorStorage::computeChecksum(const std::string& chain,
       std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
       uint64_t& checkpoint) {
-  auto position = checksumChains_.find(chain);
-  if (position == checksumChains_.cend()) {
-    throw Error("No such checksum chain");
-  }
-
-  auto result = (*position)->get(storage_, maxCheckpoint.value_or(std::numeric_limits<int64_t>::max()));
+  auto result = checksumChains_[chain].get(maxCheckpoint);
   checksum = result.checksum;
   checkpoint = result.checkpoint;
 }
 
 std::vector<std::string> TranscryptorStorage::getChecksumChainNames() {
-  return checksumChains_
-    | views::transform([](const auto& chain) { return chain->name(); })
+  return checksumChains_.names()
     | to<std::vector>();
 }
 
