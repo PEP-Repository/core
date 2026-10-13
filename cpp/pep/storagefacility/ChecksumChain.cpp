@@ -31,6 +31,17 @@ ChecksumChain::ChecksumChain(const FileStore& fileStore, std::string name) noexc
   : pep::ChecksumChain(std::move(name)), fileStore_(fileStore) {
 }
 
+ChecksumChain::Result ChecksumChain::addCell(Result result, Checkpoint max, const FileStore::Cell& cell) const {
+  for (const auto& version : cell.versions()) {
+    std::uint64_t validFromMs{ static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(version.validFrom)) };
+    if (validFromMs <= max) {
+      result.checkpoint = std::max(result.checkpoint, validFromMs);
+      result.checksum = this->addCellVersion(result.checksum, version);
+    }
+  }
+  return result;
+}
+
 ChecksumChain::Result ChecksumChain::get(const std::optional<Checkpoint>& maxCheckpoint) {
   Result result;
 
@@ -45,13 +56,7 @@ ChecksumChain::Result ChecksumChain::get(const std::optional<Checkpoint>& maxChe
    */
   for (const auto& participant : fileStore_.participants()) {
     for (const auto& cell : participant->cells()) {
-      for (const auto& version : cell->versions()) {
-        std::uint64_t validFromMs{ static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(version.validFrom)) };
-        if (validFromMs <= max) {
-          result.checkpoint = std::max(result.checkpoint, validFromMs);
-          result.checksum = this->addCellVersion(result.checksum, version);
-        }
-      }
+      result = this->addCell(result, max, *cell);
     }
   }
 
