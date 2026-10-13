@@ -23,6 +23,10 @@ public:
   explicit EntryCountChecksumChain(const FileStore& fileStore) : ChecksumChain(fileStore, "entry-count") {}
 };
 
+ChecksumChain::Checkpoint TimestampToCheckpoint(Timestamp timestamp) {
+  return static_cast<ChecksumChain::Checkpoint>(TicksSinceEpoch<std::chrono::milliseconds>(timestamp));
+}
+
 }
 
 using namespace std::chrono_literals;
@@ -33,9 +37,9 @@ ChecksumChain::ChecksumChain(const FileStore& fileStore, std::string name) noexc
 
 ChecksumChain::Result ChecksumChain::addCell(Result result, Checkpoint max, const FileStore::Cell& cell) const {
   for (const auto& version : cell.versions()) {
-    std::uint64_t validFromMs{ static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(version.validFrom)) };
-    if (validFromMs <= max) {
-      result.checkpoint = std::max(result.checkpoint, validFromMs);
+    auto versionCheckpoint = TimestampToCheckpoint(version.validFrom);
+    if (versionCheckpoint <= max) {
+      result.checkpoint = std::max(result.checkpoint, versionCheckpoint);
       result.checksum = this->addCellVersion(result.checksum, version);
     }
   }
@@ -46,7 +50,7 @@ ChecksumChain::Result ChecksumChain::get(const std::optional<Checkpoint>& maxChe
   Result result;
 
   // The Storage Facility uses a timestamp as checkpoint
-  auto max = maxCheckpoint.value_or(TicksSinceEpoch<std::chrono::milliseconds>(TimeNow() - 1min));
+  auto max = maxCheckpoint.value_or(TimestampToCheckpoint(TimeNow() - 1min));
 
   /* Checksums over cell versions must be calculated in (backward compatible) lexicographic order, e.g.
    * 1. participant-a/column-x/timestamp-1
