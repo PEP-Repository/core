@@ -78,12 +78,13 @@ void RegisterAndRetrieve(AsyncHttpServer& server, const std::string& relativeUri
 }
 
 /// \brief Minimal HTTP server that keeps connections open between requests (unlike our civetweb-based HTTPServer).
-/// \details It responds to every request with the request's path as the body. Responses to requests for SlowPath are delayed,
-/// and the onSlowRequest callback is invoked when such a request is received.
+/// \details It responds to every request with the request's path as the body. Responses to requests for PausingPath are paused
+/// and the onPausingRequest callback is invoked when such a request is received. The response is sent when the resumeFunction passed to the callback is invoked.
 class KeepAliveHttpServer : boost::noncopyable {
 public:
-  static inline const std::string SlowPath = "/slow";
-  std::function<void()> onSlowRequest;
+  static inline const std::string PausingPath = "/pause";
+  using resumeFunction=std::function<void()>;
+  std::function<void(const resumeFunction&)> onPausingRequest;
 
 private:
   class Session : public std::enable_shared_from_this<Session> {
@@ -110,16 +111,12 @@ private:
 
         std::string method, path;
         header >> method >> path;
-        if (path == SlowPath) {
-          if (self->server_.onSlowRequest) {
-            self->server_.onSlowRequest();
-          }
-          self->timer.expires_after(100ms);
-          self->timer.async_wait([self, path](const boost::system::error_code& error) {
-            if (!error) {
+        if (path == PausingPath) {
+          if (self->server_.onPausingRequest) {
+            self->server_.onPausingRequest([self, path]() {
               self->respond(path);
-            }
             });
+          }
         }
         else {
           self->respond(path);
@@ -320,16 +317,17 @@ TEST(HttpClientConnection, AbandonedRequestDoesNotAffectSubsequentRequests) {
     server.stop();
   };
 
-  auto abandoned = client->sendRequest(client->makeRequest(pep::networking::HttpMethod::Get, KeepAliveHttpServer::SlowPath))
+  auto abandoned = client->sendRequest(client->makeRequest(pep::networking::HttpMethod::Get, KeepAliveHttpServer::PausingPath))
     .subscribe(
       [](const pep::HTTPResponse&) { ADD_FAILURE() << "Received response for abandoned request"; },
       [](const std::exception_ptr&) { ADD_FAILURE() << "Received error for abandoned request"; }
     );
 
-  // When the server has received the slow request, the client is waiting for its response: abandon the request and send new ones.
+  // When the server has received the pausing request, the client is waiting for its response: abandon the request and send new ones.
   // Previously the client then sent new requests over the same connection, and read the abandoned request's response for them.
-  server.onSlowRequest = [&]() {
+  server.onPausingRequest = [&](const KeepAliveHttpServer::resumeFunction& resume) {
     abandoned.unsubscribe();
+    resume();
     for (const auto& path : followupPaths) {
       client->sendRequest(client->makeRequest(pep::networking::HttpMethod::Get, path))
         .subscribe(
