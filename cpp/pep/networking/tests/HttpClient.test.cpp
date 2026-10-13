@@ -77,10 +77,9 @@ void RegisterAndRetrieve(AsyncHttpServer& server, const std::string& relativeUri
   EXPECT_TRUE(*received) << "Didn't receive a response for HTTP request to " << relativeUri.c_str();
 }
 
-/* Minimal HTTP server that keeps connections open between requests (unlike our civetweb-based HTTPServer).
- * It responds to every request with the request's path as the body. Responses to requests for SlowPath are delayed,
- * and the onSlowRequest callback is invoked when such a request is received.
- */
+/// \brief Minimal HTTP server that keeps connections open between requests (unlike our civetweb-based HTTPServer).
+/// \details It responds to every request with the request's path as the body. Responses to requests for SlowPath are delayed,
+/// and the onSlowRequest callback is invoked when such a request is received.
 class KeepAliveHttpServer : boost::noncopyable {
 public:
   static inline const std::string SlowPath = "/slow";
