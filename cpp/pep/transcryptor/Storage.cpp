@@ -779,7 +779,7 @@ void TranscryptorStorage::computeChecksum(const std::string& chain,
     throw Error("No such checksum chain");
   }
 
-  auto result = (*position)->get(maxCheckpoint.value_or(std::numeric_limits<int64_t>::max()));
+  auto result = (*position)->get(maxCheckpoint);
   checksum = result.checksum;
   checkpoint = result.checkpoint;
 }

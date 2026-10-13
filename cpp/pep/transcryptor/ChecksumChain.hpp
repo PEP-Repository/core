@@ -46,9 +46,10 @@ public:
 
   const std::string& name() const noexcept { return name_; }
 
-  /// \brief Returns the checksum chain's value at the highest available checkpoint not exceeding the specified one
+  /// \brief Returns the checksum chain's value at the highest available checkpoint not exceeding the specified one.
+  /// \param maxCheckpoint The maximum checkpoint value to include in the checksum. If unspecified (nullopt), all available checkpoints are included.
   /// \remark Caches the last computed result to prevent excessive (re-)calculation.
-  Result get(Checkpoint maxCheckpoint);
+  Result get(const std::optional<Checkpoint>& maxCheckpoint);
 };
 
 

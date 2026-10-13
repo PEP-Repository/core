@@ -14,23 +14,25 @@ int64_t ChecksumChain::CheckpointToSeqNo(Checkpoint checkpoint) noexcept {
   return static_cast<int64_t>(checkpoint - FirstRecordCheckpoint);
 }
 
-ChecksumChain::Result ChecksumChain::get(Checkpoint maxCheckpoint) {
-  if (maxCheckpoint < EmptyTableCheckpoint) {
-    throw std::runtime_error("Invalid checkpoint " + std::to_string(maxCheckpoint));
+ChecksumChain::Result ChecksumChain::get(const std::optional<Checkpoint>& maxCheckpoint) {
+  auto max = maxCheckpoint.value_or(std::numeric_limits<int64_t>::max());
+
+  if (max < EmptyTableCheckpoint) {
+    throw std::runtime_error("Invalid checkpoint " + std::to_string(max));
   }
 
-  if (maxCheckpoint < lastResult_.checkpoint) {
+  if (max < lastResult_.checkpoint) {
     PEP_LOG("Transcryptor checksum chains", Severity::Info) << "Discarding pre-calculated checksum for checkpoint " << lastResult_.checkpoint
       << " for chain " << name_
-      << " because earlier checkpoint " << maxCheckpoint << " has been requested";
+      << " because earlier checkpoint " << max << " has been requested";
     lastResult_ = InitialResult;
   }
-  if (maxCheckpoint == lastResult_.checkpoint) {
+  if (max == lastResult_.checkpoint) {
     return lastResult_;
   }
 
-  assert(maxCheckpoint >= FirstRecordCheckpoint);
-  return lastResult_ = this->recalculate(lastResult_, maxCheckpoint);
+  assert(max >= FirstRecordCheckpoint);
+  return lastResult_ = this->recalculate(lastResult_, max);
 }
 
 }
