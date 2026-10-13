@@ -23,7 +23,7 @@ ChecksumChain::Result ChecksumChain::get(Checkpoint maxCheckpoint) {
     PEP_LOG("Transcryptor checksum chains", Severity::Info) << "Discarding pre-calculated checksum for checkpoint " << lastResult_.checkpoint
       << " for chain " << name_
       << " because earlier checkpoint " << maxCheckpoint << " has been requested";
-    lastResult_ = Result();
+    lastResult_ = InitialResult;
   }
   if (maxCheckpoint == lastResult_.checkpoint) {
     return lastResult_;

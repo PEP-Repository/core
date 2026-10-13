@@ -18,18 +18,18 @@ namespace transcryptor {
 class ChecksumChain : boost::noncopyable, public pep::ChecksumChain {
 protected:
   static constexpr Checkpoint EmptyTableCheckpoint = 1;
-  static constexpr Checkpoint FirstRecordCheckpoint = EmptyTableCheckpoint + 1U; // Record sequence number 0 (zero) is checkpoint 2
-
-public:
-  struct Result {
-    Checksum checksum = 0;
-    Checkpoint checkpoint = EmptyTableCheckpoint;
-  };
 
 private:
+  static constexpr Checkpoint FirstRecordCheckpoint = EmptyTableCheckpoint + 1U; // Record sequence number 0 (zero) is checkpoint 2
+
+  static constexpr Result InitialResult{
+    .checksum = 0,
+    .checkpoint = EmptyTableCheckpoint,
+  };
+
   TranscryptorStorageBackend& storage_;
   std::string name_;
-  Result lastResult_;
+  Result lastResult_ = InitialResult;
 
 protected:
   explicit ChecksumChain(TranscryptorStorageBackend& storage, std::string name) noexcept : storage_(storage), name_(std::move(name)) {}
