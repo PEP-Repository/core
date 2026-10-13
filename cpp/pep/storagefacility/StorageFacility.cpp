@@ -288,7 +288,7 @@ void StorageFacility::Parameters::check() const {
 }
 
 std::vector<std::string> StorageFacility::getChecksumChainNames() const {
-  return storagefacility::ChecksumChain::Names()
+  return checksumChains_.names()
     | to<std::vector>();
 }
 
@@ -296,8 +296,9 @@ void StorageFacility::computeChecksumChainChecksum(
   const std::string& chain, std::optional<uint64_t> maxCheckpoint,
   uint64_t& checksum, uint64_t& checkpoint) {
 
-  storagefacility::ChecksumChain::Create(*fileStore_, chain)
-    ->calculate(maxCheckpoint, checksum, checkpoint);
+  auto result = checksumChains_[chain].get(maxCheckpoint);
+  checksum = result.checksum;
+  checkpoint = result.checkpoint;
 }
 
 messaging::MessageBatches
@@ -1312,7 +1313,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
     PendingBytesLimiter::Gauges{ .pendingBytes = &metrics_->pendingPageBytes, .paused = &metrics_->readingPaused })),
   timer_(*parameters->getIoContext()),
   parallelisationWidth_(parameters->getParallelisationWidth()),
-  dataSizeResolution_(parameters->getDataSizeResolution()) {
+  dataSizeResolution_(parameters->getDataSizeResolution()),
+  checksumChains_(storagefacility::ChecksumChain::CreateAll(*fileStore_)) {
 
   // Resume persisting purges that were not completed when the the process ran last time
   fileStore_->persistPendingPurges();

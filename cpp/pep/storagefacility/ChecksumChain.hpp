@@ -1,23 +1,23 @@
 #pragma once
 
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/storagefacility/FileStore.hpp>
 
 namespace pep::storagefacility {
 
-class ChecksumChain {
+class ChecksumChain : public pep::ChecksumChain {
 private:
   const FileStore& fileStore_;
 
 protected:
-  virtual uint64_t addCellVersion(uint64_t checksum, const FileStore::CellVersion& version) const = 0;
+  explicit ChecksumChain(const FileStore& fileStore, std::string name) noexcept;
+
+  virtual Checksum addCellVersion(Checksum checksum, const FileStore::CellVersion& version) const = 0;
 
 public:
-  explicit ChecksumChain(const FileStore& fileStore) noexcept;
+  Result get(const std::optional<Checkpoint>& maxCheckpoint) override;
 
-  void calculate(std::optional<uint64_t> maxCheckpoint, uint64_t& checksum, uint64_t& checkpoint) const;
-
-  static std::set<std::string> Names();
-  static std::unique_ptr<ChecksumChain> Create(const FileStore& fileStore, const std::string& name);
+  static ChecksumChains CreateAll(const FileStore& fileStore);
 };
 
 }
