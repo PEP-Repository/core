@@ -25,16 +25,16 @@ private:
 
   Result addPurgeChecksums(Result result, Checkpoint max) {
     while (!purgeRecords_.empty()) {
-      auto front = purgeRecords_.begin();
-      const auto& record = *front;
+      auto first = purgeRecords_.begin();
+      const auto& record = *first;
       if (record.purgedAt > max) {
-        assert(std::ranges::all_of(purgeRecords_, [](const PurgeRecord& rec) {return rec.purgedAt > max; }));
+        assert(std::ranges::all_of(purgeRecords_, [max](const PurgeRecord& rec) {return rec.purgedAt > max; }));
         break;
       }
 
       result.checksum ^= record.checksum();
       result.checkpoint = std::max(result.checkpoint, record.purgedAt);
-      purgeRecords_.erase(front);
+      purgeRecords_.erase(first);
     }
 
     return result;
