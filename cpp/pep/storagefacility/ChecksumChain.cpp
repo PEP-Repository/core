@@ -16,7 +16,7 @@ private:
     Checkpoint purgedAt; // ... multiple cell versions may have been purged at the same time (as part of the same cycle)...
     Checkpoint validFrom; // ...we include the (unique) timestamp of the cell version itself
 
-    Checksum checksum() const { return purgedAt ^ validFrom; }
+    Checksum checksum() const { return purgedAt ^ validFrom; } // Just a unique value for the purging of this cell version
 
     std::strong_ordering operator<=>(const PurgeRecord&) const = default;
   };
