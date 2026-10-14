@@ -692,7 +692,9 @@ protected:
   }
 
 public:
-  using AmRecordChecksumChain<UserGroupUserRecord>::AmRecordChecksumChain;
+  explicit LegacyUserGroupUserChecksumChain(AccessManager::Backend::Storage::Implementor& storage)
+    : AmRecordChecksumChain<UserGroupUserRecord>("user-group-users-legacy", storage) {
+  }
 };
 
 // We used to store localPseudonyms and polymorphicPseudonyms as protobufs.
@@ -714,7 +716,7 @@ ChecksumChains CreateChecksumChains(AccessManager::Backend::Storage::Implementor
     std::make_unique<PlainRecordChecksumChain<UserIdRecord>>("user-ids", storage),
     std::make_unique<PlainRecordChecksumChain<UserGroupRecord>>("user-groups", storage),
     std::make_unique<PlainRecordChecksumChain<UserGroupUserRecord>>("user-group-users", storage),
-    std::make_unique<LegacyUserGroupUserChecksumChain>("user-group-users-legacy", storage),
+    std::make_unique<LegacyUserGroupUserChecksumChain>(storage),
     std::make_unique<PlainRecordChecksumChain<StructureMetadataRecord>>("structure-metadata", storage)
       );
 }
