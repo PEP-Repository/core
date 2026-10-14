@@ -118,10 +118,12 @@ ChecksumChain::ChecksumChain(const FileStore& fileStore, std::string name) noexc
 ChecksumChain::Result ChecksumChain::addCell(Result result, Checkpoint max, const FileStore::Cell& cell) {
   for (const auto& version : cell.versions()) {
     auto versionCheckpoint = TimestampToCheckpoint(version.validFrom);
-    if (versionCheckpoint <= max) {
-      result = this->addCellVersion(result, version);
-      result.checkpoint = std::max(result.checkpoint, versionCheckpoint); // Saves duplicate code in (overrides of) this->addCellVersion
+    if (versionCheckpoint > max) {
+      break;
     }
+
+    result = this->addCellVersion(result, version);
+    result.checkpoint = std::max(result.checkpoint, versionCheckpoint); // Saves duplicate code in (overrides of) this->addCellVersion
   }
   return result;
 }
