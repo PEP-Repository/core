@@ -607,9 +607,8 @@ public:
 
 }
 
-TranscryptorStorage::TranscryptorStorage(
-    const std::filesystem::path& path) : path_(path.string()) {
-  storage_ = std::make_shared<TranscryptorStorageBackend>(path.string());
+TranscryptorStorage::TranscryptorStorage(const std::filesystem::path& path)
+  : path_(path.string()) , storage_(std::make_shared<TranscryptorStorageBackend>(path_)) {
 
   ensureInitialized();
   removeOutdatedRecords();
