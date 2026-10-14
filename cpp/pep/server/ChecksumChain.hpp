@@ -30,6 +30,7 @@ public:
   /// \brief Returns the checksum chain's value at the highest available checkpoint not exceeding the specified one.
   /// \param maxCheckpoint The maximum checkpoint value to include in the checksum, or nullopt to include all available checkpoints.
   /// \return The result of the checksum (calculation).
+  /// \remark Not declared as const to allow derived classes to update (e.g. cached) state
   virtual Result get(const std::optional<Checkpoint>& maxCheckpoint) = 0;
 };
 
