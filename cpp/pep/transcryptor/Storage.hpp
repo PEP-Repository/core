@@ -61,10 +61,7 @@ private:
     const std::string& accessGroup,
     Timestamp timestamp);
 
-  std::vector<std::string> getChecksumChainNames();
-
-  void computeChecksum(const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-        uint64_t& checksum, uint64_t& checkpoint);
+  ChecksumChains& checksumChains() noexcept { return checksumChains_; }
 };
 
 }

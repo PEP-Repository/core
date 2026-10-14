@@ -770,19 +770,6 @@ void TranscryptorStorage::removeOutdatedRecords() {
   implementor_->raw.remove_all<SessionVerifiersRecord>(where(c(&SessionVerifiersRecord::expirationTimestamp) <= nowMillis));
 }
 
-void TranscryptorStorage::computeChecksum(const std::string& chain,
-      std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
-      uint64_t& checkpoint) {
-  auto result = checksumChains_[chain].get(maxCheckpoint);
-  checksum = result.checksum;
-  checkpoint = result.checkpoint;
-}
-
-std::vector<std::string> TranscryptorStorage::getChecksumChainNames() {
-  return checksumChains_.names()
-    | to<std::vector>();
-}
-
 int64_t TranscryptorStorage::getOrCreateModeSet(
     std::vector<std::string> modes) {
   sort(modes);

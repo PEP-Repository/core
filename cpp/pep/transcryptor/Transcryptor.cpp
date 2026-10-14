@@ -438,7 +438,7 @@ Transcryptor::getMetricsRegistry()  {
 }
 
 std::vector<std::string> Transcryptor::getChecksumChainNames() const {
-  return storage_->getChecksumChainNames();
+  return storage_->checksumChains().names() | to<std::vector>();
 }
 
 void Transcryptor::computeChecksumChainChecksum(
@@ -449,8 +449,10 @@ void Transcryptor::computeChecksumChainChecksum(
     when = " at checkpoint " + std::to_string(*maxCheckpoint);
   }
   PEP_LOG(LogTag, ChecksumChainCalculationLoggingSeverity) << "Starting calculation for checksum chain " << chain << when;
-  storage_->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
+  auto result = storage_->checksumChains()[chain].get(maxCheckpoint);
   PEP_LOG(LogTag, ChecksumChainCalculationLoggingSeverity) << "Finished calculation for checksum chain " << chain << when;
+  checksum = result.checksum;
+  checkpoint = result.checkpoint;
 }
 
 }
