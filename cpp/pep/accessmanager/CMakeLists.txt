@@ -23,6 +23,7 @@ if(WITH_SERVERS)
       AccessManager.cpp AccessManager.hpp
       Backend.cpp Backend.hpp
       Storage.cpp Storage.hpp
+      Storage.Implementor.hpp
       Records.cpp Records.hpp
       LegacyAuthserverStorage.cpp LegacyAuthserverStorage.hpp
       UserStorageRecords.cpp UserStorageRecords.hpp
