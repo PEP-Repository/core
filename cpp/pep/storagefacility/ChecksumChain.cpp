@@ -107,7 +107,7 @@ ChecksumChain::Result ChecksumChain::addCell(Result result, Checkpoint max, cons
     auto versionCheckpoint = TimestampToCheckpoint(version.validFrom);
     if (versionCheckpoint <= max) {
       result = this->addCellVersion(result, version);
-      result.checkpoint = std::max(result.checkpoint, versionCheckpoint); // Saves duplicate code in this->addCellVersion
+      result.checkpoint = std::max(result.checkpoint, versionCheckpoint); // Saves duplicate code in (overrides of) this->addCellVersion
     }
   }
   return result;
