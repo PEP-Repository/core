@@ -38,8 +38,14 @@ class ChecksumChains {
 private:
   PropertyBasedContainer<std::unique_ptr<ChecksumChain>, &ChecksumChain::name>::set items_;
 
-public:
   void insert(std::unique_ptr<ChecksumChain> chain);
+
+public:
+  template <typename... TUniquePtrs>
+  explicit ChecksumChains(TUniquePtrs... ptrs) {
+    (this->insert(std::move(ptrs)), ...);
+  }
+
   std::set<std::string> names() const;
   ChecksumChain& operator[](const std::string& name);
 };

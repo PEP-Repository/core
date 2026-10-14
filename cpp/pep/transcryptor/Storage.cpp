@@ -608,21 +608,20 @@ public:
 }
 
 TranscryptorStorage::TranscryptorStorage(const std::filesystem::path& path)
-  : path_(path.string()) , storage_(std::make_shared<TranscryptorStorageBackend>(path_)) {
+  : path_(path.string()), storage_(std::make_shared<TranscryptorStorageBackend>(path_)), checksumChains_{
+    std::make_unique<ChecksumChainFor<MigrationRecord>>(*storage_, "migration"),
+    std::make_unique<ChecksumChainFor<TicketRequestRecord>>(*storage_, "ticket-request"),
+    std::make_unique<ChecksumChainFor<TicketIssueRecord>>(*storage_, "ticket-issue"),
+    std::make_unique<ChecksumChainFor<PseudonymSetRecord>>(*storage_, "pseudonym-set"),
+    std::make_unique<ChecksumChainFor<PseudonymSetPseudonymRecord>>(*storage_, "pseudonym-set-pseudonym"),
+    std::make_unique<ChecksumChainFor<ColumnSetRecord>>(*storage_, "column-set"),
+    std::make_unique<ChecksumChainFor<ColumnSetColumnRecord>>(*storage_, "column-set-column"),
+    std::make_unique<ChecksumChainFor<ModeSetRecord>>(*storage_, "mode-set"),
+    std::make_unique<ChecksumChainFor<ModeSetModeRecord>>(*storage_, "mode-set-mode"),
+  } {
 
   ensureInitialized();
   removeOutdatedRecords();
-
-  // Can't assign an { initializer-list } to checksumChains_ because it requires copy construction of the elements, which std::unique_ptr<> doesn't support
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<MigrationRecord>>(*storage_, "migration"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<TicketRequestRecord>>(*storage_, "ticket-request"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<TicketIssueRecord>>(*storage_, "ticket-issue"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<PseudonymSetRecord>>(*storage_, "pseudonym-set"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<PseudonymSetPseudonymRecord>>(*storage_, "pseudonym-set-pseudonym"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<ColumnSetRecord>>(*storage_, "column-set"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<ColumnSetColumnRecord>>(*storage_, "column-set-column"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<ModeSetRecord>>(*storage_, "mode-set"));
-  checksumChains_.insert(std::make_unique<ChecksumChainFor<ModeSetModeRecord>>(*storage_, "mode-set-mode"));
 }
 
 // Makes sure that the database is correctly initialized.  Adds columns
