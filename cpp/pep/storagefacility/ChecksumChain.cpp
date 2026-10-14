@@ -9,6 +9,18 @@ ChecksumChain::Checkpoint TimestampToCheckpoint(Timestamp timestamp) {
   return static_cast<ChecksumChain::Checkpoint>(TicksSinceEpoch<std::chrono::milliseconds>(timestamp));
 }
 
+/* Checksums over cell versions must be calculated in (backward compatible) lexicographic order, e.g.
+ * 1. participant-a/column-x/timestamp-1
+ * 2. participant-a/column-x/timestamp-2
+ * 3. participant-a/column-y/timestamp-1
+ * 4. participant-a/column-y/timestamp-3
+ * 5. participant-a/column-y/timestamp-5
+ * 6. participant-b/column-x/timestamp-1
+ * Purges of cell versions are processed at the timestamp when the purge cycle was applied: e.g. if
+ * participant-a/column-y/timestamp-1 (entry 3) was purged
+ * - at timestamp 2, the purge is processed between entries 3 and 4.
+ * - at timestamp 4, the purge is processed between entries 4 and 5.
+ */
 class FilesChecksumChain : public ChecksumChain {
 private:
   struct PurgeRecord {
@@ -119,12 +131,6 @@ ChecksumChain::Result ChecksumChain::get(const std::optional<Checkpoint>& maxChe
   // The Storage Facility uses a timestamp as checkpoint
   auto max = maxCheckpoint.value_or(TimestampToCheckpoint(TimeNow() - 1min));
 
-  /* Checksums over cell versions must be calculated in (backward compatible) lexicographic order, e.g.
-   * 1. participant-a/column-x/timestamp-1
-   * 2. participant-a/column-x/timestamp-2
-   * 3. participant-a/column-y/timestamp-1
-   * 4. participant-b/column-x/timestamp-1
-   */
   for (const auto& participant : fileStore_.participants()) {
     for (const auto& cell : participant->cells()) {
       result = this->addCell(result, max, *cell);
