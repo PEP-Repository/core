@@ -502,14 +502,16 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
 }
 
 std::vector<std::string> AccessManager::getChecksumChainNames() const {
-  return backend_->getChecksumChainNames();
+  return backend_->checksumChains().names() | to<std::vector>();
 }
 
 void AccessManager::computeChecksumChainChecksum(
   const std::string& chain,
   std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
   uint64_t& checkpoint) {
-  backend_->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
+  auto result = backend_->checksumChains()[chain].get(maxCheckpoint);
+  checksum = result.checksum;
+  checkpoint = result.checkpoint;
 }
 
 struct AccessManager::TicketRequestContext {

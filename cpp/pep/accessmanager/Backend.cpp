@@ -879,14 +879,6 @@ std::filesystem::path AccessManager::Backend::getStoragePath() {
   return storage_->getPath();
 }
 
-std::vector<std::string> AccessManager::Backend::getChecksumChainNames() {
-  return storage_->getChecksumChainNames();
-}
-void AccessManager::Backend::computeChecksum(const std::string& chain,
-                                           std::optional<uint64_t> maxCheckpoint,
-                                           uint64_t& checksum,
-                                           uint64_t& checkpoint) {
-  return storage_->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
-}
+ChecksumChains& AccessManager::Backend::checksumChains() noexcept { return storage_->checksumChains(); }
 
 } // namespace pep

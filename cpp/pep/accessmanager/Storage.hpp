@@ -29,6 +29,7 @@ private:
   std::filesystem::path storagePath_;
   std::shared_ptr<Implementor> implementor_;
   std::shared_ptr<GlobalConfiguration> globalConf_;
+  ChecksumChains checksumChains_;
   std::unordered_map<LocalPseudonym, PolymorphicPseudonym> lpToPpMap_; // Use a map as checking existence and retrieval of a key takes O(1) time
 
   // Initialisation
@@ -64,10 +65,7 @@ public:
   Storage(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf);
 
   // Sanity checks
-  std::vector<std::string> getChecksumChainNames();
-  void computeChecksum(const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-                       uint64_t& checksum, uint64_t& checkpoint);
-
+  ChecksumChains& checksumChains() noexcept { return checksumChains_; }
 
   std::filesystem::path getPath() {
     return storagePath_;

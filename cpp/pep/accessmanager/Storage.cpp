@@ -385,7 +385,8 @@ void AccessManager::Backend::Storage::syncColumnGroupContents(const std::string&
 }
 
 AccessManager::Backend::Storage::Storage(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf)
-  : storagePath_(std::move(path)), implementor_(std::make_shared<Implementor>(storagePath_.string())), globalConf_(std::move(globalConf)) {
+  : storagePath_(std::move(path)), implementor_(std::make_shared<Implementor>(storagePath_.string())), globalConf_(std::move(globalConf)),
+  checksumChains_(accessmanager::ChecksumChain::CreateAll(*implementor_)) {
 
   ensureInitialized();
   auto allColumns = ensureSynced();
@@ -408,18 +409,6 @@ AccessManager::Backend::Storage::Storage(std::filesystem::path path, std::shared
 
   removeOrphanedRecords();
   PEP_LOG(LogTag, Severity::Info) << "Ready to accept requests!";
-}
-
-std::vector<std::string> AccessManager::Backend::Storage::getChecksumChainNames() {
-  return accessmanager::ChecksumChain::CreateAll(*implementor_).names() | to<std::vector>();
-}
-
-void AccessManager::Backend::Storage::computeChecksum(const std::string& chain,
-      std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
-      uint64_t& checkpoint) {
-  auto result = accessmanager::ChecksumChain::CreateAll(*implementor_)[chain].get(maxCheckpoint);
-  checksum = result.checksum;
-  checkpoint = result.checkpoint;
 }
 
 std::vector<PolymorphicPseudonym> AccessManager::Backend::Storage::getPPs() {
