@@ -634,7 +634,7 @@ public:
 };
 
 template<typename T, int version = 0>
-struct RecordChecksumChain : public AmChecksumChain {
+struct PlainRecordChecksumChain : public AmChecksumChain {
   using AmChecksumChain::AmChecksumChain;
 
   Result get(const std::optional<Checkpoint>& maxCheckpoint) override {
@@ -694,21 +694,21 @@ struct LegacyUserGroupUserChecksumChain : public AmChecksumChain {
 // existing checksum. The old version of the checksum can be removed in a later release
 ChecksumChains CreateChecksumChains(AccessManager::Backend::Storage::Implementor& storage) {
   return ChecksumChains(
-    std::make_unique<RecordChecksumChain<SelectStarPseudonymRecord, 1>>("select-start-pseud", storage),
-    std::make_unique<RecordChecksumChain<SelectStarPseudonymRecord, 2>>("select-start-pseud-v2", storage),
-    std::make_unique<RecordChecksumChain<ParticipantGroupRecord>>("participant-groups", storage),
-    std::make_unique<RecordChecksumChain<ParticipantGroupParticipantRecord, 1>>("participant-group-participants", storage),
-    std::make_unique<RecordChecksumChain<ParticipantGroupParticipantRecord, 2>>("participant-group-participants-v2", storage),
-    std::make_unique<RecordChecksumChain<ColumnGroupRecord>>("column-groups", storage),
-    std::make_unique<RecordChecksumChain<ColumnRecord>>("columns", storage),
-    std::make_unique<RecordChecksumChain<ColumnGroupColumnRecord>>("column-group-columns", storage),
-    std::make_unique<RecordChecksumChain<ColumnGroupAccessRuleRecord>>("column-group-accessrule", storage),
-    std::make_unique<RecordChecksumChain<ParticipantGroupAccessRuleRecord>>("group-accessrule", storage),
-    std::make_unique<RecordChecksumChain<UserIdRecord>>("user-ids", storage),
-    std::make_unique<RecordChecksumChain<UserGroupRecord>>("user-groups", storage),
-    std::make_unique<RecordChecksumChain<UserGroupUserRecord>>("user-group-users", storage),
+    std::make_unique<PlainRecordChecksumChain<SelectStarPseudonymRecord, 1>>("select-start-pseud", storage),
+    std::make_unique<PlainRecordChecksumChain<SelectStarPseudonymRecord, 2>>("select-start-pseud-v2", storage),
+    std::make_unique<PlainRecordChecksumChain<ParticipantGroupRecord>>("participant-groups", storage),
+    std::make_unique<PlainRecordChecksumChain<ParticipantGroupParticipantRecord, 1>>("participant-group-participants", storage),
+    std::make_unique<PlainRecordChecksumChain<ParticipantGroupParticipantRecord, 2>>("participant-group-participants-v2", storage),
+    std::make_unique<PlainRecordChecksumChain<ColumnGroupRecord>>("column-groups", storage),
+    std::make_unique<PlainRecordChecksumChain<ColumnRecord>>("columns", storage),
+    std::make_unique<PlainRecordChecksumChain<ColumnGroupColumnRecord>>("column-group-columns", storage),
+    std::make_unique<PlainRecordChecksumChain<ColumnGroupAccessRuleRecord>>("column-group-accessrule", storage),
+    std::make_unique<PlainRecordChecksumChain<ParticipantGroupAccessRuleRecord>>("group-accessrule", storage),
+    std::make_unique<PlainRecordChecksumChain<UserIdRecord>>("user-ids", storage),
+    std::make_unique<PlainRecordChecksumChain<UserGroupRecord>>("user-groups", storage),
+    std::make_unique<PlainRecordChecksumChain<UserGroupUserRecord>>("user-group-users", storage),
     std::make_unique<LegacyUserGroupUserChecksumChain>("user-group-users-legacy", storage),
-    std::make_unique<RecordChecksumChain<StructureMetadataRecord>>("structure-metadata", storage)
+    std::make_unique<PlainRecordChecksumChain<StructureMetadataRecord>>("structure-metadata", storage)
       );
 }
 
