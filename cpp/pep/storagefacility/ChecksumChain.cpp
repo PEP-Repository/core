@@ -5,11 +5,76 @@ namespace pep::storagefacility {
 
 namespace {
 
+ChecksumChain::Checkpoint TimestampToCheckpoint(Timestamp timestamp) {
+  return static_cast<ChecksumChain::Checkpoint>(TicksSinceEpoch<std::chrono::milliseconds>(timestamp));
+}
+
 class FilesChecksumChain : public ChecksumChain {
+private:
+  struct PurgeRecord {
+    // Must be ordered deterministically to prevent checksum chain calculation differences, and since...
+    Checkpoint purgedAt; // ... multiple cell versions may have been purged at the same time (as part of the same cycle)...
+    Checkpoint validFrom; // ...we include the (unique) timestamp of the cell version itself
+
+    Checksum checksum() const { return purgedAt ^ validFrom; }
+
+    std::strong_ordering operator<=>(const PurgeRecord&) const = default;
+  };
+
+  std::set<PurgeRecord> purgeRecords_;
+
+  Result addPurgeChecksums(Result result, Checkpoint max) {
+    while (!purgeRecords_.empty()) {
+      auto front = purgeRecords_.begin();
+      const auto& record = *front;
+      if (record.purgedAt > max) {
+        assert(std::ranges::all_of(purgeRecords_, [](const PurgeRecord& rec) {return rec.purgedAt > max; }));
+        break;
+      }
+
+      result.checksum ^= record.checksum();
+      result.checkpoint = std::max(result.checkpoint, record.purgedAt);
+      purgeRecords_.erase(front);
+    }
+
+    return result;
+  }
+
 protected:
-  virtual Result addCellVersion(Result result, const FileStore::CellVersion& version) override {
+  Result addCell(Result result, Checkpoint max, const FileStore::Cell& cell) override {
+    assert(purgeRecords_.empty() && "State wasn't cleared by processing of previous cell");
+
+    // Let base class implementation (invoke our method to) process cell versions
+    result = ChecksumChain::addCell(result, max, cell);
+    // Process any purges that occurred (after the last cell version but) before the max checkpoint
+    result = this->addPurgeChecksums(result, max);
+    // Discard remaining purge records for this cell, to clear the state for (processing of) the next cell
+    purgeRecords_.clear();
+
+    return result;
+  }
+
+  Result addCellVersion(Result result, const FileStore::CellVersion& version) override {
+    // Process any purges that occurred before this cell version was stored.
+    // Defensive programming: we subtract 1 from the version's timestamp to process only purges that occurred **before**
+    // this version appeared, even though SF already ensures that purge cycle timestamps don't collide with storage
+    // timestamps.
+    result = this->addPurgeChecksums(result, TimestampToCheckpoint(version.validFrom) - 1);
+
+    // Process this cell version itself
     result.checksum ^= version.checksumSubstitute;
     // result.checkpoint is updated by this->addCell (who is calling us)
+
+    // If this cell version was purged, record the timestamp so the purge can be processed into the checksum chain at
+    // the appropriate checkpoint
+    if (version.purgedAt.has_value()) {
+      assert(*version.purgedAt > version.validFrom);
+      purgeRecords_.emplace(PurgeRecord{
+        .purgedAt = TimestampToCheckpoint(*version.purgedAt),
+        .validFrom = TimestampToCheckpoint(version.validFrom),
+        });
+    }
+
     return result;
   }
 
@@ -19,7 +84,7 @@ public:
 
 class EntryCountChecksumChain : public ChecksumChain {
 protected:
-  virtual Result addCellVersion(Result result, const FileStore::CellVersion& version) override {
+  Result addCellVersion(Result result, const FileStore::CellVersion& version) override {
     result.checksum++;
     // result.checkpoint is updated by this->addCell (who is calling us)
     return result;
@@ -28,10 +93,6 @@ protected:
 public:
   explicit EntryCountChecksumChain(const FileStore& fileStore) : ChecksumChain(fileStore, "entry-count") {}
 };
-
-ChecksumChain::Checkpoint TimestampToCheckpoint(Timestamp timestamp) {
-  return static_cast<ChecksumChain::Checkpoint>(TicksSinceEpoch<std::chrono::milliseconds>(timestamp));
-}
 
 }
 

@@ -12,7 +12,7 @@ private:
 protected:
   explicit ChecksumChain(const FileStore& fileStore, std::string name) noexcept;
 
-  Result addCell(Result result, Checkpoint max, const FileStore::Cell& cell);
+  virtual Result addCell(Result result, Checkpoint max, const FileStore::Cell& cell);
   virtual Result addCellVersion(Result result, const FileStore::CellVersion& version) = 0;
 
 public:
