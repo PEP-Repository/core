@@ -32,6 +32,7 @@ public:
   /// \return The result of the checksum (calculation).
   /// \remark Not declared as const to allow derived classes to update (e.g. cached) state
   virtual Result get(const std::optional<Checkpoint>& maxCheckpoint) = 0;
+  Result operator()(const std::optional<Checkpoint>& maxCheckpoint) { return this->get(maxCheckpoint); }
 };
 
 
@@ -48,7 +49,9 @@ public:
   }
 
   std::set<std::string> names() const;
-  ChecksumChain& operator[](const std::string& name);
+
+  ChecksumChain& chain(const std::string& name);
+  ChecksumChain& operator[](const std::string& name) { return this->chain(name); }
 };
 
 }

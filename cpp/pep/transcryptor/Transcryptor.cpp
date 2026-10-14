@@ -449,7 +449,7 @@ void Transcryptor::computeChecksumChainChecksum(
     when = " at checkpoint " + std::to_string(*maxCheckpoint);
   }
   PEP_LOG(LogTag, ChecksumChainCalculationLoggingSeverity) << "Starting calculation for checksum chain " << chain << when;
-  auto result = storage_->checksumChains()[chain].get(maxCheckpoint);
+  auto result = storage_->checksumChains().chain(chain).get(maxCheckpoint);
   PEP_LOG(LogTag, ChecksumChainCalculationLoggingSeverity) << "Finished calculation for checksum chain " << chain << when;
   checksum = result.checksum;
   checkpoint = result.checkpoint;

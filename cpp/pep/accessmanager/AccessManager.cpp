@@ -509,7 +509,7 @@ void AccessManager::computeChecksumChainChecksum(
   const std::string& chain,
   std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
   uint64_t& checkpoint) {
-  auto result = backend_->checksumChains()[chain].get(maxCheckpoint);
+  auto result = backend_->checksumChains().chain(chain).get(maxCheckpoint);
   checksum = result.checksum;
   checkpoint = result.checkpoint;
 }

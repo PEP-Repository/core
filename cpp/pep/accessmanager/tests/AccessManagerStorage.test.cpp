@@ -261,10 +261,10 @@ TEST_F(AccessManagerStorageTest, getChecksumChainNames_happy) {
 }
 
 TEST_F(AccessManagerStorageTest, computeChecksum_unknown_chain) {
-  std::string chain{"unknown_chain"};
+  std::string name{"unknown_chain"};
   std::optional<size_t> maxCheckpoint{};
   PEP_EXPECT_THROWS_MESSAGE(
-    storage->checksumChains()[chain].get(maxCheckpoint),
+    storage->checksumChains().chain(name).get(maxCheckpoint),
     Error,
     ::testing::StrEq("No checksum chain available with name unknown_chain"));
 }

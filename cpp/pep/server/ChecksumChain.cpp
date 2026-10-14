@@ -18,7 +18,7 @@ std::set<std::string> ChecksumChains::names() const {
     | std::ranges::to<std::set>();
 }
 
-ChecksumChain& ChecksumChains::operator[](const std::string& name) {
+ChecksumChain& ChecksumChains::chain(const std::string& name) {
   auto position = items_.find(name);
   if (position == items_.end()) {
     throw Error("No checksum chain available with name " + name);
