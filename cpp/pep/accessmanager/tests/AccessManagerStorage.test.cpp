@@ -266,16 +266,10 @@ TEST_F(AccessManagerStorageTest, computeChecksum_unknown_chain) {
   std::optional<size_t> maxCheckpoint{};
   uint64_t checksum{};
   uint64_t checkpoint{};
-  try {
-    storage->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
-
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "No such checksum chain";
-    ASSERT_EQ(e.what(), expectedMessage);
-  }
+  PEP_EXPECT_THROWS_MESSAGE(
+    storage->computeChecksum(chain, maxCheckpoint, checksum, checkpoint),
+    Error,
+    ::testing::StrEq("No checksum chain available with name unknown_chain"));
 }
 
 TEST_F(AccessManagerStorageTest, hasColumn) {
