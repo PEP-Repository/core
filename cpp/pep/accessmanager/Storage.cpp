@@ -642,7 +642,7 @@ struct RecordChecksumChain : public AmChecksumChain {
 
     auto max = GetMaxSeqNo(maxCheckpoint);
 
-    for (const auto& record : this->storage().raw.iterate<T>(
+    for (const auto& record : this->storage().raw.template iterate<T>(
       where(c(&T::seqno) <= max))) {
       result.checkpoint = std::max(result.checkpoint, SeqNoToCheckpoint(record.seqno));
       if constexpr (version == 0) {
