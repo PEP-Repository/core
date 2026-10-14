@@ -1,11 +1,9 @@
 #pragma once
 
-#include <pep/server/ChecksumChain.hpp>
+#include <pep/transcryptor/Storage.hpp>
 #include <boost/noncopyable.hpp>
 
 namespace pep {
-
-struct TranscryptorStorageBackend;
 
 namespace transcryptor {
 
@@ -25,13 +23,13 @@ private:
     .checkpoint = EmptyTableCheckpoint,
   };
 
-  TranscryptorStorageBackend& storage_;
+  TranscryptorStorage::Implementor& storage_;
   Result lastResult_ = InitialResult;
 
 protected:
-  ChecksumChain(TranscryptorStorageBackend& storage, std::string name) noexcept : pep::ChecksumChain(std::move(name)), storage_(storage) {}
+  ChecksumChain(TranscryptorStorage::Implementor& storage, std::string name) noexcept : pep::ChecksumChain(std::move(name)), storage_(storage) {}
 
-  TranscryptorStorageBackend& storage() const noexcept { return storage_; }
+  TranscryptorStorage::Implementor& storage() const noexcept { return storage_; }
 
   virtual Result recalculate(const Result& partial, Checkpoint maxCheckpoint) const = 0;
 
