@@ -633,59 +633,66 @@ public:
   }
 };
 
-template<typename T, int version = 0>
-struct PlainRecordChecksumChain : public AmChecksumChain {
+template <typename TRecord>
+class AmRecordChecksumChain : public AmChecksumChain {
+protected:
+  virtual Checksum getRecordChecksum(const TRecord& record) const = 0;
+
+public:
   using AmChecksumChain::AmChecksumChain;
 
   Result get(const std::optional<Checkpoint>& maxCheckpoint) override {
     auto result = InitialResult;
-
     auto max = GetMaxSeqNo(maxCheckpoint);
 
-    for (const auto& record : this->storage().raw.template iterate<T>(
-      where(c(&T::seqno) <= max))) {
+    for (const auto& record : this->storage().raw.template iterate<TRecord>(
+      where(c(&TRecord::seqno) <= max))) {
       result.checkpoint = std::max(result.checkpoint, SeqNoToCheckpoint(record.seqno));
-      if constexpr (version == 0) {
-        result.checksum ^= record.checksum();
-      } else {
-        result.checksum ^= record.checksum(version);
-      }
+      result.checksum ^= this->getRecordChecksum(record);
     }
 
     return result;
   }
 };
 
-//TODO: this checksum is only useful to check the migration for #1642. When that has succeeded, this checksum can be removed in a following release.
-struct LegacyUserGroupUserChecksumChain : public AmChecksumChain {
-  using AmChecksumChain::AmChecksumChain;
-
-  Result get(const std::optional<Checkpoint>& maxCheckpoint) override {
-    auto result = InitialResult;
-
-    auto max = GetMaxSeqNo(maxCheckpoint);
-
-    for (auto record : this->storage().raw.iterate<UserGroupUserRecord>(
-      where(c(&UserGroupUserRecord::seqno) <= max))) {
-      LegacyUserGroupUserRecord legacyRecord(record);
-
-      bool found = false;
-      for (auto& record : this->storage().raw.iterate<pep::UserGroupRecord>(
-        where(c(&pep::UserGroupRecord::userGroupId) == record.userGroupId
-          && c(&pep::UserGroupRecord::timestamp) <= record.timestamp),
-        order_by(&pep::UserGroupRecord::seqno).desc(), limit(1))) {
-        legacyRecord.group = record.name;
-        found = true;
-      }
-      if (!found)
-        throw Error("Could not find user group");
-
-      result.checkpoint = std::max(result.checkpoint, SeqNoToCheckpoint(legacyRecord.seqno));
-      result.checksum ^= legacyRecord.checksum();
+template<typename T, int version = 0>
+class PlainRecordChecksumChain : public AmRecordChecksumChain<T> {
+protected:
+  ChecksumChain::Checksum getRecordChecksum(const T& record) const override {
+    if constexpr (version == 0) {
+      return record.checksum();
     }
-
-    return result;
+    else {
+      return record.checksum(version);
+    }
   }
+
+public:
+  using AmRecordChecksumChain<T>::AmRecordChecksumChain;
+};
+
+//TODO: this checksum is only useful to check the migration for #1642. When that has succeeded, this checksum can be removed in a following release.
+class LegacyUserGroupUserChecksumChain : public AmRecordChecksumChain<UserGroupUserRecord> {
+protected:
+  Checksum getRecordChecksum(const UserGroupUserRecord& record) const override {
+    LegacyUserGroupUserRecord legacyRecord(record);
+
+    bool found = false;
+    for (auto& record : this->storage().raw.iterate<pep::UserGroupRecord>(
+      where(c(&pep::UserGroupRecord::userGroupId) == record.userGroupId
+        && c(&pep::UserGroupRecord::timestamp) <= record.timestamp),
+      order_by(&pep::UserGroupRecord::seqno).desc(), limit(1))) {
+      legacyRecord.group = record.name;
+      found = true;
+    }
+    if (!found)
+      throw Error("Could not find user group");
+
+    return legacyRecord.checksum();
+  }
+
+public:
+  using AmRecordChecksumChain<UserGroupUserRecord>::AmRecordChecksumChain;
 };
 
 // We used to store localPseudonyms and polymorphicPseudonyms as protobufs.
