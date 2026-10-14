@@ -585,7 +585,7 @@ protected:
       minSeqNo = CheckpointToSeqNo(partial.checkpoint); // ... only process records (with sequence numbers) that aren't included in the partial result yet
     }
 
-    for (const auto& record : this->storage().raw.iterate<TRecord>(
+    for (const auto& record : this->storage().raw.template iterate<TRecord>(
       where(c(&TRecord::seqno) > minSeqNo // Only process entries that aren't included in the "partial" result yet
         && c(&TRecord::seqno) <= CheckpointToSeqNo(maxCheckpoint)))) { // Only process entries up to (and including) the specified "maxCheckpoint"
 
