@@ -13,8 +13,8 @@ namespace pep {
 
 class TranscryptorStorage {
 private:
-  std::shared_ptr<TranscryptorStorageBackend> storage_;
   std::string path_;
+  std::shared_ptr<TranscryptorStorageBackend> storage_;
   ChecksumChains checksumChains_;
 
   void ensureInitialized();

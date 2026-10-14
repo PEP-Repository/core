@@ -1,8 +1,6 @@
 #pragma once
 
 #include <pep/server/ChecksumChain.hpp>
-#include <memory>
-#include <string>
 #include <boost/noncopyable.hpp>
 
 namespace pep {

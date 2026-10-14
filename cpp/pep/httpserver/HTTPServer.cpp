@@ -85,7 +85,7 @@ int requestHandler(struct mg_connection *conn, void *cbdata)
 
   PEP_LOG(LogTag, Severity::Debug) << "Request handler matches request. Start handling the request";
   try {
-    std::map<std::string, std::string, CaseInsensitiveCompare> headers;
+    HTTPMessage::HeaderMap headers;
     std::span rawHeaders(requestInfo->http_headers, static_cast<size_t>(requestInfo->num_headers));
     for (const auto& header : rawHeaders) {
       const auto& [it, isNew] = headers.try_emplace(header.name, header.value);

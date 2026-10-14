@@ -37,7 +37,7 @@ public:
     }
     auto data = values.get<std::string>("data");
 
-    HttpRequest request(host.host(), networking::HttpMethod::Put, boost::urls::url(relative), data);
+    HttpRequest request(std::string(host.encoded_host_and_port()), networking::HttpMethod::Put, boost::urls::url(relative), data);
     request.completeHeaders();
     Credentials credentials{
       .accessKey = values.get<std::string>("identity"),
