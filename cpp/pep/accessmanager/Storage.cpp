@@ -606,6 +606,10 @@ uint64_t SeqNoToCheckpoint(int64_t seqno) noexcept {
   return static_cast<uint64_t>(seqno + 2);
 }
 
+int64_t CheckpointToSeqNo(uint64_t checkpoint) noexcept {
+  return static_cast<int64_t>(checkpoint - 2U);
+}
+
 template<typename T, int version = 0>
 void ComputeChecksumImpl(std::shared_ptr<AccessManager::Backend::Storage::Implementor> storageImplementor,
     std::optional<uint64_t> maxCheckpoint, uint64_t& checksum, uint64_t& checkpoint) {
@@ -615,7 +619,7 @@ void ComputeChecksumImpl(std::shared_ptr<AccessManager::Backend::Storage::Implem
     maxCheckpoint = std::numeric_limits<int64_t>::max();
 
   for (const auto& record : storageImplementor->raw.iterate<T>(
-      where(c(&T::seqno) < static_cast<int64_t>(*maxCheckpoint) - 1))) {
+      where(c(&T::seqno) <= CheckpointToSeqNo(*maxCheckpoint)))) {
     checkpoint = std::max(checkpoint, SeqNoToCheckpoint(record.seqno));
     if constexpr (version == 0) {
       checksum ^= record.checksum();
