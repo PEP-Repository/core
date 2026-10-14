@@ -81,10 +81,11 @@ protected:
     // the appropriate checkpoint
     if (version.purgedAt.has_value()) {
       assert(*version.purgedAt > version.validFrom);
-      purgeRecords_.emplace(PurgeRecord{
+      [[maybe_unused]] auto emplaced = purgeRecords_.emplace(PurgeRecord{
         .purgedAt = TimestampToCheckpoint(*version.purgedAt),
         .validFrom = TimestampToCheckpoint(version.validFrom),
-        });
+        }).second;
+      assert(emplaced);
     }
 
     return result;
