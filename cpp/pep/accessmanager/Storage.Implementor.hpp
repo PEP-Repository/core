@@ -11,7 +11,7 @@ namespace pep {
 namespace detail {
 
 // This function defines the database scheme used.
-auto CreateAmDb(const std::string& path) {
+inline auto CreateAmDb(const std::string& path) {
   using namespace sqlite_orm;
 
   return make_storage(path,

@@ -22,6 +22,7 @@ if(WITH_SERVERS)
   add_library(${PROJECT_NAME}AccessManagerlib
       AccessManager.cpp AccessManager.hpp
       Backend.cpp Backend.hpp
+      ChecksumChain.cpp ChecksumChain.hpp
       Storage.cpp Storage.hpp
       Storage.Implementor.hpp
       Records.cpp Records.hpp
