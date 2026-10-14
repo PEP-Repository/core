@@ -200,7 +200,7 @@ AccessManager::Parameters::Parameters(std::shared_ptr<boost::asio::io_context> i
     Serialization::FromJsonString<GlobalConfiguration>(
       ReadFile(globalConfFile)));
   setGlobalConfiguration(globalConf);
-  setBackend(std::make_shared<AccessManager::Backend>(storageFile, globalConf));
+  setBackend(std::make_shared<AccessManager::Backend>(std::move(storageFile), std::move(globalConf)));
 }
 
 void AccessManager::Parameters::setGlobalConfiguration(std::shared_ptr<GlobalConfiguration> gc) {

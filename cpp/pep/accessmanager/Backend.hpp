@@ -17,7 +17,7 @@ public:
 
   Backend() = delete; // AccessManager::Backend needs a properly configured storage
   Backend(std::shared_ptr<AccessManager::Backend::Storage> storage) : storage_(storage) {}
-  Backend(const std::filesystem::path& path, std::shared_ptr<GlobalConfiguration> globalConf);
+  Backend(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf);
 
   void setAccessManager(AccessManager* accessManager) { accessManager_ = accessManager; }
 

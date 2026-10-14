@@ -57,8 +57,8 @@ void EnsureStructureMetadataAccess(AccessMode mode, StructureMetadataType subjec
 
 }
 
-AccessManager::Backend::Backend(const std::filesystem::path& path, std::shared_ptr<GlobalConfiguration> globalConf)
-  : Backend(std::make_shared<AccessManager::Backend::Storage>(path, globalConf)) {
+AccessManager::Backend::Backend(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf)
+  : Backend(std::make_shared<AccessManager::Backend::Storage>(std::move(path), std::move(globalConf))) {
 }
 
 // ********** START AMA Operations For Requests **********
