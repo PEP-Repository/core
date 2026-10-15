@@ -10,6 +10,7 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxToUnorderedMap.hpp>
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
@@ -92,6 +93,71 @@ int ParseSqliteSelectCountResult(void *pArg, int argc, char **argv, char **colum
   *static_cast<size_t*>(pArg) = strtoul(argv[0], nullptr, 10);
   return 0;
 }
+
+class ShadowShortPseudonymsChecksumChain : public ChecksumChain {
+private:
+  ::sqlite3* shadowStorage_;
+
+public:
+  ShadowShortPseudonymsChecksumChain(::sqlite3* shadowStorage) noexcept
+    : ChecksumChain("shadow-short-pseudonyms"), shadowStorage_(shadowStorage) {
+  }
+
+  Result get(const std::optional<Checkpoint>& maxCheckpoint) const override {
+    Result result;
+
+    auto max = maxCheckpoint.has_value()
+      ? static_cast<int64_t>(*maxCheckpoint)
+      : std::numeric_limits<int64_t>::max();
+
+    sqlite3_stmt* stmt{};
+
+    sqlite3_prepare_v2(shadowStorage_,
+      "SELECT \
+          `Id`, \
+          `EncryptedShortPseudonym`, \
+          `EncryptedIdentifier` \
+        FROM ShadowShortPseudonyms \
+        Where Id <= ?;",
+      -1, &stmt, nullptr);
+    sqlite3_bind_int64(stmt, 1, max);
+
+    int ncols = -1;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+      if (ncols == -1)
+        ncols = sqlite3_column_count(stmt);
+      result.checkpoint = std::max(result.checkpoint, static_cast<uint64_t>(sqlite3_column_int64(stmt, 0)));
+
+      Sha256 sha;
+
+      for (int i = 0; i < ncols; i++) {
+        switch (sqlite3_column_type(stmt, i)) {
+        case SQLITE_BLOB:
+          sha.update(
+            static_cast<const uint8_t*>(sqlite3_column_blob(stmt, i)),
+            static_cast<size_t>(sqlite3_column_bytes(stmt, i))
+          );
+          break;
+        case SQLITE_TEXT:
+          sha.update(
+            static_cast<const uint8_t*>(sqlite3_column_text(stmt, i)),
+            static_cast<size_t>(sqlite3_column_bytes(stmt, i))
+          );
+          break;
+        default:
+          break;
+        }
+      }
+
+      auto digest = sha.digest();
+      result.checksum ^= UnpackUint64BE(digest);
+    }
+    sqlite3_finalize(stmt);
+
+    return result;
+  }
+};
 
 }
 
@@ -515,66 +581,18 @@ rxcpp::observable<std::shared_ptr<castor::Participant>> RegistrationServer::stor
 #endif
 
 std::vector<std::string> RegistrationServer::getChecksumChainNames() const {
-  return {"shadow-short-pseudonyms"};
+  return { ShadowShortPseudonymsChecksumChain(shadowStorage_).name() };
 }
 
 void RegistrationServer::computeChecksumChainChecksum(
-    const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-    uint64_t& checksum, uint64_t& checkpoint) {
-  checksum = 0;
-  checkpoint = 0;
-
-  if (!maxCheckpoint)
-    maxCheckpoint = std::numeric_limits<int64_t>::max();
-
-  sqlite3_stmt* stmt{};
-
-  if (chain == "shadow-short-pseudonyms") {
-    sqlite3_prepare_v2(shadowStorage_,
-                        "SELECT \
-            `Id`, \
-            `EncryptedShortPseudonym`, \
-            `EncryptedIdentifier` \
-          FROM ShadowShortPseudonyms \
-          Where Id <= ?;",
-                        -1, &stmt, nullptr);
-  } else {
-    throw Error("Unknown checksumchain");
-  }
-  sqlite3_bind_int64(stmt, 1, static_cast<int64_t>(*maxCheckpoint));
-
-  int ncols = -1;
-
-  while (sqlite3_step(stmt) == SQLITE_ROW) {
-    if (ncols == -1)
-      ncols = sqlite3_column_count(stmt);
-    checkpoint = std::max(checkpoint, static_cast<uint64_t>(sqlite3_column_int64(stmt, 0)));
-
-    Sha256 sha;
-
-    for (int i = 0; i < ncols; i++) {
-      switch (sqlite3_column_type(stmt, i)) {
-      case SQLITE_BLOB:
-        sha.update(
-          static_cast<const uint8_t*>(sqlite3_column_blob(stmt, i)),
-          static_cast<size_t>(sqlite3_column_bytes(stmt, i))
-        );
-        break;
-      case SQLITE_TEXT:
-        sha.update(
-          static_cast<const uint8_t*>(sqlite3_column_text(stmt, i)),
-          static_cast<size_t>(sqlite3_column_bytes(stmt, i))
-        );
-        break;
-      default:
-        break;
-      }
-    }
-
-    auto digest = sha.digest();
-    checksum ^= UnpackUint64BE(digest);
-  }
-  sqlite3_finalize(stmt);
+  const std::string& chain, std::optional<uint64_t> maxCheckpoint,
+  uint64_t& checksum, uint64_t& checkpoint) {
+  ChecksumChains chains{
+    std::make_unique<ShadowShortPseudonymsChecksumChain>(shadowStorage_),
+  };
+  auto result = chains.chain(chain).get(maxCheckpoint);
+  checksum = result.checksum;
+  checkpoint = result.checkpoint;
 }
 
 messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationRequest(std::shared_ptr<SignedPEPIdRegistrationRequest> signedRequest) {
