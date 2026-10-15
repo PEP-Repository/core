@@ -24,7 +24,7 @@ namespace {
 using namespace std::chrono_literals;
 
 const std::string ResponseBody = "Found someone you have, I would say, hmmm?";
-const std::string LogTag = "HttpClient.test.cpp";
+const std::string LogTag = "HttpClientTest";
 
 
 class AsyncHttpServer : boost::noncopyable {
