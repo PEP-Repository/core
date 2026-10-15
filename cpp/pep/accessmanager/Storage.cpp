@@ -256,7 +256,7 @@ public:
   AmRecordChecksumChain(std::string name, AccessManager::Backend::Storage::Implementor& storage) noexcept
     : ChecksumChain(std::move(name), storage) {}
 
-  Result get(const std::optional<Checkpoint>& maxCheckpoint) override {
+  Result get(const std::optional<Checkpoint>& maxCheckpoint) const override {
     Result result{
       .checksum = 0,
       .checkpoint = 1,

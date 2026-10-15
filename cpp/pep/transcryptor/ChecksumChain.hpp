@@ -24,7 +24,7 @@ private:
   };
 
   TranscryptorStorage::Implementor& storage_;
-  Result lastResult_ = InitialResult;
+  mutable Result lastResult_ = InitialResult;
 
 protected:
   ChecksumChain(TranscryptorStorage::Implementor& storage, std::string name) noexcept : pep::ChecksumChain(std::move(name)), storage_(storage) {}
@@ -38,7 +38,7 @@ protected:
 
 public:
   /// \remark Caches the last computed result to prevent excessive (re-)calculation.
-  Result get(const std::optional<Checkpoint>& maxCheckpoint) override;
+  Result get(const std::optional<Checkpoint>& maxCheckpoint) const override;
 };
 
 

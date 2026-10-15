@@ -14,7 +14,7 @@ int64_t ChecksumChain::CheckpointToSeqNo(Checkpoint checkpoint) noexcept {
   return static_cast<int64_t>(checkpoint - FirstRecordCheckpoint);
 }
 
-ChecksumChain::Result ChecksumChain::get(const std::optional<Checkpoint>& maxCheckpoint) {
+ChecksumChain::Result ChecksumChain::get(const std::optional<Checkpoint>& maxCheckpoint) const {
   auto max = maxCheckpoint.value_or(std::numeric_limits<int64_t>::max());
 
   if (max < EmptyTableCheckpoint) {
