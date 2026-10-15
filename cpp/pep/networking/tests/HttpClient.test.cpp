@@ -7,6 +7,7 @@
 #include <pep/networking/HttpClient.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Exceptions.hpp>
+#include <pep/utils/Log.hpp>
 
 #include <atomic>
 
@@ -23,6 +24,8 @@ namespace {
 using namespace std::chrono_literals;
 
 const std::string ResponseBody = "Found someone you have, I would say, hmmm?";
+const std::string LogTag = "HttpClient.test.cpp";
+
 
 class AsyncHttpServer : boost::noncopyable {
 public:
@@ -113,6 +116,7 @@ private:
     void readRequest() {
       boost::asio::async_read_until(socket, buffer_, "\r\n\r\n", [self = shared_from_this()](const boost::system::error_code& error, size_t size) {
         if (error) {
+          PEP_LOG(LogTag, pep::Severity::Debug) << "Failed to read request: " << error.message();
           return;
         }
         auto begin = boost::asio::buffers_begin(self->buffer_.data());
@@ -153,9 +157,11 @@ private:
       }
       boost::asio::async_read(socket, buffer_, boost::asio::transfer_exactly(contentLength - buffer_.size()),
         [self = shared_from_this(), path, contentLength](const boost::system::error_code& error, size_t) {
-          if (!error) {
-            self->receiveRequest(path, contentLength);
+          if (error) {
+            PEP_LOG(LogTag, pep::Severity::Debug) << "Failed to read request body: " << error.message();
+            return;
           }
+          self->receiveRequest(path, contentLength);
         });
     }
 
@@ -169,9 +175,11 @@ private:
     void respond(const std::string& body) {
       auto response = std::make_shared<std::string>("HTTP/1.1 200 OK\r\nContent-Length: " + std::to_string(body.size()) + "\r\n\r\n" + body);
       boost::asio::async_write(socket, boost::asio::buffer(*response), [self = shared_from_this(), response](const boost::system::error_code& error, size_t) {
-        if (!error) {
-          self->readRequest();
+        if (error) {
+          PEP_LOG(LogTag, pep::Severity::Debug) << "Failed to write response: " << error.message();
+          return;
         }
+        self->readRequest();
         });
     }
   };
@@ -182,6 +190,7 @@ private:
   void accept() {
     acceptor_.async_accept([this](const boost::system::error_code& error, boost::asio::ip::tcp::socket socket) {
       if (error) {
+        PEP_LOG(LogTag, pep::Severity::Debug) << "Failed to accept connection: " << error.message();
         return;
       }
       auto session = std::make_shared<Session>(*this, std::move(socket));
