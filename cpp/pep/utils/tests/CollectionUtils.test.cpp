@@ -101,4 +101,9 @@ TEST(CollectionUtils_FillToCapacity, OffsetLimited) {
   ASSERT_EQ(length, 2);
 }
 
+TEST(CollectionUtils_Generate, InvokesGeneratorForEveryElement) {
+  const auto nextInt = [calls = 0]() mutable { return calls++; };
+  EXPECT_EQ(pep::Generate<4>(nextInt), (std::array{0, 1, 2, 3}));
+}
+
 }

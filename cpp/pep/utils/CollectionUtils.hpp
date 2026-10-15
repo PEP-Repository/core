@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <functional>
 #include <iterator>
 #include <optional>
 #include <vector>
@@ -97,6 +98,15 @@ template<typename Elem, size_t Extent> requires(Extent != std::dynamic_extent)
   std::array<Elem, Extent> array;
   std::ranges::copy(span, array.begin());
   return array;
+}
+
+/// Invoke \p generator \p N times, collecting the results in a `std::array`
+/// \note Like `std::ranges::generate`, but returns a new array instead of writing into an output-parameter
+template<size_t N, typename TGenerator>
+[[nodiscard]] std::array<std::invoke_result_t<TGenerator>, N> Generate(TGenerator generator) {
+  std::array<std::invoke_result_t<TGenerator>, N> result{};
+  std::ranges::generate(result, generator);
+  return result;
 }
 
 /// Copy elements from src to dst, stopping when either range reaches the end

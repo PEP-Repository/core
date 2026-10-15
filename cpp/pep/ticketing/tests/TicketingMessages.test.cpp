@@ -4,6 +4,7 @@
 
 #include <pep/ticketing/TicketingMessages.hpp>
 #include <pep/ticketing/tests/LocalPseudonyms.test.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 
 #include <string_view>
 
