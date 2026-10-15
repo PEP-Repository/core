@@ -649,7 +649,7 @@ std::string AccessManager::identifyTicketRequestSubjects(TicketRequestContext& c
     ctx.ticket.referenceSubjects = std::vector<LocalPseudonyms>(refSubsBegin, resp.entries.end());
   }
 
-  // Perform access checks only for access subjects
+  // Perform access checks only for access subjects (references do not require access)
   if (ctx.ticket.userGroup == UserGroup::DataAdministrator && !ctx.ticket.accessSubjects.empty()) {
     PEP_LOG(LogTag, Severity::Info) << "Granting " << ctx.ticket.userGroup << " unchecked access to " << ctx.ticket.accessSubjects.size() << " subject(s)";
   }
