@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/accessmanager/AccessManagerProxy.hpp>
-#include <pep/server/ChecksumChain.hpp>
+#include <pep/server/ChecksumChainResponder.hpp>
 
 
 namespace pep::authserver {

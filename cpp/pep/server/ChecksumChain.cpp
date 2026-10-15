@@ -54,14 +54,4 @@ const ChecksumChain& ChecksumChains::chain(const std::string& name) const {
   return **position;
 }
 
-rxcpp::observable<ChecksumChainResponse> ChecksumChains::handle(const ChecksumChainRequest& request) const {
-  auto values = this->chain(request.name).get(ChecksumChainValueFromString(request.checkpoint));
-  return rxcpp::observable<>::just(
-    ChecksumChainResponse{
-      .xorredChecksums = ChecksumChainValueToString(values.checksum),
-      .checkpoint = ChecksumChainValueToString(values.checkpoint),
-    }
-  );
-}
-
 }
