@@ -6,13 +6,14 @@
 #include <vector>
 
 using namespace pep;
+using namespace pep::tests;
 
 namespace {
 
 using Vector = std::vector<LocalPseudonyms>;
 
 TEST(ComputePseudonymHash, DependsOnBothLists) {
-  const auto both = tests::RandomLocalPseudonyms<2>();
+  const auto both = Generate<2>(SingleRandomLocalPseudonym);
   const auto reverse = Vector{both.back(), both.front()};
   const auto only_first = Vector{both.front()};
   const auto only_second = Vector{both.back()};

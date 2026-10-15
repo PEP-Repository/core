@@ -11,6 +11,7 @@
 #include <vector>
 
 using namespace pep;
+using namespace pep::tests;
 
 namespace {
 
@@ -25,7 +26,7 @@ MATCHER(LocalPseudonymsMatch, "LocalPseudonyms that are equal in all fields") {
 
 TEST(TicketingSerializers, TicketRequest2RoundTrip) {
   const TicketRequest2 input = [](TicketRequest2 ticket = {}) { // does not support designated initialization
-    const auto [subjectA, subjectB, subjectC, subjectD] = tests::RandomPolymorphicPseudonyms<4>();
+    const auto [subjectA, subjectB, subjectC, subjectD] = Generate<4>(SingleRandomPolymorphicPseudonym);
     ticket.modes = {"read", "write"};
     ticket.accessSubjects = {subjectA, subjectB};
     ticket.participantGroups = {"participantGroup"};
@@ -49,7 +50,7 @@ TEST(TicketingSerializers, TicketRequest2RoundTrip) {
 }
 
 TEST(TicketingSerializers, Ticket2RoundTrip) {
-  const auto [subjectA, subjectB, subjectC] = tests::RandomLocalPseudonyms<3>();
+  const auto [subjectA, subjectB, subjectC] = Generate<3>(SingleRandomLocalPseudonym);
   const auto ticket = Ticket2{
       .modes = {"read"},
       .accessSubjects = {subjectA, subjectB},

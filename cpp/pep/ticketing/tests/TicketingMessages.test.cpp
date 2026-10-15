@@ -4,27 +4,21 @@
 
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
+#include <pep/ticketing/tests/LocalPseudonyms.test.hpp>
 
 #include <string_view>
 #include <unistd.h>
 
 using namespace pep;
+using namespace pep::tests;
 
 namespace {
 
 using testing::UnorderedElementsAre;
 using std::ranges::is_sorted;
 
-template <std::size_t N> std::array<PolymorphicPseudonym, N> RandomPolymorphicPseudonyms() {
-  std::array<PolymorphicPseudonym, N> array;
-  for (auto& pp : array) {
-    pp = PolymorphicPseudonym::FromIdentifier(ElgamalPublicKey::Random(), "arbitrary identifier");
-  }
-  return array;
-}
-
 TEST(ResolveDuplicatePseudonyms, RemovesDuplicatesWithinAndAcrossLists) {
-  const auto subject = RandomPolymorphicPseudonyms<4>();
+  const auto subject = Generate<4>(SingleRandomPolymorphicPseudonym);
 
   ClientSideTicketRequest2 request;
   request.accessSubjects = {subject[0], subject[1], subject[0]}; // 0 twice
@@ -37,7 +31,7 @@ TEST(ResolveDuplicatePseudonyms, RemovesDuplicatesWithinAndAcrossLists) {
 }
 
 TEST(ResolveDuplicatePseudonyms, LeavesUniquePseudonymsIntact) {
-  const auto subject = RandomPolymorphicPseudonyms<2>();
+  const auto subject = Generate<2>(SingleRandomPolymorphicPseudonym);
 
   ClientSideTicketRequest2 request;
   { // both list populated
@@ -72,7 +66,7 @@ TEST(ResolveDuplicatePseudonyms, LeavesUniquePseudonymsIntact) {
 
 TEST(ResolveDuplicatePseudonyms, SortsSubjectsAsSideEffect) {
   // Not a design goal of the function, but it is a documented side-effect, that callers could be relying on
-  const auto subject = RandomPolymorphicPseudonyms<8>();
+  const auto subject = Generate<8>(SingleRandomPolymorphicPseudonym);
 
   ClientSideTicketRequest2 request;
   request.accessSubjects = {subject[0], subject[1], subject[2], subject[3]};
