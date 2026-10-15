@@ -55,6 +55,18 @@ void EnsureStructureMetadataAccess(AccessMode mode, StructureMetadataType subjec
   }
 }
 
+void CheckForDuplicatePseudonyms(const TicketRequest2& ticket) {
+  constexpr auto reportAndThrow = [](PolymorphicPseudonym duplicate) {
+    PEP_LOG(LogTag, Severity::Error) << "Failing ticket request due to duplicate PP " << duplicate.text();
+    throw Error("Ticket request failed due to duplicate polymorphic pseudonym. "
+                "Please request access to unique polymorphic pseudonyms");
+  };
+
+  if (auto found = TryFindDuplicateValue(ticket.accessSubjects)) { reportAndThrow(*found); }
+  if (auto found = TryFindDuplicateValue(ticket.referenceSubjects)) { reportAndThrow(*found); }
+  if (auto found = TryFindCommonValue(ticket.accessSubjects, ticket.referenceSubjects)) { reportAndThrow(*found); }
+}
+
 }
 
 AccessManager::Backend::Backend(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf)
@@ -393,12 +405,7 @@ void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
                 "supported. Use either groups or specific participants.");
   }
 
-  auto duplicate = TryFindDuplicateValue(request.accessSubjects);
-  if (duplicate) {
-    PEP_LOG(LogTag, Severity::Error) << "Failing ticket request due to duplicate PP " << duplicate->text();
-    throw Error("Ticket request failed due to duplicate polymorphic pseudonym. Please request access to unique "
-                "polymorphic pseudonyms");
-  }
+  CheckForDuplicatePseudonyms(request);
 
   // Check all participantgroups and columngroups for existence
   std::vector<std::string> errorMessageParts;
@@ -459,7 +466,7 @@ void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::st
 
 std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillParticipantGroupMap(
     std::span<const std::string> participantGroups,
-    std::vector<Pp>& pps) {
+    std::vector<PolymorphicPseudonym>& pps) {
   // ParticipantGroups by Polymorph Pseudonym
   auto groupedPps = to<std::vector<std::pair<PolymorphicPseudonym, std::unordered_set<std::string> /*participant groups*/>>>(
     storage_->getPpGroups(participantGroups));
@@ -467,7 +474,7 @@ std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillPart
 
   std::unordered_map<std::string, pep::IndexList> participantGroupMap;
   for (const auto& [pp, groups] : groupedPps) {
-    pps.emplace_back(pp, false);
+    pps.emplace_back(pp);
     for (const std::string& pg : groups) {
       participantGroupMap[pg].indices.push_back(static_cast<uint32_t>(pps.size() - 1));
     }

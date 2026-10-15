@@ -304,7 +304,8 @@ public:
           return pps.flat_map([self, query](const std::shared_ptr<std::vector<PolymorphicPseudonym>>& pps) {
             return self->client_->requestTicket2(RequestTicket2Opts{
                 .participantGroups = std::move(query->subjectGroups).value_or(std::vector<std::string>{}),
-                .pps = std::move(*pps),
+                .accessSubjects = std::move(*pps),
+                .referenceSubjects = {},
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
                 .columns = std::move(query->columns).value_or(std::vector<std::string>{}),
                 .modes = {"read"}, //TODO support more modes. Should this method be split with an explicit ticket request?

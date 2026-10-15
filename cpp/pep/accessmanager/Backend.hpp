@@ -10,11 +10,6 @@ class AccessManager::Backend {
 public:
   class Storage; // Public to allow unit testing
 
-  struct Pp {
-    PolymorphicPseudonym pp;
-    bool isClientProvided{}; // have we seen this pp before?
-  };
-
   Backend() = delete; // AccessManager::Backend needs a properly configured storage
   Backend(std::shared_ptr<AccessManager::Backend::Storage> storage) : storage_(storage) {}
   Backend(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf);
@@ -40,7 +35,7 @@ public:
   /// \brief Fill the pre_PPs vector with polymorph pseudonyms found in the participantGroup. For each participantGroup, add an entry to the participantGroupMap containing all indexes
   ///        of the pps that are in the participantGroup.
   /// \param pps Both an in and out parameter. Vector containing the loose requested polymorph pseudonyms. This vector is appended with the pps found in the requested participantGroups.
-  std::unordered_map<std::string, pep::IndexList> fillParticipantGroupMap(std::span<const std::string> participantGroups, std::vector<Pp>& pps);
+  std::unordered_map<std::string, pep::IndexList> fillParticipantGroupMap(std::span<const std::string> participantGroups, std::vector<PolymorphicPseudonym>& pps);
 
   /// \brief For each column in columns, look up the associated columngroups. Then check whether or not the userGroup has the required access to ANY of those columnGroups. If not, throw an error.
   /// For each columnGroup in columnGroups, assert whether or not the userGroup has the required access modes. If so, for each columnGroup, look up all columns that are in it and add them

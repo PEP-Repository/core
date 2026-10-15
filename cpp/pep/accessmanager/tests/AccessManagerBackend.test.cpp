@@ -306,12 +306,11 @@ TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_no_access) {
 
 TEST_F(AccessManagerBackendTest, fillParticipantgroupMap_happy) {
   // Two polymorph pseudonyms without known participantgroups. Used to test the offset in IndexList
-  std::vector<AccessManager::Backend::Pp> prePPs{{constants.dummyPP, true}, {constants.dummyPP, true}};
+  std::vector<PolymorphicPseudonym> prePPs{constants.dummyPP, constants.dummyPP};
   const std::vector<std::string> participantgroups{constants.pg1, constants.pg2};
 
   // Act
-  auto actualParticipantGroupMap =
-      backend->fillParticipantGroupMap(participantgroups, prePPs);
+  auto actualParticipantGroupMap = backend->fillParticipantGroupMap(participantgroups, prePPs);
 
   // Assert
   EXPECT_EQ(actualParticipantGroupMap.size(), 2U); // The two participantGroups
