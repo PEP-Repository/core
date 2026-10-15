@@ -88,8 +88,7 @@ TEST(Proofs, RskProof) {
         pep::CurvePoint::Random(),
         pep::CurvePoint::Random());
     pep::ElgamalEncryption post;
-    auto rekey = pep::CurveScalar::Random();
-    auto reshuffle = pep::CurveScalar::Random();
+    const auto [rekey, reshuffle] = pep::Generate<2>(pep::CurveScalar::Random);
 
     auto proof = pep::RskProof::CertifiedRsk(pre, post, reshuffle, rekey);
 
