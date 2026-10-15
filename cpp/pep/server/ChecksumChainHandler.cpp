@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/auth/UserGroup.hpp>
 #include <pep/server/ChecksumChainHandler.hpp>
 #include <pep/utils/Bitpacking.hpp>
 
@@ -26,6 +27,10 @@ std::optional<uint64_t> ChecksumChainValueFromString(const std::string& str) {
   return result;
 }
 
+}
+
+std::unordered_set<std::string> ChecksumChainHandler::allowedRequesters() const {
+  return { UserGroup::Watchdog };
 }
 
 rxcpp::observable<ChecksumChainResponse> ChecksumChainProducer::handle(const ChecksumChainRequest& request) const {
