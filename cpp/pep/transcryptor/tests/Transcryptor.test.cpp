@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <pep/elgamal/ElgamalEncryption.hpp>
-#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/ticketing/tests/LocalPseudonyms.test.hpp>
 #include <pep/transcryptor/Transcryptor.hpp>
 
 #include <vector>
@@ -12,24 +11,8 @@ namespace {
 
 using Vector = std::vector<LocalPseudonyms>;
 
-template <std::size_t N>
-std::array<LocalPseudonyms, N> RandomLocalPseudonyms() {
-  std::array<LocalPseudonyms, N> array{};
-  for(auto& pseudonyms: array) {
-    const auto publicKey = ElgamalPublicKey::Random();
-    const auto localPseudonym = LocalPseudonym::Random();
-    pseudonyms = pep::LocalPseudonyms{
-      .accessManager = localPseudonym.encrypt(publicKey),
-      .storageFacility = localPseudonym.encrypt(publicKey),
-      .polymorphic = PolymorphicPseudonym::FromIdentifier(publicKey, "arbitrary_identifier"),
-      .accessGroup = localPseudonym.encrypt(publicKey)
-    };
-  }
-  return array;
-}
-
 TEST(ComputePseudonymHash, DependsOnBothLists) {
-  const auto both = RandomLocalPseudonyms<2>();
+  const auto both = tests::RandomLocalPseudonyms<2>();
   const auto reverse = Vector{both.back(), both.front()};
   const auto only_first = Vector{both.front()};
   const auto only_second = Vector{both.back()};

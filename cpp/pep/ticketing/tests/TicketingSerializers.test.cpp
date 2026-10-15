@@ -6,8 +6,8 @@
 #include <pep/serialization/TimestampSerializer.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
+#include <pep/ticketing/tests/LocalPseudonyms.test.hpp>
 
-#include <string_view>
 #include <vector>
 
 using namespace pep;
@@ -15,21 +15,6 @@ using namespace pep;
 namespace {
 
 using testing::Pointwise;
-
-PolymorphicPseudonym MakePolymorphicPseudonym(std::string_view identifier) {
-  return PolymorphicPseudonym::FromIdentifier(ElgamalPublicKey::Random(), identifier);
-}
-
-LocalPseudonyms MakeLocalPseudonyms(std::string_view identifier) {
-  const auto publicKey = ElgamalPublicKey::Random();
-  const auto localPseudonym = LocalPseudonym::Random();
-  return LocalPseudonyms{
-      .accessManager = localPseudonym.encrypt(publicKey),
-      .storageFacility = localPseudonym.encrypt(publicKey),
-      .polymorphic = PolymorphicPseudonym::FromIdentifier(publicKey, identifier),
-      .accessGroup = localPseudonym.encrypt(publicKey)
-  };
-}
 
 // Matcher for an (actual, expected) pair of LocalPseudonyms, to be used with Pointwise for vector comparisons
 MATCHER(LocalPseudonymsMatch, "LocalPseudonyms that are equal in all fields") {
@@ -39,15 +24,18 @@ MATCHER(LocalPseudonymsMatch, "LocalPseudonyms that are equal in all fields") {
 }
 
 TEST(TicketingSerializers, TicketRequest2RoundTrip) {
-  TicketRequest2 input; // does not support designated initialization (because of inheritance)
-  input.modes = {"read", "write"};
-  input.participantGroups = {"participantGroup"};
-  input.accessSubjects = {MakePolymorphicPseudonym("subjectA"), MakePolymorphicPseudonym("subjectB")};
-  input.referenceSubjects = {MakePolymorphicPseudonym("subjectC"), MakePolymorphicPseudonym("subjectC")};
-  input.columnGroups = {"columnGroup"};
-  input.columns = {"column"};
-  input.requestIndexedTicket = true;
-  input.includeUserGroupPseudonyms = true;
+  const TicketRequest2 input = [](TicketRequest2 ticket = {}) { // does not support designated initialization
+    const auto [subjectA, subjectB, subjectC, subjectD] = tests::RandomPolymorphicPseudonyms<4>();
+    ticket.modes = {"read", "write"};
+    ticket.accessSubjects = {subjectA, subjectB};
+    ticket.participantGroups = {"participantGroup"};
+    ticket.referenceSubjects = {subjectC, subjectD};
+    ticket.columnGroups = {"columnGroup"};
+    ticket.columns = {"column"};
+    ticket.requestIndexedTicket = true;
+    ticket.includeUserGroupPseudonyms = true;
+    return ticket;
+  }();
 
   const auto output = Serialization::FromString<TicketRequest2>(Serialization::ToString(input));
   EXPECT_EQ(output.modes, input.modes);
@@ -61,10 +49,11 @@ TEST(TicketingSerializers, TicketRequest2RoundTrip) {
 }
 
 TEST(TicketingSerializers, Ticket2RoundTrip) {
-  Ticket2 ticket{
+  const auto [subjectA, subjectB, subjectC] = tests::RandomLocalPseudonyms<3>();
+  const auto ticket = Ticket2{
       .modes = {"read"},
-      .accessSubjects = {MakeLocalPseudonyms("subjectA"), MakeLocalPseudonyms("subjectB")},
-      .referenceSubjects = {MakeLocalPseudonyms("subjectD")},
+      .accessSubjects = {subjectA, subjectB},
+      .referenceSubjects = {subjectC},
       .columns = {"column"},
       .userGroup = "userGroup"
   };
