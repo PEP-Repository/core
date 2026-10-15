@@ -56,6 +56,7 @@ public:
   }
 
   std::set<std::string> names() const;
+  [[noreturn]] static void ThrowUnknownChainError(const std::string& name);
 
   const ChecksumChain& chain(const std::string& name) const;
   const ChecksumChain& operator[](const std::string& name) const { return this->chain(name); }

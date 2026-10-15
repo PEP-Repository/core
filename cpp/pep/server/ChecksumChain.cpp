@@ -42,10 +42,14 @@ std::set<std::string> ChecksumChains::names() const {
     | std::ranges::to<std::set>();
 }
 
+[[noreturn]] void ChecksumChains::ThrowUnknownChainError(const std::string& name) {
+  throw Error("No checksum chain available with name " + name);
+}
+
 const ChecksumChain& ChecksumChains::chain(const std::string& name) const {
   auto position = items_.find(name);
   if (position == items_.end()) {
-    throw Error("No checksum chain available with name " + name);
+    ThrowUnknownChainError(name);
   }
   return **position;
 }
