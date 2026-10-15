@@ -16,9 +16,6 @@ protected:
   ChecksumChain(std::string name, AccessManager::Backend::Storage::Implementor& storage) noexcept;
 
   AccessManager::Backend::Storage::Implementor& storage() const noexcept { return storage_; }
-
-public:
-  static ChecksumChains CreateAll(AccessManager::Backend::Storage::Implementor& storage);
 };
 
 }

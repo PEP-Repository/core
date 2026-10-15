@@ -24,7 +24,6 @@ if(WITH_SERVERS)
       Backend.cpp Backend.hpp
       ChecksumChain.cpp ChecksumChain.hpp
       Storage.cpp Storage.hpp
-      Storage.Implementor.hpp
       Records.cpp Records.hpp
       LegacyAuthserverStorage.cpp LegacyAuthserverStorage.hpp
       UserStorageRecords.cpp UserStorageRecords.hpp
