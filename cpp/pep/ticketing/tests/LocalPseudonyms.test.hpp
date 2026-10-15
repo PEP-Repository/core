@@ -27,14 +27,14 @@ inline LocalPseudonyms SingleRandomLocalPseudonym() {
 template <std::size_t N>
 std::array<PolymorphicPseudonym, N> RandomPolymorphicPseudonyms() {
   std::array<PolymorphicPseudonym, N> result{};
-  for (auto& pseudonyms : result) { pseudonyms = SingleRandomPolymorphicPseudonym(); }
+  std::ranges::generate(result, SingleRandomPolymorphicPseudonym);
   return result;
 }
 
 template <std::size_t N>
 std::array<LocalPseudonyms, N> RandomLocalPseudonyms() {
   std::array<LocalPseudonyms, N> result{};
-  for (auto& pseudonyms : result) { pseudonyms = SingleRandomLocalPseudonym(); }
+  std::ranges::generate(result, SingleRandomLocalPseudonym);
   return result;
 }
 
