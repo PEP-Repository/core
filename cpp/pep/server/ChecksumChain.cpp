@@ -1,33 +1,9 @@
 #include <pep/serialization/Error.hpp>
 #include <pep/server/ChecksumChain.hpp>
-#include <pep/utils/Bitpacking.hpp>
 #include <ranges>
 #include <stdexcept>
 
 namespace pep {
-
-namespace {
-
-constexpr size_t FormattedChecksumChainValueLength = 8U;
-
-std::string ChecksumChainValueToString(uint64_t value) {
-  auto result = PackUint64BE(value);
-  assert(result.size() == FormattedChecksumChainValueLength);
-  return result;
-}
-
-std::optional<uint64_t> ChecksumChainValueFromString(const std::string& str) {
-  std::optional<uint64_t> result;
-  if (!str.empty()) {
-    if (str.size() != FormattedChecksumChainValueLength) {
-      throw Error("checkpoint field should either be " + std::to_string(FormattedChecksumChainValueLength) + " bytes or 0");
-    }
-    result = UnpackUint64BE(str);
-  }
-  return result;
-}
-
-}
 
 void ChecksumChains::insert(std::unique_ptr<ChecksumChain> chain) {
   auto result = items_.emplace(std::move(chain));
