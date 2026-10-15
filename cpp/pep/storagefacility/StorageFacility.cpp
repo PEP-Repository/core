@@ -1,3 +1,4 @@
+#include <pep/storagefacility/ChecksumChain.hpp>
 #include <pep/storagefacility/StorageFacility.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/crypto/ConstTime.hpp>
@@ -278,61 +279,17 @@ void StorageFacility::Parameters::check() const {
 }
 
 std::vector<std::string> StorageFacility::getChecksumChainNames() const {
-  return {
-    "files",
-    "entry-count"
-  };
+  return checksumChains_.names()
+    | to<std::vector>();
 }
 
 void StorageFacility::computeChecksumChainChecksum(
   const std::string& chain, std::optional<uint64_t> maxCheckpoint,
   uint64_t& checksum, uint64_t& checkpoint) {
 
-  // both "files" and "entry-count" checksums are computed by adding
-  // one entry at a time, via:
-  std::function<void(const FileStore::CellVersion&)> add;
-
-  if (chain == "files") {
-    add = [&checksum](const FileStore::CellVersion& version) {
-      auto checksumSubstitute = version.checksumSubstitute;
-      checksum ^= checksumSubstitute;
-    };
-  }
-  else if (chain == "entry-count") {
-    add = [&checksum](const FileStore::CellVersion& version) {
-      checksum++;
-    };
-  }
-  else {
-    throw Error("Unknown checksumchain");
-  }
-
-  checksum = 0;
-  checkpoint = 0;
-
-  if (!maxCheckpoint) {
-    // The Storage Facility uses a timestamp as checkpoint
-    maxCheckpoint = TicksSinceEpoch<std::chrono::milliseconds>(TimeNow() - 1min);
-  }
-
-  /* Checksums over cell versions must be calculated in (backward compatible) lexicographic order, e.g.
-   * 1. participant-a/column-x/timestamp-1
-   * 2. participant-a/column-x/timestamp-2
-   * 3. participant-a/column-y/timestamp-1
-   * 4. participant-b/column-x/timestamp-1
-   */
-  for (const auto& participant : fileStore_->participants()) {
-    for (const auto& cell : participant->cells()) {
-      for (const auto& version : cell->versions()) {
-        std::uint64_t validFromMs{ static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(version.validFrom)) };
-        if (validFromMs <= *maxCheckpoint) {
-          checkpoint = std::max(checkpoint, validFromMs);
-          add(version);
-        }
-
-      }
-    }
-  }
+  auto result = checksumChains_.chain(chain).get(maxCheckpoint);
+  checksum = result.checksum;
+  checkpoint = result.checkpoint;
 }
 
 messaging::MessageBatches
@@ -1198,7 +1155,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
     PendingBytesLimiter::Gauges{ .pendingBytes = &metrics_->pendingPageBytes, .paused = &metrics_->readingPaused })),
   timer_(*parameters->getIoContext()),
   parallelisationWidth_(parameters->getParallelisationWidth()),
-  dataSizeResolution_(parameters->getDataSizeResolution()) {
+  dataSizeResolution_(parameters->getDataSizeResolution()),
+  checksumChains_(storagefacility::ChecksumChain::CreateAll(*fileStore_)) {
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
                           &StorageFacility::handleDataReadRequest2,

@@ -17,6 +17,7 @@ verify_headers_standalone(${PROJECT_NAME}StorageFacilityApilib)
 
 if(WITH_SERVERS)
   add_library(${PROJECT_NAME}StorageFacilitylib
+      ChecksumChain.cpp ChecksumChain.hpp
       EntryContent.cpp EntryContent.hpp
       EntryName.cpp EntryName.hpp
       EntryPayload.cpp EntryPayload.hpp

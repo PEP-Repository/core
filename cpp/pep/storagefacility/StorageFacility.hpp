@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/server/SigningServer.hpp>
 #include <pep/async/WorkerPool.hpp>
 #include <pep/utils/XxHasher.hpp>
@@ -139,6 +140,7 @@ private:
   boost::asio::steady_timer timer_;
   const uint8_t parallelisationWidth_ = 0; // passed to RxParallelConcat
   const uint64_t dataSizeResolution_;
+  ChecksumChains checksumChains_;
 };
 
 }
