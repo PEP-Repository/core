@@ -5,6 +5,7 @@
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/authserver/AuthserverMessages.hpp>
+#include <pep/authserver/ChecksumChainForwarder.hpp>
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 
 namespace pep {
@@ -75,6 +76,7 @@ private:
   std::shared_ptr<AccessManagerProxy> accessManager_;
   std::chrono::seconds tokenExpiration_;
   std::string oauthTokenSecret_;
+  authserver::ChecksumChainForwarder checksumChainForwarder_;
 };
 
 }

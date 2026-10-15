@@ -38,7 +38,7 @@ public:
 
 
 struct ChecksumChainResponder {
-  virtual rxcpp::observable<ChecksumChainNamesResponse> handle(const ChecksumChainNamesRequest& request) const = 0;
+  virtual std::set<std::string> chainNames() const = 0;
   virtual rxcpp::observable<ChecksumChainResponse> handle(const ChecksumChainRequest& request) const = 0;
 };
 
@@ -61,7 +61,7 @@ public:
   const ChecksumChain& chain(const std::string& name) const;
   const ChecksumChain& operator[](const std::string& name) const { return this->chain(name); }
 
-  rxcpp::observable<ChecksumChainNamesResponse> handle(const ChecksumChainNamesRequest& request) const override;
+  std::set<std::string> chainNames() const { return this->names(); }
   rxcpp::observable<ChecksumChainResponse> handle(const ChecksumChainRequest& request) const override;
 };
 

@@ -54,14 +54,6 @@ const ChecksumChain& ChecksumChains::chain(const std::string& name) const {
   return **position;
 }
 
-rxcpp::observable<ChecksumChainNamesResponse> ChecksumChains::handle(const ChecksumChainNamesRequest& request) const {
-  return rxcpp::observable<>::just(
-    ChecksumChainNamesResponse{
-      .names = this->names() | std::ranges::to<std::vector>(),
-    }
-  );
-}
-
 rxcpp::observable<ChecksumChainResponse> ChecksumChains::handle(const ChecksumChainRequest& request) const {
   auto values = this->chain(request.name).get(ChecksumChainValueFromString(request.checkpoint));
   return rxcpp::observable<>::just(
