@@ -6,18 +6,18 @@
 
 namespace pep {
 
-struct ChecksumChainResponder {
+struct ChecksumChainHandler {
   virtual std::set<std::string> chainNames() const = 0;
   virtual rxcpp::observable<ChecksumChainResponse> handle(const ChecksumChainRequest& request) const = 0;
 };
 
 
-class ChecksumChainHandler : public ChecksumChainResponder {
+class ChecksumChainProducer : public ChecksumChainHandler {
 private:
   ChecksumChains chains_;
 
 public:
-  explicit ChecksumChainHandler(ChecksumChains chains) : chains_(std::move(chains)) {}
+  explicit ChecksumChainProducer(ChecksumChains chains) : chains_(std::move(chains)) {}
 
   std::set<std::string> chainNames() const override { return chains_.names(); }
   rxcpp::observable<ChecksumChainResponse> handle(const ChecksumChainRequest& request) const override;

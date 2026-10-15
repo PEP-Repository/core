@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/server/ChecksumChainResponder.hpp>
+#include <pep/server/ChecksumChainHandler.hpp>
 #include <pep/utils/Bitpacking.hpp>
 
 namespace pep {
@@ -28,7 +28,7 @@ std::optional<uint64_t> ChecksumChainValueFromString(const std::string& str) {
 
 }
 
-rxcpp::observable<ChecksumChainResponse> ChecksumChainHandler::handle(const ChecksumChainRequest& request) const {
+rxcpp::observable<ChecksumChainResponse> ChecksumChainProducer::handle(const ChecksumChainRequest& request) const {
   auto values = chains_.chain(request.name).get(ChecksumChainValueFromString(request.checkpoint));
   return rxcpp::observable<>::just(
     ChecksumChainResponse{

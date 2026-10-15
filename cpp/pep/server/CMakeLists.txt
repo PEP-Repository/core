@@ -17,7 +17,7 @@ verify_headers_standalone(${PROJECT_NAME}ServerApilib)
 if(WITH_SERVERS)
   add_library(${PROJECT_NAME}Serverlib
     ChecksumChain.cpp ChecksumChain.hpp
-    ChecksumChainResponder.cpp ChecksumChainResponder.hpp
+    ChecksumChainHandler.cpp ChecksumChainHandler.hpp
     NetworkedServer.cpp NetworkedServer.hpp
     Server.cpp Server.hpp
     SigningServer.cpp SigningServer.hpp

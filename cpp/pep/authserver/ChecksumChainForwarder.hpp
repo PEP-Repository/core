@@ -1,12 +1,12 @@
 #pragma once
 
 #include <pep/accessmanager/AccessManagerProxy.hpp>
-#include <pep/server/ChecksumChainResponder.hpp>
+#include <pep/server/ChecksumChainHandler.hpp>
 
 
 namespace pep::authserver {
 
-class ChecksumChainForwarder : public ChecksumChainResponder {
+class ChecksumChainForwarder : public ChecksumChainHandler {
 private:
   const AccessManagerProxy& am_;
 
