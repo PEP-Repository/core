@@ -1,6 +1,8 @@
 #pragma once
 
+#include <pep/server/MonitoringMessages.hpp>
 #include <pep/utils/PropertyBasedContainer.hpp>
+#include <rxcpp/rx-lite.hpp>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -35,7 +37,13 @@ public:
 };
 
 
-class ChecksumChains {
+struct ChecksumChainResponder {
+  virtual rxcpp::observable<ChecksumChainNamesResponse> handle(const ChecksumChainNamesRequest& request) const = 0;
+  virtual rxcpp::observable<ChecksumChainResponse> handle(const ChecksumChainRequest& request) const = 0;
+};
+
+
+class ChecksumChains : public ChecksumChainResponder {
 private:
   PropertyBasedContainer<std::unique_ptr<ChecksumChain>, &ChecksumChain::name>::set items_;
 
@@ -51,6 +59,9 @@ public:
 
   const ChecksumChain& chain(const std::string& name) const;
   const ChecksumChain& operator[](const std::string& name) const { return this->chain(name); }
+
+  rxcpp::observable<ChecksumChainNamesResponse> handle(const ChecksumChainNamesRequest& request) const override;
+  rxcpp::observable<ChecksumChainResponse> handle(const ChecksumChainRequest& request) const override;
 };
 
 }
