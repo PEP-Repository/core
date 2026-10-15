@@ -14,12 +14,13 @@ inline PolymorphicPseudonym SingleRandomPolymorphicPseudonym() {
 }
 
 inline LocalPseudonyms SingleRandomLocalPseudonym() {
-  const auto publicKey = ElgamalPublicKey::Random();
-  const auto localPseudonym = LocalPseudonym::Random();
-  return LocalPseudonyms{.accessManager = localPseudonym.encrypt(publicKey),
-                         .storageFacility = localPseudonym.encrypt(publicKey),
+  const auto randomEncryptedLocalPseudonym = [publicKey = ElgamalPublicKey::Random()] {
+    return LocalPseudonym::Random().encrypt(publicKey);
+  };
+  return LocalPseudonyms{.accessManager = randomEncryptedLocalPseudonym(),
+                         .storageFacility = randomEncryptedLocalPseudonym(),
                          .polymorphic = SingleRandomPolymorphicPseudonym(),
-                         .accessGroup = localPseudonym.encrypt(publicKey)};
+                         .accessGroup = randomEncryptedLocalPseudonym()};
 }
 
 template <std::size_t N, typename TGenerator>
