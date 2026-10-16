@@ -73,7 +73,7 @@ struct CellData {
 struct StoreQuery {
   std::string subject;
   std::string column;
-  emscripten::val blob;
+  emscripten::val reader;
   std::unordered_map<std::string, std::string> metadata;
 };
 

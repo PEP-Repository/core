@@ -90,7 +90,7 @@ export interface ParticipantPersonalia extends Omit<rawTypes.ParticipantPersonal
 export interface StoreQuery {
   subject: string;
   column: string;
-  data: string | Blob;
+  data: string | Blob | ReadableStream<Uint8Array>;
   /**
    * Metadata associated with the data. Either strings or bytes.
    * When data is a File, fileExtension is derived from the name unless specified explicitly.
@@ -98,8 +98,8 @@ export interface StoreQuery {
   metadata?: Map<string, string | Uint8Array | ArrayBuffer> | undefined;
 }
 
-interface StoreQueryInternal extends Omit<rawTypes.StoreQuery, 'blob' | 'metadata'> {
-  blob: Blob;
+interface StoreQueryInternal extends Omit<rawTypes.StoreQuery, 'reader' | 'metadata'> {
+  reader: ReadableStreamDefaultReader<Uint8Array>;
   /** 
   * The metadata, normalized to Uint8Array.
   * Encoded here rather than in C++, so the bytes stored do not depend on embind's string handling
@@ -158,6 +158,12 @@ function toBytes(value: string | Uint8Array | ArrayBuffer): Uint8Array {
   }
   // Wrapping an ArrayBuffer is a view over the same memory, not a copy
   return value instanceof ArrayBuffer ? new Uint8Array(value) : value;
+}
+
+function fileExtensionOf(fileName: string): string | undefined {
+  const dot = fileName.lastIndexOf('.');
+  const extension = dot > 0 ? fileName.slice(dot) : '';
+  return /^(\.[A-Za-z0-9]+)+$/.test(extension) ? extension : undefined;
 }
 
 function toDdMmYyyy(date: Date) {
@@ -394,19 +400,34 @@ export default class Pep {
     }, isTestParticipant));
   }
 
-  store(query: StoreQuery): Promise<StoreResult> {
-    const common = {
-      subject: query.subject,
-      column: query.column,
-      metadata: new Map([...query.metadata ?? []].map(([key, value]) => [key, toBytes(value)]))
-    };
+  async store(query: StoreQuery): Promise<StoreResult> {
+    const metadata = new Map([...query.metadata ?? []].map(([key, value]) => [key, toBytes(value)]));
+    // A File also has name, derive fileExtension from it, like pepcli does from --input-path.
+    if (query.data instanceof File && !metadata.has('fileExtension')) {
+      const fileExtension = fileExtensionOf(query.data.name);
+      if (fileExtension) {
+        metadata.set('fileExtension', toBytes(fileExtension));
+      }
+    }
     // A string is wrapped rather than passed inline, so that it is paged like any other data
     // instead of having to fit in a single message
+    const stream = query.data instanceof ReadableStream ? query.data : new Blob([query.data]).stream();
+    const reader = stream.getReader();
+    
     const internalQuery: StoreQueryInternal = {
-      ...common,
-      blob: query.data instanceof Blob ? query.data : new Blob([query.data]),
+      subject: query.subject,
+      column: query.column,
+      reader,
+      metadata,
     };
-    return this.#wrapExec(() => this.#client.store(internalQuery));
+    try {
+      return await this.#wrapExec(() => this.#client.store(internalQuery));
+    } catch (ex) {
+      await reader.cancel().catch(() => {});
+      throw ex;
+    } finally {
+      reader.releaseLock();
+    }
   }
 
   /**
