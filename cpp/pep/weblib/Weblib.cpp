@@ -49,17 +49,17 @@ using namespace std::ranges;
 namespace {
 const std::string LogTag = "Weblib";
 
-ColumnGroupAccessModes ParseColumnGroupAccessModes(const std::vector<std::string>& modes, const std::string& columnGroup) {
+ColumnGroupAccessModes ColumnGroupAccessModesFromStrings(const std::vector<std::string>& modes, const std::string& columnGroup) {
   ColumnGroupAccessModes result;
   for (const auto& mode : modes) {
     if (mode == "read") {
       result.read = true;
     }
-    else if (mode == "write") {
-      result.write = true;
-    }
     else if (mode == "read-meta") {
       result.readMeta = true;
+    }
+    else if (mode == "write") {
+      result.write = true;
     }
     else if (mode == "write-meta") {
       result.writeMeta = true;
@@ -71,7 +71,7 @@ ColumnGroupAccessModes ParseColumnGroupAccessModes(const std::vector<std::string
   return result;
 }
 
-std::vector<std::string> ToModeStrings(const ColumnGroupAccessModes& modes) {
+std::vector<std::string> ColumnGroupAccessModesToStrings(const ColumnGroupAccessModes& modes) {
   std::vector<std::string> result;
   if (modes.read) {
     result.emplace_back("read");
@@ -88,7 +88,7 @@ std::vector<std::string> ToModeStrings(const ColumnGroupAccessModes& modes) {
   return result;
 }
 
-SubjectGroupAccessModes ParseSubjectGroupAccessModes(const std::vector<std::string>& modes, const std::string& subjectGroup) {
+SubjectGroupAccessModes SubjectGroupAccessModesFromStrings(const std::vector<std::string>& modes, const std::string& subjectGroup) {
   SubjectGroupAccessModes result;
   for (const auto& mode : modes) {
     if (mode == "access") {
@@ -315,7 +315,7 @@ public:
     co_return co_await onIoThread()
         .flat_map([
           includeImplicitlyGranted = query.includeImplicitlyGranted.value_or(true),
-          requireModes = ToModeStrings(query.requireModes)
+          requireModes = ColumnGroupAccessModesToStrings(query.requireModes)
          ](const std::shared_ptr<Weblib>& self) {
           return self->client_->getAccessManagerProxy()->getAccessibleColumns(includeImplicitlyGranted, requireModes);
         })
@@ -325,7 +325,7 @@ public:
               const auto& [name, columnGroup] = entry;
               return ColumnGroup{
                   .name = name,
-                  .modes = ParseColumnGroupAccessModes(columnGroup.modes, name),
+                  .modes = ColumnGroupAccessModesFromStrings(columnGroup.modes, name),
                   .columns = to<std::vector>(SafeIndexInto(columnGroup.columns.indices, access.columns)),
               };
             })
@@ -345,7 +345,7 @@ public:
               const auto& [name, modes] = entry;
               return SubjectGroup{
                   .name = name,
-                  .modes = ParseSubjectGroupAccessModes(modes, name),
+                  .modes = SubjectGroupAccessModesFromStrings(modes, name),
               };
             })
             | to<std::vector>();
