@@ -73,9 +73,22 @@ export interface EnrolledUser {
   userGroup: string;
 }
 
+export interface ListColumnsQuery {
+  /** Also report modes implied by others: 'read-meta' by 'read', 'write' by 'write-meta'. Default true */
+  includeImplicitlyGranted?: boolean | undefined;
+  /**
+   * Only return groups on which the user has all of these modes. Default ['read'];
+   */
+  requireModes?: string[] | undefined;
+}
+
 export interface ColumnGroup {
   name: string;
   columns: string[];
+  /**
+   * Access modes of the enrolled user on this group, e.g. 'read', 'write', 'read-meta', 'write-meta'.
+   */
+  modes: string[];
 }
 
 export interface SubjectGroup {
@@ -378,8 +391,12 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.internalGenerateToken(tokenSecret, userGroup));
   }
 
-  listColumns(): Promise<ColumnGroup[]> {
-    return this.#wrapExec(() => this.#client.listColumns());
+  /** Column groups the enrolled user has access to; by default only readable ones */
+  listColumns(query: ListColumnsQuery = {}): Promise<ColumnGroup[]> {
+    return this.#wrapExec(() => this.#client.listColumns({
+      includeImplicitlyGranted: query.includeImplicitlyGranted,
+      requireModes: query.requireModes,
+    }));
   }
 
   listSubjectGroups(): Promise<SubjectGroup[]> {
