@@ -105,6 +105,20 @@ describe('Pep', () => {
           .to.deep.equal({read: true, readMeta: true, write: true, writeMeta: false});
     });
 
+    it('should only return column groups with the required modes', async () => {
+      const columnGroups = await pep.runHandleWasmException(() => pep.listColumns({requireModes: {write: true}}));
+      expect(columnGroups.map(group => group.name)).to.include('WasmTestColumnGroup');
+      expect(columnGroups.every(group => group.modes.write)).to.be.true;
+    });
+
+    it('should return all accessible column groups by default', async () => {
+      const [all, readable] = await pep.runHandleWasmException(() => Promise.all([
+        pep.listColumns(),
+        pep.listColumns({requireModes: {read: true}}),
+      ]));
+      expect(all.map(group => group.name)).to.include.members(readable.map(group => group.name));
+    });
+
     it('should allow getting the modes for every column', async () => {
       const columns = getColumnModes(await pep.runHandleWasmException(() => pep.listColumns()));
       expect(columns.find(column => column.name === 'WasmTestColumn')?.modes)

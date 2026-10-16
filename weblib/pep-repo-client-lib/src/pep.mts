@@ -73,7 +73,10 @@ export interface EnrolledUser {
   userGroup: string;
 }
 
-/** `read` implies `readMeta`, and `writeMeta` implies `write`. Implied modes are always set. */
+/**
+ * `read` implies `readMeta`, and `writeMeta` implies `write`.
+ * Implied modes are set, unless {@link ListColumnsQuery.includeImplicitlyGranted} is false.
+ */
 export interface ColumnGroupAccessModes {
   read: boolean;
   readMeta: boolean;
@@ -85,6 +88,13 @@ export interface ColumnGroupAccessModes {
 export interface SubjectGroupAccessModes {
   access: boolean;
   enumerate: boolean;
+}
+
+export interface ListColumnsQuery {
+  /** Also report modes implied by others: `read-meta` by `read`, `write` by `write-meta`. Default true */
+  includeImplicitlyGranted?: boolean | undefined;
+  /** Only return groups on which the user has all of the set modes, e.g. `{read: true}`. Default none: all groups */
+  requireModes?: Partial<ColumnGroupAccessModes> | undefined;
 }
 
 export interface ColumnGroup {
@@ -429,8 +439,11 @@ export default class Pep {
    * List column groups the user has any access to, with the access modes.
    * Use {@link getColumnModes} to get the modes per column.
    */
-  listColumns(): Promise<ColumnGroup[]> {
-    return this.#wrapExec(() => this.#client.listColumns());
+  listColumns(query: ListColumnsQuery = {}): Promise<ColumnGroup[]> {
+    return this.#wrapExec(() => this.#client.listColumns({
+      includeImplicitlyGranted: query.includeImplicitlyGranted,
+      requireModes: {read: false, readMeta: false, write: false, writeMeta: false, ...query.requireModes},
+    }));
   }
 
   /** List subject groups the user has any access to, with the access modes */
