@@ -111,6 +111,24 @@ export interface StoreResult {
   id: string;
 }
 
+/** The kinds of structures that can have structure metadata, as in pepcli structure-metadata */
+export type StructureMetadataType = 'column' | 'column-group' | 'participant-group' | 'user' | 'user-group';
+
+export interface StructureMetadataQuery {
+  type: StructureMetadataType;
+  subjects?: string[] | undefined;
+  keys?: string[] | undefined;
+}
+
+/** A metadata entry on a structure (not on a cell) */
+export interface StructureMetadataItem {
+  subject: string;
+  metadataGroup: string;
+  subkey: string;
+  /** Decoded as UTF-8 */
+  value: string;
+}
+
 export interface ListQuery {
   subjectGroups?: string[] | undefined;
   /** Loose subjects to request (any format that would be recognized by pepcli) */
@@ -384,6 +402,15 @@ export default class Pep {
 
   listSubjectGroups(): Promise<SubjectGroup[]> {
     return this.#wrapExec(() => this.#client.listSubjectGroups());
+  }
+
+  /** Metadata on columns, column groups, participant groups, users or user groups (not on cells) */
+  listStructureMetadata(query: StructureMetadataQuery): Promise<StructureMetadataItem[]> {
+    return this.#wrapExec(() => this.#client.listStructureMetadata({
+      type: query.type,
+      subjects: query.subjects,
+      keys: query.keys,
+    }));
   }
 
   /** Register a subject */
