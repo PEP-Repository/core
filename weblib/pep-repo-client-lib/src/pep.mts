@@ -155,7 +155,6 @@ export interface StoreResult {
 
 export interface UserGroupMembership {
   userGroup: string;
-  /** When the membership expires, or `undefined` if it does not */
   expiration: Date | undefined;
 }
 
@@ -168,7 +167,6 @@ export interface User {
 
 export interface UserGroup {
   name: string;
-  /** Maximum validity of authentication (OAuth tokens) for this group, in seconds */
   maxAuthValiditySeconds?: number | undefined;
 }
 
@@ -256,7 +254,8 @@ function fromJsTime(millisecondsSinceEpoch: number | undefined) {
 }
 
 function toRawUserGroup(group: UserGroup): rawTypes.UserGroupInfo {
-  // Always pass every field, see https://github.com/emscripten-core/emscripten/issues/25978
+  //TODO(workaround) Always pass every field because of https://github.com/emscripten-core/emscripten/issues/25978,
+  // pass `group` directly with EMSDK 5.0.0+
   return {
     name: group.name,
     maxAuthValiditySeconds: group.maxAuthValiditySeconds,
@@ -537,7 +536,9 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.retrieve(entries));
   }
 
-  /** List users and user groups. Requires the Access Administrator user group. */
+  // User management: changes require the Access Administrator user group,
+  // listing also allows the Repository Manager user group
+
   async listUsers(filter: UserQueryFilter = {}): Promise<UserQueryResult> {
     const result = await this.#wrapExec(() =>
         this.#client.listUsers(filter.groupFilter ?? '', filter.userFilter ?? ''));
@@ -553,77 +554,60 @@ export default class Pep {
     };
   }
 
-  /** Requires the Access Administrator user group */
   createUser(uid: string): Promise<void> {
     return this.#wrapExec(() => this.#client.createUser(uid));
   }
 
-  /** Requires the Access Administrator user group */
   removeUser(uid: string): Promise<void> {
     return this.#wrapExec(() => this.#client.removeUser(uid));
   }
 
-  /** Add an identifier to the user identified by `existingUid`. Requires the Access Administrator user group. */
   addUserIdentifier(existingUid: string, newUid: string,
                     {isPrimaryId = false, isDisplayId = false}: {isPrimaryId?: boolean, isDisplayId?: boolean} = {}): Promise<void> {
     return this.#wrapExec(() => this.#client.addUserIdentifier(existingUid, newUid, isPrimaryId, isDisplayId));
   }
 
-  /** Requires the Access Administrator user group */
   removeUserIdentifier(uid: string): Promise<void> {
     return this.#wrapExec(() => this.#client.removeUserIdentifier(uid));
   }
 
-  /** Make `uid` the primary identifier of its user. Requires the Access Administrator user group. */
   setUserPrimaryId(uid: string): Promise<void> {
     return this.#wrapExec(() => this.#client.setUserPrimaryId(uid));
   }
 
-  /** Requires the Access Administrator user group */
   unsetUserPrimaryId(uid: string): Promise<void> {
     return this.#wrapExec(() => this.#client.unsetUserPrimaryId(uid));
   }
 
-  /** Make `uid` the display identifier of its user. Requires the Access Administrator user group. */
   setUserDisplayId(uid: string): Promise<void> {
     return this.#wrapExec(() => this.#client.setUserDisplayId(uid));
   }
 
-  /** Requires the Access Administrator user group */
   createUserGroup(group: UserGroup): Promise<void> {
     return this.#wrapExec(() => this.#client.createUserGroup(toRawUserGroup(group)));
   }
 
-  /** Requires the Access Administrator user group */
+  /**
+   * Replace the properties of an existing user group, like `pepcli user group modify`:
+   * omitting `maxAuthValiditySeconds` removes the group's maximum authentication validity.
+   */
   modifyUserGroup(group: UserGroup): Promise<void> {
     return this.#wrapExec(() => this.#client.modifyUserGroup(toRawUserGroup(group)));
   }
 
-  /** Requires the Access Administrator user group */
   removeUserGroup(name: string): Promise<void> {
     return this.#wrapExec(() => this.#client.removeUserGroup(name));
   }
 
-  /**
-   * Requires the Access Administrator user group
-   * @param expiration When the membership expires, or `undefined` if it should not
-   */
   addUserToGroup(uid: string, group: string, expiration?: Date): Promise<void> {
     return this.#wrapExec(() => this.#client.addUserToGroup(uid, group, expiration?.getTime()));
   }
 
-  /**
-   * Requires the Access Administrator user group
-   * @param blockTokens Also block existing OAuth tokens of the user for this group (default, like pepcli)
-   */
+  /** @param blockTokens Also block the user's existing OAuth tokens for this group */
   removeUserFromGroup(uid: string, group: string, blockTokens: boolean = true): Promise<void> {
     return this.#wrapExec(() => this.#client.removeUserFromGroup(uid, group, blockTokens));
   }
 
-  /**
-   * Requires the Access Administrator user group
-   * @param expiration When the membership expires, or `undefined` if it should not
-   */
   updateUserGroupExpiration(uid: string, group: string, expiration?: Date): Promise<void> {
     return this.#wrapExec(() => this.#client.updateUserGroupExpiration(uid, group, expiration?.getTime()));
   }

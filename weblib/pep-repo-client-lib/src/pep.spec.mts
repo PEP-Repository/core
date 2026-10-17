@@ -247,37 +247,65 @@ describe('Pep', () => {
   describe('user management', () => {
     const suffix = crypto.randomUUID();
     const uid = `weblib-test-user-${suffix}`;
+    const otherUid = `weblib-test-user-other-${suffix}`;
     const userGroup = `WeblibTestUserGroup-${suffix}`;
-    // Whole seconds, as that is what the server stores
-    const expiration = new Date(Math.floor(Date.now() / 1000 + 24 * 60 * 60) * 1000);
+    const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    /** @returns The identifiers of the test user */
+    async function listTestUserIds() {
+      const {users} = await pep.listUsers({userFilter: suffix});
+      return users.map(({displayId, primaryId, otherUids}) => ({displayId, primaryId, otherUids}));
+    }
 
     before(() => authenticateAs('Access Administrator'));
-    after(() => authenticateAs('Research Assessor'));
+    after(async () => {
+      // Remove what is left if the test failed halfway. Steps that are not applicable fail, which is ignored
+      for (const step of [
+        () => pep.removeUserFromGroup(uid, userGroup),
+        () => pep.removeUserFromGroup(otherUid, userGroup),
+        () => pep.removeUser(uid),
+        () => pep.removeUser(otherUid),
+        () => pep.removeUserGroup(userGroup),
+      ]) {
+        await pep.runHandleWasmException(step).catch(() => {});
+      }
+      await authenticateAs('Research Assessor');
+    });
 
     it('should create, modify and remove users and user groups', () => pep.runHandleWasmException(async () => {
       await pep.createUserGroup({name: userGroup, maxAuthValiditySeconds: 3600});
       await pep.createUser(uid);
       await pep.addUserToGroup(uid, userGroup, expiration);
+      expect(await pep.listUsers({userFilter: suffix})).to.deep.equal({
+        users: [{displayId: uid, primaryId: undefined, otherUids: [], groups: [{userGroup, expiration}]}],
+        userGroups: [{name: userGroup, maxAuthValiditySeconds: 3600}],
+      });
 
-      let result = await pep.listUsers({userFilter: uid});
-      expect(result.users).to.deep.equal([{
-        displayId: uid,
-        primaryId: undefined,
-        otherUids: [],
-        groups: [{userGroup, expiration}],
-      }]);
-      expect(result.userGroups).to.deep.equal([{name: userGroup, maxAuthValiditySeconds: 3600}]);
-
+      await pep.modifyUserGroup({name: userGroup});
       await pep.updateUserGroupExpiration(uid, userGroup, undefined);
-      result = await pep.listUsers({groupFilter: userGroup});
-      expect(result.users[0]?.groups).to.deep.equal([{userGroup, expiration: undefined}]);
+      expect(await pep.listUsers({userFilter: suffix})).to.deep.equal({
+        users: [{displayId: uid, primaryId: undefined, otherUids: [], groups: [{userGroup, expiration: undefined}]}],
+        userGroups: [{name: userGroup, maxAuthValiditySeconds: undefined}],
+      });
 
-      await pep.removeUserFromGroup(uid, userGroup);
-      await pep.removeUser(uid);
+      await pep.addUserIdentifier(uid, otherUid, {isPrimaryId: true});
+      expect(await listTestUserIds()).to.deep.equal([{displayId: uid, primaryId: otherUid, otherUids: []}]);
+
+      await pep.unsetUserPrimaryId(otherUid);
+      await pep.setUserDisplayId(otherUid);
+      expect(await listTestUserIds()).to.deep.equal([{displayId: otherUid, primaryId: undefined, otherUids: [uid]}]);
+
+      await pep.setUserPrimaryId(uid);
+      expect(await listTestUserIds()).to.deep.equal([{displayId: otherUid, primaryId: uid, otherUids: []}]);
+
+      await pep.removeUserIdentifier(uid);
+      expect(await listTestUserIds()).to.deep.equal([{displayId: otherUid, primaryId: undefined, otherUids: []}]);
+
+      await pep.removeUserFromGroup(otherUid, userGroup);
+      await pep.removeUser(otherUid);
       await pep.removeUserGroup(userGroup);
-
-      result = await pep.listUsers({userFilter: uid});
-      expect(result.users).to.be.empty;
+      expect(await listTestUserIds()).to.be.empty;
+      expect((await pep.listUsers({groupFilter: userGroup})).userGroups).to.be.empty;
     }));
   });
 });
