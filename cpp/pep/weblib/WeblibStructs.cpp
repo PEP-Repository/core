@@ -44,7 +44,13 @@ EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(User::primaryId)::value_type>();
   register_optional<decltype(UserGroupMembership::expiration)::value_type>();
   register_optional<decltype(UserGroupInfo::maxAuthValiditySeconds)::value_type>();
+  register_optional<decltype(ListColumnsQuery::includeImplicitlyGranted)::value_type>();
 }
+
+PEP_BINDINGS(ListColumnsQuery,
+  includeImplicitlyGranted,
+  requireModes
+)
 
 PEP_BINDINGS(ListQuery,
   subjectGroups,

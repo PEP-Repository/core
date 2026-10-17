@@ -95,17 +95,17 @@ User ToUser(QRUser user) {
   };
 }
 
-ColumnGroupAccessModes ParseColumnGroupAccessModes(const std::vector<std::string>& modes, const std::string& columnGroup) {
+ColumnGroupAccessModes ColumnGroupAccessModesFromStrings(const std::vector<std::string>& modes, const std::string& columnGroup) {
   ColumnGroupAccessModes result;
   for (const auto& mode : modes) {
     if (mode == "read") {
       result.read = true;
     }
-    else if (mode == "write") {
-      result.write = true;
-    }
     else if (mode == "read-meta") {
       result.readMeta = true;
+    }
+    else if (mode == "write") {
+      result.write = true;
     }
     else if (mode == "write-meta") {
       result.writeMeta = true;
@@ -117,7 +117,24 @@ ColumnGroupAccessModes ParseColumnGroupAccessModes(const std::vector<std::string
   return result;
 }
 
-SubjectGroupAccessModes ParseSubjectGroupAccessModes(const std::vector<std::string>& modes, const std::string& subjectGroup) {
+std::vector<std::string> ColumnGroupAccessModesToStrings(const ColumnGroupAccessModes& modes) {
+  std::vector<std::string> result;
+  if (modes.read) {
+    result.emplace_back("read");
+  }
+  if (modes.readMeta) {
+    result.emplace_back("read-meta");
+  }
+  if (modes.write) {
+    result.emplace_back("write");
+  }
+  if (modes.writeMeta) {
+    result.emplace_back("write-meta");
+  }
+  return result;
+}
+
+SubjectGroupAccessModes SubjectGroupAccessModesFromStrings(const std::vector<std::string>& modes, const std::string& subjectGroup) {
   SubjectGroupAccessModes result;
   for (const auto& mode : modes) {
     if (mode == "access") {
@@ -344,13 +361,17 @@ public:
       .getSerializedForm();
   }
 
-  /// Lists column groups the enrolled user has any access to, with the access modes,
-  /// like <code>pepcli query column-access</code>. Modes include implied ones, e.g. "read" implies "read-meta".
+  /// Lists column groups the enrolled user has access to, with the access modes,
+  /// like <code>pepcli query column-access</code>. By default all groups with any access, with implied modes,
+  /// e.g. "read" implies "read-meta".
   /// \returns \c Promise<ColumnGroup[]>
-  WeblibApiPromise listColumns() {
+  WeblibApiPromise listColumns(ListColumnsQuery query) {
     co_return co_await onIoThread()
-        .flat_map([](const std::shared_ptr<Weblib>& self) {
-          return self->client_->getAccessManagerProxy()->getAccessibleColumns(true);
+        .flat_map([
+          includeImplicitlyGranted = query.includeImplicitlyGranted.value_or(true),
+          requireModes = ColumnGroupAccessModesToStrings(query.requireModes)
+         ](const std::shared_ptr<Weblib>& self) {
+          return self->client_->getAccessManagerProxy()->getAccessibleColumns(includeImplicitlyGranted, requireModes);
         })
         .map([](const ColumnAccess& access) {
           return access.columnGroups
@@ -358,7 +379,7 @@ public:
               const auto& [name, columnGroup] = entry;
               return ColumnGroup{
                   .name = name,
-                  .modes = ParseColumnGroupAccessModes(columnGroup.modes, name),
+                  .modes = ColumnGroupAccessModesFromStrings(columnGroup.modes, name),
                   .columns = to<std::vector>(SafeIndexInto(columnGroup.columns.indices, access.columns)),
               };
             })
@@ -378,7 +399,7 @@ public:
               const auto& [name, modes] = entry;
               return SubjectGroup{
                   .name = name,
-                  .modes = ParseSubjectGroupAccessModes(modes, name),
+                  .modes = SubjectGroupAccessModesFromStrings(modes, name),
               };
             })
             | to<std::vector>();
