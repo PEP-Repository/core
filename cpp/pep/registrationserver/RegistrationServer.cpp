@@ -466,6 +466,7 @@ RegistrationServer::RegistrationServer(std::shared_ptr<Parameters> parameters)
   : SigningServer(parameters),
   client_(parameters->getClient()),
   shadowPublicKey_(parameters->getShadowPublicKey()),
+  checksumChains_(std::make_unique<ShadowShortPseudonymsChecksumChain>(shadowStorage_)),
   globalConfiguration_(CreateRxCache([client = client_]() {return RxEnsureProgress(*client->getIoContext(), "Global configuration retrieval", client->getGlobalConfiguration()); })),
   shortPseudonyms_(ShortPseudonymCache::Create(*this, parameters->getShadowStorageFile())) // cannot get a shared_ptr<RegistrationServer> during construction
 #ifdef WITH_CASTOR
@@ -581,16 +582,13 @@ rxcpp::observable<std::shared_ptr<castor::Participant>> RegistrationServer::stor
 #endif
 
 std::vector<std::string> RegistrationServer::getChecksumChainNames() const {
-  return { ShadowShortPseudonymsChecksumChain(shadowStorage_).name() };
+  return checksumChains_.names() | std::ranges::to<std::vector>();
 }
 
 void RegistrationServer::computeChecksumChainChecksum(
   const std::string& chain, std::optional<uint64_t> maxCheckpoint,
   uint64_t& checksum, uint64_t& checkpoint) {
-  ChecksumChains chains{
-    std::make_unique<ShadowShortPseudonymsChecksumChain>(shadowStorage_),
-  };
-  auto result = chains.chain(chain).get(maxCheckpoint);
+  auto result = checksumChains_.chain(chain).get(maxCheckpoint);
   checksum = result.checksum;
   checkpoint = result.checkpoint;
 }

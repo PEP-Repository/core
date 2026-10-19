@@ -2,6 +2,7 @@
 
 #include <pep/core-client/CoreClient_fwd.hpp>
 #include <pep/async/RxCache.hpp>
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/server/SigningServer.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/registrationserver/RegistrationServerMessages.hpp>
@@ -89,6 +90,7 @@ private:
   ::sqlite3* shadowStorage_ = nullptr;
   std::shared_ptr<CoreClient> client_;
   AsymmetricKey shadowPublicKey_;
+  ChecksumChains checksumChains_;
   std::shared_ptr<RxCache<std::shared_ptr<GlobalConfiguration>>> globalConfiguration_;
   std::shared_ptr<ShortPseudonymCache> shortPseudonyms_;
 #ifdef WITH_CASTOR
