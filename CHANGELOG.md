@@ -6,9 +6,13 @@
 
 ## Changes in upcoming release (1.9)
 
+- core#2962: `pepcli pseudonym convert` no longer requires access to the subject associated with the pseudonym.
+
 - core#3008: Restructured the code that handles ticket request, into a process with 4 meaningful phases.
   This makes it easier to maintain and extend. The documentation was updated to reflect the new structure of the process.
   - Changed: `docs/public/crypto/ticket_request.md` has been updated
+
+- core!2527: For projects using nginx (e.g. for s3proxy), modify `etc/params/proxy` to change `proxy_set_header Host $host;` to `proxy_set_header Host $http_host;` (or just replace by the version in pep/core>).
 
 - core#3000: Disposing a `Pep` weblib instance (e.g. `pep.delete()`) is now asynchronous.
 
