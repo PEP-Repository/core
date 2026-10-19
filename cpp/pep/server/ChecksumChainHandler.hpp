@@ -31,7 +31,9 @@ private:
   const ChecksumChains& chains_;
 
 public:
-  explicit LocalChecksumChainHandler(const ChecksumChains& chains, Requesters allowedRequesters = DefaultRequesters) : chains_(chains) {}
+  explicit LocalChecksumChainHandler(const ChecksumChains& chains, Requesters allowedRequesters = DefaultRequesters)
+    : ChecksumChainHandler(allowedRequesters), chains_(chains) {
+  }
 
   std::set<std::string> chainNames() const override { return chains_.names(); }
   rxcpp::observable<ChecksumChainResponse> handle(const ChecksumChainRequest& request) const override;
