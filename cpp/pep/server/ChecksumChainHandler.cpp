@@ -33,8 +33,8 @@ std::unordered_set<std::string> ChecksumChainHandler::allowedRequesters() const 
   return { UserGroup::Watchdog };
 }
 
-rxcpp::observable<ChecksumChainResponse> ChecksumChainProducer::handle(const ChecksumChainRequest& request) const {
-  auto values = chains_.chain(request.name).get(ChecksumChainValueFromString(request.checkpoint));
+rxcpp::observable<ChecksumChainResponse> LocalChecksumChainHandler::handle(const ChecksumChainRequest& request) const {
+  auto values = this->chains().chain(request.name).get(ChecksumChainValueFromString(request.checkpoint));
   return rxcpp::observable<>::just(
     ChecksumChainResponse{
       .xorredChecksums = ChecksumChainValueToString(values.checksum),
