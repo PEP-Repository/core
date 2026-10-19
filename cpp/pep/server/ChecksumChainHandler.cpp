@@ -34,7 +34,7 @@ std::unordered_set<std::string> ChecksumChainHandler::allowedRequesters() const 
 }
 
 rxcpp::observable<ChecksumChainResponse> LocalChecksumChainHandler::handle(const ChecksumChainRequest& request) const {
-  auto values = this->chains().chain(request.name).get(ChecksumChainValueFromString(request.checkpoint));
+  auto values = chains_.chain(request.name).get(ChecksumChainValueFromString(request.checkpoint));
   return rxcpp::observable<>::just(
     ChecksumChainResponse{
       .xorredChecksums = ChecksumChainValueToString(values.checksum),
