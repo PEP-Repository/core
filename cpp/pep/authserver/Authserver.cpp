@@ -50,7 +50,8 @@ void Authserver::Parameters::check() const {
 }
 
 std::vector<std::string> Authserver::getChecksumChainNames() const {
-  return backend_->getChecksumChainNames();
+  return backend_->checksumChainHandler().chainNames()
+    | std::ranges::to<std::vector>();
 }
 
 void Authserver::computeChecksumChainChecksum(
@@ -77,9 +78,8 @@ messaging::MessageBatches Authserver::handleChecksumChainRequest(std::shared_ptr
 
   UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), accessGroup, "Requesting checksum chains");
 
-  return backend_->handleChecksumChainRequest(request).map([](ChecksumChainResponse response) -> messaging::MessageSequence {
-    return rxcpp::rxs::just(std::make_shared<std::string>(Serialization::ToString(response)));
-  });
+  return backend_->checksumChainHandler().handle(request)
+    .map([](ChecksumChainResponse response) -> messaging::MessageSequence { return rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(std::move(response)))); });
 }
 
 Authserver::Authserver(std::shared_ptr<Parameters> parameters)

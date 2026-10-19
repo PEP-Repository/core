@@ -125,19 +125,6 @@ AuthserverBackend::AuthserverBackend(const Parameters &params)
   }
 }
 
-std::vector<std::string> AuthserverBackend::getChecksumChainNames() const {
-  return checksumChainForwarder_.chainNames() | to<std::vector>();
-}
-
-rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainRequest(ChecksumChainRequest request) {
-  // authserver used to have it's own storage, but that has been moved to the
-  // access manager. To make sure the migration from authserver to access
-  // manager goes correctly, we keep the old checksum chains, but instead of
-  // calculating them here, we pass them on to the accessmanager.
-  //TODO: When the migration has succeeded, this can be removed in a following release.
-  return checksumChainForwarder_.handle(request);
-}
-
 rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::findUserGroupsAndStorePrimaryIdIfMissing(
     const std::string &primaryId,
     const std::vector<std::string> &alternativeIds) {

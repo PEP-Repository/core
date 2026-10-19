@@ -6,6 +6,11 @@
 
 namespace pep::authserver {
 
+// authserver used to have it's own storage, but that has been moved to the
+// access manager. To make sure the migration from authserver to access
+// manager goes correctly, we keep the old checksum chains, but instead of
+// calculating them here, we pass them on to the accessmanager.
+//TODO: When the migration has succeeded, this can be removed in a following release.
 class ChecksumChainForwarder : public ChecksumChainHandler {
 private:
   const AccessManagerProxy& am_;

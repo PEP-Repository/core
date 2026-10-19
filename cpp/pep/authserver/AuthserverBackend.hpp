@@ -49,8 +49,7 @@ public:
 public:
   explicit AuthserverBackend(const Parameters &params);
 
-  std::vector<std::string> getChecksumChainNames() const;
-  rxcpp::observable<ChecksumChainResponse> handleChecksumChainRequest(ChecksumChainRequest request);
+  const ChecksumChainHandler& checksumChainHandler() const noexcept { return checksumChainForwarder_; }
 
   rxcpp::observable<std::optional<std::vector<UserGroup>>>
   findUserGroupsAndStorePrimaryIdIfMissing(
