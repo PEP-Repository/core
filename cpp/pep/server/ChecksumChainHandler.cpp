@@ -29,9 +29,7 @@ std::optional<uint64_t> ChecksumChainValueFromString(const std::string& str) {
 
 }
 
-std::unordered_set<std::string> ChecksumChainHandler::allowedRequesters() const {
-  return { UserGroup::Watchdog };
-}
+const ChecksumChainHandler::Requesters ChecksumChainHandler::DefaultRequesters{ UserGroup::Watchdog };
 
 rxcpp::observable<ChecksumChainResponse> LocalChecksumChainHandler::handle(const ChecksumChainRequest& request) const {
   auto values = chains_.chain(request.name).get(ChecksumChainValueFromString(request.checkpoint));
