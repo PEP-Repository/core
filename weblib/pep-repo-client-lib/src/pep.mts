@@ -78,10 +78,10 @@ type UseJsStrings<T> = {
 export type EnrolledUser = UseJsStrings<rawTypes.EnrolledUser>;
 
 /** `read` implies `readMeta`, and `writeMeta` implies `write`. Implied modes are always set. */
-export type ColumnGroupAccessModes = rawTypes.ColumnGroupAccessModes;
+export type ColumnGroupAccessModes = UseJsStrings<rawTypes.ColumnGroupAccessModes>;
 
 /** `enumerate` is needed to list cells, `access` to retrieve them */
-export type SubjectGroupAccessModes = rawTypes.SubjectGroupAccessModes;
+export type SubjectGroupAccessModes = UseJsStrings<rawTypes.SubjectGroupAccessModes>;
 
 export interface ColumnGroup extends UseJsStrings<rawTypes.ColumnGroup> {
   columns: string[];
@@ -131,7 +131,7 @@ export interface StoreQuery {
   metadata?: Map<string, string | Uint8Array | ArrayBuffer> | undefined;
 }
 
-interface StoreQueryInternal extends rawTypes.StoreQuery {
+interface StoreQueryInternal extends UseJsStrings<rawTypes.StoreQuery> {
   blob: Blob;
   /**
   * The metadata, normalized to Uint8Array.
