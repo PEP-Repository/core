@@ -467,7 +467,6 @@ TEST(HttpClientConnection, RequestAbandonedWhileSendingIsNotInterleaved) {
       continue;
     }
     std::string expected = "Request for " + received.path;
-    // Don't use EXPECT_EQ, which would print (megabytes of) body contents
     EXPECT_EQ(received.body, expected);
   }
 }
