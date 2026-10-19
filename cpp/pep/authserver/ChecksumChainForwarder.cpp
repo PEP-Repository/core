@@ -1,7 +1,7 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/authserver/ChecksumChainForwarder.hpp>
 
-namespace pep::authserver {
+namespace pep {
 
 namespace {
 

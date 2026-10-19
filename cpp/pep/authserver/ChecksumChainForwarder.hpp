@@ -4,7 +4,7 @@
 #include <pep/server/ChecksumChainHandler.hpp>
 
 
-namespace pep::authserver {
+namespace pep {
 
 // authserver used to have it's own storage, but that has been moved to the
 // access manager. To make sure the migration from authserver to access

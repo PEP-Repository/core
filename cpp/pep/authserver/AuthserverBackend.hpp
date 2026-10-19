@@ -49,7 +49,7 @@ public:
 public:
   explicit AuthserverBackend(const Parameters &params);
 
-  const ChecksumChainHandler& checksumChainHandler() const noexcept { return checksumChainForwarder_; }
+  const ChecksumChainForwarder& checksumChainForwarder() const noexcept { return checksumChainForwarder_; }
 
   rxcpp::observable<std::optional<std::vector<UserGroup>>>
   findUserGroupsAndStorePrimaryIdIfMissing(
@@ -75,7 +75,7 @@ private:
   std::shared_ptr<AccessManagerProxy> accessManager_;
   std::chrono::seconds tokenExpiration_;
   std::string oauthTokenSecret_;
-  authserver::ChecksumChainForwarder checksumChainForwarder_;
+  ChecksumChainForwarder checksumChainForwarder_;
 };
 
 }
