@@ -278,20 +278,6 @@ void StorageFacility::Parameters::check() const {
   // FIXME: check if errors happend during startup of file store
 }
 
-std::vector<std::string> StorageFacility::getChecksumChainNames() const {
-  return checksumChains_.names()
-    | to<std::vector>();
-}
-
-void StorageFacility::computeChecksumChainChecksum(
-  const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-  uint64_t& checksum, uint64_t& checkpoint) {
-
-  auto result = checksumChains_.chain(chain).get(maxCheckpoint);
-  checksum = result.checksum;
-  checkpoint = result.checkpoint;
-}
-
 messaging::MessageBatches
 StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumerationRequest2> signedRequest) {
   PEP_LOG(LogTag, Severity::Debug) << "Received DataEnumerationRequest2";
@@ -1156,7 +1142,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   timer_(*parameters->getIoContext()),
   parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()),
-  checksumChains_(SfChecksumChain::CreateAll(*fileStore_)) {
+  checksumChains_(SfChecksumChain::CreateAll(*fileStore_)),
+  checksumChainHandler_(checksumChains_) {
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
                           &StorageFacility::handleDataReadRequest2,

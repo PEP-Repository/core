@@ -94,11 +94,7 @@ public:
 protected:
   std::optional<std::filesystem::path> getStoragePath() override;
   void statsTimer(const boost::system::error_code& e);
-  std::vector<std::string> getChecksumChainNames() const override;
-  void computeChecksumChainChecksum(
-    const std::string& chain,
-    std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
-    uint64_t& checkpoint) override;
+  const ChecksumChainHandler& checksumChainHandler() const noexcept override { return checksumChainHandler_; }
 
 private:
   messaging::MessageBatches handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumerationRequest2> signedRequest);
@@ -141,6 +137,7 @@ private:
   const uint8_t parallelisationWidth_ = 0; // passed to RxParallelConcat
   const uint64_t dataSizeResolution_;
   ChecksumChains checksumChains_;
+  LocalChecksumChainHandler checksumChainHandler_;
 };
 
 }

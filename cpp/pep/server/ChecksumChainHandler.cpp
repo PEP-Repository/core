@@ -41,4 +41,16 @@ rxcpp::observable<ChecksumChainResponse> LocalChecksumChainHandler::handle(const
   );
 }
 
+StandaloneChecksumChainHandler::StandaloneChecksumChainHandler(ChecksumChains chains, Requesters allowedRequesters)
+  : chains_(std::move(chains)), local_(chains_) {
+}
+
+std::set<std::string> StandaloneChecksumChainHandler::chainNames() const {
+  return local_.chainNames();
+}
+
+rxcpp::observable<ChecksumChainResponse> StandaloneChecksumChainHandler::handle(const ChecksumChainRequest& request) const {
+  return local_.handle(request);
+}
+
 }

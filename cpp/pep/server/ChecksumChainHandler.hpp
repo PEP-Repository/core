@@ -39,4 +39,16 @@ public:
   rxcpp::observable<ChecksumChainResponse> handle(const ChecksumChainRequest& request) const override;
 };
 
+
+class StandaloneChecksumChainHandler : public ChecksumChainHandler {
+private:
+  ChecksumChains chains_;
+  LocalChecksumChainHandler local_;
+
+public:
+  StandaloneChecksumChainHandler(ChecksumChains chains, Requesters allowedRequesters = DefaultRequesters);
+  std::set<std::string> chainNames() const override;
+  rxcpp::observable<ChecksumChainResponse> handle(const ChecksumChainRequest& request) const override;
+};
+
 }

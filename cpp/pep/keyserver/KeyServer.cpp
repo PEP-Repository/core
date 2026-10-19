@@ -148,7 +148,8 @@ KeyServer::KeyServer(std::shared_ptr<Parameters> parameters)
   : Server(parameters),
     clientCa_(*parameters->getClientCa()),
     oauthTokenSecret_(parameters->getOauthTokenSecret()),
-    blocklist_(tokenBlocking::SqliteBlocklist::CreateWithStorageLocation(parameters->getBlocklistStoragePath())) {
+    blocklist_(tokenBlocking::SqliteBlocklist::CreateWithStorageLocation(parameters->getBlocklistStoragePath())),
+    checksumChainsHandler_(ChecksumChains()) {
   RegisterRequestHandlers(
       *this,
       &KeyServer::handlePingRequest,

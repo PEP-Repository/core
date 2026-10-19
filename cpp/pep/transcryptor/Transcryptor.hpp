@@ -61,10 +61,7 @@ public:
 protected:
   std::optional<std::filesystem::path> getStoragePath() override;
   std::shared_ptr<prometheus::Registry> getMetricsRegistry() override;
-  std::vector<std::string> getChecksumChainNames() const override;
-  void computeChecksumChainChecksum(
-    const std::string& chain, std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
-    uint64_t& checkpoint) override;
+  const ChecksumChainHandler& checksumChainHandler() const noexcept override { return checksumChainHandler_; }
 
 private:
   messaging::MessageBatches handleTranscryptorRequest(std::shared_ptr<TranscryptorRequest> pRequest, messaging::MessageSequence entriesObservable);
@@ -83,6 +80,7 @@ private:
   ServerVerifiers verifiers_;
   uintmax_t nextTranscryptorRequestNumber_ = 1U;
   uintmax_t nextLogIssuedTicketRequestNumber_ = 1U;
+  LocalChecksumChainHandler checksumChainHandler_;
 };
 
 }

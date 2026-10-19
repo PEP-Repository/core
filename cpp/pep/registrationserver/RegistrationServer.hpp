@@ -74,10 +74,7 @@ public:
   ~RegistrationServer() override;
 
 protected:
-  std::vector<std::string> getChecksumChainNames() const override;
-  void computeChecksumChainChecksum(
-    const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-    uint64_t& checksum, uint64_t& checkpoint) override;
+  const ChecksumChainHandler& checksumChainHandler() const noexcept override { return checksumChainHandler_; }
 
 private:
   messaging::MessageBatches handleSignedPEPIdRegistrationRequest(std::shared_ptr<SignedPEPIdRegistrationRequest> lpRequest);
@@ -90,7 +87,7 @@ private:
   ::sqlite3* shadowStorage_ = nullptr;
   std::shared_ptr<CoreClient> client_;
   AsymmetricKey shadowPublicKey_;
-  ChecksumChains checksumChains_;
+  StandaloneChecksumChainHandler checksumChainHandler_;
   std::shared_ptr<RxCache<std::shared_ptr<GlobalConfiguration>>> globalConfiguration_;
   std::shared_ptr<ShortPseudonymCache> shortPseudonyms_;
 #ifdef WITH_CASTOR

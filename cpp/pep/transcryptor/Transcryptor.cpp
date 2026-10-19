@@ -413,7 +413,8 @@ Transcryptor::Transcryptor(std::shared_ptr<Parameters> parameters)
   accessManagerProxy_(messaging::ServerConnection::Create(this->getIoContext(), parameters->getAccessManagerEndPoint(), parameters->getRootCACertificatesFilePath()), *this, parameters->getAccessManagerEndPoint().expectedCommonName, getRootCAs()),
   storage_(parameters->getStorage()),
   lpMetrics_(std::make_shared<Metrics>(registry_)),
-  verifiers_(parameters->getVerifiers()) {
+  verifiers_(parameters->getVerifiers()),
+  checksumChainHandler_(storage_->checksumChains()) {
   RegisterRequestHandlers(*this,
                           &Transcryptor::handleTranscryptorRequest,
                           &Transcryptor::handleRekeyRequest,
@@ -435,24 +436,6 @@ Transcryptor::getMetricsRegistry()  {
 
   // Collect the base metrics and return the complete registry
   return SigningServer::getMetricsRegistry();
-}
-
-std::vector<std::string> Transcryptor::getChecksumChainNames() const {
-  return storage_->checksumChains().names() | to<std::vector>();
-}
-
-void Transcryptor::computeChecksumChainChecksum(
-    const std::string& chain, std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
-    uint64_t& checkpoint) {
-  std::string when;
-  if (maxCheckpoint.has_value()) {
-    when = " at checkpoint " + std::to_string(*maxCheckpoint);
-  }
-  PEP_LOG(LogTag, ChecksumChainCalculationLoggingSeverity) << "Starting calculation for checksum chain " << chain << when;
-  auto result = storage_->checksumChains().chain(chain).get(maxCheckpoint);
-  PEP_LOG(LogTag, ChecksumChainCalculationLoggingSeverity) << "Finished calculation for checksum chain " << chain << when;
-  checksum = result.checksum;
-  checkpoint = result.checkpoint;
 }
 
 }
