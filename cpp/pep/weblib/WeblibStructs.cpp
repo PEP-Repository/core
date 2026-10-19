@@ -40,7 +40,13 @@ EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(ListQuery::columns)::value_type>();
   register_optional<decltype(ListQuery::mode)::value_type>();
   register_optional<decltype(std::declval<CellEntry>().partialMetadataView())::mapped_type::value_type>();
+  register_optional<decltype(ListColumnsQuery::includeImplicitlyGranted)::value_type>();
 }
+
+PEP_BINDINGS(ListColumnsQuery,
+  includeImplicitlyGranted,
+  requireModes
+)
 
 PEP_BINDINGS(ListQuery,
   subjectGroups,

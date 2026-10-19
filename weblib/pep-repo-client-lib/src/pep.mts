@@ -77,11 +77,21 @@ type UseJsStrings<T> = {
 
 export type EnrolledUser = UseJsStrings<rawTypes.EnrolledUser>;
 
-/** `read` implies `readMeta`, and `writeMeta` implies `write`. Implied modes are always set. */
+/**
+ * `read` implies `readMeta`, and `writeMeta` implies `write`.
+ * Implied modes are set, unless {@link ListColumnsQuery.includeImplicitlyGranted} is false.
+ */
 export type ColumnGroupAccessModes = UseJsStrings<rawTypes.ColumnGroupAccessModes>;
 
 /** `enumerate` is needed to list cells, `access` to retrieve them */
 export type SubjectGroupAccessModes = UseJsStrings<rawTypes.SubjectGroupAccessModes>;
+
+export interface ListColumnsQuery {
+  /** Also report modes implied by others: `read-meta` by `read`, `write` by `write-meta`. Default true */
+  includeImplicitlyGranted?: boolean | undefined;
+  /** Only return groups on which the user has all of the set modes, e.g. `{read: true}`. Default none: all groups */
+  requireModes?: Partial<ColumnGroupAccessModes> | undefined;
+}
 
 export interface ColumnGroup extends UseJsStrings<rawTypes.ColumnGroup> {
   columns: string[];
@@ -418,8 +428,11 @@ export default class Pep {
    * List column groups the user has any access to, with the access modes.
    * Use {@link getColumnModes} to get the modes per column.
    */
-  listColumns(): Promise<ColumnGroup[]> {
-    return this.#wrapExec(() => this.#client.listColumns());
+  listColumns(query: ListColumnsQuery = {}): Promise<ColumnGroup[]> {
+    return this.#wrapExec(() => this.#client.listColumns({
+      includeImplicitlyGranted: query.includeImplicitlyGranted,
+      requireModes: {read: false, readMeta: false, write: false, writeMeta: false, ...query.requireModes},
+    }));
   }
 
   /** List subject groups the user has any access to, with the access modes */

@@ -3,7 +3,7 @@
  */
 
 import {expect} from 'chai';
-import Pep, {CellEntry, ClientConfig, getColumnModes, InitConfig} from "./pep.mjs";
+import Pep, {CellEntry, ClientConfig, getColumnModes, InitConfig, ListColumnsQuery} from "./pep.mjs";
 import {binaryToString, concatStringsAsync, deleteObjects} from "./utils.mjs";
 
 const isNode = !!globalThis.process;
@@ -83,6 +83,14 @@ describe('Pep', () => {
   });
 
   describe('#listColumns()', () => {
+    /** @returns The modes per test column group returned by listColumns */
+    async function listTestColumnGroupModes(query?: ListColumnsQuery) {
+      const columnGroups = await pep.runHandleWasmException(() => pep.listColumns(query));
+      return Object.fromEntries(columnGroups
+          .filter(group => ['WasmTestColumnGroup', 'WasmTestMetaColumnGroup'].includes(group.name))
+          .map(group => [group.name, group.modes]));
+    }
+
     it('should return the name, modes and columns for every column group', async () => {
       const columnGroups = await pep.runHandleWasmException(() => pep.listColumns());
       expect(columnGroups).to.containSubset([
@@ -101,14 +109,38 @@ describe('Pep', () => {
           columns: ['ParticipantIdentifier'],
         },
       ]);
-      expect(columnGroups.find(group => group.name === 'WasmTestColumnGroup')?.modes)
-          .to.deep.equal({read: true, readMeta: true, write: true, writeMeta: false});
     });
 
-    it('should allow getting the modes for every column', async () => {
-      const columns = getColumnModes(await pep.runHandleWasmException(() => pep.listColumns()));
-      expect(columns.find(column => column.name === 'WasmTestColumn')?.modes)
-          .to.deep.equal({read: true, readMeta: true, write: true, writeMeta: false});
+    it('should return all accessible column groups with implied modes by default', async () => {
+      expect(await listTestColumnGroupModes()).to.deep.equal({
+        WasmTestColumnGroup: {read: true, readMeta: true, write: true, writeMeta: false},
+        WasmTestMetaColumnGroup: {read: false, readMeta: true, write: true, writeMeta: true},
+      });
+    });
+
+    it('should leave out implied modes when includeImplicitlyGranted is false', async () => {
+      expect(await listTestColumnGroupModes({includeImplicitlyGranted: false})).to.deep.equal({
+        WasmTestColumnGroup: {read: true, readMeta: false, write: true, writeMeta: false},
+        WasmTestMetaColumnGroup: {read: false, readMeta: true, write: false, writeMeta: true},
+      });
+    });
+
+    it('should only return column groups with all required modes', async () => {
+      expect(Object.keys(await listTestColumnGroupModes({requireModes: {write: true, writeMeta: true}})))
+          .to.deep.equal(['WasmTestMetaColumnGroup']);
+    });
+  });
+
+  describe('getColumnModes()', () => {
+    it('should combine the modes of all column groups containing a column', () => {
+      const none = {read: false, readMeta: false, write: false, writeMeta: false};
+      expect(getColumnModes([
+        {name: 'GroupA', modes: {...none, readMeta: true}, columns: ['y', 'x']},
+        {name: 'GroupB', modes: {...none, write: true}, columns: ['x']},
+      ])).to.deep.equal([
+        {name: 'x', modes: {...none, readMeta: true, write: true}},
+        {name: 'y', modes: {...none, readMeta: true}},
+      ]);
     });
   });
 
@@ -117,10 +149,10 @@ describe('Pep', () => {
       const subjectGroups = await pep.runHandleWasmException(() => pep.listSubjectGroups());
       expect(subjectGroups).to.containSubset([
         {name: '*', modes: {access: true}},
-        {name: 'WasmTestSubjectGroup'},
+        {name: 'WasmTestSubjectGroup', modes: {access: true, enumerate: true}},
       ]);
-      expect(subjectGroups.find(group => group.name === 'WasmTestSubjectGroup')?.modes)
-          .to.deep.equal({access: true, enumerate: true});
+      expect(subjectGroups.find(group => group.name === 'WasmTestEnumerateSubjectGroup')?.modes)
+          .to.deep.equal({access: false, enumerate: true});
     });
   });
 
@@ -171,7 +203,7 @@ describe('Pep', () => {
       });
     });
 
-    context('given mode read-meta', () => {
+    context('given mode read-meta and a column group without read access', () => {
       it('should list cells', async () => {
         let entries: CellEntry[] | undefined;
         after(() => entries && deleteObjects(entries));
@@ -179,11 +211,11 @@ describe('Pep', () => {
         return pep.runHandleWasmException(async () => {
           entries = await Array.fromAsync(pep.list({
             subjectGroups: ['WasmTestSubjectGroup'],
-            columnGroups: ['WasmTestColumnGroup'],
+            columnGroups: ['WasmTestMetaColumnGroup'],
             mode: 'read-meta',
           }));
           expect(entries.map(entry => binaryToString(entry.partialMetadataView().get('fileExtension') ?? new Uint8Array())))
-              .to.include.members(['.small', '.large']);
+              .to.include('.meta');
         });
       });
     });

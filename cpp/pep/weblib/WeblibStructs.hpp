@@ -30,7 +30,8 @@ struct ListQuery {
   [[nodiscard]] auto operator<=>(const ListQuery&) const = default;
 };
 
-/// Access modes of the enrolled User Group to a column group, including implied ones
+/// Access modes of the enrolled User Group to a column group.
+/// Includes implied ones, unless \c ListColumnsQuery::includeImplicitlyGranted is false
 struct ColumnGroupAccessModes {
   bool read = false;
   bool readMeta = false;
@@ -38,6 +39,15 @@ struct ColumnGroupAccessModes {
   bool writeMeta = false;
 
   [[nodiscard]] auto operator<=>(const ColumnGroupAccessModes&) const = default;
+};
+
+struct ListColumnsQuery {
+  /// Also report modes implied by others: "read-meta" by "read", "write" by "write-meta". Default true
+  std::optional<bool> includeImplicitlyGranted;
+  /// Only return column groups on which the enrolled User Group has all of the set modes. Default none: all groups
+  ColumnGroupAccessModes requireModes;
+
+  [[nodiscard]] auto operator<=>(const ListColumnsQuery&) const = default;
 };
 
 /// Used in the result of listColumns
