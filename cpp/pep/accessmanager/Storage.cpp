@@ -2,7 +2,7 @@
 
 #include <pep/accessmanager/Storage.hpp>
 
-#include <pep/accessmanager/ChecksumChain.hpp>
+#include <pep/accessmanager/AmChecksumChain.hpp>
 #include <pep/accessmanager/LegacyAuthserverStorage.hpp>
 #include <pep/accessmanager/UserStorageRecords.hpp>
 

@@ -1,4 +1,4 @@
-#include <pep/storagefacility/ChecksumChain.hpp>
+#include <pep/storagefacility/SfChecksumChain.hpp>
 #include <pep/serialization/Error.hpp>
 
 namespace pep {

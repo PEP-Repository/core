@@ -1,4 +1,4 @@
-#include <pep/accessmanager/ChecksumChain.hpp>
+#include <pep/accessmanager/AmChecksumChain.hpp>
 
 namespace pep {
 

@@ -1,7 +1,7 @@
 // Storage class for the transcryptor
 
-#include <pep/transcryptor/ChecksumChain.hpp>
 #include <pep/transcryptor/Storage.hpp>
+#include <pep/transcryptor/TsChecksumChain.hpp>
 
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/CollectionUtils.hpp>

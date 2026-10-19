@@ -1,5 +1,5 @@
-#include <pep/storagefacility/ChecksumChain.hpp>
 #include <pep/storagefacility/StorageFacility.hpp>
+#include <pep/storagefacility/SfChecksumChain.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Bitpacking.hpp>
