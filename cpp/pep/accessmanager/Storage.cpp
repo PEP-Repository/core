@@ -10,6 +10,7 @@
 #include <pep/database/Storage.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/CollectionUtils.hpp>
+#include <pep/utils/File.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 
