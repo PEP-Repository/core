@@ -68,28 +68,22 @@ export interface InitConfig {
   authLandingPage?: URL | null;
 }
 
-export interface EnrolledUser {
-  user: string;
-  userGroup: string;
-}
+/** Replace EmbindString (or union involving EmbindString) members with plain string. */
+type UseJsStrings<T> = {
+  [K in keyof T]: NonNullable<T[K]> extends rawTypes.EmbindString
+      ? string | Exclude<T[K], NonNullable<T[K]>>
+      : T[K];
+};
+
+export type EnrolledUser = UseJsStrings<rawTypes.EnrolledUser>;
 
 /** `read` implies `readMeta`, and `writeMeta` implies `write`. Implied modes are always set. */
-export interface ColumnGroupAccessModes {
-  read: boolean;
-  readMeta: boolean;
-  write: boolean;
-  writeMeta: boolean;
-}
+export type ColumnGroupAccessModes = rawTypes.ColumnGroupAccessModes;
 
 /** `enumerate` is needed to list cells, `access` to retrieve them */
-export interface SubjectGroupAccessModes {
-  access: boolean;
-  enumerate: boolean;
-}
+export type SubjectGroupAccessModes = rawTypes.SubjectGroupAccessModes;
 
-export interface ColumnGroup {
-  name: string;
-  modes: ColumnGroupAccessModes;
+export interface ColumnGroup extends UseJsStrings<rawTypes.ColumnGroup> {
   columns: string[];
 }
 
@@ -119,12 +113,9 @@ export function getColumnModes(columnGroups: ColumnGroup[]): AccessibleColumn[] 
       .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
 }
 
-export interface SubjectGroup {
-  name: string;
-  modes: SubjectGroupAccessModes;
-}
+export type SubjectGroup = UseJsStrings<rawTypes.SubjectGroup>;
 
-export interface ParticipantPersonalia extends Omit<rawTypes.ParticipantPersonalia, 'dateOfBirth'> {
+export interface ParticipantPersonalia extends UseJsStrings<Omit<rawTypes.ParticipantPersonalia, 'dateOfBirth'>> {
   /** Time part is ignored */
   dateOfBirth: Date;
 }
@@ -140,18 +131,16 @@ export interface StoreQuery {
   metadata?: Map<string, string | Uint8Array | ArrayBuffer> | undefined;
 }
 
-interface StoreQueryInternal extends Omit<rawTypes.StoreQuery, 'blob' | 'metadata'> {
+interface StoreQueryInternal extends rawTypes.StoreQuery {
   blob: Blob;
-  /** 
+  /**
   * The metadata, normalized to Uint8Array.
   * Encoded here rather than in C++, so the bytes stored do not depend on embind's string handling
   */
   metadata: Map<string, Uint8Array>;
 }
 
-export interface StoreResult {
-  id: string;
-}
+export type StoreResult = UseJsStrings<rawTypes.StoreResult>;
 
 export interface ListQuery {
   subjectGroups?: string[] | undefined;
