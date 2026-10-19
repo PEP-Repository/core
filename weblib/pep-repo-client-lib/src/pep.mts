@@ -292,6 +292,9 @@ export default class Pep {
   /** Stop event loop and delete instance */
   async delete(): Promise<void> {
     const client = this.#client;
+    if (!client) {
+      return;
+    }
     this.#client = null!; // Prevent usage
     await this.#wrapExec(async () => {
       try {
