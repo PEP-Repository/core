@@ -10,6 +10,8 @@
   This makes it easier to maintain and extend. The documentation was updated to reflect the new structure of the process.
   - Changed: `docs/public/crypto/ticket_request.md` has been updated
 
+- core#3000: Disposing a `Pep` weblib instance (e.g. `pep.delete()`) is now asynchronous.
+
 ---------------
 *Past changes, do not edit (except by person doing release):*
 
