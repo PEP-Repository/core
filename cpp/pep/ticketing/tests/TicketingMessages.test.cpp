@@ -7,7 +7,6 @@
 #include <pep/ticketing/tests/LocalPseudonyms.test.hpp>
 
 #include <string_view>
-#include <unistd.h>
 
 using namespace pep;
 using namespace pep::tests;

@@ -290,27 +290,36 @@ export default class Pep {
   }
 
   /** Stop event loop and delete instance */
-  delete() {
+  async delete(): Promise<void> {
     const client = this.#client;
+    if (!client) {
+      return;
+    }
     this.#client = null!; // Prevent usage
-    this.#wrapExec(() => {
-      client.delete();
+    await this.#wrapExec(async () => {
       try {
-        this.#mod.exit();
-      } catch (ex) {
-        if (ex instanceof this.#mod.ExitStatus && ex.status === 0) {
-          console.log(ex.message);
-        } else {
-          throw ex;
-        }
+        // Stop event loop asynchronously first: synchronously stopping it in `client.delete()` may deadlock.
+        // Consume WASM exception here: before runtime shutdown.
+        await this.runHandleWasmException(() => client.shutdown());
       } finally {
-        this.#mod = null!; // Prevent usage
+        client.delete();
+        try {
+          this.#mod.exit();
+        } catch (ex) {
+          if (ex instanceof this.#mod.ExitStatus && ex.status === 0) {
+            console.log(ex.message);
+          } else {
+            throw ex;
+          }
+        } finally {
+          this.#mod = null!; // Prevent usage
+        }
       }
     });
   }
 
-  // Symbol.dispose may be null when unsupported
-  [Symbol.dispose]() { this.delete(); }
+  // Symbol.asyncDispose may be null when unsupported
+  [Symbol.asyncDispose]() { return this.delete(); }
 
   /** Register handler to observe when methods are executing */
   onBusyChange(callback: ((busy: boolean) => void) | null) {
