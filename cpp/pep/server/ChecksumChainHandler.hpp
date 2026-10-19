@@ -36,4 +36,17 @@ public:
   explicit OwningChecksumChainHandler(ChecksumChains chains) : chains_(std::move(chains)) {}
 };
 
+
+class ReferencingChecksumChainHandler : public LocalChecksumChainHandler {
+private:
+  const ChecksumChains& chains_;
+
+protected:
+  const ChecksumChains& chains() const noexcept override { return chains_; }
+
+public:
+  explicit ReferencingChecksumChainHandler(const ChecksumChains& chains) : chains_(chains) {}
+
+};
+
 }
