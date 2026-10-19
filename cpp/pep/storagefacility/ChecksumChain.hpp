@@ -3,14 +3,14 @@
 #include <pep/server/ChecksumChain.hpp>
 #include <pep/storagefacility/FileStore.hpp>
 
-namespace pep::storagefacility {
+namespace pep {
 
-class ChecksumChain : public pep::ChecksumChain {
+class SfChecksumChain : public ChecksumChain {
 private:
   const FileStore& fileStore_;
 
 protected:
-  explicit ChecksumChain(const FileStore& fileStore, std::string name) noexcept;
+  explicit SfChecksumChain(const FileStore& fileStore, std::string name) noexcept;
 
   virtual Result addCellVersion(Result result, const FileStore::CellVersion& version) const = 0;
 

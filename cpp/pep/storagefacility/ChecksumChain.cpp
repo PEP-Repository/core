@@ -1,7 +1,7 @@
 #include <pep/storagefacility/ChecksumChain.hpp>
 #include <pep/serialization/Error.hpp>
 
-namespace pep::storagefacility {
+namespace pep {
 
 namespace {
 
@@ -17,7 +17,7 @@ ChecksumChain::Checkpoint TimestampToCheckpoint(Timestamp timestamp) {
  * 5. participant-a/column-y/timestamp-5
  * 6. participant-b/column-x/timestamp-1
  */
-class FilesChecksumChain : public ChecksumChain {
+class FilesChecksumChain : public SfChecksumChain {
 protected:
   Result addCellVersion(Result result, const FileStore::CellVersion& version) const override {
     result.checksum ^= version.checksumSubstitute;
@@ -26,10 +26,10 @@ protected:
   }
 
 public:
-  explicit FilesChecksumChain(const FileStore& fileStore) : ChecksumChain(fileStore, "files") {}
+  explicit FilesChecksumChain(const FileStore& fileStore) : SfChecksumChain(fileStore, "files") {}
 };
 
-class EntryCountChecksumChain : public ChecksumChain {
+class EntryCountChecksumChain : public SfChecksumChain {
 protected:
   Result addCellVersion(Result result, const FileStore::CellVersion& version) const override {
     result.checksum++;
@@ -38,18 +38,18 @@ protected:
   }
 
 public:
-  explicit EntryCountChecksumChain(const FileStore& fileStore) : ChecksumChain(fileStore, "entry-count") {}
+  explicit EntryCountChecksumChain(const FileStore& fileStore) : SfChecksumChain(fileStore, "entry-count") {}
 };
 
 }
 
 using namespace std::chrono_literals;
 
-ChecksumChain::ChecksumChain(const FileStore& fileStore, std::string name) noexcept
-  : pep::ChecksumChain(std::move(name)), fileStore_(fileStore) {
+SfChecksumChain::SfChecksumChain(const FileStore& fileStore, std::string name) noexcept
+  : ChecksumChain(std::move(name)), fileStore_(fileStore) {
 }
 
-ChecksumChain::Result ChecksumChain::get(const std::optional<Checkpoint>& maxCheckpoint) const {
+SfChecksumChain::Result SfChecksumChain::get(const std::optional<Checkpoint>& maxCheckpoint) const {
   Result result;
 
   // The Storage Facility uses a timestamp as checkpoint
@@ -72,7 +72,7 @@ ChecksumChain::Result ChecksumChain::get(const std::optional<Checkpoint>& maxChe
   return result;
 }
 
-ChecksumChains ChecksumChain::CreateAll(const FileStore& fileStore) {
+ChecksumChains SfChecksumChain::CreateAll(const FileStore& fileStore) {
   return ChecksumChains{
     std::make_unique<FilesChecksumChain>(fileStore),
     std::make_unique<EntryCountChecksumChain>(fileStore),

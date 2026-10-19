@@ -3,18 +3,18 @@
 #include <cassert>
 #include <stdexcept>
 
-namespace pep::transcryptor {
+namespace pep {
 
-ChecksumChain::Checkpoint ChecksumChain::SeqNoToCheckpoint(int64_t seqNo) noexcept {
+TsChecksumChain::Checkpoint TsChecksumChain::SeqNoToCheckpoint(int64_t seqNo) noexcept {
   return FirstRecordCheckpoint + static_cast<uint64_t>(seqNo);
 }
 
-int64_t ChecksumChain::CheckpointToSeqNo(Checkpoint checkpoint) noexcept {
+int64_t TsChecksumChain::CheckpointToSeqNo(Checkpoint checkpoint) noexcept {
   assert(checkpoint >= FirstRecordCheckpoint);
   return static_cast<int64_t>(checkpoint - FirstRecordCheckpoint);
 }
 
-ChecksumChain::Result ChecksumChain::get(const std::optional<Checkpoint>& maxCheckpoint) const {
+TsChecksumChain::Result TsChecksumChain::get(const std::optional<Checkpoint>& maxCheckpoint) const {
   auto max = maxCheckpoint.value_or(std::numeric_limits<int64_t>::max());
 
   if (max < EmptyTableCheckpoint) {

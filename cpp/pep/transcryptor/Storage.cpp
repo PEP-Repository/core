@@ -574,7 +574,7 @@ struct TranscryptorStorage::Implementor : database::Storage<TsCreateDb> {
 namespace {
 
 template <typename TRecord>
-class ChecksumChainFor : public transcryptor::ChecksumChain {
+class ChecksumChainFor : public TsChecksumChain {
 protected:
   Result recalculate(const Result& partial, Checkpoint maxCheckpoint) const override {
     assert(partial.checkpoint < maxCheckpoint);
@@ -599,7 +599,7 @@ protected:
   }
 
 public:
-  explicit ChecksumChainFor(TranscryptorStorage::Implementor& storage, std::string name) noexcept : ChecksumChain(storage, std::move(name)) {}
+  explicit ChecksumChainFor(TranscryptorStorage::Implementor& storage, std::string name) noexcept : TsChecksumChain(storage, std::move(name)) {}
 };
 
 [[nodiscard]] std::string CertificateHash(const X509Certificate& cert) {

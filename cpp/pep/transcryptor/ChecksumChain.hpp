@@ -5,13 +5,11 @@
 
 namespace pep {
 
-namespace transcryptor {
-
 /// \brief Base class for checksum chain calculations (which derived classes implement in their their "calculate" methods).
 /// \remark Caches the last calculated result, allowing it to be
 ///         - produced from memory instead of recalculated when re-requested for the same checkpoint (as PEP's Watchdog is prone to do).
 ///         - used as a partial result for the calculation of checksums at later checkpoints, eliminating more (needless re-)calculations.
-class ChecksumChain : boost::noncopyable, public pep::ChecksumChain {
+class TsChecksumChain : boost::noncopyable, public ChecksumChain {
 protected:
   static constexpr Checkpoint EmptyTableCheckpoint = 1;
 
@@ -27,7 +25,7 @@ private:
   mutable Result lastResult_ = InitialResult;
 
 protected:
-  ChecksumChain(TranscryptorStorage::Implementor& storage, std::string name) noexcept : pep::ChecksumChain(std::move(name)), storage_(storage) {}
+  TsChecksumChain(TranscryptorStorage::Implementor& storage, std::string name) noexcept : ChecksumChain(std::move(name)), storage_(storage) {}
 
   TranscryptorStorage::Implementor& storage() const noexcept { return storage_; }
 
@@ -42,5 +40,4 @@ public:
 };
 
 
-} // End namespace transcryptor
 } // End namespace pep

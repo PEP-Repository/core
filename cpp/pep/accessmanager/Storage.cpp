@@ -248,13 +248,14 @@ struct AccessManager::Backend::Storage::Implementor : database::Storage<CreateAm
 namespace {
 
 template <typename TRecord>
-class AmRecordChecksumChain : public accessmanager::ChecksumChain {
+class AmRecordChecksumChain : public AmChecksumChain {
 protected:
   virtual Checksum getRecordChecksum(const TRecord& record) const = 0;
 
 public:
   AmRecordChecksumChain(std::string name, AccessManager::Backend::Storage::Implementor& storage) noexcept
-    : ChecksumChain(std::move(name), storage) {}
+    : AmChecksumChain(std::move(name), storage) {
+  }
 
   Result get(const std::optional<Checkpoint>& maxCheckpoint) const override {
     Result result{
