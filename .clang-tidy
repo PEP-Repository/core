@@ -114,4 +114,5 @@ Checks:
 CheckOptions:
   # Ignore empty catch when it contains a comment with the word 'ignore'
   bugprone-empty-catch.IgnoreCatchWithKeywords: ignore
+  bugprone-unused-return-value.AllowCastToVoid: true
   misc-throw-by-value-catch-by-reference.CheckThrowTemporaries: false
