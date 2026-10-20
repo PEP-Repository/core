@@ -9,7 +9,7 @@ private:
   const FileStore& fileStore_;
 
 protected:
-  explicit SfChecksumChain(const FileStore& fileStore, std::string name) noexcept;
+  SfChecksumChain(const FileStore& fileStore, std::string name) noexcept;
 
   virtual Result addCellVersion(Result result, const FileStore::CellVersion& version) const = 0;
 

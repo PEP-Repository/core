@@ -651,7 +651,7 @@ protected:
   }
 
 public:
-  explicit ChecksumChainFor(TranscryptorStorage::Implementor& storage, std::string name) noexcept : TsChecksumChain(storage, std::move(name)) {}
+  ChecksumChainFor(TranscryptorStorage::Implementor& storage, std::string name) noexcept : TsChecksumChain(storage, std::move(name)) {}
 };
 
 [[nodiscard]] std::string CertificateHash(const X509Certificate& cert) {
