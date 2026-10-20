@@ -18,7 +18,7 @@ private:
 public:
   explicit ChecksumChainForwarder(const AccessManagerProxy& am) noexcept : am_(am) {};
 
-  std::set<std::string> chainNames() const;
+  std::set<std::string> chainNames() const override;
   rxcpp::observable<ChecksumChainResponse> handle(const ChecksumChainRequest& request) const override;
 };
 
