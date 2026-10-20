@@ -106,7 +106,9 @@ private:
   messaging::MessageBatches handleMigrateUserDbToAccessManagerRequest(std::shared_ptr<SignedMigrateUserDbToAccessManagerRequest> signedRequest, messaging::MessageSequence chunksObservable);
   messaging::MessageBatches handleFindUserRequest(std::shared_ptr<SignedFindUserRequest> signedRequest);
 
+  /// \note Structure metadata functionality is being reworked. Expect breaking changes. Metadata stored now may not be retrievable in the new version.
   messaging::MessageBatches handleStructureMetadataRequest(std::shared_ptr<SignedStructureMetadataRequest> request);
+  /// \note Structure metadata functionality is being reworked. Expect breaking changes. Metadata stored now may not be retrievable in the new version.
   messaging::MessageBatches handleSetStructureMetadataRequest(std::shared_ptr<SignedSetStructureMetadataRequest> request, messaging::MessageSequence chunks);
 
   /// A single method that performs both the adding and the removal of participants in pgroups for a given AmaMutationRequest.
