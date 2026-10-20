@@ -101,15 +101,7 @@ TEST_F(AccessManagerStorageTest, addParticipantToGroup_non_existent_pg) {
   storage->storeLocalPseudonymAndPP(localPseudonym, dummyPP);
 
   // Act
-  try {
-    storage->addParticipantToGroup(localPseudonym, pg_name);
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "No such participant-group: \"" + pg_name + "\"";
-    ASSERT_EQ(e.what(), expectedMessage);
-  }
+  PEP_EXPECT_THROWS_EXACT_MESSAGE(storage->addParticipantToGroup(localPseudonym, pg_name), Error, "No such participant-group: \"" + pg_name + "\"");
 
   // Assert
   ASSERT_FALSE(storage->hasParticipantInGroup(localPseudonym, pg_name));
@@ -122,15 +114,7 @@ TEST_F(AccessManagerStorageTest, addParticipantToGroup_non_existent_pp) {
 
   const LocalPseudonym localPseudonym{LocalPseudonym::Random()};
   // Act
-  try {
-    storage->addParticipantToGroup(localPseudonym, pg_name);
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "No such participant known";
-    ASSERT_EQ(e.what(), expectedMessage);
-  }
+  PEP_EXPECT_THROWS_EXACT_MESSAGE(storage->addParticipantToGroup(localPseudonym, pg_name), Error, "No such participant known");
 
   // Assert
   ASSERT_FALSE(storage->hasParticipantInGroup(localPseudonym, pg_name));
@@ -143,15 +127,8 @@ TEST_F(AccessManagerStorageTest, addParticipantToGroup_particpant_already_in_pg)
   createParticipantGroupParticipant(pg_name, localPseudonym);
 
   // Act
-  try {
-    storage->addParticipantToGroup(localPseudonym, pg_name); // The pp is already in the pg.
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "Participant is already in participant-group: \"" + pg_name + "\"";
-    ASSERT_EQ(e.what(), expectedMessage);
-  }
+  PEP_EXPECT_THROWS_EXACT_MESSAGE(storage->addParticipantToGroup(localPseudonym, pg_name), // The pp is already in the pg.
+    Error, "Participant is already in participant-group: \"" + pg_name + "\"");
 
   // Assert
   ASSERT_TRUE(storage->hasParticipantInGroup(localPseudonym, pg_name));
@@ -177,15 +154,8 @@ TEST_F(AccessManagerStorageTest, removeParticipantFromGroup_particpant_not_in_pg
   storage->createParticipantGroup(pg_name);
 
   // Act
-  try {
-    storage->removeParticipantFromGroup(localPseudonym, pg_name); // The pp is already in the pg.
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "This participant is not part of participant-group \"" + pg_name + "\"";
-    ASSERT_EQ(e.what(), expectedMessage);
-  }
+  PEP_EXPECT_THROWS_EXACT_MESSAGE(storage->removeParticipantFromGroup(localPseudonym, pg_name), // The pp is already in the pg.
+    Error, "This participant is not part of participant-group \"" + pg_name + "\"");
 
   // Assert
   ASSERT_FALSE(storage->hasParticipantInGroup(localPseudonym, pg_name));
@@ -266,16 +236,8 @@ TEST_F(AccessManagerStorageTest, computeChecksum_unknown_chain) {
   std::optional<size_t> maxCheckpoint{};
   uint64_t checksum{};
   uint64_t checkpoint{};
-  try {
-    storage->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
-
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "No such checksum chain";
-    ASSERT_EQ(e.what(), expectedMessage);
-  }
+  PEP_EXPECT_THROWS_EXACT_MESSAGE(storage->computeChecksum(chain, maxCheckpoint, checksum, checkpoint), Error,
+    "No such checksum chain");
 }
 
 TEST_F(AccessManagerStorageTest, hasColumn) {
