@@ -1,5 +1,4 @@
 #include <pep/storagefacility/StorageFacility.hpp>
-#include <pep/storagefacility/SfChecksumChain.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Bitpacking.hpp>
@@ -1142,8 +1141,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   timer_(*parameters->getIoContext()),
   parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()),
-  checksumChains_(SfChecksumChain::CreateAll(*fileStore_)),
-  checksumChainHandler_(checksumChains_) {
+  checksumChainHandler_(fileStore_->checksumChains()) {
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
                           &StorageFacility::handleDataReadRequest2,

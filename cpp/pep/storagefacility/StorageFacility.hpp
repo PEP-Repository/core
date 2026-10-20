@@ -136,7 +136,6 @@ private:
   boost::asio::steady_timer timer_;
   const uint8_t parallelisationWidth_ = 0; // passed to RxParallelConcat
   const uint64_t dataSizeResolution_;
-  ChecksumChains checksumChains_;
   LocalChecksumChainHandler checksumChainHandler_;
 };
 

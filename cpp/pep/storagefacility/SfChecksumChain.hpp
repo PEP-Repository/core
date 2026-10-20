@@ -1,6 +1,5 @@
 #pragma once
 
-#include <pep/server/ChecksumChain.hpp>
 #include <pep/storagefacility/FileStore.hpp>
 
 namespace pep {
