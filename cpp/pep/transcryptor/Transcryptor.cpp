@@ -36,7 +36,6 @@ namespace {
 const std::string LogTag ("Transcryptor");
 constexpr Severity TranscryptorRequestLoggingSeverity = Severity::Debug;
 constexpr Severity LogIssuedTicketRequestLoggingSeverity = Severity::Debug;
-constexpr Severity ChecksumChainCalculationLoggingSeverity = Severity::Debug;
 }
 
 Transcryptor::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
