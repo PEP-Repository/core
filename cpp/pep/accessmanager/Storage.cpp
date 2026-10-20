@@ -2,7 +2,6 @@
 
 #include <pep/accessmanager/Storage.hpp>
 
-#include <pep/accessmanager/AmChecksumChain.hpp>
 #include <pep/accessmanager/LegacyAuthserverStorage.hpp>
 #include <pep/accessmanager/UserStorageRecords.hpp>
 
@@ -247,6 +246,22 @@ struct AccessManager::Backend::Storage::Implementor : database::Storage<CreateAm
 };
 
 namespace {
+
+class AmChecksumChain : public ChecksumChain {
+private:
+  AccessManager::Backend::Storage::Implementor& storage_;
+
+  static int64_t CheckpointToSeqNo(Checkpoint checkpoint) noexcept { return static_cast<int64_t>(checkpoint - 2U); }
+
+protected:
+  static Checkpoint SeqNoToCheckpoint(int64_t seqno) noexcept { return static_cast<Checkpoint>(seqno + 2); }
+  static int64_t GetMaxSeqNo(const std::optional<Checkpoint>& maxCheckpoint) noexcept { return CheckpointToSeqNo(maxCheckpoint.value_or(std::numeric_limits<int64_t>::max())); }
+
+  AmChecksumChain(std::string name, AccessManager::Backend::Storage::Implementor& storage) noexcept
+    : ChecksumChain(std::move(name)), storage_(storage) {}
+
+  AccessManager::Backend::Storage::Implementor& storage() const noexcept { return storage_; }
+};
 
 template <typename TRecord>
 class AmRecordChecksumChain : public AmChecksumChain {

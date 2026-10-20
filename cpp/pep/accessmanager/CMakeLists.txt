@@ -21,7 +21,6 @@ verify_headers_standalone(${PROJECT_NAME}AccessManagerApilib)
 if(WITH_SERVERS)
   add_library(${PROJECT_NAME}AccessManagerlib
       AccessManager.cpp AccessManager.hpp
-      AmChecksumChain.cpp AmChecksumChain.hpp
       Backend.cpp Backend.hpp
       Storage.cpp Storage.hpp
       Records.cpp Records.hpp
