@@ -29,6 +29,5 @@ TEST(Action, PropagatesExceptions) {
 
   PEP_EXPECT_THROWS_MESSAGE( // Ensure that...
     pep::PerformAsAction(&JustInvokeItAlready, [&encoded]() {throw std::runtime_error(encoded); }), // ... when the callback raises an exception...
-    std::runtime_error,
-    encoded); // ... the "PerformAsAction" function fails with that original exception
+    std::runtime_error, encoded); // ... the "PerformAsAction" function fails with that original exception
 }
