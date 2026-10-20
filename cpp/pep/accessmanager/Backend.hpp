@@ -81,7 +81,7 @@ public:
 
   std::filesystem::path getStoragePath();
 
-  ChecksumChains& checksumChains() noexcept;
+  const ChecksumChains& checksumChains() const noexcept;
 
   void performMutationsForRequest(const AmaMutationRequest& request, const std::string& userGroup);
   rxcpp::observable<UserMutationResponse> performUserMutationsForRequest(

@@ -61,7 +61,7 @@ private:
     const std::string& accessGroup,
     Timestamp timestamp);
 
-  ChecksumChains& checksumChains() noexcept { return checksumChains_; }
+  const ChecksumChains& checksumChains() const noexcept { return checksumChains_; }
 };
 
 }

@@ -886,6 +886,6 @@ std::filesystem::path AccessManager::Backend::getStoragePath() {
   return storage_->getPath();
 }
 
-ChecksumChains& AccessManager::Backend::checksumChains() noexcept { return storage_->checksumChains(); }
+const ChecksumChains& AccessManager::Backend::checksumChains() const noexcept { return storage_->checksumChains(); }
 
 } // namespace pep

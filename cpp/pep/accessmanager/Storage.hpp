@@ -65,7 +65,7 @@ public:
   Storage(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf);
 
   // Sanity checks
-  ChecksumChains& checksumChains() noexcept { return checksumChains_; }
+  const ChecksumChains& checksumChains() const noexcept { return checksumChains_; }
 
   std::filesystem::path getPath() {
     return storagePath_;
