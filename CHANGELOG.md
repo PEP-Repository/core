@@ -6,7 +6,7 @@
 
 ## Changes in upcoming release (1.9)
 
-...
+- Weblib: `pep.listColumns()` and `pep.listSubjectGroups()` now return all (column/subject) groups the user has any access to, with their access `modes`, instead of only readable/accessible ones.
 
 ---------------
 *Past changes, do not edit (except by person doing release):*

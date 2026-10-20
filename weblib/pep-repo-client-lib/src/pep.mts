@@ -117,10 +117,9 @@ export function getColumnModes(columnGroups: ColumnGroup[]): AccessibleColumn[] 
       } : {...group.modes});
     }
   }
-  /** TODO: perhaps we'd probably want to use localeCompare() at some point, or sort in cpp */
   return [...columnModes]
       .map(([name, modes]) => ({name, modes}))
-      .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+      .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export type SubjectGroup = UseJsStrings<rawTypes.SubjectGroup>;

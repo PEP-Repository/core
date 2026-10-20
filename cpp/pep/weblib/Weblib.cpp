@@ -49,26 +49,13 @@ using namespace std::ranges;
 namespace {
 const std::string LogTag = "Weblib";
 
-ColumnGroupAccessModes ColumnGroupAccessModesFromStrings(const std::vector<std::string>& modes, const std::string& columnGroup) {
-  ColumnGroupAccessModes result;
-  for (const auto& mode : modes) {
-    if (mode == "read") {
-      result.read = true;
-    }
-    else if (mode == "read-meta") {
-      result.readMeta = true;
-    }
-    else if (mode == "write") {
-      result.write = true;
-    }
-    else if (mode == "write-meta") {
-      result.writeMeta = true;
-    }
-    else {
-      throw std::runtime_error("Unsupported access mode '" + mode + "' encountered for column group '" + columnGroup + "'");
-    }
-  }
-  return result;
+ColumnGroupAccessModes ColumnGroupAccessModesFromStrings(const std::vector<std::string>& modes) {
+  return {
+      .read = contains(modes, "read"),
+      .readMeta = contains(modes, "read-meta"),
+      .write = contains(modes, "write"),
+      .writeMeta = contains(modes, "write-meta"),
+  };
 }
 
 std::vector<std::string> ColumnGroupAccessModesToStrings(const ColumnGroupAccessModes& modes) {
@@ -88,20 +75,11 @@ std::vector<std::string> ColumnGroupAccessModesToStrings(const ColumnGroupAccess
   return result;
 }
 
-SubjectGroupAccessModes SubjectGroupAccessModesFromStrings(const std::vector<std::string>& modes, const std::string& subjectGroup) {
-  SubjectGroupAccessModes result;
-  for (const auto& mode : modes) {
-    if (mode == "access") {
-      result.access = true;
-    }
-    else if (mode == "enumerate") {
-      result.enumerate = true;
-    }
-    else {
-      throw std::runtime_error("Unsupported access mode '" + mode + "' encountered for subject group '" + subjectGroup + "'");
-    }
-  }
-  return result;
+SubjectGroupAccessModes SubjectGroupAccessModesFromStrings(const std::vector<std::string>& modes) {
+  return {
+      .access = contains(modes, "access"),
+      .enumerate = contains(modes, "enumerate"),
+  };
 }
 
 class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedConstructor<Weblib>, public boost::noncopyable {
@@ -325,7 +303,7 @@ public:
               const auto& [name, columnGroup] = entry;
               return ColumnGroup{
                   .name = name,
-                  .modes = ColumnGroupAccessModesFromStrings(columnGroup.modes, name),
+                  .modes = ColumnGroupAccessModesFromStrings(columnGroup.modes),
                   .columns = to<std::vector>(SafeIndexInto(columnGroup.columns.indices, access.columns)),
               };
             })
@@ -345,7 +323,7 @@ public:
               const auto& [name, modes] = entry;
               return SubjectGroup{
                   .name = name,
-                  .modes = SubjectGroupAccessModesFromStrings(modes, name),
+                  .modes = SubjectGroupAccessModesFromStrings(modes),
               };
             })
             | to<std::vector>();
