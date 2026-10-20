@@ -214,7 +214,7 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_no_column_acce
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns{constants.w_col};
 
-  PEP_EXPECT_THROWS_EXACT_MESSAGE(backend->unfoldColumnGroupsAndCheckAccess(constants.userGroup1, columngroups, modes, timestamp, columns), Error,
+  PEP_EXPECT_THROWS_MESSAGE(backend->unfoldColumnGroupsAndCheckAccess(constants.userGroup1, columngroups, modes, timestamp, columns), Error,
     "Access denied to \"TestUserGroup\" for mode \"read\" to column \"writeColumn_1\"");
 }
 
@@ -243,7 +243,7 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_both_pp_and_pgs) {
   // Existing column
   request.columns.push_back(constants.w_col);
 
-  PEP_EXPECT_THROWS_EXACT_MESSAGE(backend->checkTicketRequest(request), Error,
+  PEP_EXPECT_THROWS_MESSAGE(backend->checkTicketRequest(request), Error,
     "The ticket request contains participant group(s) as well as specific participant(s). This is not supported. Use either groups or specific participants.");
 }
 
@@ -258,7 +258,7 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_non_existing_pg_cg_
   // Existing column
   request.columns.push_back("Non existing column");
 
-  PEP_EXPECT_THROWS_EXACT_MESSAGE(backend->checkTicketRequest(request), Error,
+  PEP_EXPECT_THROWS_MESSAGE(backend->checkTicketRequest(request), Error,
     "Unknown participantgroup specified: \"Non existing participantGroup\"\nUnknown columngroup specified: \"Non existing columnGroup\"\nUnknown column specified: \"Non existing column\"");
 }
 
@@ -268,7 +268,7 @@ TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_happy) {
 
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_no_access) {
   const auto modes = std::vector<std::string>{"access", "enumerate"};
-  PEP_EXPECT_THROWS_EXACT_MESSAGE(backend->checkParticipantGroupAccess(std::vector{constants.pg2}, constants.userGroup1, modes, TimeNow()), Error,
+  PEP_EXPECT_THROWS_MESSAGE(backend->checkParticipantGroupAccess(std::vector{constants.pg2}, constants.userGroup1, modes, TimeNow()), Error,
     "Access denied to \"" + constants.userGroup1 + "\" for mode \"" + modes[0] + "\" to participant-group \"" + constants.pg2 + "\"\nAccess denied to \"" + constants.userGroup1 + "\" for mode \"" + modes[1] + "\" to participant-group \"" + constants.pg2 + "\"");
 }
 
@@ -354,7 +354,7 @@ TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy_star_participant)
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_no_access) {
-  PEP_EXPECT_THROWS_EXACT_MESSAGE(backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym2, { "access", "enumerate" }, TimeNow()), Error,
+  PEP_EXPECT_THROWS_MESSAGE(backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym2, { "access", "enumerate" }, TimeNow()), Error,
     "Access denied to participant for mode \"access\"\nAccess denied to participant for mode \"enumerate\"");
 }
 

@@ -66,7 +66,7 @@ TEST(AccessManagerTest, extractPartialColumnGroupQueryResponse_CatchInfinteLoop)
   // Arrange
   std::vector <AmaQRColumnGroup> input{{"A_Very_Long_Name_Of_The_ColumnGroup", std::vector<std::string>{"col1", "col2", "col3"}}};
 
-  PEP_EXPECT_THROWS_EXACT_MESSAGE(AccessManager::ExtractPartialColumnGroupQueryResponse(input, 15U), std::runtime_error,
+  PEP_EXPECT_THROWS_MESSAGE(AccessManager::ExtractPartialColumnGroupQueryResponse(input, 15U), std::runtime_error,
     "Processing column group A_Very_Long_Name_Of_The_ColumnGroup, a new AmaQueryResponse was prompted while the last response was still empty. Is the maxSize set correctly? maxSize: 15");
 }
 

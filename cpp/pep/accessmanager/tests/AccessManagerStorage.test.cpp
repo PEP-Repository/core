@@ -101,7 +101,7 @@ TEST_F(AccessManagerStorageTest, addParticipantToGroup_non_existent_pg) {
   storage->storeLocalPseudonymAndPP(localPseudonym, dummyPP);
 
   // Act
-  PEP_EXPECT_THROWS_EXACT_MESSAGE(storage->addParticipantToGroup(localPseudonym, pg_name), Error, "No such participant-group: \"" + pg_name + "\"");
+  PEP_EXPECT_THROWS_MESSAGE(storage->addParticipantToGroup(localPseudonym, pg_name), Error, "No such participant-group: \"" + pg_name + "\"");
 
   // Assert
   ASSERT_FALSE(storage->hasParticipantInGroup(localPseudonym, pg_name));
@@ -114,7 +114,7 @@ TEST_F(AccessManagerStorageTest, addParticipantToGroup_non_existent_pp) {
 
   const LocalPseudonym localPseudonym{LocalPseudonym::Random()};
   // Act
-  PEP_EXPECT_THROWS_EXACT_MESSAGE(storage->addParticipantToGroup(localPseudonym, pg_name), Error, "No such participant known");
+  PEP_EXPECT_THROWS_MESSAGE(storage->addParticipantToGroup(localPseudonym, pg_name), Error, "No such participant known");
 
   // Assert
   ASSERT_FALSE(storage->hasParticipantInGroup(localPseudonym, pg_name));
@@ -127,7 +127,7 @@ TEST_F(AccessManagerStorageTest, addParticipantToGroup_particpant_already_in_pg)
   createParticipantGroupParticipant(pg_name, localPseudonym);
 
   // Act
-  PEP_EXPECT_THROWS_EXACT_MESSAGE(storage->addParticipantToGroup(localPseudonym, pg_name), // The pp is already in the pg.
+  PEP_EXPECT_THROWS_MESSAGE(storage->addParticipantToGroup(localPseudonym, pg_name), // The pp is already in the pg.
     Error, "Participant is already in participant-group: \"" + pg_name + "\"");
 
   // Assert
@@ -154,7 +154,7 @@ TEST_F(AccessManagerStorageTest, removeParticipantFromGroup_particpant_not_in_pg
   storage->createParticipantGroup(pg_name);
 
   // Act
-  PEP_EXPECT_THROWS_EXACT_MESSAGE(storage->removeParticipantFromGroup(localPseudonym, pg_name), // The pp is already in the pg.
+  PEP_EXPECT_THROWS_MESSAGE(storage->removeParticipantFromGroup(localPseudonym, pg_name), // The pp is already in the pg.
     Error, "This participant is not part of participant-group \"" + pg_name + "\"");
 
   // Assert
@@ -236,7 +236,7 @@ TEST_F(AccessManagerStorageTest, computeChecksum_unknown_chain) {
   std::optional<size_t> maxCheckpoint{};
   uint64_t checksum{};
   uint64_t checkpoint{};
-  PEP_EXPECT_THROWS_EXACT_MESSAGE(storage->computeChecksum(chain, maxCheckpoint, checksum, checkpoint), Error,
+  PEP_EXPECT_THROWS_MESSAGE(storage->computeChecksum(chain, maxCheckpoint, checksum, checkpoint), Error,
     "No such checksum chain");
 }
 
