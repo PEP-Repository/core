@@ -41,7 +41,7 @@ public:
   explicit KeyServer(std::shared_ptr<Parameters>);
 
 protected:
-  const ChecksumChainHandler& checksumChainHandler() const noexcept { return checksumChainsHandler_; }
+  const ChecksumChainHandler& checksumChainHandler() const noexcept override { return checksumChainsHandler_; }
 
 private:
   messaging::MessageBatches handlePingRequest(std::shared_ptr<PingRequest> request);
