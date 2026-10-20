@@ -3,7 +3,6 @@
 #include <pep/server/SigningServer.hpp>
 #include <pep/async/WorkerPool.hpp>
 #include <pep/utils/XxHasher.hpp>
-#include <pep/server/ChecksumChain.hpp>
 #include <pep/storagefacility/FileStore.hpp>
 #include <pep/storagefacility/PendingBytesLimiter.hpp>
 #include <pep/storagefacility/PurgeMessages.hpp>
