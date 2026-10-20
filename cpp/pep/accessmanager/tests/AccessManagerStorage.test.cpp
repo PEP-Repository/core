@@ -149,16 +149,16 @@ TEST_F(AccessManagerStorageTest, removeParticipantFromGroup_happy) {
 
 TEST_F(AccessManagerStorageTest, removeParticipantFromGroup_particpant_not_in_pg) {
   // Arrange
-  const std::string pg_name{"newParticipantGroup"};
+  const std::string pgName{"newParticipantGroup"};
   const LocalPseudonym localPseudonym{LocalPseudonym::Random()};
-  storage->createParticipantGroup(pg_name);
+  storage->createParticipantGroup(pgName);
 
   // Act
-  PEP_EXPECT_THROWS_MESSAGE(storage->removeParticipantFromGroup(localPseudonym, pg_name),
-    Error, "This participant is not part of participant-group \"" + pg_name + "\"");
+  PEP_EXPECT_THROWS_MESSAGE(storage->removeParticipantFromGroup(localPseudonym, pgName),
+    Error, "This participant is not part of participant-group \"" + pgName + "\"");
 
   // Assert
-  ASSERT_FALSE(storage->hasParticipantInGroup(localPseudonym, pg_name));
+  ASSERT_FALSE(storage->hasParticipantInGroup(localPseudonym, pgName));
 }
 
 TEST_F(AccessManagerStorageTest, createParticipantGroupAccessRule_happy) {
