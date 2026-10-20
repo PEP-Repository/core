@@ -1,5 +1,3 @@
-#pragma once
-
 #include <pep/auth/UserGroup.hpp>
 #include <pep/server/ChecksumChainHandler.hpp>
 #include <pep/utils/Bitpacking.hpp>
