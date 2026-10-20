@@ -316,11 +316,14 @@ TEST_F(AccessManagerStorageTest, getColumnGroupColumns_deleted_column) {
 
 TEST_F(AccessManagerStorageTest, createColumn) {
   ASSERT_NO_THROW(storage->createColumn("MyColumn"));
-  PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->createColumn("MyColumn"), pep::Error, "MyColumn") << "Should reject case re-creation of existing column";
-  PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->createColumn("Mycolumn"), pep::Error, "MyColumn") << "Should reject case re-creation of existing column, ignoring case";
+  PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->createColumn("MyColumn"), pep::Error, "MyColumn")
+    << "Should reject case re-creation of existing column";
+  PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->createColumn("Mycolumn"), pep::Error, "MyColumn")
+    << "Should reject case re-creation of existing column, ignoring case";
 
   for (const auto& invalidName : { "1*1", "abc/def", "abc\\def" }) {
-    PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->createColumn(invalidName), pep::Error, "Invalid column name") << "Column name '" << invalidName << "' should have been rejected";
+    PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->createColumn(invalidName), pep::Error, "Invalid column name")
+      << "Column name '" << invalidName << "' should have been rejected";
   }
 }
 
