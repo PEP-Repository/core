@@ -51,6 +51,39 @@ using namespace std::ranges;
 namespace {
 const std::string LogTag = "Weblib";
 
+ColumnGroupAccessModes ColumnGroupAccessModesFromStrings(const std::vector<std::string>& modes) {
+  return {
+      .read = contains(modes, "read"),
+      .readMeta = contains(modes, "read-meta"),
+      .write = contains(modes, "write"),
+      .writeMeta = contains(modes, "write-meta"),
+  };
+}
+
+std::vector<std::string> ColumnGroupAccessModesToStrings(const ColumnGroupAccessModes& modes) {
+  std::vector<std::string> result;
+  if (modes.read) {
+    result.emplace_back("read");
+  }
+  if (modes.readMeta) {
+    result.emplace_back("read-meta");
+  }
+  if (modes.write) {
+    result.emplace_back("write");
+  }
+  if (modes.writeMeta) {
+    result.emplace_back("write-meta");
+  }
+  return result;
+}
+
+SubjectGroupAccessModes SubjectGroupAccessModesFromStrings(const std::vector<std::string>& modes) {
+  return {
+      .access = contains(modes, "access"),
+      .enumerate = contains(modes, "enumerate"),
+  };
+}
+
 class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedConstructor<Weblib>, public boost::noncopyable {
   friend class SharedConstructor;
 
@@ -291,11 +324,17 @@ public:
       .getSerializedForm();
   }
 
+  /// Lists column groups the enrolled user has access to, with the access modes,
+  /// like <code>pepcli query column-access</code>. By default all groups with any access, with implied modes,
+  /// e.g. "read" implies "read-meta".
   /// \returns \c Promise<ColumnGroup[]>
-  WeblibApiPromise listColumns() {
+  WeblibApiPromise listColumns(ListColumnsQuery query) {
     co_return co_await onIoThread()
-        .flat_map([](const std::shared_ptr<Weblib>& self) {
-          return self->client_->getAccessManagerProxy()->getAccessibleColumns(true, { "read" });
+        .flat_map([
+          includeImplicitlyGranted = query.includeImplicitlyGranted.value_or(true),
+          requireModes = ColumnGroupAccessModesToStrings(query.requireModes)
+         ](const std::shared_ptr<Weblib>& self) {
+          return self->client_->getAccessManagerProxy()->getAccessibleColumns(includeImplicitlyGranted, requireModes);
         })
         .map([](const ColumnAccess& access) {
           return access.columnGroups
@@ -303,6 +342,7 @@ public:
               const auto& [name, columnGroup] = entry;
               return ColumnGroup{
                   .name = name,
+                  .modes = ColumnGroupAccessModesFromStrings(columnGroup.modes),
                   .columns = to<std::vector>(SafeIndexInto(columnGroup.columns.indices, access.columns)),
               };
             })
@@ -310,20 +350,20 @@ public:
         });
   }
 
+  /// Lists subject groups the enrolled user has any access to, with the access modes
   /// \returns \c Promise<SubjectGroup[]>
   WeblibApiPromise listSubjectGroups() {
     co_return co_await onIoThread()
         .flat_map([](const std::shared_ptr<Weblib>& self) {
           return self->client_->getAccessManagerProxy()->getAccessibleParticipantGroups(true);
-        }).map([](ParticipantGroupAccess access) {
-          return std::move(access).participantGroups
-            | views::filter([](const auto& entry) {
+        }).map([](const ParticipantGroupAccess& access) {
+          return access.participantGroups
+            | views::transform([](const auto& entry) {
               const auto& [name, modes] = entry;
-              return contains(modes, "access");
-            })
-            | views::keys
-            | views::transform([](const std::string& name) {
-              return SubjectGroup{ .name = name };
+              return SubjectGroup{
+                  .name = name,
+                  .modes = SubjectGroupAccessModesFromStrings(modes),
+              };
             })
             | to<std::vector>();
         });
@@ -348,7 +388,7 @@ public:
                 .referenceSubjects = {},
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
                 .columns = std::move(query->columns).value_or(std::vector<std::string>{}),
-                .modes = {"read"}, //TODO support more modes. Should this method be split with an explicit ticket request?
+                .modes = {query->mode.value_or("read")},
                 .includeAccessGroupPseudonyms = true,
               });
           });

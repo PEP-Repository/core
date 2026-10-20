@@ -210,11 +210,11 @@ public:
   const std::vector<ReceivedRequest>& receivedRequests() const { return receivedRequests_; }
 
   void stop() {
-    boost::system::error_code ignored;
-    acceptor_.close(ignored);
+    [[maybe_unused]] boost::system::error_code ignored;
+    (void) acceptor_.close(ignored);
     for (const auto& session : sessions_) {
       session->timer.cancel();
-      session->socket.close(ignored);
+      (void) session->socket.close(ignored);
     }
     sessions_.clear();
   }

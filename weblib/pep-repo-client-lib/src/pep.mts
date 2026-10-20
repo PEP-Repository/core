@@ -68,21 +68,63 @@ export interface InitConfig {
   authLandingPage?: URL | null;
 }
 
-export interface EnrolledUser {
-  user: string;
-  userGroup: string;
+/** Replace EmbindString (or union involving EmbindString) members with plain string. */
+type UseJsStrings<T> = {
+  [K in keyof T]: NonNullable<T[K]> extends rawTypes.EmbindString
+      ? string | Exclude<T[K], NonNullable<T[K]>>
+      : T[K];
+};
+
+export type EnrolledUser = UseJsStrings<rawTypes.EnrolledUser>;
+
+/**
+ * `read` implies `readMeta`, and `writeMeta` implies `write`.
+ * Implied modes are set, unless {@link ListColumnsQuery.includeImplicitlyGranted} is false.
+ */
+export type ColumnGroupAccessModes = UseJsStrings<rawTypes.ColumnGroupAccessModes>;
+
+/** `enumerate` is needed to list cells, `access` to retrieve them */
+export type SubjectGroupAccessModes = UseJsStrings<rawTypes.SubjectGroupAccessModes>;
+
+export interface ListColumnsQuery {
+  /** Also report modes implied by others: `read-meta` by `read`, `write` by `write-meta`. Default true */
+  includeImplicitlyGranted?: boolean | undefined;
+  /** Only return groups on which the user has all of the set modes, e.g. `{read: true}`. Default none: all groups */
+  requireModes?: Partial<ColumnGroupAccessModes> | undefined;
 }
 
-export interface ColumnGroup {
-  name: string;
+export interface ColumnGroup extends UseJsStrings<rawTypes.ColumnGroup> {
   columns: string[];
 }
 
-export interface SubjectGroup {
+export interface AccessibleColumn {
   name: string;
+  /** Combined from all column groups containing this column */
+  modes: ColumnGroupAccessModes;
 }
 
-export interface ParticipantPersonalia extends Omit<rawTypes.ParticipantPersonalia, 'dateOfBirth'> {
+/** Get the access modes per column, sorted by column name, from the result of {@link Pep.listColumns} */
+export function getColumnModes(columnGroups: ColumnGroup[]): AccessibleColumn[] {
+  const columnModes = new Map<string, ColumnGroupAccessModes>();
+  for (const group of columnGroups) {
+    for (const column of group.columns) {
+      const modes = columnModes.get(column);
+      columnModes.set(column, modes ? {
+        read: modes.read || group.modes.read,
+        readMeta: modes.readMeta || group.modes.readMeta,
+        write: modes.write || group.modes.write,
+        writeMeta: modes.writeMeta || group.modes.writeMeta,
+      } : {...group.modes});
+    }
+  }
+  return [...columnModes]
+      .map(([name, modes]) => ({name, modes}))
+      .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export type SubjectGroup = UseJsStrings<rawTypes.SubjectGroup>;
+
+export interface ParticipantPersonalia extends UseJsStrings<Omit<rawTypes.ParticipantPersonalia, 'dateOfBirth'>> {
   /** Time part is ignored */
   dateOfBirth: Date;
 }
@@ -98,18 +140,16 @@ export interface StoreQuery {
   metadata?: Map<string, string | Uint8Array | ArrayBuffer> | undefined;
 }
 
-interface StoreQueryInternal extends Omit<rawTypes.StoreQuery, 'blob' | 'metadata'> {
+interface StoreQueryInternal extends UseJsStrings<rawTypes.StoreQuery> {
   blob: Blob;
-  /** 
+  /**
   * The metadata, normalized to Uint8Array.
   * Encoded here rather than in C++, so the bytes stored do not depend on embind's string handling
   */
   metadata: Map<string, Uint8Array>;
 }
 
-export interface StoreResult {
-  id: string;
-}
+export type StoreResult = UseJsStrings<rawTypes.StoreResult>;
 
 export interface ListQuery {
   subjectGroups?: string[] | undefined;
@@ -117,6 +157,11 @@ export interface ListQuery {
   subjects?: string[] | undefined;
   columnGroups?: string[] | undefined;
   columns?: string[] | undefined;
+  /**
+   * Access mode to list with. Default `read`.
+   * Use `read-meta` to also list cells of which the user can only see metadata; their content cannot be retrieved.
+   */
+  mode?: 'read' | 'read-meta' | undefined;
 }
 
 /**
@@ -387,10 +432,18 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.internalGenerateToken(tokenSecret, userGroup));
   }
 
-  listColumns(): Promise<ColumnGroup[]> {
-    return this.#wrapExec(() => this.#client.listColumns());
+  /**
+   * List column groups the user has any access to, with the access modes.
+   * Use {@link getColumnModes} to get the modes per column.
+   */
+  listColumns(query: ListColumnsQuery = {}): Promise<ColumnGroup[]> {
+    return this.#wrapExec(() => this.#client.listColumns({
+      includeImplicitlyGranted: query.includeImplicitlyGranted,
+      requireModes: {read: false, readMeta: false, write: false, writeMeta: false, ...query.requireModes},
+    }));
   }
 
+  /** List subject groups the user has any access to, with the access modes */
   listSubjectGroups(): Promise<SubjectGroup[]> {
     return this.#wrapExec(() => this.#client.listSubjectGroups());
   }
