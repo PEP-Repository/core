@@ -80,6 +80,19 @@ PEP_BINDINGS(StoreResult,
   id
 )
 
+PEP_BINDINGS(StructureMetadataQuery,
+  type,
+  subjects,
+  keys
+)
+
+PEP_BINDINGS(StructureMetadataItem,
+  subject,
+  metadataGroup,
+  subkey,
+  value
+)
+
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {
   using namespace std::ranges;
   return inner->metadata.extra()
