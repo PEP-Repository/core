@@ -10,7 +10,6 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxToUnorderedMap.hpp>
-#include <pep/server/ChecksumChain.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>

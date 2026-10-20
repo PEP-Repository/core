@@ -1,6 +1,5 @@
 #pragma once
 
-#include <pep/server/ChecksumChain.hpp>
 #include <pep/server/SigningServer.hpp>
 #include <pep/async/WorkerPool.hpp>
 #include <pep/utils/XxHasher.hpp>

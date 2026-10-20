@@ -2,7 +2,6 @@
 
 #include <pep/core-client/CoreClient_fwd.hpp>
 #include <pep/async/RxCache.hpp>
-#include <pep/server/ChecksumChain.hpp>
 #include <pep/server/SigningServer.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/registrationserver/RegistrationServerMessages.hpp>
