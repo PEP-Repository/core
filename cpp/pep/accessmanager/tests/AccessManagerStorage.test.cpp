@@ -231,8 +231,8 @@ TEST_F(AccessManagerStorageTest, getChecksumChainNames_happy) {
 }
 
 TEST_F(AccessManagerStorageTest, computeChecksum_unknown_chain) {
-  std::string name{"unknown_chain"};
-  PEP_EXPECT_THROWS_MESSAGE(storage->checksumChains().chain(name), Error, "No checksum chain available with name unknown_chain");
+  std::string chain{"unknown_chain"};
+  PEP_EXPECT_THROWS_MESSAGE(storage->checksumChains().chain(chain), Error, "No checksum chain available with name unknown_chain");
 }
 
 TEST_F(AccessManagerStorageTest, hasColumn) {

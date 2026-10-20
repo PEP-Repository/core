@@ -58,8 +58,6 @@ std::optional<uint64_t> to_optional_uint64(std::optional<std::chrono::seconds> v
 
 // This function defines the database scheme used.
 auto CreateAmDb(const std::string& path) {
-  using namespace sqlite_orm;
-
   return make_storage(path,
     make_table("SelectStarPseudonyms",
       make_column("LocalPseudonym",
