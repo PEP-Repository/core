@@ -6,7 +6,7 @@
 
   "column_specifications": [
     { "column": "OnlyPseudonymise",
-      "associated_short_pseudonym_column": "ShortPseudonym.Bugs.Visit1.FMRI",
+      "associated_short_pseudonym_column": "ShortPseudonym.Bugs.Visit1.FMRI"
     },
     { "column": "OnlyDirectory",
       "requires_directory": true

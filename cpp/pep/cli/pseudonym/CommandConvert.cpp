@@ -89,14 +89,14 @@ int CommandPseudonym::CommandConvert::execute() {
       }
 
       pep::RequestTicket2Opts tOpts;
-      tOpts.pps = {pp};
+      tOpts.referenceSubjects = {pp};
       tOpts.modes = {"read"};
       tOpts.includeAccessGroupPseudonyms = true;
 
       return client->requestTicket2(tOpts)
           .flat_map([client, config](pep::IndexedTicket2 ticket) {
             const auto opened = ticket.openTicketWithoutCheckingSignature();
-            const auto& subjects = opened->accessSubjects;
+            const auto& subjects = opened->referenceSubjects;
             if (subjects.empty() || !subjects.front().accessGroup.has_value()) {
               throw std::runtime_error{"No localized pseudonym available for the supplied polymorphic pseudonym"};
             }

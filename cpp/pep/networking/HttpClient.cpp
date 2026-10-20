@@ -200,8 +200,7 @@ void HttpClient::start() {
 }
 
 HTTPRequest HttpClient::makeRequest(HttpMethod method, const std::optional<std::string>& path) const {
-  const auto& baseUri = parameters_.baseUri();
-  return HTTPRequest(baseUri.host(), method, UrlPlusRelative(baseUri, path.value_or(std::string())), std::vector<std::shared_ptr<std::string>>(), std::map<std::string, std::string, CaseInsensitiveCompare>(), false);
+  return HTTPRequest(method, UrlPlusRelative(parameters_.baseUri(), path.value_or("")), {}, {}, false);
 }
 
 std::string HttpClient::pathFromUrl(const boost::urls::url& full) {
@@ -325,6 +324,9 @@ bool HttpClient::continueSending(std::exception_ptr error) {
   }
 
   if (pendingRequests_.empty() || pendingRequests_.front() != sending_) {
+    // The request was abandoned while in flight. Reconnect so that the next request won't send its data on a connection
+    // where the abandoned request's body may be incomplete, nor read the abandoned request's (remaining) response.
+    this->restart();
     this->finishSending();
     return false;
   }

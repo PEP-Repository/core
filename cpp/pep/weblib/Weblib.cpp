@@ -26,6 +26,7 @@
 #include <numeric>
 #include <stdexcept>
 #include <thread>
+#include <utility>
 
 #include <emscripten/emscripten.h>
 #include <emscripten/bind.h>
@@ -39,6 +40,7 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/subjects/rx-replaysubject.hpp>
+#include <rxcpp/subjects/rx-subject.hpp>
 
 using namespace pep;
 using namespace pep::weblib;
@@ -90,6 +92,10 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
 
   std::optional<rxcpp::observe_on_one_worker> asioWorker_, emscriptenMainWorker_;
 
+  bool shutdownStarted_ = false;
+  // Completes (on the event loop thread) when io_context has stopped running
+  rxcpp::subjects::subject<FakeVoid> ioContextStopped_;
+
   // Destruct these first to stop io_service
   std::jthread thread_;
   // Destruct before thread
@@ -107,7 +113,7 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
     // Start client
     client_ = Client::OpenClient(clientConfig_, std::move(io_context));
     // Run event loop in background thread. Calls from JS will still come from the main thread.
-    thread_ = std::jthread([io_context = client_->getIoContext()](std::stop_token stop) {
+    thread_ = std::jthread([io_context = client_->getIoContext(), stopped = ioContextStopped_.get_subscriber()](std::stop_token stop) {
       ThreadName::Set("Client");
       PEP_LOG(LogTag, Severity::Debug) << "starting io_context " << io_context << " on thread " << ThreadPrintable{};
       std::stop_callback onStop(std::move(stop), [io_context] {
@@ -116,6 +122,8 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
       });
       io_context->run();
       PEP_LOG(LogTag, Severity::Debug) << "io_context stopped";
+      // Do this last, so that the main thread can join us without (significant) blocking
+      stopped.on_completed();
     });
   }
 
@@ -158,6 +166,37 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
   }
 
 public:
+  /// \brief Close server connections and stop the event loop, without blocking the main thread.
+  /// \details Await this before calling the destructor, which would otherwise synchronously join the event loop thread.
+  /// That can deadlock when the event loop thread is waiting for the main thread.
+  WeblibApiVoidPromise shutdown() {
+    if (std::exchange(shutdownStarted_, true)) {
+      throw std::logic_error("Weblib was already shut down");
+    }
+    const auto keepAlive = shared_from_this();
+
+    std::exception_ptr clientShutdownError;
+    try {
+      co_await onIoThread()
+          .flat_map([](const std::shared_ptr<Weblib>& self) {
+            return self->client_->shutdown();
+          }).op(RxInstead(FakeVoid{}) /*make nonempty*/);
+    } catch (...) {
+      clientShutdownError = std::current_exception();
+    }
+    if (clientShutdownError) {
+      PEP_LOG(LogTag, Severity::Warning) << "Problem closing server connections, forcefully stopping: "
+          << GetExceptionMessage(clientShutdownError);
+    }
+
+    workGuard_.reset();
+    thread_.request_stop(); // Stops io_context
+    co_await ioContextStopped_.get_observable().op(RxInstead(FakeVoid{}) /*make nonempty*/);
+    // Thread has (almost) exited at this point
+    thread_.join();
+    PEP_LOG(LogTag, Severity::Debug) << "shut down";
+  }
+
   /// Register \p callback to be called when the connection status changes.
   /// \param callback <code>(connected: bool) => void</code>
   void onStatusChange(val callback) {
@@ -345,7 +384,8 @@ public:
           return pps.flat_map([self, query](const std::shared_ptr<std::vector<PolymorphicPseudonym>>& pps) {
             return self->client_->requestTicket2(RequestTicket2Opts{
                 .participantGroups = std::move(query->subjectGroups).value_or(std::vector<std::string>{}),
-                .pps = std::move(*pps),
+                .accessSubjects = std::move(*pps),
+                .referenceSubjects = {},
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
                 .columns = std::move(query->columns).value_or(std::vector<std::string>{}),
                 .modes = {query->mode.value_or("read")},
@@ -510,6 +550,7 @@ void exitRuntime() { ::emscripten_force_exit(0); }
 EMSCRIPTEN_BINDINGS(weblib) {
   class_<Weblib>("Weblib")
       .smart_ptr_constructor("Weblib", &Weblib::Create<>)
+      .function("shutdown", &Weblib::shutdown)
       .function("onStatusChange", &Weblib::onStatusChange)
       .function("getEnrolledUser", &Weblib::getEnrolledUser)
       .function("unenroll", &Weblib::unenroll)

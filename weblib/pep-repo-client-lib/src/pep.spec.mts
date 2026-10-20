@@ -11,8 +11,8 @@ const isNode = !!globalThis.process;
 let mainExited = false;
 if (isNode) {
   process.on('beforeExit', () => {
-    if (!mainExited) {
-      process.exitCode ??= 13;
+    if (!mainExited && !process.exitCode) {
+      process.exitCode = 13;
       console.error('\nUnexpected exit: Either Node.js was terminated or ' +
           'it prevented a hang due to a Promise that can never be fulfilled');
     }
@@ -80,8 +80,8 @@ describe('Pep', () => {
       console.debug('Authenticated');
     });
   });
-  after(() => {
-    pep?.delete();
+  after(async () => {
+    await pep?.delete();
   });
 
   describe('#listColumns()', () => {
@@ -145,10 +145,10 @@ describe('Pep', () => {
 
   describe('#list()', () => {
     context('given a subject group and column group', () => {
-      it('should list cells with metadata', async () => {
-        let entries: CellEntry[] | undefined;
-        after(() => entries && deleteObjects(entries));
+      let entries: CellEntry[] | undefined;
+      after(() => entries && deleteObjects(entries));
 
+      it('should list cells with metadata', async () => {
         return pep.runHandleWasmException(async () => {
           entries = await Array.fromAsync(pep.list({
             subjectGroups: ['WasmTestSubjectGroup'],
@@ -191,10 +191,10 @@ describe('Pep', () => {
     });
 
     context('given mode read-meta and a column group without read access', () => {
-      it('should list cells', async () => {
-        let entries: CellEntry[] | undefined;
-        after(() => entries && deleteObjects(entries));
+      let entries: CellEntry[] | undefined;
+      after(() => entries && deleteObjects(entries));
 
+      it('should list cells', async () => {
         return pep.runHandleWasmException(async () => {
           entries = await Array.fromAsync(pep.list({
             subjectGroups: ['WasmTestSubjectGroup'],
@@ -208,10 +208,10 @@ describe('Pep', () => {
     });
 
     context('given a subject Origin ID and column group', () => {
-      it('should list cells with metadata', async () => {
-        let entries: CellEntry[] | undefined;
-        after(() => entries && deleteObjects(entries));
+      let entries: CellEntry[] | undefined;
+      after(() => entries && deleteObjects(entries));
 
+      it('should list cells with metadata', async () => {
         return pep.runHandleWasmException(async () => {
           entries = await Array.fromAsync(pep.list({
             subjects: ['WasmTestSubjectSmall'], // Pass origin ID
@@ -228,10 +228,10 @@ describe('Pep', () => {
 
   describe('#retrieve()', () => {
     context('given a subject group and column group', () => {
-      it('should retrieve cells with data', () => {
-        let entries: CellEntry[] | undefined;
-        after(() => entries && deleteObjects(entries));
+      let entries: CellEntry[] | undefined;
+      after(() => entries && deleteObjects(entries));
 
+      it('should retrieve cells with data', () => {
         return pep.runHandleWasmException(async () => {
           entries = await Array.fromAsync(pep.list({
             subjectGroups: ['WasmTestSubjectGroup'],

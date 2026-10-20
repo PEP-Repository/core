@@ -23,6 +23,14 @@ public:
   class Cell;
   class Entry;
 
+  struct Metrics {
+    size_t entryCount{};
+    uint64_t totalBytes{};
+    uint64_t rollingBytes{};
+
+    Metrics& operator+=(const Metrics& rhs);
+  };
+
   /// \brief Utility base class for Entry and EntryChange classes (defined below).
   /// \remark Ensures that appropriate values are copied when we
   ///         - create an EntryChange on the basis of an existing Entry, i.e. when preparing a cell update.
@@ -37,6 +45,7 @@ public:
     EntryBase(Cell& cell, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
 
     void setContent(std::unique_ptr<EntryContent>&& content) { content_ = std::move(content); }
+    std::set<std::string> getPagePaths() const;
 
     // Allow move-construction (when EntryChange::commit converts the EntryChange into an Entry)...
     EntryBase(EntryBase&&) = default;
@@ -58,8 +67,6 @@ public:
     bool isTombstone() const { return content_ == nullptr; }
     uint64_t payloadSize() const;
     bool isOriginalPayloadOwner() const;
-
-    std::set<std::string> pagePaths() const;
   };
 
   /// \brief Represents a pending update to a cell. A new Entry will be created when an EntryChange is commit()ted.
@@ -110,6 +117,8 @@ public:
     std::unique_ptr<EntryContent> cloneContent() const;
 
     Timestamp getValidFrom() const noexcept { return validFrom_; }
+
+    std::set<std::string> pagePaths() const;
     messaging::MessageSequence readPage(size_t index);
 
     void save() const;
@@ -146,7 +155,7 @@ public:
     EntryName entryName() const;
     CheckedPath path() const;
 
-    void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes) const;
+    Metrics getMetrics() const;
     void addEntry(std::shared_ptr<Entry> entry);
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
 
@@ -174,7 +183,7 @@ public:
 
     std::shared_ptr<EntryChange> createEntry(const std::string& columnName) { return EntryChange::Create(this->provideCell(columnName)); }
 
-    void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const;
+    Metrics getMetrics(const std::set<std::string>& columns) const;
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
 
     std::set<std::string> pagePaths() const; // for latest version
@@ -212,7 +221,7 @@ public:
   EntryContent::Metadata makeMetadataMap(const std::map<std::string, MetadataXEntry>& xentries);
   std::map<std::string, MetadataXEntry> extractMetadataMap(const EntryContent::Metadata& metadata);
 
-  void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns = {}) const;
+  Metrics getMetrics(const std::set<std::string>& columns = {}) const;
 
   const CheckedPath& metaDir() const {
     return path_;

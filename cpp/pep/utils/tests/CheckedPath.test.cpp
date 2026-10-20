@@ -56,4 +56,12 @@ TEST(CheckedFileName, concat) {
 #endif
 }
 
+// Check that these operations do not trigger ambiguity warnings / errors.
+[[maybe_unused]] void CheckConversionCompiles() {
+  [[maybe_unused]] std::filesystem::path p(CheckedPath::FromTrusted("abc"));
+  p = CheckedPath::FromTrusted("abc");
+  const auto checkedConst = CheckedPath::FromTrusted("abc");
+  p = checkedConst;
+}
+
 }

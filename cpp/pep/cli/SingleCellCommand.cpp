@@ -56,7 +56,7 @@ int SingleCellCommand::execute() {
       const auto& parameterValues = this->getParameterValues();
 
       pep::RequestTicket2Opts tOpts;
-      tOpts.pps = { pp };
+      tOpts.accessSubjects = { pp };
       tOpts.columns = { column };
       tOpts.modes = this->ticketAccessModes();
       return pep::cli::TicketFile::GetTicket(*client, parameterValues, tOpts)
