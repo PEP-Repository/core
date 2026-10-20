@@ -151,20 +151,16 @@ interface StoreQueryInternal extends UseJsStrings<rawTypes.StoreQuery> {
 
 export type StoreResult = UseJsStrings<rawTypes.StoreResult>;
 
-export interface UserGroupMembership {
-  userGroup: string;
+export interface UserGroupMembership extends UseJsStrings<Omit<rawTypes.UserGroupMembership, 'expiration'>> {
   expiration: Date | undefined;
 }
 
-export interface User {
-  displayId: string | undefined;
-  primaryId: string | undefined;
+export interface User extends UseJsStrings<rawTypes.User> {
   otherUids: string[];
   groups: UserGroupMembership[];
 }
 
-export interface UserGroup {
-  name: string;
+export interface UserGroup extends UseJsStrings<Omit<rawTypes.UserGroupInfo, 'maxAuthValiditySeconds'>> {
   maxAuthValiditySeconds?: number | undefined;
 }
 
@@ -180,13 +176,8 @@ export interface UserQueryFilter {
   userFilter?: string | undefined;
 }
 
-interface RawUserGroupMembership {
-  userGroup: string;
-  expiration: number | undefined;
-}
-
-interface RawUser extends Omit<User, 'groups'> {
-  groups: RawUserGroupMembership[];
+interface RawUser extends UseJsStrings<rawTypes.User> {
+  groups: UseJsStrings<rawTypes.UserGroupMembership>[];
 }
 
 export interface ListQuery {
