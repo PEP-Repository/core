@@ -11,13 +11,16 @@ const isNode = !!globalThis.process;
 let mainExited = false;
 if (isNode) {
   process.on('beforeExit', () => {
-    if (!mainExited) {
-      process.exitCode ??= 13;
+    if (!mainExited && !process.exitCode) {
+      process.exitCode = 13;
       console.error('\nUnexpected exit: Either Node.js was terminated or ' +
           'it prevented a hang due to a Promise that can never be fulfilled');
     }
   });
 }
+after(() => {
+  mainExited = true;
+});
 
 interface OAuthTokenSecretFile {
   OAuthTokenSecret: string;
@@ -80,9 +83,8 @@ describe('Pep', () => {
 
     await authenticateAs('Research Assessor');
   });
-  after(() => {
-    pep?.delete();
-    mainExited = true;
+  after(async () => {
+    await pep?.delete();
   });
 
   describe('#listColumns()', () => {
@@ -134,28 +136,13 @@ describe('Pep', () => {
     });
   });
 
-  describe('getColumnModes()', () => {
-    it('should combine the modes of all column groups containing a column', () => {
-      const none = {read: false, readMeta: false, write: false, writeMeta: false};
-      expect(getColumnModes([
-        {name: 'GroupA', modes: {...none, readMeta: true}, columns: ['y', 'x']},
-        {name: 'GroupB', modes: {...none, write: true}, columns: ['x']},
-      ])).to.deep.equal([
-        {name: 'x', modes: {...none, readMeta: true, write: true}},
-        {name: 'y', modes: {...none, readMeta: true}},
-      ]);
-    });
-  });
-
   describe('#listSubjectGroups()', () => {
     it('should list the name and modes of each subject group', async () => {
-      const subjectGroups = await pep.runHandleWasmException(() => pep.listSubjectGroups());
-      expect(subjectGroups).to.containSubset([
+      expect(await pep.runHandleWasmException(() => pep.listSubjectGroups())).to.containSubset([
         {name: '*', modes: {access: true}},
         {name: 'WasmTestSubjectGroup', modes: {access: true, enumerate: true}},
+        {name: 'WasmTestEnumerateSubjectGroup', modes: {access: false, enumerate: true}},
       ]);
-      expect(subjectGroups.find(group => group.name === 'WasmTestEnumerateSubjectGroup')?.modes)
-          .to.deep.equal({access: false, enumerate: true});
     });
   });
 
@@ -339,5 +326,18 @@ describe('Pep', () => {
       expect(await listTestUserIds()).to.be.empty;
       expect((await pep.listUsers({groupFilter: userGroup})).userGroups).to.be.empty;
     }));
+  });
+});
+
+describe('getColumnModes()', () => {
+  it('should combine the modes of all column groups containing a column', () => {
+    const none = {read: false, readMeta: false, write: false, writeMeta: false};
+    expect(getColumnModes([
+      {name: 'GroupA', modes: {...none, readMeta: true}, columns: ['y', 'x']},
+      {name: 'GroupB', modes: {...none, write: true}, columns: ['x']},
+    ])).to.deep.equal([
+      {name: 'x', modes: {...none, readMeta: true, write: true}},
+      {name: 'y', modes: {...none, readMeta: true}},
+    ]);
   });
 });

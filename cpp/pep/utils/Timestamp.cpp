@@ -79,9 +79,29 @@ protected:
     // Note that %Q is not supported for input, so we use the broader %ZP, which also handles simple offsets
     //TODO If boost ever starts using actual POSIX timezones instead of the inverse, the timezone offset here has to be reversed
 
+    // Boost's parser is lenient: it skips over mismatching separators and normalizes out-of-range time fields
+    // (e.g. 25:00 becomes 01:00 the next day), so we validate the structure and the time ranges ourselves.
+    static const std::regex format(R"(\d{4}-\d{2}-\d{2}(?:T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{1,2}:\d{2})?)?)");
+    const std::string input(str);
+    if (std::smatch match; !std::regex_match(input, match, format)) {
+      throw std::invalid_argument("Not in yyyy-mm-dd[Thh:mm:ss[.f][Z|+-hh:mm]] format");
+    }
+    else if (match[1].matched) {
+      const auto hours = std::stoi(match[1]), minutes = std::stoi(match[2]), seconds = std::stoi(match[3]);
+      if (hours > 24 || (hours == 24 && (minutes != 0 || seconds != 0))) { // Allow 24:00:00
+        throw std::range_error("hours out of range");
+      }
+      if (minutes >= 60) {
+        throw std::range_error("minutes out of range");
+      }
+      if (seconds > 60) { // Allow for leap seconds
+        throw std::range_error("seconds out of range");
+      }
+    }
+
     blt::local_date_time parsed(boost::date_time::not_a_date_time);
     {
-      std::istringstream ss{std::string(str)};
+      std::istringstream ss{input};
       ss.exceptions(std::ios_base::badbit | std::ios_base::failbit);
       auto facet = new blt::local_time_input_facet("%Y-%m-%dT%H:%M:%S%F%ZP");
       ss.imbue(std::locale(ss.getloc(), facet));

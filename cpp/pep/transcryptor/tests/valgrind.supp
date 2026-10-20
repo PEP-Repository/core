@@ -1,4 +1,15 @@
-## Last updated for protobuf 6.32 ##
+## Last updated for protobuf 6.33 ##
+
+# Benign leak from protobuf that exists within the pepTranscryptorUnitTests binary
+{
+   ProtobufMessageFactoryRegisterGeneratedFileLeak
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:_Znwm
+   ...
+   fun:_ZN6google8protobuf14MessageFactory29InternalRegisterGeneratedFileEPKNS0_8internal15DescriptorTableE
+   fun:call_init
+}
 
 # Copied from accessmanager
 {

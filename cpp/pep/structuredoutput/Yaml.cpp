@@ -24,12 +24,14 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
 }
 
 /// Recursive function to convert a JSON object to a YAML string.
+/// \param column The column at which the node starts: every line of the node after the first one is prefixed with this
+///        many spaces, so that it lines up with the first line
 /// \note does NOT prefix the output with indentation,
-///       the caller should make sure that the output stream is at the correct initial indentation level
+///       the caller should make sure that the output stream is at the correct initial column
 /// \note DOES append a newline character to the output
-void SerializeJsonAsYaml(std::ostream& stream, const YamlConfig& config, nlohmann::ordered_json node, std::size_t indentLevel = {}) {
+void SerializeJsonAsYaml(std::ostream& stream, const YamlConfig& config, nlohmann::ordered_json node, std::size_t column = {}) {
   const std::size_t spacesPerLevel = (config.indentation == WhitespaceFormat::FourSpaces) ? 4 : 2;
-  const auto indent = std::string(spacesPerLevel * indentLevel, ' ');
+  const auto indent = std::string(column, ' ');
 
   /// does nothing on the first call and appends indentation on subsequent calls
   auto indentIfNotFirst = [first = true, &indent](std::ostream& stream) mutable {
@@ -67,20 +69,23 @@ void SerializeJsonAsYaml(std::ostream& stream, const YamlConfig& config, nlohman
         }
         stream << '\n' << indent << std::string(spacesPerLevel, ' ');
       }
-      SerializeJsonAsYaml(stream, config, it.value(), indentLevel + 1);
+      SerializeJsonAsYaml(stream, config, it.value(), column + spacesPerLevel);
     }
   }
   else if (node.is_array()) {
+    constexpr std::string_view marker = "- ";
     for (const auto& element : node) {
       indentIfNotFirst(stream);
-      stream << "- ";
+      stream << marker;
+      auto elementColumn = column + marker.size(); // the element continues on this line, right after the marker
       if (element.is_array() && !element.empty()) {
         if (config.includeArraySizeComments && element.size() >= config.arrayCountCommentThreshold) {
           stream << "# item count: " << element.size();
         }
-        stream << "\n" << indent << std::string(spacesPerLevel, ' ');
+        elementColumn = column + spacesPerLevel; // a nested array starts on the next line, one level deeper
+        stream << "\n" << std::string(elementColumn, ' ');
       }
-      SerializeJsonAsYaml(stream, config, element, indentLevel + 1);
+      SerializeJsonAsYaml(stream, config, element, elementColumn);
     }
   }
 }

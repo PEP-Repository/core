@@ -68,27 +68,23 @@ export interface InitConfig {
   authLandingPage?: URL | null;
 }
 
-export interface EnrolledUser {
-  user: string;
-  userGroup: string;
-}
+/** Replace EmbindString (or union involving EmbindString) members with plain string. */
+type UseJsStrings<T> = {
+  [K in keyof T]: NonNullable<T[K]> extends rawTypes.EmbindString
+      ? string | Exclude<T[K], NonNullable<T[K]>>
+      : T[K];
+};
+
+export type EnrolledUser = UseJsStrings<rawTypes.EnrolledUser>;
 
 /**
  * `read` implies `readMeta`, and `writeMeta` implies `write`.
  * Implied modes are set, unless {@link ListColumnsQuery.includeImplicitlyGranted} is false.
  */
-export interface ColumnGroupAccessModes {
-  read: boolean;
-  readMeta: boolean;
-  write: boolean;
-  writeMeta: boolean;
-}
+export type ColumnGroupAccessModes = UseJsStrings<rawTypes.ColumnGroupAccessModes>;
 
 /** `enumerate` is needed to list cells, `access` to retrieve them */
-export interface SubjectGroupAccessModes {
-  access: boolean;
-  enumerate: boolean;
-}
+export type SubjectGroupAccessModes = UseJsStrings<rawTypes.SubjectGroupAccessModes>;
 
 export interface ListColumnsQuery {
   /** Also report modes implied by others: `read-meta` by `read`, `write` by `write-meta`. Default true */
@@ -97,9 +93,7 @@ export interface ListColumnsQuery {
   requireModes?: Partial<ColumnGroupAccessModes> | undefined;
 }
 
-export interface ColumnGroup {
-  name: string;
-  modes: ColumnGroupAccessModes;
+export interface ColumnGroup extends UseJsStrings<rawTypes.ColumnGroup> {
   columns: string[];
 }
 
@@ -123,18 +117,14 @@ export function getColumnModes(columnGroups: ColumnGroup[]): AccessibleColumn[] 
       } : {...group.modes});
     }
   }
-  /** TODO: perhaps we'd probably want to use localeCompare() at some point, or sort in cpp */
   return [...columnModes]
       .map(([name, modes]) => ({name, modes}))
-      .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+      .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export interface SubjectGroup {
-  name: string;
-  modes: SubjectGroupAccessModes;
-}
+export type SubjectGroup = UseJsStrings<rawTypes.SubjectGroup>;
 
-export interface ParticipantPersonalia extends Omit<rawTypes.ParticipantPersonalia, 'dateOfBirth'> {
+export interface ParticipantPersonalia extends UseJsStrings<Omit<rawTypes.ParticipantPersonalia, 'dateOfBirth'>> {
   /** Time part is ignored */
   dateOfBirth: Date;
 }
@@ -150,18 +140,16 @@ export interface StoreQuery {
   metadata?: Map<string, string | Uint8Array | ArrayBuffer> | undefined;
 }
 
-interface StoreQueryInternal extends Omit<rawTypes.StoreQuery, 'blob' | 'metadata'> {
+interface StoreQueryInternal extends UseJsStrings<rawTypes.StoreQuery> {
   blob: Blob;
-  /** 
+  /**
   * The metadata, normalized to Uint8Array.
   * Encoded here rather than in C++, so the bytes stored do not depend on embind's string handling
   */
   metadata: Map<string, Uint8Array>;
 }
 
-export interface StoreResult {
-  id: string;
-}
+export type StoreResult = UseJsStrings<rawTypes.StoreResult>;
 
 export interface UserGroupMembership {
   userGroup: string;
@@ -398,27 +386,36 @@ export default class Pep {
   }
 
   /** Stop event loop and delete instance */
-  delete() {
+  async delete(): Promise<void> {
     const client = this.#client;
+    if (!client) {
+      return;
+    }
     this.#client = null!; // Prevent usage
-    this.#wrapExec(() => {
-      client.delete();
+    await this.#wrapExec(async () => {
       try {
-        this.#mod.exit();
-      } catch (ex) {
-        if (ex instanceof this.#mod.ExitStatus && ex.status === 0) {
-          console.log(ex.message);
-        } else {
-          throw ex;
-        }
+        // Stop event loop asynchronously first: synchronously stopping it in `client.delete()` may deadlock.
+        // Consume WASM exception here: before runtime shutdown.
+        await this.runHandleWasmException(() => client.shutdown());
       } finally {
-        this.#mod = null!; // Prevent usage
+        client.delete();
+        try {
+          this.#mod.exit();
+        } catch (ex) {
+          if (ex instanceof this.#mod.ExitStatus && ex.status === 0) {
+            console.log(ex.message);
+          } else {
+            throw ex;
+          }
+        } finally {
+          this.#mod = null!; // Prevent usage
+        }
       }
     });
   }
 
-  // Symbol.dispose may be null when unsupported
-  [Symbol.dispose]() { this.delete(); }
+  // Symbol.asyncDispose may be null when unsupported
+  [Symbol.asyncDispose]() { return this.delete(); }
 
   /** Register handler to observe when methods are executing */
   onBusyChange(callback: ((busy: boolean) => void) | null) {

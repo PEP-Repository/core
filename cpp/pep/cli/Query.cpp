@@ -318,11 +318,11 @@ private:
                 // ...produce aligned output
                 std::cout
                   << "Entire history contains " << entire << ' ' << *units << '\n'
-                  << "Latest version contains " << latest << ' ' << *units;
+                  << "Latest version contains " << latest << ' ' << *units << '\n';
                 if (response.blockSize != 1U) {
-                  std::cout << '\n'
-                    << "(rounded up to the nearest " << chunk << ')';
+                  std::cout << "(rounded up to the nearest " << chunk << ')' << '\n';
                 }
+                std::cout << std::flush;
 
                 return pep::FakeVoid();
               });

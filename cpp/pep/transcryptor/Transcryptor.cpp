@@ -167,6 +167,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     SignedTicketRequest2 ticketRequest;
     std::optional<PseudonymTranslator::Recipient> userRecipient;
     std::optional<ReshuffleRekeyVerifiers> userVerifiers{};
+    std::size_t numReferenceSubjects{};
   };
   auto ctx = MakeSharedCopy(Context{
     .requestNumber = requestNumber,
@@ -176,6 +177,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
     .userRecipient = userRequest.includeUserGroupPseudonyms
       ? std::optional{RecipientForCertificate(userCertificate)}
       : std::nullopt,
+    .numReferenceSubjects = userRequest.referenceSubjects.size(),
     });
 
   struct Results {
@@ -291,9 +293,14 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
       })
     .map([server, ctx, start_time](std::shared_ptr<Results> results) {
       PEP_LOG(LogTag, TranscryptorRequestLoggingSeverity) << "Transcryptor request " << ctx->requestNumber << " finishing up";
-      // Compute hash of encrypted local pseudonyms to check later that the AM
-      // didn't change them.
-      auto pseudonymHash = ComputePseudonymHash(results->responseEntries);
+      // Compute hash of encrypted local pseudonyms so that we can always verify that they weren't changed
+      const auto& entries = results->responseEntries;
+      if (ctx->numReferenceSubjects > entries.size())
+        throw Error("Transcryptor received fewer pseudonyms than the request has reference subjects");
+      const auto numAccessSubjects = entries.size() - ctx->numReferenceSubjects;
+      auto pseudonymHash = ComputePseudonymHash(
+        std::span<const LocalPseudonyms>(entries).first(numAccessSubjects),
+        std::span<const LocalPseudonyms>(entries).subspan(numAccessSubjects));
 
       TranscryptorResponse response;
       response.entries = std::move(results->responseEntries);
@@ -323,10 +330,8 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
   return result;
 }
 
-std::string Transcryptor::ComputePseudonymHash(
-    const std::vector<LocalPseudonyms>& lps) {
-  Sha512 hash;
-  for (const auto& lp : lps) {
+std::string ComputePseudonymHash(std::span<const LocalPseudonyms> accessSubjects, std::span<const LocalPseudonyms> referenceSubjects) {
+  const auto update = [](Sha512& hash, const LocalPseudonyms& lp) {
     hash.update(lp.accessManager.text());
     hash.update(lp.storageFacility.text());
     hash.update(lp.polymorphic.text());
@@ -337,7 +342,12 @@ std::string Transcryptor::ComputePseudonymHash(
     } else {
       hash.update("n");
     }
-  }
+  };
+
+  Sha512 hash;
+  for (const auto& lp : accessSubjects) update(hash, lp);
+  hash.update("|"); // encodes the boundary between the lists into the hash
+  for (const auto& lp : referenceSubjects) update(hash, lp);
   return std::move(hash).digest();
 }
 
@@ -351,7 +361,7 @@ Transcryptor::handleLogIssuedTicketRequest(
   auto ticket = request->ticket.openForLogging(*getRootCAs(), serialized);
   PEP_LOG(LogTag, LogIssuedTicketRequestLoggingSeverity) << "LogIssuedTicket request " << requestNumber << " opened ticket";
 
-  auto hash = ComputePseudonymHash(ticket.accessSubjects);
+  const auto hash = ComputePseudonymHash(ticket.accessSubjects, ticket.referenceSubjects);
   PEP_LOG(LogTag, LogIssuedTicketRequestLoggingSeverity) << "LogIssuedTicket request " << requestNumber << " calculated hash";
 
   storage_->logIssuedTicket(
