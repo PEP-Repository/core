@@ -65,11 +65,8 @@ TEST(AccessManagerTest, extractPartialColumnGroupQueryResponse_EmptyColumnGroup)
 TEST(AccessManagerTest, extractPartialColumnGroupQueryResponse_CatchInfinteLoop) {
   // Arrange
   std::vector <AmaQRColumnGroup> input{{"A_Very_Long_Name_Of_The_ColumnGroup", std::vector<std::string>{"col1", "col2", "col3"}}};
-  auto actualColumnGroups = std::vector<AmaQRColumnGroup>();
 
   try {
-    auto actualColumnGroups = std::vector<AmaQRColumnGroup>();
-
     // Act
     auto responses = AccessManager::ExtractPartialColumnGroupQueryResponse(input, 15U);
 
