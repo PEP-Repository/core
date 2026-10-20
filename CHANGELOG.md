@@ -139,6 +139,11 @@
 
 - !2608: Configurations that relied on an unencrypted connection on port 25 must now specify `smtp_security: "none"`, which cannot be combined with `smtp_auth_required`.
 
+### Hotfixes for release 1.8
+
+- core#3028: Prevent HTTP client from misdelivering packets after cancellation.
+
+
 ## Release 1.7
 
 - core#2817: `pepcli ama query`'s `--script-print` parameter is renamed to `--include` and now supports repeated use, allowing multiple groups of data to be printed in a single command.

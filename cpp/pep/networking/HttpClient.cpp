@@ -324,6 +324,9 @@ bool HttpClient::continueSending(std::exception_ptr error) {
   }
 
   if (pendingRequests_.empty() || pendingRequests_.front() != sending_) {
+    // The request was abandoned while in flight. Reconnect so that the next request won't send its data on a connection
+    // where the abandoned request's body may be incomplete, nor read the abandoned request's (remaining) response.
+    this->restart();
     this->finishSending();
     return false;
   }
