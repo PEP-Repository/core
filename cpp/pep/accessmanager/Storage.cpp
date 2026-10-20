@@ -2,8 +2,8 @@
 
 #include <pep/accessmanager/Storage.hpp>
 
-#include <pep/accessmanager/LegacyAuthserverStorage.hpp>
 #include <pep/accessmanager/UserStorageRecords.hpp>
+#include <pep/accessmanager/LegacyAuthserverStorage.hpp>
 
 #include <pep/auth/UserGroup.hpp>
 #include <pep/database/Storage.hpp>
