@@ -154,7 +154,7 @@ TEST_F(AccessManagerStorageTest, removeParticipantFromGroup_particpant_not_in_pg
   storage->createParticipantGroup(pg_name);
 
   // Act
-  PEP_EXPECT_THROWS_MESSAGE(storage->removeParticipantFromGroup(localPseudonym, pg_name), // The pp is already in the pg.
+  PEP_EXPECT_THROWS_MESSAGE(storage->removeParticipantFromGroup(localPseudonym, pg_name),
     Error, "This participant is not part of participant-group \"" + pg_name + "\"");
 
   // Assert
