@@ -508,7 +508,9 @@ struct AccessManager::TicketRequestContext {
   TicketRequest2 request;
   Ticket2 ticket;
   SignedTicket2 signedTicket{};
-  std::vector<Backend::Pp> pps;
+  std::vector<PolymorphicPseudonym> pps; ///< Holds client provided access subjects before other access subjects before reference subjects
+  std::size_t numClientProvidedAccessSubjects{};
+  std::size_t numAllAccessSubjects{};
   std::unordered_map<std::string, IndexList> columnGroupMap{};
   std::unordered_map<std::string, IndexList> subjectGroupMap{};
   std::vector<std::string> requiredSubjectModes;
@@ -537,11 +539,10 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
         .timestamp = TimeNow(),
         .modes = request.modes,
         .accessSubjects = {},
+        .referenceSubjects = {},
         .columns = request.columns,
         .userGroup = certified.signatory.organizationalUnit()},
-    .pps = request.accessSubjects
-      | views::transform([](const PolymorphicPseudonym& pp) { return Backend::Pp{pp, true}; })
-      | to<std::vector>(),
+    .pps = request.accessSubjects,
     .requiredSubjectModes = request.participantGroups.empty()
       ? std::vector<std::string>{"access"}
       : std::vector<std::string>{"access", "enumerate"},
@@ -552,6 +553,7 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
   });
 
   // Check whether the ticket's userGroup may access the requested resources, filling the context's maps as a side effect.
+  ctx->numClientProvidedAccessSubjects = ctx->pps.size();
   if (!ctx->request.participantGroups.empty()) {
     backend_->checkParticipantGroupAccess(
         ctx->request.participantGroups,
@@ -561,6 +563,10 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
 
     ctx->subjectGroupMap = backend_->fillParticipantGroupMap(ctx->request.participantGroups, ctx->pps);
   }
+
+  // Append the pps of reference subjects after the pps of access subjects
+  ctx->numAllAccessSubjects = ctx->pps.size();
+  ctx->pps.append_range(ctx->request.referenceSubjects);
 
   // Check columns and column groups; ticket.columns is unfolded in place
   ctx->columnGroupMap = backend_->unfoldColumnGroupsAndCheckAccess(
@@ -574,20 +580,25 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
 }
 
 rxcpp::observable<TranscryptorResponse> AccessManager::transcryptTicketRequest(std::shared_ptr<TicketRequestContext> ctx) {
-  ctx->tsReqEntries.entries.resize(ctx->pps.size());
+  // Transcrypt both the access subjects and the reference subjects: ctx->pps holds the access
+  // subjects first and the reference subjects last.
+  const auto totalSubjects = ctx->pps.size();
+  ctx->tsReqEntries.entries.resize(totalSubjects);
 
   // workerPool_->batched_map() does not tell us which index we're handling,
   // so we let it process indices to work around this.
   // If we need this more often, it's better to change batched_map()
   return ctx->server->workerPool_->batched_map<8>(
-      std::vector(std::from_range, views::iota(std::size_t{}, ctx->pps.size())),
+      std::vector(std::from_range, views::iota(std::size_t{}, totalSubjects)),
       ObserveOnAsio(*ctx->server->getIoContext()),
       [ctx](size_t i) {
-        const Backend::Pp& pp = ctx->pps[i];
+        const auto& pp = ctx->pps[i];
         TranscryptorRequestEntry& entry = ctx->tsReqEntries.entries[i];
 
         // Rerandomize old PPs (ie. from the database) to prevent multiple users receiving identical PPs
-        entry.polymorphic = (pp.isClientProvided) ? pp.pp : pp.pp.rerandomize();
+        const auto isAccessSubject = i < ctx->numAllAccessSubjects;
+        const auto isClientProvidedAccessSubject = i < ctx->numClientProvidedAccessSubjects;
+        entry.polymorphic = (isAccessSubject && !isClientProvidedAccessSubject) ? pp.rerandomize() : pp;
 
         FillTranscryptorRequestEntry(entry, ctx->server->pseudonymTranslator(), ctx->userRecipient);
         return i;
@@ -622,16 +633,24 @@ std::string AccessManager::identifyTicketRequestSubjects(TicketRequestContext& c
     throw std::runtime_error("Transcryptor returned wrong number of entries");
   }
 
-  ctx.ticket.accessSubjects = std::move(resp.entries);
+  { // Split the response: first part for access subjects, second part for reference subjects
+    const auto refSubsBegin = resp.entries.begin() + static_cast<std::ptrdiff_t>(ctx.numAllAccessSubjects);
+    ctx.ticket.accessSubjects = std::vector<LocalPseudonyms>(resp.entries.begin(), refSubsBegin);
+    ctx.ticket.referenceSubjects = std::vector<LocalPseudonyms>(refSubsBegin, resp.entries.end());
+  }
+
+  // Perform access checks only for access subjects (references do not require access)
   if (ctx.ticket.userGroup == UserGroup::DataAdministrator && !ctx.ticket.accessSubjects.empty()) {
     PEP_LOG(LogTag, Severity::Info) << "Granting " << ctx.ticket.userGroup << " unchecked access to " << ctx.ticket.accessSubjects.size() << " subject(s)";
   }
-  for (auto [accessSubject, pp] : views::zip(ctx.ticket.accessSubjects, ctx.pps)) {
+  for (std::size_t i = 0; i < ctx.ticket.accessSubjects.size(); ++i) {
+    const auto& accessSubject = ctx.ticket.accessSubjects[i];
     LocalPseudonym localPseudonym = accessSubject.accessManager.decrypt(ctx.server->pseudonymKey_);
     if (ctx.ticket.userGroup != UserGroup::DataAdministrator) {
       ctx.server->backend_->checkParticipantAccess(ctx.ticket.userGroup, localPseudonym, ctx.requiredSubjectModes, ctx.ticket.timestamp);
     }
-    if (pp.isClientProvided && !ctx.server->backend_->hasLocalPseudonym(localPseudonym) && ctx.ticket.hasMode("write")) {
+    const auto isClientProvidedAccessSubject = i < ctx.numClientProvidedAccessSubjects;
+    if (isClientProvidedAccessSubject && !ctx.server->backend_->hasLocalPseudonym(localPseudonym) && ctx.ticket.hasMode("write")) {
       ctx.server->backend_->storeLocalPseudonymAndPP(localPseudonym, accessSubject.polymorphic);
     }
   }

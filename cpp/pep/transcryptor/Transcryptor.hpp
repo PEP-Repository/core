@@ -11,6 +11,7 @@
 #include <pep/transcryptor/Storage.hpp>
 
 #include <optional>
+#include <span>
 
 namespace pep {
 
@@ -68,9 +69,6 @@ private:
   messaging::MessageBatches handleRekeyRequest(std::shared_ptr<RekeyRequest> pRequest);
   messaging::MessageBatches handleLogIssuedTicketRequest(std::shared_ptr<LogIssuedTicketRequest> request);
 
-  static std::string ComputePseudonymHash(
-    const std::vector<LocalPseudonyms>& pseuds);
-
 private:
   std::shared_ptr<WorkerPool> workerPool_;
   std::optional<ElgamalPrivateKey> pseudonymKey_;
@@ -83,4 +81,8 @@ private:
   LocalChecksumChainHandler checksumChainHandler_;
 };
 
+/// Hashes a pair of pseudonym lists into a single value.
+///
+/// Result depends on both the order of the lists and (the order of) their elements.
+std::string ComputePseudonymHash(std::span<const LocalPseudonyms>, std::span<const LocalPseudonyms>);
 }

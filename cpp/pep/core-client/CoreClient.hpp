@@ -166,7 +166,8 @@ struct StoreData2Entry : public StoreMetadata2Entry {
 // Used as arguments for CoreClient::requestTicket2
 struct RequestTicket2Opts{
   std::vector<std::string> participantGroups;
-  std::vector<PolymorphicPseudonym> pps;
+  std::vector<PolymorphicPseudonym> accessSubjects;
+  std::vector<PolymorphicPseudonym> referenceSubjects;
   std::vector<std::string> columnGroups;
   std::vector<std::string> columns;
   std::vector<std::string> modes; // "read-meta", "write-meta", "read", "write"
