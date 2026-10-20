@@ -82,8 +82,8 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
     }
     if (!ctx->pps.contains(*entry.polymorphicPseudonym)) {
       ctx->pps[*entry.polymorphicPseudonym] = static_cast<uint32_t>(
-          ticketRequest.pps.size());
-      ticketRequest.pps.push_back(*entry.polymorphicPseudonym);
+          ticketRequest.accessSubjects.size());
+      ticketRequest.accessSubjects.push_back(*entry.polymorphicPseudonym);
     }
   }
 
@@ -112,7 +112,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
   }
 
   // Send ticket request
-  auto requestedPps = ticketRequest.pps.size();
+  auto requestedPps = ticketRequest.accessSubjects.size();
   return requestTicket2(ticketRequest)
   .flat_map([this,ctx, requestedPps](IndexedTicket2 indexedTicket) {
     auto signedTicket = std::move(indexedTicket).getTicket();
@@ -197,8 +197,8 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     }
     if (!ctx->pps.contains(*entry.polymorphicPseudonym)) {
       ctx->pps[*entry.polymorphicPseudonym] = static_cast<uint32_t>(
-        ticketRequest.pps.size()); // Associate the PP with the index it'll get in the ticket
-      ticketRequest.pps.push_back(*entry.polymorphicPseudonym);
+        ticketRequest.accessSubjects.size()); // Associate the PP with the index it'll get in the ticket
+      ticketRequest.accessSubjects.push_back(*entry.polymorphicPseudonym);
     }
 
     DataStoreEntry2 storeEntry2;
@@ -212,7 +212,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
     ctx->request->entries.emplace_back(storeEntry2);
   }
 
-  auto requestedPps = ticketRequest.pps.size();
+  auto requestedPps = ticketRequest.accessSubjects.size();
   return requestTicket2(ticketRequest) // Request a ticket
     .flat_map([this, ctx, requestedPps](IndexedTicket2 indexedTicket) {
     auto signedTicket = std::move(indexedTicket).getTicket();
@@ -397,8 +397,8 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
     }
     if (!ctx->pps.contains(*entry.polymorphicPseudonym)) {
       ctx->pps[*entry.polymorphicPseudonym] = static_cast<uint32_t>(
-        ticketRequest.pps.size());
-      ticketRequest.pps.push_back(*entry.polymorphicPseudonym);
+        ticketRequest.accessSubjects.size());
+      ticketRequest.accessSubjects.push_back(*entry.polymorphicPseudonym);
     }
   }
 
@@ -414,7 +414,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
     ctx->request->entries.emplace_back(entry2);
   }
 
-  auto requestedPps = ticketRequest.pps.size();
+  auto requestedPps = ticketRequest.accessSubjects.size();
   return requestTicket2(ticketRequest)
     .flat_map([this, ctx, requestedPps](IndexedTicket2 indexedTicket) {
     auto signedTicket = std::move(indexedTicket).getTicket();

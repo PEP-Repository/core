@@ -5,16 +5,19 @@
 #include <pep/rsk/Proofs.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
-#include <pep/transcryptor/ChecksumChain.hpp>
+#include <pep/server/ChecksumChain.hpp>
 
 #include <filesystem>
 
 namespace pep {
 
 class TranscryptorStorage {
+public:
+  struct Implementor;
+
 private:
   std::string path_;
-  std::shared_ptr<TranscryptorStorageBackend> storage_;
+  std::shared_ptr<Implementor> implementor_;
   ChecksumChains checksumChains_;
 
   void ensureInitialized();
@@ -58,10 +61,7 @@ private:
     const std::string& accessGroup,
     Timestamp timestamp);
 
-  std::vector<std::string> getChecksumChainNames();
-
-  void computeChecksum(const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-        uint64_t& checksum, uint64_t& checkpoint);
+  const ChecksumChains& checksumChains() const noexcept { return checksumChains_; }
 };
 
 }

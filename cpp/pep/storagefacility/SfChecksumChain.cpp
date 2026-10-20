@@ -1,7 +1,7 @@
-#include <pep/storagefacility/ChecksumChain.hpp>
+#include <pep/storagefacility/SfChecksumChain.hpp>
 #include <pep/serialization/Error.hpp>
 
-namespace pep::storagefacility {
+namespace pep {
 
 namespace {
 
@@ -21,7 +21,7 @@ ChecksumChain::Checkpoint TimestampToCheckpoint(Timestamp timestamp) {
  * - at timestamp 2, the purge is processed between entries 3 and 4.
  * - at timestamp 4, the purge is processed between entries 4 and 5.
  */
-class FilesChecksumChain : public ChecksumChain {
+class FilesChecksumChain : public SfChecksumChain {
 private:
   struct PurgeRecord {
     // Must be ordered deterministically to prevent checksum chain calculation differences, and since...
@@ -33,9 +33,9 @@ private:
     std::strong_ordering operator<=>(const PurgeRecord&) const = default;
   };
 
-  std::set<PurgeRecord> purgeRecords_;
+  mutable std::set<PurgeRecord> purgeRecords_;
 
-  Result addPurgeChecksums(Result result, Checkpoint max) {
+  Result addPurgeChecksums(Result result, Checkpoint max) const {
     while (!purgeRecords_.empty()) {
       auto first = purgeRecords_.begin();
       const auto& record = *first;
@@ -53,11 +53,11 @@ private:
   }
 
 protected:
-  Result addCell(Result result, Checkpoint max, const FileStore::Cell& cell) override {
+  Result addCell(Result result, Checkpoint max, const FileStore::Cell& cell) const override {
     assert(purgeRecords_.empty() && "State wasn't cleared by processing of previous cell");
 
     // Let base class implementation (invoke our method to) process cell versions
-    result = ChecksumChain::addCell(result, max, cell);
+    result = SfChecksumChain::addCell(result, max, cell);
     // Process any purges that occurred (after the last cell version but) before the max checkpoint
     result = this->addPurgeChecksums(result, max);
     // Discard remaining purge records for this cell, to clear the state for (processing of) the next cell
@@ -66,7 +66,7 @@ protected:
     return result;
   }
 
-  Result addCellVersion(Result result, const FileStore::CellVersion& version) override {
+  Result addCellVersion(Result result, const FileStore::CellVersion& version) const override {
     // Process any purges that occurred before this cell version was stored.
     // Defensive programming: we subtract 1 from the version's timestamp to process only purges that occurred **before**
     // this version appeared, even though SF already ensures that purge cycle timestamps don't collide with storage
@@ -92,30 +92,30 @@ protected:
   }
 
 public:
-  explicit FilesChecksumChain(const FileStore& fileStore) : ChecksumChain(fileStore, "files") {}
+  explicit FilesChecksumChain(const FileStore& fileStore) : SfChecksumChain(fileStore, "files") {}
 };
 
-class EntryCountChecksumChain : public ChecksumChain {
+class EntryCountChecksumChain : public SfChecksumChain {
 protected:
-  Result addCellVersion(Result result, const FileStore::CellVersion& version) override {
+  Result addCellVersion(Result result, const FileStore::CellVersion& version) const override {
     result.checksum++;
     // result.checkpoint is updated by this->addCell (who is calling us)
     return result;
   }
 
 public:
-  explicit EntryCountChecksumChain(const FileStore& fileStore) : ChecksumChain(fileStore, "entry-count") {}
+  explicit EntryCountChecksumChain(const FileStore& fileStore) : SfChecksumChain(fileStore, "entry-count") {}
 };
 
 }
 
 using namespace std::chrono_literals;
 
-ChecksumChain::ChecksumChain(const FileStore& fileStore, std::string name) noexcept
-  : pep::ChecksumChain(std::move(name)), fileStore_(fileStore) {
+SfChecksumChain::SfChecksumChain(const FileStore& fileStore, std::string name) noexcept
+  : ChecksumChain(std::move(name)), fileStore_(fileStore) {
 }
 
-ChecksumChain::Result ChecksumChain::addCell(Result result, Checkpoint max, const FileStore::Cell& cell) {
+ChecksumChain::Result SfChecksumChain::addCell(Result result, Checkpoint max, const FileStore::Cell& cell) const {
   for (const auto& version : cell.versions()) {
     auto versionCheckpoint = TimestampToCheckpoint(version.validFrom);
     if (versionCheckpoint > max) {
@@ -128,7 +128,7 @@ ChecksumChain::Result ChecksumChain::addCell(Result result, Checkpoint max, cons
   return result;
 }
 
-ChecksumChain::Result ChecksumChain::get(const std::optional<Checkpoint>& maxCheckpoint) {
+ChecksumChain::Result SfChecksumChain::get(const std::optional<Checkpoint>& maxCheckpoint) const {
   Result result;
 
   // The Storage Facility uses a timestamp as checkpoint
@@ -143,11 +143,11 @@ ChecksumChain::Result ChecksumChain::get(const std::optional<Checkpoint>& maxChe
   return result;
 }
 
-ChecksumChains ChecksumChain::CreateAll(const FileStore& fileStore) {
-  ChecksumChains result;
-  result.insert(std::make_unique<FilesChecksumChain>(fileStore));
-  result.insert(std::make_unique<EntryCountChecksumChain>(fileStore));
-  return result;
+ChecksumChains SfChecksumChain::CreateAll(const FileStore& fileStore) {
+  return ChecksumChains{
+    std::make_unique<FilesChecksumChain>(fileStore),
+    std::make_unique<EntryCountChecksumChain>(fileStore),
+  };
 }
 
 }

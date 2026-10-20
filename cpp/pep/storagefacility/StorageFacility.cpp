@@ -12,7 +12,6 @@
 #include <pep/async/RxParallelConcat.hpp>
 #include <pep/utils/ApplicationMetrics.hpp>
 #include <pep/auth/EnrolledParty.hpp>
-#include <pep/storagefacility/ChecksumChain.hpp>
 #include <pep/storagefacility/Constants.hpp>
 #include <pep/storagefacility/PurgeSerializers.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
@@ -285,20 +284,6 @@ void StorageFacility::Parameters::check() const {
     throw std::runtime_error("dataSizeResolution cannot be zero");
   }
   // FIXME: check if errors happend during startup of file store
-}
-
-std::vector<std::string> StorageFacility::getChecksumChainNames() const {
-  return checksumChains_.names()
-    | to<std::vector>();
-}
-
-void StorageFacility::computeChecksumChainChecksum(
-  const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-  uint64_t& checksum, uint64_t& checkpoint) {
-
-  auto result = checksumChains_[chain].get(maxCheckpoint);
-  checksum = result.checksum;
-  checkpoint = result.checkpoint;
 }
 
 messaging::MessageBatches
@@ -1314,7 +1299,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   timer_(*parameters->getIoContext()),
   parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()),
-  checksumChains_(storagefacility::ChecksumChain::CreateAll(*fileStore_)) {
+  checksumChainHandler_(fileStore_->checksumChains()) {
 
   // Resume persisting purges that were not completed when the the process ran last time
   fileStore_->persistPendingPurges();

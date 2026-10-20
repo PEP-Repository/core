@@ -4,6 +4,7 @@
 #include <pep/async/ReaderWriterLock.hpp>
 #include <pep/utils/CheckedPath.hpp>
 #include <pep/utils/Shared.hpp>
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/storagefacility/EntryContent.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
 #include <pep/messaging/MessageSequence.hpp>
@@ -232,6 +233,8 @@ private:
   CheckedPath path_;
   std::shared_ptr<PageStore> pagestore_;
 
+  ChecksumChains checksumChains_;
+
   const std::string& getColumnString(const std::string& value);
   EntryContent::MetadataEntry makeMetadataEntry(std::string key, std::string value);
 
@@ -256,8 +259,11 @@ public:
   }
 
   std::set<std::string> pagePaths() const; // for latest version
+
   void applyPurgeCycle(const PurgeCycle& cycle); // synchronously in memory and asynchronously on disk
   void persistPendingPurges(); // asynchronously on disk
+
+  const ChecksumChains& checksumChains() const noexcept { return checksumChains_; }
 };
 
 }

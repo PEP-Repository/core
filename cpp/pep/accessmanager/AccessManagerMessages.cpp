@@ -32,6 +32,10 @@ std::vector<PolymorphicPseudonym> IndexedTicket2::getAccessSubjects() const {
   return GetPolymorphicPseudonyms(openTicketWithoutCheckingSignature()->accessSubjects);
 }
 
+std::vector<PolymorphicPseudonym> IndexedTicket2::getReferenceSubjects() const {
+  return GetPolymorphicPseudonyms(openTicketWithoutCheckingSignature()->referenceSubjects);
+}
+
 std::shared_ptr<Ticket2> IndexedTicket2::openTicketWithoutCheckingSignature() const {
   std::lock_guard<std::mutex> lock(unpackedTicketLock_);
   if (unpackedTicket_ == nullptr)

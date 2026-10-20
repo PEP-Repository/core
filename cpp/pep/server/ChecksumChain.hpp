@@ -30,7 +30,8 @@ public:
   /// \brief Returns the checksum chain's value at the highest available checkpoint not exceeding the specified one.
   /// \param maxCheckpoint The maximum checkpoint value to include in the checksum, or nullopt to include all available checkpoints.
   /// \return The result of the checksum (calculation).
-  virtual Result get(const std::optional<Checkpoint>& maxCheckpoint) = 0;
+  virtual Result get(const std::optional<Checkpoint>& maxCheckpoint) const = 0;
+  Result operator()(const std::optional<Checkpoint>& maxCheckpoint) const { return this->get(maxCheckpoint); }
 };
 
 
@@ -38,10 +39,19 @@ class ChecksumChains {
 private:
   PropertyBasedContainer<std::unique_ptr<ChecksumChain>, &ChecksumChain::name>::set items_;
 
-public:
   void insert(std::unique_ptr<ChecksumChain> chain);
+
+public:
+  template <typename... TUniquePtrs>
+  explicit ChecksumChains(TUniquePtrs... ptrs) {
+    (this->insert(std::move(ptrs)), ...);
+  }
+
   std::set<std::string> names() const;
-  ChecksumChain& operator[](const std::string& name);
+  [[noreturn]] static void ThrowUnknownChainError(const std::string& name);
+
+  const ChecksumChain& chain(const std::string& name) const;
+  const ChecksumChain& operator[](const std::string& name) const { return this->chain(name); }
 };
 
 }

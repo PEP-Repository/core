@@ -101,15 +101,7 @@ TEST_F(AccessManagerStorageTest, addParticipantToGroup_non_existent_pg) {
   storage->storeLocalPseudonymAndPP(localPseudonym, dummyPP);
 
   // Act
-  try {
-    storage->addParticipantToGroup(localPseudonym, pg_name);
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "No such participant-group: \"" + pg_name + "\"";
-    ASSERT_EQ(e.what(), expectedMessage);
-  }
+  PEP_EXPECT_THROWS_MESSAGE(storage->addParticipantToGroup(localPseudonym, pg_name), Error, "No such participant-group: \"" + pg_name + "\"");
 
   // Assert
   ASSERT_FALSE(storage->hasParticipantInGroup(localPseudonym, pg_name));
@@ -122,15 +114,7 @@ TEST_F(AccessManagerStorageTest, addParticipantToGroup_non_existent_pp) {
 
   const LocalPseudonym localPseudonym{LocalPseudonym::Random()};
   // Act
-  try {
-    storage->addParticipantToGroup(localPseudonym, pg_name);
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "No such participant known";
-    ASSERT_EQ(e.what(), expectedMessage);
-  }
+  PEP_EXPECT_THROWS_MESSAGE(storage->addParticipantToGroup(localPseudonym, pg_name), Error, "No such participant known");
 
   // Assert
   ASSERT_FALSE(storage->hasParticipantInGroup(localPseudonym, pg_name));
@@ -143,15 +127,8 @@ TEST_F(AccessManagerStorageTest, addParticipantToGroup_particpant_already_in_pg)
   createParticipantGroupParticipant(pg_name, localPseudonym);
 
   // Act
-  try {
-    storage->addParticipantToGroup(localPseudonym, pg_name); // The pp is already in the pg.
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "Participant is already in participant-group: \"" + pg_name + "\"";
-    ASSERT_EQ(e.what(), expectedMessage);
-  }
+  PEP_EXPECT_THROWS_MESSAGE(storage->addParticipantToGroup(localPseudonym, pg_name), // The pp is already in the pg.
+    Error, "Participant is already in participant-group: \"" + pg_name + "\"");
 
   // Assert
   ASSERT_TRUE(storage->hasParticipantInGroup(localPseudonym, pg_name));
@@ -177,15 +154,8 @@ TEST_F(AccessManagerStorageTest, removeParticipantFromGroup_particpant_not_in_pg
   storage->createParticipantGroup(pg_name);
 
   // Act
-  try {
-    storage->removeParticipantFromGroup(localPseudonym, pg_name); // The pp is already in the pg.
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "This participant is not part of participant-group \"" + pg_name + "\"";
-    ASSERT_EQ(e.what(), expectedMessage);
-  }
+  PEP_EXPECT_THROWS_MESSAGE(storage->removeParticipantFromGroup(localPseudonym, pg_name), // The pp is already in the pg.
+    Error, "This participant is not part of participant-group \"" + pg_name + "\"");
 
   // Assert
   ASSERT_FALSE(storage->hasParticipantInGroup(localPseudonym, pg_name));
@@ -238,7 +208,7 @@ TEST_F(AccessManagerStorageTest, getStoragePath_happy) {
 }
 
 TEST_F(AccessManagerStorageTest, getChecksumChainNames_happy) {
-  auto actual = storage->getChecksumChainNames();
+  auto actual = storage->checksumChains().names() | to<std::vector>();
   auto expected = std::vector<std::string>{
     "column-group-accessrule",
     "column-group-columns",
@@ -256,26 +226,13 @@ TEST_F(AccessManagerStorageTest, getChecksumChainNames_happy) {
     "user-group-users",
     "structure-metadata",
   };
-  sort(actual);
   sort(expected);
   ASSERT_EQ(actual, expected);
 }
 
 TEST_F(AccessManagerStorageTest, computeChecksum_unknown_chain) {
-  std::string chain{"unknown_chain"};
-  std::optional<size_t> maxCheckpoint{};
-  uint64_t checksum{};
-  uint64_t checkpoint{};
-  try {
-    storage->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
-
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "No such checksum chain";
-    ASSERT_EQ(e.what(), expectedMessage);
-  }
+  std::string name{"unknown_chain"};
+  PEP_EXPECT_THROWS_MESSAGE(storage->checksumChains().chain(name), Error, "No checksum chain available with name unknown_chain");
 }
 
 TEST_F(AccessManagerStorageTest, hasColumn) {
@@ -354,22 +311,14 @@ TEST_F(AccessManagerStorageTest, getColumnGroupColumns_deleted_column) {
 
 TEST_F(AccessManagerStorageTest, createColumn) {
   ASSERT_NO_THROW(storage->createColumn("MyColumn"));
-  PEP_EXPECT_THROWS_MESSAGE(
-    storage->createColumn("MyColumn"),
-    pep::Error,
-    HasSubstr("MyColumn"))
+  PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->createColumn("MyColumn"), pep::Error, "MyColumn")
     << "Should reject case re-creation of existing column";
-  PEP_EXPECT_THROWS_MESSAGE(
-    storage->createColumn("Mycolumn"),
-    pep::Error,
-    HasSubstr("MyColumn"))
+  PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->createColumn("Mycolumn"), pep::Error, "MyColumn")
     << "Should reject case re-creation of existing column, ignoring case";
 
   for (const auto& invalidName : { "1*1", "abc/def", "abc\\def" }) {
-    PEP_EXPECT_THROWS_MESSAGE(
-      storage->createColumn(invalidName),
-      pep::Error,
-      HasSubstr("Invalid column name")) << "Column name '" << invalidName << "' should have been rejected";
+    PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->createColumn(invalidName), pep::Error, "Invalid column name")
+      << "Column name '" << invalidName << "' should have been rejected";
   }
 }
 
@@ -391,27 +340,27 @@ TEST_F(AccessManagerStorageTest, createUserGuardsAgainstDuplicates) {
         HasSubstr(cs == CaseSensitive ? "case-sensitive" : "case-insensitive")); // case-insensitive by default
   };
 
-  PEP_EXPECT_THROWS_MESSAGE(
+  PEP_EXPECT_THROWS_MESSAGE_MATCHING(
       storage->createUser("Aart.Appel@fake.ru.nl"),
       pep::Error,
       msgMatcher());
 
-  PEP_EXPECT_THROWS_MESSAGE(
+  PEP_EXPECT_THROWS_MESSAGE_MATCHING(
       storage->createUser("Aart.Appel@fake.ru.nl", CaseSensitive),
       pep::Error,
       msgMatcher(CaseSensitive));
 
-  PEP_EXPECT_THROWS_MESSAGE(
+  PEP_EXPECT_THROWS_MESSAGE_MATCHING(
       storage->createUser("Aart.Appel@fake.ru.nl", CaseInsensitive),
       pep::Error,
       msgMatcher(CaseInsensitive));
 
-  PEP_EXPECT_THROWS_MESSAGE(
+  PEP_EXPECT_THROWS_MESSAGE_MATCHING(
       storage->createUser("aart.appel@fake.ru.nl"),
       pep::Error,
       msgMatcher());
 
-  PEP_EXPECT_THROWS_MESSAGE(
+  PEP_EXPECT_THROWS_MESSAGE_MATCHING(
       storage->createUser("AART.APPEL@fake.ru.nl", CaseInsensitive),
       pep::Error,
       msgMatcher(CaseInsensitive));
@@ -477,17 +426,17 @@ TEST_F(AccessManagerStorageTest, findInternalUserId) {
     EXPECT_EQ(storage->findInternalUserId(std::vector<std::string>{}, CaseInsensitive), std::nullopt) << section;
     EXPECT_EQ(storage->findInternalUserId(std::vector<std::string>{}, CaseSensitive), std::nullopt) << section;
 
-    PEP_EXPECT_THROWS_MESSAGE(
+    PEP_EXPECT_THROWS_MESSAGE_MATCHING(
         storage->findInternalUserId("QmVydEJyYWFt", CaseInsensitive),
         pep::Error,
         msgMatcher);
 
-    PEP_EXPECT_THROWS_MESSAGE(
+    PEP_EXPECT_THROWS_MESSAGE_MATCHING(
         storage->findInternalUserId(std::vector<std::string>{"QmVydEJyYWFt", "qMvYDejYywfT"}, CaseSensitive),
         pep::Error,
         msgMatcher);
 
-    PEP_EXPECT_THROWS_MESSAGE(
+    PEP_EXPECT_THROWS_MESSAGE_MATCHING(
         storage->findInternalUserId(
             std::vector<std::string>{"AART.APPEL@FAKE.RU.NL", "BERT.BES@FAKE.RU.NL"},
             CaseInsensitive),
@@ -554,18 +503,18 @@ TEST_F(AccessManagerStorageTest, ensureUserCanBeAddedToGroup_and_ensureUserInGro
   int64_t userId = storage->createUser("testuser");
   int64_t groupId = storage->createUserGroup(UserGroup("TestGroup", {}));
 
-  PEP_EXPECT_THROWS_MESSAGE(storage->ensureUserCanBeAddedToGroup(userId, "NoGroup"), pep::Error, HasSubstr("No such group"));
+  PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->ensureUserCanBeAddedToGroup(userId, "NoGroup"), pep::Error, "No such group");
   EXPECT_ANY_THROW(storage->ensureUserInGroup(userId, "NoGroup"));
 
   EXPECT_EQ(storage->ensureUserCanBeAddedToGroup(userId, "TestGroup"), groupId);
-  PEP_EXPECT_THROWS_MESSAGE(storage->ensureUserInGroup(userId, "TestGroup"), pep::Error, HasSubstr("not part of group"));
-  PEP_EXPECT_THROWS_MESSAGE(storage->setExpiration(userId, "TestGroup", {}), pep::Error, HasSubstr("not part of group"));
-  PEP_EXPECT_THROWS_MESSAGE(storage->removeUserFromGroup(userId, "TestGroup"), pep::Error, HasSubstr("not part of group"));
+  PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->ensureUserInGroup(userId, "TestGroup"), pep::Error, "not part of group");
+  PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->setExpiration(userId, "TestGroup", {}), pep::Error, "not part of group");
+  PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->removeUserFromGroup(userId, "TestGroup"), pep::Error, "not part of group");
 
   storage->addUserToGroup(userId, "TestGroup", {});
   EXPECT_EQ(storage->ensureUserInGroup(userId, "TestGroup"), groupId);
-  PEP_EXPECT_THROWS_MESSAGE(storage->ensureUserCanBeAddedToGroup(userId, "TestGroup"), pep::Error, HasSubstr("already in group"));
-  PEP_EXPECT_THROWS_MESSAGE(storage->addUserToGroup(userId, "TestGroup", {}), pep::Error, HasSubstr("already in group"));
+  PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->ensureUserCanBeAddedToGroup(userId, "TestGroup"), pep::Error, "already in group");
+  PEP_EXPECT_THROWS_MESSAGE_CONTAINING(storage->addUserToGroup(userId, "TestGroup", {}), pep::Error, "already in group");
 
   // Expired membership counts as not being in the group
   storage->setExpiration(userId, "TestGroup", TimeNow() - 1h);

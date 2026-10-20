@@ -44,6 +44,8 @@ Ticket2 Serializer<Ticket2>::fromProtocolBuffer(proto::Ticket2&& source) const {
 
   Serialization::AssignFromRepeatedProtocolBuffer(result.accessSubjects,
     std::move(*source.mutable_access_subjects()));
+  Serialization::AssignFromRepeatedProtocolBuffer(result.referenceSubjects,
+    std::move(*source.mutable_reference_subjects()));
 
   return result;
 }
@@ -58,6 +60,7 @@ void Serializer<Ticket2>::moveIntoProtocolBuffer(proto::Ticket2& dest, Ticket2 v
   for (auto& x : value.columns)
     dest.add_columns(std::move(x));
   Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_access_subjects(), std::move(value.accessSubjects));
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_reference_subjects(), std::move(value.referenceSubjects));
 }
 
 SignedTicket2 Serializer<SignedTicket2>::fromProtocolBuffer(proto::SignedTicket2&& source) const {
@@ -100,8 +103,8 @@ TicketRequest2 Serializer<TicketRequest2>::fromProtocolBuffer(proto::TicketReque
   const auto transformToPolymorphicPseudonym = views::transform([](proto::ElgamalEncryption& pp) {
     return PolymorphicPseudonym(Serialization::FromProtocolBuffer(std::move(pp)));
   });
-  result.accessSubjects =
-    *source.mutable_access_subjects() | transformToPolymorphicPseudonym | to<std::vector>();
+  result.accessSubjects = *source.mutable_access_subjects() | transformToPolymorphicPseudonym | to<std::vector>();
+  result.referenceSubjects = *source.mutable_reference_subjects() | transformToPolymorphicPseudonym | to<std::vector>();
   return result;
 }
 
@@ -124,6 +127,10 @@ void Serializer<TicketRequest2>::moveIntoProtocolBuffer(proto::TicketRequest2& d
   Serialization::AssignToRepeatedProtocolBuffer(
     *dest.mutable_access_subjects(),
     value.accessSubjects
+    | views::transform(&PolymorphicPseudonym::getValidElgamalEncryption));
+  Serialization::AssignToRepeatedProtocolBuffer(
+    *dest.mutable_reference_subjects(),
+    value.referenceSubjects
     | views::transform(&PolymorphicPseudonym::getValidElgamalEncryption));
 }
 

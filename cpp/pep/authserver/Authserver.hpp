@@ -30,15 +30,10 @@ public:
   explicit Authserver(std::shared_ptr<Parameters> parameters);
 
 protected:
-  std::vector<std::string> getChecksumChainNames() const override;
-  void computeChecksumChainChecksum(
-    const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-    uint64_t& checksum, uint64_t& checkpoint) override;
+  const ChecksumChainHandler& checksumChainHandler() const noexcept override;
 
 private:
   messaging::MessageBatches handleTokenRequest(std::shared_ptr<SignedTokenRequest> signedRequest);
-  messaging::MessageBatches handleChecksumChainRequest(std::shared_ptr<SignedChecksumChainRequest> signedRequest);
-
 
   std::shared_ptr<AuthserverBackend> backend_;
   std::shared_ptr<OAuthProvider> oAuth_;

@@ -20,7 +20,6 @@ verify_headers_standalone(${PROJECT_NAME}StorageFacilityApilib)
 
 if(WITH_SERVERS)
   add_library(${PROJECT_NAME}StorageFacilitylib
-      ChecksumChain.cpp ChecksumChain.hpp
       EntryContent.cpp EntryContent.hpp
       EntryName.cpp EntryName.hpp
       EntryPayload.cpp EntryPayload.hpp
@@ -34,6 +33,7 @@ if(WITH_SERVERS)
       S3Credentials.PropertySerializer.cpp S3Credentials.PropertySerializer.hpp
       SFId.hpp
       SFIdSerializer.cpp SFIdSerializer.hpp
+      SfChecksumChain.cpp SfChecksumChain.hpp
       SqliteStorage.cpp SqliteStorage.hpp # Named this way to contrast with other "Store/Storage" code in this project
       StorageFacility.cpp StorageFacility.hpp
   )

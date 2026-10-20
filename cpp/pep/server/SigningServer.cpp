@@ -3,6 +3,7 @@
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/server/SigningServer.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/utils/File.hpp>
 #include <pep/utils/Shared.hpp>
 #include <pep/server/CertificateRenewalSerializers.hpp>
 

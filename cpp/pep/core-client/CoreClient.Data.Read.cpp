@@ -63,6 +63,7 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
       ->requestTicket(ClientSideTicketRequest2{.modes = {"read"},
                                                .participantGroups = participantGroups,
                                                .accessSubjects = pps,
+                                               .referenceSubjects = {},
                                                .columnGroups = columnGroups,
                                                .columns = columns,
                                                .includeUserGroupPseudonyms = false})

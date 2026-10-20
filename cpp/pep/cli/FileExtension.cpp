@@ -416,7 +416,7 @@ protected:
           ticketRequest.modes.emplace_back("read-meta");
           ticketRequest.includeAccessGroupPseudonyms = true;
           ticketRequest.participantGroups = *pgs;
-          ticketRequest.pps = *pps;
+          ticketRequest.accessSubjects = *pps;
 
           ticketRequest.columns = *columnExtensions
             | views::keys
@@ -585,7 +585,7 @@ private:
     return this->getPpsToProcess(client)
       .op(pep::RxGetOne("set of PPs"))
       .flat_map([client, opts](std::shared_ptr<std::vector<pep::PolymorphicPseudonym>> pps) {
-      opts->pps = *pps;
+      opts->accessSubjects = *pps;
 
       return client->requestTicket2(*opts);
         })
@@ -750,7 +750,7 @@ protected:
         opts.columnGroups = MultiCellQuery::GetColumnGroups(vm);
         opts.columns = MultiCellQuery::GetColumns(vm);
 
-        opts.pps = *specs
+        opts.accessSubjects = *specs
           | views::keys
           | to<std::vector>();
 

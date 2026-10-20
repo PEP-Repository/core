@@ -1,7 +1,10 @@
 #include <pep/auth/ServerTraits.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
+#include <pep/utils/MapUtils.hpp>
 #include <pep/utils/Math.hpp>
 
+#include <algorithm>
+#include <iterator>
 #include <ranges>
 
 using namespace std::literals;
@@ -119,6 +122,22 @@ Signed<TicketRequest2>::Signed(TicketRequest2 ticketRequest,
   data_ = Serialization::ToString(std::move(ticketRequest));
   signature_ = Signature::Make(data_, identity);
   logSignature_ = Signature::Make(data_, identity, true);
+}
+
+void ResolveDuplicatePseudonyms(ClientSideTicketRequest2& ticket) {
+  using namespace std::ranges;
+  constexpr auto removeDuplicates = [](auto& range) {
+    sort(range);
+    const auto [removed_begin, removed_end] = unique(range);
+    range.erase(removed_begin, removed_end);
+  };
+  removeDuplicates(ticket.referenceSubjects);
+  removeDuplicates(ticket.accessSubjects);
+
+  decltype(ticket.referenceSubjects) referencedOnlySubjects;
+  pep::ReserveToMatch(referencedOnlySubjects, ticket.referenceSubjects);
+  set_difference(ticket.referenceSubjects, ticket.accessSubjects, std::back_inserter(referencedOnlySubjects));
+  ticket.referenceSubjects = std::move(referencedOnlySubjects);
 }
 
 Signature Signed<TicketRequest2>::extractSignature() {

@@ -30,7 +30,7 @@ rxcpp::observable<std::shared_ptr<PepParticipant>> PepParticipant::LoadAll(std::
   const std::vector<std::string>& columnGroups) {
   RequestTicket2Opts ticketOpts;
   ticketOpts.modes = { "read" };
-  ticketOpts.pps = participants;
+  ticketOpts.accessSubjects = participants;
   ticketOpts.participantGroups = participantGroups;
   ticketOpts.columns = columns;
   ticketOpts.columnGroups = columnGroups;
@@ -40,7 +40,7 @@ rxcpp::observable<std::shared_ptr<PepParticipant>> PepParticipant::LoadAll(std::
     auto signedTicket = ticket.getTicket();  // Capture before move of ticket
 
     EnumerateAndRetrieveData2Opts earOpts;
-    earOpts.pps = ticketOpts.pps;
+    earOpts.pps = ticketOpts.accessSubjects;
     earOpts.groups = ticketOpts.participantGroups;
     earOpts.columnGroups = ticketOpts.columnGroups;
     earOpts.columns = ticketOpts.columns;

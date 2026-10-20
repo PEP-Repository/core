@@ -1,5 +1,6 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/tests/RxTestUtils.hpp>
+#include <pep/utils/TestMacros.hpp>
 
 TEST(RxRequireCount, Works) {
   using namespace pep;
@@ -18,12 +19,6 @@ TEST(RxRequireCount, Works) {
   EXPECT_ANY_THROW(testutils::exhaust(io_context, rxcpp::observable<>::empty<int>().op(RxRequireNonEmpty())));
 
   constexpr auto item_name = "floober in the goober";
-  try {
-    testutils::exhaust(io_context, rxcpp::observable<>::empty<int>().op(RxGetOne(item_name)));
-    FAIL() << "Previous statement should have thrown an exception";
-  }
-  catch (const std::exception& exception) {
-    std::string what = exception.what();
-    EXPECT_NE(what.find(item_name), std::string::npos);
-  }
+  PEP_EXPECT_THROWS_MESSAGE_CONTAINING(testutils::exhaust(io_context, rxcpp::observable<>::empty<int>().op(RxGetOne(item_name))),
+    std::exception, item_name);
 }
