@@ -231,10 +231,17 @@ include:
     - if: '$CI_COMMIT_REF_NAME =~ /^binaries_for_[0-9]+$/'
       when: never
 
+# Main, stable, release and hotfix branches are always linted, regardless of the autolinting input
+.always-linted-branches: &always-linted-branches
+  $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH || $CI_COMMIT_REF_NAME == $PEP_FOSS_TESTING_BRANCH || $CI_COMMIT_REF_NAME =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN || $CI_COMMIT_REF_NAME =~ $PEP_FOSS_HOTFIX_BRANCH_PATTERN
+
 # Must be last in rules, as it will not run more rules
 .set-enable-linter-and-terminate-rules:
   rules:
-    - if: "'$[[ inputs.autolinting ]]' == 'linted' || $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
+    - if: *always-linted-branches
+      variables:
+        ENABLE_LINTER: yes
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       variables:
         ENABLE_LINTER: yes
     - if: "'$[[ inputs.autolinting ]]' != 'linted'"
@@ -839,7 +846,7 @@ ubuntu-lts-debug-manual-sast:
     - .ubuntu-lts-release-settings
 
 # Builds (and optionally lints) binaries for ubuntu-lts-release
-ubuntu-lts-release-$[[ inputs.autolinting ]]:
+ubuntu-lts-release:
   extends:
     - .ubuntu-lts-release-base
     - .set-enable-linter-and-terminate-rules
@@ -864,7 +871,9 @@ ubuntu-lts-release-$[[ inputs.autolinting ]]:
 ubuntu-lts-release-manual-lint:
   extends: .ubuntu-lts-release-base
   rules:
-    - if: "'$[[ inputs.autolinting ]]' != 'linted' && $CI_COMMIT_REF_NAME != $PEP_FOSS_DEVELOPMENT_BRANCH"
+    - if: *always-linted-branches
+      when: never
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
       when: manual
       allow_failure: true
     - when: never
@@ -915,7 +924,7 @@ ubuntu-lts-release-without-castor:
     VERIFY_HEADERS_STANDALONE: "off"
 
 # Builds (and optionally lints) binaries for ubuntu-rolling-debug
-ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
+ubuntu-rolling-debug:
   extends:
     - .ubuntu-rolling-debug-base
   rules:
@@ -930,7 +939,9 @@ ubuntu-rolling-debug-$[[ inputs.autolinting ]]:
 ubuntu-rolling-debug-manual-lint:
   extends: .ubuntu-rolling-debug-base
   rules:
-    - if: "'$[[ inputs.autolinting ]]' != 'linted' && $CI_COMMIT_REF_NAME != $PEP_FOSS_DEVELOPMENT_BRANCH"
+    - if: *always-linted-branches
+      when: never
+    - if: "'$[[ inputs.autolinting ]]' != 'linted'"
       when: manual
       allow_failure: true
     - when: never
@@ -1265,7 +1276,7 @@ docker-images:
   extends: .dind
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   needs:
-    - ubuntu-lts-release-$[[ inputs.autolinting ]]
+    - ubuntu-lts-release
     - pep-connector
   #language=sh
   script:
@@ -1345,7 +1356,7 @@ test-pep-services-image:
     - job: docker-images
       artifacts: false
     # Use tests in $STAGING_DIRECTORY from artifacts
-    - ubuntu-lts-release-$[[ inputs.autolinting ]]
+    - ubuntu-lts-release
   #language=sh
   script:
     # First make sure included apps like pepcli work
