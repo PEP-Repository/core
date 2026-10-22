@@ -21,6 +21,7 @@
 #include <set>
 #include <utility>
 
+#include <sqlite_orm/sqlite_orm.h>
 
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/join.hpp>
