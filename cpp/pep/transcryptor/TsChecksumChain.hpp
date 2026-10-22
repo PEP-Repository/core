@@ -24,7 +24,9 @@ private:
   mutable Result lastResult_ = InitialResult;
 
 protected:
-  TsChecksumChain(TranscryptorStorage::Implementor& storage, std::string name) noexcept;
+  TsChecksumChain(TranscryptorStorage::Implementor& storage, std::string name) noexcept
+    : ChecksumChain(std::move(name)), storage_(storage) {
+  }
 
   TranscryptorStorage::Implementor& storage() const noexcept { return storage_; }
 

@@ -5,10 +5,6 @@
 
 namespace pep {
 
-TsChecksumChain::TsChecksumChain(TranscryptorStorage::Implementor& storage, std::string name) noexcept
-  : ChecksumChain(std::move(name)), storage_(storage) {
-}
-
 TsChecksumChain::Checkpoint TsChecksumChain::SeqNoToCheckpoint(int64_t seqNo) noexcept {
   return FirstRecordCheckpoint + static_cast<uint64_t>(seqNo);
 }
