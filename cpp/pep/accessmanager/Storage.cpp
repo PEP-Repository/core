@@ -21,6 +21,7 @@
 #include <set>
 #include <utility>
 
+#include <sqlite_orm/sqlite_orm.h>
 
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/join.hpp>
@@ -236,7 +237,7 @@ auto CreateAmDb(const std::string& path) {
   );
 }
 
-} 
+}
 
 // Can't be a typedef because we need to forward declare it for our pimpl idiom
 struct AccessManager::Backend::Storage::Implementor : database::Storage<CreateAmDb> {
