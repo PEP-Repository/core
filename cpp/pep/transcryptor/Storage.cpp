@@ -9,6 +9,7 @@
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
+#include <pep/transcryptor/ChecksumChain.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/database/Storage.hpp>
 
@@ -571,59 +572,6 @@ struct TranscryptorStorage::Implementor : database::Storage<TsCreateDb> {
 };
 
 namespace {
-
-class TsChecksumChain : boost::noncopyable, public ChecksumChain {
-protected:
-  static constexpr Checkpoint EmptyTableCheckpoint = 1;
-
-private:
-  static constexpr Checkpoint FirstRecordCheckpoint = EmptyTableCheckpoint + 1U; // Record sequence number 0 (zero) is checkpoint 2
-
-  static constexpr Result InitialResult{
-    .checksum = 0,
-    .checkpoint = EmptyTableCheckpoint,
-  };
-
-  TranscryptorStorage::Implementor& storage_;
-  mutable Result lastResult_ = InitialResult;
-
-protected:
-  TsChecksumChain(TranscryptorStorage::Implementor& storage, std::string name) noexcept : ChecksumChain(std::move(name)), storage_(storage) {}
-
-  TranscryptorStorage::Implementor& storage() const noexcept { return storage_; }
-
-  virtual Result recalculate(const Result& partial, Checkpoint maxCheckpoint) const = 0;
-
-  static Checkpoint SeqNoToCheckpoint(int64_t seqNo) noexcept { return FirstRecordCheckpoint + static_cast<uint64_t>(seqNo); }
-
-  static int64_t CheckpointToSeqNo(Checkpoint checkpoint) noexcept {
-    assert(checkpoint >= FirstRecordCheckpoint);
-    return static_cast<int64_t>(checkpoint - FirstRecordCheckpoint);
-  }
-
-public:
-  /// \remark Caches the last computed result to prevent excessive (re-)calculation.
-  Result get(const std::optional<Checkpoint>& maxCheckpoint) const override {
-    auto max = maxCheckpoint.value_or(std::numeric_limits<int64_t>::max());
-
-    if (max < EmptyTableCheckpoint) {
-      throw std::runtime_error("Invalid checkpoint " + std::to_string(max));
-    }
-
-    if (max < lastResult_.checkpoint) {
-      PEP_LOG("Transcryptor checksum chains", Severity::Info) << "Discarding pre-calculated checksum for checkpoint " << lastResult_.checkpoint
-        << " for chain " << this->name()
-        << " because earlier checkpoint " << max << " has been requested";
-      lastResult_ = InitialResult;
-    }
-    if (max == lastResult_.checkpoint) {
-      return lastResult_;
-    }
-
-    assert(max >= FirstRecordCheckpoint);
-    return lastResult_ = this->recalculate(lastResult_, max);
-  }
-};
 
 template <typename TRecord>
 class ChecksumChainFor : public TsChecksumChain {
