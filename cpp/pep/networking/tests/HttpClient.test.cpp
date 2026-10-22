@@ -6,14 +6,26 @@
 #include <pep/httpserver/HTTPServer.hpp>
 #include <pep/networking/HttpClient.hpp>
 #include <pep/utils/Defer.hpp>
+#include <pep/utils/Exceptions.hpp>
+#include <pep/utils/Log.hpp>
 
 #include <atomic>
+
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/read.hpp>
+#include <boost/asio/read_until.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <boost/asio/streambuf.hpp>
+#include <boost/asio/write.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 namespace {
 
 using namespace std::chrono_literals;
 
 const std::string ResponseBody = "Found someone you have, I would say, hmmm?";
+const std::string LogTag = "HttpClientTest";
+
 
 class AsyncHttpServer : boost::noncopyable {
 public:
@@ -69,6 +81,144 @@ void RegisterAndRetrieve(AsyncHttpServer& server, const std::string& relativeUri
 
   EXPECT_TRUE(*received) << "Didn't receive a response for HTTP request to " << relativeUri.c_str();
 }
+
+/// \brief Minimal HTTP server that keeps connections open between requests (unlike our civetweb-based HTTPServer).
+/// \details It responds to every request with the request's path as the body, and records the requests that it received completely.
+/// Requests for PausingPath are paused after their header has been received: the onPausingRequest callback is invoked,
+/// and the request's body is read (and the response is sent) when the resumeFunction passed to the callback is invoked.
+class KeepAliveHttpServer : boost::noncopyable {
+public:
+  static inline const std::string PausingPath = "/pause";
+  using resumeFunction=std::function<void()>;
+  std::function<void(const resumeFunction&)> onPausingRequest;
+
+  struct ReceivedRequest {
+    std::string path;
+    std::string body;
+  };
+
+private:
+  std::vector<ReceivedRequest> receivedRequests_;
+
+  class Session : public std::enable_shared_from_this<Session> {
+  private:
+    KeepAliveHttpServer& server_;
+    boost::asio::streambuf buffer_;
+
+  public:
+    boost::asio::ip::tcp::socket socket;
+    boost::asio::steady_timer timer;
+
+    Session(KeepAliveHttpServer& server, boost::asio::ip::tcp::socket socket)
+      : server_(server), socket(std::move(socket)), timer(this->socket.get_executor()) {
+    }
+
+    void readRequest() {
+      boost::asio::async_read_until(socket, buffer_, "\r\n\r\n", [self = shared_from_this()](const boost::system::error_code& error, size_t size) {
+        if (error) {
+          PEP_LOG(LogTag, pep::Severity::Debug) << "Failed to read request: " << error.message();
+          return;
+        }
+        auto begin = boost::asio::buffers_begin(self->buffer_.data());
+        std::istringstream header(std::string(begin, begin + static_cast<std::ptrdiff_t>(size)));
+        self->buffer_.consume(size);
+
+        std::string method, path;
+        header >> method >> path;
+        auto contentLength = ParseContentLength(header);
+        if (path == PausingPath) {
+          if (self->server_.onPausingRequest) {
+            self->server_.onPausingRequest([self, path, contentLength]() {
+              self->readBody(path, contentLength);
+            });
+          }
+        }
+        else {
+          self->readBody(path, contentLength);
+        }
+        });
+    }
+
+    static size_t ParseContentLength(std::istream& header) {
+      std::string line;
+      while (std::getline(header, line)) {
+        auto colon = line.find(':');
+        if (colon != std::string::npos && boost::iequals(line.substr(0, colon), "Content-Length")) {
+          return std::stoull(line.substr(colon + 1));
+        }
+      }
+      return 0;
+    }
+
+    void readBody(const std::string& path, size_t contentLength) {
+      if (buffer_.size() >= contentLength) {
+        this->receiveRequest(path, contentLength);
+        return;
+      }
+      boost::asio::async_read(socket, buffer_, boost::asio::transfer_exactly(contentLength - buffer_.size()),
+        [self = shared_from_this(), path, contentLength](const boost::system::error_code& error, size_t) {
+          if (error) {
+            PEP_LOG(LogTag, pep::Severity::Debug) << "Failed to read request body: " << error.message();
+            return;
+          }
+          self->receiveRequest(path, contentLength);
+        });
+    }
+
+    void receiveRequest(const std::string& path, size_t contentLength) {
+      auto begin = boost::asio::buffers_begin(buffer_.data());
+      server_.receivedRequests_.push_back({ path, std::string(begin, begin + static_cast<std::ptrdiff_t>(contentLength)) });
+      buffer_.consume(contentLength);
+      this->respond(path);
+    }
+
+    void respond(const std::string& body) {
+      auto response = std::make_shared<std::string>("HTTP/1.1 200 OK\r\nContent-Length: " + std::to_string(body.size()) + "\r\n\r\n" + body);
+      boost::asio::async_write(socket, boost::asio::buffer(*response), [self = shared_from_this(), response](const boost::system::error_code& error, size_t) {
+        if (error) {
+          PEP_LOG(LogTag, pep::Severity::Debug) << "Failed to write response: " << error.message();
+          return;
+        }
+        self->readRequest();
+        });
+    }
+  };
+
+  boost::asio::ip::tcp::acceptor acceptor_;
+  std::vector<std::shared_ptr<Session>> sessions_;
+
+  void accept() {
+    acceptor_.async_accept([this](const boost::system::error_code& error, boost::asio::ip::tcp::socket socket) {
+      if (error) {
+        PEP_LOG(LogTag, pep::Severity::Debug) << "Failed to accept connection: " << error.message();
+        return;
+      }
+      auto session = std::make_shared<Session>(*this, std::move(socket));
+      sessions_.push_back(session);
+      session->readRequest();
+      this->accept();
+      });
+  }
+
+public:
+  explicit KeepAliveHttpServer(boost::asio::io_context& ioContext)
+    : acceptor_(ioContext, boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address("127.0.0.1"), 0)) {
+    this->accept();
+  }
+
+  uint16_t port() const { return acceptor_.local_endpoint().port(); }
+  const std::vector<ReceivedRequest>& receivedRequests() const { return receivedRequests_; }
+
+  void stop() {
+    [[maybe_unused]] boost::system::error_code ignored;
+    (void) acceptor_.close(ignored);
+    for (const auto& session : sessions_) {
+      session->timer.cancel();
+      (void) session->socket.close(ignored);
+    }
+    sessions_.clear();
+  }
+};
 
 using RetryParameters = pep::networking::HttpClient::RetryParameters;
 
@@ -201,6 +351,124 @@ TEST_F(HttpClient, LimitsRetries) {
   parameters.maxRetries = 0;
   std::tie(response, served) = RetrieveWithRetries(server, "/disabled", { pep::HTTPResponse(503U, "Service Unavailable") }, parameters);
   EXPECT_EQ(served, 1U);
+}
+
+// Not part of the HttpClient fixture: this test uses its own server
+TEST(HttpClientConnection, AbandonedRequestDoesNotAffectSubsequentRequests) {
+  boost::asio::io_context ioContext;
+  KeepAliveHttpServer server(ioContext);
+
+  auto client = pep::networking::HttpClient::Create(pep::networking::HttpClient::Parameters(ioContext, boost::urls::url("http://127.0.0.1:" + std::to_string(server.port()))));
+  client->start();
+
+  const std::vector<std::string> followupPaths = { "/first", "/second", "/third" };
+  auto receivedCount = std::make_shared<size_t>(0);
+
+  auto finish = [client, &server]() {
+    client->shutdown();
+    server.stop();
+  };
+
+  auto abandoned = client->sendRequest(client->makeRequest(pep::networking::HttpMethod::Get, KeepAliveHttpServer::PausingPath))
+    .subscribe(
+      [](const pep::HTTPResponse&) { ADD_FAILURE() << "Received response for abandoned request"; },
+      [](const std::exception_ptr&) { ADD_FAILURE() << "Received error for abandoned request"; }
+    );
+
+  // When the server has received the pausing request, the client is waiting for its response: abandon the request and send new ones.
+  // Previously the client then sent new requests over the same connection, and read the abandoned request's response for them.
+  server.onPausingRequest = [&](const KeepAliveHttpServer::resumeFunction& resume) {
+    abandoned.unsubscribe();
+    resume();
+    for (const auto& path : followupPaths) {
+      client->sendRequest(client->makeRequest(pep::networking::HttpMethod::Get, path))
+        .subscribe(
+          [path, receivedCount, &followupPaths, &finish](const pep::HTTPResponse& response) {
+            EXPECT_EQ(200U, response.getStatusCode()) << "for request to " << path;
+            EXPECT_EQ(path, response.getBody()) << "Received response for another request";
+            if (++*receivedCount == followupPaths.size()) {
+              finish();
+            }
+          },
+          [path](const std::exception_ptr& error) { ADD_FAILURE() << "Request to " << path << " failed: " << pep::GetExceptionMessage(error); }
+        );
+    }
+  };
+
+  ioContext.run_for(30s);
+  EXPECT_EQ(followupPaths.size(), *receivedCount) << "Not all requests sent after the abandoned one received a response";
+
+  if (*receivedCount != followupPaths.size()) { // Timed out: clean up, and let pending handlers finish
+    finish();
+    ioContext.restart();
+    ioContext.run_for(30s);
+  }
+}
+
+TEST(HttpClientConnection, RequestAbandonedWhileSendingIsNotInterleaved) {
+  boost::asio::io_context ioContext;
+  KeepAliveHttpServer server(ioContext);
+
+  auto client = pep::networking::HttpClient::Create(pep::networking::HttpClient::Parameters(ioContext, boost::urls::url("http://127.0.0.1:" + std::to_string(server.port()))));
+  client->start();
+  const std::vector<std::string> followupPaths = { "/first", "/second", "/third" };
+  auto receivedCount = std::make_shared<size_t>(0);
+
+  auto makePut = [client](const std::string& path) {
+    auto request = client->makeRequest(pep::networking::HttpMethod::Put, path);
+    request.getBodyparts() = {std::make_shared<std::string>("Request for "), std::make_shared<std::string>(path)};
+    return request;
+  };
+
+  auto finish = [client, &server]() {
+    client->shutdown();
+    server.stop();
+  };
+
+  auto abandoned = client->sendRequest(makePut(KeepAliveHttpServer::PausingPath))
+    .subscribe(
+      [](const pep::HTTPResponse&) { ADD_FAILURE() << "Received response for abandoned request"; },
+      [](const std::exception_ptr&) { ADD_FAILURE() << "Received error for abandoned request"; }
+    );
+
+  // When the server has received the pausing request's header, the client is still sending its body: abandon the request and send new ones.
+  // Previously the client then sent the new requests over the same connection, causing the server to receive them as part of the abandoned request's body.
+  server.onPausingRequest = [&](const KeepAliveHttpServer::resumeFunction& resume) {
+    abandoned.unsubscribe();
+    resume();
+    for (const auto& path : followupPaths) {
+      client->sendRequest(makePut(path))
+        .subscribe(
+          [path, receivedCount, &followupPaths, &finish](const pep::HTTPResponse& response) {
+            EXPECT_EQ(200U, response.getStatusCode()) << "for request to " << path;
+            EXPECT_EQ(path, response.getBody()) << "Received response for another request";
+            if (++*receivedCount == followupPaths.size()) {
+              finish();
+            }
+          },
+          [path](const std::exception_ptr& error) { ADD_FAILURE() << "Request to " << path << " failed: " << pep::GetExceptionMessage(error); }
+        );
+    }
+  };
+
+  ioContext.run_for(30s);
+  EXPECT_EQ(followupPaths.size(), *receivedCount) << "Not all requests sent after the abandoned one received a response";
+
+  if (*receivedCount != followupPaths.size()) { // Timed out: clean up, and let pending handlers finish
+    finish();
+    ioContext.restart();
+    ioContext.run_for(30s);
+  }
+
+  // The server may or may not have received the abandoned request (completely), but every request it did receive must be exactly what the client sent
+  for (const auto& received : server.receivedRequests()) {
+    if (received.path != KeepAliveHttpServer::PausingPath && !std::ranges::contains(followupPaths, received.path)) {
+      ADD_FAILURE() << "Server received request for unexpected path " << received.path;
+      continue;
+    }
+    std::string expected = "Request for " + received.path;
+    EXPECT_EQ(received.body, expected);
+  }
 }
 
 }

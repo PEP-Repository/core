@@ -87,6 +87,23 @@ TEST(structuredOutputYaml, ArrayOfObjects) {
       "  is_student: false\n");
 }
 
+TEST(structuredOutputYaml, ArrayOfObjectsFourSpaces) {
+  // The keys of an object in an array line up with the first key, which follows the "- ".
+  // At the top level that gives the same layout as with two spaces.
+  EXPECT_EQ(
+      yaml::to_string(
+          Tree::FromJson(
+              {{{"name", "Alice"}, {"age", 25}, {"is_student", true}},
+               {{"name", "Bob"}, {"age", 30}, {"is_student", false}}}),
+          {.indentation = pep::structuredOutput::WhitespaceFormat::FourSpaces}),
+      "- name: \"Alice\"\n"
+      "  age: 25\n"
+      "  is_student: true\n"
+      "- name: \"Bob\"\n"
+      "  age: 30\n"
+      "  is_student: false\n");
+}
+
 TEST(structuredOutputYaml, ObjectOfArrays) {
   const auto tree = Tree::FromJson(
       {{"fruits", {"apple", "banana", "cherry"}}, {"numbers", {33, 22, 11}}, {"flags", {true, false, true}}});
@@ -222,6 +239,38 @@ TEST(structuredOutputYaml, Indentation) {
       "            - 3\n");
 }
 
+TEST(structuredOutputYaml, IndentationOfArraysOfObjects) {
+  // An array is indented one level below its key and each element starts with "- ".
+  // The keys of an object element line up with its first key, right after the "- ";
+  // anything nested deeper is indented one more level below the key it belongs to.
+  const auto tree = Tree::FromJson(
+      {{"people",
+        {{{"name", "Alice"}, {"address", {{"city", "Utrecht"}}}, {"pets", {"cat"}}},
+         {{"name", "Bob"}}}}});
+
+  // Two spaces (default)
+  EXPECT_EQ(
+      yaml::to_string(tree, {.indentation = pep::structuredOutput::WhitespaceFormat::TwoSpaces}),
+      "people:\n"
+      "  - name: \"Alice\"\n"
+      "    address:\n"
+      "      city: \"Utrecht\"\n"
+      "    pets:\n"
+      "      - \"cat\"\n"
+      "  - name: \"Bob\"\n");
+
+  // Four spaces
+  EXPECT_EQ(
+      yaml::to_string(tree, {.indentation = pep::structuredOutput::WhitespaceFormat::FourSpaces}),
+      "people:\n"
+      "    - name: \"Alice\"\n"
+      "      address:\n"
+      "          city: \"Utrecht\"\n"
+      "      pets:\n"
+      "          - \"cat\"\n"
+      "    - name: \"Bob\"\n");
+}
+
 TEST(structuredOutputYaml, EmptyArrayComments) {
   const auto tree = Tree::FromJson(
       {{"empty_array", json::array()},
@@ -288,6 +337,22 @@ TEST(structuredOutputYaml, FromPopulatedTableWithHeader) {
       "  - fruit: \"pear\"\n"
       "    color: \"green\"\n"
       "---\n");
+}
+
+TEST(structuredOutputYaml, FromPopulatedTableWithHeaderFourSpaces) {
+  const auto table = Table::FromSeparateHeaderAndData({"fruit", "color"}, {"apple", "red", "pear", "green"});
+
+  EXPECT_EQ(
+      yaml::to_string(table, {.indentation = pep::structuredOutput::WhitespaceFormat::FourSpaces}),
+      "metadata:\n"
+      "    header:\n"
+      "        - \"fruit\"\n"
+      "        - \"color\"\n"
+      "data:\n"
+      "    - fruit: \"apple\"\n"
+      "      color: \"red\"\n"
+      "    - fruit: \"pear\"\n"
+      "      color: \"green\"\n");
 }
 
 TEST(structuredOutputYaml, IntegersBeyondIntRange) {

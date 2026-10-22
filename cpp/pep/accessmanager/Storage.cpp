@@ -9,6 +9,7 @@
 #include <pep/database/Storage.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/CollectionUtils.hpp>
+#include <pep/utils/File.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 
@@ -572,10 +573,8 @@ void AccessManager::Backend::Storage::syncColumnGroupContents(const std::string&
   }
 }
 
-AccessManager::Backend::Storage::Storage( const std::filesystem::path& path, std::shared_ptr<GlobalConfiguration> globalConf) {
-  storagePath_ = path;
-  implementor_ = std::make_shared<Implementor>(path.string());
-  globalConf_ = globalConf;
+AccessManager::Backend::Storage::Storage(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf)
+  : storagePath_(std::move(path)), implementor_(std::make_shared<Implementor>(storagePath_.string())), globalConf_(std::move(globalConf)) {
 
   ensureInitialized();
   auto allColumns = ensureSynced();

@@ -105,7 +105,7 @@ rxcpp::observable<FakeVoid> DownloadProcessor::update(std::shared_ptr<CoreClient
 rxcpp::observable<std::shared_ptr<IndexedTicket2>> DownloadProcessor::requestTicket(std::shared_ptr<Progress> progress, std::shared_ptr<Context> ctx) {
   // First request a ticket
   RequestTicket2Opts tOpts;
-  tOpts.pps = ctx->content.pps;
+  tOpts.accessSubjects = ctx->content.pps;
   tOpts.columns = ctx->content.columns;
   tOpts.columnGroups = ctx->content.columnGroups;
   tOpts.participantGroups = ctx->content.groups;

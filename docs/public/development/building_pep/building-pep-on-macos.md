@@ -29,6 +29,7 @@
     brew install golang
     brew install protoc-gen-go
     brew install ccache
+    brew install bash
     ```
 
 4. You should now be able to build PEP. Continue to the [Getting Started](index.md) guide to clone the repository and build PEP.

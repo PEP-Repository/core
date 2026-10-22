@@ -67,8 +67,11 @@ public:
   rxcpp::observable<ColumnNameMapping> updateColumnNameMapping(const ColumnNameMapping& mapping) const;
   rxcpp::observable<FakeVoid> deleteColumnNameMapping(const ColumnNameSection& original) const;
 
+  /// \note Structure metadata functionality is being reworked. Expect breaking changes. Metadata stored now may not be retrievable in the new version.
   rxcpp::observable<StructureMetadataEntry> getStructureMetadata(StructureMetadataType subjectType, std::vector<std::string> subjects, std::vector<StructureMetadataKey> keys = {}) const;
+  /// \note Structure metadata functionality is being reworked. Expect breaking changes. Metadata stored now may not be retrievable in the new version.
   rxcpp::observable<FakeVoid> setStructureMetadata(StructureMetadataType subjectType, messaging::Tail<StructureMetadataEntry> entries) const;
+  /// \note Structure metadata functionality is being reworked. Expect breaking changes. Metadata stored now may not be retrievable in the new version.
   rxcpp::observable<FakeVoid> removeStructureMetadata(StructureMetadataType subjectType, std::vector<StructureMetadataSubjectKey> subjectKeys) const;
 
   rxcpp::observable<FakeVoid> migrateUserDbToAccessManager(messaging::MessageBatches fileParts) const;

@@ -42,8 +42,9 @@ public:
   /// \throws std::invalid_argument if empty.
   std::filesystem::path path() && { ensureNonEmpty(); return std::move(*this).uncheckedPath(); }
 
+  // This trick forbids binding to non-const rvalues, avoiding ambiguity when assigning.
   /// \throws std::invalid_argument if empty.
-  operator const std::filesystem::path&() const & { return path(); }
+  operator const std::filesystem::path&(this auto& self) { return self.path(); }
 
   /// \throws std::invalid_argument if empty.
   operator std::filesystem::path() && { return std::move(*this).path(); }
@@ -81,6 +82,9 @@ public:
 
   /// \throws std::invalid_argument if it traverses to the parent directory or contains invalid filenames for this platform.
   explicit CheckedRelativePath(std::filesystem::path path);
+
+  /// Use the checked constructor instead.
+  static CheckedPath FromTrusted(std::filesystem::path inner) = delete;
 
   /// \note Either side may be empty, resulting in a trailing slash or no-op.
   [[nodiscard]] CheckedRelativePath operator/(const CheckedRelativePath& rhs) const {

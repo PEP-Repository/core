@@ -508,15 +508,16 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       LocalPseudonym pseud = sfentry->getName().pseudonym();
       std::string column = sfentry->getName().column();
 
-      DataEnumerationEntry2 entry;
-      entry.metadata = server->compileMetadata(column, *sfentry);
-      // TODO execute rerandomization in WorkerPool
-      entry.polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey());
-      entry.fileSize = sfcontent->payload()->size();
-      entry.id = id;
-      entry.index = static_cast<uint32_t>(i);
-      entry.columnIndex = indices.getColumnIndex(column);
-      entry.pseudonymIndex = indices.getPseudonymIndex(pseud);
+      DataEnumerationEntry2 entry{
+        .id = id,
+        .metadata = server->compileMetadata(column, *sfentry),
+        // TODO execute rerandomization in WorkerPool
+        .polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey()),
+        .fileSize = sfcontent->payload()->size(),
+        .columnIndex = indices.getColumnIndex(column),
+        .pseudonymIndex = indices.getPseudonymIndex(pseud),
+        .index = static_cast<uint32_t>(i),
+      };
       response->entries.push_back(std::move(entry));
 
       // Prevent individual DataEnumerationResponse2 messages from becoming too large
@@ -1086,9 +1087,7 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
 
   const auto& request = certified.message;
 
-  size_t entryCount{};
-  uint64_t totalBytes{}, rollingBytes{};
-  this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.columns);
+  auto metrics = this->getRoundedFileStoreMetrics(request.columns);
 
   auto countBlocks = [blockSize = dataSizeResolution_](uint64_t bytes) {
       assert(bytes % blockSize == 0U); // Values produced by this->getFileStoreMetrics are rounded to dataSizeResolution_
@@ -1097,8 +1096,8 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
 
   return messaging::BatchSingleMessage(DataSizeResponse{
     .blockSize = dataSizeResolution_,
-    .totalBlocks = countBlocks(totalBytes),
-    .rollingBlocks = countBlocks(rollingBytes),
+    .totalBlocks = countBlocks(metrics.totalBytes),
+    .rollingBlocks = countBlocks(metrics.rollingBytes),
     });
 }
 
@@ -1215,9 +1214,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   statsTimer({});
 }
 
-void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns) {
-  uint64_t total{}, rolling{};
-  fileStore_->getMetrics(entryCount, total, rolling, columns);
+FileStore::Metrics StorageFacility::getRoundedFileStoreMetrics(const std::set<std::string>& columns) const {
+  auto precise = fileStore_->getMetrics(columns);
 
   auto round = [blockSize = dataSizeResolution_](uint64_t bytes) {
       auto blocks = bytes / blockSize;
@@ -1227,18 +1225,19 @@ void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedT
       return blocks * blockSize;
     };
 
-  roundedTotalBytes = round(total);
-  roundedRollingBytes = round(rolling);
+  return FileStore::Metrics{
+    .entryCount = precise.entryCount,
+    .totalBytes = round(precise.totalBytes),
+    .rollingBytes = round(precise.rollingBytes),
+  };
 }
 
 void StorageFacility::updateFileStoreMetrics() {
-  size_t entryCount{};
-  uint64_t totalPayloadBytes{}, rollingPayloadBytes{};
-  this->getFileStoreMetrics(entryCount, totalPayloadBytes, rollingPayloadBytes);
+  auto rounded = this->getRoundedFileStoreMetrics();
 
-  metrics_->entriesIncludingHistory.Set(static_cast<double>(entryCount));
-  metrics_->totalPayloadBytes.Set(static_cast<double>(totalPayloadBytes));
-  metrics_->rollingPayloadBytes.Set(static_cast<double>(rollingPayloadBytes));
+  metrics_->entriesIncludingHistory.Set(static_cast<double>(rounded.entryCount));
+  metrics_->totalPayloadBytes.Set(static_cast<double>(rounded.totalBytes));
+  metrics_->rollingPayloadBytes.Set(static_cast<double>(rounded.rollingBytes));
 }
 
 }

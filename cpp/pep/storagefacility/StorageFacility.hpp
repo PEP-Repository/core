@@ -37,7 +37,7 @@ private:
     prometheus::Gauge& readingPaused; ///< 1 while we've stopped reading incoming data because too much is pending
   };
 
-  void getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns = {});
+  FileStore::Metrics getRoundedFileStoreMetrics(const std::set<std::string>& columns = {}) const;
   void updateFileStoreMetrics();
 
 public:

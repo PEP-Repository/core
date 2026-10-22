@@ -6,7 +6,6 @@
 #include <pep/metrics/RegisteredMetrics.hpp>
 #include <pep/rsk/EGCache.hpp>
 #include <pep/server/MonitoringMessages.hpp>
-#include <pep/utils/File.hpp>
 
 namespace pep {
 

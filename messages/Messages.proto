@@ -503,6 +503,9 @@ message TicketRequest2 {
   // Polymorphic pseudonyms of individual subjects to request access to.
   repeated ElgamalEncryption access_subjects = 3;
 
+  // Additional polymorphic pseudonyms to be translated, without requesting access to the subject
+  repeated ElgamalEncryption reference_subjects = 8;
+
   // Column-groups to request access to.
   repeated string column_groups = 4;
 
@@ -553,6 +556,9 @@ message Ticket2 {
 
   // The local pseudonyms of the participants to which access was granted.
   repeated LocalPseudonyms access_subjects = 3;
+
+  // Additional local pseudonyms for which NO access was granted (pure translation).
+  repeated LocalPseudonyms reference_subjects = 6;
 
   // The columns to which access was granted.
   repeated string columns = 4;

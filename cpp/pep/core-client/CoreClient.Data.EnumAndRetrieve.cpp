@@ -97,7 +97,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
   ctx->requestTicketOpts = std::make_shared<RequestTicket2Opts>();
   ctx->requestTicketOpts->modes = {opts.includeData ? "read" : "read-meta"};
   ctx->requestTicketOpts->participantGroups = opts.groups;
-  ctx->requestTicketOpts->pps = opts.pps;
+  ctx->requestTicketOpts->accessSubjects = opts.pps;
   ctx->requestTicketOpts->columnGroups = opts.columnGroups;
   ctx->requestTicketOpts->columns = opts.columns;
   ctx->requestTicketOpts->ticket = opts.ticket;
@@ -132,7 +132,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
             for (const auto& g: ctx->requestTicketOpts->participantGroups) {
               pseudIdxs.insert_range(indexedTicket.getParticipantGroupMapping().at(g).indices);
             }
-            if (!ctx->requestTicketOpts->pps.empty()) {
+            if (!ctx->requestTicketOpts->accessSubjects.empty()) {
               auto accessSubjects = indexedTicket.getAccessSubjects();
               std::unordered_map<pep::PolymorphicPseudonym, uint32_t> lut;
               lut.reserve(accessSubjects.size());
@@ -140,7 +140,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
                 lut[accessSubjects[i]] = static_cast<uint32_t>(i);
               }
 
-              pseudIdxs.insert_range(ctx->requestTicketOpts->pps
+              pseudIdxs.insert_range(ctx->requestTicketOpts->accessSubjects
                 | views::transform([&lut](const PolymorphicPseudonym& pp) { return lut.at(pp); }));
             }
             if (!ctx->requestTicketOpts->columns.empty()) {

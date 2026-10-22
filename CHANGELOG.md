@@ -6,7 +6,17 @@
 
 ## Changes in upcoming release (1.9)
 
-...
+- core#2962: `pepcli pseudonym convert` no longer requires access to the subject associated with the pseudonym.
+
+- core#3008: Restructured the code that handles ticket request, into a process with 4 meaningful phases.
+  This makes it easier to maintain and extend. The documentation was updated to reflect the new structure of the process.
+  - Changed: `docs/public/crypto/ticket_request.md` has been updated
+
+- core!2527: For projects using nginx (e.g. for s3proxy), modify `etc/params/proxy` to change `proxy_set_header Host $host;` to `proxy_set_header Host $http_host;` (or just replace by the version in pep/core>).
+
+- core#3000: Disposing a `Pep` weblib instance (e.g. `pep.delete()`) is now asynchronous.
+
+- core!2595: Weblib `pep.listColumns()` and `pep.listSubjectGroups()` now return all (column/subject) groups the user has any access to, with their access `modes`, instead of only readable/accessible ones.
 
 ---------------
 *Past changes, do not edit (except by person doing release):*
@@ -14,13 +24,15 @@
 
 ## Release 1.8
 
+- core#3010: `pepcli list` now outputs an empty array instead of an empty string when there are no results.
+
 - Fixed `pepcli pull --export yaml` to now actually export the data to a yaml file.
 
 - Fixed number formatting in YAML output. Integers outside the 32-bit range are no longer truncated, and floating point numbers are written in their shortest exact form.
 
 - core#2958: parameter `expiration` for `pepcli token request` is now marked as required.
 
-- #2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
+- core#2843: Added the first version of the PEP Web library (Weblib). This brings a secure PEP client to the browser via WebAssembly.
 
 - core#2488: Added command `pepcli pseudonym convert`, which converts a pseudonym of any form into a polymorphic, local, or brief-local pseudonym.
 
@@ -128,6 +140,11 @@
 - core#298: `PEP_GROUP_REPOSITORY_TOKEN` and `DOCS_GROUP_WRITE_REPOSITORY_TOKEN` CI variables can be removed after all projects are updated. Also update <https://docs.pages.pep.cs.ru.nl/private/ops/main/procedures_maintenance/update-gitlab-pep-group-access-tokens/> to remove the instructions for these tokens.
 
 - !2608: Configurations that relied on an unencrypted connection on port 25 must now specify `smtp_security: "none"`, which cannot be combined with `smtp_auth_required`.
+
+### Hotfixes for release 1.8
+
+- core#3028: Prevent HTTP client from misdelivering packets after cancellation.
+
 
 ## Release 1.7
 

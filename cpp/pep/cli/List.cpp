@@ -254,9 +254,9 @@ protected:
         // Only fetch GlobalConfiguration if we need it for brief local pseudonyms
         rxcpp::observable<pep::FakeVoid> configObservable;
         if (ctx->earOpts.includeAccessGroupPseudonyms) {
-          configObservable = client->getGlobalConfiguration().map([ctx](std::shared_ptr<pep::GlobalConfiguration> gc) { 
-              ctx->globalConfig = gc; 
-              return pep::FakeVoid(); 
+          configObservable = client->getGlobalConfiguration().map([ctx](std::shared_ptr<pep::GlobalConfiguration> gc) {
+              ctx->globalConfig = gc;
+              return pep::FakeVoid();
             });
         } else {
           configObservable = rxcpp::observable<>::just(pep::FakeVoid());
@@ -265,7 +265,7 @@ protected:
         return configObservable.flat_map([ctx, client](pep::FakeVoid) {
 
         pep::RequestTicket2Opts tOpts;
-        tOpts.pps = ctx->earOpts.pps;
+        tOpts.accessSubjects = ctx->earOpts.pps;
         tOpts.columns = ctx->earOpts.columns;
         tOpts.columnGroups = ctx->earOpts.columnGroups;
         tOpts.participantGroups = ctx->earOpts.groups;
@@ -295,15 +295,18 @@ protected:
       [ctx, client]() {
         ctx->collectSubjects();
         ctx->printRemainingPseudsToReport(client);
-        
+
         // Convert ptree to Tree and output with selected format
-        auto tree = pep::structuredOutput::Tree::FromPropertyTree(ctx->results);
+        // An empty ptree node would be converted to an empty string, but we want to output an empty array as top level result
+        auto tree = ctx->results.empty()
+          ? pep::structuredOutput::Tree::FromJson(nlohmann::ordered_json::array())
+          : pep::structuredOutput::Tree::FromPropertyTree(ctx->results);
         if (ctx->format == "json") {
           pep::structuredOutput::json::append(std::cout, tree) << std::endl;
         } else {
-          pep::structuredOutput::yaml::append(std::cout, tree) << std::endl;
+          pep::structuredOutput::yaml::append(std::cout, tree) << std::flush; // yaml output already ends with a newline
         }
-        
+
         ctx->printQueryInfo();
         if (ctx->hasPrintedData) {
           PEP_LOG(LogTag, pep::Severity::Warning) << "Data may require re-pseudonymization. Please use `pepcli pull` instead to ensure it is processed properly.";

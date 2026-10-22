@@ -169,7 +169,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode1Command::getTestResults(std:
 
         RequestTicket2Opts tOpts;
         tOpts.modes = {"read"};
-        tOpts.pps = {pp.rerandomize()};
+        tOpts.accessSubjects = {pp.rerandomize()};
         tOpts.columns = {"ParticipantInfo"};
         return client->requestTicket2(tOpts).flat_map(
           [client, id](IndexedTicket2 ticket) {
@@ -222,7 +222,7 @@ rxcpp::observable<bool> ClientTestApplication::Mode2Command::getTestResults(std:
 
 rxcpp::observable<bool> ClientTestApplication::Mode4Command::getTestResults(std::shared_ptr<Client> client) {
   const unsigned NumRecords = 10;
-  
+
   std::cout << "Testing storing of " << NumRecords << " data items" << std::endl;
 
   PolymorphicPseudonym pp = client->generateParticipantPolymorphicPseudonym(this->getRecordIdentifier());
@@ -274,9 +274,9 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
 
           // Check binary version
           output << description << " binary version: " << response.binary.getSummary() << "\n";
-          
+
           if (!IsSemanticVersionEquivalent(*ownBinarySemver, response.binary.getSemver())) {
-            output << "MISMATCH: client " << ownBinarySemver->format() 
+            output << "MISMATCH: client " << ownBinarySemver->format()
                    << " vs server " << response.binary.getSemver().format() << "\n";
             result = false;
           } else {
@@ -286,9 +286,9 @@ rxcpp::observable<bool> ClientTestApplication::Mode5Command::getTestResults(std:
           // Check config version
           if (ownConfigSemver && response.config.has_value()) {
             output << description << " config version: " << response.config->getSummary() << "\n";
-            
+
             if (!IsSemanticVersionEquivalent(*ownConfigSemver, response.config->getSemver())) {
-              output << "MISMATCH: client " << ownConfigSemver->format() 
+              output << "MISMATCH: client " << ownConfigSemver->format()
                      << " vs server " << response.config->getSemver().format() << "\n";
               result = false;
             } else {

@@ -3,7 +3,7 @@
  */
 
 import {expect} from 'chai';
-import Pep, {CellEntry, ClientConfig, getColumnModes, InitConfig} from "./pep.mjs";
+import Pep, {CellEntry, ClientConfig, getColumnModes, InitConfig, ListColumnsQuery} from "./pep.mjs";
 import {binaryToString, concatStringsAsync, deleteObjects} from "./utils.mjs";
 
 const isNode = !!globalThis.process;
@@ -11,13 +11,16 @@ const isNode = !!globalThis.process;
 let mainExited = false;
 if (isNode) {
   process.on('beforeExit', () => {
-    if (!mainExited) {
-      process.exitCode ??= 13;
+    if (!mainExited && !process.exitCode) {
+      process.exitCode = 13;
       console.error('\nUnexpected exit: Either Node.js was terminated or ' +
           'it prevented a hang due to a Promise that can never be fulfilled');
     }
   });
 }
+after(() => {
+  mainExited = true;
+});
 
 interface OAuthTokenSecretFile {
   OAuthTokenSecret: string;
@@ -80,12 +83,19 @@ describe('Pep', () => {
 
     await authenticateAs('Research Assessor');
   });
-  after(() => {
-    pep?.delete();
-    mainExited = true;
+  after(async () => {
+    await pep?.delete();
   });
 
   describe('#listColumns()', () => {
+    /** @returns The modes per test column group returned by listColumns */
+    async function listTestColumnGroupModes(query?: ListColumnsQuery) {
+      const columnGroups = await pep.runHandleWasmException(() => pep.listColumns(query));
+      return Object.fromEntries(columnGroups
+          .filter(group => ['WasmTestColumnGroup', 'WasmTestMetaColumnGroup'].includes(group.name))
+          .map(group => [group.name, group.modes]));
+    }
+
     it('should return the name, modes and columns for every column group', async () => {
       const columnGroups = await pep.runHandleWasmException(() => pep.listColumns());
       expect(columnGroups).to.containSubset([
@@ -104,34 +114,44 @@ describe('Pep', () => {
           columns: ['ParticipantIdentifier'],
         },
       ]);
-      expect(columnGroups.find(group => group.name === 'WasmTestColumnGroup')?.modes)
-          .to.deep.equal({read: true, readMeta: true, write: true, writeMeta: false});
     });
 
-    it('should allow getting the modes for every column', async () => {
-      const columns = getColumnModes(await pep.runHandleWasmException(() => pep.listColumns()));
-      expect(columns.find(column => column.name === 'WasmTestColumn')?.modes)
-          .to.deep.equal({read: true, readMeta: true, write: true, writeMeta: false});
+    it('should return all accessible column groups with implied modes by default', async () => {
+      expect(await listTestColumnGroupModes()).to.deep.equal({
+        WasmTestColumnGroup: {read: true, readMeta: true, write: true, writeMeta: false},
+        WasmTestMetaColumnGroup: {read: false, readMeta: true, write: true, writeMeta: true},
+      });
+    });
+
+    it('should leave out implied modes when includeImplicitlyGranted is false', async () => {
+      expect(await listTestColumnGroupModes({includeImplicitlyGranted: false})).to.deep.equal({
+        WasmTestColumnGroup: {read: true, readMeta: false, write: true, writeMeta: false},
+        WasmTestMetaColumnGroup: {read: false, readMeta: true, write: false, writeMeta: true},
+      });
+    });
+
+    it('should only return column groups with all required modes', async () => {
+      expect(Object.keys(await listTestColumnGroupModes({requireModes: {write: true, writeMeta: true}})))
+          .to.deep.equal(['WasmTestMetaColumnGroup']);
     });
   });
 
   describe('#listSubjectGroups()', () => {
     it('should list the name and modes of each subject group', async () => {
-      const subjectGroups = await pep.runHandleWasmException(() => pep.listSubjectGroups());
-      expect(subjectGroups).to.containSubset([
+      expect(await pep.runHandleWasmException(() => pep.listSubjectGroups())).to.containSubset([
         {name: '*', modes: {access: true}},
-        {name: 'WasmTestSubjectGroup'},
+        {name: 'WasmTestSubjectGroup', modes: {access: true, enumerate: true}},
+        {name: 'WasmTestEnumerateSubjectGroup', modes: {access: false, enumerate: true}},
       ]);
-      expect(subjectGroups.find(group => group.name === 'WasmTestSubjectGroup')?.modes)
-          .to.deep.equal({access: true, enumerate: true});
     });
   });
 
   describe('#list()', () => {
     context('given a subject group and column group', () => {
-      it('should list cells with metadata', async () => {
-        let entries: CellEntry[] | undefined;
+      let entries: CellEntry[] | undefined;
+      after(() => entries && deleteObjects(entries));
 
+      it('should list cells with metadata', async () => {
         return pep.runHandleWasmException(async () => {
           entries = await Array.fromAsync(pep.list({
             subjectGroups: ['WasmTestSubjectGroup'],
@@ -169,30 +189,32 @@ describe('Pep', () => {
             console.log(entriesSimple); // For debugging
             throw ex;
           }
-        }).finally(() => entries && deleteObjects(entries));
+        });
       });
     });
 
-    context('given mode read-meta', () => {
-      it('should list cells', async () => {
-        let entries: CellEntry[] | undefined;
+    context('given mode read-meta and a column group without read access', () => {
+      let entries: CellEntry[] | undefined;
+      after(() => entries && deleteObjects(entries));
 
+      it('should list cells', async () => {
         return pep.runHandleWasmException(async () => {
           entries = await Array.fromAsync(pep.list({
             subjectGroups: ['WasmTestSubjectGroup'],
-            columnGroups: ['WasmTestColumnGroup'],
+            columnGroups: ['WasmTestMetaColumnGroup'],
             mode: 'read-meta',
           }));
           expect(entries.map(entry => binaryToString(entry.partialMetadataView().get('fileExtension') ?? new Uint8Array())))
-              .to.include.members(['.small', '.large']);
-        }).finally(() => entries && deleteObjects(entries));
+              .to.include('.meta');
+        });
       });
     });
 
     context('given a subject Origin ID and column group', () => {
-      it('should list cells with metadata', async () => {
-        let entries: CellEntry[] | undefined;
+      let entries: CellEntry[] | undefined;
+      after(() => entries && deleteObjects(entries));
 
+      it('should list cells with metadata', async () => {
         return pep.runHandleWasmException(async () => {
           entries = await Array.fromAsync(pep.list({
             subjects: ['WasmTestSubjectSmall'], // Pass origin ID
@@ -202,16 +224,17 @@ describe('Pep', () => {
           const [entry] = entries as [CellEntry];
           expect(binaryToString(entry.partialMetadataView().get('fileExtension') ?? new Uint8Array()))
               .equals('.small', 'Got back wrong fileExtension');
-        }).finally(() => entries && deleteObjects(entries));
+        });
       });
     });
   });
 
   describe('#retrieve()', () => {
     context('given a subject group and column group', () => {
-      it('should retrieve cells with data', () => {
-        let entries: CellEntry[] | undefined;
+      let entries: CellEntry[] | undefined;
+      after(() => entries && deleteObjects(entries));
 
+      it('should retrieve cells with data', () => {
         return pep.runHandleWasmException(async () => {
           entries = await Array.fromAsync(pep.list({
             subjectGroups: ['WasmTestSubjectGroup'],
@@ -235,7 +258,7 @@ describe('Pep', () => {
             const content = await concatStringsAsync(data.content.pipeThrough(new TextDecoderStream()));
             expect(content).equals(expectedContent!, 'Wrong cell data');
           }
-        }).finally(() => entries && deleteObjects(entries));
+        });
       });
     });
   });
@@ -243,37 +266,65 @@ describe('Pep', () => {
   describe('user management', () => {
     const suffix = crypto.randomUUID();
     const uid = `weblib-test-user-${suffix}`;
+    const otherUid = `weblib-test-user-other-${suffix}`;
     const userGroup = `WeblibTestUserGroup-${suffix}`;
-    // Whole seconds, as that is what the server stores
-    const expiration = new Date(Math.floor(Date.now() / 1000 + 24 * 60 * 60) * 1000);
+    const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    /** @returns The identifiers of the test user */
+    async function listTestUserIds() {
+      const {users} = await pep.listUsers({userFilter: suffix});
+      return users.map(({displayId, primaryId, otherUids}) => ({displayId, primaryId, otherUids}));
+    }
 
     before(() => authenticateAs('Access Administrator'));
-    after(() => authenticateAs('Research Assessor'));
+    after(async () => {
+      // Remove what is left if the test failed halfway. Steps that are not applicable fail, which is ignored
+      for (const step of [
+        () => pep.removeUserFromGroup(uid, userGroup),
+        () => pep.removeUserFromGroup(otherUid, userGroup),
+        () => pep.removeUser(uid),
+        () => pep.removeUser(otherUid),
+        () => pep.removeUserGroup(userGroup),
+      ]) {
+        await pep.runHandleWasmException(step).catch(() => {});
+      }
+      await authenticateAs('Research Assessor');
+    });
 
     it('should create, modify and remove users and user groups', () => pep.runHandleWasmException(async () => {
       await pep.createUserGroup({name: userGroup, maxAuthValiditySeconds: 3600});
       await pep.createUser(uid);
       await pep.addUserToGroup(uid, userGroup, expiration);
+      expect(await pep.listUsers({userFilter: suffix})).to.deep.equal({
+        users: [{displayId: uid, primaryId: undefined, otherUids: [], groups: [{userGroup, expiration}]}],
+        userGroups: [{name: userGroup, maxAuthValiditySeconds: 3600}],
+      });
 
-      let result = await pep.listUsers({userFilter: uid});
-      expect(result.users).to.deep.equal([{
-        displayId: uid,
-        primaryId: undefined,
-        otherUids: [],
-        groups: [{userGroup, expiration}],
-      }]);
-      expect(result.userGroups).to.deep.equal([{name: userGroup, maxAuthValiditySeconds: 3600}]);
-
+      await pep.modifyUserGroup({name: userGroup});
       await pep.updateUserGroupExpiration(uid, userGroup, undefined);
-      result = await pep.listUsers({groupFilter: userGroup});
-      expect(result.users[0]?.groups).to.deep.equal([{userGroup, expiration: undefined}]);
+      expect(await pep.listUsers({userFilter: suffix})).to.deep.equal({
+        users: [{displayId: uid, primaryId: undefined, otherUids: [], groups: [{userGroup, expiration: undefined}]}],
+        userGroups: [{name: userGroup, maxAuthValiditySeconds: undefined}],
+      });
 
-      await pep.removeUserFromGroup(uid, userGroup);
-      await pep.removeUser(uid);
+      await pep.addUserIdentifier(uid, otherUid, {isPrimaryId: true});
+      expect(await listTestUserIds()).to.deep.equal([{displayId: uid, primaryId: otherUid, otherUids: []}]);
+
+      await pep.unsetUserPrimaryId(otherUid);
+      await pep.setUserDisplayId(otherUid);
+      expect(await listTestUserIds()).to.deep.equal([{displayId: otherUid, primaryId: undefined, otherUids: [uid]}]);
+
+      await pep.setUserPrimaryId(uid);
+      expect(await listTestUserIds()).to.deep.equal([{displayId: otherUid, primaryId: uid, otherUids: []}]);
+
+      await pep.removeUserIdentifier(uid);
+      expect(await listTestUserIds()).to.deep.equal([{displayId: otherUid, primaryId: undefined, otherUids: []}]);
+
+      await pep.removeUserFromGroup(otherUid, userGroup);
+      await pep.removeUser(otherUid);
       await pep.removeUserGroup(userGroup);
-
-      result = await pep.listUsers({userFilter: uid});
-      expect(result.users).to.be.empty;
+      expect(await listTestUserIds()).to.be.empty;
+      expect((await pep.listUsers({groupFilter: userGroup})).userGroups).to.be.empty;
     }));
   });
 
@@ -319,5 +370,18 @@ describe('Pep', () => {
 
       expect((await pep.queryAccessManager()).subjectGroups).to.not.include(subjectGroup);
     }));
+  });
+});
+
+describe('getColumnModes()', () => {
+  it('should combine the modes of all column groups containing a column', () => {
+    const none = {read: false, readMeta: false, write: false, writeMeta: false};
+    expect(getColumnModes([
+      {name: 'GroupA', modes: {...none, readMeta: true}, columns: ['y', 'x']},
+      {name: 'GroupB', modes: {...none, write: true}, columns: ['x']},
+    ])).to.deep.equal([
+      {name: 'x', modes: {...none, readMeta: true, write: true}},
+      {name: 'y', modes: {...none, readMeta: true}},
+    ]);
   });
 });
