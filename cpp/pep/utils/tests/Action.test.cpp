@@ -1,7 +1,9 @@
 #include <pep/utils/Action.hpp>
 #include <pep/utils/Base64.hpp>
 #include <pep/utils/Random.hpp>
-#include <pep/utils/TestMacros.hpp>
+
+#include <gmock/gmock-matchers.h>
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -27,7 +29,7 @@ TEST(Action, PropagatesExceptions) {
   pep::RandomBytes(raw);
   auto encoded = pep::EncodeBase64Url(std::string(raw, bytes));
 
-  PEP_EXPECT_THROWS_MESSAGE( // Ensure that...
-    pep::PerformAsAction(&JustInvokeItAlready, [&encoded]() {throw std::runtime_error(encoded); }), // ... when the callback raises an exception...
-    std::runtime_error, encoded); // ... the "PerformAsAction" function fails with that original exception
+  EXPECT_THAT( // Ensure that...
+    [encoded]() { pep::PerformAsAction(&JustInvokeItAlready, [&encoded]() {throw std::runtime_error(encoded); }); }, // ... when the callback raises an exception...
+    ::testing::ThrowsMessage<std::runtime_error>(::testing::StrEq(encoded))); // ... the "PerformAsAction" function propagates that original exception
 }
