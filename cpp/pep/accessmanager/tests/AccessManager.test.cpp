@@ -1,8 +1,9 @@
+#include <gmock/gmock-matchers.h>
+#include <gtest/gtest.h>
+
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/AccessManager.hpp>
 
-#include <gmock/gmock-matchers.h>
-#include <gtest/gtest.h>
 
 using namespace pep;
 
