@@ -236,7 +236,7 @@ auto CreateAmDb(const std::string& path) {
   );
 }
 
-} 
+}
 
 // Can't be a typedef because we need to forward declare it for our pimpl idiom
 struct AccessManager::Backend::Storage::Implementor : database::Storage<CreateAmDb> {
