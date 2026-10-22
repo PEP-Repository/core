@@ -66,6 +66,7 @@ export interface InitConfig {
   clientConfig: URL | ClientConfig;
   configFileContentOverrides?: { [key in keyof ConfigFiles]?: string | undefined };
   authLandingPage?: URL | null;
+  websocketScheme?: 'ws://' | 'wss://';
 }
 
 /** Replace EmbindString (or union involving EmbindString) members with plain string. */
@@ -280,9 +281,12 @@ export default class Pep {
     // These members must be listed in -sINCOMING_MODULE_JS_API
     let Module: PepModule | {
       thisProgram: string,
+      websocket: {url: string},
     } = {
       /// This ends up in `argv[0]`
       thisProgram: 'pepWeblib',
+      /// Emscripten appends host and port to a URL that is only a scheme
+      websocket: {url: config.websocketScheme ?? (globalThis.location?.protocol === 'https:' ? 'wss://' : 'ws://')},
     };
 
     Module = await initModule(Module) as PepModule;
