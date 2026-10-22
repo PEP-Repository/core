@@ -5,6 +5,7 @@
 #include <pep/messaging/RequestHandler.hpp>
 #include <pep/metrics/RegisteredMetrics.hpp>
 #include <pep/rsk/EGCache.hpp>
+#include <pep/server/MonitoringMessages.hpp>
 #include <pep/server/ChecksumChainHandler.hpp>
 
 namespace pep {
