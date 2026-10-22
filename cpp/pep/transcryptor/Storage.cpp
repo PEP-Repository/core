@@ -9,7 +9,7 @@
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
-#include <pep/transcryptor/ChecksumChain.hpp>
+#include <pep/transcryptor/TsChecksumChain.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/database/Storage.hpp>
 
