@@ -242,15 +242,6 @@ function fromJsTime(millisecondsSinceEpoch: number | undefined) {
   return millisecondsSinceEpoch === undefined ? undefined : new Date(millisecondsSinceEpoch);
 }
 
-function toRawUserGroup(group: UserGroup): rawTypes.UserGroupInfo {
-  //TODO(workaround) Always pass every field because of https://github.com/emscripten-core/emscripten/issues/25978,
-  // pass `group` directly with EMSDK 5.0.0+
-  return {
-    name: group.name,
-    maxAuthValiditySeconds: group.maxAuthValiditySeconds,
-  };
-}
-
 function throwPotentialWasmException(mod: PepModule, ex: WasmException | Error | unknown): never {
   if (mod.pepMayBeWasmException(ex)) {
     throw mod.pepHandleWasmException(ex);
@@ -585,7 +576,9 @@ export default class Pep {
   }
 
   createUserGroup(group: UserGroup): Promise<void> {
-    return this.#wrapExec(() => this.#client.createUserGroup(toRawUserGroup(group)));
+    //TODO(workaround) Cast to Required<UserGroup> because of https://github.com/emscripten-core/emscripten/issues/25978,
+    // remove it with EMSDK 5.0.0+
+    return this.#wrapExec(() => this.#client.createUserGroup(group as Required<UserGroup>));
   }
 
   /**
@@ -593,7 +586,9 @@ export default class Pep {
    * omitting `maxAuthValiditySeconds` removes the group's maximum authentication validity.
    */
   modifyUserGroup(group: UserGroup): Promise<void> {
-    return this.#wrapExec(() => this.#client.modifyUserGroup(toRawUserGroup(group)));
+    //TODO(workaround) Cast to Required<UserGroup> because of https://github.com/emscripten-core/emscripten/issues/25978,
+    // remove it with EMSDK 5.0.0+
+    return this.#wrapExec(() => this.#client.modifyUserGroup(group as Required<UserGroup>));
   }
 
   removeUserGroup(name: string): Promise<void> {
