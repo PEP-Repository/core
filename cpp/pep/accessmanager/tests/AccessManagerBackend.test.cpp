@@ -1,3 +1,4 @@
+#include <gtest/gtest.h>
 #include <pep/utils/File.hpp>
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
@@ -6,7 +7,6 @@
 
 #include <filesystem>
 #include <gmock/gmock-matchers.h>
-#include <gtest/gtest.h>
 
 using namespace pep;
 using namespace std::ranges;
