@@ -1146,7 +1146,7 @@ macos-debug:
       -o "&:with_tests=True"
       -o "&:with_benchmark=True"
       -o "&:custom_build_folder=True"
-      --output-folder=./$BUILD_DIRECTORY/ && true
+      --output-folder="./$BUILD_DIRECTORY/" && true
     - conan_error="$?"
     # Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
     - conan remote remove pep-local-recipes
@@ -1164,6 +1164,8 @@ macos-debug:
       # Remove some temporary build files (excludes binaries)
       conan cache clean --build --temp
       fi
+    # Put cmake & ninja in PATH
+    - . "./$BUILD_DIRECTORY/generators/conanbuild.sh"
     - *set-enable-deprecation-errors
     - >
       cmake --preset conan-debug
