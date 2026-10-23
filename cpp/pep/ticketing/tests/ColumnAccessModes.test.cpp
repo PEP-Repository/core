@@ -83,7 +83,7 @@ TEST(ColumnAccessModes, EffectiveModesIncludesTheImplicitlyGrantedModes) {
   EXPECT_EQ(EffectiveModes(ColumnAccessModes::All), ColumnAccessModes::All);
 }
 
-TEST(ColumnAccessModes, ModesIncludeTestsImplicitlyGrantedModes) {
+TEST(ColumnAccessModes, ImpliesModesTestsImplicitlyGrantedModes) {
   EXPECT_TRUE(ImpliesModes(ColumnAccessModes::Read, ColumnAccessModes::ReadMeta));
   EXPECT_FALSE(ImpliesModes(ColumnAccessModes::Write, ColumnAccessModes::WriteMeta));
   EXPECT_FALSE(ImpliesModes(ColumnAccessModes::ReadMeta, ColumnAccessModes::Read));
