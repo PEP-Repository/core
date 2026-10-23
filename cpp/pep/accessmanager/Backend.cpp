@@ -14,7 +14,6 @@
 #include <ranges>
 
 #include <boost/algorithm/string/join.hpp>
-#include <sstream>
 
 using namespace std::ranges;
 
@@ -68,7 +67,16 @@ void CheckForDuplicatePseudonyms(const TicketRequest2& ticket) {
   if (auto found = TryFindCommonValue(ticket.accessSubjects, ticket.referenceSubjects)) { reportAndThrow(*found); }
 }
 
+ColumnAccessModes RequiredColumnAccessMode(const KeyBlindMode blindmode) {
+  switch (blindmode) {
+  case KeyBlindMode::Blind: return ColumnAccessModes::Write;
+  case KeyBlindMode::Unblind: return ColumnAccessModes::Read;
+  case KeyBlindMode::Unknown: break; // unexpected value
+  }
+  throw Error("Unexpected KeyBlindMode");
 }
+
+} // anonymous namespace
 
 AccessManager::Backend::Backend(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf)
   : Backend(std::make_shared<AccessManager::Backend::Storage>(std::move(path), std::move(globalConf))) {
@@ -568,26 +576,17 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
 
 void AccessManager::Backend::checkTicketForEncryptionKeyRequest(std::shared_ptr<EncryptionKeyRequest> request,
                                                               const Ticket2& ticket) {
-  std::unordered_set<std::string> ticketCols{ticket.columns.begin(), ticket.columns.end()};
+  const auto ticketColumns = std::unordered_set{std::from_range, ticket.columns};
 
-  for (auto const& entry : request->entries) {
-    const ColumnAccessModes requiredMode = [blindmode = entry.keyBlindMode] {
-      if (blindmode == KeyBlindMode::Blind) return ColumnAccessModes::Write;
-      if (blindmode == KeyBlindMode::Unblind) return ColumnAccessModes::Read;
-      throw Error("Unexpected KeyBlindMode");
-    }();
-
+  for (const auto& entry : request->entries) {
+    const auto requiredMode = RequiredColumnAccessMode(entry.keyBlindMode);
     if (!ImpliesModes(ticket.modes, requiredMode)) {
-      std::ostringstream msg;
-      msg << "Access denied: ticket does not grant access mode " << ToSingleString(requiredMode);
-      throw Error(msg.str());
+      throw Error(std::format("Access denied: ticket does not grant access mode {}", ToSingleString(requiredMode)));
     }
 
-    auto col = entry.metadata.getTag();
-    if (!ticketCols.contains(col)) {
-      std::ostringstream msg;
-      msg << "Access denied: ticket does not grant access to column " << Logging::Escape(col);
-      throw Error(msg.str());
+    const auto column = entry.metadata.getTag();
+    if (!ticketColumns.contains(column)) {
+      throw Error(std::format("Access denied: ticket does not grant access to column {}", Logging::Escape(column)));
     }
   }
 }
