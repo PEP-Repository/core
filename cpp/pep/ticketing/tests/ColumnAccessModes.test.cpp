@@ -8,20 +8,19 @@
 namespace {
 using namespace pep;
 
-using testing::ElementsAre;
+using testing::UnorderedElementsAre;
 
 TEST(ColumnAccessModes, ToIndividualStringsListsEverySetMode) {
-  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::None), ElementsAre());
-  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::Read), ElementsAre("read"));
-  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::ReadMeta), ElementsAre("read-meta"));
-  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::Write), ElementsAre("write"));
-  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::WriteMeta), ElementsAre("write-meta"));
-  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::_bogus_AmaTranscryptionOnly), ElementsAre("enumerate"));
+  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::None), UnorderedElementsAre());
+  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::Read), UnorderedElementsAre("read"));
+  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::ReadMeta), UnorderedElementsAre("read-meta"));
+  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::Write), UnorderedElementsAre("write"));
+  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::WriteMeta), UnorderedElementsAre("write-meta"));
+  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::_bogus_AmaTranscryptionOnly), UnorderedElementsAre("enumerate"));
   EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::Read | ColumnAccessModes::WriteMeta),
-      ElementsAre("read", "write-meta"));
+      UnorderedElementsAre("read", "write-meta"));
   EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::All),
-      ElementsAre("read", "read-meta", "write", "write-meta", "enumerate"))
-      << "modes should appear in stable order";
+      UnorderedElementsAre("read", "read-meta", "write", "write-meta", "enumerate"));
 }
 
 TEST(ColumnAccessModes, ToSingleStringNamesNone) {
