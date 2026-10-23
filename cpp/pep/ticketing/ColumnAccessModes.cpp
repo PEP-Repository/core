@@ -5,18 +5,24 @@
 
 #include <boost/algorithm/string/join.hpp>
 
+#include <array>
+#include <string_view>
+
 namespace pep {
 
+constexpr auto columnAccessModeNames = std::array<std::pair<ColumnAccessModes, std::string_view>, 5>{{
+    {ColumnAccessModes::Read, "read"},
+    {ColumnAccessModes::ReadMeta, "read-meta"},
+    {ColumnAccessModes::Write, "write"},
+    {ColumnAccessModes::WriteMeta, "write-meta"},
+    {ColumnAccessModes::_bogus_AmaTranscryptionOnly, "enumerate"},
+}};
+
 std::vector<std::string> ToIndividualStrings(const ColumnAccessModes modes) {
-  static_assert(
-      ColumnAccessModes::All == (ColumnAccessModes::Read | ColumnAccessModes::ReadMeta | ColumnAccessModes::Write | ColumnAccessModes::WriteMeta | ColumnAccessModes::_bogus_AmaTranscryptionOnly),
-      "every mode must be handled below");
   std::vector<std::string> strs{};
-  if (HasFlags(modes, ColumnAccessModes::Read)) { strs.emplace_back("read"); }
-  if (HasFlags(modes, ColumnAccessModes::ReadMeta)) { strs.emplace_back("read-meta"); }
-  if (HasFlags(modes, ColumnAccessModes::Write)) { strs.emplace_back("write"); }
-  if (HasFlags(modes, ColumnAccessModes::WriteMeta)) { strs.emplace_back("write-meta"); }
-  if (HasFlags(modes, ColumnAccessModes::_bogus_AmaTranscryptionOnly)) { strs.emplace_back("enumerate"); }
+  for (const auto& [mode_i, name_i] : columnAccessModeNames) {
+    if (HasFlags(modes, mode_i)) { strs.emplace_back(name_i); }
+  }
   return strs;
 }
 
@@ -25,13 +31,11 @@ std::string ToSingleString(const ColumnAccessModes modes, const std::string_view
   return boost::join(ToIndividualStrings(modes), separator);
 }
 
-ColumnAccessModes ParseMode(const std::string_view name) {
-  if (name == "read") { return ColumnAccessModes::Read; }
-  if (name == "read-meta") { return ColumnAccessModes::ReadMeta; }
-  if (name == "write") { return ColumnAccessModes::Write; }
-  if (name == "write-meta") { return ColumnAccessModes::WriteMeta; }
-  if (name == "enumerate") { return ColumnAccessModes::_bogus_AmaTranscryptionOnly; }
-  throw Error("Unknown ticket mode " + Logging::Escape(std::string(name)));
+ColumnAccessModes ParseMode(const std::string_view str) {
+  for (const auto& [mode, name] : columnAccessModeNames) {
+    if (str == name) { return mode; }
+  }
+  throw Error("Unknown ticket mode " + Logging::Escape(std::string(str)));
 }
 
 ColumnAccessModes ParseModes(const std::span<const std::string> names) {
