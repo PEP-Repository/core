@@ -140,11 +140,8 @@ export interface StoreQuery {
   metadata?: Map<string, string | Uint8Array | ArrayBuffer> | undefined;
 }
 
-interface StoreQueryInternal extends Omit<rawTypes.StoreQuery, 'reader' | 'metadata'> {
+interface StoreQueryInternal extends UseJsStrings<Omit<rawTypes.StoreQuery, 'reader' | 'metadata'>> {
   reader: ReadableStreamDefaultReader<Uint8Array>;
-  /**
-interface StoreQueryInternal extends UseJsStrings<rawTypes.StoreQuery> {
-  blob: Blob;
   /**
   * The metadata, normalized to Uint8Array.
   * Encoded here rather than in C++, so the bytes stored do not depend on embind's string handling
