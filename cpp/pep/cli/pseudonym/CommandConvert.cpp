@@ -2,6 +2,7 @@
 #include <optional>
 #include <pep/async/FakeVoid.hpp>
 #include <pep/cli/pseudonym/CommandConvert.hpp>
+#include <pep/cli/structuredoutput/FormatParameter.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
@@ -49,17 +50,39 @@ IdType ParseIdTypeFromString(const std::string& str){
   return *parsed;
 }
 
+std::string IdTypeToString(IdType type) {
+  switch (type) {
+  case IdType::PolymorphicPseudonym: return "polymorphic-pseudonym";
+  case IdType::LocalPseudonym: return "local-pseudonym";
+  case IdType::BriefLocalPseudonym: return "brief-local-pseudonym";
+  }
+  throw std::runtime_error{"Unsupported IdType"};
+}
+
 struct Configuration final {
   std::string from;
   IdType to;
+  std::optional<structuredOutput::FormatConfig> formatConfig; ///< Not set: print just the pseudonym
 
   static Configuration From(const pep::commandline::NamedValues &values) {
     return {
       .from = values.get<std::string>(param::from),
       .to = ParseIdTypeFromString(values.get<std::string>(param::to)),
+      .formatConfig = values.has(structuredOutput::formatParameterName)
+          ? std::make_optional(structuredOutput::FormatConfigFrom(values))
+          : std::nullopt,
     };
   }
 };
+
+void Print(const Configuration& config, const std::string& pseudonym) {
+  if (config.formatConfig.has_value()) {
+    structuredOutput::WriteStructured(std::cout, structuredOutput::Tree::FromJson({{IdTypeToString(config.to), pseudonym}}), *config.formatConfig);
+  }
+  else {
+    std::cout << pseudonym << std::endl;
+  }
+}
 
 } // namespace
 
@@ -75,7 +98,8 @@ CommandPseudonym::CommandConvert::getSupportedParameters() const {
              .value(Value<std::string>()
                 .positional()
                 .allow(stringToIdType | std::views::keys)
-                .required());
+                .required()) +
+         structuredOutput::FormatParameter(structuredOutput::FormatFlags::Json | structuredOutput::FormatFlags::Yaml, std::nullopt);
 }
 
 int CommandPseudonym::CommandConvert::execute() {
@@ -84,7 +108,7 @@ int CommandPseudonym::CommandConvert::execute() {
   return executeEventLoopFor([config](std::shared_ptr<pep::CoreClient> client) {
     return client->parsePPorIdentity(config.from).flat_map([client, config](PolymorphicPseudonym pp) {
       if (config.to == IdType::PolymorphicPseudonym) {
-        std::cout << pp.text() << std::endl;
+        Print(config, pp.text());
         return rxcpp::observable<>::just(FakeVoid()).as_dynamic();
       }
 
@@ -103,13 +127,13 @@ int CommandPseudonym::CommandConvert::execute() {
 
             const auto lp = client->decryptLocalPseudonym(*subjects.front().accessGroup);
             if (config.to == IdType::LocalPseudonym) {
-              std::cout << lp.text() << std::endl;
+              Print(config, lp.text());
               return rxcpp::observable<>::just(FakeVoid()).as_dynamic();
             }
 
             return client->getGlobalConfiguration()
                 .map([config, lp](std::shared_ptr<GlobalConfiguration> gc) {
-                  std::cout << gc->getUserPseudonymFormat().makeUserPseudonym(lp) << std::endl;
+                  Print(config, gc->getUserPseudonymFormat().makeUserPseudonym(lp));
                   return FakeVoid();
                 }).as_dynamic();
           }).as_dynamic();

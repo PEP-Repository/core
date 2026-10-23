@@ -10,6 +10,8 @@
 
 - `pepcli list --format` now also accepts `json-compact`, like `pepcli ama query` and `pepcli user query`.
 
+- core#2911: `pepcli pseudonym convert` now accepts `--format yaml|json|json-compact` to produce structured output, e.g. `local-pseudonym: "..."`. Without `--format` it still prints just the converted pseudonym.
+
 - core#3008: Restructured the code that handles ticket request, into a process with 4 meaningful phases.
   This makes it easier to maintain and extend. The documentation was updated to reflect the new structure of the process.
   - Changed: `docs/public/crypto/ticket_request.md` has been updated

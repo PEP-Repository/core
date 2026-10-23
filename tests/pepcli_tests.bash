@@ -920,7 +920,7 @@ if should_run_test pseudonym-conversion; then
 
   assert_equivalent_pp() {
     public_key() { echo "$1" | cut -d: -f3; }
-    stable_id() { pepcli pseudonym convert "$1" user; }
+    stable_id() { pepcli pseudonym convert "$1" local-pseudonym; }
 
     assert_equal "$(public_key "$1")" "$(public_key "$2")"
     assert_equal "$(stable_id "$1")" "$(stable_id "$2")"
@@ -937,6 +937,9 @@ if should_run_test pseudonym-conversion; then
   assert_equal "$(pepcli pseudonym convert "$PP" brief-local-pseudonym)" "$UP"
   assert_equal "$(pepcli pseudonym convert "$LP" brief-local-pseudonym)" "$UP"
   assert_equal "$(pepcli pseudonym convert "$UP" brief-local-pseudonym)" "$UP"
+
+  # Structured output
+  assert_equal "$(pepcli pseudonym convert "$UP" local-pseudonym --format json | jq --raw-output '."local-pseudonym"')" "$LP"
 
   assert_equal "$(pepcli pseudonym convert "$PP" polymorphic-pseudonym)" "$PP"
   assert_equivalent_pp "$(pepcli pseudonym convert "$LP" polymorphic-pseudonym)" "$PP"
