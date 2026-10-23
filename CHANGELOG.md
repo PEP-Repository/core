@@ -127,7 +127,7 @@
 
 - core#298: `PEP_GROUP_REPOSITORY_TOKEN` and `DOCS_GROUP_WRITE_REPOSITORY_TOKEN` CI variables can be removed after all projects are updated. Also update <https://docs.pages.pep.cs.ru.nl/private/ops/main/procedures_maintenance/update-gitlab-pep-group-access-tokens/> to remove the instructions for these tokens.
 
-- !2608: Configurations that relied on an unencrypted connection on port 25 must now specify `smtp_security: "none"`, which cannot be combined with `smtp_auth_required`.
+- !2608: Python `MailSender` configurations that relied on an unencrypted SMTP connection on port 25 must now specify `smtp_security: "none"`, which cannot be combined with `smtp_auth_required`.
 
 ### Hotfixes for release 1.8
 
