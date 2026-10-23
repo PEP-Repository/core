@@ -27,6 +27,16 @@ public:
   inline std::string string() const { return prefix_ + text_; }
 
   [[nodiscard]] auto operator<=>(const SwitchAnnouncement&) const = default;
+
+  /// \brief Orders announcements by their text (without prefix). Use as comparator for e.g. a std::set.
+  /// \remark A named comparator instead of a std::less<SwitchAnnouncement> specialization: libc++ 22 and later ignore
+  ///         such a specialization when searching a std::set, and call operator< directly.
+  ///         See https://github.com/llvm/llvm-project/issues/178847
+  struct TextLess {
+    bool operator()(const SwitchAnnouncement& lhs, const SwitchAnnouncement& rhs) const {
+      return lhs.getText() < rhs.getText();
+    }
+  };
 };
 
 }
