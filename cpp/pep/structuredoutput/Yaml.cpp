@@ -2,10 +2,35 @@
 
 #include <pep/utils/ChronoUtil.hpp>
 
+#include <cctype>
+#include <format>
+
 namespace pep::structuredOutput::yaml {
 namespace {
 
 enum class ForceQuotes { No, Yes };
+
+/// Appends a character to a double-quoted YAML string, escaping it if needed.
+/// \remark Works per byte, so it only escapes single-byte (ASCII) characters. Multi-byte UTF-8 characters that YAML
+///         also wants escaped are written as-is: C1 control characters (U+0080-U+009F), the line and paragraph
+///         separators U+2028 and U+2029, and invalid UTF-8.
+void AppendEscaped(std::ostream& stream, char c) {
+  switch (c) {
+  case '\\': stream << "\\\\"; break;
+  case '"': stream << "\\\""; break;
+  // YAML turns raw line breaks inside quoted strings into spaces when reading, so escape them (and other control characters)
+  case '\n': stream << "\\n"; break;
+  case '\r': stream << "\\r"; break;
+  case '\t': stream << "\\t"; break;
+  default:
+    if (const auto byte = static_cast<unsigned char>(c); std::iscntrl(byte)) {
+      stream << std::format("\\x{:02x}", byte);
+    }
+    else {
+      stream << c;
+    }
+  }
+}
 
 std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view str, ForceQuotes forceQuotes) {
   constexpr auto needsQuotes = [](std::string_view str) {
@@ -14,12 +39,12 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
       !std::isalpha(str.front()) ||
       !std::ranges::all_of(str, [](char c) { return std::isalnum(c) || c == '_' || c == ' '; });
   };
-  constexpr auto needsEscape = [](char c) { return c == '\\' || c == '"'; };
-
   const auto quoteOrNothing = (forceQuotes == ForceQuotes::Yes || needsQuotes(str)) ? "\"" : "";
 
   stream << quoteOrNothing;
-  for (char c : str) { stream << (needsEscape(c) ? "\\" : "") << c; }
+  for (char c : str) {
+    AppendEscaped(stream, c);
+  }
   return stream << quoteOrNothing;
 }
 

@@ -33,6 +33,9 @@ TEST(structuredOutputYaml, StringLiteralEscaping) {
       yaml::to_string(Tree::FromJson({{"0key", "quote keys that do not start with alpha"}, {"k|:", "special chars"}})),
       "\"0key\": \"quote keys that do not start with alpha\"\n"
       "\"k|:\": \"special chars\"\n");
+  EXPECT_EQ(
+      yaml::to_string(Tree::FromJson({{"multi\nline", "line 1\nline 2\r\n\tindented\x01"}})),
+      "\"multi\\nline\": \"line 1\\nline 2\\r\\n\\tindented\\x01\"\n");
 }
 
 TEST(structuredOutputYaml, FlatArray) {
