@@ -140,7 +140,7 @@ export interface StoreQuery {
   metadata?: Map<string, string | Uint8Array | ArrayBuffer> | undefined;
 }
 
-interface StoreQueryInternal extends UseJsStrings<Omit<rawTypes.StoreQuery, 'reader' | 'metadata'>> {
+interface StoreQueryInternal extends UseJsStrings<rawTypes.StoreQuery> {
   reader: ReadableStreamDefaultReader<Uint8Array>;
   /**
   * The metadata, normalized to Uint8Array.
