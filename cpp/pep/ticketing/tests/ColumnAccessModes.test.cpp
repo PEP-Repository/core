@@ -10,7 +10,7 @@ using namespace pep;
 
 using testing::ElementsAre;
 
-TEST(TicketMode, ToIndividualStringsListsEverySetMode) {
+TEST(ColumnAccessModes, ToIndividualStringsListsEverySetMode) {
   EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::None), ElementsAre());
   EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::Read), ElementsAre("read"));
   EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::ReadMeta), ElementsAre("read-meta"));
@@ -24,20 +24,20 @@ TEST(TicketMode, ToIndividualStringsListsEverySetMode) {
       << "modes should appear in stable order";
 }
 
-TEST(TicketMode, ToSingleStringNamesNone) {
+TEST(ColumnAccessModes, ToSingleStringNamesNone) {
   EXPECT_EQ(ToSingleString(ColumnAccessModes::None), "none");
 }
 
-TEST(TicketMode, ToSingleStringJoinsTheIndividualModes) {
+TEST(ColumnAccessModes, ToSingleStringJoinsTheIndividualModes) {
   EXPECT_EQ(ToSingleString(ColumnAccessModes::Read), "read");
   EXPECT_EQ(ToSingleString(ColumnAccessModes::Read | ColumnAccessModes::WriteMeta), "read|write-meta");
 }
 
-TEST(TicketMode, ToSingleStringUsesTheSeparatorFromTheCaller) {
+TEST(ColumnAccessModes, ToSingleStringUsesTheSeparatorFromTheCaller) {
   EXPECT_EQ(ToSingleString(ColumnAccessModes::Read | ColumnAccessModes::Write, ", "), "read, write");
 }
 
-TEST(TicketMode, ParseModeAcceptsEveryMode) {
+TEST(ColumnAccessModes, ParseModeAcceptsEveryMode) {
   EXPECT_EQ(ParseMode("read"), ColumnAccessModes::Read);
   EXPECT_EQ(ParseMode("read-meta"), ColumnAccessModes::ReadMeta);
   EXPECT_EQ(ParseMode("write"), ColumnAccessModes::Write);
@@ -45,26 +45,26 @@ TEST(TicketMode, ParseModeAcceptsEveryMode) {
   EXPECT_EQ(ParseMode("enumerate"), ColumnAccessModes::_bogus_AmaTranscryptionOnly);
 }
 
-TEST(TicketMode, ParseModeRejectsUnknownModes) {
+TEST(ColumnAccessModes, ParseModeRejectsUnknownModes) {
   EXPECT_THROW(ParseMode("access"), Error);
   EXPECT_THROW(ParseMode("Read"), Error) << "mode names are case sensitive";
   EXPECT_THROW(ParseMode(""), Error);
 }
 
-TEST(TicketMode, IndividualNameParsingRoundtrip) {
+TEST(ColumnAccessModes, IndividualNameParsingRoundtrip) {
   for (const auto name : {"read", "read-meta", "write", "write-meta", "enumerate"}) {
     EXPECT_EQ(ToSingleString(ParseMode(name)), name);
   }
 }
 
-TEST(TicketMode, ParseModesCombinesTheNames) {
+TEST(ColumnAccessModes, ParseModesCombinesTheNames) {
   EXPECT_EQ(ParseModes(std::vector<std::string>{}), ColumnAccessModes::None);
   EXPECT_EQ(ParseModes(std::vector<std::string>{"read"}), ColumnAccessModes::Read);
   EXPECT_EQ(ParseModes(std::vector<std::string>{"read-meta", "write-meta"}),
       ColumnAccessModes::ReadMeta | ColumnAccessModes::WriteMeta);
 }
 
-TEST(TicketMode, EffectiveModesIncludesTheImplicitlyGrantedModes) {
+TEST(ColumnAccessModes, EffectiveModesIncludesTheImplicitlyGrantedModes) {
   EXPECT_EQ(EffectiveModes(ColumnAccessModes::Read), ColumnAccessModes::Read | ColumnAccessModes::ReadMeta)
       << "read implies read-meta";
   EXPECT_EQ(EffectiveModes(ColumnAccessModes::Write), ColumnAccessModes::Write)
@@ -84,7 +84,7 @@ TEST(TicketMode, EffectiveModesIncludesTheImplicitlyGrantedModes) {
   EXPECT_EQ(EffectiveModes(ColumnAccessModes::All), ColumnAccessModes::All);
 }
 
-TEST(TicketMode, ModesIncludeTestsImplicitlyGrantedModes) {
+TEST(ColumnAccessModes, ModesIncludeTestsImplicitlyGrantedModes) {
   EXPECT_TRUE(ImpliesModes(ColumnAccessModes::Read, ColumnAccessModes::ReadMeta));
   EXPECT_FALSE(ImpliesModes(ColumnAccessModes::Write, ColumnAccessModes::WriteMeta));
   EXPECT_FALSE(ImpliesModes(ColumnAccessModes::ReadMeta, ColumnAccessModes::Read));

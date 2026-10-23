@@ -35,7 +35,7 @@ ColumnAccessModes ParseMode(const std::string_view str) {
   for (const auto& [mode, name] : columnAccessModeNames) {
     if (str == name) { return mode; }
   }
-  throw Error("Unknown ticket mode " + Logging::Escape(std::string(str)));
+  throw Error("Unknown column access mode " + Logging::Escape(std::string(str)));
 }
 
 ColumnAccessModes ParseModes(const std::span<const std::string> names) {
