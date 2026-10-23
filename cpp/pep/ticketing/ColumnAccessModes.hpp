@@ -12,12 +12,13 @@ namespace pep {
 
 /// Access modes for column groups
 enum class PEP_ATTRIBUTE_FLAG_ENUM ColumnAccessModes {
-  None = 0b0'0000,
-  Read = 0b0'0001,
-  ReadMeta = 0b0'0010,
-  Write = 0b0'0100,
+  None      = 0b0'0000,
+  Read      = 0b0'0001,
+  ReadMeta  = 0b0'0010,
+  Write     = 0b0'0100,
   WriteMeta = 0b0'1000,
-  _bogus_AmaTranscryptionOnly = 0b1'0000, ///< See ticket #3038
+  _bogus_AmaTranscryptionOnly ///< See ticket #3038
+            = 0b1'0000,
   All = Read | ReadMeta | Write | WriteMeta | _bogus_AmaTranscryptionOnly,
 };
 }
