@@ -17,8 +17,8 @@ enum class PEP_ATTRIBUTE_FLAG_ENUM ColumnAccessModes {
   ReadMeta = 0b0'0010,
   Write = 0b0'0100,
   WriteMeta = 0b0'1000,
-  Enumerate = 0b1'0000,
-  All = Read | ReadMeta | Write | WriteMeta | Enumerate,
+  _bogus_AmaTranscryptionOnly = 0b1'0000, ///< See ticket #3038
+  All = Read | ReadMeta | Write | WriteMeta | _bogus_AmaTranscryptionOnly,
 };
 }
 

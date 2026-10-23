@@ -16,7 +16,7 @@ TEST(TicketMode, ToIndividualStringsListsEverySetMode) {
   EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::ReadMeta), ElementsAre("read-meta"));
   EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::Write), ElementsAre("write"));
   EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::WriteMeta), ElementsAre("write-meta"));
-  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::Enumerate), ElementsAre("enumerate"));
+  EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::_bogus_AmaTranscryptionOnly), ElementsAre("enumerate"));
   EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::Read | ColumnAccessModes::WriteMeta),
       ElementsAre("read", "write-meta"));
   EXPECT_THAT(ToIndividualStrings(ColumnAccessModes::All),
@@ -42,7 +42,7 @@ TEST(TicketMode, ParseModeAcceptsEveryMode) {
   EXPECT_EQ(ParseMode("read-meta"), ColumnAccessModes::ReadMeta);
   EXPECT_EQ(ParseMode("write"), ColumnAccessModes::Write);
   EXPECT_EQ(ParseMode("write-meta"), ColumnAccessModes::WriteMeta);
-  EXPECT_EQ(ParseMode("enumerate"), ColumnAccessModes::Enumerate);
+  EXPECT_EQ(ParseMode("enumerate"), ColumnAccessModes::_bogus_AmaTranscryptionOnly);
 }
 
 TEST(TicketMode, ParseModeRejectsUnknownModes) {
@@ -73,7 +73,7 @@ TEST(TicketMode, EffectiveModesIncludesTheImplicitlyGrantedModes) {
       << "read-meta does not imply read";
   EXPECT_EQ(EffectiveModes(ColumnAccessModes::WriteMeta), ColumnAccessModes::WriteMeta | ColumnAccessModes::Write)
       << "write-meta implies write";
-  EXPECT_EQ(EffectiveModes(ColumnAccessModes::Enumerate), ColumnAccessModes::Enumerate);
+  EXPECT_EQ(EffectiveModes(ColumnAccessModes::_bogus_AmaTranscryptionOnly), ColumnAccessModes::_bogus_AmaTranscryptionOnly);
 
   // combinations
   EXPECT_EQ(EffectiveModes(ColumnAccessModes::Read | ColumnAccessModes::WriteMeta),

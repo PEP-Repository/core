@@ -762,7 +762,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     auto& [participantGroup, list] = entry;
     TicketRequest2 ticketRequest;
     ticketRequest.participantGroups = {participantGroup};
-    ticketRequest.modes = ColumnAccessModes::Enumerate;
+    ticketRequest.modes = ColumnAccessModes::_bogus_AmaTranscryptionOnly;
     ticketRequest.accessSubjects = list;
     std::string data = Serialization::ToString(ticketRequest);
     TranscryptorRequest tsRequest{
