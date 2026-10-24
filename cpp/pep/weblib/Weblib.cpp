@@ -63,9 +63,9 @@ Timestamp FromJsTime(double millisecondsSinceEpoch) {
   return Timestamp{std::chrono::milliseconds{static_cast<std::chrono::milliseconds::rep>(millisecondsSinceEpoch)}};
 }
 
-UserGroupInfo ToUserGroupInfo(const UserGroup& group) {
+UserGroupInfo ToUserGroupInfo(UserGroup group) {
   return UserGroupInfo{
-      .name = group.name,
+      .name = std::move(group.name),
       .maxAuthValiditySeconds = group.maxAuthValidity.transform([](std::chrono::seconds validity) {
         return static_cast<double>(validity.count());
       }),
@@ -613,6 +613,7 @@ public:
                 | views::transform(ToUser)
                 | to<std::vector>(),
               .userGroups = response.userGroups
+                | views::as_rvalue
                 | views::transform(ToUserGroupInfo)
                 | to<std::vector>(),
           };

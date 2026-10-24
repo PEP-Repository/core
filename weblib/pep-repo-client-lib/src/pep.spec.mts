@@ -29,13 +29,19 @@ interface OAuthTokenSecretFile {
 describe('Pep', () => {
   let pep!: Pep;
   let tokenSecretObj!: OAuthTokenSecretFile;
+  let currentUserGroup: string | undefined;
 
+  /** Authenticate as `userGroup`, unless already authenticated as it. Call this in `before()` of each suite. */
   async function authenticateAs(userGroup: string) {
+    if (currentUserGroup === userGroup) {
+      return;
+    }
     await pep.runHandleWasmException(async () => {
       console.debug(`Authenticating as ${userGroup}`);
       await pep.authenticateWithToken(pep.internalGenerateToken(tokenSecretObj.OAuthTokenSecret, userGroup));
       console.debug('Authenticated');
     });
+    currentUserGroup = userGroup;
   }
 
   before(async () => {
@@ -80,14 +86,14 @@ describe('Pep', () => {
     console.debug('Initializing Pep');
     pep = await Pep.create(pepCreateArgs);
     console.debug('Pep initialized');
-
-    await authenticateAs('Research Assessor');
   });
   after(async () => {
     await pep?.delete();
   });
 
   describe('#listColumns()', () => {
+    before(() => authenticateAs('Research Assessor'));
+
     /** @returns The modes per test column group returned by listColumns */
     async function listTestColumnGroupModes(query?: ListColumnsQuery) {
       const columnGroups = await pep.runHandleWasmException(() => pep.listColumns(query));
@@ -137,6 +143,8 @@ describe('Pep', () => {
   });
 
   describe('#listSubjectGroups()', () => {
+    before(() => authenticateAs('Research Assessor'));
+
     it('should list the name and modes of each subject group', async () => {
       expect(await pep.runHandleWasmException(() => pep.listSubjectGroups())).to.containSubset([
         {name: '*', modes: {access: true}},
@@ -147,6 +155,8 @@ describe('Pep', () => {
   });
 
   describe('#list()', () => {
+    before(() => authenticateAs('Research Assessor'));
+
     context('given a subject group and column group', () => {
       let entries: CellEntry[] | undefined;
       after(() => entries && deleteObjects(entries));
@@ -230,6 +240,8 @@ describe('Pep', () => {
   });
 
   describe('#retrieve()', () => {
+    before(() => authenticateAs('Research Assessor'));
+
     context('given a subject group and column group', () => {
       let entries: CellEntry[] | undefined;
       after(() => entries && deleteObjects(entries));
@@ -268,7 +280,8 @@ describe('Pep', () => {
     const uid = `weblib-test-user-${suffix}`;
     const otherUid = `weblib-test-user-other-${suffix}`;
     const userGroup = `WeblibTestUserGroup-${suffix}`;
-    const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const expiration = new Date();
+    expiration.setFullYear(expiration.getFullYear() + 1);
 
     /** @returns The identifiers of the test user */
     async function listTestUserIds() {
@@ -288,7 +301,6 @@ describe('Pep', () => {
       ]) {
         await pep.runHandleWasmException(step).catch(() => {});
       }
-      await authenticateAs('Research Assessor');
     });
 
     it('should create, modify and remove users and user groups', () => pep.runHandleWasmException(async () => {
@@ -301,7 +313,7 @@ describe('Pep', () => {
       });
 
       await pep.modifyUserGroup({name: userGroup});
-      await pep.updateUserGroupExpiration(uid, userGroup, undefined);
+      await pep.updateUserGroupExpiration(uid, userGroup, null);
       expect(await pep.listUsers({userFilter: suffix})).to.deep.equal({
         users: [{displayId: uid, primaryId: undefined, otherUids: [], groups: [{userGroup, expiration: undefined}]}],
         userGroups: [{name: userGroup, maxAuthValiditySeconds: undefined}],

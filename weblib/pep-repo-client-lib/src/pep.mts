@@ -554,8 +554,7 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.removeUser(uid));
   }
 
-  addUserIdentifier(existingUid: string, newUid: string,
-                    {isPrimaryId = false, isDisplayId = false}: {isPrimaryId?: boolean, isDisplayId?: boolean} = {}): Promise<void> {
+  addUserIdentifier(existingUid: string, newUid: string, {isPrimaryId = false, isDisplayId = false} = {}): Promise<void> {
     return this.#wrapExec(() => this.#client.addUserIdentifier(existingUid, newUid, isPrimaryId, isDisplayId));
   }
 
@@ -595,7 +594,7 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.removeUserGroup(name));
   }
 
-  addUserToGroup(uid: string, group: string, expiration?: Date): Promise<void> {
+  addUserToGroup(uid: string, group: string, expiration?: Date | null): Promise<void> {
     return this.#wrapExec(() => this.#client.addUserToGroup(uid, group, expiration?.getTime()));
   }
 
@@ -604,7 +603,7 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.removeUserFromGroup(uid, group, blockTokens));
   }
 
-  updateUserGroupExpiration(uid: string, group: string, expiration?: Date): Promise<void> {
+  updateUserGroupExpiration(uid: string, group: string, expiration: Date | null | undefined): Promise<void> {
     return this.#wrapExec(() => this.#client.updateUserGroupExpiration(uid, group, expiration?.getTime()));
   }
 
