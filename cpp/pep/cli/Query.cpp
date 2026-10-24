@@ -25,26 +25,19 @@ public:
   }
 
 private:
-  struct ColumnAccessFlags {
-    bool readable = false;
-    bool writable = false;
-    bool meta_readable = false;
-    bool meta_writable = false;
-  };
-
   struct ParticipantGroupAccessModes {
     bool access = false;
     bool enumerate = false;
   };
 
-  static void ReportColumnAccess(const std::string& caption, const std::map<std::string, ColumnAccessFlags> entries) {
+  static void ReportColumnAccess(const std::string& caption, const std::map<std::string, pep::ColumnAccessModes> entries) {
     std::cout << caption << " (" << entries.size() << "):\n";
     if (!entries.empty()) {
       for (const auto& entry : entries) {
         std::cout << "  "
-          << (entry.second.meta_readable ? 'm' : ' ')
-          << (entry.second.readable      ? 'r' : ' ')
-          << (entry.second.writable      ? 'w' : ' ')
+          << (pep::HasFlags(entry.second, pep::ColumnAccessModes::ReadMeta) ? 'm' : ' ')
+          << (pep::HasFlags(entry.second, pep::ColumnAccessModes::Read) ? 'r' : ' ')
+          << (pep::HasFlags(entry.second, pep::ColumnAccessModes::Write) ? 'w' : ' ')
           << ' ' << entry.first << '\n';
       }
       std::cout << std::endl;
@@ -73,26 +66,19 @@ private:
         .map(
           [userGroup = client->getEnrolledGroup()](const pep::ColumnAccess& access) {
             // Copy received information to std::map<> to sort entries (by name) for output
-            std::map<std::string, ColumnAccessFlags> cgs, columns;
+            std::map<std::string, pep::ColumnAccessModes> cgs, columns;
             bool hasReadAccess = false;
             bool hasMetaWriteAccess = false;
 
             for (const auto& entry : access.columnGroups) {
               if (entry.second.modes != pep::ColumnAccessModes::None) {
                 // Create column group entry and set accessibility flags
-                auto& flags = cgs[entry.first];
+                auto& modes = cgs[entry.first];
+                modes |= entry.second.modes;
                 if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::Read)) {
-                  flags.readable = true;
                   hasReadAccess = true;
                 }
-                if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::Write)) {
-                  flags.writable = true;
-                }
-                if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::ReadMeta)) {
-                  flags.meta_readable = true;
-                }
                 if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::WriteMeta)) {
-                  flags.meta_writable = true;
                   hasMetaWriteAccess = true;
                 }
                 if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::_bogus_AmaTranscryptionOnly)) {
@@ -101,11 +87,7 @@ private:
 
                 // Create and/or update entries for columns associated with the group
                 for (auto i : entry.second.columns.indices) {
-                  auto& column = columns[access.columns[i]];
-                  column.readable |= flags.readable;
-                  column.writable |= flags.writable;
-                  column.meta_readable |= flags.meta_readable;
-                  column.meta_writable |= flags.meta_writable;
+                  columns[access.columns[i]] |= entry.second.modes;
                 }
               }
             }
