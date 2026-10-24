@@ -12,6 +12,8 @@
 
 - core#2911: `pepcli pseudonym convert` now accepts `--format yaml|json|json-compact` to produce structured output, e.g. `local-pseudonym: "..."`. Without `--format` it still prints just the converted pseudonym.
 
+- core#3040: Fixed YAML output (e.g. of `pepcli ama query`, `user query` and `list --format yaml`) for strings containing line breaks, tabs or other control characters. These are now escaped (e.g. `\n`), so that YAML parsers no longer turn line breaks into spaces.
+
 - core#3008: Restructured the code that handles ticket request, into a process with 4 meaningful phases.
   This makes it easier to maintain and extend. The documentation was updated to reflect the new structure of the process.
   - Changed: `docs/public/crypto/ticket_request.md` has been updated
