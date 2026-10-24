@@ -67,20 +67,14 @@ private:
           [userGroup = client->getEnrolledGroup()](const pep::ColumnAccess& access) {
             // Copy received information to std::map<> to sort entries (by name) for output
             std::map<std::string, pep::ColumnAccessModes> cgs, columns;
-            bool hasReadAccess = false;
-            bool hasMetaWriteAccess = false;
+            auto combinedGroupModes = pep::ColumnAccessModes::None;
 
             for (const auto& entry : access.columnGroups) {
               if (entry.second.modes != pep::ColumnAccessModes::None) {
                 // Create column group entry and set accessibility flags
                 auto& modes = cgs[entry.first];
                 modes |= entry.second.modes;
-                if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::Read)) {
-                  hasReadAccess = true;
-                }
-                if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::WriteMeta)) {
-                  hasMetaWriteAccess = true;
-                }
+                combinedGroupModes |= entry.second.modes;
                 if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::_bogus_AmaTranscryptionOnly)) {
                   throw std::runtime_error("Unsupported access mode 'enumerate' encountered for column group '" + entry.first + "'");
                 }
@@ -101,11 +95,11 @@ private:
                 << "\"read-meta\" access to all column groups and columns. Use the \"pepcli ama query\"" << '\n'
                 << "command to list them." << std::endl;
             }
-            else if (hasReadAccess) {
+            else if (pep::HasFlags(combinedGroupModes, pep::ColumnAccessModes::Read)) {
               std::cerr << "The \"read\" access privilege grants access to \"read-meta\"data as well." << std::endl;
             }
 
-            if (hasMetaWriteAccess) {
+            if (pep::HasFlags(combinedGroupModes, pep::ColumnAccessModes::WriteMeta)) {
               std::cerr << "The \"write-meta\" access privilege grants access to \"write\" data as well." << std::endl;
             }
 
