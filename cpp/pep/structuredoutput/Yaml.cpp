@@ -10,6 +10,11 @@ namespace {
 
 enum class ForceQuotes { No, Yes };
 
+// Note on the <cctype> functions used below (std::isalpha, std::isalnum, std::iscntrl):
+// - They depend on the current C locale. This code assumes the default "C" locale (pepcli never calls setlocale), in
+//   which they only match ASCII letters, digits and control characters.
+// - They require unsigned char values: plain char is negative for non-ASCII bytes, which is undefined behavior.
+
 /// Appends a character to a double-quoted YAML string, escaping it if needed.
 /// \remark Works per byte, so it only escapes single-byte (ASCII) characters. Multi-byte UTF-8 characters that YAML
 ///         also wants escaped are written as-is: C1 control characters (U+0080-U+009F), the line and paragraph
@@ -36,8 +41,8 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
   constexpr auto needsQuotes = [](std::string_view str) {
     // applying quotes generously even though YAML would allow more to go without quotes
     return str.empty() ||
-      !std::isalpha(str.front()) ||
-      !std::ranges::all_of(str, [](char c) { return std::isalnum(c) || c == '_' || c == ' '; });
+      !std::isalpha(static_cast<unsigned char>(str.front())) ||
+      !std::ranges::all_of(str, [](unsigned char c) { return std::isalnum(c) || c == '_' || c == ' '; });
   };
   const auto quoteOrNothing = (forceQuotes == ForceQuotes::Yes || needsQuotes(str)) ? "\"" : "";
 
