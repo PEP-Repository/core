@@ -15,7 +15,7 @@ constexpr auto columnAccessModeNames = std::array<std::pair<ColumnAccessModes, s
     {ColumnAccessModes::ReadMeta, "read-meta"},
     {ColumnAccessModes::Write, "write"},
     {ColumnAccessModes::WriteMeta, "write-meta"},
-    {ColumnAccessModes::_bogus_AmaTranscryptionOnly, "enumerate"},
+    {ColumnAccessModes::_bogus_AmaTranscryptionOnly, "enumerate"}, // still maps to old name for backward compatibility
 }};
 
 std::vector<std::string> ToIndividualStrings(const ColumnAccessModes modes) {
