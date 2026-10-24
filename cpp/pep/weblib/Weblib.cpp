@@ -4,6 +4,7 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/OAuthToken.hpp>
+#include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/oauth-client/OAuthClient.hpp>
@@ -11,6 +12,8 @@
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/ThreadUtil.hpp>
+#include <pep/utils/Timestamp.hpp>
+
 #include <pep/weblib/EmscriptenValPtr.hpp>
 #include <pep/weblib/EmscriptenVectorBinding.hpp>
 #include <pep/weblib/ObservableByteStream.hpp>
@@ -21,6 +24,8 @@
 #include <pep/weblib/WeblibApiPromise.hpp>
 #include <pep/weblib/WeblibStructs.hpp>
 
+#include <filesystem>
+#include <functional>
 #include <numeric>
 #include <stdexcept>
 #include <thread>
@@ -48,6 +53,49 @@ using namespace std::ranges;
 
 namespace {
 const std::string LogTag = "Weblib";
+
+// Timestamps are passed to JS as milliseconds since the Unix epoch, like Date.getTime()
+double ToJsTime(Timestamp timestamp) {
+  return static_cast<double>(TicksSinceEpoch<std::chrono::milliseconds>(timestamp));
+}
+
+Timestamp FromJsTime(double millisecondsSinceEpoch) {
+  return Timestamp{std::chrono::milliseconds{static_cast<std::chrono::milliseconds::rep>(millisecondsSinceEpoch)}};
+}
+
+UserGroupInfo ToUserGroupInfo(UserGroup group) {
+  return UserGroupInfo{
+      .name = std::move(group.name),
+      .maxAuthValiditySeconds = group.maxAuthValidity.transform([](std::chrono::seconds validity) {
+        return static_cast<double>(validity.count());
+      }),
+  };
+}
+
+UserGroup FromUserGroupInfo(UserGroupInfo group) {
+  return UserGroup{
+      .name = std::move(group.name),
+      .maxAuthValidity = group.maxAuthValiditySeconds.transform([](double seconds) {
+        return std::chrono::seconds{static_cast<std::chrono::seconds::rep>(seconds)};
+      }),
+  };
+}
+
+User ToUser(QRUser user) {
+  return User{
+      .displayId = std::move(user.displayId),
+      .primaryId = std::move(user.primaryId),
+      .otherUids = std::move(user.otherUids),
+      .groups = user.groups
+        | views::transform([](const QRUserGroupMembership& membership) {
+          return UserGroupMembership{
+              .userGroup = membership.userGroup,
+              .expiration = membership.expiration.transform(ToJsTime),
+          };
+        })
+        | to<std::vector>(),
+  };
+}
 
 ColumnGroupAccessModes ColumnGroupAccessModesFromStrings(const std::vector<std::string>& modes) {
   return {
@@ -161,6 +209,14 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
   rxcpp::observable<std::shared_ptr<Weblib>> onIoThread() {
     return rxcpp::observable<>::just(shared_from_this())
         .subscribe_on(*asioWorker_);
+  }
+
+  /// Run \p mutate on the io_context thread
+  WeblibApiVoidPromise mutateUsers(std::function<rxcpp::observable<FakeVoid>(const AccessManagerProxy&)> mutate) {
+    co_await onIoThread()
+        .flat_map([mutate = std::move(mutate)](const std::shared_ptr<Weblib>& self) {
+          return mutate(*self->client_->getAccessManagerProxy());
+        });
   }
 
 public:
@@ -527,6 +583,111 @@ public:
               });
         });
   }
+
+  /// List users and user groups, as of the current server time. Empty filters match everything.
+  /// \returns \c Promise<UserQueryResult>
+  WeblibApiPromise listUsers(std::string groupFilter, std::string userFilter) {
+    co_return co_await onIoThread()
+        .flat_map([query = UserQuery{.at = std::nullopt, .groupFilter = std::move(groupFilter), .userFilter = std::move(userFilter)}](
+            const std::shared_ptr<Weblib>& self) {
+          return self->client_->getAccessManagerProxy()->userQuery(query);
+        })
+        .map([](UserQueryResponse response) {
+          return UserQueryResult{
+              .users = response.users
+                | views::as_rvalue
+                | views::transform(ToUser)
+                | to<std::vector>(),
+              .userGroups = response.userGroups
+                | views::as_rvalue
+                | views::transform(ToUserGroupInfo)
+                | to<std::vector>(),
+          };
+        });
+  }
+
+  WeblibApiVoidPromise createUser(std::string uid) {
+    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+      return am.createUser(uid);
+    });
+  }
+
+  WeblibApiVoidPromise removeUser(std::string uid) {
+    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+      return am.removeUser(uid);
+    });
+  }
+
+  WeblibApiVoidPromise addUserIdentifier(std::string existingUid, std::string newUid, bool isPrimaryId, bool isDisplayId) {
+    return mutateUsers([existingUid = std::move(existingUid), newUid = std::move(newUid), isPrimaryId, isDisplayId](
+        const AccessManagerProxy& am) {
+      return am.addUserIdentifier(existingUid, newUid, isPrimaryId, isDisplayId);
+    });
+  }
+
+  WeblibApiVoidPromise removeUserIdentifier(std::string uid) {
+    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+      return am.removeUserIdentifier(uid);
+    });
+  }
+
+  WeblibApiVoidPromise setUserPrimaryId(std::string uid) {
+    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+      return am.setUserPrimaryId(uid);
+    });
+  }
+
+  WeblibApiVoidPromise unsetUserPrimaryId(std::string uid) {
+    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+      return am.unsetUserPrimaryId(uid);
+    });
+  }
+
+  WeblibApiVoidPromise setUserDisplayId(std::string uid) {
+    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+      return am.setUserDisplayId(uid);
+    });
+  }
+
+  WeblibApiVoidPromise createUserGroup(UserGroupInfo group) {
+    return mutateUsers([group = FromUserGroupInfo(std::move(group))](const AccessManagerProxy& am) {
+      return am.createUserGroup(group);
+    });
+  }
+
+  WeblibApiVoidPromise modifyUserGroup(UserGroupInfo group) {
+    return mutateUsers([group = FromUserGroupInfo(std::move(group))](const AccessManagerProxy& am) {
+      return am.modifyUserGroup(group);
+    });
+  }
+
+  WeblibApiVoidPromise removeUserGroup(std::string name) {
+    return mutateUsers([name = std::move(name)](const AccessManagerProxy& am) {
+      return am.removeUserGroup(name);
+    });
+  }
+
+  /// \param expiration Milliseconds since the Unix epoch, or no expiration when undefined
+  WeblibApiVoidPromise addUserToGroup(std::string uid, std::string group, std::optional<double> expiration) {
+    return mutateUsers([uid = std::move(uid), group = std::move(group), expiration = expiration.transform(FromJsTime)](
+        const AccessManagerProxy& am) {
+      return am.addUserToGroup(uid, group, expiration);
+    });
+  }
+
+  WeblibApiVoidPromise removeUserFromGroup(std::string uid, std::string group, bool blockTokens) {
+    return mutateUsers([uid = std::move(uid), group = std::move(group), blockTokens](const AccessManagerProxy& am) {
+      return am.removeUserFromGroup(uid, group, blockTokens);
+    });
+  }
+
+  /// \param expiration Milliseconds since the Unix epoch, or no expiration when undefined
+  WeblibApiVoidPromise updateUserGroupExpiration(std::string uid, std::string group, std::optional<double> expiration) {
+    return mutateUsers([uid = std::move(uid), group = std::move(group), expiration = expiration.transform(FromJsTime)](
+        const AccessManagerProxy& am) {
+      return am.updateExpiration(uid, group, expiration);
+    });
+  }
 };
 
 void exitRuntime() { ::emscripten_force_exit(0); }
@@ -547,6 +708,20 @@ EMSCRIPTEN_BINDINGS(weblib) {
       .function("store", &Weblib::store)
       .function("list", &Weblib::list)
       .function("retrieve", &Weblib::retrieve)
+      .function("listUsers", &Weblib::listUsers)
+      .function("createUser", &Weblib::createUser)
+      .function("removeUser", &Weblib::removeUser)
+      .function("addUserIdentifier", &Weblib::addUserIdentifier)
+      .function("removeUserIdentifier", &Weblib::removeUserIdentifier)
+      .function("setUserPrimaryId", &Weblib::setUserPrimaryId)
+      .function("unsetUserPrimaryId", &Weblib::unsetUserPrimaryId)
+      .function("setUserDisplayId", &Weblib::setUserDisplayId)
+      .function("createUserGroup", &Weblib::createUserGroup)
+      .function("modifyUserGroup", &Weblib::modifyUserGroup)
+      .function("removeUserGroup", &Weblib::removeUserGroup)
+      .function("addUserToGroup", &Weblib::addUserToGroup)
+      .function("removeUserFromGroup", &Weblib::removeUserFromGroup)
+      .function("updateUserGroupExpiration", &Weblib::updateUserGroupExpiration)
   ;
   class_<Weblib::OAuthClient>("OAuthClient")
       .function("completeAuthentication", &Weblib::OAuthClient::completeAuthentication)
