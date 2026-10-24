@@ -5,6 +5,7 @@
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/client/Client.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/oauth-client/OAuthClient.hpp>
 #include <pep/utils/CollectionUtils.hpp>
@@ -255,7 +256,7 @@ public:
   WeblibApiPromise listColumns() {
     co_return co_await onIoThread()
         .flat_map([](const std::shared_ptr<Weblib>& self) {
-          return self->client_->getAccessManagerProxy()->getAccessibleColumns(true, { "read" });
+          return self->client_->getAccessManagerProxy()->getAccessibleColumns(true, ColumnAccessModes::Read);
         })
         .map([](const ColumnAccess& access) {
           return access.columnGroups

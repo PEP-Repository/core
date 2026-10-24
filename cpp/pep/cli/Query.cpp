@@ -8,6 +8,7 @@
 #include <pep/utils/MiscUtil.hpp>
 
 #include <ranges>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
@@ -24,7 +25,7 @@ public:
   }
 
 private:
-  struct ColumnAccessModes {
+  struct ColumnAccessFlags {
     bool readable = false;
     bool writable = false;
     bool meta_readable = false;
@@ -36,7 +37,7 @@ private:
     bool enumerate = false;
   };
 
-  static void ReportColumnAccess(const std::string& caption, const std::map<std::string, ColumnAccessModes> entries) {
+  static void ReportColumnAccess(const std::string& caption, const std::map<std::string, ColumnAccessFlags> entries) {
     std::cout << caption << " (" << entries.size() << "):\n";
     if (!entries.empty()) {
       for (const auto& entry : entries) {
@@ -72,41 +73,39 @@ private:
         .map(
           [userGroup = client->getEnrolledGroup()](const pep::ColumnAccess& access) {
             // Copy received information to std::map<> to sort entries (by name) for output
-            std::map<std::string, ColumnAccessModes> cgs, columns;
+            std::map<std::string, ColumnAccessFlags> cgs, columns;
             bool hasReadAccess = false;
             bool hasMetaWriteAccess = false;
 
             for (const auto& entry : access.columnGroups) {
-              if (!entry.second.modes.empty()) {
+              if (entry.second.modes != pep::ColumnAccessModes::None) {
                 // Create column group entry and set accessibility flags
-                auto& modes = cgs[entry.first];
-                for (const auto& mode : entry.second.modes) {
-                  if (mode == "read") {
-                    modes.readable = true;
-                    hasReadAccess = true;
-                  }
-                  else if (mode == "write") {
-                    modes.writable = true;
-                  }
-                  else if (mode == "read-meta") {
-                    modes.meta_readable = true;
-                  }
-                  else if (mode == "write-meta") {
-                    modes.meta_writable = true;
-                    hasMetaWriteAccess = true;
-                  }
-                  else {
-                    throw std::runtime_error("Unsupported access mode '" + mode + "' encountered for column group '" + entry.first + "'");
-                  }
+                auto& flags = cgs[entry.first];
+                if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::Read)) {
+                  flags.readable = true;
+                  hasReadAccess = true;
+                }
+                if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::Write)) {
+                  flags.writable = true;
+                }
+                if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::ReadMeta)) {
+                  flags.meta_readable = true;
+                }
+                if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::WriteMeta)) {
+                  flags.meta_writable = true;
+                  hasMetaWriteAccess = true;
+                }
+                if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::_bogus_AmaTranscryptionOnly)) {
+                  throw std::runtime_error("Unsupported access mode 'enumerate' encountered for column group '" + entry.first + "'");
                 }
 
                 // Create and/or update entries for columns associated with the group
                 for (auto i : entry.second.columns.indices) {
                   auto& column = columns[access.columns[i]];
-                  column.readable |= modes.readable;
-                  column.writable |= modes.writable;
-                  column.meta_readable |= modes.meta_readable;
-                  column.meta_writable |= modes.meta_writable;
+                  column.readable |= flags.readable;
+                  column.writable |= flags.writable;
+                  column.meta_readable |= flags.meta_readable;
+                  column.meta_writable |= flags.meta_writable;
                 }
               }
             }

@@ -2,6 +2,7 @@
 
 #include <pep/serialization/IndexList.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/morphing/Metadata.hpp>
 #include <pep/morphing/ServerVerifiers.hpp>
@@ -104,7 +105,7 @@ struct EncryptionKeyResponse {
 
 struct ColumnAccess {
   struct GroupProperties {
-    std::vector<std::string> modes;
+    ColumnAccessModes modes = ColumnAccessModes::None;
     IndexList columns;
     std::strong_ordering operator<=>(const GroupProperties& other) const = default;
   };
@@ -115,7 +116,7 @@ struct ColumnAccess {
 
 struct ColumnAccessRequest {
   bool includeImplicitlyGranted = false;
-  std::vector<std::string> requireModes;
+  ColumnAccessModes requireModes = ColumnAccessModes::None;
 };
 
 using ColumnAccessResponse = ColumnAccess;

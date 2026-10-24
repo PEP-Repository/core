@@ -13,6 +13,7 @@
 #include <pep/utils/ChronoUtil.hpp>
 
 #include <ranges>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
@@ -76,7 +77,7 @@ protected:
   rxcpp::observable<std::shared_ptr<const pep::ColumnAccess>> getMetaReadableColumnGroups(std::shared_ptr<pep::CoreClient> client) {
     if (metaReadableColumnGroups_ == nullptr) {
       metaReadableColumnGroups_ = pep::CreateRxCache([client]() {
-        return client->getAccessManagerProxy()->getAccessibleColumns(true, { "read-meta" })
+        return client->getAccessManagerProxy()->getAccessibleColumns(true, pep::ColumnAccessModes::ReadMeta)
           .op(pep::RxGetOne("column access specification"))
           .map([](pep::ColumnAccess access) {
             return PtrAsConst(pep::MakeSharedCopy(std::move(access)));
