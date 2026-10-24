@@ -3,7 +3,6 @@
 #include <pep/application/CommandLineParameter.hpp>
 #include <pep/structuredoutput/Common.hpp>
 #include <pep/structuredoutput/FormatFlags.hpp>
-#include <pep/structuredoutput/Table.hpp>
 #include <pep/structuredoutput/Tree.hpp>
 
 #include <optional>
@@ -28,8 +27,5 @@ FormatConfig FormatConfigFrom(const commandline::NamedValues& values, const Yaml
 
 /// Writes a tree in the specified format, ending with a newline
 std::ostream& WriteStructured(std::ostream& stream, const Tree& tree, const FormatConfig& config);
-
-/// Writes a table in the format selected with the "--format" parameter, which may include "csv"
-std::ostream& WriteStructured(std::ostream& stream, const Table& table, const commandline::NamedValues& values);
 
 } // namespace pep::structuredOutput

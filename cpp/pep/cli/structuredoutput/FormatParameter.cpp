@@ -1,6 +1,5 @@
 #include <pep/cli/structuredoutput/FormatParameter.hpp>
 
-#include <pep/structuredoutput/Csv.hpp>
 #include <pep/structuredoutput/Json.hpp>
 #include <pep/structuredoutput/Yaml.hpp>
 #include <pep/utils/VariantUtils.hpp>
@@ -51,13 +50,6 @@ std::ostream& WriteStructured(std::ostream& stream, const Tree& tree, const Form
             return json::append(stream, tree, json) << std::endl;
           }},
       config);
-}
-
-std::ostream& WriteStructured(std::ostream& stream, const Table& table, const commandline::NamedValues& values) {
-  if (values.get<std::string>(formatParameterName) == "csv") {
-    return csv::append(stream, table) << std::endl;
-  }
-  return WriteStructured(stream, TreeFromTable(table), FormatConfigFrom(values));
 }
 
 } // namespace pep::structuredOutput
