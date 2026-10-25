@@ -151,6 +151,35 @@ interface StoreQueryInternal extends UseJsStrings<rawTypes.StoreQuery> {
 
 export type StoreResult = UseJsStrings<rawTypes.StoreResult>;
 
+export interface UserGroupMembership extends UseJsStrings<Omit<rawTypes.UserGroupMembership, 'expiration'>> {
+  expiration: Date | undefined;
+}
+
+export interface User extends UseJsStrings<rawTypes.User> {
+  otherUids: string[];
+  groups: UserGroupMembership[];
+}
+
+export interface UserGroup extends UseJsStrings<Omit<rawTypes.UserGroupInfo, 'maxAuthValiditySeconds'>> {
+  maxAuthValiditySeconds?: number | undefined;
+}
+
+export interface UserQueryResult {
+  users: User[];
+  userGroups: UserGroup[];
+}
+
+export interface UserQueryFilter {
+  /** Only list groups whose name contains this, and users in those groups */
+  groupFilter?: string | undefined;
+  /** Only list users with an identifier that contains this (case-insensitive), and groups of those users */
+  userFilter?: string | undefined;
+}
+
+interface RawUser extends UseJsStrings<rawTypes.User> {
+  groups: UseJsStrings<rawTypes.UserGroupMembership>[];
+}
+
 export interface ListQuery {
   subjectGroups?: string[] | undefined;
   /** Loose subjects to request (any format that would be recognized by pepcli) */
@@ -213,6 +242,10 @@ function fileExtensionOf(fileName: string): string | undefined {
 
 function toDdMmYyyy(date: Date) {
   return `${date.getFullYear().toString().padStart(4, '0')}${date.getMonth().toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
+}
+
+function fromJsTime(millisecondsSinceEpoch: number | undefined) {
+  return millisecondsSinceEpoch === undefined ? undefined : new Date(millisecondsSinceEpoch);
 }
 
 function throwPotentialWasmException(mod: PepModule, ex: WasmException | Error | unknown): never {
@@ -514,6 +547,85 @@ export default class Pep {
    */
   retrieve(entries: CellEntry[]) : ReadableStream<CellData> {
     return this.#wrapExec(() => this.#client.retrieve(entries));
+  }
+
+  // User management: changes require the Access Administrator user group,
+  // listing also allows the Repository Manager user group
+
+  async listUsers(filter: UserQueryFilter = {}): Promise<UserQueryResult> {
+    const result = await this.#wrapExec(() =>
+        this.#client.listUsers(filter.groupFilter ?? '', filter.userFilter ?? ''));
+    return {
+      users: (result.users as RawUser[]).map(user => ({
+        ...user,
+        groups: user.groups.map(membership => ({
+          userGroup: membership.userGroup,
+          expiration: fromJsTime(membership.expiration),
+        })),
+      })),
+      userGroups: result.userGroups as UserGroup[],
+    };
+  }
+
+  createUser(uid: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.createUser(uid));
+  }
+
+  removeUser(uid: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeUser(uid));
+  }
+
+  addUserIdentifier(existingUid: string, newUid: string, {isPrimaryId = false, isDisplayId = false} = {}): Promise<void> {
+    return this.#wrapExec(() => this.#client.addUserIdentifier(existingUid, newUid, isPrimaryId, isDisplayId));
+  }
+
+  removeUserIdentifier(uid: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeUserIdentifier(uid));
+  }
+
+  setUserPrimaryId(uid: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.setUserPrimaryId(uid));
+  }
+
+  unsetUserPrimaryId(uid: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.unsetUserPrimaryId(uid));
+  }
+
+  setUserDisplayId(uid: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.setUserDisplayId(uid));
+  }
+
+  createUserGroup(group: UserGroup): Promise<void> {
+    //TODO(workaround) Cast to Required<UserGroup> because of https://github.com/emscripten-core/emscripten/issues/25978,
+    // remove it with EMSDK 5.0.0+
+    return this.#wrapExec(() => this.#client.createUserGroup(group as Required<UserGroup>));
+  }
+
+  /**
+   * Replace the properties of an existing user group, like `pepcli user group modify`:
+   * omitting `maxAuthValiditySeconds` removes the group's maximum authentication validity.
+   */
+  modifyUserGroup(group: UserGroup): Promise<void> {
+    //TODO(workaround) Cast to Required<UserGroup> because of https://github.com/emscripten-core/emscripten/issues/25978,
+    // remove it with EMSDK 5.0.0+
+    return this.#wrapExec(() => this.#client.modifyUserGroup(group as Required<UserGroup>));
+  }
+
+  removeUserGroup(name: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeUserGroup(name));
+  }
+
+  addUserToGroup(uid: string, group: string, expiration?: Date | null): Promise<void> {
+    return this.#wrapExec(() => this.#client.addUserToGroup(uid, group, expiration?.getTime()));
+  }
+
+  /** @param blockTokens Also block the user's existing OAuth tokens for this group */
+  removeUserFromGroup(uid: string, group: string, blockTokens: boolean = true): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeUserFromGroup(uid, group, blockTokens));
+  }
+
+  updateUserGroupExpiration(uid: string, group: string, expiration: Date | null | undefined): Promise<void> {
+    return this.#wrapExec(() => this.#client.updateUserGroupExpiration(uid, group, expiration?.getTime()));
   }
 
   /** @see {@link PepModule.pepHandleWasmException} */
