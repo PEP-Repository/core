@@ -66,6 +66,7 @@ Checks:
   - misc-new-delete-overloads
   - misc-non-copyable-objects
   - misc-redundant-expression
+  # Suppressed because of false positives: see https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/3034
   - misc-static-assert
   - misc-throw-by-value-catch-by-reference
   - misc-unconventional-assign-operator
@@ -114,4 +115,5 @@ Checks:
 CheckOptions:
   # Ignore empty catch when it contains a comment with the word 'ignore'
   bugprone-empty-catch.IgnoreCatchWithKeywords: ignore
+  bugprone-unused-return-value.AllowCastToVoid: true
   misc-throw-by-value-catch-by-reference.CheckThrowTemporaries: false

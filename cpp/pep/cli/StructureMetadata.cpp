@@ -97,6 +97,7 @@ protected:
   }
 
   int execute() override {
+    PEP_LOG(LogTag, Severity::Warning) << "Structure metadata functionality is being reworked. Expect breaking changes. Metadata stored now may not be retrievable in the new version.";
     return this->executeEventLoopFor([subjectType = getParent().getMetadataType(),
                                       values = this->getParameterValues()](const std::shared_ptr<CoreClient>& client) {
       StructureMetadataSubjectKey requestedSubjectKey{
@@ -144,6 +145,7 @@ protected:
   }
 
   int execute() override {
+    PEP_LOG(LogTag, Severity::Warning) << "Structure metadata functionality is being reworked. Expect breaking changes. Metadata stored now may not be retrievable in the new version.";
     return this->executeEventLoopFor(
         [subjectType = getParent().getMetadataType(),
          values = this->getParameterValues()](const std::shared_ptr<CoreClient>& client) -> rxcpp::observable<FakeVoid> {
@@ -208,6 +210,7 @@ protected:
   }
 
   int execute() override {
+    PEP_LOG(LogTag, Severity::Warning) << "Structure metadata functionality is being reworked. Expect breaking changes. Metadata stored now may not be retrievable in the new version.";
     return this->executeEventLoopFor([subjectType = getParent().getMetadataType(),
                                       values = this->getParameterValues()](const std::shared_ptr<CoreClient>& client) {
       auto subject = values.get<std::string>("subject");
@@ -246,6 +249,7 @@ protected:
   }
 
   int execute() override {
+    PEP_LOG(LogTag, Severity::Warning) << "Structure metadata functionality is being reworked. Expect breaking changes. Metadata stored now may not be retrievable in the new version.";
     return this->executeEventLoopFor([subjectType = getParent().getMetadataType(),
                                       values = this->getParameterValues()](const std::shared_ptr<CoreClient>& client) {
       auto subject = values.get<std::string>("subject");

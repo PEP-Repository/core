@@ -38,18 +38,34 @@ EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(ListQuery::subjects)::value_type>();
   register_optional<decltype(ListQuery::columnGroups)::value_type>();
   register_optional<decltype(ListQuery::columns)::value_type>();
+  register_optional<decltype(ListQuery::mode)::value_type>();
   register_optional<decltype(std::declval<CellEntry>().partialMetadataView())::mapped_type::value_type>();
+  register_optional<decltype(ListColumnsQuery::includeImplicitlyGranted)::value_type>();
 }
+
+PEP_BINDINGS(ListColumnsQuery,
+  includeImplicitlyGranted,
+  requireModes
+)
 
 PEP_BINDINGS(ListQuery,
   subjectGroups,
   subjects,
   columnGroups,
-  columns
+  columns,
+  mode
+)
+
+PEP_BINDINGS(ColumnGroupAccessModes,
+  read,
+  readMeta,
+  write,
+  writeMeta
 )
 
 PEP_BINDINGS(ColumnGroup,
   name,
+  modes,
   columns
 )
 
@@ -58,8 +74,14 @@ PEP_BINDINGS(EnrolledUser,
   user
 )
 
+PEP_BINDINGS(SubjectGroupAccessModes,
+  access,
+  enumerate
+)
+
 PEP_BINDINGS(SubjectGroup,
-  name
+  name,
+  modes
 )
 
 PEP_BINDINGS(ParticipantPersonalia,
@@ -72,7 +94,7 @@ PEP_BINDINGS(ParticipantPersonalia,
 PEP_BINDINGS(StoreQuery,
   subject,
   column,
-  blob,
+  reader,
   metadata
 )
 

@@ -10,22 +10,23 @@
 #include <pep/oauth-client/OAuthClient.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/Exceptions.hpp>
-#include <pep/utils/File.hpp>
 #include <pep/utils/ThreadUtil.hpp>
-#include <pep/weblib/BlobMessageBatches.hpp>
 #include <pep/weblib/EmscriptenValPtr.hpp>
 #include <pep/weblib/EmscriptenVectorBinding.hpp>
 #include <pep/weblib/ObservableByteStream.hpp>
 #include <pep/weblib/ObservableStream.hpp>
 #include <pep/weblib/OnEmscriptenThread.hpp>
+#include <pep/weblib/ReadableStreamMessageBatches.hpp>
 #include <pep/weblib/ThreadPrintable.hpp>
 #include <pep/weblib/WeblibApiPromise.hpp>
 #include <pep/weblib/WeblibStructs.hpp>
 
-#include <filesystem>
 #include <numeric>
+#include <stdexcept>
 #include <thread>
+#include <utility>
 
 #include <emscripten/emscripten.h>
 #include <emscripten/bind.h>
@@ -39,6 +40,7 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/subjects/rx-replaysubject.hpp>
+#include <rxcpp/subjects/rx-subject.hpp>
 
 using namespace pep;
 using namespace pep::weblib;
@@ -49,6 +51,13 @@ using namespace std::ranges;
 namespace {
 const std::string LogTag = "Weblib";
 
+SubjectGroupAccessModes SubjectGroupAccessModesFromStrings(const std::vector<std::string>& modes) {
+  return {
+      .access = contains(modes, "access"),
+      .enumerate = contains(modes, "enumerate"),
+  };
+}
+
 class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedConstructor<Weblib>, public boost::noncopyable {
   friend class SharedConstructor;
 
@@ -56,6 +65,10 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
   std::shared_ptr<Client> client_;
 
   std::optional<rxcpp::observe_on_one_worker> asioWorker_, emscriptenMainWorker_;
+
+  bool shutdownStarted_ = false;
+  // Completes (on the event loop thread) when io_context has stopped running
+  rxcpp::subjects::subject<FakeVoid> ioContextStopped_;
 
   // Destruct these first to stop io_service
   std::jthread thread_;
@@ -74,7 +87,7 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
     // Start client
     client_ = Client::OpenClient(clientConfig_, std::move(io_context));
     // Run event loop in background thread. Calls from JS will still come from the main thread.
-    thread_ = std::jthread([io_context = client_->getIoContext()](std::stop_token stop) {
+    thread_ = std::jthread([io_context = client_->getIoContext(), stopped = ioContextStopped_.get_subscriber()](std::stop_token stop) {
       ThreadName::Set("Client");
       PEP_LOG(LogTag, Severity::Debug) << "starting io_context " << io_context << " on thread " << ThreadPrintable{};
       std::stop_callback onStop(std::move(stop), [io_context] {
@@ -83,6 +96,8 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
       });
       io_context->run();
       PEP_LOG(LogTag, Severity::Debug) << "io_context stopped";
+      // Do this last, so that the main thread can join us without (significant) blocking
+      stopped.on_completed();
     });
   }
 
@@ -125,6 +140,37 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
   }
 
 public:
+  /// \brief Close server connections and stop the event loop, without blocking the main thread.
+  /// \details Await this before calling the destructor, which would otherwise synchronously join the event loop thread.
+  /// That can deadlock when the event loop thread is waiting for the main thread.
+  WeblibApiVoidPromise shutdown() {
+    if (std::exchange(shutdownStarted_, true)) {
+      throw std::logic_error("Weblib was already shut down");
+    }
+    const auto keepAlive = shared_from_this();
+
+    std::exception_ptr clientShutdownError;
+    try {
+      co_await onIoThread()
+          .flat_map([](const std::shared_ptr<Weblib>& self) {
+            return self->client_->shutdown();
+          }).op(RxInstead(FakeVoid{}) /*make nonempty*/);
+    } catch (...) {
+      clientShutdownError = std::current_exception();
+    }
+    if (clientShutdownError) {
+      PEP_LOG(LogTag, Severity::Warning) << "Problem closing server connections, forcefully stopping: "
+          << GetExceptionMessage(clientShutdownError);
+    }
+
+    workGuard_.reset();
+    thread_.request_stop(); // Stops io_context
+    co_await ioContextStopped_.get_observable().op(RxInstead(FakeVoid{}) /*make nonempty*/);
+    // Thread has (almost) exited at this point
+    thread_.join();
+    PEP_LOG(LogTag, Severity::Debug) << "shut down";
+  }
+
   /// Register \p callback to be called when the connection status changes.
   /// \param callback <code>(connected: bool) => void</code>
   void onStatusChange(val callback) {
@@ -252,11 +298,20 @@ public:
       .getSerializedForm();
   }
 
+  /// Lists column groups the enrolled user has access to, with the access modes,
+  /// like <code>pepcli query column-access</code>. By default all groups with any access, with implied modes,
+  /// e.g. "read" implies "read-meta".
   /// \returns \c Promise<ColumnGroup[]>
-  WeblibApiPromise listColumns() {
+  WeblibApiPromise listColumns(ListColumnsQuery query) {
     co_return co_await onIoThread()
-        .flat_map([](const std::shared_ptr<Weblib>& self) {
-          return self->client_->getAccessManagerProxy()->getAccessibleColumns(true, ColumnAccessModes::Read);
+        .flat_map([
+          includeImplicitlyGranted = query.includeImplicitlyGranted.value_or(true),
+          requireModes = FlagsIf(ColumnAccessModes::Read,      query.requireModes.read)
+                       | FlagsIf(ColumnAccessModes::ReadMeta,  query.requireModes.readMeta)
+                       | FlagsIf(ColumnAccessModes::Write,     query.requireModes.write)
+                       | FlagsIf(ColumnAccessModes::WriteMeta, query.requireModes.writeMeta)
+         ](const std::shared_ptr<Weblib>& self) {
+          return self->client_->getAccessManagerProxy()->getAccessibleColumns(includeImplicitlyGranted, requireModes);
         })
         .map([](const ColumnAccess& access) {
           return access.columnGroups
@@ -264,6 +319,12 @@ public:
               const auto& [name, columnGroup] = entry;
               return ColumnGroup{
                   .name = name,
+                  .modes = {
+                      .read = HasFlags(columnGroup.modes, ColumnAccessModes::Read),
+                      .readMeta = HasFlags(columnGroup.modes, ColumnAccessModes::ReadMeta),
+                      .write = HasFlags(columnGroup.modes, ColumnAccessModes::Write),
+                      .writeMeta = HasFlags(columnGroup.modes, ColumnAccessModes::WriteMeta)
+                  },
                   .columns = to<std::vector>(SafeIndexInto(columnGroup.columns.indices, access.columns)),
               };
             })
@@ -271,20 +332,20 @@ public:
         });
   }
 
+  /// Lists subject groups the enrolled user has any access to, with the access modes
   /// \returns \c Promise<SubjectGroup[]>
   WeblibApiPromise listSubjectGroups() {
     co_return co_await onIoThread()
         .flat_map([](const std::shared_ptr<Weblib>& self) {
           return self->client_->getAccessManagerProxy()->getAccessibleParticipantGroups(true);
-        }).map([](ParticipantGroupAccess access) {
-          return std::move(access).participantGroups
-            | views::filter([](const auto& entry) {
+        }).map([](const ParticipantGroupAccess& access) {
+          return access.participantGroups
+            | views::transform([](const auto& entry) {
               const auto& [name, modes] = entry;
-              return contains(modes, "access");
-            })
-            | views::keys
-            | views::transform([](const std::string& name) {
-              return SubjectGroup{ .name = name };
+              return SubjectGroup{
+                  .name = name,
+                  .modes = SubjectGroupAccessModesFromStrings(modes),
+              };
             })
             | to<std::vector>();
         });
@@ -309,7 +370,7 @@ public:
                 .referenceSubjects = {},
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
                 .columns = std::move(query->columns).value_or(std::vector<std::string>{}),
-                .modes = ColumnAccessModes::Read, //TODO support more modes. Should this method be split with an explicit ticket request?
+                .modes = pep::ParseMode(query->mode.value_or("read")),
                 .includeAccessGroupPseudonyms = true,
               });
           });
@@ -417,22 +478,13 @@ public:
   /// \returns \c Promise<StoreResult>
   WeblibApiPromise store(StoreQuery query) {
     // We're still on the main thread here: decide how the data will be produced
-    if (!query.blob.instanceof(val::global("Blob"))) {
-      throw std::invalid_argument("blob must be a Blob or File");
-    }
-    // A File also has name, derive fileExtension from it, like pepcli does from --input-path.
-    std::string fileExtension;
-    if (const val name = query.blob["name"]; name.isString()) {
-      fileExtension = std::filesystem::path(name.as<std::string>()).extension().string();
-    }
     messaging::MessageBatches batches =
-        BlobToMessageBatches(std::move(query.blob), messaging::DefaultPageSize, *asioWorker_);
+        ReadableStreamToMessageBatches(std::move(query.reader), messaging::DefaultPageSize, *asioWorker_);
 
     // Capture the members separately, so that the query (holding a val) does not cross to the io thread
     co_return co_await onIoThread()
         .flat_map([subject = std::move(query.subject), column = std::move(query.column),
-                   metadata = std::move(query.metadata), batches = std::move(batches),
-                   fileExtension = std::move(fileExtension)](const std::shared_ptr<Weblib>& self) {
+                   metadata = std::move(query.metadata), batches = std::move(batches)](const std::shared_ptr<Weblib>& self) {
           return self->client_->parsePpsOrIdentities({subject})
               .op(RxGetOne("PolymorphicPseudonym"))
               .map([](std::shared_ptr<std::vector<PolymorphicPseudonym>> pps) {
@@ -441,15 +493,10 @@ public:
                 }
                 return std::make_shared<PolymorphicPseudonym>(pps->front());
               })
-              .flat_map([self, column, metadata, batches, fileExtension](std::shared_ptr<PolymorphicPseudonym> pp) {
+              .flat_map([self, column, metadata, batches](std::shared_ptr<PolymorphicPseudonym> pp) {
                 std::map<std::string, MetadataXEntry> xMetadata;
                 for (const auto& [key, value] : metadata) {
                   xMetadata.emplace(key, MetadataXEntry::FromPlaintext(value, false, false));
-                }
-                // Placed after explicit fileExtension,
-                // so the derived extension fails to insert if an explicit one is present
-                if (IsValidFileExtension(fileExtension)) {
-                  xMetadata.emplace(MetadataXEntry::MakeFileExtension(fileExtension));
                 }
 
                 StoreData2Entry entry(pp, column, batches);
@@ -471,6 +518,7 @@ void exitRuntime() { ::emscripten_force_exit(0); }
 EMSCRIPTEN_BINDINGS(weblib) {
   class_<Weblib>("Weblib")
       .smart_ptr_constructor("Weblib", &Weblib::Create<>)
+      .function("shutdown", &Weblib::shutdown)
       .function("onStatusChange", &Weblib::onStatusChange)
       .function("getEnrolledUser", &Weblib::getEnrolledUser)
       .function("unenroll", &Weblib::unenroll)
