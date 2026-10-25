@@ -51,6 +51,22 @@ using namespace std::ranges;
 namespace {
 const std::string LogTag = "Weblib";
 
+ColumnGroupAccessModes ColumnGroupAccessModesFromEnum(const ColumnAccessModes modes){
+  return {
+      .read = HasFlags(modes, ColumnAccessModes::Read),
+      .readMeta = HasFlags(modes, ColumnAccessModes::ReadMeta),
+      .write = HasFlags(modes, ColumnAccessModes::Write),
+      .writeMeta = HasFlags(modes, ColumnAccessModes::WriteMeta)
+  };
+}
+
+ColumnAccessModes ColumnGroupAccessModesToEnum(const ColumnGroupAccessModes modes) {
+  return FlagsIf(ColumnAccessModes::Read, modes.read)
+      | FlagsIf(ColumnAccessModes::ReadMeta, modes.readMeta)
+      | FlagsIf(ColumnAccessModes::Write, modes.write)
+      | FlagsIf(ColumnAccessModes::WriteMeta, modes.writeMeta);
+}
+
 SubjectGroupAccessModes SubjectGroupAccessModesFromStrings(const std::vector<std::string>& modes) {
   return {
       .access = contains(modes, "access"),
@@ -306,10 +322,7 @@ public:
     co_return co_await onIoThread()
         .flat_map([
           includeImplicitlyGranted = query.includeImplicitlyGranted.value_or(true),
-          requireModes = FlagsIf(ColumnAccessModes::Read,      query.requireModes.read)
-                       | FlagsIf(ColumnAccessModes::ReadMeta,  query.requireModes.readMeta)
-                       | FlagsIf(ColumnAccessModes::Write,     query.requireModes.write)
-                       | FlagsIf(ColumnAccessModes::WriteMeta, query.requireModes.writeMeta)
+          requireModes = ColumnGroupAccessModesToEnum(query.requireModes)
          ](const std::shared_ptr<Weblib>& self) {
           return self->client_->getAccessManagerProxy()->getAccessibleColumns(includeImplicitlyGranted, requireModes);
         })
@@ -319,12 +332,7 @@ public:
               const auto& [name, columnGroup] = entry;
               return ColumnGroup{
                   .name = name,
-                  .modes = {
-                      .read = HasFlags(columnGroup.modes, ColumnAccessModes::Read),
-                      .readMeta = HasFlags(columnGroup.modes, ColumnAccessModes::ReadMeta),
-                      .write = HasFlags(columnGroup.modes, ColumnAccessModes::Write),
-                      .writeMeta = HasFlags(columnGroup.modes, ColumnAccessModes::WriteMeta)
-                  },
+                  .modes = ColumnGroupAccessModesFromEnum(columnGroup.modes),
                   .columns = to<std::vector>(SafeIndexInto(columnGroup.columns.indices, access.columns)),
               };
             })
