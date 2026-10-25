@@ -9,6 +9,7 @@
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MapUtils.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 
 #include <algorithm>
 #include <ranges>
@@ -67,7 +68,16 @@ void CheckForDuplicatePseudonyms(const TicketRequest2& ticket) {
   if (auto found = TryFindCommonValue(ticket.accessSubjects, ticket.referenceSubjects)) { reportAndThrow(*found); }
 }
 
+ColumnAccessModes RequiredColumnAccessMode(const KeyBlindMode blindmode) {
+  switch (blindmode) {
+  case KeyBlindMode::Blind: return ColumnAccessModes::Write;
+  case KeyBlindMode::Unblind: return ColumnAccessModes::Read;
+  case KeyBlindMode::Unknown: break; // unexpected value
+  }
+  throw Error("Unexpected KeyBlindMode");
 }
+
+} // anonymous namespace
 
 AccessManager::Backend::Backend(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf)
   : Backend(std::make_shared<AccessManager::Backend::Storage>(std::move(path), std::move(globalConf))) {
@@ -488,13 +498,14 @@ std::unordered_map<std::string, pep::IndexList> AccessManager::Backend::fillPart
 
 std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnGroupsAndCheckAccess(const std::string& userGroup,
                                                              const std::vector<std::string>& columnGroups,
-                                                             const std::vector<std::string>& modes,
+                                                             const ColumnAccessModes modes,
                                                              Timestamp at,
                                                              std::vector<std::string>& columns) {
   ColumnAccessRequest request;
   request.includeImplicitlyGranted = true;
   // All columns and Columngroups this usergroup has access to.
   auto columnAccess = handleColumnAccessRequest(request, userGroup);
+  const auto requiredModes = ToIndividualStrings(modes);
   std::vector<std::string> errorMessageParts;
 
   // process columnGroups
@@ -505,9 +516,9 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
                                   + Logging::Escape(cg));
     }
     else {
-      auto availableModes = iterator->second.modes;
-      for (auto& mode : modes) {
-        if (!contains(availableModes, mode)) {
+      const auto availableModes = iterator->second.modes;
+      for (const auto& mode : requiredModes) {
+        if (!HasFlags(availableModes, ParseMode(mode))) {
           errorMessageParts.push_back("Access denied to " + Logging::Escape(userGroup) + " for mode "
                                       + Logging::Escape(mode) + " to column-group " + Logging::Escape(cg));
         }
@@ -522,12 +533,13 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
     auto associatedColumnGroups = cgcs
       | views::transform(&ColumnGroupColumn::columnGroup)
       | to<std::vector>();
-    for (const auto& requiredMode : modes) {
+    for (const auto& requiredMode : requiredModes) {
+      const auto requiredFlag = ParseMode(requiredMode);
       // If we find the required access mode in ANY of the associated columngroups, all is well.
       bool accessGranted = any_of(associatedColumnGroups, [&](const std::string& cg) {
         auto groupPropsIt = columnAccess.columnGroups.find(cg);
         return groupPropsIt != columnAccess.columnGroups.cend()
-            && contains(groupPropsIt->second.modes, requiredMode);
+            && HasFlags(groupPropsIt->second.modes, requiredFlag);
       });
       if (!accessGranted) {
         errorMessageParts.push_back("Access denied to " + Logging::Escape(userGroup) + " for mode "
@@ -566,28 +578,17 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
 
 void AccessManager::Backend::checkTicketForEncryptionKeyRequest(std::shared_ptr<EncryptionKeyRequest> request,
                                                               const Ticket2& ticket) {
-  std::unordered_set<std::string> ticketCols{ticket.columns.begin(), ticket.columns.end()};
+  const auto ticketColumns = std::unordered_set{std::from_range, ticket.columns};
 
-  for (auto const& entry : request->entries) {
-    std::string mode;
-    if (entry.keyBlindMode == KeyBlindMode::Blind)
-      mode = "write";
-    else if (entry.keyBlindMode == KeyBlindMode::Unblind)
-      mode = "read";
-    else
-      throw Error("Unexpected KeyBlindMode");
-
-    if (!ticket.hasMode(mode)) {
-      std::ostringstream msg;
-      msg << "Access denied: ticket does not grant access mode " << mode;
-      throw Error(msg.str());
+  for (const auto& entry : request->entries) {
+    const auto requiredMode = RequiredColumnAccessMode(entry.keyBlindMode);
+    if (!ImpliesModes(ticket.modes, requiredMode)) {
+      throw Error(std::format("Access denied: ticket does not grant access mode {}", ToSingleString(requiredMode)));
     }
 
-    auto col = entry.metadata.getTag();
-    if (!ticketCols.contains(col)) {
-      std::ostringstream msg;
-      msg << "Access denied: ticket does not grant access to column " << Logging::Escape(col);
-      throw Error(msg.str());
+    const auto column = entry.metadata.getTag();
+    if (!ticketColumns.contains(column)) {
+      throw Error(std::format("Access denied: ticket does not grant access to column {}", Logging::Escape(column)));
     }
   }
 }
@@ -719,34 +720,23 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
                                                        // column groups
     for (const auto& cg : storage_->getColumnGroups(now)) {
       auto& modes = result.columnGroups[cg.name].modes;
-      if (!contains(modes, "read-meta")) {
-        modes.push_back("read-meta");
-      }
+      modes |= ColumnAccessModes::ReadMeta;
     }
   }
 
   auto cgars = storage_->getColumnGroupAccessRules(now, {.userGroups = std::vector<std::string>{userGroup}});
   for (auto& cgar : cgars) {
     auto& allowedModes = result.columnGroups[cgar.columnGroup].modes;
-    allowedModes.push_back(cgar.mode);
+    allowedModes |= ParseMode(cgar.mode);
     if (request.includeImplicitlyGranted) {
-      // All users have implicit "read-meta" access if they have "read" access
-      if (cgar.mode == "read" && !contains(allowedModes, "read-meta")) {
-        allowedModes.push_back("read-meta");
-      }
-      // All users have implicit "write" access if they have "write-meta" access
-      else if (cgar.mode == "write-meta" && !contains(allowedModes, "write")) {
-        allowedModes.push_back("write");
-      }
+      allowedModes = EffectiveModes(allowedModes);
     }
   }
 
   // Remove column groups from the result that don't provide all required modes
-  for (const auto& requireMode : request.requireModes) {
-    std::erase_if(result.columnGroups, [&requireMode](const auto& entry) {
-      return !contains(entry.second.modes, requireMode);
-    });
-  }
+  std::erase_if(result.columnGroups, [required = request.requireModes](const auto& entry) {
+    return !HasFlags(entry.second.modes, required);
+  });
 
   auto columnGroupsInMap = result.columnGroups
     | views::keys

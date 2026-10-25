@@ -27,7 +27,7 @@ MATCHER(LocalPseudonymsMatch, "LocalPseudonyms that are equal in all fields") {
 TEST(TicketingSerializers, TicketRequest2RoundTrip) {
   const TicketRequest2 input = [](TicketRequest2 ticket = {}) { // does not support designated initialization
     const auto [subjectA, subjectB, subjectC, subjectD] = Generate<4>(SingleRandomPolymorphicPseudonym);
-    ticket.modes = {"read", "write"};
+    ticket.modes = ColumnAccessModes::Read | ColumnAccessModes::Write;
     ticket.accessSubjects = {subjectA, subjectB};
     ticket.participantGroups = {"participantGroup"};
     ticket.referenceSubjects = {subjectC, subjectD};
@@ -52,7 +52,7 @@ TEST(TicketingSerializers, TicketRequest2RoundTrip) {
 TEST(TicketingSerializers, Ticket2RoundTrip) {
   const auto [subjectA, subjectB, subjectC] = Generate<3>(SingleRandomLocalPseudonym);
   const auto ticket = Ticket2{
-      .modes = {"read"},
+      .modes = ColumnAccessModes::Read,
       .accessSubjects = {subjectA, subjectB},
       .referenceSubjects = {subjectC},
       .columns = {"column"},

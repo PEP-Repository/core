@@ -39,23 +39,6 @@ namespace {
 
 const std::string LogTag ("CoreClient");
 
-bool ModesInclude(const std::vector<std::string>& required, std::vector<std::string> provided) {
-  auto begin = provided.cbegin(), end = provided.cend();
-  // If a "read" privilege is held, ensure that the corresponding (implicitly included) "read-meta" privilege is in the array as well
-  if (find(begin, end, "read") != end && find(begin, end, "read-meta") == end) {
-    provided.push_back("read-meta");
-
-    // Ensure that iterators are valid after vector update
-    begin = provided.cbegin();
-    end = provided.cend();
-  }
-  // If a "write-meta" privilege is held, ensure that the corresponding (implicitly included) "write" privilege is in the array as well
-  if (find(begin, end, "write-meta") != end && find(begin, end, "write") == end) {
-    provided.push_back("write");
-  }
-  return IsSubset(required, provided);
-}
-
 }
 
 CoreClient::CoreClient(const Builder& builder) :
@@ -408,7 +391,7 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
 {
   return this->getAccessManagerProxy()->getAccessibleParticipantGroups(true).flat_map([this](ParticipantGroupAccess participantGroupAccess) {
     RequestTicket2Opts tOpts;
-    tOpts.modes = { "read" };
+    tOpts.modes = ColumnAccessModes::Read;
     tOpts.includeAccessGroupPseudonyms = true;
     for (auto& [participantGroup, modes] : participantGroupAccess.participantGroups) {
       if (contains(modes, "access")
@@ -427,7 +410,7 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(
     const RequestTicket2Opts &opts) {
   PEP_LOG(LogTag, Severity::Debug) << "requestTicket";
 
-  if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())
+  if (opts.ticket != nullptr && ImpliesModes(opts.ticket->getModes(), opts.modes)
       && IsSubset(opts.participantGroups, opts.ticket->getParticipantGroups())
       && IsSubset(opts.columnGroups, opts.ticket->getColumnGroups())
       && IsSubset(opts.accessSubjects, opts.ticket->getAccessSubjects())

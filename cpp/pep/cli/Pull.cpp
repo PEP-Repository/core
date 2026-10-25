@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <fstream>
 #include <ranges>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 #include <thread>
 
 #include <pep/cli/DownloadDirectory.hpp>
@@ -239,7 +240,7 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
 
     auto& am = *client->getAccessManagerProxy();
     return am.getAccessibleParticipantGroups(true)
-      .zip(am.getAccessibleColumns(true, { "read" }))
+      .zip(am.getAccessibleColumns(true, pep::ColumnAccessModes::Read))
       .map([ctx](const auto &access) {
       const pep::ParticipantGroupAccess &pga = std::get<0>(access);
       ctx->content.groups.append_range(pga.participantGroups
@@ -248,7 +249,7 @@ rxcpp::observable<std::shared_ptr<Context>> createContext(const std::shared_ptr<
 
       const pep::ColumnAccess &ca = std::get<1>(access);
       assert(all_of(views::values(ca.columnGroups), [](const auto& cgProps) {
-        return contains(cgProps.modes, "read");
+        return pep::HasFlags(cgProps.modes, pep::ColumnAccessModes::Read);
       }));
       ctx->content.columnGroups.append_range(views::keys(ca.columnGroups));
       if (ctx->content.groups.empty()) {

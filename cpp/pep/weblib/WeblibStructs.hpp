@@ -32,6 +32,8 @@ struct ListQuery {
 
 /// Access modes of the enrolled User Group to a column group.
 /// Includes implied ones, unless \c ListColumnsQuery::includeImplicitlyGranted is false
+/// \note Cannot be replaced by `ColumnAccessModes`, because Embind enums can only represent individual flags/values and
+/// not combinations of flags/values.
 struct ColumnGroupAccessModes {
   bool read = false;
   bool readMeta = false;

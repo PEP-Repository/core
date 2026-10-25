@@ -3,6 +3,7 @@
 #include <pep/accessmanager/UserMessages.hpp>
 
 #include <pep/accessmanager/AccessManager.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 
 namespace pep {
 
@@ -43,7 +44,7 @@ public:
   ///  \param at timestamp of moment in time for when to assert access and columnGroup membership.
   ///  \param columns Both an in and out parameter. Vector containing the loose requested columns. This vector is appended with the columns found in the requested columnGroups.
   ///  \returns Map of IndexList (indexes of columns in columnGroup) by string (name of columnGroup).
-  std::unordered_map<std::string, IndexList> unfoldColumnGroupsAndCheckAccess(const std::string& userGroup, const std::vector<std::string>& columnGroups, const std::vector<std::string>& modes, Timestamp at,
+  std::unordered_map<std::string, IndexList> unfoldColumnGroupsAndCheckAccess(const std::string& userGroup, const std::vector<std::string>& columnGroups, ColumnAccessModes modes, Timestamp at,
                                          std::vector<std::string>& columns);
 
   /// \brief Check the basic assumptions of a EncryptionKeyRequest. The accompanying ticket has to have the required access.

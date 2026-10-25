@@ -67,7 +67,7 @@ Checks:
   - misc-non-copyable-objects
   - misc-redundant-expression
   # Suppressed because of false positives: see https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/3034
-  - -misc-static-assert
+  - misc-static-assert
   - misc-throw-by-value-catch-by-reference
   - misc-unconventional-assign-operator
   - misc-uniqueptr-reset-release

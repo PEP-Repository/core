@@ -6,10 +6,12 @@
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/client/Client.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/oauth-client/OAuthClient.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/ThreadUtil.hpp>
 #include <pep/utils/Timestamp.hpp>
@@ -97,30 +99,20 @@ User ToUser(QRUser user) {
   };
 }
 
-ColumnGroupAccessModes ColumnGroupAccessModesFromStrings(const std::vector<std::string>& modes) {
+ColumnGroupAccessModes ColumnGroupAccessModesFromEnum(const ColumnAccessModes modes){
   return {
-      .read = contains(modes, "read"),
-      .readMeta = contains(modes, "read-meta"),
-      .write = contains(modes, "write"),
-      .writeMeta = contains(modes, "write-meta"),
+      .read = HasFlags(modes, ColumnAccessModes::Read),
+      .readMeta = HasFlags(modes, ColumnAccessModes::ReadMeta),
+      .write = HasFlags(modes, ColumnAccessModes::Write),
+      .writeMeta = HasFlags(modes, ColumnAccessModes::WriteMeta)
   };
 }
 
-std::vector<std::string> ColumnGroupAccessModesToStrings(const ColumnGroupAccessModes& modes) {
-  std::vector<std::string> result;
-  if (modes.read) {
-    result.emplace_back("read");
-  }
-  if (modes.readMeta) {
-    result.emplace_back("read-meta");
-  }
-  if (modes.write) {
-    result.emplace_back("write");
-  }
-  if (modes.writeMeta) {
-    result.emplace_back("write-meta");
-  }
-  return result;
+ColumnAccessModes ColumnGroupAccessModesToEnum(const ColumnGroupAccessModes modes) {
+  return FlagsIf(ColumnAccessModes::Read, modes.read)
+      | FlagsIf(ColumnAccessModes::ReadMeta, modes.readMeta)
+      | FlagsIf(ColumnAccessModes::Write, modes.write)
+      | FlagsIf(ColumnAccessModes::WriteMeta, modes.writeMeta);
 }
 
 SubjectGroupAccessModes SubjectGroupAccessModesFromStrings(const std::vector<std::string>& modes) {
@@ -386,7 +378,7 @@ public:
     co_return co_await onIoThread()
         .flat_map([
           includeImplicitlyGranted = query.includeImplicitlyGranted.value_or(true),
-          requireModes = ColumnGroupAccessModesToStrings(query.requireModes)
+          requireModes = ColumnGroupAccessModesToEnum(query.requireModes)
          ](const std::shared_ptr<Weblib>& self) {
           return self->client_->getAccessManagerProxy()->getAccessibleColumns(includeImplicitlyGranted, requireModes);
         })
@@ -396,7 +388,7 @@ public:
               const auto& [name, columnGroup] = entry;
               return ColumnGroup{
                   .name = name,
-                  .modes = ColumnGroupAccessModesFromStrings(columnGroup.modes),
+                  .modes = ColumnGroupAccessModesFromEnum(columnGroup.modes),
                   .columns = to<std::vector>(SafeIndexInto(columnGroup.columns.indices, access.columns)),
               };
             })
@@ -442,7 +434,7 @@ public:
                 .referenceSubjects = {},
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
                 .columns = std::move(query->columns).value_or(std::vector<std::string>{}),
-                .modes = {query->mode.value_or("read")},
+                .modes = pep::ParseMode(query->mode.value_or("read")),
                 .includeAccessGroupPseudonyms = true,
               });
           });

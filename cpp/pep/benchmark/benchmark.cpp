@@ -299,7 +299,7 @@ BENCHMARK(BM_PageDeserialize);
 static pep::EncryptionKeyRequest CreateRandomEncryptionKeyRequest() {
   pep::EncryptionKeyRequest ret;
   pep::Ticket2 ticket;
-  ticket.modes = {"read", "write"};
+  ticket.modes = pep::ColumnAccessModes::Read | pep::ColumnAccessModes::Write;
   for (int i = 0; i < 200; i++)
     ticket.columns.push_back("Column" + std::to_string(i));
   ticket.userGroup = "some user group";

@@ -3,6 +3,7 @@
 add_library(${PROJECT_NAME}Ticketinglib
   TicketingMessages.cpp TicketingMessages.hpp
   TicketingSerializers.cpp TicketingSerializers.hpp
+  ColumnAccessModes.cpp ColumnAccessModes.hpp
 )
 
 target_link_libraries(${PROJECT_NAME}Ticketinglib

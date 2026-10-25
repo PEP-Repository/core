@@ -269,7 +269,7 @@ protected:
         tOpts.columns = ctx->earOpts.columns;
         tOpts.columnGroups = ctx->earOpts.columnGroups;
         tOpts.participantGroups = ctx->earOpts.groups;
-        tOpts.modes = {ctx->earOpts.includeData ? "read" : "read-meta"};
+        tOpts.modes = ctx->earOpts.includeData ? pep::ColumnAccessModes::Read : pep::ColumnAccessModes::ReadMeta;
         tOpts.includeAccessGroupPseudonyms = ctx->earOpts.includeAccessGroupPseudonyms;
         return pep::cli::TicketFile::GetTicket(*client, ctx->parameterValues, tOpts)
         .flat_map([client, ctx](pep::IndexedTicket2 ticket)

@@ -2,6 +2,7 @@
 #include <pep/utils/File.hpp>
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 
 #include <pep/accessmanager/Storage.hpp>
 
@@ -171,7 +172,7 @@ std::shared_ptr<GlobalConfiguration> AccessManagerBackendTest::globalConf;
 TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_happy) {
 
   const std::vector<std::string> columngroups{constants.r_cg1};
-  const std::vector<std::string> modes{"read"};
+  const ColumnAccessModes modes = ColumnAccessModes::Read;
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns;
 
@@ -194,7 +195,7 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_happy) {
 TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_column_access_through_multiple_column_groups_no_column_groups_in_request) {
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
-  const std::vector<std::string> modes{"read", "write"};
+  const ColumnAccessModes modes = ColumnAccessModes::Read | ColumnAccessModes::Write;
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns{constants.double_col};
   auto columnGroupMap =
@@ -210,7 +211,7 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_column_access_
 TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_no_column_access_no_column_groups_in_request) {
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
-  const std::vector<std::string> modes{"read", "write"};
+  const ColumnAccessModes modes = ColumnAccessModes::Read | ColumnAccessModes::Write;
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns{constants.w_col};
 
@@ -289,7 +290,7 @@ TEST_F(AccessManagerBackendTest, checkTicketForEncryptionKeyRequest_happy) {
   auto request = std::make_shared<EncryptionKeyRequest>();
   Ticket2 ticket{};
   ticket.columns.push_back(constants.w_col);
-  ticket.modes.push_back("write");
+  ticket.modes = ColumnAccessModes::Write;
   KeyRequestEntry entry;
   entry.keyBlindMode = KeyBlindMode::Blind; // Needs ticket mode write
   entry.metadata.setTag(constants.w_col); // specified col should be in ticket columns.
@@ -301,14 +302,14 @@ TEST_F(AccessManagerBackendTest, checkTicketForEncryptionKeyRequest_happy) {
 
 TEST_F(AccessManagerBackendTest, handleColumnAccessRequest_happy) {
   auto request = ColumnAccessRequest();
-  request.requireModes.push_back("read");
+  request.requireModes = ColumnAccessModes::Read;
   auto actual = backend->handleColumnAccessRequest(request, constants.userGroup1);
 
 
   ColumnAccess expected{};
-  expected.columnGroups[constants.r_cg1].modes.push_back("read");
+  expected.columnGroups[constants.r_cg1].modes |= ColumnAccessModes::Read;
   expected.columnGroups[constants.r_cg1].columns.indices = {0, 1, 2};
-  expected.columnGroups[constants.r_cg2].modes.push_back("read");
+  expected.columnGroups[constants.r_cg2].modes |= ColumnAccessModes::Read;
   expected.columnGroups[constants.r_cg2].columns.indices = {1};
   expected.columns = {constants.double_col, constants.r_col1, constants.r_col2};
 
@@ -319,16 +320,16 @@ TEST_F(AccessManagerBackendTest, handleColumnAccessRequest_happy) {
 TEST_F(AccessManagerBackendTest, handleColumnAccessRequest_happy_include_implicit) {
   auto request = ColumnAccessRequest();
   request.includeImplicitlyGranted = true;
-  request.requireModes.push_back("read");
+  request.requireModes = ColumnAccessModes::Read;
   auto actual = backend->handleColumnAccessRequest(request, constants.userGroup1);
 
 
   ColumnAccess expected{};
-  expected.columnGroups[constants.r_cg1].modes.push_back("read");
-  expected.columnGroups[constants.r_cg1].modes.push_back("read-meta");
+  expected.columnGroups[constants.r_cg1].modes |= ColumnAccessModes::Read;
+  expected.columnGroups[constants.r_cg1].modes |= ColumnAccessModes::ReadMeta;
   expected.columnGroups[constants.r_cg1].columns.indices = {0, 1, 2};
-  expected.columnGroups[constants.r_cg2].modes.push_back("read");
-  expected.columnGroups[constants.r_cg2].modes.push_back("read-meta");
+  expected.columnGroups[constants.r_cg2].modes |= ColumnAccessModes::Read;
+  expected.columnGroups[constants.r_cg2].modes |= ColumnAccessModes::ReadMeta;
   expected.columnGroups[constants.r_cg2].columns.indices = {1};
   expected.columns = {constants.double_col, constants.r_col1, constants.r_col2};
 
