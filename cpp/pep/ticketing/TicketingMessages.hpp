@@ -2,6 +2,7 @@
 
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/auth/Signed.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 
 namespace pep {
 
@@ -21,13 +22,11 @@ std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<Loc
 
 struct Ticket2 {
   Timestamp timestamp{/*zero*/};
-  std::vector<std::string> modes;
+  ColumnAccessModes modes = ColumnAccessModes::None;
   std::vector<LocalPseudonyms> accessSubjects;  ///< identifiers for subjects that will be accessed
   std::vector<LocalPseudonyms> referenceSubjects;  ///< identifiers for subjects that will **not** be accessed
   std::vector<std::string> columns;
   std::string userGroup;
-
-  bool hasMode(const std::string& mode) const;
 };
 
 template <>
@@ -58,13 +57,13 @@ public:
 
   Ticket2 open(const X509RootCertificates& rootCAs,
     const std::string& accessGroup,
-    const std::optional<std::string>& accessMode = std::nullopt) const;
+    const std::optional<ColumnAccessModes>& accessMode = std::nullopt) const;
 
   Ticket2 openForLogging(const X509RootCertificates& rootCAs, std::string& serialized) const;
 };
 
 struct ClientSideTicketRequest2 {
-  std::vector<std::string> modes;
+  ColumnAccessModes modes = ColumnAccessModes::None;
   std::vector<std::string> participantGroups;
   std::vector<PolymorphicPseudonym> accessSubjects;
   std::vector<PolymorphicPseudonym> referenceSubjects;

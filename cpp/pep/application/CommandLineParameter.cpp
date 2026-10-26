@@ -77,7 +77,7 @@ SwitchAnnouncement Parameter::getCanonicalAnnouncement() const {
   return SwitchAnnouncement(name_);
 }
 
-std::set<SwitchAnnouncement> Parameter::getAnnouncements() const {
+std::set<SwitchAnnouncement, SwitchAnnouncement::TextLess> Parameter::getAnnouncements() const {
   auto result = aliases_;
   [[maybe_unused]] auto emplaced = result.emplace(this->getCanonicalAnnouncement()).second;
   assert(emplaced);

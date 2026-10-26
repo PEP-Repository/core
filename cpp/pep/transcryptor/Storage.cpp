@@ -1038,7 +1038,7 @@ void TranscryptorStorage::checkAndStoreUserVerifiers(const X509Certificate& user
 
 std::string TranscryptorStorage::logTicketRequest(
     const std::vector<LocalPseudonym>& localPseudonyms,
-    const std::vector<std::string>& modes,
+    ColumnAccessModes modes,
     SignedTicketRequest2 ticketRequest,
     std::string pseudonymHash) {
 
@@ -1055,7 +1055,7 @@ std::string TranscryptorStorage::logTicketRequest(
   auto record = TicketRequestRecord(
     std::move(serialized),
     getOrCreatePseudonymSet(localPseudonyms),
-    getOrCreateModeSet(modes),
+    getOrCreateModeSet(ToIndividualStrings(modes)),
     std::move(pseudonymHash),
     std::move(accessGroup),
     chainId
@@ -1069,7 +1069,7 @@ void TranscryptorStorage::logIssuedTicket(
     const std::string& id,
     const std::string& pseudonymHash,
     std::vector<std::string> columns,
-    std::vector<std::string> modes,
+    ColumnAccessModes modes,
     const std::string& accessGroup,
     Timestamp timestamp) {
   auto reqRecord = RangeToOptional(
@@ -1093,7 +1093,7 @@ void TranscryptorStorage::logIssuedTicket(
     throw Error("Timestamp on ticket too far from current time");
   }
 
-  if (reqRecord->modeSet != getOrCreateModeSet(modes))
+  if (reqRecord->modeSet != getOrCreateModeSet(ToIndividualStrings(modes)))
     throw Error("Modes on ticket do not match modes on request");
 
   auto record = TicketIssueRecord(

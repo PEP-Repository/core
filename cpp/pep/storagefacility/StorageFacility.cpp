@@ -287,7 +287,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   auto certified = signedRequest->open(rootCAs);
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
-  auto ticket = request.ticket.open(rootCAs, accessGroup, "read-meta");
+  auto ticket = request.ticket.open(rootCAs, accessGroup, ColumnAccessModes::ReadMeta);
 
   struct ResponseEntry {
     DataEnumerationEntry2 entry;
@@ -415,7 +415,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
     auto ticket = request.ticket.open(
       *rootCAs,
       userGroup,
-      "read-meta"
+      ColumnAccessModes::ReadMeta
     );
 
     // Create look-up-tables for columns and pseudonyms from ticket
@@ -487,7 +487,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   auto ticket = request.ticket.open(
     *rootCAs,
     userGroup,
-    "read"
+    ColumnAccessModes::Read
   );
 
   // Create look-up-tables for columns and pseudonyms from ticket
@@ -626,7 +626,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
     auto request = MakeSharedCopy(std::move(certified.message));
     auto ticket = request->ticket.open(*rootCAs, certified.signatory.organizationalUnit());
 
-    if (!ticket.hasMode("write")) {
+    if (!ImpliesModes(ticket.modes, ColumnAccessModes::Write)) {
       throw Error("Ticket is missing \"write\" access mode");
     }
 
@@ -822,9 +822,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
 
   auto ticket = request->ticket.open(*rootCAs, userGroup);
 
-  if (!ticket.hasMode("write-meta")) {
-    throw Error("Ticket is missing write-meta access mode");
-  }
+  if (!ImpliesModes(ticket.modes, ColumnAccessModes::WriteMeta)) { throw Error("Ticket is missing write-meta access mode"); }
 
   // Fill a vector with indices of pseudonyms that we want/need decrypted
   auto pseudIndices = request->entries
@@ -957,7 +955,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({UserGroup::DataAdministrator, UserGroup::Watchdog}, accessGroup);
 
-  auto ticket = request.ticket.open(*rootCAs, accessGroup, "read-meta");
+  auto ticket = request.ticket.open(*rootCAs, accessGroup, ColumnAccessModes::ReadMeta);
 
   DataHistoryResponse2 response;
 

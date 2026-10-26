@@ -20,6 +20,7 @@
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/structure/StudyContext.hpp>
 #include <pep/transcryptor/TranscryptorProxy.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/utils/Configuration_fwd.hpp>
 
 #include <cstddef>
@@ -170,7 +171,7 @@ struct RequestTicket2Opts{
   std::vector<PolymorphicPseudonym> referenceSubjects;
   std::vector<std::string> columnGroups;
   std::vector<std::string> columns;
-  std::vector<std::string> modes; // "read-meta", "write-meta", "read", "write"
+  ColumnAccessModes modes = ColumnAccessModes::None;
 
   // If set, check whether this ticket has at least the desired scope.
   // If it does, returns this ticket.  Otherwise, request a new one

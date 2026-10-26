@@ -7,6 +7,7 @@
 #include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/pullcastor/StudyPuller.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/utils/Configuration.hpp>
@@ -49,8 +50,7 @@ rxcpp::observable<std::string> GetReadWritableColumnNames(std::shared_ptr<CoreCl
     std::set<std::string> result;
     for (const auto& group : access.columnGroups) {
       const ColumnAccess::GroupProperties& properties = group.second;
-      if (contains(properties.modes, "read")
-        && contains(properties.modes, "write")) {
+      if (HasFlags(properties.modes, ColumnAccessModes::Read | ColumnAccessModes::Write)) {
         for (const auto index : properties.columns.indices) {
           const auto& column = access.columns[index];
           result.emplace(column);

@@ -38,18 +38,38 @@ EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(ListQuery::subjects)::value_type>();
   register_optional<decltype(ListQuery::columnGroups)::value_type>();
   register_optional<decltype(ListQuery::columns)::value_type>();
+  register_optional<decltype(ListQuery::mode)::value_type>();
   register_optional<decltype(std::declval<CellEntry>().partialMetadataView())::mapped_type::value_type>();
+  register_optional<decltype(User::displayId)::value_type>();
+  register_optional<decltype(User::primaryId)::value_type>();
+  register_optional<decltype(UserGroupMembership::expiration)::value_type>();
+  register_optional<decltype(UserGroupInfo::maxAuthValiditySeconds)::value_type>();
+  register_optional<decltype(ListColumnsQuery::includeImplicitlyGranted)::value_type>();
 }
+
+PEP_BINDINGS(ListColumnsQuery,
+  includeImplicitlyGranted,
+  requireModes
+)
 
 PEP_BINDINGS(ListQuery,
   subjectGroups,
   subjects,
   columnGroups,
-  columns
+  columns,
+  mode
+)
+
+PEP_BINDINGS(ColumnGroupAccessModes,
+  read,
+  readMeta,
+  write,
+  writeMeta
 )
 
 PEP_BINDINGS(ColumnGroup,
   name,
+  modes,
   columns
 )
 
@@ -58,8 +78,14 @@ PEP_BINDINGS(EnrolledUser,
   user
 )
 
+PEP_BINDINGS(SubjectGroupAccessModes,
+  access,
+  enumerate
+)
+
 PEP_BINDINGS(SubjectGroup,
-  name
+  name,
+  modes
 )
 
 PEP_BINDINGS(ParticipantPersonalia,
@@ -72,12 +98,34 @@ PEP_BINDINGS(ParticipantPersonalia,
 PEP_BINDINGS(StoreQuery,
   subject,
   column,
-  blob,
+  reader,
   metadata
 )
 
 PEP_BINDINGS(StoreResult,
   id
+)
+
+PEP_BINDINGS(UserGroupMembership,
+  userGroup,
+  expiration
+)
+
+PEP_BINDINGS(User,
+  displayId,
+  primaryId,
+  otherUids,
+  groups
+)
+
+PEP_BINDINGS(UserGroupInfo,
+  name,
+  maxAuthValiditySeconds
+)
+
+PEP_BINDINGS(UserQueryResult,
+  users,
+  userGroups
 )
 
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {

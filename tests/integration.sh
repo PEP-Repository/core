@@ -539,10 +539,17 @@ if should_run_test weblib; then
       "name": "WasmTestColumnGroup",
       "columns": [ "WasmTestColumn" ],
       "cgars": { "Research Assessor": [ "read", "write" ] }
+    }, {
+      "name": "WasmTestMetaColumnGroup",
+      "columns": [ "WasmTestMetaColumn" ],
+      "cgars": { "Research Assessor": [ "read-meta", "write-meta" ] }
     }],
     "subjectGroups": [{
       "name": "WasmTestSubjectGroup",
       "pgars": { "Research Assessor": [ "enumerate", "access" ] }
+    }, {
+      "name": "WasmTestEnumerateSubjectGroup",
+      "pgars": { "Research Assessor": [ "enumerate" ] }
     }]
   }'
 
@@ -550,6 +557,9 @@ if should_run_test weblib; then
 
   pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectSmall -c WasmTestColumn \
     -d 'Some small test data!' --metadataxentry "$(pepcli xentry --name fileExtension --payload .small)"
+  # Research Assessor can write this cell (implied by write-meta) and see its metadata, but cannot read its data
+  pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectSmall -c WasmTestMetaColumn \
+    -d 'Unreadable test data' --metadataxentry "$(pepcli xentry --name fileExtension --payload .meta)"
 
   # Around 2MB
   # Ignore SIGPIPE (141) because output is cut off

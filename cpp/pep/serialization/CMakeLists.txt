@@ -3,6 +3,7 @@
 add_library(${PROJECT_NAME}Serializationlib
     Error.cpp Error.hpp
     ErrorSerializer.cpp ErrorSerializer.hpp
+    FlagNames.hpp
     IndexList.hpp # Defined in this library to make this simple utility type widely available
     IndexListSerializer.cpp IndexListSerializer.hpp
     MessageMagic.cpp MessageMagic.hpp

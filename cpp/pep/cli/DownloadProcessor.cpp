@@ -109,7 +109,7 @@ rxcpp::observable<std::shared_ptr<IndexedTicket2>> DownloadProcessor::requestTic
   tOpts.columns = ctx->content.columns;
   tOpts.columnGroups = ctx->content.columnGroups;
   tOpts.participantGroups = ctx->content.groups;
-  tOpts.modes = { "read" };
+  tOpts.modes = ColumnAccessModes::Read;
   tOpts.includeAccessGroupPseudonyms = true;
   progress->advance("Requesting ticket");
   return ctx->client->requestTicket2(tOpts)
