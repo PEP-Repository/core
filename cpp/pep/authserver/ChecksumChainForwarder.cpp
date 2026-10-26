@@ -26,7 +26,7 @@ rxcpp::observable<ChecksumChainResponse> ChecksumChainForwarder::handle(const Ch
       )
       .op(RxGetOne());
   }
-  catch (const std::out_of_range) {
+  catch (const std::out_of_range&) {
     throw UnknownChecksumChainError(request.name);
   }
 }
