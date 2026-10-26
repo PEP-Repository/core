@@ -1,12 +1,6 @@
 #include <pep/ticketing/ColumnAccessModes.hpp>
 
-#include <pep/serialization/Error.hpp>
-#include <pep/utils/Log.hpp>
-
-#include <boost/algorithm/string/join.hpp>
-
-#include <array>
-#include <string_view>
+#include <pep/ticketing/FlagNames.hpp>
 
 namespace pep {
 
@@ -17,33 +11,22 @@ constexpr auto columnAccessModeNames = std::array<std::pair<ColumnAccessModes, s
     {ColumnAccessModes::WriteMeta, "write-meta"},
     {ColumnAccessModes::_bogus_AmaTranscryptionOnly, "enumerate"}, // still maps to old name for backward compatibility
 }};
+constexpr std::string_view columnAccessModeErrorFormat = "Unknown column access mode {}";
 
 std::vector<std::string> ToIndividualStrings(const ColumnAccessModes modes) {
-  std::vector<std::string> strs{};
-  for (const auto& [mode_i, name_i] : columnAccessModeNames) {
-    if (HasFlags(modes, mode_i)) { strs.emplace_back(name_i); }
-  }
-  return strs;
+  return detail::ToIndividualStrings(modes, columnAccessModeNames);
 }
 
 std::string ToSingleString(const ColumnAccessModes modes, const std::string_view separator) {
-  if (modes == ColumnAccessModes::None) { return "none"; }
-  return boost::join(ToIndividualStrings(modes), separator);
+  return detail::ToSingleString(modes, columnAccessModeNames, separator);
 }
 
 ColumnAccessModes ParseColumnAccessMode(const std::string_view str) {
-  for (const auto& [mode, name] : columnAccessModeNames) {
-    if (str == name) { return mode; }
-  }
-  throw Error("Unknown column access mode " + Logging::Escape(std::string(str)));
+  return detail::ParseFlagName(str, columnAccessModeNames, columnAccessModeErrorFormat);
 }
 
 ColumnAccessModes ParseColumnAccessModes(const std::span<const std::string> names) {
-  auto result = ColumnAccessModes::None;
-  for (const auto& name : names) {
-    result |= ParseColumnAccessMode(name);
-  }
-  return result;
+  return detail::ParseFlagNames(names, columnAccessModeNames, columnAccessModeErrorFormat);
 }
 
 } // namespace pep

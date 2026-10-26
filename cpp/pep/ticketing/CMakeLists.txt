@@ -4,6 +4,7 @@ add_library(${PROJECT_NAME}Ticketinglib
   TicketingMessages.cpp TicketingMessages.hpp
   TicketingSerializers.cpp TicketingSerializers.hpp
   ColumnAccessModes.cpp ColumnAccessModes.hpp
+  FlagNames.hpp
   SubjectAccessModes.cpp SubjectAccessModes.hpp
 )
 
