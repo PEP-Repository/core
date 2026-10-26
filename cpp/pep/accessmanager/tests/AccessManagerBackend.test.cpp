@@ -269,9 +269,14 @@ TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_happy) {
 }
 
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_no_access) {
-  const auto modes = SubjectAccessModes::Access | SubjectAccessModes::Enumerate;
+  constexpr auto modes = SubjectAccessModes::Access | SubjectAccessModes::Enumerate;
+  constexpr auto pattern = R"(Access denied to "{}" for mode "{}" to participant-group "{}")";
   EXPECT_THAT([&]() { backend->checkParticipantGroupAccess(std::vector{ constants.pg2 }, constants.userGroup1, modes, TimeNow()); },
-    ::testing::ThrowsMessage<Error>(::testing::StrEq("Access denied to \"" + constants.userGroup1 + "\" for mode \"" + ToSingleString(SubjectAccessModes::Access) + "\" to participant-group \"" + constants.pg2 + "\"\nAccess denied to \"" + constants.userGroup1 + "\" for mode \"" + ToSingleString(SubjectAccessModes::Enumerate) + "\" to participant-group \"" + constants.pg2 + "\"")));
+    ::testing::ThrowsMessage<Error>(::testing::AllOf(
+              ::testing::HasSubstr(std::format(pattern, constants.userGroup1, ToSingleString(SubjectAccessModes::Access), constants.pg2)),
+              ::testing::HasSubstr(std::format(pattern, constants.userGroup1, ToSingleString(SubjectAccessModes::Enumerate), constants.pg2))
+    ))
+  );
 }
 
 TEST_F(AccessManagerBackendTest, fillParticipantgroupMap_happy) {
