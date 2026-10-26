@@ -244,6 +244,117 @@ struct AccessManager::Backend::Storage::Implementor : database::Storage<CreateAm
   using Storage::Storage;
 };
 
+namespace {
+
+class AmChecksumChain : public ChecksumChain {
+private:
+  AccessManager::Backend::Storage::Implementor& storage_;
+
+  static int64_t CheckpointToSeqNo(Checkpoint checkpoint) noexcept { return static_cast<int64_t>(checkpoint - 2U); }
+
+protected:
+  static Checkpoint SeqNoToCheckpoint(int64_t seqno) noexcept { return static_cast<Checkpoint>(seqno + 2); }
+  static int64_t GetMaxSeqNo(const std::optional<Checkpoint>& maxCheckpoint) noexcept { return CheckpointToSeqNo(maxCheckpoint.value_or(std::numeric_limits<int64_t>::max())); }
+
+  AmChecksumChain(std::string name, AccessManager::Backend::Storage::Implementor& storage) noexcept
+    : ChecksumChain(std::move(name)), storage_(storage) {}
+
+  AccessManager::Backend::Storage::Implementor& storage() const noexcept { return storage_; }
+};
+
+template <typename TRecord>
+class AmRecordChecksumChain : public AmChecksumChain {
+protected:
+  virtual Checksum getRecordChecksum(const TRecord& record) const = 0;
+
+public:
+  AmRecordChecksumChain(std::string name, AccessManager::Backend::Storage::Implementor& storage) noexcept
+    : AmChecksumChain(std::move(name), storage) {
+  }
+
+  Result get(const std::optional<Checkpoint>& maxCheckpoint) const override {
+    Result result{
+      .checksum = 0,
+      .checkpoint = 1,
+    };
+    auto max = GetMaxSeqNo(maxCheckpoint);
+
+    for (const auto& record : this->storage().raw.template iterate<TRecord>(
+      where(c(&TRecord::seqno) <= max))) {
+      result.checkpoint = std::max(result.checkpoint, SeqNoToCheckpoint(record.seqno));
+      result.checksum ^= this->getRecordChecksum(record);
+    }
+
+    return result;
+  }
+};
+
+template<typename T, int version = 0>
+class PlainRecordChecksumChain : public AmRecordChecksumChain<T> {
+protected:
+  ChecksumChain::Checksum getRecordChecksum(const T& record) const override {
+    if constexpr (version == 0) {
+      return record.checksum();
+    } else {
+      return record.checksum(version);
+    }
+  }
+
+public:
+  using AmRecordChecksumChain<T>::AmRecordChecksumChain;
+};
+
+//TODO: this checksum is only useful to check the migration for #1642. When that has succeeded, this checksum can be removed in a following release.
+class LegacyUserGroupUserChecksumChain : public AmRecordChecksumChain<UserGroupUserRecord> {
+protected:
+  Checksum getRecordChecksum(const UserGroupUserRecord& record) const override {
+    LegacyUserGroupUserRecord legacyRecord(record);
+
+    bool found = false;
+    for (auto& record : this->storage().raw.iterate<pep::UserGroupRecord>(
+      where(c(&pep::UserGroupRecord::userGroupId) == record.userGroupId
+        && c(&pep::UserGroupRecord::timestamp) <= record.timestamp),
+      order_by(&pep::UserGroupRecord::seqno).desc(), limit(1))) {
+      legacyRecord.group = record.name;
+      found = true;
+    }
+    if (!found)
+      throw Error("Could not find user group");
+
+    return legacyRecord.checksum();
+  }
+
+public:
+  explicit LegacyUserGroupUserChecksumChain(AccessManager::Backend::Storage::Implementor& storage)
+    : AmRecordChecksumChain<UserGroupUserRecord>("user-group-users-legacy", storage) {}
+};
+
+ChecksumChains CreateAmChecksumChains(AccessManager::Backend::Storage::Implementor& storage) {
+  // We used to store localPseudonyms and polymorphicPseudonyms as protobufs.
+  // In order to make sure the conversion went right, we want to make sure there are no checksum chain errors.
+  // So we add v2 checksums that use the current representation, and convert the local- and polymorphic pseudonyms to the old format for the
+  // existing checksum. The old version of the checksum can be removed in a later release
+  return ChecksumChains(
+    std::make_unique<PlainRecordChecksumChain<SelectStarPseudonymRecord, 1>>("select-start-pseud", storage),
+    std::make_unique<PlainRecordChecksumChain<SelectStarPseudonymRecord, 2>>("select-start-pseud-v2", storage),
+    std::make_unique<PlainRecordChecksumChain<ParticipantGroupRecord>>("participant-groups", storage),
+    std::make_unique<PlainRecordChecksumChain<ParticipantGroupParticipantRecord, 1>>("participant-group-participants", storage),
+    std::make_unique<PlainRecordChecksumChain<ParticipantGroupParticipantRecord, 2>>("participant-group-participants-v2", storage),
+    std::make_unique<PlainRecordChecksumChain<ColumnGroupRecord>>("column-groups", storage),
+    std::make_unique<PlainRecordChecksumChain<ColumnRecord>>("columns", storage),
+    std::make_unique<PlainRecordChecksumChain<ColumnGroupColumnRecord>>("column-group-columns", storage),
+    std::make_unique<PlainRecordChecksumChain<ColumnGroupAccessRuleRecord>>("column-group-accessrule", storage),
+    std::make_unique<PlainRecordChecksumChain<ParticipantGroupAccessRuleRecord>>("group-accessrule", storage),
+    std::make_unique<PlainRecordChecksumChain<UserIdRecord>>("user-ids", storage),
+    std::make_unique<PlainRecordChecksumChain<UserGroupRecord>>("user-groups", storage),
+    std::make_unique<PlainRecordChecksumChain<UserGroupUserRecord>>("user-group-users", storage),
+    std::make_unique<LegacyUserGroupUserChecksumChain>(storage),
+    std::make_unique<PlainRecordChecksumChain<StructureMetadataRecord>>("structure-metadata", storage)
+  );
+}
+
+}
+
 void AccessManager::Backend::Storage::ensureInitialized() {
   implementor_->syncSchema();
 
@@ -574,7 +685,8 @@ void AccessManager::Backend::Storage::syncColumnGroupContents(const std::string&
 }
 
 AccessManager::Backend::Storage::Storage(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf)
-  : storagePath_(std::move(path)), implementor_(std::make_shared<Implementor>(storagePath_.string())), globalConf_(std::move(globalConf)) {
+  : storagePath_(std::move(path)), implementor_(std::make_shared<Implementor>(storagePath_.string())), globalConf_(std::move(globalConf)),
+  checksumChains_(CreateAmChecksumChains(*implementor_)) {
 
   ensureInitialized();
   auto allColumns = ensureSynced();
@@ -597,92 +709,6 @@ AccessManager::Backend::Storage::Storage(std::filesystem::path path, std::shared
 
   removeOrphanedRecords();
   PEP_LOG(LogTag, Severity::Info) << "Ready to accept requests!";
-}
-
-namespace { // TODO: move together with other anonymously-scoped code (at top of source)
-
-template<typename T, int version = 0>
-void ComputeChecksumImpl(std::shared_ptr<AccessManager::Backend::Storage::Implementor> storageImplementor,
-    std::optional<uint64_t> maxCheckpoint, uint64_t& checksum, uint64_t& checkpoint) {
-  checkpoint = 1;
-  checksum = 0;
-  if (!maxCheckpoint)
-    maxCheckpoint = std::numeric_limits<int64_t>::max();
-
-  for (const auto& record : storageImplementor->raw.iterate<T>(
-      where(c(&T::seqno) < static_cast<int64_t>(*maxCheckpoint) - 1))) {
-    checkpoint = std::max(checkpoint, static_cast<uint64_t>(record.seqno + 2));
-    if constexpr (version == 0) {
-      checksum ^= record.checksum();
-    }
-    else {
-      checksum ^= record.checksum(version);
-    }
-  }
-}
-
-//TODO: this checksum is only useful to check the migration for #1642. When that has succeeded, this checksum can be removed in a following release.
-static void ComputeLegacyUserGroupUserChecksumImpl(std::shared_ptr<AccessManager::Backend::Storage::Implementor> storageImplementor, std::optional<uint64_t> maxCheckpoint, uint64_t& checksum, uint64_t& checkpoint)  {
-  checkpoint = 1;
-  checksum = 0;
-  if (!maxCheckpoint)
-    maxCheckpoint = std::numeric_limits<int64_t>::max();
-
-  for (auto record : storageImplementor->raw.iterate<UserGroupUserRecord>(
-      where(c(&UserGroupUserRecord::seqno) < static_cast<int64_t>(*maxCheckpoint) - 1))) {
-    LegacyUserGroupUserRecord legacyRecord(record);
-
-    bool found = false;
-    for (auto &record : storageImplementor->raw.iterate<pep::UserGroupRecord>(
-             where(c(&pep::UserGroupRecord::userGroupId) == record.userGroupId
-               && c(&pep::UserGroupRecord::timestamp) <= record.timestamp),
-             order_by(&pep::UserGroupRecord::seqno).desc(), limit(1))) {
-      legacyRecord.group = record.name;
-      found = true;
-    }
-    if(!found)
-      throw Error("Could not find user group");
-
-    checkpoint = std::max(checkpoint, static_cast<uint64_t>(legacyRecord.seqno + 2));
-    checksum ^= legacyRecord.checksum();
-  }
-}
-
-// We used to store localPseudonyms and polymorphicPseudonyms as protobufs.
-// In order to make sure the conversion went right, we want to make sure there are no checksum chain errors.
-// So we add v2 checksums that use the current representation, and convert the local- and polymorphic pseudonyms to the old format for the
-// existing checksum. The old version of the checksum can be removed in a later release
-const std::unordered_map<std::string, decltype(&ComputeChecksumImpl<SelectStarPseudonymRecord>)>
-    computeChecksumImpls {
-  {"select-start-pseud", &ComputeChecksumImpl<SelectStarPseudonymRecord, 1>},
-  {"select-start-pseud-v2", &ComputeChecksumImpl<SelectStarPseudonymRecord, 2>},
-  {"participant-groups", &ComputeChecksumImpl<ParticipantGroupRecord>},
-  {"participant-group-participants", &ComputeChecksumImpl<ParticipantGroupParticipantRecord, 1>},
-  {"participant-group-participants-v2", &ComputeChecksumImpl<ParticipantGroupParticipantRecord, 2>},
-  {"column-groups", &ComputeChecksumImpl<ColumnGroupRecord>},
-  {"columns", &ComputeChecksumImpl<ColumnRecord>},
-  {"column-group-columns", &ComputeChecksumImpl<ColumnGroupColumnRecord>},
-  {"column-group-accessrule", &ComputeChecksumImpl<ColumnGroupAccessRuleRecord>},
-  {"group-accessrule", &ComputeChecksumImpl<ParticipantGroupAccessRuleRecord>},
-  {"user-ids", &ComputeChecksumImpl<UserIdRecord>},
-  {"user-groups", &ComputeChecksumImpl<UserGroupRecord>},
-  {"user-group-users", &ComputeChecksumImpl<UserGroupUserRecord>},
-  {"user-group-users-legacy", ComputeLegacyUserGroupUserChecksumImpl},
-  {"structure-metadata", &ComputeChecksumImpl<StructureMetadataRecord>},
-};
-
-}
-
-std::vector<std::string> AccessManager::Backend::Storage::getChecksumChainNames() {
-  return views::keys(computeChecksumImpls) | to<std::vector>();
-}
-
-void AccessManager::Backend::Storage::computeChecksum(const std::string& chain,
-      std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
-      uint64_t& checkpoint) {
-  if (!computeChecksumImpls.contains(chain))
-    throw Error("No such checksum chain");
-  computeChecksumImpls.at(chain)(implementor_, maxCheckpoint, checksum, checkpoint);
 }
 
 std::vector<PolymorphicPseudonym> AccessManager::Backend::Storage::getPPs() {

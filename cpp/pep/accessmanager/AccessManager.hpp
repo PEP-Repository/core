@@ -67,11 +67,7 @@ public:
 
 protected:
   std::optional<std::filesystem::path> getStoragePath() override;
-  std::unordered_set<std::string> getAllowedChecksumChainRequesters() override;
-  std::vector<std::string> getChecksumChainNames() const override;
-  void computeChecksumChainChecksum(
-    const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-    uint64_t& checksum, uint64_t& checkpoint) override;
+  const ChecksumChainHandler& checksumChainHandler() const noexcept override { return checksumChainHandler_; }
 
 private:
   /// Internal state shared by all phases of handleTicketRequest2.
@@ -137,6 +133,7 @@ private:
   std::shared_ptr<Metrics> lpMetrics_;
   std::shared_ptr<WorkerPool> workerPool_;
   uintmax_t nextTicketRequestNumber_ = 1U;
+  LocalChecksumChainHandler checksumChainHandler_;
 };
 
 }

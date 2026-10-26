@@ -1,8 +1,8 @@
 #pragma once
 
 #include <pep/accessmanager/UserMessages.hpp>
-
 #include <pep/accessmanager/AccessManager.hpp>
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/ticketing/SubjectAccessModes.hpp>
 
@@ -83,8 +83,7 @@ public:
 
   std::filesystem::path getStoragePath();
 
-  std::vector<std::string> getChecksumChainNames();
-  void computeChecksum(const std::string& chain, std::optional<uint64_t> maxCheckpoint, uint64_t& checksum, uint64_t& checkpoint);
+  const ChecksumChains& checksumChains() const noexcept;
 
   void performMutationsForRequest(const AmaMutationRequest& request, const std::string& userGroup);
   rxcpp::observable<UserMutationResponse> performUserMutationsForRequest(

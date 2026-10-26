@@ -211,7 +211,7 @@ TEST_F(AccessManagerStorageTest, getStoragePath_happy) {
 }
 
 TEST_F(AccessManagerStorageTest, getChecksumChainNames_happy) {
-  auto actual = storage->getChecksumChainNames();
+  auto actual = storage->checksumChains().names() | to<std::vector>();
   auto expected = std::vector<std::string>{
     "column-group-accessrule",
     "column-group-columns",
@@ -229,18 +229,12 @@ TEST_F(AccessManagerStorageTest, getChecksumChainNames_happy) {
     "user-group-users",
     "structure-metadata",
   };
-  sort(actual);
   sort(expected);
   ASSERT_EQ(actual, expected);
 }
 
 TEST_F(AccessManagerStorageTest, computeChecksum_unknown_chain) {
-  std::string chain{"unknown_chain"};
-  std::optional<size_t> maxCheckpoint{};
-  uint64_t checksum{};
-  uint64_t checkpoint{};
-  EXPECT_THAT([&]() { storage->computeChecksum(chain, maxCheckpoint, checksum, checkpoint); },
-    ::testing::ThrowsMessage<Error>(::testing::StrEq("No such checksum chain")));
+  EXPECT_THROW(storage->checksumChains().chain("unknown_chain"), UnknownChecksumChainError);
 }
 
 TEST_F(AccessManagerStorageTest, hasColumn) {

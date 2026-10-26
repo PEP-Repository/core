@@ -5,6 +5,7 @@
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/authserver/AuthserverMessages.hpp>
+#include <pep/authserver/ChecksumChainForwarder.hpp>
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 
 namespace pep {
@@ -48,8 +49,7 @@ public:
 public:
   explicit AuthserverBackend(const Parameters &params);
 
-  std::vector<std::string> getChecksumChainNames() const;
-  rxcpp::observable<ChecksumChainResponse> handleChecksumChainRequest(ChecksumChainRequest request);
+  const ChecksumChainForwarder& checksumChainForwarder() const noexcept { return checksumChainForwarder_; }
 
   rxcpp::observable<std::optional<std::vector<UserGroup>>>
   findUserGroupsAndStorePrimaryIdIfMissing(
@@ -75,6 +75,7 @@ private:
   std::shared_ptr<AccessManagerProxy> accessManager_;
   std::chrono::seconds tokenExpiration_;
   std::string oauthTokenSecret_;
+  ChecksumChainForwarder checksumChainForwarder_;
 };
 
 }
