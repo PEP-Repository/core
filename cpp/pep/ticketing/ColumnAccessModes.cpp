@@ -4,6 +4,7 @@
 #include <pep/utils/FlagNames.hpp>
 
 namespace pep {
+namespace {
 
 constexpr auto columnAccessModeNames = std::array<std::pair<ColumnAccessModes, std::string_view>, 5>{{
     {ColumnAccessModes::Read, "read"},
@@ -12,7 +13,10 @@ constexpr auto columnAccessModeNames = std::array<std::pair<ColumnAccessModes, s
     {ColumnAccessModes::WriteMeta, "write-meta"},
     {ColumnAccessModes::_bogus_AmaTranscryptionOnly, "enumerate"}, // still maps to old name for backward compatibility
 }};
+
 constexpr std::string_view columnAccessModeErrorFormat = "Unknown column access mode {}";
+
+} // anonymous namespace
 
 std::vector<std::string> ToIndividualStrings(const ColumnAccessModes modes) {
   return ToIndividualStrings(modes, columnAccessModeNames);

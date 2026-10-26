@@ -3,14 +3,15 @@
 #include <pep/utils/FlagNames.hpp>
 
 namespace pep::structuredOutput {
+namespace {
 
-constexpr auto formatFlagNames = std::array<std::pair<FormatFlags, std::string_view>, 3>{{
+constexpr auto formatFlagNames = FlagNameTable<FormatFlags, 3>{{
     {FormatFlags::Csv, "csv"},
     {FormatFlags::Json, "json"},
     {FormatFlags::Yaml, "yaml"},
 }};
-static_assert(FormatFlags::All == (FormatFlags::Csv | FormatFlags::Json | FormatFlags::Yaml),
-    "every format must be in formatFlagNames");
+
+} // anonymous namespace
 
 std::vector<std::string> ToIndividualStrings(FormatFlags flags) {
   return pep::ToIndividualStrings(flags, formatFlagNames);

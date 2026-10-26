@@ -4,12 +4,16 @@
 #include <pep/utils/FlagNames.hpp>
 
 namespace pep {
+namespace {
 
-constexpr auto subjectAccessModeNames = std::array<std::pair<SubjectAccessModes, std::string_view>, 2>{{
+constexpr auto subjectAccessModeNames = FlagNameTable<SubjectAccessModes, 2>{{
     {SubjectAccessModes::Access, "access"},
     {SubjectAccessModes::Enumerate, "enumerate"},
 }};
+
 constexpr std::string_view subjectAccessModeErrorFormat = "Unknown subject access mode {}";
+
+} // anonymous namespace
 
 std::vector<std::string> ToIndividualStrings(const SubjectAccessModes modes) {
   return ToIndividualStrings(modes, subjectAccessModeNames);
