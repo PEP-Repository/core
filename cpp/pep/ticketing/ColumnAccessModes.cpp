@@ -1,6 +1,7 @@
 #include <pep/ticketing/ColumnAccessModes.hpp>
 
-#include <pep/ticketing/FlagNames.hpp>
+#include <pep/serialization/FlagNames.hpp>
+#include <pep/utils/FlagNames.hpp>
 
 namespace pep {
 
@@ -14,19 +15,19 @@ constexpr auto columnAccessModeNames = std::array<std::pair<ColumnAccessModes, s
 constexpr std::string_view columnAccessModeErrorFormat = "Unknown column access mode {}";
 
 std::vector<std::string> ToIndividualStrings(const ColumnAccessModes modes) {
-  return detail::ToIndividualStrings(modes, columnAccessModeNames);
+  return ToIndividualStrings(modes, columnAccessModeNames);
 }
 
 std::string ToSingleString(const ColumnAccessModes modes, const std::string_view separator) {
-  return detail::ToSingleString(modes, columnAccessModeNames, separator);
+  return ToSingleString(modes, columnAccessModeNames, separator);
 }
 
 ColumnAccessModes ParseColumnAccessMode(const std::string_view str) {
-  return detail::ParseFlagName(str, columnAccessModeNames, columnAccessModeErrorFormat);
+  return ParseFlagName(str, columnAccessModeNames, columnAccessModeErrorFormat);
 }
 
 ColumnAccessModes ParseColumnAccessModes(const std::span<const std::string> names) {
-  return detail::ParseFlagNames(names, columnAccessModeNames, columnAccessModeErrorFormat);
+  return ParseFlagNames(names, columnAccessModeNames, columnAccessModeErrorFormat);
 }
 
 } // namespace pep

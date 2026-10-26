@@ -1,6 +1,7 @@
 #include <pep/ticketing/SubjectAccessModes.hpp>
 
-#include <pep/ticketing/FlagNames.hpp>
+#include <pep/serialization/FlagNames.hpp>
+#include <pep/utils/FlagNames.hpp>
 
 namespace pep {
 
@@ -11,19 +12,19 @@ constexpr auto subjectAccessModeNames = std::array<std::pair<SubjectAccessModes,
 constexpr std::string_view subjectAccessModeErrorFormat = "Unknown subject access mode {}";
 
 std::vector<std::string> ToIndividualStrings(const SubjectAccessModes modes) {
-  return detail::ToIndividualStrings(modes, subjectAccessModeNames);
+  return ToIndividualStrings(modes, subjectAccessModeNames);
 }
 
 std::string ToSingleString(const SubjectAccessModes modes, const std::string_view separator) {
-  return detail::ToSingleString(modes, subjectAccessModeNames, separator);
+  return ToSingleString(modes, subjectAccessModeNames, separator);
 }
 
 SubjectAccessModes ParseSubjectAccessMode(const std::string_view str) {
-  return detail::ParseFlagName(str, subjectAccessModeNames, subjectAccessModeErrorFormat);
+  return ParseFlagName(str, subjectAccessModeNames, subjectAccessModeErrorFormat);
 }
 
 SubjectAccessModes ParseSubjectAccessModes(const std::span<const std::string> names) {
-  return detail::ParseFlagNames(names, subjectAccessModeNames, subjectAccessModeErrorFormat);
+  return ParseFlagNames(names, subjectAccessModeNames, subjectAccessModeErrorFormat);
 }
 
 } // namespace pep
