@@ -7,13 +7,16 @@
 
 namespace pep {
 
+constexpr auto subjectAccessModeNames = std::array<std::pair<SubjectAccessModes, std::string_view>, 2>{{
+    {SubjectAccessModes::Access, "access"},
+    {SubjectAccessModes::Enumerate, "enumerate"},
+}};
+
 std::vector<std::string> ToIndividualStrings(const SubjectAccessModes modes) {
-  static_assert(
-      SubjectAccessModes::All == (SubjectAccessModes::Access | SubjectAccessModes::Enumerate),
-      "every mode must be handled below");
   std::vector<std::string> strs{};
-  if (HasFlags(modes, SubjectAccessModes::Access)) { strs.emplace_back("access"); }
-  if (HasFlags(modes, SubjectAccessModes::Enumerate)) { strs.emplace_back("enumerate"); }
+  for (const auto& [mode_i, name_i] : subjectAccessModeNames) {
+    if (HasFlags(modes, mode_i)) { strs.emplace_back(name_i); }
+  }
   return strs;
 }
 
@@ -22,10 +25,11 @@ std::string ToSingleString(const SubjectAccessModes modes, const std::string_vie
   return boost::join(ToIndividualStrings(modes), separator);
 }
 
-SubjectAccessModes ParseSubjectAccessMode(const std::string_view name) {
-  if (name == "access") { return SubjectAccessModes::Access; }
-  if (name == "enumerate") { return SubjectAccessModes::Enumerate; }
-  throw Error("Unknown subject access mode " + Logging::Escape(std::string(name)));
+SubjectAccessModes ParseSubjectAccessMode(const std::string_view str) {
+  for (const auto& [mode, name] : subjectAccessModeNames) {
+    if (str == name) { return mode; }
+  }
+  throw Error("Unknown subject access mode " + Logging::Escape(std::string(str)));
 }
 
 SubjectAccessModes ParseSubjectAccessModes(const std::span<const std::string> names) {
