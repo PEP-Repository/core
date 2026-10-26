@@ -98,7 +98,7 @@ Server::handleChecksumChainRequest(
   auto certified = signedRequest->open(*getRootCAs());
   UserGroup::EnsureAccess(handler.allowedRequesters(), certified.signatory.organizationalUnit(), "Requesting checksum chains");
 
-  return handler.handle(std::move(certified.message))
+  return handler.handle(certified.message)
     .map([](ChecksumChainResponse response) -> messaging::MessageSequence {
         return rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(std::move(response))));
       });
