@@ -82,6 +82,7 @@ private:
 
 private:
   class ShortPseudonymCache;
+  class ShadowShortPseudonymsChecksumChain;
 
   ::sqlite3* shadowStorage_ = nullptr;
   std::shared_ptr<CoreClient> client_;

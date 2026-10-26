@@ -93,16 +93,21 @@ int ParseSqliteSelectCountResult(void *pArg, int argc, char **argv, char **colum
   return 0;
 }
 
-class ShadowShortPseudonymsChecksumChain : public ChecksumChain {
+}
+
+class RegistrationServer::ShadowShortPseudonymsChecksumChain : public ChecksumChain {
 private:
-  ::sqlite3* shadowStorage_;
+  const RegistrationServer& server_;
 
 public:
-  ShadowShortPseudonymsChecksumChain(::sqlite3* shadowStorage) noexcept
-    : ChecksumChain("shadow-short-pseudonyms"), shadowStorage_(shadowStorage) {
-  }
+  ShadowShortPseudonymsChecksumChain(const RegistrationServer& server) noexcept
+    : ChecksumChain("shadow-short-pseudonyms"), server_(server) {}
 
   Result get(const std::optional<Checkpoint>& maxCheckpoint) const override {
+    if (server_.shadowStorage_ == nullptr) {
+      throw std::runtime_error("Shadow storage unavailable for checksum chain calculation");
+    }
+
     Result result;
 
     auto max = maxCheckpoint.has_value()
@@ -111,7 +116,7 @@ public:
 
     sqlite3_stmt* stmt{};
 
-    sqlite3_prepare_v2(shadowStorage_,
+    sqlite3_prepare_v2(server_.shadowStorage_,
       "SELECT \
           `Id`, \
           `EncryptedShortPseudonym`, \
@@ -157,8 +162,6 @@ public:
     return result;
   }
 };
-
-}
 
 class RegistrationServer::ShortPseudonymCache : public std::enable_shared_from_this<ShortPseudonymCache> {
   friend class SharedConstructor<ShortPseudonymCache>;
@@ -465,7 +468,7 @@ RegistrationServer::RegistrationServer(std::shared_ptr<Parameters> parameters)
   : SigningServer(parameters),
   client_(parameters->getClient()),
   shadowPublicKey_(parameters->getShadowPublicKey()),
-  checksumChainHandler_(ChecksumChains(std::make_unique<ShadowShortPseudonymsChecksumChain>(shadowStorage_))),
+  checksumChainHandler_(ChecksumChains(std::make_unique<ShadowShortPseudonymsChecksumChain>(*this))),
   globalConfiguration_(CreateRxCache([client = client_]() {return RxEnsureProgress(*client->getIoContext(), "Global configuration retrieval", client->getGlobalConfiguration()); })),
   shortPseudonyms_(ShortPseudonymCache::Create(*this, parameters->getShadowStorageFile())) // cannot get a shared_ptr<RegistrationServer> during construction
 #ifdef WITH_CASTOR
