@@ -73,7 +73,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
   RequestTicket2Opts ticketRequest;
   ticketRequest.ticket = opts.ticket;
   ticketRequest.forceTicket = opts.forceTicket;
-  ticketRequest.modes = {"write"};
+  ticketRequest.modes = ColumnAccessModes::Write;
   for (const auto& entry : entries) {
     if (!ctx->columns.contains(entry.column)) {
       ctx->columns[entry.column] = static_cast<uint32_t>(
@@ -183,7 +183,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
   RequestTicket2Opts ticketRequest;
   ticketRequest.ticket = opts.ticket;
   ticketRequest.forceTicket = opts.forceTicket;
-  ticketRequest.modes = { "read", "write-meta" }; // We need read access so that we can re-encrypt-and-blind the AES keys
+  ticketRequest.modes = ColumnAccessModes::Read | ColumnAccessModes::WriteMeta; // We need read access so that we can re-encrypt-and-blind the AES keys
   for (const auto& entry : entries) {
     // Ensure that the ticket contains this entry's column(name) and PP, but
     // don't add duplicate items. We keep track of indices where the ticket
@@ -388,7 +388,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   RequestTicket2Opts ticketRequest;
   ticketRequest.ticket = opts.ticket;
   ticketRequest.forceTicket = opts.forceTicket;
-  ticketRequest.modes = { "write" };
+  ticketRequest.modes = ColumnAccessModes::Write;
   for (const auto& entry : entries) {
     if (!ctx->columns.contains(entry.column)) {
       ctx->columns[entry.column] = static_cast<uint32_t>(

@@ -513,7 +513,7 @@ struct AccessManager::TicketRequestContext {
   std::size_t numAllAccessSubjects{};
   std::unordered_map<std::string, IndexList> columnGroupMap{};
   std::unordered_map<std::string, IndexList> subjectGroupMap{};
-  std::vector<std::string> requiredSubjectModes;
+  SubjectAccessModes requiredSubjectModes;
   TranscryptorRequest tsReq;
   TranscryptorRequestEntries tsReqEntries{};
   std::optional<PseudonymTranslator::Recipient> userRecipient;
@@ -544,8 +544,8 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
         .userGroup = certified.signatory.organizationalUnit()},
     .pps = request.accessSubjects,
     .requiredSubjectModes = request.participantGroups.empty()
-      ? std::vector<std::string>{"access"}
-      : std::vector<std::string>{"access", "enumerate"},
+      ? SubjectAccessModes::Access
+      : (SubjectAccessModes::Access | SubjectAccessModes::Enumerate),
     .tsReq {.request = std::move(signedRequest) },
     .userRecipient = request.includeUserGroupPseudonyms
       ? std::optional{RecipientForCertificate(signature.certificateChain().leaf())}
@@ -650,7 +650,7 @@ std::string AccessManager::identifyTicketRequestSubjects(TicketRequestContext& c
       ctx.server->backend_->checkParticipantAccess(ctx.ticket.userGroup, localPseudonym, ctx.requiredSubjectModes, ctx.ticket.timestamp);
     }
     const auto isClientProvidedAccessSubject = i < ctx.numClientProvidedAccessSubjects;
-    if (isClientProvidedAccessSubject && !ctx.server->backend_->hasLocalPseudonym(localPseudonym) && ctx.ticket.hasMode("write")) {
+    if (isClientProvidedAccessSubject && !ctx.server->backend_->hasLocalPseudonym(localPseudonym) && ImpliesModes(ctx.ticket.modes, ColumnAccessModes::Write)) {
       ctx.server->backend_->storeLocalPseudonymAndPP(localPseudonym, accessSubject.polymorphic);
     }
   }
@@ -752,7 +752,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     auto& [participantGroup, list] = entry;
     TicketRequest2 ticketRequest;
     ticketRequest.participantGroups = {participantGroup};
-    ticketRequest.modes = {"enumerate"};
+    ticketRequest.modes = ColumnAccessModes::_bogus_AmaTranscryptionOnly;
     ticketRequest.accessSubjects = list;
     std::string data = Serialization::ToString(ticketRequest);
     TranscryptorRequest tsRequest{

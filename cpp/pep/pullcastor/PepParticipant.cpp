@@ -29,7 +29,7 @@ rxcpp::observable<std::shared_ptr<PepParticipant>> PepParticipant::LoadAll(std::
   const std::vector<std::string>& columns,
   const std::vector<std::string>& columnGroups) {
   RequestTicket2Opts ticketOpts;
-  ticketOpts.modes = { "read" };
+  ticketOpts.modes = ColumnAccessModes::Read;
   ticketOpts.accessSubjects = participants;
   ticketOpts.participantGroups = participantGroups;
   ticketOpts.columns = columns;

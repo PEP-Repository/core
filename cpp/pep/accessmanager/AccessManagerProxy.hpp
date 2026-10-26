@@ -26,7 +26,7 @@ public:
   rxcpp::observable<VerifiersResponse> requestVerifiers() const;
   rxcpp::observable<UserVerifiersResponse> requestUserVerifiers(UserVerifiersRequest request) const;
 
-  rxcpp::observable<ColumnAccess> getAccessibleColumns(bool includeImplicitlyGranted, const std::vector<std::string>& requireModes = {}) const;
+  rxcpp::observable<ColumnAccess> getAccessibleColumns(bool includeImplicitlyGranted, ColumnAccessModes requireModes = ColumnAccessModes::None) const;
   rxcpp::observable<ParticipantGroupAccess> getAccessibleParticipantGroups(bool includeImplicitlyGranted) const;
 
   rxcpp::observable<FakeVoid> amaCreateColumn(std::string name) const;

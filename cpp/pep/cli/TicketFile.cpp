@@ -39,7 +39,7 @@ rxcpp::observable<IndexedTicket2> TicketFile::GetTicket(CoreClient& client, cons
     throw std::runtime_error("Ticket request options must be passed if an external ticket is not provided");
   }
   else {
-    assert(!requestOpts.modes.empty());
+    assert(requestOpts.modes != ColumnAccessModes::None);
   }
 
   std::optional<std::filesystem::path> file;
@@ -47,10 +47,7 @@ rxcpp::observable<IndexedTicket2> TicketFile::GetTicket(CoreClient& client, cons
     assert(opts.has_value());
     file = parameterValues.get<std::filesystem::path>("ticket-out");
     // Tickets are written to file with the intent to use them for followup (e.g. "pepcli get") queries, which require the "read" privilege
-    auto mode = std::ranges::find(requestOpts.modes, "read");
-    if (mode == requestOpts.modes.cend()) {
-      requestOpts.modes.push_back("read");
-    }
+    requestOpts.modes |= ColumnAccessModes::Read;
   }
 
   rxcpp::observable<IndexedTicket2> result = client.requestTicket2(requestOpts);

@@ -18,7 +18,7 @@ public:
   }
 
 protected:
-  std::vector<std::string> ticketAccessModes() const override { return { "read-meta" }; }
+  pep::ColumnAccessModes ticketAccessModes() const override { return pep::ColumnAccessModes::ReadMeta; }
 
   rxcpp::observable<pep::FakeVoid> processCell(std::shared_ptr<pep::CoreClient> client, const pep::IndexedTicket2& ticket, const pep::PolymorphicPseudonym& pp, const std::string& column) override {
     auto entries = client->getHistory2(*ticket.getTicket(), std::vector<pep::PolymorphicPseudonym>({ pp }), std::vector<std::string>({ column }))

@@ -8,6 +8,7 @@
 #include <pep/utils/MiscUtil.hpp>
 
 #include <ranges>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
@@ -24,26 +25,19 @@ public:
   }
 
 private:
-  struct ColumnAccessModes {
-    bool readable = false;
-    bool writable = false;
-    bool meta_readable = false;
-    bool meta_writable = false;
-  };
-
   struct ParticipantGroupAccessModes {
     bool access = false;
     bool enumerate = false;
   };
 
-  static void ReportColumnAccess(const std::string& caption, const std::map<std::string, ColumnAccessModes> entries) {
+  static void ReportColumnAccess(const std::string& caption, const std::map<std::string, pep::ColumnAccessModes> entries) {
     std::cout << caption << " (" << entries.size() << "):\n";
     if (!entries.empty()) {
       for (const auto& entry : entries) {
         std::cout << "  "
-          << (entry.second.meta_readable ? 'm' : ' ')
-          << (entry.second.readable      ? 'r' : ' ')
-          << (entry.second.writable      ? 'w' : ' ')
+          << (pep::HasFlags(entry.second, pep::ColumnAccessModes::ReadMeta) ? 'm' : ' ')
+          << (pep::HasFlags(entry.second, pep::ColumnAccessModes::Read) ? 'r' : ' ')
+          << (pep::HasFlags(entry.second, pep::ColumnAccessModes::Write) ? 'w' : ' ')
           << ' ' << entry.first << '\n';
       }
       std::cout << std::endl;
@@ -72,41 +66,22 @@ private:
         .map(
           [userGroup = client->getEnrolledGroup()](const pep::ColumnAccess& access) {
             // Copy received information to std::map<> to sort entries (by name) for output
-            std::map<std::string, ColumnAccessModes> cgs, columns;
-            bool hasReadAccess = false;
-            bool hasMetaWriteAccess = false;
+            std::map<std::string, pep::ColumnAccessModes> cgs, columns;
+            auto combinedGroupModes = pep::ColumnAccessModes::None;
 
             for (const auto& entry : access.columnGroups) {
-              if (!entry.second.modes.empty()) {
+              if (entry.second.modes != pep::ColumnAccessModes::None) {
                 // Create column group entry and set accessibility flags
                 auto& modes = cgs[entry.first];
-                for (const auto& mode : entry.second.modes) {
-                  if (mode == "read") {
-                    modes.readable = true;
-                    hasReadAccess = true;
-                  }
-                  else if (mode == "write") {
-                    modes.writable = true;
-                  }
-                  else if (mode == "read-meta") {
-                    modes.meta_readable = true;
-                  }
-                  else if (mode == "write-meta") {
-                    modes.meta_writable = true;
-                    hasMetaWriteAccess = true;
-                  }
-                  else {
-                    throw std::runtime_error("Unsupported access mode '" + mode + "' encountered for column group '" + entry.first + "'");
-                  }
+                modes |= entry.second.modes;
+                combinedGroupModes |= entry.second.modes;
+                if (pep::HasFlags(entry.second.modes, pep::ColumnAccessModes::_bogus_AmaTranscryptionOnly)) {
+                  throw std::runtime_error("Unsupported access mode 'enumerate' encountered for column group '" + entry.first + "'");
                 }
 
                 // Create and/or update entries for columns associated with the group
                 for (auto i : entry.second.columns.indices) {
-                  auto& column = columns[access.columns[i]];
-                  column.readable |= modes.readable;
-                  column.writable |= modes.writable;
-                  column.meta_readable |= modes.meta_readable;
-                  column.meta_writable |= modes.meta_writable;
+                  columns[access.columns[i]] |= entry.second.modes;
                 }
               }
             }
@@ -120,11 +95,11 @@ private:
                 << "\"read-meta\" access to all column groups and columns. Use the \"pepcli ama query\"" << '\n'
                 << "command to list them." << std::endl;
             }
-            else if (hasReadAccess) {
+            else if (pep::HasFlags(combinedGroupModes, pep::ColumnAccessModes::Read)) {
               std::cerr << "The \"read\" access privilege grants access to \"read-meta\"data as well." << std::endl;
             }
 
-            if (hasMetaWriteAccess) {
+            if (pep::HasFlags(combinedGroupModes, pep::ColumnAccessModes::WriteMeta)) {
               std::cerr << "The \"write-meta\" access privilege grants access to \"write\" data as well." << std::endl;
             }
 
@@ -141,23 +116,12 @@ private:
     }
 
     static void ReportParticipantGroupAccess(const pep::ParticipantGroupAccess& access, const std::string& userGroup) {
-      std::map<std::string, ParticipantGroupAccessModes> pgs;
+      // Copy received information to std::map<> to sort entries (by name) for output
+      std::map<std::string, pep::SubjectAccessModes> pgs;
 
       for (const auto& entry : access.participantGroups) {
-        if (!entry.second.empty()) {
-          // Create column group entry and set accessibility flags
-          auto& modes = pgs[entry.first];
-          for (const auto& mode : entry.second) {
-            if (mode == "access") {
-              modes.access = true;
-            }
-            else if (mode == "enumerate") {
-              modes.enumerate = true;
-            }
-            else {
-              throw std::runtime_error("Unsupported access mode '" + mode + "' encountered for participant group '" + entry.first + "'");
-            }
-          }
+        if (entry.second != pep::SubjectAccessModes::None) {
+          pgs.emplace(entry.first, entry.second);
         }
       }
 
@@ -170,11 +134,7 @@ private:
       if (!pgs.empty()) {
         std::cout << "Participant groups (" << pgs.size() << "):\n";
         for (const auto& pg : pgs) {
-          std::cout << "  " << pg.first << " ("
-            << (pg.second.access ? "access" : "")
-            << (pg.second.access && pg.second.enumerate ? ", " : "")
-            << (pg.second.enumerate ? "enumerate" : "")
-            << ")\n";
+          std::cout << "  " << pg.first << " (" << pep::ToSingleString(pg.second, ", ") << ")\n";
         }
         std::cout << std::endl;
       }

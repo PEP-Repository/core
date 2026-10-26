@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/serialization/Error.hpp>
 #include <pep/utils/PropertyBasedContainer.hpp>
 #include <cstdint>
 #include <optional>
@@ -35,6 +36,11 @@ public:
 };
 
 
+struct UnknownChecksumChainError : public Error {
+  UnknownChecksumChainError(const std::string& name);
+};
+
+
 class ChecksumChains {
 private:
   PropertyBasedContainer<std::unique_ptr<ChecksumChain>, &ChecksumChain::name>::set items_;
@@ -48,7 +54,6 @@ public:
   }
 
   std::set<std::string> names() const;
-  [[noreturn]] static void ThrowUnknownChainError(const std::string& name);
 
   const ChecksumChain& chain(const std::string& name) const;
   const ChecksumChain& operator[](const std::string& name) const { return this->chain(name); }

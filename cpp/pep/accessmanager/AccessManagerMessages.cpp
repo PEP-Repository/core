@@ -23,7 +23,7 @@ std::vector<std::string> IndexedTicket2::getColumns() const {
   return openTicketWithoutCheckingSignature()->columns;
 }
 
-std::vector<std::string> IndexedTicket2::getModes() const {
+ColumnAccessModes IndexedTicket2::getModes() const {
   return openTicketWithoutCheckingSignature()->modes;
 }
 
