@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/serialization/IndexList.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
@@ -122,9 +123,7 @@ struct ColumnAccessRequest {
 using ColumnAccessResponse = ColumnAccess;
 
 struct ParticipantGroupAccess {
-  using Modes = std::vector<std::string>;
-
-  std::unordered_map<std::string, Modes> participantGroups;
+  std::unordered_map<std::string, SubjectAccessModes> participantGroups;
 };
 
 struct ParticipantGroupAccessRequest {

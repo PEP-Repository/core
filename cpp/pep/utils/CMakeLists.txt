@@ -35,6 +35,7 @@ add_library(${PROJECT_NAME}Utilslib
     Exceptions.cpp Exceptions.hpp
     File.cpp File.hpp
     Filesystem.cpp Filesystem.hpp
+    FlagNames.hpp
     Hmac.hpp
     Hasher.cpp Hasher.hpp
     InstanceTracker.hpp

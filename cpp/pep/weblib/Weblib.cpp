@@ -7,6 +7,7 @@
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/oauth-client/OAuthClient.hpp>
 #include <pep/utils/CollectionUtils.hpp>
@@ -115,10 +116,10 @@ ColumnAccessModes ColumnGroupAccessModesToEnum(const ColumnGroupAccessModes mode
       | FlagsIf(ColumnAccessModes::WriteMeta, modes.writeMeta);
 }
 
-SubjectGroupAccessModes SubjectGroupAccessModesFromStrings(const std::vector<std::string>& modes) {
+SubjectGroupAccessModes SubjectGroupAccessModesFromEnum(const SubjectAccessModes modes) {
   return {
-      .access = contains(modes, "access"),
-      .enumerate = contains(modes, "enumerate"),
+      .access = HasFlags(modes, SubjectAccessModes::Access),
+      .enumerate = HasFlags(modes, SubjectAccessModes::Enumerate)
   };
 }
 
@@ -408,7 +409,7 @@ public:
               const auto& [name, modes] = entry;
               return SubjectGroup{
                   .name = name,
-                  .modes = SubjectGroupAccessModesFromStrings(modes),
+                  .modes = SubjectGroupAccessModesFromEnum(modes),
               };
             })
             | to<std::vector>();
@@ -434,7 +435,7 @@ public:
                 .referenceSubjects = {},
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
                 .columns = std::move(query->columns).value_or(std::vector<std::string>{}),
-                .modes = pep::ParseMode(query->mode.value_or("read")),
+                .modes = pep::ParseColumnAccessMode(query->mode.value_or("read")),
                 .includeAccessGroupPseudonyms = true,
               });
           });

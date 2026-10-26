@@ -376,15 +376,16 @@ void AccessManager::Backend::addParticipantToGroup(const LocalPseudonym& localPs
 
 void AccessManager::Backend::checkParticipantAccess(const std::string& userGroup,
                                                    const LocalPseudonym& localPseudonym,
-                                                   const std::vector<std::string>& modes,
+                                                   SubjectAccessModes modes,
                                                    Timestamp at) {
   // What ParticipantGroups is this localPseudonym in?
   auto pgps = storage_->getParticipantGroupParticipants(at, {.localPseudonyms = std::vector<LocalPseudonym>{localPseudonym}});
   std::vector<std::string> participantGroups{"*"}; // All participants are implicitly added to "*"
   participantGroups.append_range(pgps | views::transform(&ParticipantGroupParticipant::participantGroup));
 
+  const auto requiredModes = ToIndividualStrings(modes);
   std::vector<std::string> errorMessageParts;
-  for (auto& mode : modes) {
+  for (auto& mode : requiredModes) {
     auto pgars = storage_->getParticipantGroupAccessRules(at, {.participantGroups = participantGroups, .userGroups = std::vector<std::string>{userGroup}, .modes = std::vector<std::string>{mode}});
     if (pgars.empty()) { // Stating the opposite, if there is an access rule for ANY of the participantGroups, all is
                          // well.
@@ -441,7 +442,7 @@ void AccessManager::Backend::checkTicketRequest(const TicketRequest2& request) {
 
 void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::string> participantGroups,
                                                        const std::string& userGroup,
-                                                       std::span<const std::string> modes,
+                                                       SubjectAccessModes modes,
                                                        const Timestamp& timestamp) {
   if (userGroup == UserGroup::DataAdministrator && !participantGroups.empty()) {
     PEP_LOG(LogTag, Severity::Info)
@@ -450,13 +451,14 @@ void AccessManager::Backend::checkParticipantGroupAccess(std::span<const std::st
         << boost::algorithm::join(std::pair{participantGroups.begin(), participantGroups.end()}, ", ");
   }
   else {
+    const auto requiredModes = ToIndividualStrings(modes);
     std::vector<std::string> errorMessageParts;
     ParticipantGroupAccessRuleFilter filter{
       .participantGroups = participantGroups | to<std::vector>(),
       .userGroups = {{userGroup}},
       .modes = {{}},
     };
-    for (auto& mode : modes) {
+    for (auto& mode : requiredModes) {
       filter.modes->assign({mode});
       auto allowedParticipantGroups = storage_->getParticipantGroupAccessRules(timestamp, filter)
         | views::transform(&ParticipantGroupAccessRule::participantGroup)
@@ -518,7 +520,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
     else {
       const auto availableModes = iterator->second.modes;
       for (const auto& mode : requiredModes) {
-        if (!HasFlags(availableModes, ParseMode(mode))) {
+        if (!HasFlags(availableModes, ParseColumnAccessMode(mode))) {
           errorMessageParts.push_back("Access denied to " + Logging::Escape(userGroup) + " for mode "
                                       + Logging::Escape(mode) + " to column-group " + Logging::Escape(cg));
         }
@@ -534,7 +536,7 @@ std::unordered_map<std::string, IndexList> AccessManager::Backend::unfoldColumnG
       | views::transform(&ColumnGroupColumn::columnGroup)
       | to<std::vector>();
     for (const auto& requiredMode : requiredModes) {
-      const auto requiredFlag = ParseMode(requiredMode);
+      const auto requiredFlag = ParseColumnAccessMode(requiredMode);
       // If we find the required access mode in ANY of the associated columngroups, all is well.
       bool accessGranted = any_of(associatedColumnGroups, [&](const std::string& cg) {
         auto groupPropsIt = columnAccess.columnGroups.find(cg);
@@ -727,7 +729,7 @@ ColumnAccess AccessManager::Backend::handleColumnAccessRequest(const ColumnAcces
   auto cgars = storage_->getColumnGroupAccessRules(now, {.userGroups = std::vector<std::string>{userGroup}});
   for (auto& cgar : cgars) {
     auto& allowedModes = result.columnGroups[cgar.columnGroup].modes;
-    allowedModes |= ParseMode(cgar.mode);
+    allowedModes |= ParseColumnAccessMode(cgar.mode);
     if (request.includeImplicitlyGranted) {
       allowedModes = EffectiveModes(allowedModes);
     }
@@ -769,7 +771,7 @@ ParticipantGroupAccess AccessManager::Backend::handleParticipantGroupAccessReque
     assert(emplaced.second);
 
     for (auto& pg : participantGroups) {
-      result.participantGroups.emplace(pg.name, std::vector<std::string>({"access", "enumerate"}));
+      result.participantGroups.emplace(pg.name, SubjectAccessModes::All);
     }
   }
   else {
@@ -777,7 +779,7 @@ ParticipantGroupAccess AccessManager::Backend::handleParticipantGroupAccessReque
     auto pgars = storage_->getParticipantGroupAccessRules(now, {.userGroups = std::vector<std::string>{userGroup}});
     for (auto& pgar : pgars) {
       auto& modes = result.participantGroups[pgar.participantGroup];
-      modes.push_back(pgar.mode);
+      modes |= ParseSubjectAccessMode(pgar.mode);
     }
   }
   return result;

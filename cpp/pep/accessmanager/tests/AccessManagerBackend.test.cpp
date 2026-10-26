@@ -1,3 +1,4 @@
+#include "pep/ticketing/SubjectAccessModes.hpp"
 #include <gtest/gtest.h>
 #include <pep/utils/File.hpp>
 #include <pep/structure/StructureSerializers.hpp>
@@ -264,13 +265,18 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_non_existing_pg_cg_
 }
 
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_happy) {
-  EXPECT_NO_THROW(backend->checkParticipantGroupAccess(std::vector{constants.pg1}, constants.userGroup1, std::vector<std::string>{"access", "enumerate"}, TimeNow()));
+  EXPECT_NO_THROW(backend->checkParticipantGroupAccess(std::vector{constants.pg1}, constants.userGroup1, SubjectAccessModes::Access | SubjectAccessModes::Enumerate, TimeNow()));
 }
 
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_no_access) {
-  const auto modes = std::vector<std::string>{"access", "enumerate"};
+  constexpr auto modes = SubjectAccessModes::Access | SubjectAccessModes::Enumerate;
+  constexpr auto pattern = R"(Access denied to "{}" for mode "{}" to participant-group "{}")";
   EXPECT_THAT([&]() { backend->checkParticipantGroupAccess(std::vector{ constants.pg2 }, constants.userGroup1, modes, TimeNow()); },
-    ::testing::ThrowsMessage<Error>(::testing::StrEq("Access denied to \"" + constants.userGroup1 + "\" for mode \"" + modes[0] + "\" to participant-group \"" + constants.pg2 + "\"\nAccess denied to \"" + constants.userGroup1 + "\" for mode \"" + modes[1] + "\" to participant-group \"" + constants.pg2 + "\"")));
+    ::testing::ThrowsMessage<Error>(::testing::AllOf(
+              ::testing::HasSubstr(std::format(pattern, constants.userGroup1, ToSingleString(SubjectAccessModes::Access), constants.pg2)),
+              ::testing::HasSubstr(std::format(pattern, constants.userGroup1, ToSingleString(SubjectAccessModes::Enumerate), constants.pg2))
+    ))
+  );
 }
 
 TEST_F(AccessManagerBackendTest, fillParticipantgroupMap_happy) {
@@ -346,16 +352,16 @@ TEST_F(AccessManagerBackendTest, assertColumnAccess_no_access) {
   EXPECT_EQ(result.columns.size(), 0);
 }
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy) {
-  EXPECT_NO_THROW(backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, TimeNow()));
+  EXPECT_NO_THROW(backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym1, SubjectAccessModes::Access | SubjectAccessModes::Enumerate, TimeNow()));
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy_star_participant) {
   // Research Assessor has no access to the participantgroup localPseudonym1 is in, but does have access to "*". This should pass.
-  EXPECT_NO_THROW(backend->checkParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, TimeNow()));
+  EXPECT_NO_THROW(backend->checkParticipantAccess("Research Assessor", constants.localPseudonym1, SubjectAccessModes::Access | SubjectAccessModes::Enumerate, TimeNow()));
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_no_access) {
-  EXPECT_THAT([&]() { backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym2, { "access", "enumerate" }, TimeNow()); },
+  EXPECT_THAT([&]() { backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym2, SubjectAccessModes::Access | SubjectAccessModes::Enumerate, TimeNow()); },
     ::testing::ThrowsMessage<Error>(::testing::StrEq("Access denied to participant for mode \"access\"\nAccess denied to participant for mode \"enumerate\"")));
 }
 

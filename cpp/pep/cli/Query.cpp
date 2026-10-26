@@ -116,23 +116,12 @@ private:
     }
 
     static void ReportParticipantGroupAccess(const pep::ParticipantGroupAccess& access, const std::string& userGroup) {
-      std::map<std::string, ParticipantGroupAccessModes> pgs;
+      // Copy received information to std::map<> to sort entries (by name) for output
+      std::map<std::string, pep::SubjectAccessModes> pgs;
 
       for (const auto& entry : access.participantGroups) {
-        if (!entry.second.empty()) {
-          // Create column group entry and set accessibility flags
-          auto& modes = pgs[entry.first];
-          for (const auto& mode : entry.second) {
-            if (mode == "access") {
-              modes.access = true;
-            }
-            else if (mode == "enumerate") {
-              modes.enumerate = true;
-            }
-            else {
-              throw std::runtime_error("Unsupported access mode '" + mode + "' encountered for participant group '" + entry.first + "'");
-            }
-          }
+        if (entry.second != pep::SubjectAccessModes::None) {
+          pgs.emplace(entry.first, entry.second);
         }
       }
 
@@ -145,11 +134,7 @@ private:
       if (!pgs.empty()) {
         std::cout << "Participant groups (" << pgs.size() << "):\n";
         for (const auto& pg : pgs) {
-          std::cout << "  " << pg.first << " ("
-            << (pg.second.access ? "access" : "")
-            << (pg.second.access && pg.second.enumerate ? ", " : "")
-            << (pg.second.enumerate ? "enumerate" : "")
-            << ")\n";
+          std::cout << "  " << pg.first << " (" << pep::ToSingleString(pg.second, ", ") << ")\n";
         }
         std::cout << std::endl;
       }

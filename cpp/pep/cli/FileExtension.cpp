@@ -100,8 +100,7 @@ protected:
           std::set<std::string> result;
           for (const auto& group : access.participantGroups) {
             const auto& modes = group.second;
-            if (contains(modes, "access")
-              && contains(modes, "enumerate")) {
+            if (HasFlags(modes, pep::SubjectAccessModes::Access | pep::SubjectAccessModes::Enumerate)) {
               result.emplace(group.first);
             }
           }
