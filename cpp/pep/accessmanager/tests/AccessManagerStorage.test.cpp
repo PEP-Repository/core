@@ -234,7 +234,7 @@ TEST_F(AccessManagerStorageTest, getChecksumChainNames_happy) {
 }
 
 TEST_F(AccessManagerStorageTest, computeChecksum_unknown_chain) {
-  EXPECT_THROW([]() { (void) storage->checksumChains().chain("unknown_chain"); }, UnknownChecksumChainError);
+  EXPECT_THROW(storage->checksumChains().chain("unknown_chain"), UnknownChecksumChainError);
 }
 
 TEST_F(AccessManagerStorageTest, hasColumn) {
