@@ -130,6 +130,7 @@ export interface ParticipantPersonalia extends UseJsStrings<Omit<rawTypes.Partic
 }
 
 export interface StoreQuery {
+  /** A participant identifier, polymorphic pseudonym or (brief) local pseudonym */
   subject: string;
   column: string;
   data: string | Blob;
@@ -205,7 +206,7 @@ interface RawUser extends UseJsStrings<rawTypes.User> {
 
 export interface ListQuery {
   subjectGroups?: string[] | undefined;
-  /** Loose subjects to request (any format that would be recognized by pepcli) */
+  /** Loose subjects to request: each a participant identifier, polymorphic pseudonym or (brief) local pseudonym */
   subjects?: string[] | undefined;
   columnGroups?: string[] | undefined;
   columns?: string[] | undefined;
@@ -680,12 +681,12 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.removeSubjectGroup(name, force));
   }
 
-  /** @param subject A polymorphic pseudonym or identifier, like `ListQuery.subjects` */
+  /** @param subject A participant identifier, polymorphic pseudonym or (brief) local pseudonym */
   addSubjectToGroup(subjectGroup: string, subject: string): Promise<void> {
     return this.#wrapExec(() => this.#client.addSubjectToGroup(subjectGroup, subject));
   }
 
-  /** @param subject A polymorphic pseudonym or identifier, like `ListQuery.subjects` */
+  /** @param subject A participant identifier, polymorphic pseudonym or (brief) local pseudonym */
   removeSubjectFromGroup(subjectGroup: string, subject: string): Promise<void> {
     return this.#wrapExec(() => this.#client.removeSubjectFromGroup(subjectGroup, subject));
   }

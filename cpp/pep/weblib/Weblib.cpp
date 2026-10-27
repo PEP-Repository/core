@@ -242,19 +242,15 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
         });
   }
 
-  /// Run \p mutate on the io_context thread, with \p subject (polymorphic pseudonym or identifier)
-  /// resolved to a polymorphic pseudonym
+  /// Run \p mutate on the io_context thread, with \p subject parsed into a polymorphic pseudonym.
+  /// \param subject Participant identifier, polymorphic pseudonym or (brief) local pseudonym
   WeblibApiVoidPromise mutateAccessManagerForSubject(std::string subject,
       std::function<rxcpp::observable<FakeVoid>(const AccessManagerProxy&, const PolymorphicPseudonym&)> mutate) {
     co_await onIoThread()
         .flat_map([subject = std::move(subject), mutate = std::move(mutate)](const std::shared_ptr<Weblib>& self) {
-          return self->client_->parsePpsOrIdentities({subject})
-              .op(RxGetOne("PolymorphicPseudonym"))
-              .flat_map([self, mutate](const std::shared_ptr<std::vector<PolymorphicPseudonym>>& pps) {
-                if (pps->empty()) {
-                  throw std::runtime_error("No pseudonym found");
-                }
-                return mutate(*self->client_->getAccessManagerProxy(), pps->front());
+          return self->client_->parsePPorIdentity(subject)
+              .flat_map([self, mutate](const PolymorphicPseudonym& pp) {
+                return mutate(*self->client_->getAccessManagerProxy(), pp);
               });
         });
   }
@@ -606,13 +602,9 @@ public:
         .flat_map([subject = std::move(query.subject), column = std::move(query.column),
                    metadata = std::move(query.metadata), batches = std::move(batches),
                    fileExtension = std::move(fileExtension)](const std::shared_ptr<Weblib>& self) {
-          return self->client_->parsePpsOrIdentities({subject})
-              .op(RxGetOne("PolymorphicPseudonym"))
-              .map([](std::shared_ptr<std::vector<PolymorphicPseudonym>> pps) {
-                if (pps->empty()) {
-                  throw std::runtime_error("No pseudonym found");
-                }
-                return std::make_shared<PolymorphicPseudonym>(pps->front());
+          return self->client_->parsePPorIdentity(subject)
+              .map([](PolymorphicPseudonym pp) {
+                return std::make_shared<PolymorphicPseudonym>(std::move(pp));
               })
               .flat_map([self, column, metadata, batches, fileExtension](std::shared_ptr<PolymorphicPseudonym> pp) {
                 std::map<std::string, MetadataXEntry> xMetadata;
@@ -833,7 +825,7 @@ public:
     });
   }
 
-  /// \param subject Polymorphic pseudonym or identifier
+  /// \param subject Participant identifier, polymorphic pseudonym or (brief) local pseudonym
   WeblibApiVoidPromise addSubjectToGroup(std::string subjectGroup, std::string subject) {
     return mutateAccessManagerForSubject(std::move(subject), [subjectGroup = std::move(subjectGroup)](
         const AccessManagerProxy& am, const PolymorphicPseudonym& pp) {
@@ -841,7 +833,7 @@ public:
     });
   }
 
-  /// \param subject Polymorphic pseudonym or identifier
+  /// \param subject Participant identifier, polymorphic pseudonym or (brief) local pseudonym
   WeblibApiVoidPromise removeSubjectFromGroup(std::string subjectGroup, std::string subject) {
     return mutateAccessManagerForSubject(std::move(subject), [subjectGroup = std::move(subjectGroup)](
         const AccessManagerProxy& am, const PolymorphicPseudonym& pp) {
