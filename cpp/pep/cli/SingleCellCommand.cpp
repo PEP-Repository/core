@@ -100,8 +100,8 @@ rxcpp::observable<pep::FakeVoid> SingleCellCommand::WriteJson(std::ostream& dest
     .op(pep::RxInstead(pep::FakeVoid()));
 }
 
-std::vector<std::string> SingleCellModificationCommand::ticketAccessModes() const {
-  return { "write" };
+pep::ColumnAccessModes SingleCellModificationCommand::ticketAccessModes() const {
+  return pep::ColumnAccessModes::Write;
 }
 
 rxcpp::observable<pep::FakeVoid> SingleCellModificationCommand::processCell(std::shared_ptr<pep::CoreClient> client, const pep::IndexedTicket2& ticket, const pep::PolymorphicPseudonym& pp, const std::string& column) {

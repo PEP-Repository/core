@@ -105,7 +105,7 @@ PEP_BINDINGS(ParticipantPersonalia,
 PEP_BINDINGS(StoreQuery,
   subject,
   column,
-  blob,
+  reader,
   metadata
 )
 

@@ -634,9 +634,11 @@ if should_run_test user-removal-and-expiration; then
   pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid when the user is removed from the group"
   trace sleep 1s
 
-  expiration="$($DATE_CMD -d "now+5 seconds" +%s)"
+  # Raised from 5 to 15 seconds: on CI, addTo once took ~9 seconds, so the membership expired before the token was issued.
+  expiration="$($DATE_CMD -d "now+15 seconds" +%s)"
   pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
   token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  [ "$($DATE_CMD -d "now+1 second" +%s)" -lt "$expiration" ] || fail "Test setup took too long: group membership already expired before the token could be tested, rerun or consider increasing the expiration time in the test"
   while [ "$($DATE_CMD -d "now+1 second" +%s)" -lt "$expiration" ]; do # We compare with now+1 second, so the following doesn't fail if in the meantime the current time increased to the next second
     pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
     trace sleep 1s

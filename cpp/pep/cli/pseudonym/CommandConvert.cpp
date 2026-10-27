@@ -90,7 +90,7 @@ int CommandPseudonym::CommandConvert::execute() {
 
       pep::RequestTicket2Opts tOpts;
       tOpts.referenceSubjects = {pp};
-      tOpts.modes = {"read"};
+      tOpts.modes = ColumnAccessModes::Read;
       tOpts.includeAccessGroupPseudonyms = true;
 
       return client->requestTicket2(tOpts)

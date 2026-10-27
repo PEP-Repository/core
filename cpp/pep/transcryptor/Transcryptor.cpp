@@ -36,7 +36,6 @@ namespace {
 const std::string LogTag ("Transcryptor");
 constexpr Severity TranscryptorRequestLoggingSeverity = Severity::Debug;
 constexpr Severity LogIssuedTicketRequestLoggingSeverity = Severity::Debug;
-constexpr Severity ChecksumChainCalculationLoggingSeverity = Severity::Debug;
 }
 
 Transcryptor::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
@@ -162,7 +161,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
 
   struct Context {
     uintmax_t requestNumber{};
-    std::vector<std::string> modes;
+    ColumnAccessModes modes = ColumnAccessModes::None;
     bool includeUserGroupPseudonyms{};
     SignedTicketRequest2 ticketRequest;
     std::optional<PseudonymTranslator::Recipient> userRecipient;
@@ -368,7 +367,7 @@ Transcryptor::handleLogIssuedTicketRequest(
     request->id,
     hash,
     std::move(ticket.columns),
-    std::move(ticket.modes),
+    ticket.modes,
     ticket.userGroup,
     ticket.timestamp
   );
@@ -423,7 +422,8 @@ Transcryptor::Transcryptor(std::shared_ptr<Parameters> parameters)
   accessManagerProxy_(messaging::ServerConnection::Create(this->getIoContext(), parameters->getAccessManagerEndPoint(), parameters->getRootCACertificatesFilePath()), *this, parameters->getAccessManagerEndPoint().expectedCommonName, getRootCAs()),
   storage_(parameters->getStorage()),
   lpMetrics_(std::make_shared<Metrics>(registry_)),
-  verifiers_(parameters->getVerifiers()) {
+  verifiers_(parameters->getVerifiers()),
+  checksumChainHandler_(storage_->checksumChains()) {
   RegisterRequestHandlers(*this,
                           &Transcryptor::handleTranscryptorRequest,
                           &Transcryptor::handleRekeyRequest,
@@ -445,22 +445,6 @@ Transcryptor::getMetricsRegistry()  {
 
   // Collect the base metrics and return the complete registry
   return SigningServer::getMetricsRegistry();
-}
-
-std::vector<std::string> Transcryptor::getChecksumChainNames() const {
-  return storage_->getChecksumChainNames();
-}
-
-void Transcryptor::computeChecksumChainChecksum(
-    const std::string& chain, std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
-    uint64_t& checkpoint) {
-  std::string when;
-  if (maxCheckpoint.has_value()) {
-    when = " at checkpoint " + std::to_string(*maxCheckpoint);
-  }
-  PEP_LOG(LogTag, ChecksumChainCalculationLoggingSeverity) << "Starting calculation for checksum chain " << chain << when;
-  storage_->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
-  PEP_LOG(LogTag, ChecksumChainCalculationLoggingSeverity) << "Finished calculation for checksum chain " << chain << when;
 }
 
 }

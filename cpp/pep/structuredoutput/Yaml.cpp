@@ -2,24 +2,53 @@
 
 #include <pep/utils/ChronoUtil.hpp>
 
+#include <format>
+#include <locale>
+#include <string_view>
+
 namespace pep::structuredOutput::yaml {
 namespace {
 
 enum class ForceQuotes { No, Yes };
 
+// TODO: also escape multi-byte UTF-8 characters that YAML wants escaped, which are now written as-is: C1 control
+// characters (U+0080-U+009F) and the line and paragraph separators U+2028 and U+2029. Also handle invalid UTF-8.
+// This requires decoding UTF-8, since this function only sees individual chars.
+/// Appends a character to a double-quoted YAML string, escaping it if needed.
+/// \remark Control characters are recognized in the "C" locale (std::locale::classic()), regardless of the global
+///         locale, so only ASCII control characters are escaped.
+void AppendEscaped(std::ostream& stream, char c) {
+  switch (c) {
+  case '\\': stream << "\\\\"; break;
+  case '"': stream << "\\\""; break;
+  // YAML turns raw line breaks inside quoted strings into spaces when reading, so escape them (and other control characters)
+  case '\n': stream << "\\n"; break;
+  case '\r': stream << "\\r"; break;
+  case '\t': stream << "\\t"; break;
+  default:
+    if (std::iscntrl(c, std::locale::classic())) {
+      // See https://yaml.org/spec/1.2.2/#escaped-characters: YAML 8-bit escapes `\xNN` contain exactly two hex digits
+      stream << std::format("\\x{:02x}", static_cast<unsigned char>(c));
+    }
+    else {
+      stream << c;
+    }
+  }
+}
+
 std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view str, ForceQuotes forceQuotes) {
   constexpr auto needsQuotes = [](std::string_view str) {
     // applying quotes generously even though YAML would allow more to go without quotes
     return str.empty() ||
-      !std::isalpha(str.front()) ||
-      !std::ranges::all_of(str, [](char c) { return std::isalnum(c) || c == '_' || c == ' '; });
+      !std::isalpha(str.front(), std::locale::classic()) ||
+      !std::ranges::all_of(str, [](char c) { return std::isalnum(c, std::locale::classic()) || c == '_' || c == ' '; });
   };
-  constexpr auto needsEscape = [](char c) { return c == '\\' || c == '"'; };
-
   const auto quoteOrNothing = (forceQuotes == ForceQuotes::Yes || needsQuotes(str)) ? "\"" : "";
 
   stream << quoteOrNothing;
-  for (char c : str) { stream << (needsEscape(c) ? "\\" : "") << c; }
+  for (char c : str) {
+    AppendEscaped(stream, c);
+  }
   return stream << quoteOrNothing;
 }
 

@@ -25,30 +25,27 @@ public:
   constexpr const std::string& getText() const noexcept { return text_; }
 
   inline std::string string() const { return prefix_ + text_; }
-};
 
-inline bool operator ==(const SwitchAnnouncement& lhs, const SwitchAnnouncement& rhs) {
-  return lhs.string() == rhs.string();
-}
+  [[nodiscard]] auto operator<=>(const SwitchAnnouncement&) const = default;
+
+  /// \brief Orders announcements by their text (without prefix). Use as comparator for e.g. a std::set.
+  /// \remark A named comparator instead of a std::less<SwitchAnnouncement> specialization: libc++ 22 and later ignore
+  ///         such a specialization when searching a std::set, and call operator< directly.
+  ///         See https://github.com/llvm/llvm-project/issues/178847
+  struct TextLess {
+    bool operator()(const SwitchAnnouncement& lhs, const SwitchAnnouncement& rhs) const {
+      return lhs.getText() < rhs.getText();
+    }
+  };
+};
 
 }
 }
 
 // Specialize std stuff to enable usage in containers
-namespace std {
-
 template <>
-struct hash<pep::commandline::SwitchAnnouncement> {
+struct std::hash<pep::commandline::SwitchAnnouncement> {
   inline size_t operator()(const pep::commandline::SwitchAnnouncement& k) const {
     return std::hash<std::string>()(k.string());
   }
 };
-
-template <>
-struct less<pep::commandline::SwitchAnnouncement> {
-  inline constexpr bool operator()(const pep::commandline::SwitchAnnouncement& lhs, const pep::commandline::SwitchAnnouncement& rhs) const {
-    return std::less<std::string>()(lhs.getText(), rhs.getText());
-  }
-};
-
-}

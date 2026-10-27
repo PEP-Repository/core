@@ -1,6 +1,9 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/tests/RxTestUtils.hpp>
 
+#include <gmock/gmock-matchers.h>
+#include <gtest/gtest.h>
+
 TEST(RxRequireCount, Works) {
   using namespace pep;
 
@@ -17,13 +20,7 @@ TEST(RxRequireCount, Works) {
   EXPECT_NO_THROW(testutils::exhaust(io_context, rxcpp::observable<>::just(1).op(RxRequireNonEmpty())));
   EXPECT_ANY_THROW(testutils::exhaust(io_context, rxcpp::observable<>::empty<int>().op(RxRequireNonEmpty())));
 
-  constexpr auto item_name = "floober in the goober";
-  try {
-    testutils::exhaust(io_context, rxcpp::observable<>::empty<int>().op(RxGetOne(item_name)));
-    FAIL() << "Previous statement should have thrown an exception";
-  }
-  catch (const std::exception& exception) {
-    std::string what = exception.what();
-    EXPECT_NE(what.find(item_name), std::string::npos);
-  }
+  constexpr auto itemName = "floober in the goober";
+  EXPECT_THAT([&] { testutils::exhaust(io_context, rxcpp::observable<>::empty<int>().op(RxGetOne(itemName))); },
+    ::testing::ThrowsMessage<std::exception>(::testing::HasSubstr(itemName)));
 }

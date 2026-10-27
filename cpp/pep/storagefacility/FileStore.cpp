@@ -2,6 +2,7 @@
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/utils/BuildFlavor.hpp>
 #include <pep/storagefacility/Constants.hpp>
+#include <pep/storagefacility/SfChecksumChain.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MapUtils.hpp>
 #include <pep/utils/Random.hpp>
@@ -117,7 +118,8 @@ FileStore::FileStore(
   std::shared_ptr<boost::asio::io_context> io_context,
   std::shared_ptr<prometheus::Registry> metrics_registry)
   : path_(CheckedPath::FromTrusted(metadatapath)),
-  pagestore_(PageStore::Create(io_context, metrics_registry, pageStoreConfig))
+  pagestore_(PageStore::Create(io_context, metrics_registry, pageStoreConfig)),
+  checksumChains_(SfChecksumChain::CreateAll(*this))
 {
   // throws when an error occurs while creating any of the given directories in the supplied path
   std::filesystem::create_directories(path_);

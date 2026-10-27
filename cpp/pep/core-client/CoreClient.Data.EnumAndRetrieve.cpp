@@ -95,7 +95,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
   ctx->dataSizeLimit = opts.dataSizeLimit;
 
   ctx->requestTicketOpts = std::make_shared<RequestTicket2Opts>();
-  ctx->requestTicketOpts->modes = {opts.includeData ? "read" : "read-meta"};
+  ctx->requestTicketOpts->modes = opts.includeData ? ColumnAccessModes::Read : ColumnAccessModes::ReadMeta;
   ctx->requestTicketOpts->participantGroups = opts.groups;
   ctx->requestTicketOpts->accessSubjects = opts.pps;
   ctx->requestTicketOpts->columnGroups = opts.columnGroups;

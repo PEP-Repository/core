@@ -146,6 +146,12 @@ auto MakeStreamWithDeferredCleanup(const std::filesystem::path& path) {
   return std::make_pair(stream, deferredCleanup);
 }
 
+ChecksumChainHandler::Requesters AmChecksumChainRequesters() {
+  auto result = ChecksumChainHandler::DefaultRequesters;
+  result.insert_range(UserGroup::Authserver);
+  return result;
+}
+
 } // namespace
 
 AccessManager::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
@@ -297,7 +303,8 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
   backend_(parameters->getBackend()),
   globalConf_(parameters->getGlobalConfiguration()),
   lpMetrics_(std::make_shared<AccessManager::Metrics>(registry_)),
-  workerPool_(WorkerPool::getShared()) {
+  workerPool_(WorkerPool::getShared()),
+  checksumChainHandler_(backend_->checksumChains(), AmChecksumChainRequesters()) {
   backend_->setAccessManager(this);
   RegisterRequestHandlers(*this,
                           &AccessManager::handleTicketRequest2,
@@ -320,12 +327,6 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
 
 std::optional<std::filesystem::path> AccessManager::getStoragePath() {
   return EnsureDirectoryPath(backend_->getStoragePath().parent_path());
-}
-
-std::unordered_set<std::string> AccessManager::getAllowedChecksumChainRequesters() {
-  auto result = Server::getAllowedChecksumChainRequesters();
-  result.insert_range(UserGroup::Authserver);
-  return result;
 }
 
 messaging::MessageBatches AccessManager::handleGlobalConfigurationRequest(std::shared_ptr<GlobalConfigurationRequest> request) {
@@ -501,17 +502,6 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
         });
 }
 
-std::vector<std::string> AccessManager::getChecksumChainNames() const {
-  return backend_->getChecksumChainNames();
-}
-
-void AccessManager::computeChecksumChainChecksum(
-  const std::string& chain,
-  std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
-  uint64_t& checkpoint) {
-  backend_->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
-}
-
 struct AccessManager::TicketRequestContext {
   std::shared_ptr<AccessManager> server;
   uintmax_t requestNumber;
@@ -523,7 +513,7 @@ struct AccessManager::TicketRequestContext {
   std::size_t numAllAccessSubjects{};
   std::unordered_map<std::string, IndexList> columnGroupMap{};
   std::unordered_map<std::string, IndexList> subjectGroupMap{};
-  std::vector<std::string> requiredSubjectModes;
+  SubjectAccessModes requiredSubjectModes;
   TranscryptorRequest tsReq;
   TranscryptorRequestEntries tsReqEntries{};
   std::optional<PseudonymTranslator::Recipient> userRecipient;
@@ -554,8 +544,8 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
         .userGroup = certified.signatory.organizationalUnit()},
     .pps = request.accessSubjects,
     .requiredSubjectModes = request.participantGroups.empty()
-      ? std::vector<std::string>{"access"}
-      : std::vector<std::string>{"access", "enumerate"},
+      ? SubjectAccessModes::Access
+      : (SubjectAccessModes::Access | SubjectAccessModes::Enumerate),
     .tsReq {.request = std::move(signedRequest) },
     .userRecipient = request.includeUserGroupPseudonyms
       ? std::optional{RecipientForCertificate(signature.certificateChain().leaf())}
@@ -660,7 +650,7 @@ std::string AccessManager::identifyTicketRequestSubjects(TicketRequestContext& c
       ctx.server->backend_->checkParticipantAccess(ctx.ticket.userGroup, localPseudonym, ctx.requiredSubjectModes, ctx.ticket.timestamp);
     }
     const auto isClientProvidedAccessSubject = i < ctx.numClientProvidedAccessSubjects;
-    if (isClientProvidedAccessSubject && !ctx.server->backend_->hasLocalPseudonym(localPseudonym) && ctx.ticket.hasMode("write")) {
+    if (isClientProvidedAccessSubject && !ctx.server->backend_->hasLocalPseudonym(localPseudonym) && ImpliesModes(ctx.ticket.modes, ColumnAccessModes::Write)) {
       ctx.server->backend_->storeLocalPseudonymAndPP(localPseudonym, accessSubject.polymorphic);
     }
   }
@@ -762,7 +752,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     auto& [participantGroup, list] = entry;
     TicketRequest2 ticketRequest;
     ticketRequest.participantGroups = {participantGroup};
-    ticketRequest.modes = {"enumerate"};
+    ticketRequest.modes = ColumnAccessModes::_bogus_AmaTranscryptionOnly;
     ticketRequest.accessSubjects = list;
     std::string data = Serialization::ToString(ticketRequest);
     TranscryptorRequest tsRequest{
