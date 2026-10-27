@@ -14,9 +14,7 @@ private:
   Requesters allowedRequesters_;
 
 public:
-  explicit ChecksumChainProvider(const ChecksumChains& chains, Requesters allowedRequesters = DefaultRequesters) noexcept
-    : chains_(chains), allowedRequesters_(std::move(allowedRequesters)) {
-  }
+  explicit ChecksumChainProvider(const ChecksumChains& chains, Requesters allowedRequesters = DefaultRequesters) noexcept;
 
   const Requesters& allowedRequesters() const noexcept { return allowedRequesters_; }
   const ChecksumChains& chains() const noexcept { return chains_; }
