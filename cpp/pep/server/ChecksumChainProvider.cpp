@@ -5,7 +5,7 @@ namespace pep {
 
 const ChecksumChainProvider::Requesters ChecksumChainProvider::DefaultRequesters{ UserGroup::Watchdog };
 
-ChecksumChainProvider::ChecksumChainProvider(const ChecksumChains& chains, Requesters allowedRequesters = DefaultRequesters) noexcept
+ChecksumChainProvider::ChecksumChainProvider(const ChecksumChains& chains, Requesters allowedRequesters) noexcept
   : chains_(chains), allowedRequesters_(std::move(allowedRequesters)) {}
 
 StandaloneChecksumChainProvider::StandaloneChecksumChainProvider(ChecksumChains chains, Requesters allowedRequesters) noexcept
