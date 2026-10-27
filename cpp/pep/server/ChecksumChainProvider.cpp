@@ -1,6 +1,5 @@
 #include <pep/auth/UserGroup.hpp>
 #include <pep/server/ChecksumChainProvider.hpp>
-#include <pep/utils/Bitpacking.hpp>
 
 namespace pep {
 
