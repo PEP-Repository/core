@@ -2,23 +2,21 @@
 
 #include <pep/utils/ChronoUtil.hpp>
 
-#include <cctype>
 #include <format>
+#include <locale>
+#include <string_view>
 
 namespace pep::structuredOutput::yaml {
 namespace {
 
 enum class ForceQuotes { No, Yes };
 
-// Note on the <cctype> functions used below (std::isalpha, std::isalnum, std::iscntrl):
-// - They depend on the current C locale. This code assumes the default "C" locale (pepcli never calls setlocale), in
-//   which they only match ASCII letters, digits and control characters.
-// - They have undefined behavior for e.g. negative values, which plain char may support.
-
+// TODO: also escape multi-byte UTF-8 characters that YAML wants escaped, which are now written as-is: C1 control
+// characters (U+0080-U+009F) and the line and paragraph separators U+2028 and U+2029. Also handle invalid UTF-8.
+// This requires decoding UTF-8, since this function only sees individual chars.
 /// Appends a character to a double-quoted YAML string, escaping it if needed.
-/// \remark Only escapes individual chars. Multi-byte UTF-8 characters that YAML
-///         also wants escaped are written as-is: C1 control characters (U+0080-U+009F), the line and paragraph
-///         separators U+2028 and U+2029, and invalid UTF-8.
+/// \remark Control characters are recognized in the "C" locale (std::locale::classic()), regardless of the global
+///         locale, so only ASCII control characters are escaped.
 void AppendEscaped(std::ostream& stream, char c) {
   switch (c) {
   case '\\': stream << "\\\\"; break;
@@ -28,9 +26,9 @@ void AppendEscaped(std::ostream& stream, char c) {
   case '\r': stream << "\\r"; break;
   case '\t': stream << "\\t"; break;
   default:
-    if (const auto byte = static_cast<unsigned char>(c); std::iscntrl(byte)) {
+    if (std::iscntrl(c, std::locale::classic())) {
       // See https://yaml.org/spec/1.2.2/#escaped-characters: YAML 8-bit escapes `\xNN` contain exactly two hex digits
-      stream << std::format("\\x{:02x}", byte);
+      stream << std::format("\\x{:02x}", static_cast<unsigned char>(c));
     }
     else {
       stream << c;
@@ -42,8 +40,8 @@ std::ostream& AppendStringLiteral(std::ostream& stream, const std::string_view s
   constexpr auto needsQuotes = [](std::string_view str) {
     // applying quotes generously even though YAML would allow more to go without quotes
     return str.empty() ||
-      !std::isalpha(static_cast<unsigned char>(str.front())) ||
-      !std::ranges::all_of(str, [](unsigned char c) { return std::isalnum(c) || c == '_' || c == ' '; });
+      !std::isalpha(str.front(), std::locale::classic()) ||
+      !std::ranges::all_of(str, [](char c) { return std::isalnum(c, std::locale::classic()) || c == '_' || c == ' '; });
   };
   const auto quoteOrNothing = (forceQuotes == ForceQuotes::Yes || needsQuotes(str)) ? "\"" : "";
 
