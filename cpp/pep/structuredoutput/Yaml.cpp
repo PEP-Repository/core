@@ -13,10 +13,10 @@ enum class ForceQuotes { No, Yes };
 // Note on the <cctype> functions used below (std::isalpha, std::isalnum, std::iscntrl):
 // - They depend on the current C locale. This code assumes the default "C" locale (pepcli never calls setlocale), in
 //   which they only match ASCII letters, digits and control characters.
-// - They require unsigned char values: plain char is negative for non-ASCII bytes, which is undefined behavior.
+// - They have undefined behavior for e.g. negative values, which plain char may support.
 
 /// Appends a character to a double-quoted YAML string, escaping it if needed.
-/// \remark Works per byte, so it only escapes single-byte (ASCII) characters. Multi-byte UTF-8 characters that YAML
+/// \remark Only escapes individual chars. Multi-byte UTF-8 characters that YAML
 ///         also wants escaped are written as-is: C1 control characters (U+0080-U+009F), the line and paragraph
 ///         separators U+2028 and U+2029, and invalid UTF-8.
 void AppendEscaped(std::ostream& stream, char c) {
@@ -29,6 +29,7 @@ void AppendEscaped(std::ostream& stream, char c) {
   case '\t': stream << "\\t"; break;
   default:
     if (const auto byte = static_cast<unsigned char>(c); std::iscntrl(byte)) {
+      // See https://yaml.org/spec/1.2.2/#escaped-characters: YAML 8-bit escapes `\xNN` contain exactly two hex digits
       stream << std::format("\\x{:02x}", byte);
     }
     else {
