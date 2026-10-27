@@ -423,7 +423,7 @@ Transcryptor::Transcryptor(std::shared_ptr<Parameters> parameters)
   storage_(parameters->getStorage()),
   lpMetrics_(std::make_shared<Metrics>(registry_)),
   verifiers_(parameters->getVerifiers()),
-  checksumChainHandler_(storage_->checksumChains()) {
+  checksumChainProvider_(storage_->checksumChains()) {
   RegisterRequestHandlers(*this,
                           &Transcryptor::handleTranscryptorRequest,
                           &Transcryptor::handleRekeyRequest,

@@ -6,7 +6,7 @@
 #include <pep/metrics/RegisteredMetrics.hpp>
 #include <pep/rsk/EGCache.hpp>
 #include <pep/server/MonitoringMessages.hpp>
-#include <pep/server/ChecksumChainHandler.hpp>
+#include <pep/server/ChecksumChainProvider.hpp>
 
 namespace pep {
 
@@ -42,7 +42,7 @@ protected:
 
   virtual std::shared_ptr<prometheus::Registry> getMetricsRegistry();
 
-  virtual const ChecksumChainHandler& checksumChainHandler() const noexcept = 0;
+  virtual const ChecksumChainProvider& checksumChainProvider() const noexcept = 0;
 
   const std::shared_ptr<boost::asio::io_context>& getIoContext() const noexcept { return ioContext_; }
   std::shared_ptr<X509RootCertificates> getRootCAs() const noexcept { return rootCAs_; }

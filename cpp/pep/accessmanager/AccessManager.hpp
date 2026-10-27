@@ -67,7 +67,7 @@ public:
 
 protected:
   std::optional<std::filesystem::path> getStoragePath() override;
-  const ChecksumChainHandler& checksumChainHandler() const noexcept override { return checksumChainHandler_; }
+  const ChecksumChainProvider& checksumChainProvider() const noexcept override { return checksumChainProvider_; }
 
 private:
   /// Internal state shared by all phases of handleTicketRequest2.
@@ -133,7 +133,7 @@ private:
   std::shared_ptr<Metrics> lpMetrics_;
   std::shared_ptr<WorkerPool> workerPool_;
   uintmax_t nextTicketRequestNumber_ = 1U;
-  LocalChecksumChainHandler checksumChainHandler_;
+  LocalChecksumChainProvider checksumChainProvider_;
 };
 
 }

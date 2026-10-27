@@ -1139,7 +1139,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   timer_(*parameters->getIoContext()),
   parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()),
-  checksumChainHandler_(fileStore_->checksumChains()) {
+  checksumChainProvider_(fileStore_->checksumChains()) {
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
                           &StorageFacility::handleDataReadRequest2,

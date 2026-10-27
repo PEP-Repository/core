@@ -93,7 +93,7 @@ public:
 protected:
   std::optional<std::filesystem::path> getStoragePath() override;
   void statsTimer(const boost::system::error_code& e);
-  const ChecksumChainHandler& checksumChainHandler() const noexcept override { return checksumChainHandler_; }
+  const ChecksumChainProvider& checksumChainProvider() const noexcept override { return checksumChainProvider_; }
 
 private:
   messaging::MessageBatches handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumerationRequest2> signedRequest);
@@ -135,7 +135,7 @@ private:
   boost::asio::steady_timer timer_;
   const uint8_t parallelisationWidth_ = 0; // passed to RxParallelConcat
   const uint64_t dataSizeResolution_;
-  LocalChecksumChainHandler checksumChainHandler_;
+  LocalChecksumChainProvider checksumChainProvider_;
 };
 
 }

@@ -146,8 +146,8 @@ auto MakeStreamWithDeferredCleanup(const std::filesystem::path& path) {
   return std::make_pair(stream, deferredCleanup);
 }
 
-ChecksumChainHandler::Requesters AmChecksumChainRequesters() {
-  auto result = ChecksumChainHandler::DefaultRequesters;
+ChecksumChainProvider::Requesters AmChecksumChainRequesters() {
+  auto result = ChecksumChainProvider::DefaultRequesters;
   result.insert_range(UserGroup::Authserver);
   return result;
 }
@@ -304,7 +304,7 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
   globalConf_(parameters->getGlobalConfiguration()),
   lpMetrics_(std::make_shared<AccessManager::Metrics>(registry_)),
   workerPool_(WorkerPool::getShared()),
-  checksumChainHandler_(backend_->checksumChains(), AmChecksumChainRequesters()) {
+  checksumChainProvider_(backend_->checksumChains(), AmChecksumChainRequesters()) {
   backend_->setAccessManager(this);
   RegisterRequestHandlers(*this,
                           &AccessManager::handleTicketRequest2,

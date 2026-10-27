@@ -117,7 +117,7 @@ Server::handleMetricsRequest(
 messaging::MessageBatches
 Server::handleChecksumChainRequest(
   std::shared_ptr<SignedChecksumChainRequest> signedRequest) {
-  const auto& handler = this->checksumChainHandler();
+  const auto& handler = this->checksumChainProvider();
 
   auto certified = signedRequest->open(*getRootCAs());
   UserGroup::EnsureAccess(handler.allowedRequesters(), certified.signatory.organizationalUnit(), "Requesting checksum chains");
@@ -135,7 +135,7 @@ Server::handleChecksumChainRequest(
 messaging::MessageBatches
 Server::handleChecksumChainNamesRequest(
   std::shared_ptr<SignedChecksumChainNamesRequest> signedRequest) {
-  const auto& handler = this->checksumChainHandler();
+  const auto& handler = this->checksumChainProvider();
 
   auto signatory = signedRequest->validate(*getRootCAs());
   UserGroup::EnsureAccess(handler.allowedRequesters(), signatory.organizationalUnit(), "Requesting checksum chain names");
