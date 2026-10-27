@@ -49,10 +49,6 @@ void Authserver::Parameters::check() const {
   SigningServer::Parameters::check();
 }
 
-const ChecksumChainHandler& Authserver::checksumChainHandler() const noexcept {
-  return backend_->checksumChainForwarder();
-}
-
 messaging::MessageBatches Authserver::handleTokenRequest(std::shared_ptr<SignedTokenRequest> signedRequest) {
   auto certified = signedRequest->open(*this->getRootCAs());
   const auto& request = certified.message;
@@ -64,7 +60,8 @@ messaging::MessageBatches Authserver::handleTokenRequest(std::shared_ptr<SignedT
 Authserver::Authserver(std::shared_ptr<Parameters> parameters)
   : SigningServer(parameters),
   backend_(std::make_shared<AuthserverBackend>(parameters->getBackendParams())),
-  oAuth_(OAuthProvider::Create(parameters->getOAuthParams(), backend_)) {
+  oAuth_(OAuthProvider::Create(parameters->getOAuthParams(), backend_)),
+  checksumChainHandler_(ChecksumChains{}) {
   RegisterRequestHandlers(*this,
                           &Authserver::handleTokenRequest);
 }
