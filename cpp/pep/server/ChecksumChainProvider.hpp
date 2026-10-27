@@ -10,41 +10,27 @@ public:
   static const Requesters DefaultRequesters;
 
 private:
+  const ChecksumChains& chains_;
   Requesters allowedRequesters_;
 
-protected:
-  explicit ChecksumChainProvider(Requesters allowedRequesters = DefaultRequesters) noexcept : allowedRequesters_(std::move(allowedRequesters)) {}
-
 public:
+  explicit ChecksumChainProvider(const ChecksumChains& chains, Requesters allowedRequesters = DefaultRequesters) noexcept
+    : chains_(chains), allowedRequesters_(std::move(allowedRequesters)) {
+  }
+
   virtual ~ChecksumChainProvider() noexcept = default;
 
   const Requesters& allowedRequesters() const noexcept { return allowedRequesters_; }
-  virtual const ChecksumChains& chains() const noexcept = 0;
-};
-
-
-class LocalChecksumChainProvider : public ChecksumChainProvider {
-private:
-  const ChecksumChains& chains_;
-
-public:
-  explicit LocalChecksumChainProvider(const ChecksumChains& chains, Requesters allowedRequesters = DefaultRequesters)
-    : ChecksumChainProvider(allowedRequesters), chains_(chains) {
-  }
-
-  const ChecksumChains& chains() const noexcept override { return chains_; }
+  const ChecksumChains& chains() const noexcept { return chains_; }
 };
 
 
 class StandaloneChecksumChainProvider : public ChecksumChainProvider {
 private:
   ChecksumChains chains_;
-  LocalChecksumChainProvider local_;
 
 public:
   explicit StandaloneChecksumChainProvider(ChecksumChains chains, Requesters allowedRequesters = DefaultRequesters);
-
-  const ChecksumChains& chains() const noexcept override { return chains_; }
 };
 
 }

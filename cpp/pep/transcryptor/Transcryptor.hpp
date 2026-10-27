@@ -78,7 +78,7 @@ private:
   ServerVerifiers verifiers_;
   uintmax_t nextTranscryptorRequestNumber_ = 1U;
   uintmax_t nextLogIssuedTicketRequestNumber_ = 1U;
-  LocalChecksumChainProvider checksumChainProvider_;
+  ChecksumChainProvider checksumChainProvider_;
 };
 
 /// Hashes a pair of pseudonym lists into a single value.

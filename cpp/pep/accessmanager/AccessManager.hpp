@@ -133,7 +133,7 @@ private:
   std::shared_ptr<Metrics> lpMetrics_;
   std::shared_ptr<WorkerPool> workerPool_;
   uintmax_t nextTicketRequestNumber_ = 1U;
-  LocalChecksumChainProvider checksumChainProvider_;
+  ChecksumChainProvider checksumChainProvider_;
 };
 
 }
