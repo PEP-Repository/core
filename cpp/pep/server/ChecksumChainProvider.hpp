@@ -18,8 +18,6 @@ public:
     : chains_(chains), allowedRequesters_(std::move(allowedRequesters)) {
   }
 
-  virtual ~ChecksumChainProvider() noexcept = default;
-
   const Requesters& allowedRequesters() const noexcept { return allowedRequesters_; }
   const ChecksumChains& chains() const noexcept { return chains_; }
 };
