@@ -30,7 +30,7 @@ private:
   ChecksumChains chains_;
 
 public:
-  explicit StandaloneChecksumChainProvider(ChecksumChains chains, Requesters allowedRequesters = DefaultRequesters);
+  explicit StandaloneChecksumChainProvider(ChecksumChains chains, Requesters allowedRequesters = DefaultRequesters) noexcept;
 };
 
 }
