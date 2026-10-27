@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/server/ChecksumChain.hpp>
+#include <unordered_set>
 
 namespace pep {
 
