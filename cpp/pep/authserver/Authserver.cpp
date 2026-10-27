@@ -61,7 +61,7 @@ Authserver::Authserver(std::shared_ptr<Parameters> parameters)
   : SigningServer(parameters),
   backend_(std::make_shared<AuthserverBackend>(parameters->getBackendParams())),
   oAuth_(OAuthProvider::Create(parameters->getOAuthParams(), backend_)),
-  checksumChainProvider_(ChecksumChains{}) {
+  checksumChainProvider_(ChecksumChains{ /* none */ }) {
   RegisterRequestHandlers(*this,
                           &Authserver::handleTokenRequest);
 }
