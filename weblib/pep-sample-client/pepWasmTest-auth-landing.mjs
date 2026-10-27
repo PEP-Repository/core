@@ -2,13 +2,7 @@ export {}
 
 (() => {
   const messageElem = document.getElementById('message');
-
   const params = new URLSearchParams(location.search);
-  const redirect = params.get('redirect');
-  if (redirect) {
-    location.assign(redirect);
-    return;
-  }
 
   const chanName = params.get('state');
   if (!chanName) {

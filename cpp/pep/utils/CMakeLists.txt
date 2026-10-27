@@ -35,6 +35,7 @@ add_library(${PROJECT_NAME}Utilslib
     Exceptions.cpp Exceptions.hpp
     File.cpp File.hpp
     Filesystem.cpp Filesystem.hpp
+    FlagNames.hpp
     Hmac.hpp
     Hasher.cpp Hasher.hpp
     InstanceTracker.hpp
@@ -112,6 +113,7 @@ if(WITH_TESTS)
   target_link_libraries(${PROJECT_NAME}Testinglib
     ${PROJECT_NAME}Utilslib
     GTest::gtest
+    GTest::gmock # required by some gtest features
   )
   verify_headers_standalone(${PROJECT_NAME}Testinglib)
 endif()

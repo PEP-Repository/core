@@ -20,16 +20,17 @@ if(WITH_SERVERS)
       EntryContent.cpp EntryContent.hpp
       EntryName.cpp EntryName.hpp
       EntryPayload.cpp EntryPayload.hpp
-      PersistedEntryProperties.cpp PersistedEntryProperties.hpp
       FileStore.cpp FileStore.hpp
       PageStore.cpp PageStore.hpp
       PendingBytesLimiter.cpp PendingBytesLimiter.hpp
+      PersistedEntryProperties.cpp PersistedEntryProperties.hpp
       S3.cpp S3.hpp
       S3Client.cpp S3Client.hpp
       S3Credentials.hpp
       S3Credentials.PropertySerializer.cpp S3Credentials.PropertySerializer.hpp
       SFId.hpp
       SFIdSerializer.cpp SFIdSerializer.hpp
+      SfChecksumChain.cpp SfChecksumChain.hpp
       StorageFacility.cpp StorageFacility.hpp
   )
   target_link_libraries(${PROJECT_NAME}StorageFacilitylib

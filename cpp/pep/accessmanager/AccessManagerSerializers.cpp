@@ -1,6 +1,7 @@
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/structure/ColumnNameSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/serialization/IndexListSerializer.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
@@ -81,15 +82,19 @@ void Serializer<EncryptionKeyResponse>::moveIntoProtocolBuffer(proto::Encryption
 }
 
 ColumnAccessRequest Serializer<ColumnAccessRequest>::fromProtocolBuffer(proto::ColumnAccessRequest&& source) const {
-  auto result = ColumnAccessRequest{ source.include_implicitly_granted(), {} };
-  result.requireModes.append_range(source.require_modes());
+  ColumnAccessRequest result;
+  result.includeImplicitlyGranted = source.include_implicitly_granted();
+  for (const auto& mode : source.require_modes()) {
+    result.requireModes |= ParseColumnAccessMode(mode);
+  }
   return result;
 }
 
 void Serializer<ColumnAccessRequest>::moveIntoProtocolBuffer(proto::ColumnAccessRequest& dest, ColumnAccessRequest value) const {
   dest.set_include_implicitly_granted(value.includeImplicitlyGranted);
-  dest.mutable_require_modes()->Reserve(static_cast<int>(value.requireModes.size()));
-  for (auto& mode : value.requireModes) {
+  auto modeNames = ToIndividualStrings(value.requireModes);
+  dest.mutable_require_modes()->Reserve(static_cast<int>(modeNames.size()));
+  for (auto&& mode : modeNames) {
     dest.add_require_modes(std::move(mode));
   }
 }
@@ -109,7 +114,9 @@ ColumnAccessResponse Serializer<ColumnAccessResponse>::fromProtocolBuffer(proto:
     auto indices = source.column_group_columns(i);
 
     ColumnAccess::GroupProperties properties;
-    properties.modes.append_range(entry.modes());
+    for (const auto& mode : entry.modes()) {
+      properties.modes |= ParseColumnAccessMode(mode);
+    }
     properties.columns = Serialization::FromProtocolBuffer(std::move(indices));
     result.columnGroups[entry.name()] = properties;
   }
@@ -126,8 +133,9 @@ void Serializer<ColumnAccessResponse>::moveIntoProtocolBuffer(proto::ColumnAcces
   for (auto& cg : value.columnGroups) {
     proto::ColumnGroupAccess entry;
     entry.set_name(cg.first);
-    entry.mutable_modes()->Reserve(static_cast<int>(cg.second.modes.size()));
-    for (auto& mode : cg.second.modes) {
+    auto modeNames = ToIndividualStrings(cg.second.modes);
+    entry.mutable_modes()->Reserve(static_cast<int>(modeNames.size()));
+    for (auto& mode : modeNames) {
       entry.add_modes(std::move(mode));
     }
 
@@ -153,7 +161,7 @@ ParticipantGroupAccessResponse Serializer<ParticipantGroupAccessResponse>::fromP
   ParticipantGroupAccessResponse result;
   result.participantGroups.reserve(static_cast<size_t>(source.participant_groups_size()));
   for (auto& entry : source.participant_groups()) {
-    result.participantGroups.emplace(entry.name(), entry.modes() | to<std::vector>());
+    result.participantGroups.emplace(entry.name(), ParseSubjectAccessModes(entry.modes() | to<std::vector>()));
   }
   return result;
 }
@@ -164,8 +172,9 @@ void Serializer<ParticipantGroupAccessResponse>::moveIntoProtocolBuffer(proto::P
   for (auto& pg : value.participantGroups) {
     proto::ParticipantGroupAccess entry;
     entry.set_name(pg.first);
-    entry.mutable_modes()->Reserve(static_cast<int>(pg.second.size()));
-    for (auto& mode : pg.second) {
+    auto modes = ToIndividualStrings(pg.second);
+    entry.mutable_modes()->Reserve(static_cast<int>(modes.size()));
+    for (auto& mode : modes) {
       entry.add_modes(std::move(mode));
     }
     dest.add_participant_groups()->CopyFrom(entry);

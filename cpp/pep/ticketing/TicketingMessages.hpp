@@ -2,6 +2,7 @@
 
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/auth/Signed.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 
 namespace pep {
 
@@ -21,12 +22,11 @@ std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<Loc
 
 struct Ticket2 {
   Timestamp timestamp{/*zero*/};
-  std::vector<std::string> modes;
+  ColumnAccessModes modes = ColumnAccessModes::None;
   std::vector<LocalPseudonyms> accessSubjects;  ///< identifiers for subjects that will be accessed
+  std::vector<LocalPseudonyms> referenceSubjects;  ///< identifiers for subjects that will **not** be accessed
   std::vector<std::string> columns;
   std::string userGroup;
-
-  bool hasMode(const std::string& mode) const;
 };
 
 template <>
@@ -57,19 +57,27 @@ public:
 
   Ticket2 open(const X509RootCertificates& rootCAs,
     const std::string& accessGroup,
-    const std::optional<std::string>& accessMode = std::nullopt) const;
+    const std::optional<ColumnAccessModes>& accessMode = std::nullopt) const;
 
   Ticket2 openForLogging(const X509RootCertificates& rootCAs, std::string& serialized) const;
 };
 
 struct ClientSideTicketRequest2 {
-  std::vector<std::string> modes;
+  ColumnAccessModes modes = ColumnAccessModes::None;
   std::vector<std::string> participantGroups;
   std::vector<PolymorphicPseudonym> accessSubjects;
+  std::vector<PolymorphicPseudonym> referenceSubjects;
   std::vector<std::string> columnGroups;
   std::vector<std::string> columns;
   bool includeUserGroupPseudonyms = false;
 };
+
+/// Removes duplicate pseudonyms from a ticket request, in place.
+///
+/// - Collapses duplicates within `accessSubjects` and within `referenceSubjects`.
+/// - A pseudonym occurring in both lists is kept in `accessSubjects` and removed from `referenceSubjects`.
+/// - Does not preserve order: both lists are sorted as a side effect.
+void ResolveDuplicatePseudonyms(ClientSideTicketRequest2&);
 
 struct TicketRequest2 : public ClientSideTicketRequest2 {
   bool requestIndexedTicket{};

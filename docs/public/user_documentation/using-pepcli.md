@@ -512,7 +512,7 @@ pepcli user removeFrom <uid> <group>
 ```
 
 If an end-date is passed to the `pepcli user addTo` command, the user will be removed from the user group at the given date.
-Any tokens for the user will also be blocked starting from that date. 
+Any tokens for the user will also be blocked starting from that date.
 
 When a user is removed with `pepcli user removeFrom`, existing tokens for the user will be blocked immediately.
 
@@ -648,7 +648,7 @@ The rule will go into effect at the `blockStart` date. Until that date, tokens m
 Rules are automatically added to the blocklist when:
 
 - a user is removed from a group with `pepcli user removeFrom`. The added rule has no explicit `blockStart`, so will go into effect immediately.
-- a user is added to a group with `pepcli user addTo`, and an end-date is passed. 
+- a user is added to a group with `pepcli user addTo`, and an end-date is passed.
 - the end-date of a user group membership is updated with `pepcli user updateExpiration`
 
 In the latter two cases, the `blockStart` and `issuedBefore` dates will be equal to the end-date. So the rule will go
@@ -1051,6 +1051,7 @@ pepcli pseudonym convert <from> <to>
 `local-pseudonym` (or `lp`), `polymorphic-pseudonym` (or `pp`), or
 `brief-local-pseudonym` (or `blp`).
 
+Conversion does not require any access rights to the subject associated with the pseudonym.
 
 ## store
 

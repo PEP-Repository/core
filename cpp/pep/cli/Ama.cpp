@@ -476,7 +476,7 @@ private:
           if (displayConfig.format() == so::Format::Json) {
             so::json::append(std::cout, tree, std::get<so::JsonConfig>(displayConfig.formatConfig)) << std::endl;
           } else {
-            so::yaml::append(std::cout, tree, std::get<so::YamlConfig>(displayConfig.formatConfig)) << std::endl;
+            so::yaml::append(std::cout, tree, std::get<so::YamlConfig>(displayConfig.formatConfig)) << std::flush; // yaml output already ends with a newline
           }
 
           if (pep::HasFlags(displayConfig.flags, so::AmaQueryFlags::PrintColumnGroupAccessRules)) {
@@ -817,7 +817,7 @@ private:
         return executeEventLoopFor([group = this->getParticipantGroupName()](std::shared_ptr<pep::CoreClient> client) {
           pep::RequestTicket2Opts requestTicketOpts;
           requestTicketOpts.participantGroups.emplace_back(group);
-          requestTicketOpts.modes.emplace_back("read-meta");
+          requestTicketOpts.modes |= pep::ColumnAccessModes::ReadMeta;
           return client->requestTicket2(requestTicketOpts)
             .flat_map([group, client](const pep::IndexedTicket2& indexed) {
             auto ticket = indexed.openTicketWithoutCheckingSignature();

@@ -26,9 +26,10 @@ private:
   static inline constexpr auto CaseSensitive = CaseSensitivity::CaseSensitive;
   static inline constexpr auto CaseInsensitive = CaseSensitivity::CaseInsensitive;
 
+  std::filesystem::path storagePath_;
   std::shared_ptr<Implementor> implementor_;
   std::shared_ptr<GlobalConfiguration> globalConf_;
-  std::filesystem::path storagePath_;
+  ChecksumChains checksumChains_;
   std::unordered_map<LocalPseudonym, PolymorphicPseudonym> lpToPpMap_; // Use a map as checking existence and retrieval of a key takes O(1) time
 
   // Initialisation
@@ -61,13 +62,10 @@ private:
                                                          Timestamp at) const;
 
 public:
-  Storage(const std::filesystem::path &path, std::shared_ptr<GlobalConfiguration> globalConf);
+  Storage(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf);
 
   // Sanity checks
-  std::vector<std::string> getChecksumChainNames();
-  void computeChecksum(const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-                       uint64_t& checksum, uint64_t& checkpoint);
-
+  const ChecksumChains& checksumChains() const noexcept { return checksumChains_; }
 
   std::filesystem::path getPath() {
     return storagePath_;

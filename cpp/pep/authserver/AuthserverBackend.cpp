@@ -113,38 +113,16 @@ void AuthserverBackend::Parameters::check() const {
     throw std::runtime_error("rootCertificates must not be empty");
   }
 }
-const std::unordered_map<std::string, std::string> checksumNameMappings{
-    {"groups", "user-groups"}, {"user-groups-v2", "user-group-users-legacy"}};
 
 AuthserverBackend::AuthserverBackend(const Parameters &params)
     : MessageSigner(params.getSigningIdentity()),
       accessManager_(std::make_shared<AccessManagerProxy>(params.getAccessManager(), *this, params.getAccessManagerEndPoint().expectedCommonName, params.getRootCertificates())),
       tokenExpiration_(params.getTokenExpiration()),
-      oauthTokenSecret_(params.getOAuthTokenSecret()){
+      oauthTokenSecret_(params.getOAuthTokenSecret()),
+      checksumChainForwarder_(*accessManager_) {
   if (params.getStorageFile() && std::filesystem::exists(*params.getStorageFile())) {
     migrateDatabase(*params.getStorageFile());
   }
-}
-
-std::vector<std::string> AuthserverBackend::getChecksumChainNames() const {
-  return checksumNameMappings
-    | views::keys
-    | to<std::vector>();
-}
-
-rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainRequest(ChecksumChainRequest request) {
-  // authserver used to have it's own storage, but that has been moved to the
-  // access manager. To make sure the migration from authserver to access
-  // manager goes correctly, we keep the old checksum chains, but instead of
-  // calculating them here, we pass them on to the accessmanager.
-  //TODO: When the migration has succeeded, this can be removed in a following release.
-  auto checksumMapping = checksumNameMappings.find(request.name);
-  if (checksumMapping == checksumNameMappings.end()) {
-    throw Error("Checksum chain " + request.name + " not found");
-  }
-  request.name = checksumMapping->second;
-  return accessManager_->requestChecksumChain(std::move(request))
-    .op(RxGetOne());
 }
 
 rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::findUserGroupsAndStorePrimaryIdIfMissing(

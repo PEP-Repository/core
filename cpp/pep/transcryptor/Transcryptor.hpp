@@ -11,6 +11,7 @@
 #include <pep/transcryptor/Storage.hpp>
 
 #include <optional>
+#include <span>
 
 namespace pep {
 
@@ -61,18 +62,12 @@ public:
 protected:
   std::optional<std::filesystem::path> getStoragePath() override;
   std::shared_ptr<prometheus::Registry> getMetricsRegistry() override;
-  std::vector<std::string> getChecksumChainNames() const override;
-  void computeChecksumChainChecksum(
-    const std::string& chain, std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
-    uint64_t& checkpoint) override;
+  const ChecksumChainHandler& checksumChainHandler() const noexcept override { return checksumChainHandler_; }
 
 private:
   messaging::MessageBatches handleTranscryptorRequest(std::shared_ptr<TranscryptorRequest> pRequest, messaging::MessageSequence entriesObservable);
   messaging::MessageBatches handleRekeyRequest(std::shared_ptr<RekeyRequest> pRequest);
   messaging::MessageBatches handleLogIssuedTicketRequest(std::shared_ptr<LogIssuedTicketRequest> request);
-
-  static std::string ComputePseudonymHash(
-    const std::vector<LocalPseudonyms>& pseuds);
 
 private:
   std::shared_ptr<WorkerPool> workerPool_;
@@ -83,6 +78,11 @@ private:
   ServerVerifiers verifiers_;
   uintmax_t nextTranscryptorRequestNumber_ = 1U;
   uintmax_t nextLogIssuedTicketRequestNumber_ = 1U;
+  LocalChecksumChainHandler checksumChainHandler_;
 };
 
+/// Hashes a pair of pseudonym lists into a single value.
+///
+/// Result depends on both the order of the lists and (the order of) their elements.
+std::string ComputePseudonymHash(std::span<const LocalPseudonyms>, std::span<const LocalPseudonyms>);
 }

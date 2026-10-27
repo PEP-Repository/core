@@ -1,7 +1,10 @@
 #include <pep/auth/ServerTraits.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
+#include <pep/utils/MapUtils.hpp>
 #include <pep/utils/Math.hpp>
 
+#include <algorithm>
+#include <iterator>
 #include <ranges>
 
 using namespace std::literals;
@@ -22,23 +25,6 @@ std::vector<PolymorphicPseudonym> GetPolymorphicPseudonyms(const std::vector<Loc
     | std::ranges::to<std::vector>();
 }
 
-bool Ticket2::hasMode(const std::string& mode) const {
-  // Check if the ticket explicitly includes the specified mode
-  if (std::ranges::contains(modes, mode)) {
-    return true;
-  }
-  // The "read-meta" mode is implicitly covered if the ticket includes "read" access
-  if (mode == "read-meta") {
-    return this->hasMode("read");
-  }
-  // The "write" mode is implicitly covered if the ticket includes "write-meta" access
-  if (mode == "write") {
-    return this->hasMode("write-meta");
-  }
-  // Mode not covered by the ticket
-  return false;
-}
-
 void SignedTicket2::addTranscryptorSignature(Signature signature) {
   assert(!transcryptorSignature_.has_value());
   transcryptorSignature_ = std::move(signature);
@@ -49,7 +35,7 @@ Ticket2 SignedTicket2::openWithoutCheckingSignature() const {
 }
 
 Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
-  const std::string& userGroup, const std::optional<std::string>& accessMode) const {
+  const std::string& userGroup, const std::optional<ColumnAccessModes>& accessMode) const {
   if (!signature_)
     throw Error("AccessManager signature is missing");
   if (!transcryptorSignature_)
@@ -81,8 +67,8 @@ Ticket2 SignedTicket2::open(const X509RootCertificates& rootCAs,
   if (ticket.userGroup != userGroup)
     throw Error("Ticket issued for different user group");
   if (accessMode.has_value()) {
-    if (!ticket.hasMode(*accessMode)) {
-      throw Error("Ticket does not grant required " + *accessMode + " access");
+    if (!ImpliesModes(ticket.modes, *accessMode)) {
+      throw Error("Ticket does not grant required " + ToSingleString(*accessMode) + " access");
     }
   }
   return ticket;
@@ -119,6 +105,22 @@ Signed<TicketRequest2>::Signed(TicketRequest2 ticketRequest,
   data_ = Serialization::ToString(std::move(ticketRequest));
   signature_ = Signature::Make(data_, identity);
   logSignature_ = Signature::Make(data_, identity, true);
+}
+
+void ResolveDuplicatePseudonyms(ClientSideTicketRequest2& ticket) {
+  using namespace std::ranges;
+  constexpr auto removeDuplicates = [](auto& range) {
+    sort(range);
+    const auto [removed_begin, removed_end] = unique(range);
+    range.erase(removed_begin, removed_end);
+  };
+  removeDuplicates(ticket.referenceSubjects);
+  removeDuplicates(ticket.accessSubjects);
+
+  decltype(ticket.referenceSubjects) referencedOnlySubjects;
+  pep::ReserveToMatch(referencedOnlySubjects, ticket.referenceSubjects);
+  set_difference(ticket.referenceSubjects, ticket.accessSubjects, std::back_inserter(referencedOnlySubjects));
+  ticket.referenceSubjects = std::move(referencedOnlySubjects);
 }
 
 Signature Signed<TicketRequest2>::extractSignature() {

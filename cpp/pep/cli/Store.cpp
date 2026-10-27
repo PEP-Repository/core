@@ -365,9 +365,9 @@ protected:
     }
   }
 
-  std::vector<std::string> ticketAccessModes() const override {
+  pep::ColumnAccessModes ticketAccessModes() const override {
     if (this->getParameterValues().has("metadata-only")) {
-      return { "read", "write-meta" };
+      return pep::ColumnAccessModes::Read | pep::ColumnAccessModes::WriteMeta;
     }
     return SingleCellModificationCommand::ticketAccessModes();
   }

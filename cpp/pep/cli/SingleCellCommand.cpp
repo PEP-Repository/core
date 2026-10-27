@@ -56,7 +56,7 @@ int SingleCellCommand::execute() {
       const auto& parameterValues = this->getParameterValues();
 
       pep::RequestTicket2Opts tOpts;
-      tOpts.pps = { pp };
+      tOpts.accessSubjects = { pp };
       tOpts.columns = { column };
       tOpts.modes = this->ticketAccessModes();
       return pep::cli::TicketFile::GetTicket(*client, parameterValues, tOpts)
@@ -100,8 +100,8 @@ rxcpp::observable<pep::FakeVoid> SingleCellCommand::WriteJson(std::ostream& dest
     .op(pep::RxInstead(pep::FakeVoid()));
 }
 
-std::vector<std::string> SingleCellModificationCommand::ticketAccessModes() const {
-  return { "write" };
+pep::ColumnAccessModes SingleCellModificationCommand::ticketAccessModes() const {
+  return pep::ColumnAccessModes::Write;
 }
 
 rxcpp::observable<pep::FakeVoid> SingleCellModificationCommand::processCell(std::shared_ptr<pep::CoreClient> client, const pep::IndexedTicket2& ticket, const pep::PolymorphicPseudonym& pp, const std::string& column) {

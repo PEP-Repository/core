@@ -6,20 +6,23 @@
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/client/Client.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/oauth-client/OAuthClient.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/Exceptions.hpp>
-#include <pep/utils/File.hpp>
 #include <pep/utils/ThreadUtil.hpp>
 #include <pep/utils/Timestamp.hpp>
-#include <pep/weblib/BlobMessageBatches.hpp>
+
 #include <pep/weblib/EmscriptenValPtr.hpp>
 #include <pep/weblib/EmscriptenVectorBinding.hpp>
 #include <pep/weblib/ObservableByteStream.hpp>
 #include <pep/weblib/ObservableStream.hpp>
 #include <pep/weblib/OnEmscriptenThread.hpp>
+#include <pep/weblib/ReadableStreamMessageBatches.hpp>
 #include <pep/weblib/ThreadPrintable.hpp>
 #include <pep/weblib/WeblibApiPromise.hpp>
 #include <pep/weblib/WeblibStructs.hpp>
@@ -29,6 +32,7 @@
 #include <numeric>
 #include <stdexcept>
 #include <thread>
+#include <utility>
 
 #include <emscripten/emscripten.h>
 #include <emscripten/bind.h>
@@ -42,6 +46,7 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/subjects/rx-replaysubject.hpp>
+#include <rxcpp/subjects/rx-subject.hpp>
 
 using namespace pep;
 using namespace pep::weblib;
@@ -61,9 +66,9 @@ Timestamp FromJsTime(double millisecondsSinceEpoch) {
   return Timestamp{std::chrono::milliseconds{static_cast<std::chrono::milliseconds::rep>(millisecondsSinceEpoch)}};
 }
 
-UserGroupInfo ToUserGroupInfo(const UserGroup& group) {
+UserGroupInfo ToUserGroupInfo(UserGroup group) {
   return UserGroupInfo{
-      .name = group.name,
+      .name = std::move(group.name),
       .maxAuthValiditySeconds = group.maxAuthValidity.transform([](std::chrono::seconds validity) {
         return static_cast<double>(validity.count());
       }),
@@ -95,42 +100,50 @@ User ToUser(QRUser user) {
   };
 }
 
-ColumnGroupAccessModes ParseColumnGroupAccessModes(const std::vector<std::string>& modes, const std::string& columnGroup) {
-  ColumnGroupAccessModes result;
-  for (const auto& mode : modes) {
-    if (mode == "read") {
-      result.read = true;
-    }
-    else if (mode == "write") {
-      result.write = true;
-    }
-    else if (mode == "read-meta") {
-      result.readMeta = true;
-    }
-    else if (mode == "write-meta") {
-      result.writeMeta = true;
-    }
-    else {
-      throw std::runtime_error("Unsupported access mode '" + mode + "' encountered for column group '" + columnGroup + "'");
-    }
-  }
-  return result;
+ColumnGroup ToColumnGroup(AmaQRColumnGroup group) {
+  return ColumnGroup{
+      .name = std::move(group.name),
+      .columns = std::move(group.columns),
+  };
 }
 
-SubjectGroupAccessModes ParseSubjectGroupAccessModes(const std::vector<std::string>& modes, const std::string& subjectGroup) {
-  SubjectGroupAccessModes result;
-  for (const auto& mode : modes) {
-    if (mode == "access") {
-      result.access = true;
-    }
-    else if (mode == "enumerate") {
-      result.enumerate = true;
-    }
-    else {
-      throw std::runtime_error("Unsupported access mode '" + mode + "' encountered for subject group '" + subjectGroup + "'");
-    }
-  }
-  return result;
+ColumnGroupAccessRuleInfo ToColumnGroupAccessRuleInfo(AmaQRColumnGroupAccessRule rule) {
+  return ColumnGroupAccessRuleInfo{
+      .columnGroup = std::move(rule.columnGroup),
+      .userGroup = std::move(rule.accessGroup),
+      .mode = std::move(rule.mode),
+  };
+}
+
+SubjectGroupAccessRuleInfo ToSubjectGroupAccessRuleInfo(AmaQRParticipantGroupAccessRule rule) {
+  return SubjectGroupAccessRuleInfo{
+      .subjectGroup = std::move(rule.participantGroup),
+      .userGroup = std::move(rule.userGroup),
+      .mode = std::move(rule.mode),
+  };
+}
+
+ColumnGroupAccessModes ColumnGroupAccessModesFromEnum(const ColumnAccessModes modes){
+  return {
+      .read = HasFlags(modes, ColumnAccessModes::Read),
+      .readMeta = HasFlags(modes, ColumnAccessModes::ReadMeta),
+      .write = HasFlags(modes, ColumnAccessModes::Write),
+      .writeMeta = HasFlags(modes, ColumnAccessModes::WriteMeta)
+  };
+}
+
+ColumnAccessModes ColumnGroupAccessModesToEnum(const ColumnGroupAccessModes modes) {
+  return FlagsIf(ColumnAccessModes::Read, modes.read)
+      | FlagsIf(ColumnAccessModes::ReadMeta, modes.readMeta)
+      | FlagsIf(ColumnAccessModes::Write, modes.write)
+      | FlagsIf(ColumnAccessModes::WriteMeta, modes.writeMeta);
+}
+
+SubjectGroupAccessModes SubjectGroupAccessModesFromEnum(const SubjectAccessModes modes) {
+  return {
+      .access = HasFlags(modes, SubjectAccessModes::Access),
+      .enumerate = HasFlags(modes, SubjectAccessModes::Enumerate)
+  };
 }
 
 class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedConstructor<Weblib>, public boost::noncopyable {
@@ -140,6 +153,10 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
   std::shared_ptr<Client> client_;
 
   std::optional<rxcpp::observe_on_one_worker> asioWorker_, emscriptenMainWorker_;
+
+  bool shutdownStarted_ = false;
+  // Completes (on the event loop thread) when io_context has stopped running
+  rxcpp::subjects::subject<FakeVoid> ioContextStopped_;
 
   // Destruct these first to stop io_service
   std::jthread thread_;
@@ -158,7 +175,7 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
     // Start client
     client_ = Client::OpenClient(clientConfig_, std::move(io_context));
     // Run event loop in background thread. Calls from JS will still come from the main thread.
-    thread_ = std::jthread([io_context = client_->getIoContext()](std::stop_token stop) {
+    thread_ = std::jthread([io_context = client_->getIoContext(), stopped = ioContextStopped_.get_subscriber()](std::stop_token stop) {
       ThreadName::Set("Client");
       PEP_LOG(LogTag, Severity::Debug) << "starting io_context " << io_context << " on thread " << ThreadPrintable{};
       std::stop_callback onStop(std::move(stop), [io_context] {
@@ -167,6 +184,8 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
       });
       io_context->run();
       PEP_LOG(LogTag, Severity::Debug) << "io_context stopped";
+      // Do this last, so that the main thread can join us without (significant) blocking
+      stopped.on_completed();
     });
   }
 
@@ -216,24 +235,51 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
         });
   }
 
-  /// Run \p mutate on the io_context thread, with \p subject (polymorphic pseudonym or identifier)
-  /// resolved to a polymorphic pseudonym
+  /// Run \p mutate on the io_context thread, with \p subject parsed into a polymorphic pseudonym.
+  /// \param subject Participant identifier, polymorphic pseudonym or (brief) local pseudonym
   WeblibApiVoidPromise mutateAccessManagerForSubject(std::string subject,
       std::function<rxcpp::observable<FakeVoid>(const AccessManagerProxy&, const PolymorphicPseudonym&)> mutate) {
     co_await onIoThread()
         .flat_map([subject = std::move(subject), mutate = std::move(mutate)](const std::shared_ptr<Weblib>& self) {
-          return self->client_->parsePpsOrIdentities({subject})
-              .op(RxGetOne("PolymorphicPseudonym"))
-              .flat_map([self, mutate](const std::shared_ptr<std::vector<PolymorphicPseudonym>>& pps) {
-                if (pps->empty()) {
-                  throw std::runtime_error("No pseudonym found");
-                }
-                return mutate(*self->client_->getAccessManagerProxy(), pps->front());
+          return self->client_->parsePPorIdentity(subject)
+              .flat_map([self, mutate](const PolymorphicPseudonym& pp) {
+                return mutate(*self->client_->getAccessManagerProxy(), pp);
               });
         });
   }
 
 public:
+  /// \brief Close server connections and stop the event loop, without blocking the main thread.
+  /// \details Await this before calling the destructor, which would otherwise synchronously join the event loop thread.
+  /// That can deadlock when the event loop thread is waiting for the main thread.
+  WeblibApiVoidPromise shutdown() {
+    if (std::exchange(shutdownStarted_, true)) {
+      throw std::logic_error("Weblib was already shut down");
+    }
+    const auto keepAlive = shared_from_this();
+
+    std::exception_ptr clientShutdownError;
+    try {
+      co_await onIoThread()
+          .flat_map([](const std::shared_ptr<Weblib>& self) {
+            return self->client_->shutdown();
+          }).op(RxInstead(FakeVoid{}) /*make nonempty*/);
+    } catch (...) {
+      clientShutdownError = std::current_exception();
+    }
+    if (clientShutdownError) {
+      PEP_LOG(LogTag, Severity::Warning) << "Problem closing server connections, forcefully stopping: "
+          << GetExceptionMessage(clientShutdownError);
+    }
+
+    workGuard_.reset();
+    thread_.request_stop(); // Stops io_context
+    co_await ioContextStopped_.get_observable().op(RxInstead(FakeVoid{}) /*make nonempty*/);
+    // Thread has (almost) exited at this point
+    thread_.join();
+    PEP_LOG(LogTag, Severity::Debug) << "shut down";
+  }
+
   /// Register \p callback to be called when the connection status changes.
   /// \param callback <code>(connected: bool) => void</code>
   void onStatusChange(val callback) {
@@ -361,13 +407,17 @@ public:
       .getSerializedForm();
   }
 
-  /// Lists column groups the enrolled user has any access to, with the access modes,
-  /// like <code>pepcli query column-access</code>. Modes include implied ones, e.g. "read" implies "read-meta".
+  /// Lists column groups the enrolled user has access to, with the access modes,
+  /// like <code>pepcli query column-access</code>. By default all groups with any access, with implied modes,
+  /// e.g. "read" implies "read-meta".
   /// \returns \c Promise<AccessibleColumnGroup[]>
-  WeblibApiPromise listColumns() {
+  WeblibApiPromise listColumns(ListColumnsQuery query) {
     co_return co_await onIoThread()
-        .flat_map([](const std::shared_ptr<Weblib>& self) {
-          return self->client_->getAccessManagerProxy()->getAccessibleColumns(true);
+        .flat_map([
+          includeImplicitlyGranted = query.includeImplicitlyGranted.value_or(true),
+          requireModes = ColumnGroupAccessModesToEnum(query.requireModes)
+         ](const std::shared_ptr<Weblib>& self) {
+          return self->client_->getAccessManagerProxy()->getAccessibleColumns(includeImplicitlyGranted, requireModes);
         })
         .map([](const ColumnAccess& access) {
           return access.columnGroups
@@ -375,7 +425,7 @@ public:
               const auto& [name, columnGroup] = entry;
               return AccessibleColumnGroup{
                   .name = name,
-                  .modes = ParseColumnGroupAccessModes(columnGroup.modes, name),
+                  .modes = ColumnGroupAccessModesFromEnum(columnGroup.modes),
                   .columns = to<std::vector>(SafeIndexInto(columnGroup.columns.indices, access.columns)),
               };
             })
@@ -395,7 +445,7 @@ public:
               const auto& [name, modes] = entry;
               return SubjectGroup{
                   .name = name,
-                  .modes = ParseSubjectGroupAccessModes(modes, name),
+                  .modes = SubjectGroupAccessModesFromEnum(modes),
               };
             })
             | to<std::vector>();
@@ -417,10 +467,11 @@ public:
           return pps.flat_map([self, query](const std::shared_ptr<std::vector<PolymorphicPseudonym>>& pps) {
             return self->client_->requestTicket2(RequestTicket2Opts{
                 .participantGroups = std::move(query->subjectGroups).value_or(std::vector<std::string>{}),
-                .pps = std::move(*pps),
+                .accessSubjects = std::move(*pps),
+                .referenceSubjects = {},
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
                 .columns = std::move(query->columns).value_or(std::vector<std::string>{}),
-                .modes = {query->mode.value_or("read")},
+                .modes = pep::ParseColumnAccessMode(query->mode.value_or("read")),
                 .includeAccessGroupPseudonyms = true,
               });
           });
@@ -528,39 +579,21 @@ public:
   /// \returns \c Promise<StoreResult>
   WeblibApiPromise store(StoreQuery query) {
     // We're still on the main thread here: decide how the data will be produced
-    if (!query.blob.instanceof(val::global("Blob"))) {
-      throw std::invalid_argument("blob must be a Blob or File");
-    }
-    // A File also has name, derive fileExtension from it, like pepcli does from --input-path.
-    std::string fileExtension;
-    if (const val name = query.blob["name"]; name.isString()) {
-      fileExtension = std::filesystem::path(name.as<std::string>()).extension().string();
-    }
     messaging::MessageBatches batches =
-        BlobToMessageBatches(std::move(query.blob), messaging::DefaultPageSize, *asioWorker_);
+        ReadableStreamToMessageBatches(std::move(query.reader), messaging::DefaultPageSize, *asioWorker_);
 
     // Capture the members separately, so that the query (holding a val) does not cross to the io thread
     co_return co_await onIoThread()
         .flat_map([subject = std::move(query.subject), column = std::move(query.column),
-                   metadata = std::move(query.metadata), batches = std::move(batches),
-                   fileExtension = std::move(fileExtension)](const std::shared_ptr<Weblib>& self) {
-          return self->client_->parsePpsOrIdentities({subject})
-              .op(RxGetOne("PolymorphicPseudonym"))
-              .map([](std::shared_ptr<std::vector<PolymorphicPseudonym>> pps) {
-                if (pps->empty()) {
-                  throw std::runtime_error("No pseudonym found");
-                }
-                return std::make_shared<PolymorphicPseudonym>(pps->front());
+                   metadata = std::move(query.metadata), batches = std::move(batches)](const std::shared_ptr<Weblib>& self) {
+          return self->client_->parsePPorIdentity(subject)
+              .map([](PolymorphicPseudonym pp) {
+                return std::make_shared<PolymorphicPseudonym>(std::move(pp));
               })
-              .flat_map([self, column, metadata, batches, fileExtension](std::shared_ptr<PolymorphicPseudonym> pp) {
+              .flat_map([self, column, metadata, batches](std::shared_ptr<PolymorphicPseudonym> pp) {
                 std::map<std::string, MetadataXEntry> xMetadata;
                 for (const auto& [key, value] : metadata) {
                   xMetadata.emplace(key, MetadataXEntry::FromPlaintext(value, false, false));
-                }
-                // Placed after explicit fileExtension,
-                // so the derived extension fails to insert if an explicit one is present
-                if (IsValidFileExtension(fileExtension)) {
-                  xMetadata.emplace(MetadataXEntry::MakeFileExtension(fileExtension));
                 }
 
                 StoreData2Entry entry(pp, column, batches);
@@ -591,6 +624,7 @@ public:
                 | views::transform(ToUser)
                 | to<std::vector>(),
               .userGroups = response.userGroups
+                | views::as_rvalue
                 | views::transform(ToUserGroupInfo)
                 | to<std::vector>(),
           };
@@ -681,19 +715,17 @@ public:
   }
 
   /// List columns, column groups, subject groups and access rules, as of the current server time.
-  /// Empty filters match everything; non-empty filters match exact names.
   /// \returns \c Promise<AccessManagerState>
-  WeblibApiPromise queryAccessManager(std::string column, std::string columnGroup, std::string subjectGroup,
-                                      std::string userGroup) {
+  WeblibApiPromise queryAccessManager(AccessManagerFilter filter) {
     co_return co_await onIoThread()
         .flat_map([query = AmaQuery{
-                       .at = std::nullopt,
-                       .columnFilter = std::move(column),
-                       .columnGroupFilter = std::move(columnGroup),
-                       .participantGroupFilter = std::move(subjectGroup),
-                       .userGroupFilter = std::move(userGroup),
-                       .columnGroupModeFilter = {},
-                       .participantGroupModeFilter = {},
+                       .at = filter.pointInTime.transform(FromJsTime),
+                       .columnFilter = std::move(filter.column).value_or(""),
+                       .columnGroupFilter = std::move(filter.columnGroup).value_or(""),
+                       .participantGroupFilter = std::move(filter.subjectGroup).value_or(""),
+                       .userGroupFilter = std::move(filter.userGroup).value_or(""),
+                       .columnGroupModeFilter = std::move(filter.columnGroupMode).value_or(""),
+                       .participantGroupModeFilter = std::move(filter.subjectGroupMode).value_or(""),
                    }](const std::shared_ptr<Weblib>& self) {
           return self->client_->getAccessManagerProxy()->amaQuery(query);
         })
@@ -703,33 +735,19 @@ public:
                 | views::transform(&AmaQRColumn::name)
                 | to<std::vector>(),
               .columnGroups = response.columnGroups
-                | views::transform([](AmaQRColumnGroup& group) {
-                  return ColumnGroup{
-                      .name = std::move(group.name),
-                      .columns = std::move(group.columns),
-                  };
-                })
+                | views::as_rvalue
+                | views::transform(ToColumnGroup)
                 | to<std::vector>(),
               .columnGroupAccessRules = response.columnGroupAccessRules
-                | views::transform([](AmaQRColumnGroupAccessRule& rule) {
-                  return ColumnGroupAccessRuleInfo{
-                      .columnGroup = std::move(rule.columnGroup),
-                      .userGroup = std::move(rule.accessGroup),
-                      .mode = std::move(rule.mode),
-                  };
-                })
+                | views::as_rvalue
+                | views::transform(ToColumnGroupAccessRuleInfo)
                 | to<std::vector>(),
               .subjectGroups = response.participantGroups
                 | views::transform(&AmaQRParticipantGroup::name)
                 | to<std::vector>(),
               .subjectGroupAccessRules = response.participantGroupAccessRules
-                | views::transform([](AmaQRParticipantGroupAccessRule& rule) {
-                  return SubjectGroupAccessRuleInfo{
-                      .subjectGroup = std::move(rule.participantGroup),
-                      .userGroup = std::move(rule.userGroup),
-                      .mode = std::move(rule.mode),
-                  };
-                })
+                | views::as_rvalue
+                | views::transform(ToSubjectGroupAccessRuleInfo)
                 | to<std::vector>(),
           };
         });
@@ -787,7 +805,7 @@ public:
     });
   }
 
-  /// \param subject Polymorphic pseudonym or identifier
+  /// \param subject Participant identifier, polymorphic pseudonym or (brief) local pseudonym
   WeblibApiVoidPromise addSubjectToGroup(std::string subjectGroup, std::string subject) {
     return mutateAccessManagerForSubject(std::move(subject), [subjectGroup = std::move(subjectGroup)](
         const AccessManagerProxy& am, const PolymorphicPseudonym& pp) {
@@ -795,7 +813,7 @@ public:
     });
   }
 
-  /// \param subject Polymorphic pseudonym or identifier
+  /// \param subject Participant identifier, polymorphic pseudonym or (brief) local pseudonym
   WeblibApiVoidPromise removeSubjectFromGroup(std::string subjectGroup, std::string subject) {
     return mutateAccessManagerForSubject(std::move(subject), [subjectGroup = std::move(subjectGroup)](
         const AccessManagerProxy& am, const PolymorphicPseudonym& pp) {
@@ -841,6 +859,7 @@ void exitRuntime() { ::emscripten_force_exit(0); }
 EMSCRIPTEN_BINDINGS(weblib) {
   class_<Weblib>("Weblib")
       .smart_ptr_constructor("Weblib", &Weblib::Create<>)
+      .function("shutdown", &Weblib::shutdown)
       .function("onStatusChange", &Weblib::onStatusChange)
       .function("getEnrolledUser", &Weblib::getEnrolledUser)
       .function("unenroll", &Weblib::unenroll)

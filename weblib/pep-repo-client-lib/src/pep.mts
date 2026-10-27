@@ -68,34 +68,32 @@ export interface InitConfig {
   authLandingPage?: URL | null;
 }
 
-export interface EnrolledUser {
-  user: string;
-  userGroup: string;
-}
+/** Replace EmbindString (or union involving EmbindString) members with plain string. */
+type UseJsStrings<T> = {
+  [K in keyof T]: NonNullable<T[K]> extends rawTypes.EmbindString
+      ? string | Exclude<T[K], NonNullable<T[K]>>
+      : T[K];
+};
 
-/** `read` implies `read-meta`, and `write-meta` implies `write` */
-export type ColumnGroupAccessMode = 'read' | 'write' | 'read-meta' | 'write-meta';
+export type EnrolledUser = UseJsStrings<rawTypes.EnrolledUser>;
 
-/** `enumerate` is needed to list cells, `access` to retrieve them */
-export type SubjectGroupAccessMode = 'access' | 'enumerate';
-
-/** `read` implies `readMeta`, and `writeMeta` implies `write`. Implied modes are always set. */
-export interface ColumnGroupAccessModes {
-  read: boolean;
-  readMeta: boolean;
-  write: boolean;
-  writeMeta: boolean;
-}
+/**
+ * `read` implies `readMeta`, and `writeMeta` implies `write`.
+ * Implied modes are set, unless {@link ListColumnsQuery.includeImplicitlyGranted} is false.
+ */
+export type ColumnGroupAccessModes = UseJsStrings<rawTypes.ColumnGroupAccessModes>;
 
 /** `enumerate` is needed to list cells, `access` to retrieve them */
-export interface SubjectGroupAccessModes {
-  access: boolean;
-  enumerate: boolean;
+export type SubjectGroupAccessModes = UseJsStrings<rawTypes.SubjectGroupAccessModes>;
+
+export interface ListColumnsQuery {
+  /** Also report modes implied by others: `read-meta` by `read`, `write` by `write-meta`. Default true */
+  includeImplicitlyGranted?: boolean | undefined;
+  /** Only return groups on which the user has all of the set modes, e.g. `{read: true}`. Default none: all groups */
+  requireModes?: Partial<ColumnGroupAccessModes> | undefined;
 }
 
-export interface ColumnGroup {
-  name: string;
-  modes: ColumnGroupAccessModes;
+export interface ColumnGroup extends UseJsStrings<rawTypes.AccessibleColumnGroup> {
   columns: string[];
 }
 
@@ -119,26 +117,23 @@ export function getColumnModes(columnGroups: ColumnGroup[]): AccessibleColumn[] 
       } : {...group.modes});
     }
   }
-  /** TODO: perhaps we'd probably want to use localeCompare() at some point, or sort in cpp */
   return [...columnModes]
       .map(([name, modes]) => ({name, modes}))
-      .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+      .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export interface SubjectGroup {
-  name: string;
-  modes: SubjectGroupAccessModes;
-}
+export type SubjectGroup = UseJsStrings<rawTypes.SubjectGroup>;
 
-export interface ParticipantPersonalia extends Omit<rawTypes.ParticipantPersonalia, 'dateOfBirth'> {
+export interface ParticipantPersonalia extends UseJsStrings<Omit<rawTypes.ParticipantPersonalia, 'dateOfBirth'>> {
   /** Time part is ignored */
   dateOfBirth: Date;
 }
 
 export interface StoreQuery {
+  /** A participant identifier, polymorphic pseudonym or (brief) local pseudonym */
   subject: string;
   column: string;
-  data: string | Blob;
+  data: string | Blob | ReadableStream<Uint8Array>;
   /**
    * Metadata associated with the data. Either strings or bytes.
    * When data is a File, fileExtension is derived from the name unless specified explicitly.
@@ -146,35 +141,27 @@ export interface StoreQuery {
   metadata?: Map<string, string | Uint8Array | ArrayBuffer> | undefined;
 }
 
-interface StoreQueryInternal extends Omit<rawTypes.StoreQuery, 'blob' | 'metadata'> {
-  blob: Blob;
-  /** 
+interface StoreQueryInternal extends UseJsStrings<rawTypes.StoreQuery> {
+  reader: ReadableStreamDefaultReader<Uint8Array>;
+  /**
   * The metadata, normalized to Uint8Array.
   * Encoded here rather than in C++, so the bytes stored do not depend on embind's string handling
   */
   metadata: Map<string, Uint8Array>;
 }
 
-export interface StoreResult {
-  id: string;
-}
+export type StoreResult = UseJsStrings<rawTypes.StoreResult>;
 
-export interface UserGroupMembership {
-  userGroup: string;
-  /** When the membership expires, or `undefined` if it does not */
+export interface UserGroupMembership extends UseJsStrings<Omit<rawTypes.UserGroupMembership, 'expiration'>> {
   expiration: Date | undefined;
 }
 
-export interface User {
-  displayId: string | undefined;
-  primaryId: string | undefined;
+export interface User extends UseJsStrings<rawTypes.User> {
   otherUids: string[];
   groups: UserGroupMembership[];
 }
 
-export interface UserGroup {
-  name: string;
-  /** Maximum validity of authentication (OAuth tokens) for this group, in seconds */
+export interface UserGroup extends UseJsStrings<Omit<rawTypes.UserGroupInfo, 'maxAuthValiditySeconds'>> {
   maxAuthValiditySeconds?: number | undefined;
 }
 
@@ -193,31 +180,33 @@ export interface UserQueryFilter {
 export interface AccessManagerState {
   columns: string[];
   columnGroups: {name: string; columns: string[]}[];
-  columnGroupAccessRules: {columnGroup: string; userGroup: string; mode: ColumnGroupAccessMode}[];
+  columnGroupAccessRules: {columnGroup: string; userGroup: string; mode: 'read' | 'write' | 'read-meta' | 'write-meta'}[];
   subjectGroups: string[];
-  subjectGroupAccessRules: {subjectGroup: string; userGroup: string; mode: SubjectGroupAccessMode}[];
+  subjectGroupAccessRules: {subjectGroup: string; userGroup: string; mode: 'access' | 'enumerate'}[];
 }
 
-/** Each filter matches an exact name. Omitted filters match everything. */
+/** The name and mode filters match exactly. Omitted filters match everything. */
 export interface AccessManagerFilter {
+  /** Default: now, in server time */
+  pointInTime?: Date | undefined;
   column?: string | undefined;
   columnGroup?: string | undefined;
   subjectGroup?: string | undefined;
+  /** Only rules for this user group, and only the groups that have such a rule */
   userGroup?: string | undefined;
+  /** Only column group rules with this mode, and only the column groups that have such a rule */
+  columnGroupMode?: 'read' | 'write' | 'read-meta' | 'write-meta' | undefined;
+  /** Only subject group rules with this mode, and only the subject groups that have such a rule */
+  subjectGroupMode?: 'access' | 'enumerate' | undefined;
 }
 
-interface RawUserGroupMembership {
-  userGroup: string;
-  expiration: number | undefined;
-}
-
-interface RawUser extends Omit<User, 'groups'> {
-  groups: RawUserGroupMembership[];
+interface RawUser extends UseJsStrings<rawTypes.User> {
+  groups: UseJsStrings<rawTypes.UserGroupMembership>[];
 }
 
 export interface ListQuery {
   subjectGroups?: string[] | undefined;
-  /** Loose subjects to request (any format that would be recognized by pepcli) */
+  /** Loose subjects to request: each a participant identifier, polymorphic pseudonym or (brief) local pseudonym */
   subjects?: string[] | undefined;
   columnGroups?: string[] | undefined;
   columns?: string[] | undefined;
@@ -269,20 +258,18 @@ function toBytes(value: string | Uint8Array | ArrayBuffer): Uint8Array {
   return value instanceof ArrayBuffer ? new Uint8Array(value) : value;
 }
 
+function fileExtensionOf(fileName: string): string | undefined {
+  const dot = fileName.lastIndexOf('.');
+  const extension = dot > 0 ? fileName.slice(dot) : '';
+  return /^(\.[A-Za-z0-9]+)+$/.test(extension) ? extension : undefined;
+}
+
 function toDdMmYyyy(date: Date) {
   return `${date.getFullYear().toString().padStart(4, '0')}${date.getMonth().toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
 }
 
 function fromJsTime(millisecondsSinceEpoch: number | undefined) {
   return millisecondsSinceEpoch === undefined ? undefined : new Date(millisecondsSinceEpoch);
-}
-
-function toRawUserGroup(group: UserGroup): rawTypes.UserGroupInfo {
-  // Always pass every field, see https://github.com/emscripten-core/emscripten/issues/25978
-  return {
-    name: group.name,
-    maxAuthValiditySeconds: group.maxAuthValiditySeconds,
-  };
 }
 
 function throwPotentialWasmException(mod: PepModule, ex: WasmException | Error | unknown): never {
@@ -411,27 +398,36 @@ export default class Pep {
   }
 
   /** Stop event loop and delete instance */
-  delete() {
+  async delete(): Promise<void> {
     const client = this.#client;
+    if (!client) {
+      return;
+    }
     this.#client = null!; // Prevent usage
-    this.#wrapExec(() => {
-      client.delete();
+    await this.#wrapExec(async () => {
       try {
-        this.#mod.exit();
-      } catch (ex) {
-        if (ex instanceof this.#mod.ExitStatus && ex.status === 0) {
-          console.log(ex.message);
-        } else {
-          throw ex;
-        }
+        // Stop event loop asynchronously first: synchronously stopping it in `client.delete()` may deadlock.
+        // Consume WASM exception here: before runtime shutdown.
+        await this.runHandleWasmException(() => client.shutdown());
       } finally {
-        this.#mod = null!; // Prevent usage
+        client.delete();
+        try {
+          this.#mod.exit();
+        } catch (ex) {
+          if (ex instanceof this.#mod.ExitStatus && ex.status === 0) {
+            console.log(ex.message);
+          } else {
+            throw ex;
+          }
+        } finally {
+          this.#mod = null!; // Prevent usage
+        }
       }
     });
   }
 
-  // Symbol.dispose may be null when unsupported
-  [Symbol.dispose]() { this.delete(); }
+  // Symbol.asyncDispose may be null when unsupported
+  [Symbol.asyncDispose]() { return this.delete(); }
 
   /** Register handler to observe when methods are executing */
   onBusyChange(callback: ((busy: boolean) => void) | null) {
@@ -503,8 +499,14 @@ export default class Pep {
    * List column groups the user has any access to, with the access modes.
    * Use {@link getColumnModes} to get the modes per column.
    */
-  listColumns(): Promise<ColumnGroup[]> {
-    return this.#wrapExec(() => this.#client.listColumns());
+  listColumns(query: ListColumnsQuery = {}): Promise<ColumnGroup[]> {
+    //TODO(workaround) Cast to Required<ListColumnsQuery> because of https://github.com/emscripten-core/emscripten/issues/25978,
+    // remove it with EMSDK 5.0.0+
+    return this.#wrapExec(() => this.#client.listColumns({
+      ...query as Required<ListColumnsQuery>,
+      // Embind requires every flag
+      requireModes: {read: false, readMeta: false, write: false, writeMeta: false, ...query.requireModes},
+    }));
   }
 
   /** List subject groups the user has any access to, with the access modes */
@@ -520,19 +522,34 @@ export default class Pep {
     }, isTestParticipant));
   }
 
-  store(query: StoreQuery): Promise<StoreResult> {
-    const common = {
-      subject: query.subject,
-      column: query.column,
-      metadata: new Map([...query.metadata ?? []].map(([key, value]) => [key, toBytes(value)]))
-    };
+  async store(query: StoreQuery): Promise<StoreResult> {
+    const metadata = new Map([...query.metadata ?? []].map(([key, value]) => [key, toBytes(value)]));
+    // A File also has name, derive fileExtension from it, like pepcli does from --input-path.
+    if (query.data instanceof File && !metadata.has('fileExtension')) {
+      const fileExtension = fileExtensionOf(query.data.name);
+      if (fileExtension) {
+        metadata.set('fileExtension', toBytes(fileExtension));
+      }
+    }
     // A string is wrapped rather than passed inline, so that it is paged like any other data
     // instead of having to fit in a single message
+    const stream = query.data instanceof ReadableStream ? query.data : new Blob([query.data]).stream();
+    const reader = stream.getReader();
+
     const internalQuery: StoreQueryInternal = {
-      ...common,
-      blob: query.data instanceof Blob ? query.data : new Blob([query.data]),
+      subject: query.subject,
+      column: query.column,
+      reader,
+      metadata,
     };
-    return this.#wrapExec(() => this.#client.store(internalQuery));
+    try {
+      return await this.#wrapExec(() => this.#client.store(internalQuery));
+    } catch (ex) {
+      await reader.cancel().catch(() => {});
+      throw ex;
+    } finally {
+      reader.releaseLock();
+    }
   }
 
   /**
@@ -559,7 +576,9 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.retrieve(entries));
   }
 
-  /** List users and user groups. Requires the Access Administrator user group. */
+  // User management: changes require the Access Administrator user group,
+  // listing also allows the Repository Manager user group
+
   async listUsers(filter: UserQueryFilter = {}): Promise<UserQueryResult> {
     const result = await this.#wrapExec(() =>
         this.#client.listUsers(filter.groupFilter ?? '', filter.userFilter ?? ''));
@@ -575,169 +594,138 @@ export default class Pep {
     };
   }
 
-  /** Requires the Access Administrator user group */
   createUser(uid: string): Promise<void> {
     return this.#wrapExec(() => this.#client.createUser(uid));
   }
 
-  /** Requires the Access Administrator user group */
   removeUser(uid: string): Promise<void> {
     return this.#wrapExec(() => this.#client.removeUser(uid));
   }
 
-  /** Add an identifier to the user identified by `existingUid`. Requires the Access Administrator user group. */
-  addUserIdentifier(existingUid: string, newUid: string,
-                    {isPrimaryId = false, isDisplayId = false}: {isPrimaryId?: boolean, isDisplayId?: boolean} = {}): Promise<void> {
+  addUserIdentifier(existingUid: string, newUid: string, {isPrimaryId = false, isDisplayId = false} = {}): Promise<void> {
     return this.#wrapExec(() => this.#client.addUserIdentifier(existingUid, newUid, isPrimaryId, isDisplayId));
   }
 
-  /** Requires the Access Administrator user group */
   removeUserIdentifier(uid: string): Promise<void> {
     return this.#wrapExec(() => this.#client.removeUserIdentifier(uid));
   }
 
-  /** Make `uid` the primary identifier of its user. Requires the Access Administrator user group. */
   setUserPrimaryId(uid: string): Promise<void> {
     return this.#wrapExec(() => this.#client.setUserPrimaryId(uid));
   }
 
-  /** Requires the Access Administrator user group */
   unsetUserPrimaryId(uid: string): Promise<void> {
     return this.#wrapExec(() => this.#client.unsetUserPrimaryId(uid));
   }
 
-  /** Make `uid` the display identifier of its user. Requires the Access Administrator user group. */
   setUserDisplayId(uid: string): Promise<void> {
     return this.#wrapExec(() => this.#client.setUserDisplayId(uid));
   }
 
-  /** Requires the Access Administrator user group */
   createUserGroup(group: UserGroup): Promise<void> {
-    return this.#wrapExec(() => this.#client.createUserGroup(toRawUserGroup(group)));
+    //TODO(workaround) Cast to Required<UserGroup> because of https://github.com/emscripten-core/emscripten/issues/25978,
+    // remove it with EMSDK 5.0.0+
+    return this.#wrapExec(() => this.#client.createUserGroup(group as Required<UserGroup>));
   }
 
-  /** Requires the Access Administrator user group */
+  /**
+   * Replace the properties of an existing user group, like `pepcli user group modify`:
+   * omitting `maxAuthValiditySeconds` removes the group's maximum authentication validity.
+   */
   modifyUserGroup(group: UserGroup): Promise<void> {
-    return this.#wrapExec(() => this.#client.modifyUserGroup(toRawUserGroup(group)));
+    //TODO(workaround) Cast to Required<UserGroup> because of https://github.com/emscripten-core/emscripten/issues/25978,
+    // remove it with EMSDK 5.0.0+
+    return this.#wrapExec(() => this.#client.modifyUserGroup(group as Required<UserGroup>));
   }
 
-  /** Requires the Access Administrator user group */
   removeUserGroup(name: string): Promise<void> {
     return this.#wrapExec(() => this.#client.removeUserGroup(name));
   }
 
-  /**
-   * Requires the Access Administrator user group
-   * @param expiration When the membership expires, or `undefined` if it should not
-   */
-  addUserToGroup(uid: string, group: string, expiration?: Date): Promise<void> {
+  addUserToGroup(uid: string, group: string, expiration?: Date | null): Promise<void> {
     return this.#wrapExec(() => this.#client.addUserToGroup(uid, group, expiration?.getTime()));
   }
 
-  /**
-   * Requires the Access Administrator user group
-   * @param blockTokens Also block existing OAuth tokens of the user for this group (default, like pepcli)
-   */
+  /** @param blockTokens Also block the user's existing OAuth tokens for this group */
   removeUserFromGroup(uid: string, group: string, blockTokens: boolean = true): Promise<void> {
     return this.#wrapExec(() => this.#client.removeUserFromGroup(uid, group, blockTokens));
   }
 
-  /**
-   * Requires the Access Administrator user group
-   * @param expiration When the membership expires, or `undefined` if it should not
-   */
-  updateUserGroupExpiration(uid: string, group: string, expiration?: Date): Promise<void> {
+  updateUserGroupExpiration(uid: string, group: string, expiration: Date | null | undefined): Promise<void> {
     return this.#wrapExec(() => this.#client.updateUserGroupExpiration(uid, group, expiration?.getTime()));
   }
 
-  /**
-   * List columns, column groups, subject groups and access rules.
-   * Requires the Access Administrator, Data Administrator or Repository Manager user group.
-   */
+  // Data administration: changes require the Data Administrator user group,
+  // querying also allows the Access Administrator and Repository Manager user groups
+
   queryAccessManager(filter: AccessManagerFilter = {}): Promise<AccessManagerState> {
-    return this.#wrapExec(() => this.#client.queryAccessManager(
-        filter.column ?? '', filter.columnGroup ?? '', filter.subjectGroup ?? '', filter.userGroup ?? ''));
+    //TODO(workaround) Cast to Required<AccessManagerFilter> because of https://github.com/emscripten-core/emscripten/issues/25978,
+    // remove it with EMSDK 5.0.0+
+    return this.#wrapExec(() => this.#client.queryAccessManager({
+      ...filter as Required<AccessManagerFilter>,
+      pointInTime: filter.pointInTime?.getTime(),
+    }));
   }
 
-  /** Requires the Data Administrator user group */
   createColumn(name: string): Promise<void> {
     return this.#wrapExec(() => this.#client.createColumn(name));
   }
 
-  /** Requires the Data Administrator user group */
   removeColumn(name: string): Promise<void> {
     return this.#wrapExec(() => this.#client.removeColumn(name));
   }
 
-  /** Requires the Data Administrator user group */
   createColumnGroup(name: string): Promise<void> {
     return this.#wrapExec(() => this.#client.createColumnGroup(name));
   }
 
-  /**
-   * Requires the Data Administrator user group
-   * @param force Also remove the group's column memberships and access rules. Without it, removal fails if there are any.
-   */
+  /** @param force Also remove the group's column memberships and access rules. Without it, removal fails if there are any. */
   removeColumnGroup(name: string, force: boolean = false): Promise<void> {
     return this.#wrapExec(() => this.#client.removeColumnGroup(name, force));
   }
 
-  /** Requires the Data Administrator user group */
   addColumnToGroup(column: string, columnGroup: string): Promise<void> {
     return this.#wrapExec(() => this.#client.addColumnToGroup(column, columnGroup));
   }
 
-  /** Requires the Data Administrator user group */
   removeColumnFromGroup(column: string, columnGroup: string): Promise<void> {
     return this.#wrapExec(() => this.#client.removeColumnFromGroup(column, columnGroup));
   }
 
-  /** Requires the Data Administrator user group */
   createSubjectGroup(name: string): Promise<void> {
     return this.#wrapExec(() => this.#client.createSubjectGroup(name));
   }
 
-  /**
-   * Requires the Data Administrator user group
-   * @param force Also remove the group's subject memberships and access rules. Without it, removal fails if there are any.
-   */
+  /** @param force Also remove the group's subject memberships and access rules. Without it, removal fails if there are any. */
   removeSubjectGroup(name: string, force: boolean = false): Promise<void> {
     return this.#wrapExec(() => this.#client.removeSubjectGroup(name, force));
   }
 
-  /**
-   * Requires the Data Administrator user group
-   * @param subject A polymorphic pseudonym or identifier, like `ListQuery.subjects`
-   */
+  /** @param subject A participant identifier, polymorphic pseudonym or (brief) local pseudonym */
   addSubjectToGroup(subjectGroup: string, subject: string): Promise<void> {
     return this.#wrapExec(() => this.#client.addSubjectToGroup(subjectGroup, subject));
   }
 
-  /**
-   * Requires the Data Administrator user group
-   * @param subject A polymorphic pseudonym or identifier, like `ListQuery.subjects`
-   */
+  /** @param subject A participant identifier, polymorphic pseudonym or (brief) local pseudonym */
   removeSubjectFromGroup(subjectGroup: string, subject: string): Promise<void> {
     return this.#wrapExec(() => this.#client.removeSubjectFromGroup(subjectGroup, subject));
   }
 
-  /** Requires the Access Administrator user group */
-  createColumnGroupAccessRule(columnGroup: string, userGroup: string, mode: ColumnGroupAccessMode): Promise<void> {
+  // Access rules: require the Access Administrator user group
+
+  createColumnGroupAccessRule(columnGroup: string, userGroup: string, mode: 'read' | 'write' | 'read-meta' | 'write-meta'): Promise<void> {
     return this.#wrapExec(() => this.#client.createColumnGroupAccessRule(columnGroup, userGroup, mode));
   }
 
-  /** Requires the Access Administrator user group */
-  removeColumnGroupAccessRule(columnGroup: string, userGroup: string, mode: ColumnGroupAccessMode): Promise<void> {
+  removeColumnGroupAccessRule(columnGroup: string, userGroup: string, mode: 'read' | 'write' | 'read-meta' | 'write-meta'): Promise<void> {
     return this.#wrapExec(() => this.#client.removeColumnGroupAccessRule(columnGroup, userGroup, mode));
   }
 
-  /** Requires the Access Administrator user group */
-  createSubjectGroupAccessRule(subjectGroup: string, userGroup: string, mode: SubjectGroupAccessMode): Promise<void> {
+  createSubjectGroupAccessRule(subjectGroup: string, userGroup: string, mode: 'access' | 'enumerate'): Promise<void> {
     return this.#wrapExec(() => this.#client.createSubjectGroupAccessRule(subjectGroup, userGroup, mode));
   }
 
-  /** Requires the Access Administrator user group */
-  removeSubjectGroupAccessRule(subjectGroup: string, userGroup: string, mode: SubjectGroupAccessMode): Promise<void> {
+  removeSubjectGroupAccessRule(subjectGroup: string, userGroup: string, mode: 'access' | 'enumerate'): Promise<void> {
     return this.#wrapExec(() => this.#client.removeSubjectGroupAccessRule(subjectGroup, userGroup, mode));
   }
 

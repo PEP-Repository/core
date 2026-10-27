@@ -23,13 +23,17 @@ std::vector<std::string> IndexedTicket2::getColumns() const {
   return openTicketWithoutCheckingSignature()->columns;
 }
 
-std::vector<std::string> IndexedTicket2::getModes() const {
+ColumnAccessModes IndexedTicket2::getModes() const {
   return openTicketWithoutCheckingSignature()->modes;
 }
 
 
 std::vector<PolymorphicPseudonym> IndexedTicket2::getAccessSubjects() const {
   return GetPolymorphicPseudonyms(openTicketWithoutCheckingSignature()->accessSubjects);
+}
+
+std::vector<PolymorphicPseudonym> IndexedTicket2::getReferenceSubjects() const {
+  return GetPolymorphicPseudonyms(openTicketWithoutCheckingSignature()->referenceSubjects);
 }
 
 std::shared_ptr<Ticket2> IndexedTicket2::openTicketWithoutCheckingSignature() const {

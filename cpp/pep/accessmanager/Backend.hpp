@@ -1,8 +1,10 @@
 #pragma once
 
 #include <pep/accessmanager/UserMessages.hpp>
-
 #include <pep/accessmanager/AccessManager.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
 
 namespace pep {
 
@@ -10,14 +12,9 @@ class AccessManager::Backend {
 public:
   class Storage; // Public to allow unit testing
 
-  struct Pp {
-    PolymorphicPseudonym pp;
-    bool isClientProvided{}; // have we seen this pp before?
-  };
-
   Backend() = delete; // AccessManager::Backend needs a properly configured storage
   Backend(std::shared_ptr<AccessManager::Backend::Storage> storage) : storage_(storage) {}
-  Backend(const std::filesystem::path& path, std::shared_ptr<GlobalConfiguration> globalConf);
+  Backend(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf);
 
   void setAccessManager(AccessManager* accessManager) { accessManager_ = accessManager; }
 
@@ -25,7 +22,7 @@ public:
 
   void addParticipantToGroup(const LocalPseudonym& localPseudonym, const std::string& group);
   void removeParticipantFromGroup(const LocalPseudonym& localPseudonym, const std::string& group);
-  void checkParticipantAccess(const std::string& userGroup, const LocalPseudonym& localPseudonym, const std::vector<std::string>& modes, Timestamp at);
+  void checkParticipantAccess(const std::string& userGroup, const LocalPseudonym& localPseudonym, SubjectAccessModes modes, Timestamp at);
   bool hasLocalPseudonym(const LocalPseudonym& localPseudonym);
   void storeLocalPseudonymAndPP(const LocalPseudonym& localPseudonym, const PolymorphicPseudonym& polymorphicPseudonym);
 
@@ -35,12 +32,12 @@ public:
 
   /// \brief Check whether or not the userGroup at the timestamp is granted the access modes for the participantGroups.
   /// \throws Error when not all access modes are granted.
-  void checkParticipantGroupAccess(std::span<const std::string> participantGroups, const std::string& userGroup, std::vector<std::string>& modes, const Timestamp& timestamp);
+  void checkParticipantGroupAccess(std::span<const std::string> participantGroups, const std::string& userGroup, SubjectAccessModes modes, const Timestamp& timestamp);
 
   /// \brief Fill the pre_PPs vector with polymorph pseudonyms found in the participantGroup. For each participantGroup, add an entry to the participantGroupMap containing all indexes
   ///        of the pps that are in the participantGroup.
   /// \param pps Both an in and out parameter. Vector containing the loose requested polymorph pseudonyms. This vector is appended with the pps found in the requested participantGroups.
-  std::unordered_map<std::string, pep::IndexList> fillParticipantGroupMap(std::span<const std::string> participantGroups, std::vector<Pp>& pps);
+  std::unordered_map<std::string, pep::IndexList> fillParticipantGroupMap(std::span<const std::string> participantGroups, std::vector<PolymorphicPseudonym>& pps);
 
   /// \brief For each column in columns, look up the associated columngroups. Then check whether or not the userGroup has the required access to ANY of those columnGroups. If not, throw an error.
   /// For each columnGroup in columnGroups, assert whether or not the userGroup has the required access modes. If so, for each columnGroup, look up all columns that are in it and add them
@@ -48,7 +45,7 @@ public:
   ///  \param at timestamp of moment in time for when to assert access and columnGroup membership.
   ///  \param columns Both an in and out parameter. Vector containing the loose requested columns. This vector is appended with the columns found in the requested columnGroups.
   ///  \returns Map of IndexList (indexes of columns in columnGroup) by string (name of columnGroup).
-  std::unordered_map<std::string, IndexList> unfoldColumnGroupsAndCheckAccess(const std::string& userGroup, const std::vector<std::string>& columnGroups, const std::vector<std::string>& modes, Timestamp at,
+  std::unordered_map<std::string, IndexList> unfoldColumnGroupsAndCheckAccess(const std::string& userGroup, const std::vector<std::string>& columnGroups, ColumnAccessModes modes, Timestamp at,
                                          std::vector<std::string>& columns);
 
   /// \brief Check the basic assumptions of a EncryptionKeyRequest. The accompanying ticket has to have the required access.
@@ -86,8 +83,7 @@ public:
 
   std::filesystem::path getStoragePath();
 
-  std::vector<std::string> getChecksumChainNames();
-  void computeChecksum(const std::string& chain, std::optional<uint64_t> maxCheckpoint, uint64_t& checksum, uint64_t& checkpoint);
+  const ChecksumChains& checksumChains() const noexcept;
 
   void performMutationsForRequest(const AmaMutationRequest& request, const std::string& userGroup);
   rxcpp::observable<UserMutationResponse> performUserMutationsForRequest(

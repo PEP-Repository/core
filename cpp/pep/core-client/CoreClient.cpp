@@ -39,23 +39,6 @@ namespace {
 
 const std::string LogTag ("CoreClient");
 
-bool ModesInclude(const std::vector<std::string>& required, std::vector<std::string> provided) {
-  auto begin = provided.cbegin(), end = provided.cend();
-  // If a "read" privilege is held, ensure that the corresponding (implicitly included) "read-meta" privilege is in the array as well
-  if (find(begin, end, "read") != end && find(begin, end, "read-meta") == end) {
-    provided.push_back("read-meta");
-
-    // Ensure that iterators are valid after vector update
-    begin = provided.cbegin();
-    end = provided.cend();
-  }
-  // If a "write-meta" privilege is held, ensure that the corresponding (implicitly included) "write" privilege is in the array as well
-  if (find(begin, end, "write-meta") != end && find(begin, end, "write") == end) {
-    provided.push_back("write");
-  }
-  return IsSubset(required, provided);
-}
-
 }
 
 CoreClient::CoreClient(const Builder& builder) :
@@ -366,8 +349,7 @@ rxcpp::observable<std::shared_ptr<std::vector<std::optional<PolymorphicPseudonym
       .flat_map([this, allSps, columns](const ParticipantGroupAccess& access) {
       pep::EnumerateAndRetrieveData2Opts opts;
       for (const auto& [pg, modes] : access.participantGroups) {
-        if (contains(modes, "access")
-          && contains(modes, "enumerate")) {
+        if (HasFlags(modes, SubjectAccessModes::Access | SubjectAccessModes::Enumerate)) {
           opts.groups.push_back(pg);
         }
       }
@@ -408,11 +390,10 @@ rxcpp::observable<LocalPseudonyms> CoreClient::getLocalizedPseudonyms()
 {
   return this->getAccessManagerProxy()->getAccessibleParticipantGroups(true).flat_map([this](ParticipantGroupAccess participantGroupAccess) {
     RequestTicket2Opts tOpts;
-    tOpts.modes = { "read" };
+    tOpts.modes = ColumnAccessModes::Read;
     tOpts.includeAccessGroupPseudonyms = true;
     for (auto& [participantGroup, modes] : participantGroupAccess.participantGroups) {
-      if (contains(modes, "access")
-          && contains(modes, "enumerate")) {
+      if (HasFlags(modes, SubjectAccessModes::Access | SubjectAccessModes::Enumerate)) {
         tOpts.participantGroups.push_back(participantGroup);
       }
     }
@@ -427,24 +408,28 @@ rxcpp::observable<IndexedTicket2> CoreClient::requestTicket2(
     const RequestTicket2Opts &opts) {
   PEP_LOG(LogTag, Severity::Debug) << "requestTicket";
 
-  if (opts.ticket != nullptr && ModesInclude(opts.modes, opts.ticket->getModes())
+  if (opts.ticket != nullptr && ImpliesModes(opts.ticket->getModes(), opts.modes)
       && IsSubset(opts.participantGroups, opts.ticket->getParticipantGroups())
       && IsSubset(opts.columnGroups, opts.ticket->getColumnGroups())
-      && IsSubset(opts.pps, opts.ticket->getAccessSubjects())
+      && IsSubset(opts.accessSubjects, opts.ticket->getAccessSubjects())
+      && IsSubset(opts.referenceSubjects, opts.ticket->getReferenceSubjects())
       && IsSubset(opts.columns, opts.ticket->getColumns())) {
     return rxcpp::observable<>::just(*opts.ticket);
   }
   if (opts.forceTicket) {
     return rxcpp::observable<>::error<IndexedTicket2>(std::runtime_error("Query out of scope of provided Ticket"));
   }
-  assert(ContainsUniqueValues(opts.pps));
-  return getAccessManagerProxy(true)->requestIndexedTicket(ClientSideTicketRequest2{
+  auto request = ClientSideTicketRequest2{
       .modes = opts.modes,
       .participantGroups = opts.participantGroups,
-      .accessSubjects = opts.pps,
+      .accessSubjects = opts.accessSubjects,
+      .referenceSubjects = opts.referenceSubjects,
       .columnGroups = opts.columnGroups,
       .columns = opts.columns,
-      .includeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms});
+      .includeUserGroupPseudonyms = opts.includeAccessGroupPseudonyms
+  };
+  ResolveDuplicatePseudonyms(request);
+  return getAccessManagerProxy(true)->requestIndexedTicket(std::move(request));
 }
 
 

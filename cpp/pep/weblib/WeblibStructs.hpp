@@ -30,7 +30,10 @@ struct ListQuery {
   [[nodiscard]] auto operator<=>(const ListQuery&) const = default;
 };
 
-/// Access modes of the enrolled User Group to a column group, including implied ones
+/// Access modes of the enrolled User Group to a column group.
+/// Includes implied ones, unless \c ListColumnsQuery::includeImplicitlyGranted is false
+/// \note Cannot be replaced by `ColumnAccessModes`, because Embind enums can only represent individual flags/values and
+/// not combinations of flags/values.
 struct ColumnGroupAccessModes {
   bool read = false;
   bool readMeta = false;
@@ -38,6 +41,15 @@ struct ColumnGroupAccessModes {
   bool writeMeta = false;
 
   [[nodiscard]] auto operator<=>(const ColumnGroupAccessModes&) const = default;
+};
+
+struct ListColumnsQuery {
+  /// Also report modes implied by others: "read-meta" by "read", "write" by "write-meta". Default true
+  std::optional<bool> includeImplicitlyGranted;
+  /// Only return column groups on which the enrolled User Group has all of the set modes. Default none: all groups
+  ColumnGroupAccessModes requireModes;
+
+  [[nodiscard]] auto operator<=>(const ListColumnsQuery&) const = default;
 };
 
 /// Used in the result of listColumns
@@ -97,7 +109,7 @@ struct CellData {
 struct StoreQuery {
   std::string subject;
   std::string column;
-  emscripten::val blob;
+  emscripten::val reader;
   std::unordered_map<std::string, std::string> metadata;
 };
 
@@ -176,6 +188,20 @@ struct SubjectGroupAccessRuleInfo {
   std::string mode;
 
   [[nodiscard]] auto operator<=>(const SubjectGroupAccessRuleInfo&) const = default;
+};
+
+/// Input of queryAccessManager. Each filter matches an exact name, omitted filters match everything
+struct AccessManagerFilter {
+  /// Milliseconds since the Unix epoch; omitted for the current server time. double to prevent it being mapped to bigint
+  std::optional<double> pointInTime;
+  std::optional<std::string> column;
+  std::optional<std::string> columnGroup;
+  std::optional<std::string> subjectGroup;
+  std::optional<std::string> userGroup;
+  std::optional<std::string> columnGroupMode;
+  std::optional<std::string> subjectGroupMode;
+
+  [[nodiscard]] auto operator<=>(const AccessManagerFilter&) const = default;
 };
 
 /// Used as the result of queryAccessManager

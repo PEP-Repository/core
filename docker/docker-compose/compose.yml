@@ -164,7 +164,7 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
                 location: 'Europe/Amsterdam'
             # Detect malicious/noisy patterns
             - regex:
-                expression: '.*(?P<noise_type>AH10244|@java\.lang\.|AH01630|AH01276|Unsafe URL with %3f|AH00036).*'
+                expression: '(?P<noise_type>AH10244|@java\.lang\.|AH01630|AH01276|Unsafe URL with %3f|AH00036|AH00135|AH00126|AH00127)'
                 source: message
             # Normalize log levels, downgrade error to warn when background noise detected
             - template:

@@ -60,9 +60,10 @@ rxcpp::observable<std::vector<std::shared_ptr<EnumerateResult>>> CoreClient::enu
                                                                        const std::vector<std::string>& columnGroups,
                                                                        const std::vector<std::string>& columns) {
   return getAccessManagerProxy(true)
-      ->requestTicket(ClientSideTicketRequest2{.modes = {"read"},
+      ->requestTicket(ClientSideTicketRequest2{.modes = ColumnAccessModes::Read,
                                                .participantGroups = participantGroups,
                                                .accessSubjects = pps,
+                                               .referenceSubjects = {},
                                                .columnGroups = columnGroups,
                                                .columns = columns,
                                                .includeUserGroupPseudonyms = false})

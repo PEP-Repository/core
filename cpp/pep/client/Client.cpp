@@ -4,6 +4,7 @@
 #include <pep/utils/Log.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/async/RxToEmpty.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/utils/Configuration.hpp>
@@ -28,7 +29,7 @@ const std::string LogTag("Client");
 
 }
 
-rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string& mode, rxcpp::observable<std::string> columns) {
+rxcpp::observable<std::string> Client::getInaccessibleColumns(ColumnAccessModes mode, rxcpp::observable<std::string> columns) {
   return columns.op(RxToSet()) // Create a set of columns we still need to check
     .zip(this->getAccessManagerProxy()->getAccessibleColumns(true)) // Combine it with "the stuff we have access to"
     .flat_map([mode](const auto& context) {
@@ -38,7 +39,7 @@ rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string&
     // For every column group...
     for (const auto& cg : access.columnGroups) {
       const auto& cgAccess = cg.second;
-      if (contains(cgAccess.modes, mode)) { // ...if we have the requested access mode to that group...
+      if (HasFlags(cgAccess.modes, mode)) { // ...if we have the requested access mode to that group...
         for (auto index : cgAccess.columns.indices) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
           remaining->erase(access.columns[index]);
         }
@@ -75,7 +76,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
   values->emplace("IsTestParticipant", CellProperties{BoolToString(isTestParticipant), ".txt"});
 
   return this
-      ->getInaccessibleColumns("write",
+      ->getInaccessibleColumns(ColumnAccessModes::Write,
                                RxIterate(*values).map([](const auto& pair) { return pair.first; }))
       .op(RxToSet())
       .tap([](std::shared_ptr<std::set<std::string>> inaccessible) {

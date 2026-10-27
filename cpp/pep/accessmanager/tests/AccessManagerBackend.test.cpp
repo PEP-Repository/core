@@ -1,7 +1,9 @@
+#include "pep/ticketing/SubjectAccessModes.hpp"
 #include <gtest/gtest.h>
 #include <pep/utils/File.hpp>
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 
 #include <pep/accessmanager/Storage.hpp>
 
@@ -171,7 +173,7 @@ std::shared_ptr<GlobalConfiguration> AccessManagerBackendTest::globalConf;
 TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_happy) {
 
   const std::vector<std::string> columngroups{constants.r_cg1};
-  const std::vector<std::string> modes{"read"};
+  const ColumnAccessModes modes = ColumnAccessModes::Read;
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns;
 
@@ -194,7 +196,7 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_happy) {
 TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_column_access_through_multiple_column_groups_no_column_groups_in_request) {
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
-  const std::vector<std::string> modes{"read", "write"};
+  const ColumnAccessModes modes = ColumnAccessModes::Read | ColumnAccessModes::Write;
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns{constants.double_col};
   auto columnGroupMap =
@@ -210,22 +212,14 @@ TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_column_access_
 TEST_F(AccessManagerBackendTest, unfoldColumnGroupsAndCheckAccess_no_column_access_no_column_groups_in_request) {
   // The userGroup has read and write acces to the column, but through different columngroups. Access should be granted.
   const std::vector<std::string> columngroups{};
-  const std::vector<std::string> modes{"read", "write"};
+  const ColumnAccessModes modes = ColumnAccessModes::Read | ColumnAccessModes::Write;
   Timestamp timestamp = TimeNow();
   std::vector<std::string> columns{constants.w_col};
 
-  try {
-    // Act
-    (void) backend->unfoldColumnGroupsAndCheckAccess(constants.userGroup1, columngroups, modes, timestamp, columns);
-
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "Access denied to \"TestUserGroup\" for mode \"read\" to column \"writeColumn_1\"";
-    EXPECT_EQ(e.what(), expectedMessage);
-  }
+  EXPECT_THAT([&]() { backend->unfoldColumnGroupsAndCheckAccess(constants.userGroup1, columngroups, modes, timestamp, columns); },
+    ::testing::ThrowsMessage<Error>(::testing::StrEq("Access denied to \"TestUserGroup\" for mode \"read\" to column \"writeColumn_1\"")));
 }
+
 TEST_F(AccessManagerBackendTest, checkTicketRequest_happy) {
   TicketRequest2 request;
   // Existing participantGroup
@@ -237,7 +231,7 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_happy) {
   // Existing column
   request.columns.push_back(constants.w_col);
 
-  backend->checkTicketRequest(request);
+  EXPECT_NO_THROW(backend->checkTicketRequest(request));
 }
 
 TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_both_pp_and_pgs) {
@@ -251,17 +245,8 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_both_pp_and_pgs) {
   // Existing column
   request.columns.push_back(constants.w_col);
 
-  try {
-    // Act
-    backend->checkTicketRequest(request);
-
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "The ticket request contains participant group(s) as well as specific participant(s). This is not supported. Use either groups or specific participants.";
-    EXPECT_EQ(e.what(), expectedMessage);
-  }
+  EXPECT_THAT([&request]() { backend->checkTicketRequest(request); },
+    ::testing::ThrowsMessage<Error>(::testing::StrEq("The ticket request contains participant group(s) as well as specific participant(s). This is not supported. Use either groups or specific participants.")));
 }
 
 TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_non_existing_pg_cg_and_col) {
@@ -275,48 +260,32 @@ TEST_F(AccessManagerBackendTest, checkTicketRequest_fails_on_non_existing_pg_cg_
   // Existing column
   request.columns.push_back("Non existing column");
 
-
-  try {
-    // Act
-    backend->checkTicketRequest(request);
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "Unknown participantgroup specified: \"Non existing participantGroup\"\nUnknown columngroup specified: \"Non existing columnGroup\"\nUnknown column specified: \"Non existing column\"";
-    EXPECT_EQ(e.what(), expectedMessage);
-  }
+  EXPECT_THAT([&request]() { backend->checkTicketRequest(request); },
+    ::testing::ThrowsMessage<Error>(::testing::StrEq("Unknown participantgroup specified: \"Non existing participantGroup\"\nUnknown columngroup specified: \"Non existing columnGroup\"\nUnknown column specified: \"Non existing column\"")));
 }
 
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_happy) {
-
-  std::vector<std::string> modes{"access", "enumerate"};
-  Timestamp timestamp = TimeNow();
-  backend->checkParticipantGroupAccess(std::vector{constants.pg1}, constants.userGroup1, modes, timestamp);
-  // No thrown exceptions means correct behaviour.
+  EXPECT_NO_THROW(backend->checkParticipantGroupAccess(std::vector{constants.pg1}, constants.userGroup1, SubjectAccessModes::Access | SubjectAccessModes::Enumerate, TimeNow()));
 }
 
 TEST_F(AccessManagerBackendTest, checkParticipantGroupAccess_no_access) {
-  std::vector<std::string> modes{"access", "enumerate"};
-  Timestamp timestamp = TimeNow();
-  try {
-    backend->checkParticipantGroupAccess(std::vector{constants.pg2}, constants.userGroup1, modes, timestamp);
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    std::string expectedMessage = "Access denied to \"" + constants.userGroup1 + "\" for mode \"" + modes[0] + "\" to participant-group \"" + constants.pg2 + "\"\nAccess denied to \"" + constants.userGroup1 + "\" for mode \"" + modes[1] + "\" to participant-group \"" + constants.pg2 + "\"";
-    EXPECT_EQ(e.what(), expectedMessage);
-  }
+  constexpr auto modes = SubjectAccessModes::Access | SubjectAccessModes::Enumerate;
+  constexpr auto pattern = R"(Access denied to "{}" for mode "{}" to participant-group "{}")";
+  EXPECT_THAT([&]() { backend->checkParticipantGroupAccess(std::vector{ constants.pg2 }, constants.userGroup1, modes, TimeNow()); },
+    ::testing::ThrowsMessage<Error>(::testing::AllOf(
+              ::testing::HasSubstr(std::format(pattern, constants.userGroup1, ToSingleString(SubjectAccessModes::Access), constants.pg2)),
+              ::testing::HasSubstr(std::format(pattern, constants.userGroup1, ToSingleString(SubjectAccessModes::Enumerate), constants.pg2))
+    ))
+  );
 }
 
 TEST_F(AccessManagerBackendTest, fillParticipantgroupMap_happy) {
   // Two polymorph pseudonyms without known participantgroups. Used to test the offset in IndexList
-  std::vector<AccessManager::Backend::Pp> prePPs{{constants.dummyPP, true}, {constants.dummyPP, true}};
+  std::vector<PolymorphicPseudonym> prePPs{constants.dummyPP, constants.dummyPP};
   const std::vector<std::string> participantgroups{constants.pg1, constants.pg2};
 
   // Act
-  auto actualParticipantGroupMap =
-      backend->fillParticipantGroupMap(participantgroups, prePPs);
+  auto actualParticipantGroupMap = backend->fillParticipantGroupMap(participantgroups, prePPs);
 
   // Assert
   EXPECT_EQ(actualParticipantGroupMap.size(), 2U); // The two participantGroups
@@ -327,48 +296,46 @@ TEST_F(AccessManagerBackendTest, checkTicketForEncryptionKeyRequest_happy) {
   auto request = std::make_shared<EncryptionKeyRequest>();
   Ticket2 ticket{};
   ticket.columns.push_back(constants.w_col);
-  ticket.modes.push_back("write");
+  ticket.modes = ColumnAccessModes::Write;
   KeyRequestEntry entry;
   entry.keyBlindMode = KeyBlindMode::Blind; // Needs ticket mode write
   entry.metadata.setTag(constants.w_col); // specified col should be in ticket columns.
   request->entries.push_back({entry});
 
 
-  backend->checkTicketForEncryptionKeyRequest(request, ticket);
-  // No thrown exceptions means correct behaviour.
+  EXPECT_NO_THROW(backend->checkTicketForEncryptionKeyRequest(request, ticket));
 }
 
 TEST_F(AccessManagerBackendTest, handleColumnAccessRequest_happy) {
   auto request = ColumnAccessRequest();
-  request.requireModes.push_back("read");
+  request.requireModes = ColumnAccessModes::Read;
   auto actual = backend->handleColumnAccessRequest(request, constants.userGroup1);
 
 
   ColumnAccess expected{};
-  expected.columnGroups[constants.r_cg1].modes.push_back("read");
+  expected.columnGroups[constants.r_cg1].modes |= ColumnAccessModes::Read;
   expected.columnGroups[constants.r_cg1].columns.indices = {0, 1, 2};
-  expected.columnGroups[constants.r_cg2].modes.push_back("read");
+  expected.columnGroups[constants.r_cg2].modes |= ColumnAccessModes::Read;
   expected.columnGroups[constants.r_cg2].columns.indices = {1};
   expected.columns = {constants.double_col, constants.r_col1, constants.r_col2};
 
   EXPECT_EQ(actual.columns, expected.columns);
   EXPECT_EQ(actual.columnGroups, expected.columnGroups);
-
 }
 
 TEST_F(AccessManagerBackendTest, handleColumnAccessRequest_happy_include_implicit) {
   auto request = ColumnAccessRequest();
   request.includeImplicitlyGranted = true;
-  request.requireModes.push_back("read");
+  request.requireModes = ColumnAccessModes::Read;
   auto actual = backend->handleColumnAccessRequest(request, constants.userGroup1);
 
 
   ColumnAccess expected{};
-  expected.columnGroups[constants.r_cg1].modes.push_back("read");
-  expected.columnGroups[constants.r_cg1].modes.push_back("read-meta");
+  expected.columnGroups[constants.r_cg1].modes |= ColumnAccessModes::Read;
+  expected.columnGroups[constants.r_cg1].modes |= ColumnAccessModes::ReadMeta;
   expected.columnGroups[constants.r_cg1].columns.indices = {0, 1, 2};
-  expected.columnGroups[constants.r_cg2].modes.push_back("read");
-  expected.columnGroups[constants.r_cg2].modes.push_back("read-meta");
+  expected.columnGroups[constants.r_cg2].modes |= ColumnAccessModes::Read;
+  expected.columnGroups[constants.r_cg2].modes |= ColumnAccessModes::ReadMeta;
   expected.columnGroups[constants.r_cg2].columns.indices = {1};
   expected.columns = {constants.double_col, constants.r_col1, constants.r_col2};
 
@@ -385,26 +352,17 @@ TEST_F(AccessManagerBackendTest, assertColumnAccess_no_access) {
   EXPECT_EQ(result.columns.size(), 0);
 }
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy) {
-  backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
+  EXPECT_NO_THROW(backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym1, SubjectAccessModes::Access | SubjectAccessModes::Enumerate, TimeNow()));
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_happy_star_participant) {
-
   // Research Assessor has no access to the participantgroup localPseudonym1 is in, but does have access to "*". This should pass.
-  backend->checkParticipantAccess("Research Assessor", constants.localPseudonym1, {"access", "enumerate"}, TimeNow());
+  EXPECT_NO_THROW(backend->checkParticipantAccess("Research Assessor", constants.localPseudonym1, SubjectAccessModes::Access | SubjectAccessModes::Enumerate, TimeNow()));
 }
 
 TEST_F(AccessManagerBackendTest, assertParticipantAccess_no_access) {
-  try {
-    // Act
-    backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym2, {"access", "enumerate"}, TimeNow());
-    FAIL() << "This should not have run without exceptions.";
-  }
-  catch (const Error& e) {
-    // Assert
-    std::string expectedMessage = "Access denied to participant for mode \"access\"\nAccess denied to participant for mode \"enumerate\"";
-    EXPECT_EQ(e.what(), expectedMessage);
-  }
+  EXPECT_THAT([&]() { backend->checkParticipantAccess(constants.userGroup1, constants.localPseudonym2, SubjectAccessModes::Access | SubjectAccessModes::Enumerate, TimeNow()); },
+    ::testing::ThrowsMessage<Error>(::testing::StrEq("Access denied to participant for mode \"access\"\nAccess denied to participant for mode \"enumerate\"")));
 }
 
 TEST_F(AccessManagerBackendTest, AMAquery_noFilter){

@@ -277,64 +277,6 @@ void StorageFacility::Parameters::check() const {
   // FIXME: check if errors happend during startup of file store
 }
 
-std::vector<std::string> StorageFacility::getChecksumChainNames() const {
-  return {
-    "files",
-    "entry-count"
-  };
-}
-
-void StorageFacility::computeChecksumChainChecksum(
-  const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-  uint64_t& checksum, uint64_t& checkpoint) {
-
-  // both "files" and "entry-count" checksums are computed by adding
-  // one entry at a time, via:
-  std::function<void(const FileStore::CellVersion&)> add;
-
-  if (chain == "files") {
-    add = [&checksum](const FileStore::CellVersion& version) {
-      auto checksumSubstitute = version.checksumSubstitute;
-      checksum ^= checksumSubstitute;
-    };
-  }
-  else if (chain == "entry-count") {
-    add = [&checksum](const FileStore::CellVersion& version) {
-      checksum++;
-    };
-  }
-  else {
-    throw Error("Unknown checksumchain");
-  }
-
-  checksum = 0;
-  checkpoint = 0;
-
-  if (!maxCheckpoint) {
-    // The Storage Facility uses a timestamp as checkpoint
-    maxCheckpoint = TicksSinceEpoch<std::chrono::milliseconds>(TimeNow() - 1min);
-  }
-
-  /* Checksums over cell versions must be calculated in (backward compatible) lexicographic order, e.g.
-   * 1. participant-a/column-x/timestamp-1
-   * 2. participant-a/column-x/timestamp-2
-   * 3. participant-a/column-y/timestamp-1
-   * 4. participant-b/column-x/timestamp-1
-   */
-  for (const auto& participant : fileStore_->participants()) {
-    for (const auto& cell : participant->cells()) {
-      for (const auto& version : cell->versions()) {
-        std::uint64_t validFromMs{ static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(version.validFrom)) };
-        if (validFromMs <= *maxCheckpoint) {
-          checkpoint = std::max(checkpoint, validFromMs);
-          add(version);
-        }
-
-      }
-    }
-  }
-}
-
 messaging::MessageBatches
 StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumerationRequest2> signedRequest) {
   PEP_LOG(LogTag, Severity::Debug) << "Received DataEnumerationRequest2";
@@ -345,7 +287,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   auto certified = signedRequest->open(rootCAs);
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
-  auto ticket = request.ticket.open(rootCAs, accessGroup, "read-meta");
+  auto ticket = request.ticket.open(rootCAs, accessGroup, ColumnAccessModes::ReadMeta);
 
   struct ResponseEntry {
     DataEnumerationEntry2 entry;
@@ -473,7 +415,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
     auto ticket = request.ticket.open(
       *rootCAs,
       userGroup,
-      "read-meta"
+      ColumnAccessModes::ReadMeta
     );
 
     // Create look-up-tables for columns and pseudonyms from ticket
@@ -508,15 +450,16 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       LocalPseudonym pseud = sfentry->getName().pseudonym();
       std::string column = sfentry->getName().column();
 
-      DataEnumerationEntry2 entry;
-      entry.metadata = server->compileMetadata(column, *sfentry);
-      // TODO execute rerandomization in WorkerPool
-      entry.polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey());
-      entry.fileSize = sfcontent->payload()->size();
-      entry.id = id;
-      entry.index = static_cast<uint32_t>(i);
-      entry.columnIndex = indices.getColumnIndex(column);
-      entry.pseudonymIndex = indices.getPseudonymIndex(pseud);
+      DataEnumerationEntry2 entry{
+        .id = id,
+        .metadata = server->compileMetadata(column, *sfentry),
+        // TODO execute rerandomization in WorkerPool
+        .polymorphicKey = server->getEgCache().rerandomize(sfcontent->getPolymorphicKey()),
+        .fileSize = sfcontent->payload()->size(),
+        .columnIndex = indices.getColumnIndex(column),
+        .pseudonymIndex = indices.getPseudonymIndex(pseud),
+        .index = static_cast<uint32_t>(i),
+      };
       response->entries.push_back(std::move(entry));
 
       // Prevent individual DataEnumerationResponse2 messages from becoming too large
@@ -544,7 +487,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   auto ticket = request.ticket.open(
     *rootCAs,
     userGroup,
-    "read"
+    ColumnAccessModes::Read
   );
 
   // Create look-up-tables for columns and pseudonyms from ticket
@@ -683,7 +626,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
     auto request = MakeSharedCopy(std::move(certified.message));
     auto ticket = request->ticket.open(*rootCAs, certified.signatory.organizationalUnit());
 
-    if (!ticket.hasMode("write")) {
+    if (!ImpliesModes(ticket.modes, ColumnAccessModes::Write)) {
       throw Error("Ticket is missing \"write\" access mode");
     }
 
@@ -879,9 +822,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
 
   auto ticket = request->ticket.open(*rootCAs, userGroup);
 
-  if (!ticket.hasMode("write-meta")) {
-    throw Error("Ticket is missing write-meta access mode");
-  }
+  if (!ImpliesModes(ticket.modes, ColumnAccessModes::WriteMeta)) { throw Error("Ticket is missing write-meta access mode"); }
 
   // Fill a vector with indices of pseudonyms that we want/need decrypted
   auto pseudIndices = request->entries
@@ -1014,7 +955,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({UserGroup::DataAdministrator, UserGroup::Watchdog}, accessGroup);
 
-  auto ticket = request.ticket.open(*rootCAs, accessGroup, "read-meta");
+  auto ticket = request.ticket.open(*rootCAs, accessGroup, ColumnAccessModes::ReadMeta);
 
   DataHistoryResponse2 response;
 
@@ -1086,9 +1027,7 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
 
   const auto& request = certified.message;
 
-  size_t entryCount{};
-  uint64_t totalBytes{}, rollingBytes{};
-  this->getFileStoreMetrics(entryCount, totalBytes, rollingBytes, request.columns);
+  auto metrics = this->getRoundedFileStoreMetrics(request.columns);
 
   auto countBlocks = [blockSize = dataSizeResolution_](uint64_t bytes) {
       assert(bytes % blockSize == 0U); // Values produced by this->getFileStoreMetrics are rounded to dataSizeResolution_
@@ -1097,8 +1036,8 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
 
   return messaging::BatchSingleMessage(DataSizeResponse{
     .blockSize = dataSizeResolution_,
-    .totalBlocks = countBlocks(totalBytes),
-    .rollingBlocks = countBlocks(rollingBytes),
+    .totalBlocks = countBlocks(metrics.totalBytes),
+    .rollingBlocks = countBlocks(metrics.rollingBytes),
     });
 }
 
@@ -1199,7 +1138,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
     PendingBytesLimiter::Gauges{ .pendingBytes = &metrics_->pendingPageBytes, .paused = &metrics_->readingPaused })),
   timer_(*parameters->getIoContext()),
   parallelisationWidth_(parameters->getParallelisationWidth()),
-  dataSizeResolution_(parameters->getDataSizeResolution()) {
+  dataSizeResolution_(parameters->getDataSizeResolution()),
+  checksumChainHandler_(fileStore_->checksumChains()) {
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
                           &StorageFacility::handleDataReadRequest2,
@@ -1215,9 +1155,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   statsTimer({});
 }
 
-void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedTotalBytes, uint64_t& roundedRollingBytes, const std::set<std::string>& columns) {
-  uint64_t total{}, rolling{};
-  fileStore_->getMetrics(entryCount, total, rolling, columns);
+FileStore::Metrics StorageFacility::getRoundedFileStoreMetrics(const std::set<std::string>& columns) const {
+  auto precise = fileStore_->getMetrics(columns);
 
   auto round = [blockSize = dataSizeResolution_](uint64_t bytes) {
       auto blocks = bytes / blockSize;
@@ -1227,18 +1166,19 @@ void StorageFacility::getFileStoreMetrics(size_t& entryCount, uint64_t& roundedT
       return blocks * blockSize;
     };
 
-  roundedTotalBytes = round(total);
-  roundedRollingBytes = round(rolling);
+  return FileStore::Metrics{
+    .entryCount = precise.entryCount,
+    .totalBytes = round(precise.totalBytes),
+    .rollingBytes = round(precise.rollingBytes),
+  };
 }
 
 void StorageFacility::updateFileStoreMetrics() {
-  size_t entryCount{};
-  uint64_t totalPayloadBytes{}, rollingPayloadBytes{};
-  this->getFileStoreMetrics(entryCount, totalPayloadBytes, rollingPayloadBytes);
+  auto rounded = this->getRoundedFileStoreMetrics();
 
-  metrics_->entriesIncludingHistory.Set(static_cast<double>(entryCount));
-  metrics_->totalPayloadBytes.Set(static_cast<double>(totalPayloadBytes));
-  metrics_->rollingPayloadBytes.Set(static_cast<double>(rollingPayloadBytes));
+  metrics_->entriesIncludingHistory.Set(static_cast<double>(rounded.entryCount));
+  metrics_->totalPayloadBytes.Set(static_cast<double>(rounded.totalBytes));
+  metrics_->rollingPayloadBytes.Set(static_cast<double>(rounded.rollingBytes));
 }
 
 }

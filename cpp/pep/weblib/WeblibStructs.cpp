@@ -44,7 +44,20 @@ EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(User::primaryId)::value_type>();
   register_optional<decltype(UserGroupMembership::expiration)::value_type>();
   register_optional<decltype(UserGroupInfo::maxAuthValiditySeconds)::value_type>();
+  register_optional<decltype(ListColumnsQuery::includeImplicitlyGranted)::value_type>();
+  register_optional<decltype(AccessManagerFilter::pointInTime)::value_type>();
+  register_optional<decltype(AccessManagerFilter::column)::value_type>();
+  register_optional<decltype(AccessManagerFilter::columnGroup)::value_type>();
+  register_optional<decltype(AccessManagerFilter::subjectGroup)::value_type>();
+  register_optional<decltype(AccessManagerFilter::userGroup)::value_type>();
+  register_optional<decltype(AccessManagerFilter::columnGroupMode)::value_type>();
+  register_optional<decltype(AccessManagerFilter::subjectGroupMode)::value_type>();
 }
+
+PEP_BINDINGS(ListColumnsQuery,
+  includeImplicitlyGranted,
+  requireModes
+)
 
 PEP_BINDINGS(ListQuery,
   subjectGroups,
@@ -92,7 +105,7 @@ PEP_BINDINGS(ParticipantPersonalia,
 PEP_BINDINGS(StoreQuery,
   subject,
   column,
-  blob,
+  reader,
   metadata
 )
 
@@ -137,6 +150,16 @@ PEP_BINDINGS(SubjectGroupAccessRuleInfo,
   subjectGroup,
   userGroup,
   mode
+)
+
+PEP_BINDINGS(AccessManagerFilter,
+  pointInTime,
+  column,
+  columnGroup,
+  subjectGroup,
+  userGroup,
+  columnGroupMode,
+  subjectGroupMode
 )
 
 PEP_BINDINGS(AccessManagerState,
