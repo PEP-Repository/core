@@ -1,8 +1,6 @@
 #pragma once
 
 #include <pep/server/ChecksumChain.hpp>
-#include <pep/server/MonitoringMessages.hpp>
-#include <rxcpp/rx-lite.hpp>
 
 namespace pep {
 
@@ -21,8 +19,7 @@ public:
   virtual ~ChecksumChainHandler() noexcept = default;
 
   const Requesters& allowedRequesters() const noexcept { return allowedRequesters_; }
-  virtual std::set<std::string> chainNames() const = 0;
-  virtual rxcpp::observable<ChecksumChainResponse> handle(const ChecksumChainRequest& request) const = 0;
+  virtual const ChecksumChains& chains() const noexcept = 0;
 };
 
 
@@ -35,8 +32,7 @@ public:
     : ChecksumChainHandler(allowedRequesters), chains_(chains) {
   }
 
-  std::set<std::string> chainNames() const override { return chains_.names(); }
-  rxcpp::observable<ChecksumChainResponse> handle(const ChecksumChainRequest& request) const override;
+  const ChecksumChains& chains() const noexcept override { return chains_; }
 };
 
 
@@ -46,9 +42,9 @@ private:
   LocalChecksumChainHandler local_;
 
 public:
-  StandaloneChecksumChainHandler(ChecksumChains chains, Requesters allowedRequesters = DefaultRequesters);
-  std::set<std::string> chainNames() const override;
-  rxcpp::observable<ChecksumChainResponse> handle(const ChecksumChainRequest& request) const override;
+  explicit StandaloneChecksumChainHandler(ChecksumChains chains, Requesters allowedRequesters = DefaultRequesters);
+
+  const ChecksumChains& chains() const noexcept override { return chains_; }
 };
 
 }
