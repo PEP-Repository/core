@@ -188,6 +188,20 @@ struct SubjectGroupAccessRuleInfo {
   [[nodiscard]] auto operator<=>(const SubjectGroupAccessRuleInfo&) const = default;
 };
 
+/// Input of queryAccessManager. Each filter matches an exact name, omitted filters match everything
+struct AccessManagerFilter {
+  /// Milliseconds since the Unix epoch; omitted for the current server time. double to prevent it being mapped to bigint
+  std::optional<double> pointInTime;
+  std::optional<std::string> column;
+  std::optional<std::string> columnGroup;
+  std::optional<std::string> subjectGroup;
+  std::optional<std::string> userGroup;
+  std::optional<std::string> columnGroupMode;
+  std::optional<std::string> subjectGroupMode;
+
+  [[nodiscard]] auto operator<=>(const AccessManagerFilter&) const = default;
+};
+
 /// Used as the result of queryAccessManager
 struct AccessManagerState {
   std::vector<std::string> columns;

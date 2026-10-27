@@ -184,12 +184,19 @@ export interface AccessManagerState {
   subjectGroupAccessRules: {subjectGroup: string; userGroup: string; mode: 'access' | 'enumerate'}[];
 }
 
-/** Each filter matches an exact name. Omitted filters match everything. */
+/** The name and mode filters match exactly. Omitted filters match everything. */
 export interface AccessManagerFilter {
+  /** Default: now, in server time */
+  pointInTime?: Date | undefined;
   column?: string | undefined;
   columnGroup?: string | undefined;
   subjectGroup?: string | undefined;
+  /** Only rules for this user group, and only the groups that have such a rule */
   userGroup?: string | undefined;
+  /** Only column group rules with this mode, and only the column groups that have such a rule */
+  columnGroupMode?: 'read' | 'write' | 'read-meta' | 'write-meta' | undefined;
+  /** Only subject group rules with this mode, and only the subject groups that have such a rule */
+  subjectGroupMode?: 'access' | 'enumerate' | undefined;
 }
 
 interface RawUser extends UseJsStrings<rawTypes.User> {
@@ -631,8 +638,12 @@ export default class Pep {
   // querying also allows the Access Administrator and Repository Manager user groups
 
   queryAccessManager(filter: AccessManagerFilter = {}): Promise<AccessManagerState> {
-    return this.#wrapExec(() => this.#client.queryAccessManager(
-        filter.column ?? '', filter.columnGroup ?? '', filter.subjectGroup ?? '', filter.userGroup ?? ''));
+    //TODO(workaround) Cast to Required<AccessManagerFilter> because of https://github.com/emscripten-core/emscripten/issues/25978,
+    // remove it with EMSDK 5.0.0+
+    return this.#wrapExec(() => this.#client.queryAccessManager({
+      ...filter as Required<AccessManagerFilter>,
+      pointInTime: filter.pointInTime?.getTime(),
+    }));
   }
 
   createColumn(name: string): Promise<void> {

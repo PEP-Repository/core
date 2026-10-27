@@ -97,6 +97,29 @@ User ToUser(QRUser user) {
   };
 }
 
+ColumnGroup ToColumnGroup(AmaQRColumnGroup group) {
+  return ColumnGroup{
+      .name = std::move(group.name),
+      .columns = std::move(group.columns),
+  };
+}
+
+ColumnGroupAccessRuleInfo ToColumnGroupAccessRuleInfo(AmaQRColumnGroupAccessRule rule) {
+  return ColumnGroupAccessRuleInfo{
+      .columnGroup = std::move(rule.columnGroup),
+      .userGroup = std::move(rule.accessGroup),
+      .mode = std::move(rule.mode),
+  };
+}
+
+SubjectGroupAccessRuleInfo ToSubjectGroupAccessRuleInfo(AmaQRParticipantGroupAccessRule rule) {
+  return SubjectGroupAccessRuleInfo{
+      .subjectGroup = std::move(rule.participantGroup),
+      .userGroup = std::move(rule.userGroup),
+      .mode = std::move(rule.mode),
+  };
+}
+
 ColumnGroupAccessModes ColumnGroupAccessModesFromStrings(const std::vector<std::string>& modes) {
   return {
       .read = contains(modes, "read"),
@@ -720,19 +743,17 @@ public:
   }
 
   /// List columns, column groups, subject groups and access rules, as of the current server time.
-  /// Empty filters match everything; non-empty filters match exact names.
   /// \returns \c Promise<AccessManagerState>
-  WeblibApiPromise queryAccessManager(std::string column, std::string columnGroup, std::string subjectGroup,
-                                      std::string userGroup) {
+  WeblibApiPromise queryAccessManager(AccessManagerFilter filter) {
     co_return co_await onIoThread()
         .flat_map([query = AmaQuery{
-                       .at = std::nullopt,
-                       .columnFilter = std::move(column),
-                       .columnGroupFilter = std::move(columnGroup),
-                       .participantGroupFilter = std::move(subjectGroup),
-                       .userGroupFilter = std::move(userGroup),
-                       .columnGroupModeFilter = {},
-                       .participantGroupModeFilter = {},
+                       .at = filter.pointInTime.transform(FromJsTime),
+                       .columnFilter = std::move(filter.column).value_or(""),
+                       .columnGroupFilter = std::move(filter.columnGroup).value_or(""),
+                       .participantGroupFilter = std::move(filter.subjectGroup).value_or(""),
+                       .userGroupFilter = std::move(filter.userGroup).value_or(""),
+                       .columnGroupModeFilter = std::move(filter.columnGroupMode).value_or(""),
+                       .participantGroupModeFilter = std::move(filter.subjectGroupMode).value_or(""),
                    }](const std::shared_ptr<Weblib>& self) {
           return self->client_->getAccessManagerProxy()->amaQuery(query);
         })
@@ -742,33 +763,19 @@ public:
                 | views::transform(&AmaQRColumn::name)
                 | to<std::vector>(),
               .columnGroups = response.columnGroups
-                | views::transform([](AmaQRColumnGroup& group) {
-                  return ColumnGroup{
-                      .name = std::move(group.name),
-                      .columns = std::move(group.columns),
-                  };
-                })
+                | views::as_rvalue
+                | views::transform(ToColumnGroup)
                 | to<std::vector>(),
               .columnGroupAccessRules = response.columnGroupAccessRules
-                | views::transform([](AmaQRColumnGroupAccessRule& rule) {
-                  return ColumnGroupAccessRuleInfo{
-                      .columnGroup = std::move(rule.columnGroup),
-                      .userGroup = std::move(rule.accessGroup),
-                      .mode = std::move(rule.mode),
-                  };
-                })
+                | views::as_rvalue
+                | views::transform(ToColumnGroupAccessRuleInfo)
                 | to<std::vector>(),
               .subjectGroups = response.participantGroups
                 | views::transform(&AmaQRParticipantGroup::name)
                 | to<std::vector>(),
               .subjectGroupAccessRules = response.participantGroupAccessRules
-                | views::transform([](AmaQRParticipantGroupAccessRule& rule) {
-                  return SubjectGroupAccessRuleInfo{
-                      .subjectGroup = std::move(rule.participantGroup),
-                      .userGroup = std::move(rule.userGroup),
-                      .mode = std::move(rule.mode),
-                  };
-                })
+                | views::as_rvalue
+                | views::transform(ToSubjectGroupAccessRuleInfo)
                 | to<std::vector>(),
           };
         });
