@@ -26,6 +26,10 @@ void HTTPMessage::setHeader(std::string name, std::string value) {
   headers_[std::move(name)] = std::move(value);
 }
 
+void HTTPMessage::removeHeader(std::string name) {
+  headers_.erase(name);
+}
+
 std::string HTTPMessage::header(const std::string& name) const {
   return headers_.at(name);
 }
