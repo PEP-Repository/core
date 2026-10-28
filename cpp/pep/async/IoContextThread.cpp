@@ -41,6 +41,9 @@ IoContextThread::IoContextThread(const std::string& name, std::shared_ptr<boost:
 
 void IoContextThread::stop() noexcept {
   guard_.reset(); // Allow io_context::run to terminate
+  if (thread_.joinable()) {
+    thread_.join();
+  }
 }
 
 }
