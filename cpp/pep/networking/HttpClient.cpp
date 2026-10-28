@@ -353,6 +353,19 @@ void HttpClient::ensureSend() {
   sending_ = pendingRequests_.front();
   response_ = HTTPResponse();
 
+  if (const auto& prepare = parameters_.prepareRequest()) {
+    try {
+      prepare(*sending_->request);
+    }
+    catch (...) {
+      auto failed = std::move(sending_);
+      this->unpend(failed->request);
+      failed->subscriber.on_error(std::current_exception());
+      this->ensureSend();
+      return;
+    }
+  }
+
   auto header = MakeSharedCopy(sending_->request->headerToString());
   connection_->asyncWrite(header->data(), header->size(), [self = SharedFrom(*this), header](const SizedTransfer::Result& result) {
     self->handleRequestPartWritten(result, 0);

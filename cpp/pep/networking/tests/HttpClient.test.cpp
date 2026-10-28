@@ -353,6 +353,77 @@ TEST_F(HttpClient, LimitsRetries) {
   EXPECT_EQ(served, 1U);
 }
 
+TEST_F(HttpClient, PreparesEachAttempt) {
+  const std::string relativeUri = "/prepare";
+  auto attempts = std::make_shared<std::vector<std::string>>();
+  this->server().registerHandler(relativeUri, false, [attempts](const pep::HTTPRequest& request, const std::string&) {
+    attempts->push_back(request.hasHeader("X-Attempt") ? request.header("X-Attempt") : "");
+    return attempts->size() < 3U ? pep::HTTPResponse(503U, "Service Unavailable") : pep::HTTPResponse(200U, "OK", ResponseBody);
+    });
+
+  boost::asio::io_context ioContext;
+  pep::networking::HttpClient::Parameters parameters(ioContext, boost::urls::url("http://localhost:" + std::to_string(AsyncHttpServer::Port) + relativeUri));
+  parameters.retryParameters(FastRetryParameters());
+  auto prepared = std::make_shared<unsigned>(0U);
+  parameters.prepareRequest([prepared](pep::HTTPRequest& request) {
+    request.setHeader("X-Attempt", std::to_string(++*prepared)); // Overwrites the value set by an earlier attempt
+    });
+  auto client = pep::networking::HttpClient::Create(std::move(parameters));
+  client->start();
+
+  std::optional<pep::HTTPResponse> received;
+  client->sendRequest(client->makeRequest())
+    .subscribe(
+      [&received](const pep::HTTPResponse& response) { received = response; },
+      [client](const std::exception_ptr&) {client->shutdown(); },
+      [client]() {client->shutdown(); }
+    );
+  ioContext.run();
+
+  ASSERT_TRUE(received.has_value());
+  EXPECT_EQ(received->getStatusCode(), 200U);
+  // Every attempt that reached the server was prepared anew. (Additional preparations may have taken place if the client
+  // had to reconnect before (re)sending, which happens because our civetweb-based server closes connections after responding.)
+  ASSERT_EQ(attempts->size(), 3U);
+  unsigned previous = 0U;
+  for (const auto& attempt : *attempts) {
+    auto current = static_cast<unsigned>(std::stoul(attempt));
+    EXPECT_GT(current, previous) << "Server received a request that wasn't prepared anew";
+    previous = current;
+  }
+  EXPECT_EQ(previous, *prepared) << "Last preparation wasn't sent";
+}
+
+TEST_F(HttpClient, ReportsPreparationFailure) {
+  const std::string relativeUri = "/prepare-fails";
+  auto served = std::make_shared<std::atomic<unsigned>>(0U);
+  this->server().registerHandler(relativeUri, false, [served](const pep::HTTPRequest&, const std::string&) {
+    ++*served;
+    return pep::HTTPResponse(200U, "OK", ResponseBody);
+    });
+
+  boost::asio::io_context ioContext;
+  pep::networking::HttpClient::Parameters parameters(ioContext, boost::urls::url("http://localhost:" + std::to_string(AsyncHttpServer::Port) + relativeUri));
+  parameters.prepareRequest([](pep::HTTPRequest&) { throw std::runtime_error("Can't prepare"); });
+  auto client = pep::networking::HttpClient::Create(std::move(parameters));
+  client->start();
+
+  bool received = false;
+  std::exception_ptr error;
+  client->sendRequest(client->makeRequest())
+    .subscribe(
+      [&received](const pep::HTTPResponse&) { received = true; },
+      [client, &error](const std::exception_ptr& e) { error = e; client->shutdown(); },
+      [client]() {client->shutdown(); }
+    );
+  ioContext.run();
+
+  EXPECT_FALSE(received);
+  ASSERT_NE(error, nullptr);
+  EXPECT_TRUE(pep::GetExceptionMessage(error).ends_with("Can't prepare"));
+  EXPECT_EQ(served->load(), 0U);
+}
+
 // Not part of the HttpClient fixture: this test uses its own server
 TEST(HttpClientConnection, AbandonedRequestDoesNotAffectSubsequentRequests) {
   boost::asio::io_context ioContext;
