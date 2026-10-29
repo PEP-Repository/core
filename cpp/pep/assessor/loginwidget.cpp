@@ -1,6 +1,7 @@
 #include <pep/assessor/loginwidget.hpp>
 #include <pep/assessor/ui_loginwidget.h>
 
+#include <pep/application/Application.hpp>
 #include <pep/versioning/Version.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/gui/QTrxGui.hpp>
@@ -59,6 +60,13 @@ LoginWidget::LoginWidget(std::shared_ptr<boost::asio::io_context> io_context, co
   if (cfgVersion != std::nullopt) {
     emit version(QString::fromStdString(cfgVersion->getSummary()));
   }
+
+#if defined(__APPLE__) && defined(__x86_64__)
+  // Users start the assessor from Finder, so they won't see the console warning logged by pep::Application
+  ui_->platformWarning->setText(QString::fromUtf8(pep::Application::MacOsX86DeprecationWarning.data(),
+    static_cast<qsizetype>(pep::Application::MacOsX86DeprecationWarning.size())));
+  ui_->platformWarning->setVisible(true);
+#endif
 
   QObject::connect(ui_->loginButton, &QPushButton::clicked, this, &LoginWidget::onLoginButtonClicked);
   QObject::connect(this, &LoginWidget::loginSuccess, this, &LoginWidget::close);

@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <span>
+#include <string_view>
 #include <vector>
 
 #include <boost/type_traits/is_base_of.hpp>
@@ -99,6 +100,11 @@ class Application : public commandline::Command {
   Configuration loadMainConfigFile();
 
  public:
+  // Duplicated in the macOS Download and Upload Tool scripts (installer/macOS/runpep{down,up}load.sh): keep in sync
+  static constexpr std::string_view MacOsX86DeprecationWarning =
+    "Support for PEP on Intel (x86) Macs will be discontinued on March 1, 2027. "
+    "After that date, PEP software will only be available for Apple silicon Macs.";
+
   ~Application() override;
 
   template <class TDerived>

@@ -262,6 +262,11 @@ void Application::initializeLoggingOnce() {
   if (showVersionInfo_) {
     LogVersionInfo("binary", BinaryVersion::current.getSummary());
   }
+
+#if defined(__APPLE__) && defined(__x86_64__)
+  // Only compiled into the x86_64 slice of our universal macOS binaries, so Apple silicon Macs don't show this
+  PEP_LOG(LogTag, Severity::Warning) << MacOsX86DeprecationWarning;
+#endif
 }
 
 int Application::run(std::vector<std::string> args) {
