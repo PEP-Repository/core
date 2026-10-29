@@ -14,6 +14,7 @@ SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
 SCRIPTPATH="$SCRIPTDIR/$(basename "$0")"
 command=${1:-interactive}
 pep_network="${2:-}"  # Optional PEP Docker network name for start/interactive commands
+properties_file="${3:-}"
 
 docker_exe="docker"
 if [ "${OS:-}" = "Windows_NT" ]; then
@@ -99,6 +100,26 @@ pull() {
   "$docker" pull nginx
 }
 
+make_properties_file() {
+  custom_properties_file="$1"
+  access_key="$2"
+  secret_key="$3"
+
+  temp_properties_file="$(mktemp)"
+  cp "$properties_file" "$temp_properties_file"
+  # We don't support overriding these default values. For now that's good enough.
+  cat <<EOF >> "$temp_properties_file"
+s3proxy.authorization=aws-v2-or-v4
+s3proxy.endpoint=http://0.0.0.0:80
+jclouds.provider=filesystem
+jclouds.filesystem.basedir=/data
+s3proxy.identity=${access_key}
+s3proxy.credential=${secret_key}
+EOF
+
+  echo "$temp_properties_file"
+}
+
 start_containers() {
   ensure_docker_available
 
@@ -122,10 +143,19 @@ start_containers() {
     network_switch="--net $pep_network"
   fi
 
+  declare -a properties_file_mount_switch1
+  declare -a properties_file_mount_switch2
+  declare -a custom_command
+  if [ -n "$properties_file" ]; then
+    properties_file_mount_switch1=(--mount "type=bind,src=$(make_properties_file "$properties_file" "$S3_ACCESS_KEY" "$S3_SECRET_KEY"),dst=/s3proxy.properties")
+    properties_file_mount_switch2=(--mount "type=bind,src=$(make_properties_file "$properties_file" "$S3_ACCESS_KEY2" "$S3_SECRET_KEY2"),dst=/s3proxy.properties")
+    custom_command=(java -XX:MaxRAMPercentage=75 -XX:+UseCompactObjectHeaders -DLOG_LEVEL=TRACE -jar /opt/s3proxy/s3proxy --properties /s3proxy.properties)
+  fi
+
   # Local paths exposed as a -v volume are prefixed with a slash to prevent Git Bash on Windows
   # from mangling those paths. See https://stackoverflow.com/a/50608818
   >&2 printf "Starting s3proxy container..."
-  "$docker" run --rm --detach --name s3proxy -e S3PROXY_IDENTITY=${S3_ACCESS_KEY} -e S3PROXY_CREDENTIAL=${S3_SECRET_KEY} -e LOG_LEVEL=TRACE -p 9001:80 -v /"${DATADIR}":/data "${S3PROXY_IMAGE}"
+  "$docker" run --rm --detach --name s3proxy -e S3PROXY_IDENTITY=${S3_ACCESS_KEY} -e S3PROXY_CREDENTIAL=${S3_SECRET_KEY} -e LOG_LEVEL=TRACE -p 9001:80 -v /"${DATADIR}":/data "${properties_file_mount_switch1[@]}" "${S3PROXY_IMAGE}" "${custom_command[@]}"
   >&2 printf "Starting nginx (s3proxyproxy) container..."
   # shellcheck disable=SC2086 # Don't quote possibly empty $network_switch variable so Docker won't interpret them as an empty image spec, causing "invalid reference format" errors
   "$docker" run --rm --detach --name s3proxyproxy $network_switch --add-host=host.docker.internal:host-gateway -p 9000:9000 -v /"${etc_nginx_dir}":/etc/nginx -v /"${SCRIPTDIR}"/s3certs:/s3cert:ro nginx
@@ -134,7 +164,7 @@ start_containers() {
   # TLS terminator and is bound to the PEP network directly.
   >&2 printf "Starting s3proxy2 container..."
   # shellcheck disable=SC2086 # See above
-  "$docker" run --rm --detach --name s3proxy2 $network_switch -e S3PROXY_IDENTITY=${S3_ACCESS_KEY2} -e S3PROXY_CREDENTIAL=${S3_SECRET_KEY2} -e LOG_LEVEL=TRACE -p 9003:80 -v /"${DATADIR2}":/data "${S3PROXY_IMAGE}"
+  "$docker" run --rm --detach --name s3proxy2 $network_switch -e S3PROXY_IDENTITY=${S3_ACCESS_KEY2} -e S3PROXY_CREDENTIAL=${S3_SECRET_KEY2} -e LOG_LEVEL=TRACE -p 9003:80 -v /"${DATADIR2}":/data "${properties_file_mount_switch2[@]}" "${S3PROXY_IMAGE}" "${custom_command[@]}"
 
   # Set ENABLE_S3PROXY_LOG envvar to enable logging
   if [ -n "${ENABLE_S3PROXY_LOG-}" ]; then
