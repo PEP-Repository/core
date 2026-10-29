@@ -404,24 +404,42 @@ TEST_F(HttpClient, ReportsPreparationFailure) {
 
   boost::asio::io_context ioContext;
   pep::networking::HttpClient::Parameters parameters(ioContext, boost::urls::url("http://localhost:" + std::to_string(AsyncHttpServer::Port) + relativeUri));
-  parameters.prepareRequest([](pep::HTTPRequest&) { throw std::runtime_error("Can't prepare"); });
+  auto prepared = std::make_shared<unsigned>(0U);
+  parameters.prepareRequest([prepared](pep::HTTPRequest&) {
+    if (++*prepared == 1U) { // Only throw the first time. We want the follow-up request to succeed.
+      throw std::runtime_error("Can't prepare");
+    }
+    });
   auto client = pep::networking::HttpClient::Create(std::move(parameters));
   client->start();
 
   bool received = false;
   std::exception_ptr error;
+  std::optional<pep::HTTPResponse> followup;
   client->sendRequest(client->makeRequest())
     .subscribe(
       [&received](const pep::HTTPResponse&) { received = true; },
-      [client, &error](const std::exception_ptr& e) { error = e; client->shutdown(); },
-      [client]() {client->shutdown(); }
+      [client, &error, &followup](const std::exception_ptr& e) {
+        error = e;
+        // Send a follow-up request over the (already established) connection. Besides checking that the client remains usable,
+        // this ensures that the server has picked up the connection before the test ends: civetweb leaks the socket if it's
+        // stopped while the connection is still queued, which valgrind reports as an open file descriptor at exit.
+        client->sendRequest(client->makeRequest())
+          .subscribe(
+            [&followup](const pep::HTTPResponse& response) { followup = response; },
+            [client](const std::exception_ptr&) {client->shutdown(); },
+            [client]() {client->shutdown(); }
+          );
+      }
     );
   ioContext.run();
 
   EXPECT_FALSE(received);
   ASSERT_NE(error, nullptr);
   EXPECT_TRUE(pep::GetExceptionMessage(error).ends_with("Can't prepare"));
-  EXPECT_EQ(served->load(), 0U);
+  ASSERT_TRUE(followup.has_value()) << "Client didn't recover from preparation failure";
+  EXPECT_EQ(followup->getStatusCode(), 200U);
+  EXPECT_EQ(served->load(), 1U);
 }
 
 // Not part of the HttpClient fixture: this test uses its own server
