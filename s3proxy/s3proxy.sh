@@ -106,7 +106,7 @@ make_properties_file() {
   secret_key="$3"
 
   temp_properties_file="$(mktemp)"
-  cp "$properties_file" "$temp_properties_file"
+  cp "$custom_properties_file" "$temp_properties_file"
   # We don't support overriding these default values. For now that's good enough.
   cat <<EOF >> "$temp_properties_file"
 s3proxy.authorization=aws-v2-or-v4
