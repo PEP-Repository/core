@@ -961,7 +961,7 @@ s3proxy.maximum-timeskew=5
 EOF
 
   trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" stop
-  trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" start pep-network "$DATA_DIR/s3proxy_high_latency.properties"
+  TMPDIR="$DATA_DIR" trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" start pep-network "$DATA_DIR/s3proxy_high_latency.properties"
   trace sleep 10
 
   pepcli --oauth-token-group "Research Assessor" store -p "stale-message-participant" -c LargeColumn -i "$large_random_data_file"
