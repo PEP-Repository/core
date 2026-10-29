@@ -955,13 +955,13 @@ if should_run_test s3-stale-messages; then
 
   # We make s3proxy add a latency of 5100ms, and set the maximum timeskew to 5s.
   # Then if we queue multiple messages at once, e.g. by uploading a file consisting of enough pages, the follow-up messages are queued longer than the maximum timeskew
-  cat <<EOF >> "$DEST_DIR/custom.properties"
+  cat <<EOF >> "$DATA_DIR/s3proxy_high_latency.properties"
 s3proxy.latency-blobstore.*.latency=5100
 s3proxy.maximum-timeskew=5
 EOF
 
   trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" stop
-  trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" start pep-network "$DEST_DIR/custom.properties"
+  trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" start pep-network "$DATA_DIR/s3proxy_high_latency.properties"
   trace sleep 10
 
   pepcli --oauth-token-group "Research Assessor" store -p "stale-message-participant" -c LargeColumn -i "$large_random_data_file"
