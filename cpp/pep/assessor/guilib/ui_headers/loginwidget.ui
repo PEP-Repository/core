@@ -73,6 +73,22 @@
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
+      <widget class="QLabel" name="platformWarning">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+       <property name="visible">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
         <spacer name="horizontalSpacer_2">
@@ -246,25 +262,6 @@ QWidget:disabled {
       </layout>
      </item>
     </layout>
-   </item>
-   <item>
-    <widget class="QLabel" name="platformWarning">
-     <property name="styleSheet">
-      <string notr="true">color: white; font-weight: bold;</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-     <property name="visible">
-      <bool>false</bool>
-     </property>
-    </widget>
    </item>
    <item>
     <widget class="QLabel" name="version">
