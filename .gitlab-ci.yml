@@ -558,7 +558,8 @@ retrieve-lockfile:
     -   fi
     - fi
     - *configure-conan-and-cmake
-    - cmake --build --preset conan-$build_type_lower
+    # Keep going after failures (-k 0), to report all compiler and linter errors at once
+    - cmake --build --preset conan-$build_type_lower -- -k 0
 
     # Check for lines only in second file (tests on disk)
     - if [ -n "$(comm -13
