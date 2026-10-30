@@ -29,6 +29,7 @@ inline time_t timegm(tm *tm) noexcept {
 
 #else
 #include <unistd.h>
+#include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
 #include <sys/socket.h>

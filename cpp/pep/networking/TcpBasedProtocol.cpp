@@ -20,6 +20,11 @@
 #include <stdexcept>
 #include <string>
 
+#ifdef __linux__
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+#endif
+
 namespace pep::networking {
 
 void TcpBasedProtocol::Socket::raiseTransferStartFailure(size_t& pending, size_t pend, const std::string& reason) const {

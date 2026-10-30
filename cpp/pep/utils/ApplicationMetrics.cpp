@@ -11,8 +11,12 @@
 # endif
 # ifdef __linux__
 #  include <boost/interprocess/mapped_region.hpp>
+#  include <cstddef>
+#  include <cstdint>
 #  include <fstream>
+#  include <ios>
 #  include <sstream>
+#  include <string>
 #  include <vector>
 # endif
 #endif
@@ -21,6 +25,7 @@
 #include <atomic>
 #include <filesystem>
 #include <optional>
+#include <stdexcept> // IWYU pragma: keep (used on Windows and Linux)
 #include <utility>
 
 namespace pep {

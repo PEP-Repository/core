@@ -1,4 +1,5 @@
 #include <pep/utils/Timestamp.hpp>
+#include <pep/utils/Platform.hpp> // IWYU pragma: keep (for setenv, unsetenv and tzset)
 
 #include <boost/date_time/posix_time/conversion.hpp>
 #include <boost/date_time/date_defs.hpp> // for boost::date_time::months_of_year
