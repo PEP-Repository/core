@@ -1,5 +1,5 @@
 #include <pep/utils/Timestamp.hpp>
-#include <pep/utils/Platform.hpp> // IWYU pragma: keep (for setenv, unsetenv and tzset)
+#include <pep/utils/Platform.hpp> // IWYU pragma: keep (for tzset)
 
 #include <boost/date_time/posix_time/conversion.hpp>
 #include <boost/date_time/date_defs.hpp> // for boost::date_time::months_of_year
@@ -203,11 +203,13 @@ private:
     _putenv_s("TZ", tz ? tz : "");
     _tzset();
 #else
-    //NOLINTBEGIN(concurrency-mt-unsafe) Tests are single-threaded
+    // concurrency-mt-unsafe: tests are single-threaded.
+    // misc-include-cleaner: setenv and unsetenv are declared in glibc's <stdlib.h>, which libstdc++ wraps in its own.
+    //NOLINTBEGIN(concurrency-mt-unsafe,misc-include-cleaner)
     if (tz) { setenv("TZ", tz, 1); }
     else { unsetenv("TZ"); }
     tzset();
-    //NOLINTEND(concurrency-mt-unsafe)
+    //NOLINTEND(concurrency-mt-unsafe,misc-include-cleaner)
 #endif
   }
 

@@ -2,7 +2,7 @@
 
 #include <algorithm> // IWYU pragma: keep (used in assert)
 #include <cassert>
-#include <cctype>
+#include <cctype> // IWYU pragma: keep (used in assert)
 #include <string>
 
 namespace pep {
