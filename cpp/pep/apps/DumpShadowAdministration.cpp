@@ -1,15 +1,25 @@
 #include <pep/application/Application.hpp>
-#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/crypto/AsymmetricKey.hpp>
 #include <pep/utils/File.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <sqlite3.h>
 
 #include <iostream>
 #include <fstream>
+#include <climits>
+#include <cstddef>
+#include <cstdlib>
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/classification.hpp>
 
 using namespace pep;
 

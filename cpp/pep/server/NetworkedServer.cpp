@@ -2,6 +2,22 @@
 #include <pep/messaging/BinaryProtocol.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
+#include <pep/crypto/X509Certificate.hpp> // for X509RootCertificates, X509IdentityFiles
+#include <pep/messaging/Connection.hpp>
+#include <pep/messaging/Node.hpp>
+#include <pep/server/Server.hpp>
+#include <pep/utils/Event.hpp>
+#include <pep/utils/LifeCycler.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+
+#include <boost/asio/io_context.hpp>
+
+#include <cassert>
+#include <cstdint>
+#include <exception>
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace pep {
 

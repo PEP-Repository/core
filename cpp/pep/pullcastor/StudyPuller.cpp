@@ -5,12 +5,36 @@
 #include <pep/castor/RepeatingDataPoint.hpp>
 #include <pep/pullcastor/CastorParticipant.hpp>
 #include <pep/pullcastor/StudyAspectPuller.hpp>
+#include <pep/async/RxCache.hpp>
+#include <pep/castor/DataPoint.hpp>
+#include <pep/castor/Field.hpp>
+#include <pep/castor/Participant.hpp>
+#include <pep/castor/RepeatingData.hpp>
+#include <pep/castor/RepeatingDataInstance.hpp>
+#include <pep/castor/Study.hpp>
+#include <pep/pullcastor/ColumnBoundParticipantId.hpp>
+#include <pep/pullcastor/EnvironmentPuller.hpp>
+#include <pep/pullcastor/FieldValue.hpp>
+#include <pep/pullcastor/PullCastorUtils.hpp> // for PEP_PULLCASTOR_LOG
+#include <pep/pullcastor/RepeatingDataPuller.hpp>
+#include <pep/pullcastor/StorableContent.hpp> // for castor::StorableCellContent, castor::StorableColumnContent
+#include <pep/pullcastor/StoredData.hpp>
+#include <pep/pullcastor/StudyAspect.hpp>
+#include <pep/pullcastor/StudyPuller.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-group_by.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
 #include <rxcpp/operators/rx-take.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <algorithm>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace pep {
 namespace castor {

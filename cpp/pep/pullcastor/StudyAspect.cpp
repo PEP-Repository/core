@@ -1,10 +1,15 @@
 #include <pep/pullcastor/StudyAspect.hpp>
 
 #include <pep/async/RxIterate.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
 
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <memory>
+#include <string>
 
 namespace pep {
 namespace castor {

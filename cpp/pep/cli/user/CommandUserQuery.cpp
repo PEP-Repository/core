@@ -5,10 +5,25 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/structuredoutput/Json.hpp>
 #include <pep/structuredoutput/Yaml.hpp>
-#include <pep/structuredoutput/Tree.hpp>
-#include <pep/utils/MiscUtil.hpp>
+#include <pep/accessmanager/UserMessages.hpp> // for UserQueryResponse, QRUser
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/CliApplication.hpp> // for cli::LogTag
+#include <pep/cli/Command.hpp>
+#include <pep/cli/User.hpp>
+#include <pep/structuredoutput/Common.hpp> // for structuredOutput::queryKeys::userGroups, structuredOutput::JsonConfig, structuredOutput::YamlConfig, ...
+#include <pep/utils/EnumUtils.hpp> // for FlagsIf
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Timestamp.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
+
+#include <algorithm>
+#include <iostream>
+#include <memory>
+#include <ostream>
+#include <ranges>
+#include <utility>
+#include <vector>
 
 namespace {
 

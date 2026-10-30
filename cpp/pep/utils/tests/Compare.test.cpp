@@ -2,6 +2,8 @@
 
 #include <pep/utils/Compare.hpp>
 
+#include <map>
+
 namespace {
 
 TEST(CaseInsensitiveCompare, caseInsensitiveMapFind) {

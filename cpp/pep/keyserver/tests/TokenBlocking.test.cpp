@@ -6,10 +6,20 @@
 #include <chrono>
 #include <filesystem>
 #include <gmock/gmock-more-matchers.h>
+#include <gmock/gmock.h> // for EXPECT_THAT
 #include <gtest/gtest.h>
 #include <pep/utils/Filesystem.hpp>
+#include <pep/keyserver/tokenblocking/Blocklist.hpp>
 #include <span>
 #include <unordered_set>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <utility>
+#include <vector>
 
 using namespace std::literals;
 

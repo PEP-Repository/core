@@ -2,6 +2,13 @@
 
 #include <QApplication>
 #include <QTimer>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <chrono>
+#include <functional>
+#include <memory>
+#include <utility>
 namespace {
 
 // from http://stackoverflow.com/questions/21646467/how-to-execute-a-functor-or-a-lambda-in-a-given-thread-in-qt-gcd-style

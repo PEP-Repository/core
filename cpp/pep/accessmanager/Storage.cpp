@@ -7,11 +7,28 @@
 
 #include <pep/auth/UserGroup.hpp>
 #include <pep/database/Storage.hpp>
-#include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/File.hpp>
-#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
+#include <pep/accessmanager/AccessManager.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for StructureMetadataKey, StructureMetadataType
+#include <pep/accessmanager/Records.hpp>
+#include <pep/accessmanager/UserIdFlags.hpp>
+#include <pep/accessmanager/UserMessages.hpp> // for UserQueryResponse, QRUser
+#include <pep/database/Record.hpp> // for database::UnixMillis
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/structure/ColumnName.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/utils/BuildFlavor.hpp> // for PEP_BUILD_HAS_DEBUG_FLAVOR
+#include <pep/utils/EnumUtils.hpp> // for FlagsIf
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/MiscUtil.hpp> // for Default
+#include <pep/utils/Timestamp.hpp>
 
 #include <cctype>
 #include <sstream>
@@ -24,9 +41,24 @@
 #include <sqlite_orm/sqlite_orm.h>
 
 #include <boost/algorithm/string/case_conv.hpp>
-#include <boost/algorithm/string/join.hpp>
 #include <filesystem>
 #include <unordered_set>
+#include <algorithm>
+#include <cassert>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <limits>
+#include <map>
+#include <memory>
+#include <optional>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <system_error>
+#include <vector>
 
 using std::chrono::milliseconds;
 using namespace std::ranges;

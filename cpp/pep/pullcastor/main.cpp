@@ -1,6 +1,13 @@
 #include <pep/application/Application.hpp>
 #include <pep/pullcastor/EnvironmentPuller.hpp>
-#include <pep/utils/Configuration.hpp>
+#include <pep/utils/Configuration.hpp> // IWYU pragma: keep (other headers only forward declare Configuration)
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/utils/Log.hpp> // for Severity
+
+#include <cstdlib>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace {
 

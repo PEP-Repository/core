@@ -3,7 +3,8 @@
 
 #include <pep/serialization/Error.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
-#include <pep/ticketing/TicketingMessages.hpp>
+
+#include <vector>
 
 namespace {
 using namespace pep;

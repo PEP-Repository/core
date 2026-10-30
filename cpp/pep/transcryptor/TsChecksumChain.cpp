@@ -2,6 +2,10 @@
 #include <pep/transcryptor/TsChecksumChain.hpp>
 #include <cassert>
 #include <stdexcept>
+#include <cstdint>
+#include <limits>
+#include <optional>
+#include <string>
 
 namespace pep {
 

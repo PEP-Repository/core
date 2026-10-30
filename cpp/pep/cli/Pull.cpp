@@ -1,9 +1,7 @@
-#include <pep/utils/Win32Api.hpp>
 
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 
-#include <boost/range/iterator_range.hpp>
 #include <boost/algorithm/string/join.hpp>
 
 #include <algorithm>
@@ -12,9 +10,17 @@
 #include <ranges>
 #include <pep/ticketing/ColumnAccessModes.hpp>
 #include <thread>
+#include <cassert>
+#include <cstddef>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #include <pep/cli/DownloadDirectory.hpp>
-#include <pep/cli/Export.hpp>
 #include <pep/cli/structuredoutput/TableFromDownloadDirectory.hpp>
 #include <pep/cli/MultiCellQuery.hpp>
 #include <pep/core-client/CoreClient.hpp>
@@ -25,11 +31,26 @@
 #include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/utils/File.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for ParticipantGroupAccess, ColumnAccess
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/application/CommandLineValueSpecification.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/cli/DownloadMetadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
+#include <pep/utils/EnumUtils.hpp> // for FlagsIf, HasFlags
+#include <pep/utils/Event.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Progress.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep::enumUtils;
 using namespace pep::cli;

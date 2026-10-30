@@ -1,4 +1,6 @@
 #include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <gtest/gtest.h>
 

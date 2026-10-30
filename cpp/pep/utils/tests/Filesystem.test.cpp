@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <ranges>
 #include <string_view>
+#include <cassert>
+#include <cctype>
+#include <filesystem>
 
 using namespace std::ranges;
 

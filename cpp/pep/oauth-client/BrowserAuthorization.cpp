@@ -7,13 +7,27 @@
 
 #include <filesystem>
 #include <format>
+#include <cassert>
+#include <cstdint>
+#include <exception>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <string>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/url/url_view.hpp>
 
-#include <pep/utils/Win32Api.hpp>
-#if defined(__linux__) || ( defined(__APPLE__) && defined(__MACH__) )
+#include <pep/networking/HTTPMessage.hpp> // for HTTPRequest
+#include <pep/oauth-client/OAuthClient.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+#if defined(_WIN32)
+# include <pep/utils/Win32Api.hpp>
+#elif defined(__linux__) || ( defined(__APPLE__) && defined(__MACH__) )
 # include <boost/process/v2/environment.hpp>
 # include <boost/process/v2/process.hpp>
 #endif

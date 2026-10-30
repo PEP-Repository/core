@@ -1,6 +1,7 @@
 #include <pep/assessor/datetimeeditor.hpp>
 #include <pep/assessor/ui_datetimeeditor.h>
 #include <pep/assessor/QDate.hpp>
+#include <pep/assessor/dateeditor.hpp>
 
 #include <stdexcept>
 #include <QAbstractSpinBox>

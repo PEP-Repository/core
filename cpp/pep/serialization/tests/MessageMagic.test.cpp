@@ -4,6 +4,7 @@
 #include <pep/serialization/Error.hpp>
 #include <pep/serialization/tests/VerifyBackwardCompatible.hpp>
 #include <pep/utils/Timestamp.hpp>
+#include <pep/utils/NormalizedTypeNaming.hpp> // for GetNormalizedTypeName
 
 namespace {
 

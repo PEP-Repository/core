@@ -6,18 +6,22 @@
 # include <Windows.h>
 # include <Psapi.h>
 #else
-# include <sys/resource.h>
+# if defined(__unix__) && !defined(__EMSCRIPTEN__)
+#  include <sys/resource.h>
+# endif
 # ifdef __linux__
 #  include <boost/interprocess/mapped_region.hpp>
+#  include <fstream>
+#  include <sstream>
+#  include <vector>
 # endif
 #endif
 
 #include <cmath>
-#include <iostream>
-#include <fstream>
 #include <atomic>
-#include <sstream>
-#include <vector>
+#include <filesystem>
+#include <optional>
+#include <utility>
 
 namespace pep {
 

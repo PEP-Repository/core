@@ -2,6 +2,25 @@
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/server/ServerProxy.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/Signed.hpp> // for MessageSigner
+#include <pep/messaging/ConnectionStatus.hpp>
+#include <pep/messaging/HousekeepingMessages.hpp> // for VersionResponse
+#include <pep/messaging/ServerConnection.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/MessageMagic.hpp>
+#include <pep/server/MonitoringMessages.hpp> // for MetricsResponse, ChecksumChainResponse
+
+#include <boost/core/demangle.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <typeinfo>
+#include <utility>
 
 namespace pep {
 

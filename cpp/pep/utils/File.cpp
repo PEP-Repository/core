@@ -12,6 +12,13 @@
 #include <ranges>
 #include <regex>
 #include <cassert>
+#include <filesystem>
+#include <functional>
+#include <ios>
+#include <istream>
+#include <optional>
+#include <stdexcept>
+#include <string_view>
 
 using namespace std::literals;
 

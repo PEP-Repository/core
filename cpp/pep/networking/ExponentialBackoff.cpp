@@ -1,5 +1,10 @@
 #include <pep/networking/ExponentialBackoff.hpp>
 
+#include <algorithm>
+#include <cassert>
+#include <optional>
+#include <utility>
+
 namespace pep {
 
 ExponentialBackoff::Parameters::Parameters(Timeout minTimeout, Timeout maxTimeout, BackoffFactor backoffFactor) noexcept

@@ -2,8 +2,23 @@
 #include <pep/cli/Commands.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
 #include <pep/serialization/Serialization.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/CliApplication.hpp>
+#include <pep/morphing/Metadata.hpp>
 
 #include <boost/algorithm/hex.hpp>
+
+#include <Messages.pb.h> // for proto::NamedMetadataXEntry
+
+#include <google/protobuf/util/json_util.h> // for google::protobuf::util::MessageToJsonString
+
+#include <cassert>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 using namespace pep::cli;
 

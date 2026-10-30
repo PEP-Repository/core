@@ -1,6 +1,12 @@
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Raw.hpp>
 #include <sstream>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <map>
+#include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 

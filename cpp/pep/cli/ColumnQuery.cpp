@@ -1,4 +1,8 @@
 #include <pep/cli/ColumnQuery.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+
+#include <vector>
 
 using namespace pep::cli;
 

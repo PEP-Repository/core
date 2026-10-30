@@ -1,10 +1,17 @@
 #include <pep/elgamal/ElgamalEncryption.hpp>
-
-#include <pep/utils/OpenSSLHasher.hpp>
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
 
 #include <boost/container_hash/hash.hpp>
 
 #include <sstream>
+#include <cassert>
+#include <cstddef>
+#include <functional>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
 
 namespace pep {
 

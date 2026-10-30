@@ -7,12 +7,31 @@
 #include <pep/networking/tests/TestServerFactory.test.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Exceptions.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/messaging/Connection.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/messaging/ReadThrottle.hpp>
+#include <pep/messaging/RequestHandler.hpp>
+#include <pep/networking/Client.hpp>
+#include <pep/networking/Tcp.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/utils/Shared.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/asio/io_context.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/rx-lite.hpp>
 #include <gtest/gtest.h>
 
 #include <ranges>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace std::literals;
 using namespace std::ranges;

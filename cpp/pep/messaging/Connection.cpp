@@ -7,12 +7,48 @@
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Shared.hpp>
+#include <pep/async/CreateObservable.hpp>
+#include <pep/messaging/Connection.hpp>
+#include <pep/messaging/HousekeepingMessages.hpp> // for VersionResponse
+#include <pep/messaging/MessageHeader.hpp>
+#include <pep/messaging/MessageProperties.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/messaging/ReadThrottle.hpp>
+#include <pep/messaging/RequestHandler.hpp>
+#include <pep/messaging/Requestor.hpp>
+#include <pep/messaging/Scheduler.hpp>
+#include <pep/networking/Connection.hpp>
+#include <pep/networking/Transport.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/MessageMagic.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/versioning/Version.hpp>
 
 #include <boost/bind/bind.hpp>
 #include <boost/asio/placeholders.hpp>
 #include <boost/asio/ssl/error.hpp>
+#include <boost/asio/error.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/system/errc.hpp> // for boost::system::errc::make_error_code
+#include <boost/system/system_error.hpp>
 
 #include <utility>
+#include <algorithm>
+#include <cassert>
+#include <chrono>
+#include <cstdint>
+#include <exception>
+#include <ios>
+#include <limits>
+#include <memory>
+#include <optional>
+#include <set>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+
+#include <rxcpp/rx-lite.hpp>
 
 namespace pep::messaging {
 

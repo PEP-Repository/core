@@ -1,5 +1,7 @@
 #include <pep/auth/Certificate.hpp>
 #include <pep/crypto/tests/X509Certificate.Samples.test.hpp>
+#include <pep/crypto/AsymmetricKey.hpp>
+#include <pep/crypto/X509Certificate.hpp>
 #include <gtest/gtest.h>
 
 using namespace std::literals;

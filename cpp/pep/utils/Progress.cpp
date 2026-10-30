@@ -4,6 +4,11 @@
 
 #include <cassert>
 #include <stdexcept>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <stack>
+#include <string>
 
 namespace pep {
 

@@ -3,32 +3,53 @@
 #include <algorithm>
 #include <ranges>
 #include <sstream>
+#include <array>
+#include <cassert>
+#include <chrono>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <functional>
+#include <initializer_list>
+#include <memory>
+#include <optional>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/trim.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/url/pct_string_view.hpp>
 #include <boost/url/url_view.hpp>
+#include <boost/algorithm/string/predicate.hpp> // for boost::iequals
+#include <boost/asio/io_context.hpp>
+#include <boost/url/url.hpp>
 
 #include <rxcpp/operators/rx-observe_on.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/UserGroup.hpp>
-#include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Base64.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/auth/OAuthToken.hpp>
-#include <pep/utils/File.hpp>
 #include <pep/async/OnAsio.hpp>
 #include <pep/authserver/AuthserverBackend.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/ChronoUtil.hpp>
+#include <pep/httpserver/HTTPServer.hpp>
+#include <pep/networking/HTTPMessage.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/utils/Paths.hpp>
 
 using namespace std::literals;
 using namespace std::ranges;

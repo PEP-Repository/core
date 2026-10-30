@@ -4,6 +4,7 @@
 #include <pep/structuredoutput/Table.hpp>
 #include <stdexcept>
 #include <vector>
+#include <memory>
 
 namespace {
 using pep::structuredOutput::Table;

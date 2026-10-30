@@ -3,11 +3,9 @@
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/File.hpp>
-#include <pep/utils/MiscUtil.hpp>
 #include <pep/archiving/Pseudonymiser.hpp>
 #include <pep/archiving/DirectoryArchive.hpp>
 #include <pep/archiving/HashedArchive.hpp>
-#include <pep/storagefacility/Constants.hpp>
 #include <pep/utils/PropertySerializer.hpp>
 #include <pep/rsk-pep/Pseudonyms.PropertySerializers.hpp>
 #include <pep/core-client/CoreClient.hpp>
@@ -15,12 +13,37 @@
 #include <fstream>
 #include <ranges>
 
-#include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 #include <rxcpp/operators/rx-reduce.hpp>
+#include <rxcpp/rx-lite.hpp>
 #include <pep/archiving/Tar.hpp>
+#include <pep/archiving/Archive.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/DownloadDirectory.hpp>
+#include <pep/cli/DownloadMetadata.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/utils/CheckedPath.hpp>
+#include <pep/utils/Filesystem.hpp> // for filesystem::SetOfExistingPaths
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Progress.hpp>
+#include <pep/utils/XxHasher.hpp>
 #include <utility>
+#include <cassert>
+#include <cerrno>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <functional>
+#include <ios>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <system_error>
+#include <vector>
 
 using namespace pep;
 using namespace pep::cli;

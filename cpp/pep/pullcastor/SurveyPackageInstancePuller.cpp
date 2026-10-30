@@ -1,9 +1,19 @@
 #include <pep/pullcastor/SurveyPackageInstancePuller.hpp>
 
 #include <pep/async/RxIterate.hpp>
-
 #include <boost/property_tree/ptree.hpp>
+#include <pep/castor/ImportColumnNamer.hpp>
+#include <pep/castor/SurveyStep.hpp>
+#include <pep/pullcastor/CellContent.hpp>
+#include <pep/pullcastor/FieldValue.hpp>
+#include <pep/pullcastor/StorableContent.hpp> // for castor::StorableColumnContent
+
 #include <rxcpp/operators/rx-concat.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace pep {
 namespace castor {

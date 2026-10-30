@@ -2,6 +2,20 @@
 #include <gtest/gtest.h>
 
 #include <pep/application/tests/CommandLineParameterTestFixture.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineCommandWrappers.hpp> // for commandline::CreateAliasCommand
+#include <pep/application/CommandLineParameter.hpp> // for commandline::CommandPath, commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues, commandline::Values
+
+#include <cstdlib>
+#include <initializer_list>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <queue>
+#include <string>
+#include <utility>
+#include <vector>
 
 // Truth Tables for possible command/parameter combinations and forwarding patterns
 //

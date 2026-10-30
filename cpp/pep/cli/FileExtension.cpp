@@ -14,6 +14,16 @@
 
 #include <ranges>
 #include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for ColumnAccess, ParticipantGroupAccess, IndexedTicket2
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/CliApplication.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2
+#include <pep/utils/EnumUtils.hpp> // for HasFlags
+#include <pep/utils/Shared.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
@@ -22,10 +32,29 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <boost/algorithm/string/split.hpp>
 
 #include <utility>
+#include <cassert>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <functional>
+#include <iomanip>
+#include <ios>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <ratio>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 using namespace pep::cli;
 using namespace std::ranges;

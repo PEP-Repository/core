@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cctype>
+#include <string>
 
 namespace pep {
 namespace commandline {

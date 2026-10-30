@@ -1,6 +1,11 @@
 #include <pep/serialization/Error.hpp>
 #include <pep/serialization/ErrorSerializer.hpp>
 #include <pep/serialization/Serialization.hpp>
+#include <pep/serialization/MessageMagic.hpp>
+
+#include <exception>
+#include <string_view>
+#include <utility>
 
 namespace pep {
 

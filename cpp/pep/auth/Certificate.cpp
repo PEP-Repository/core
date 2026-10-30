@@ -1,5 +1,8 @@
 #include <pep/auth/Certificate.hpp>
+#include <pep/crypto/X509Certificate.hpp>
 #include <cassert>
+#include <optional>
+#include <string>
 
 namespace pep {
 

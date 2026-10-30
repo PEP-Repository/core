@@ -1,6 +1,7 @@
 #include <pep/accessmanager/AccessManagerMessages.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/serialization/Serialization.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
 
 #include <gtest/gtest.h>
 

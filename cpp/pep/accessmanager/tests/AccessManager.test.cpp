@@ -4,6 +4,9 @@
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/AccessManager.hpp>
 
+#include <stdexcept>
+#include <vector>
+
 
 using namespace pep;
 

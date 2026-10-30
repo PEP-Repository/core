@@ -2,6 +2,9 @@
 
 #include <pep/accessmanager/AmaMessages.hpp>
 
+#include <cstddef>
+#include <vector>
+
 namespace {
 
 TEST(AmaQRColumnGroupFillColumnGroupToCapacity, simple) {

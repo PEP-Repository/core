@@ -3,6 +3,11 @@
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <optional>
+#include <set>
+#include <vector>
+
 namespace {
 
 template <typename T>

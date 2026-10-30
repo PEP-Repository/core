@@ -1,6 +1,18 @@
 #include <pep/networking/SocketReadBuffer.hpp>
 #include <pep/utils/CollectionUtils.hpp>
+#include <pep/networking/StreamSocket.hpp>
+#include <pep/utils/Shared.hpp>
 #include <istream>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstring>
+#include <ios>
+#include <memory>
+#include <string>
+#include <utility>
+
+#include <boost/asio/error.hpp>
 
 namespace pep::networking {
 

@@ -1,6 +1,9 @@
 #include <pep/utils/Timestamp.hpp>
 
 #include <boost/date_time/posix_time/conversion.hpp>
+#include <boost/date_time/date_defs.hpp> // for boost::date_time::months_of_year
+#include <boost/date_time/gregorian/greg_date.hpp> // for boost::gregorian::not_a_date_time
+#include <boost/date_time/posix_time/ptime.hpp> // for boost::posix_time::neg_infin
 #include <gtest/gtest.h>
 
 #include <array>
@@ -9,8 +12,13 @@
 #include <format>
 #include <initializer_list>
 #include <ctime>
-#include <optional>
 #include <string>
+#include <stdexcept>
+#include <string_view>
+
+#ifndef __EMSCRIPTEN__
+#include <optional>
+#endif
 
 using namespace std::chrono;
 using namespace std::literals;

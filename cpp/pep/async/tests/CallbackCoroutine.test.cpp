@@ -5,6 +5,8 @@
 
 #include <gtest/gtest.h>
 
+#include <functional>
+
 using namespace pep;
 
 namespace {

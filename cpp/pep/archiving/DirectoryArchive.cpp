@@ -2,6 +2,14 @@
 
 #include <pep/utils/CheckedPath.hpp>
 
+#include <cerrno>
+#include <cstdint>
+#include <filesystem>
+#include <ios>
+#include <stdexcept>
+#include <string_view>
+#include <system_error>
+
 namespace pep {
 
 DirectoryArchive::DirectoryArchive(const std::filesystem::path& directoryPath) : directoryPath_(directoryPath) {

@@ -5,9 +5,26 @@
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/auth/EnrolledParty.hpp>
+#include <pep/auth/ServerTraits.hpp>
+#include <pep/key-components/KeyComponentMessages.hpp> // for SignedKeyComponentRequest, KeyComponentResponse
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/metrics/RegisteredMetrics.hpp>
+#include <pep/rsk-pep/DataTranslator.hpp>
+#include <pep/rsk-pep/PseudonymTranslator.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/server/SigningServer.hpp>
+#include <pep/async/IoContext_fwd.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
 #include <prometheus/summary.h>
+
+#include <chrono>
+#include <exception>
+#include <filesystem>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 namespace pep {
 

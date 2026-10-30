@@ -3,6 +3,9 @@
 
 #include <pep/ticketing/SubjectAccessModes.hpp>
 #include <pep/serialization/Error.hpp>
+#include <pep/utils/EnumUtils.hpp> // for HasFlags
+
+#include <vector>
 
 namespace {
 using namespace pep;

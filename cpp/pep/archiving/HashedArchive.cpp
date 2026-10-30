@@ -1,9 +1,18 @@
 #include <pep/archiving/HashedArchive.hpp>
 #include <pep/archiving/NoOpArchive.hpp>
+#include <pep/archiving/Archive.hpp>
+#include <pep/utils/CheckedPath.hpp>
+#include <pep/utils/XxHasher.hpp>
 
 #include <boost/iostreams/device/mapped_file.hpp>
 
 #include <filesystem>
+#include <cstddef>
+#include <cstdint>
+#include <ios>
+#include <memory>
+#include <stdexcept>
+#include <string_view>
 
 namespace pep {
 

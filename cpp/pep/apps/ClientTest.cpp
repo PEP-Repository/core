@@ -1,21 +1,46 @@
 #include <optional>
+#include <cstddef>
+#include <cstdlib>
+#include <exception>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <ostream>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <pep/application/Application.hpp>
 #include <pep/versioning/Version.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
-#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/storagefacility/Constants.hpp>
 #include <pep/async/RxConcatenateStrings.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/ServerTraits.hpp>
+#include <pep/core-client/CoreClient.hpp> // for DataStorageResult2, RequestTicket2Opts, EnumerateAndRetrieveResult
+#include <pep/messaging/HousekeepingMessages.hpp> // for VersionResponse
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/server/ServerProxy.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/versioning/SemanticVersion.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-merge.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/asio/io_context.hpp>

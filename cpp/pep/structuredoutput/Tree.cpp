@@ -1,10 +1,13 @@
 #include <pep/structuredoutput/Tree.hpp>
-
 #include <boost/property_tree/ptree.hpp>
+#include <pep/structuredoutput/Table.hpp>
 
 #include <algorithm>
 #include <ranges>
-#include <tuple>
+#include <cassert>
+#include <optional>
+#include <string>
+#include <utility>
 
 using namespace std::ranges;
 

@@ -2,8 +2,17 @@
 #include <pep/messaging/ResponseToVoid.hpp>
 #include <pep/registrationserver/RegistrationServerProxy.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/crypto/AsymmetricKey.hpp>
+#include <pep/registrationserver/RegistrationServerMessages.hpp> // for PEPIdRegistrationResponse
+#include <pep/rsk-pep/Pseudonyms.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <optional>
+#include <string>
+#include <utility>
 
 namespace pep {
 

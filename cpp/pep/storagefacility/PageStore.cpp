@@ -5,14 +5,24 @@
 #include <algorithm>
 #include <cassert>
 #include <filesystem>
+#include <cstddef>
+#include <iomanip>
+#include <memory>
+#include <optional>
+#include <ranges>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <pep/utils/Log.hpp>
 
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
 #include <rxcpp/operators/rx-merge.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
-#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/async/RxLazy.hpp>
 #include <pep/async/RxButFirst.hpp>
 #include <pep/async/RxToVector.hpp>
@@ -21,6 +31,11 @@
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/storagefacility/S3.hpp> // for s3::ETag
+#include <pep/storagefacility/S3Credentials.hpp> // for s3::Credentials
+#include <pep/async/IoContext_fwd.hpp>
 
 #include <prometheus/gauge.h>
 #include <prometheus/registry.h>
