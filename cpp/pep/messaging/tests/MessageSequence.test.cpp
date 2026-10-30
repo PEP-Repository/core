@@ -2,13 +2,17 @@
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Filesystem.hpp>
 #include <pep/utils/Random.hpp>
-#include <gtest/gtest.h>
+
 #include <rxcpp/operators/rx-concat_map.hpp>
+
+#include <gtest/gtest.h>
+
 #include <fstream>
 #include <cstddef>
 #include <exception>
 #include <ios>
 #include <memory>
+#include <string>
 
 TEST(MessageSequence, IStreamIsBatchedLazily) {
   /* So I want the stream to produce a couple of pages, ending with a page that isn't entirely full.

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <limits>
-#include <string>
+#include <string> // IWYU pragma: keep (for the ""s literal operator)
 
 #include <gtest/gtest.h>
 

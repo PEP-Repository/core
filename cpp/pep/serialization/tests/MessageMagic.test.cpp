@@ -1,10 +1,12 @@
-#include <gtest/gtest.h>
-
 #include <pep/serialization/MessageMagic.hpp>
 #include <pep/serialization/Error.hpp>
 #include <pep/serialization/tests/VerifyBackwardCompatible.hpp>
 #include <pep/utils/Timestamp.hpp>
 #include <pep/utils/NormalizedTypeNaming.hpp> // for GetNormalizedTypeName
+
+#include <gtest/gtest.h>
+
+#include <string>
 
 namespace {
 

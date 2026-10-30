@@ -3,6 +3,7 @@
 #include <pep/utils/Compare.hpp>
 
 #include <map>
+#include <string>
 
 namespace {
 

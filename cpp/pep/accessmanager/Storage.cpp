@@ -1,10 +1,8 @@
 // Storage class for the access manager.
 
 #include <pep/accessmanager/Storage.hpp>
-
 #include <pep/accessmanager/UserStorageRecords.hpp>
 #include <pep/accessmanager/LegacyAuthserverStorage.hpp>
-
 #include <pep/auth/UserGroup.hpp>
 #include <pep/database/Storage.hpp>
 #include <pep/utils/CollectionUtils.hpp>
@@ -30,17 +28,16 @@
 #include <pep/utils/MiscUtil.hpp> // for Default
 #include <pep/utils/Timestamp.hpp>
 
-#include <cctype>
+#include <sqlite_orm/sqlite_orm.h>
+
+#include <boost/algorithm/string/case_conv.hpp>
+
 #include <sstream>
 #include <unordered_map>
 #include <iterator>
 #include <ranges>
 #include <set>
 #include <utility>
-
-#include <sqlite_orm/sqlite_orm.h>
-
-#include <boost/algorithm/string/case_conv.hpp>
 #include <filesystem>
 #include <unordered_set>
 #include <algorithm>

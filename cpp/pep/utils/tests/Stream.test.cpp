@@ -2,13 +2,15 @@
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Stream.hpp>
 
-#include <boost/algorithm/hex.hpp>
 #include <gtest/gtest.h>
+
+#include <boost/algorithm/hex.hpp>
 
 #include <cstddef>
 #include <ios>
 #include <istream>
 #include <sstream>
+#include <string>
 
 TEST(Stream, Cropped) {
   constexpr std::streamsize max = 46;

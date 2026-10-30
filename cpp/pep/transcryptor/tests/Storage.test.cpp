@@ -1,7 +1,4 @@
-#include <gtest/gtest.h>
-
 #include <pep/transcryptor/Storage.hpp>
-
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/rsk-pep/PseudonymTranslator.hpp>
 #include <pep/utils/Random.hpp>
@@ -11,9 +8,12 @@
 #include <pep/rsk/RskRecipient.hpp>
 #include <pep/utils/CollectionUtils.hpp> // for ToSizedSpan
 
+#include <gtest/gtest.h>
+
 #include <optional>
 #include <span>
 #include <stdexcept>
+#include <string>
 
 using namespace pep;
 

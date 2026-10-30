@@ -1,5 +1,8 @@
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Raw.hpp>
+
+#include <gtest/gtest.h>
+
 #include <sstream>
 #include <cstddef>
 #include <cstdint>
@@ -7,8 +10,7 @@
 #include <map>
 #include <utility>
 #include <vector>
-
-#include <gtest/gtest.h>
+#include <string>
 
 namespace {
 

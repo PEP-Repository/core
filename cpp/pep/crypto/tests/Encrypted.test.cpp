@@ -8,6 +8,7 @@
 #include <gmock/gmock-matchers.h>
 
 #include <exception>
+#include <string>
 
 using namespace pep;
 using testing::Throws;

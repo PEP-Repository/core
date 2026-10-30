@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include <string>
+
 using namespace pep;
 using namespace std::literals;
 

@@ -1,13 +1,13 @@
 #include <pep/storagefacility/S3Client.hpp>
 #include <pep/storagefacility/tests/sftest.hpp>
-
-#include <gtest/gtest.h>
-
 #include <pep/async/tests/RxTestUtils.hpp>
 #include <pep/utils/Defer.hpp>
 
+#include <gtest/gtest.h>
+
 #include <numeric>
 #include <memory>
+#include <string>
 
 #include <boost/asio/io_context.hpp>
 

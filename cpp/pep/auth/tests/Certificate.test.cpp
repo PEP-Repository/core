@@ -4,6 +4,8 @@
 #include <pep/crypto/X509Certificate.hpp>
 #include <gtest/gtest.h>
 
+#include <string>
+
 using namespace std::literals;
 
 TEST(Certificate, IsntServerCertificate) {
