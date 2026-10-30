@@ -4,7 +4,7 @@
 
 #include <boost/algorithm/string/join.hpp>
 
-#include <algorithm>
+#include <algorithm> // IWYU pragma: keep (used in assert)
 #include <filesystem>
 #include <fstream>
 #include <ranges>

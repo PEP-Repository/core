@@ -4,7 +4,7 @@
 #include <pep/async/OnAsio.hpp>
 
 #include <boost/asio/steady_timer.hpp>
-#include <boost/asio/error.hpp> // for boost::asio::error::operation_aborted
+#include <boost/asio/error.hpp> // IWYU pragma: keep (used in assert)
 #include <boost/asio/io_context.hpp>
 
 #include <rxcpp/rx-lite.hpp>

@@ -9,9 +9,9 @@
 #include <functional>
 #include <ios>
 #include <istream>
-#include <limits>
+#include <limits> // IWYU pragma: keep (used in assert)
 #include <string>
-#include <utility>
+#include <utility> // IWYU pragma: keep (used in assert)
 
 namespace {
 

@@ -1,10 +1,10 @@
 #include <sstream>
 #include <cassert>
 #include <cstddef>
-#include <cstdint>
+#include <cstdint> // IWYU pragma: keep (used in assert)
 #include <cstdio>
 #include <ios>
-#include <limits>
+#include <limits> // IWYU pragma: keep (used in assert)
 #include <ostream>
 #include <stdexcept>
 #include <string>

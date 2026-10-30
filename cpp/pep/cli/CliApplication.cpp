@@ -23,7 +23,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <algorithm>
+#include <algorithm> // IWYU pragma: keep (used in assert)
 #include <cassert>
 #include <chrono>
 #include <exception>

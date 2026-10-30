@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <ranges>
 #include <sstream>
-#include <array>
+#include <array> // IWYU pragma: keep (used with ENABLE_OAUTH_TEST_USERS)
 #include <cassert>
 #include <chrono>
 #include <cstdint>
@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/trim.hpp> // IWYU pragma: keep (used without ENABLE_OAUTH_TEST_USERS)
 #include <boost/lexical_cast.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -36,12 +37,14 @@
 
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/ConstTime.hpp> // IWYU pragma: keep (used without ENABLE_OAUTH_TEST_USERS)
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Base64.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/auth/OAuthToken.hpp>
+#include <pep/utils/File.hpp> // IWYU pragma: keep (used without ENABLE_OAUTH_TEST_USERS)
 #include <pep/async/OnAsio.hpp>
 #include <pep/authserver/AuthserverBackend.hpp>
 #include <pep/utils/Random.hpp>

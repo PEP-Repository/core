@@ -20,7 +20,7 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/classification.hpp> // for boost::is_space
-#include <boost/algorithm/string/predicate.hpp> // for boost::ends_with
+#include <boost/algorithm/string/predicate.hpp> // IWYU pragma: keep (used in assert)
 #include <boost/asio/io_context.hpp>
 #include <boost/lexical_cast/try_lexical_convert.hpp>
 #include <boost/url/url.hpp>

@@ -1,7 +1,7 @@
 #include <benchmark/benchmark.h>
 
 #include <boost/algorithm/hex.hpp>
-#include <boost/core/noncopyable.hpp>
+#include <boost/core/noncopyable.hpp> // IWYU pragma: keep (used without NDEBUG)
 
 #include <algorithm>
 #include <random>
@@ -9,9 +9,9 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <iostream>
+#include <iostream> // IWYU pragma: keep (used without NDEBUG)
 #include <memory>
-#include <ostream>
+#include <ostream> // IWYU pragma: keep (used without NDEBUG)
 #include <ranges>
 #include <string>
 #include <utility>

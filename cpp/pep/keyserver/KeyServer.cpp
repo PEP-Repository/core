@@ -16,7 +16,7 @@
 #include <pep/crypto/ConstTime.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/auth/EnrolledParty.hpp>
+#include <pep/auth/EnrolledParty.hpp> // IWYU pragma: keep (used in assert)
 #include <pep/crypto/X509Certificate.hpp>
 #include <pep/keyserver/KeyServerMessages.hpp> // for EnrollmentRequest, EnrollmentResponse, TokenBlockingCreateResponse
 #include <pep/keyserver/tokenblocking/Blocklist.hpp> // for tokenBlocking::IsBlocking

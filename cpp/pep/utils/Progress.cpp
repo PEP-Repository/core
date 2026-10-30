@@ -1,6 +1,6 @@
 #include <pep/utils/BuildFlavor.hpp>
 #include <pep/utils/Progress.hpp>
-#include <pep/utils/Shared.hpp>
+#include <pep/utils/Shared.hpp> // IWYU pragma: keep (used in assert)
 
 #include <cassert>
 #include <stdexcept>

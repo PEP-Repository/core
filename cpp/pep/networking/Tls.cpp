@@ -25,6 +25,7 @@
 #include <boost/bind/placeholders.hpp> // for boost::placeholders::_1
 #include <boost/system/system_error.hpp>
 #include <openssl/ssl.h>
+#include <fstream> // IWYU pragma: keep (used with SSLKEYLOGFILE)
 #include <openssl/err.h>
 #include <openssl/sslerr.h> // for SSL_R_UNINITIALIZED
 #include <openssl/tls1.h> // for SSL_set_tlsext_host_name

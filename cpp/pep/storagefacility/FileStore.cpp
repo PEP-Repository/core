@@ -32,7 +32,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <ios>
-#include <iterator>
+#include <iterator> // IWYU pragma: keep (used in assert)
 #include <map>
 #include <memory>
 #include <set>

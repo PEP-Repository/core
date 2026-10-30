@@ -6,7 +6,7 @@
 
 #include <ranges>
 #include <cassert>
-#include <limits>
+#include <limits> // IWYU pragma: keep (used in assert)
 #include <memory>
 #include <optional>
 #include <stdexcept>

@@ -39,7 +39,7 @@
 #include <cstdint>
 #include <exception>
 #include <ios>
-#include <limits>
+#include <limits> // IWYU pragma: keep (used in assert)
 #include <memory>
 #include <optional>
 #include <set>

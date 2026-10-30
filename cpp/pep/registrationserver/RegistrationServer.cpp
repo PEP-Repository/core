@@ -7,9 +7,9 @@
 #include <pep/async/RxBeforeTermination.hpp>
 #include <pep/async/RxCartesianProduct.hpp>
 #include <pep/async/RxEnsureProgress.hpp>
-#include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxRequireCount.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
 #include <pep/async/RxInstead.hpp>
-#include <pep/async/RxToUnorderedMap.hpp>
+#include <pep/async/RxToUnorderedMap.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
 #include <pep/structure/ShortPseudonyms.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
@@ -18,8 +18,8 @@
 #include <pep/async/ActivityMonitor.hpp>
 #include <pep/async/RxCache.hpp>
 #include <pep/async/RxIterate.hpp>
-#include <pep/castor/CastorConnection.hpp>
-#include <pep/castor/Study.hpp>
+#include <pep/castor/CastorConnection.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
+#include <pep/castor/Study.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
 #include <pep/crypto/AsymmetricKey.hpp>
 #include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
 #include <pep/morphing/Metadata.hpp>
@@ -29,7 +29,7 @@
 #include <pep/serialization/Serialization.hpp>
 #include <pep/server/ChecksumChain.hpp>
 #include <pep/server/SigningServer.hpp>
-#include <pep/structure/ColumnName.hpp>
+#include <pep/structure/ColumnName.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/utils/Log.hpp> // for Severity
 #include <pep/utils/Shared.hpp>
