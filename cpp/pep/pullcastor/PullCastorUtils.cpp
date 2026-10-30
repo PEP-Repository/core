@@ -9,9 +9,9 @@
 #include <utility>
 #include <version>
 
-#include <date/date.h> // for date::local_seconds
 //TODO(workaround) Remove when std timezones are widely supported
 #if __cpp_lib_chrono < 201907L
+#include <date/date.h> // for date::local_seconds
 #include <date/tz.h>
 using date::parse;
 using date::local_seconds;
