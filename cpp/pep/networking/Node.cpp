@@ -1,5 +1,15 @@
 #include <pep/networking/Node.hpp>
 #include <pep/utils/Shared.hpp>
+#include <pep/networking/Connection.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/networking/Transport.hpp>
+
+#include <cassert>
+#include <exception>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace pep::networking {
 

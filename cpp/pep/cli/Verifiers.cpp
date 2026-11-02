@@ -2,8 +2,15 @@
 #include <pep/cli/Commands.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for VerifiersResponse
+#include <pep/cli/CliApplication.hpp>
+#include <pep/serialization/Serialization.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
+
+#include <iostream>
+#include <memory>
+#include <ostream>
 
 using namespace pep::cli;
 

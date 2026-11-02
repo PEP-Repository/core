@@ -1,29 +1,54 @@
 #include <pep/storagefacility/StorageFacility.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/crypto/ConstTime.hpp>
-#include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/utils/File.hpp>
 #include <pep/async/CreateObservable.hpp>
 #include <pep/async/RxBeforeTermination.hpp>
 #include <pep/utils/Random.hpp>
-#include <pep/utils/Hasher.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxParallelConcat.hpp>
-#include <pep/utils/ApplicationMetrics.hpp>
-#include <pep/auth/EnrolledParty.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/storagefacility/SFIdSerializer.hpp>
 #include <pep/messaging/MessageHeader.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
+#include <pep/async/OnAsio.hpp>
+#include <pep/async/WorkerPool.hpp>
+#include <pep/auth/Signed.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/messaging/ReadThrottle.hpp>
+#include <pep/metrics/RegisteredMetrics.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/morphing/Metadata.hpp> // for EncryptionScheme
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/IndexList.hpp>
+#include <pep/serialization/MessageMagic.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/serialization/SerializeException.hpp>
+#include <pep/server/SigningServer.hpp>
+#include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/EntryName.hpp>
+#include <pep/storagefacility/FileStore.hpp>
+#include <pep/storagefacility/PendingBytesLimiter.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for SignedDataEnumerationRequest2, DataEnumerationResponse2, DataStoreRequest2
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for Ticket2, LocalPseudonyms
+#include <pep/utils/CollectionUtils.hpp> // for FillToCapacity
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp> // for TimeNow
+#include <pep/utils/XxHasher.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string/join.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/placeholders.hpp>
-
 #include <rxcpp/rx-lite.hpp>
+#include <boost/asio/error.hpp> // for boost::asio::error::operation_aborted
+#include <boost/asio/io_context.hpp>
+#include <boost/bind/bind.hpp>
+
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
@@ -33,6 +58,23 @@
 #include <ranges>
 #include <unordered_map>
 #include <sstream>
+#include <cassert>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <limits>
+#include <memory>
+#include <optional>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #include <prometheus/gauge.h>
 #include <prometheus/summary.h>

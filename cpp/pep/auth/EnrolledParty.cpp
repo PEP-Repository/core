@@ -1,5 +1,9 @@
 #include <pep/auth/Certificate.hpp>
 #include <pep/auth/ServerTraits.hpp>
+#include <pep/auth/EnrolledParty.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+
+#include <optional>
 
 namespace pep {
 

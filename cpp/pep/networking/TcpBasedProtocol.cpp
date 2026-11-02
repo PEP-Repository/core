@@ -1,7 +1,29 @@
 #include <pep/networking/TcpBasedProtocol.hpp>
-#include <pep/utils/Defer.hpp>
 #include <boost/asio/connect.hpp>
-#include <pep/utils/Log.hpp>
+#include <boost/asio/error.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/socket_base.hpp>
+#include <boost/system/system_error.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/networking/SocketReadBuffer.hpp>
+#include <pep/networking/Transport.hpp> // for networking::SizedTransfer, networking::DelimitedTransfer
+#include <pep/utils/OperationResult.hpp>
+#include <pep/utils/Shared.hpp>
+
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <exception>
+#include <memory>
+#include <stdexcept>
+#include <string>
+
+#ifdef __linux__
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+#endif
 
 namespace pep::networking {
 

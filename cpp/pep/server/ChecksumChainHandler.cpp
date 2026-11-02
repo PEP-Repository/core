@@ -1,6 +1,18 @@
 #include <pep/auth/UserGroup.hpp>
 #include <pep/server/ChecksumChainHandler.hpp>
 #include <pep/utils/Bitpacking.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/server/MonitoringMessages.hpp> // for ChecksumChainResponse
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <set>
+#include <string>
+#include <utility>
 
 namespace pep {
 

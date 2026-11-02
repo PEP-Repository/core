@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 #include <pep/utils/Math.hpp>
 
+#include <cstdint>
+#include <optional>
+
 namespace {
 
 TEST(Math, CeilDiv) {

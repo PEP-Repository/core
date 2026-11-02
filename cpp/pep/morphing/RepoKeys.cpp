@@ -3,10 +3,14 @@
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/MiscUtil.hpp>
+#include <pep/rsk-pep/DataTranslationKeys.hpp>
+#include <pep/rsk-pep/PseudonymTranslationKeys.hpp>
 
 #include <boost/property_tree/ptree.hpp>
 
 #include <string>
+#include <cstddef>
+#include <string_view>
 
 using namespace pep;
 

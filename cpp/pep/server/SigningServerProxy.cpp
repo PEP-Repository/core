@@ -4,6 +4,18 @@
 #include <pep/server/SigningServerProxy.hpp>
 #include <pep/server/CertificateRenewalMessages.hpp>
 #include <pep/server/CertificateRenewalSerializers.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/Signature.hpp> // for Signatory
+#include <pep/auth/Signed.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/messaging/HousekeepingMessages.hpp> // for SignedPingResponse, PingRequest, PingResponse
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <format>
+#include <sstream>
+#include <stdexcept>
+#include <string>
 
 namespace pep {
 

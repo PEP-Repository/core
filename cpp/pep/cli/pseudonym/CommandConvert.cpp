@@ -5,10 +5,21 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/cli/Command.hpp>
+#include <pep/cli/Pseudonym.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 #include <ranges>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/rx-observable.hpp>
 #include <stdexcept>
+#include <cctype>
+#include <iostream>
+#include <memory>
+#include <ostream>
+#include <string>
 
 namespace pep::cli {
 

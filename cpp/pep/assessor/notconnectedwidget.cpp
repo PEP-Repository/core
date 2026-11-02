@@ -3,6 +3,9 @@
 #include <pep/auth/ServerTraits.hpp>
 
 #include <pep/assessor/ui_notconnectedwidget.h>
+#include <pep/messaging/ConnectionStatus.hpp>
+
+#include <string>
 
 void NotConnectedWidget::appendConnectionStatus(QString& destination, const std::string& server, pep::ConnectionStatus status) const {
   if (!status.connected) {

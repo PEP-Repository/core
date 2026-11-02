@@ -5,6 +5,17 @@
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for EncryptedKey
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/rsk/Proofs.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/transcryptor/TranscryptorMessages.hpp> // for RekeyRequest, TranscryptorRequest, TranscryptorRequestEntry, ...
+
+#include <Messages.pb.h> // for proto::RekeyRequest
+
+#include <optional>
+#include <utility>
+#include <vector>
 
 namespace pep {
 

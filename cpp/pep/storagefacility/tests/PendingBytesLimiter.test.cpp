@@ -1,10 +1,15 @@
 #include <pep/storagefacility/PendingBytesLimiter.hpp>
+#include <pep/messaging/ReadThrottle.hpp>
 
 #include <gtest/gtest.h>
 
 #include <optional>
 #include <ranges>
 #include <vector>
+#include <cstdint>
+#include <memory>
+#include <stdexcept>
+#include <utility>
 
 #include <prometheus/gauge.h>
 

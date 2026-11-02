@@ -2,6 +2,12 @@
 
 #include <pep/utils/Bitpacking.hpp>
 
+#include <cstdint>
+#include <ios>
+#include <istream>
+#include <ostream>
+#include <string>
+
 namespace pep {
 
 void WriteBinary(std::ostream& out, uint32_t number) {

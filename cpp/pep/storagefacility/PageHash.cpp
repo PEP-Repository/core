@@ -4,6 +4,9 @@
 #include <xxhash.h>
 
 #include <sstream>
+#include <cstdint>
+#include <string>
+#include <utility>
 
 namespace pep
 {

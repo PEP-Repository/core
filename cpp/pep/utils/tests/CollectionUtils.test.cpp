@@ -1,5 +1,12 @@
 #include <pep/utils/CollectionUtils.hpp>
+
 #include <gtest/gtest.h>
+
+#include <cstddef>
+#include <iterator>
+#include <ranges>
+#include <string>
+#include <vector>
 
 namespace {
 

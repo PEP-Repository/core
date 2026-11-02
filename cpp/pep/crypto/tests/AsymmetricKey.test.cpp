@@ -3,6 +3,9 @@
 #include <pep/crypto/AsymmetricKey.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 
+#include <string>
+#include <vector>
+
 namespace {
 
 const std::string inputPublicKeyPEM = "-----BEGIN PUBLIC KEY-----\n\

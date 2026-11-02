@@ -2,11 +2,27 @@
 
 #include <pep/storagefacility/Constants.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/utils/Defer.hpp>
 #include <pep/async/tests/RxTestUtils.hpp>
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for EncryptedKey
+#include <pep/morphing/Metadata.hpp> // for EncryptionScheme
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/storagefacility/EntryContent.hpp>
+#include <pep/storagefacility/PageStore.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <gtest/gtest.h>
 #include <filesystem>
+#include <cstddef>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <boost/asio/io_context.hpp>
+
+#include <rxcpp/rx-lite.hpp>
 
 using pep::EntryContent;
 using pep::FileStore;

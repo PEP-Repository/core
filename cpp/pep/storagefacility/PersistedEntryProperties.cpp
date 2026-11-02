@@ -1,9 +1,14 @@
 #include <pep/storagefacility/PersistedEntryProperties.hpp>
 #include <pep/utils/Bitpacking.hpp>
-#include <pep/utils/EnumUtils.hpp>
-#include <pep/utils/MiscUtil.hpp>
+#include <pep/morphing/Metadata.hpp> // for EncryptionScheme
+#include <pep/utils/Timestamp.hpp>
 
 #include <utility>
+#include <cassert>
+#include <cstdint>
+#include <limits>
+#include <stdexcept>
+#include <string>
 
 namespace pep {
 

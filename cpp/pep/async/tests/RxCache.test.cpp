@@ -5,6 +5,13 @@
 #include <boost/asio/io_context.hpp>
 #include <gtest/gtest.h>
 
+#include <rxcpp/rx-lite.hpp>
+
+#include <exception>
+#include <memory>
+#include <stdexcept>
+#include <vector>
+
 using namespace pep;
 
 namespace {

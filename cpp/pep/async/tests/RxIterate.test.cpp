@@ -2,6 +2,10 @@
 #include <pep/async/RxIterate.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <stdexcept>
+#include <vector>
 
 namespace {
 

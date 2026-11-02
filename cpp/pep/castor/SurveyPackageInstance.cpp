@@ -2,10 +2,21 @@
 #include <pep/castor/SurveyPackageInstance.hpp>
 #include <pep/castor/SurveyDataPoint.hpp>
 #include <pep/castor/Ptree.hpp>
+#include <pep/castor/CastorConnection.hpp> // for castor::JsonPtr
+#include <pep/castor/CastorObject.hpp>
+#include <pep/castor/Participant.hpp>
+#include <pep/castor/Study.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <ranges>
+#include <memory>
+#include <string>
+#include <vector>
 
-#include <entities.hpp>
+#include <boost/optional/optional.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
 
 using namespace std::ranges;
 

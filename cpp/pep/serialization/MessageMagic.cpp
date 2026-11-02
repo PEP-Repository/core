@@ -5,6 +5,12 @@
 #include <pep/utils/Raw.hpp>
 
 #include <cassert>
+#include <cstdint>
+#include <optional>
+#include <ostream>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include <boost/bimap.hpp>
 #include <xxhash.h>

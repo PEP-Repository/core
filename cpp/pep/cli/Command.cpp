@@ -1,5 +1,12 @@
 #include <pep/client/Client.hpp>
 #include <pep/cli/Command.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/core-client/CoreClient.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <functional>
+#include <memory>
 
 namespace pep::cli {
 

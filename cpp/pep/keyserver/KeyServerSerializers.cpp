@@ -1,6 +1,14 @@
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/keyserver/KeyServerSerializers.hpp>
 #include <pep/serialization/TimestampSerializer.hpp>
+#include <pep/keyserver/KeyServerMessages.hpp> // for EnrollmentRequest, EnrollmentResponse, TokenBlockingCreateResponse
+#include <pep/serialization/Serialization.hpp>
+
+#include <Messages.pb.h> // for proto::EnrollmentRequest
+
+#include <optional>
+#include <utility>
+#include <vector>
 
 namespace pep {
 

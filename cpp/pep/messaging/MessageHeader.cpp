@@ -1,8 +1,10 @@
 #include <pep/messaging/MessageHeader.hpp>
 #include <pep/utils/BuildFlavor.hpp>
-#include <pep/utils/Platform.hpp>
+#include <pep/utils/Platform.hpp> // IWYU pragma: keep (for htonl and ntohl, which may be macros)
+#include <pep/messaging/MessageProperties.hpp>
 #include <format>
 #include <stdexcept>
+#include <cstddef>
 
 namespace pep::messaging {
 

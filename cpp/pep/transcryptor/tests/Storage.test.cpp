@@ -1,10 +1,19 @@
-#include <gtest/gtest.h>
-
 #include <pep/transcryptor/Storage.hpp>
-
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/rsk-pep/PseudonymTranslator.hpp>
 #include <pep/utils/Random.hpp>
+#include <pep/auth/EnrolledParty.hpp>
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPublicKey
+#include <pep/rsk/RskRecipient.hpp>
+#include <pep/utils/CollectionUtils.hpp> // for ToSizedSpan
+
+#include <gtest/gtest.h>
+
+#include <optional>
+#include <span>
+#include <stdexcept>
+#include <string>
 
 using namespace pep;
 

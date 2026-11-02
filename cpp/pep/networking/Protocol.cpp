@@ -2,6 +2,8 @@
 
 #include <pep/networking/Connection.hpp>
 
+#include <string>
+
 namespace pep::networking {
 
 std::string Protocol::ClientComponent::describe() const { return "client to " + this->connectionAddress(); }

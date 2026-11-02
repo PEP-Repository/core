@@ -2,6 +2,12 @@
 #include <pep/utils/Filesystem.hpp>
 #include <cassert>
 #include <random>
+#include <cstddef>
+#include <filesystem>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
 
 namespace pep::filesystem {
 

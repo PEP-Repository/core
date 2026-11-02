@@ -1,9 +1,17 @@
 #include <pep/pullcastor/PullCastorUtils.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 #include <chrono>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <version>
+
 //TODO(workaround) Remove when std timezones are widely supported
 #if __cpp_lib_chrono < 201907L
+#include <date/date.h> // for date::local_seconds
 #include <date/tz.h>
 using date::parse;
 using date::local_seconds;

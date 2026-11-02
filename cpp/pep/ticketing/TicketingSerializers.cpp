@@ -3,8 +3,17 @@
 #include <pep/auth/SigningSerializers.hpp>
 #include <pep/serialization/TimestampSerializer.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
+#include <pep/auth/Signature.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms, Ticket2, SignedTicket2, ...
 
 #include <ranges>
+#include <optional>
+#include <utility>
+
+#include <Messages.pb.h> // for proto::LocalPseudonyms, proto::SignedTicketRequest2
 
 using namespace std::ranges;
 

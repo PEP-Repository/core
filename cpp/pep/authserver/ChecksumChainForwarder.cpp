@@ -1,5 +1,15 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/authserver/ChecksumChainForwarder.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/server/MonitoringMessages.hpp> // for ChecksumChainResponse
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <ranges>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
 
 namespace pep {
 

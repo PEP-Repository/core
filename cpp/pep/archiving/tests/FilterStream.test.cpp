@@ -1,6 +1,18 @@
 #include <sstream>
+#include <cassert>
+#include <cstddef>
+#include <cstdint> // IWYU pragma: keep (used in assert)
+#include <cstdio>
+#include <ios>
+#include <limits> // IWYU pragma: keep (used in assert)
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 #include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/char_traits.hpp> // for boost::iostreams::WOULD_BLOCK
+#include <boost/iostreams/read.hpp>
 #include <gtest/gtest.h>
 #include <pep/archiving/PseudonymiseInputFilter.hpp>
 

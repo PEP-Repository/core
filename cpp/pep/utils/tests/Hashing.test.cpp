@@ -4,6 +4,10 @@
 
 #include <pep/utils/OpenSSLHasher.hpp>
 
+#include <memory>
+#include <string>
+#include <type_traits>
+
 namespace {
 
 template <typename TCreateHasher, typename... TValues>

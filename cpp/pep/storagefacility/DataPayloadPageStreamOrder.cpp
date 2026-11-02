@@ -1,4 +1,5 @@
 #include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
+#include <pep/storagefacility/DataPayloadPage.hpp>
 
 #include <format>
 #include <stdexcept>
