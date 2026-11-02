@@ -55,8 +55,8 @@ public:
     const RetryParameters& retryParameters() const noexcept { return retryParameters_; }
     const RetryParameters& retryParameters(RetryParameters assign) { return retryParameters_ = std::move(assign); }
 
-    const PrepareCallback& prepareRequest() const noexcept { return prepareRequest_; }
-    const PrepareCallback& prepareRequest(PrepareCallback assign) { return prepareRequest_ = std::move(assign); }
+    const PrepareCallback& onPrepareRequest() const noexcept { return onPrepareRequest_; }
+    const PrepareCallback& onPrepareRequest(PrepareCallback assign) { return onPrepareRequest_ = std::move(assign); }
 
     std::shared_ptr<Client> createBinaryClient() const;
 
@@ -70,7 +70,7 @@ public:
     std::optional<std::filesystem::path> caCertFilePath_;
     ExponentialBackoff::Parameters reconnectParameters_;
     RetryParameters retryParameters_;
-    PrepareCallback prepareRequest_;
+    PrepareCallback onPrepareRequest_;
   };
 
 private:

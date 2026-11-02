@@ -353,7 +353,7 @@ void HttpClient::ensureSend() {
   sending_ = pendingRequests_.front();
   response_ = HTTPResponse();
 
-  if (const auto& prepare = parameters_.prepareRequest()) {
+  if (const auto& prepare = parameters_.onPrepareRequest()) {
     try {
       prepare(*sending_->request);
     }

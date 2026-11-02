@@ -365,7 +365,7 @@ TEST_F(HttpClient, PreparesEachAttempt) {
   pep::networking::HttpClient::Parameters parameters(ioContext, boost::urls::url("http://localhost:" + std::to_string(AsyncHttpServer::Port) + relativeUri));
   parameters.retryParameters(FastRetryParameters());
   auto prepared = std::make_shared<unsigned>(0U);
-  parameters.prepareRequest([prepared](pep::HTTPRequest& request) {
+  parameters.onPrepareRequest([prepared](pep::HTTPRequest& request) {
     request.setHeader("X-Attempt", std::to_string(++*prepared)); // Overwrites the value set by an earlier attempt
     });
   auto client = pep::networking::HttpClient::Create(std::move(parameters));
@@ -405,7 +405,7 @@ TEST_F(HttpClient, ReportsPreparationFailure) {
   boost::asio::io_context ioContext;
   pep::networking::HttpClient::Parameters parameters(ioContext, boost::urls::url("http://localhost:" + std::to_string(AsyncHttpServer::Port) + relativeUri));
   auto prepared = std::make_shared<unsigned>(0U);
-  parameters.prepareRequest([prepared](pep::HTTPRequest&) {
+  parameters.onPrepareRequest([prepared](pep::HTTPRequest&) {
     if (++*prepared == 1U) { // Only throw the first time. We want the follow-up request to succeed.
       throw std::runtime_error("Can't prepare");
     }
