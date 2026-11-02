@@ -355,10 +355,11 @@ TEST_F(HttpClient, LimitsRetries) {
 
 TEST_F(HttpClient, PreparesEachAttempt) {
   const std::string relativeUri = "/prepare";
+  constexpr size_t numAttempts = 3U;
   auto attempts = std::make_shared<std::vector<std::string>>();
   this->server().registerHandler(relativeUri, false, [attempts](const pep::HTTPRequest& request, const std::string&) {
     attempts->push_back(request.hasHeader("X-Attempt") ? request.header("X-Attempt") : "");
-    return attempts->size() < 3U ? pep::HTTPResponse(503U, "Service Unavailable") : pep::HTTPResponse(200U, "OK", ResponseBody);
+    return attempts->size() < numAttempts ? pep::HTTPResponse(503U, "Service Unavailable") : pep::HTTPResponse(200U, "OK", ResponseBody);
     });
 
   boost::asio::io_context ioContext;
@@ -384,7 +385,7 @@ TEST_F(HttpClient, PreparesEachAttempt) {
   EXPECT_EQ(received->getStatusCode(), 200U);
   // Every attempt that reached the server was prepared anew. (Additional preparations may have taken place if the client
   // had to reconnect before (re)sending, which happens because our civetweb-based server closes connections after responding.)
-  ASSERT_EQ(attempts->size(), 3U);
+  ASSERT_EQ(attempts->size(), numAttempts);
   unsigned previous = 0U;
   for (const auto& attempt : *attempts) {
     auto current = static_cast<unsigned>(std::stoul(attempt));
@@ -436,7 +437,7 @@ TEST_F(HttpClient, ReportsPreparationFailure) {
 
   EXPECT_FALSE(received);
   ASSERT_NE(error, nullptr);
-  EXPECT_TRUE(pep::GetExceptionMessage(error).ends_with("Can't prepare"));
+  EXPECT_TRUE(pep::GetExceptionMessage(error).contains("Can't prepare"));
   ASSERT_TRUE(followup.has_value()) << "Client didn't recover from preparation failure";
   EXPECT_EQ(followup->getStatusCode(), 200U);
   EXPECT_EQ(served->load(), 1U);

@@ -75,7 +75,7 @@ std::shared_ptr<networking::HttpClient> CreateHttpClient(const Client::Parameter
   // Sign requests right before they're sent instead of when they're created: requests may wait in the
   // HttpClient's queue, or be resent after an error, and S3 rejects requests whose X-Amz-Date is too old.
   httpParameters.onPrepareRequest([credentials = params.credentials](HTTPRequest& request) {
-    request::Sign(request, credentials);
+    pep::s3::request::Sign(request, credentials);
   });
 
   return networking::HttpClient::Create(std::move(httpParameters));
