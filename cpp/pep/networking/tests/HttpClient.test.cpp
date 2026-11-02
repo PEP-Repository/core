@@ -10,6 +10,7 @@
 #include <pep/utils/Log.hpp>
 
 #include <atomic>
+#include <mutex>
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
@@ -357,7 +358,9 @@ TEST_F(HttpClient, PreparesEachAttempt) {
   const std::string relativeUri = "/prepare";
   constexpr size_t numAttempts = 3U;
   auto attempts = std::make_shared<std::vector<std::string>>();
-  this->server().registerHandler(relativeUri, false, [attempts](const pep::HTTPRequest& request, const std::string&) {
+  auto attemptsMutex = std::make_shared<std::mutex>();
+  this->server().registerHandler(relativeUri, false, [attempts, attemptsMutex](const pep::HTTPRequest& request, const std::string&) {
+    std::lock_guard<std::mutex> lock(*attemptsMutex);
     attempts->push_back(request.hasHeader("X-Attempt") ? request.header("X-Attempt") : "");
     return attempts->size() < numAttempts ? pep::HTTPResponse(503U, "Service Unavailable") : pep::HTTPResponse(200U, "OK", ResponseBody);
     });
@@ -385,14 +388,17 @@ TEST_F(HttpClient, PreparesEachAttempt) {
   EXPECT_EQ(received->getStatusCode(), 200U);
   // Every attempt that reached the server was prepared anew. (Additional preparations may have taken place if the client
   // had to reconnect before (re)sending, which happens because our civetweb-based server closes connections after responding.)
-  ASSERT_EQ(attempts->size(), numAttempts);
-  unsigned previous = 0U;
-  for (const auto& attempt : *attempts) {
-    auto current = static_cast<unsigned>(std::stoul(attempt));
-    EXPECT_GT(current, previous) << "Server received a request that wasn't prepared anew";
-    previous = current;
+  {
+    std::lock_guard<std::mutex> lock(*attemptsMutex);
+    ASSERT_EQ(attempts->size(), numAttempts);
+    unsigned previous = 0U;
+    for (const auto& attempt : *attempts) {
+      auto current = static_cast<unsigned>(std::stoul(attempt));
+      EXPECT_GT(current, previous) << "Server received a request that wasn't prepared anew";
+      previous = current;
+    }
+    EXPECT_EQ(previous, *prepared) << "Last preparation wasn't sent";
   }
-  EXPECT_EQ(previous, *prepared) << "Last preparation wasn't sent";
 }
 
 TEST_F(HttpClient, ReportsPreparationFailure) {
