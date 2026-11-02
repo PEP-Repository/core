@@ -28,7 +28,7 @@ rxcpp::observable<TokenBlockingCreateResponse> KeyServerProxy::requestTokenBlock
 }
 
 rxcpp::observable<TokenBlockingRemoveResponse> KeyServerProxy::requestTokenBlockingRemove(TokenBlockingRemoveRequest request) const {
-  return this->sendRequest<TokenBlockingRemoveResponse>(this->sign(std::move(request))) //NOLINT(performance-move-const-arg) may change
+  return this->sendRequest<TokenBlockingRemoveResponse>(this->sign(std::move(request)))
     .op(RxGetOne());
 }
 

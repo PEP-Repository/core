@@ -117,3 +117,5 @@ CheckOptions:
   bugprone-empty-catch.IgnoreCatchWithKeywords: ignore
   bugprone-unused-return-value.AllowCastToVoid: true
   misc-throw-by-value-catch-by-reference.CheckThrowTemporaries: false
+  # Aggregates may gain move operations in the future (e.g. when a string member is added)
+  performance-move-const-arg.CheckTriviallyCopyableMove: false
