@@ -192,10 +192,10 @@ FakeCastorTest::FakeCastorTest()
 
 void FakeCastorTest::TearDown() {
   castorConnection_ = nullptr;
-  clientSide_.stop(false);
+  clientSide_.stop();
 
   server_->stop();
-  serverSide_.stop(false);
+  serverSide_.stop();
 }
 
 void FakeCastorTest::Side::start() {
@@ -205,7 +205,7 @@ void FakeCastorTest::Side::start() {
   thread_ = std::make_shared<IoContextThread>("Fake Castor test " + this->role(), ioContext_);
 }
 
-void FakeCastorTest::Side::stop(bool force) {
+void FakeCastorTest::Side::stop() {
   if (ioContext_ == nullptr) {
     throw std::runtime_error("Can't stop FakeCastorTest::Side multiple times");
   }
@@ -213,7 +213,7 @@ void FakeCastorTest::Side::stop(bool force) {
     throw std::runtime_error("Can't stop an unstarted FakeCastorTest::Side");
   }
   ioContext_.reset(); // Allow detection that this instance has already been stop()ped
-  thread_->stop(force);
+  thread_->stop();
 }
 
 FakeCastorApi::FakeCastorApi(const pep::networking::Protocol::ServerParameters& parameters, uint16_t port, std::shared_ptr<Options> options)

@@ -34,7 +34,7 @@ public:
   /// \brief Schedules the thread to be stopped.
   /// \param force Whether the io_context is to be explicitly stop()ped. If not, it (and associated thread) will keep running until the io_context runs out of work.
   /// \remark Blocks until the thread is (stopped and) joined.
-  void stop(bool force = false) noexcept;
+  void stop() noexcept;
 };
 
 }
