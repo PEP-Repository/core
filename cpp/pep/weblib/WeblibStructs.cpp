@@ -50,8 +50,6 @@ EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(AccessManagerFilter::columnGroup)::value_type>();
   register_optional<decltype(AccessManagerFilter::subjectGroup)::value_type>();
   register_optional<decltype(AccessManagerFilter::userGroup)::value_type>();
-  register_optional<decltype(AccessManagerFilter::columnGroupMode)::value_type>();
-  register_optional<decltype(AccessManagerFilter::subjectGroupMode)::value_type>();
 }
 
 PEP_BINDINGS(ListColumnsQuery,
@@ -143,13 +141,14 @@ PEP_BINDINGS(ColumnGroup,
 PEP_BINDINGS(ColumnGroupAccessRuleInfo,
   columnGroup,
   userGroup,
-  mode
+  modes,
+  impliedOnlyModes
 )
 
 PEP_BINDINGS(SubjectGroupAccessRuleInfo,
   subjectGroup,
   userGroup,
-  mode
+  modes
 )
 
 PEP_BINDINGS(AccessManagerFilter,
@@ -157,9 +156,7 @@ PEP_BINDINGS(AccessManagerFilter,
   column,
   columnGroup,
   subjectGroup,
-  userGroup,
-  columnGroupMode,
-  subjectGroupMode
+  userGroup
 )
 
 PEP_BINDINGS(AccessManagerState,

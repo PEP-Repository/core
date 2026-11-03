@@ -176,7 +176,10 @@ struct ColumnGroup {
 struct ColumnGroupAccessRuleInfo {
   std::string columnGroup;
   std::string userGroup;
-  std::string mode;
+  /// The modes of the explicit access rules
+  ColumnGroupAccessModes modes;
+  /// The modes implied by \c modes, e.g. "read-meta" by "read", that are not explicit themselves
+  ColumnGroupAccessModes impliedOnlyModes;
 
   [[nodiscard]] auto operator<=>(const ColumnGroupAccessRuleInfo&) const = default;
 };
@@ -185,7 +188,7 @@ struct ColumnGroupAccessRuleInfo {
 struct SubjectGroupAccessRuleInfo {
   std::string subjectGroup;
   std::string userGroup;
-  std::string mode;
+  SubjectGroupAccessModes modes;
 
   [[nodiscard]] auto operator<=>(const SubjectGroupAccessRuleInfo&) const = default;
 };
@@ -198,8 +201,6 @@ struct AccessManagerFilter {
   std::optional<std::string> columnGroup;
   std::optional<std::string> subjectGroup;
   std::optional<std::string> userGroup;
-  std::optional<std::string> columnGroupMode;
-  std::optional<std::string> subjectGroupMode;
 
   [[nodiscard]] auto operator<=>(const AccessManagerFilter&) const = default;
 };

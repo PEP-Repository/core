@@ -381,6 +381,25 @@ describe('Pep', () => {
 
       expect((await pep.queryAccessManager()).subjectGroups).to.not.include(subjectGroup);
     }));
+
+    it('should query the effective access modes', () => pep.runHandleWasmException(async () => {
+      expect(await pep.queryEffectiveAccessModes({
+        columnGroup: 'WasmTestMetaColumnGroup',
+        subjectGroup: 'WasmTestEnumerateSubjectGroup',
+      })).to.deep.equal({
+        // Explicit rules: read-meta, write-meta
+        columnGroups: [{
+          columnGroup: 'WasmTestMetaColumnGroup',
+          userGroup: 'Research Assessor',
+          modes: {read: false, readMeta: true, write: true, writeMeta: true},
+        }],
+        subjectGroups: [{
+          subjectGroup: 'WasmTestEnumerateSubjectGroup',
+          userGroup: 'Research Assessor',
+          modes: {access: false, enumerate: true},
+        }],
+      });
+    }));
   });
 });
 

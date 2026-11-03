@@ -29,6 +29,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <map>
 #include <numeric>
 #include <stdexcept>
 #include <thread>
@@ -107,22 +108,6 @@ ColumnGroup ToColumnGroup(AmaQRColumnGroup group) {
   };
 }
 
-ColumnGroupAccessRuleInfo ToColumnGroupAccessRuleInfo(AmaQRColumnGroupAccessRule rule) {
-  return ColumnGroupAccessRuleInfo{
-      .columnGroup = std::move(rule.columnGroup),
-      .userGroup = std::move(rule.accessGroup),
-      .mode = std::move(rule.mode),
-  };
-}
-
-SubjectGroupAccessRuleInfo ToSubjectGroupAccessRuleInfo(AmaQRParticipantGroupAccessRule rule) {
-  return SubjectGroupAccessRuleInfo{
-      .subjectGroup = std::move(rule.participantGroup),
-      .userGroup = std::move(rule.userGroup),
-      .mode = std::move(rule.mode),
-  };
-}
-
 ColumnGroupAccessModes ColumnGroupAccessModesFromEnum(const ColumnAccessModes modes){
   return {
       .read = HasFlags(modes, ColumnAccessModes::Read),
@@ -144,6 +129,43 @@ SubjectGroupAccessModes SubjectGroupAccessModesFromEnum(const SubjectAccessModes
       .access = HasFlags(modes, SubjectAccessModes::Access),
       .enumerate = HasFlags(modes, SubjectAccessModes::Enumerate)
   };
+}
+
+/// One entry per column group and user group, with the modes of all their access rules
+std::vector<ColumnGroupAccessRuleInfo> CombineColumnGroupAccessRules(const std::vector<AmaQRColumnGroupAccessRule>& rules) {
+  std::map<std::pair<std::string, std::string>, ColumnAccessModes> modesByGroups;
+  for (const auto& rule : rules) {
+    modesByGroups[{rule.columnGroup, rule.accessGroup}] |= ParseColumnAccessMode(rule.mode);
+  }
+  return modesByGroups
+    | views::transform([](const auto& entry) {
+      const auto& [groups, modes] = entry;
+      return ColumnGroupAccessRuleInfo{
+          .columnGroup = groups.first,
+          .userGroup = groups.second,
+          .modes = ColumnGroupAccessModesFromEnum(modes),
+          .impliedOnlyModes = ColumnGroupAccessModesFromEnum(ImplicitlyGrantedModes(modes) & ~modes),
+      };
+    })
+    | to<std::vector>();
+}
+
+/// One entry per subject group and user group, with the modes of all their access rules
+std::vector<SubjectGroupAccessRuleInfo> CombineSubjectGroupAccessRules(const std::vector<AmaQRParticipantGroupAccessRule>& rules) {
+  std::map<std::pair<std::string, std::string>, SubjectAccessModes> modesByGroups;
+  for (const auto& rule : rules) {
+    modesByGroups[{rule.participantGroup, rule.userGroup}] |= ParseSubjectAccessMode(rule.mode);
+  }
+  return modesByGroups
+    | views::transform([](const auto& entry) {
+      const auto& [groups, modes] = entry;
+      return SubjectGroupAccessRuleInfo{
+          .subjectGroup = groups.first,
+          .userGroup = groups.second,
+          .modes = SubjectGroupAccessModesFromEnum(modes),
+      };
+    })
+    | to<std::vector>();
 }
 
 class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedConstructor<Weblib>, public boost::noncopyable {
@@ -724,8 +746,6 @@ public:
                        .columnGroupFilter = std::move(filter.columnGroup).value_or(""),
                        .participantGroupFilter = std::move(filter.subjectGroup).value_or(""),
                        .userGroupFilter = std::move(filter.userGroup).value_or(""),
-                       .columnGroupModeFilter = std::move(filter.columnGroupMode).value_or(""),
-                       .participantGroupModeFilter = std::move(filter.subjectGroupMode).value_or(""),
                    }](const std::shared_ptr<Weblib>& self) {
           return self->client_->getAccessManagerProxy()->amaQuery(query);
         })
@@ -738,17 +758,11 @@ public:
                 | views::as_rvalue
                 | views::transform(ToColumnGroup)
                 | to<std::vector>(),
-              .columnGroupAccessRules = response.columnGroupAccessRules
-                | views::as_rvalue
-                | views::transform(ToColumnGroupAccessRuleInfo)
-                | to<std::vector>(),
+              .columnGroupAccessRules = CombineColumnGroupAccessRules(response.columnGroupAccessRules),
               .subjectGroups = response.participantGroups
                 | views::transform(&AmaQRParticipantGroup::name)
                 | to<std::vector>(),
-              .subjectGroupAccessRules = response.participantGroupAccessRules
-                | views::as_rvalue
-                | views::transform(ToSubjectGroupAccessRuleInfo)
-                | to<std::vector>(),
+              .subjectGroupAccessRules = CombineSubjectGroupAccessRules(response.participantGroupAccessRules),
           };
         });
   }
