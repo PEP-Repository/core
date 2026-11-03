@@ -1,5 +1,6 @@
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/elgamal/CurveScalar.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 
 #include <gtest/gtest.h>
 
@@ -31,20 +32,17 @@ TEST(CurvePointTest, TestNeutral) {
 }
 
 TEST(CurvePointTest, TestRandom) {
-  pep::CurvePoint pointA = pep::CurvePoint::Random();
-  pep::CurvePoint pointB = pep::CurvePoint::Random();
+  const auto [pointA, pointB] = pep::Generate<2>(pep::CurvePoint::Random);
   EXPECT_NE(pointA, pointB) << "Random points are equal";
 }
 
 TEST(CurvePointTest, TestAdd) {
-  pep::CurvePoint pointA = pep::CurvePoint::Random();
-  pep::CurvePoint pointB = pep::CurvePoint::Random();
+  const auto [pointA, pointB] = pep::Generate<2>(pep::CurvePoint::Random);
   [[maybe_unused]] pep::CurvePoint pointC = pointA + pointB;
 }
 
 TEST(CurvePointTest, TestSub) {
-  pep::CurvePoint pointA = pep::CurvePoint::Random();
-  pep::CurvePoint pointB = pep::CurvePoint::Random();
+  const auto [pointA, pointB] = pep::Generate<2>(pep::CurvePoint::Random);
   [[maybe_unused]] pep::CurvePoint pointC = pointA - pointB;
 }
 
@@ -91,8 +89,7 @@ TEST(CurvePointTest, TestPublicMult) {
 }
 
 TEST(CurvePointTest, TestAddSub) {
-  pep::CurvePoint pointA = pep::CurvePoint::Random();
-  pep::CurvePoint pointB = pep::CurvePoint::Random();
+  const auto [pointA, pointB] = pep::Generate<2>(pep::CurvePoint::Random);
   EXPECT_NE(pointA, pointB) << "Random points are equal";
   pep::CurvePoint pointC = pointA + pointB;
   pep::CurvePoint pointD = pointC - pointB;
