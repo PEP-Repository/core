@@ -945,8 +945,8 @@ if should_run_test s3-stale-messages; then
     # We test that scenario here
     S3_ROUNDTRIP_CONFIG='{
       "columnGroups": [{
-        "name": "LargeColumns",
-        "columns": [ "LargeColumn" ],
+        "name": "StaleMessageColumns",
+        "columns": [ "StaleMessageColumn" ],
         "cgars": {  "Research Assessor": [ "read", "write" ] }
       }]
     }'
@@ -967,11 +967,13 @@ EOF
     TMPDIR="$DATA_DIR" trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" start pep-network "$DATA_DIR/s3proxy_high_latency.properties"
     trace sleep 10
 
-    pepcli --oauth-token-group "Research Assessor" store -p "stale-message-participant" -c LargeColumn -i "$large_random_data_file"
+    pepcli --oauth-token-group "Research Assessor" store -p "stale-message-participant" -c StaleMessageColumn -i "$large_random_data_file"
 
     trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" stop
     trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" start pep-network
     trace sleep 10
+
+    pepcli --oauth-token-group "Research Assessor" delete -p "stale-message-participant" -c StaleMessageColumn
 
     execute . rm "$large_random_data_file"
 
