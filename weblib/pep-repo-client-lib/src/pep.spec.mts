@@ -415,18 +415,22 @@ describe('Pep', () => {
     });
 
     it('should create and remove column group access rules', () => pep.runHandleWasmException(async () => {
-      await pep.createColumnGroupAccessRule('WasmTestColumnGroup', userGroup, 'read');
-      expect((await pep.queryAccessManager({userGroup})).columnGroupAccessRules)
-          .to.deep.equal([{columnGroup: 'WasmTestColumnGroup', userGroup, mode: 'read'}]);
+      await pep.createColumnGroupAccessRule('WasmTestColumnGroup', userGroup, 'writeMeta');
+      expect((await pep.queryAccessManager({userGroup})).columnGroupAccessRules).to.deep.equal([{
+        columnGroup: 'WasmTestColumnGroup',
+        userGroup,
+        modes: {read: false, readMeta: false, write: false, writeMeta: true},
+        impliedOnlyModes: {read: false, readMeta: false, write: true, writeMeta: false},
+      }]);
 
-      await pep.removeColumnGroupAccessRule('WasmTestColumnGroup', userGroup, 'read');
+      await pep.removeColumnGroupAccessRule('WasmTestColumnGroup', userGroup, 'writeMeta');
       expect((await pep.queryAccessManager({userGroup})).columnGroupAccessRules).to.be.empty;
     }));
 
     it('should create and remove subject group access rules', () => pep.runHandleWasmException(async () => {
       await pep.createSubjectGroupAccessRule('WasmTestSubjectGroup', userGroup, 'enumerate');
       expect((await pep.queryAccessManager({userGroup})).subjectGroupAccessRules)
-          .to.deep.equal([{subjectGroup: 'WasmTestSubjectGroup', userGroup, mode: 'enumerate'}]);
+          .to.deep.equal([{subjectGroup: 'WasmTestSubjectGroup', userGroup, modes: {access: false, enumerate: true}}]);
 
       await pep.removeSubjectGroupAccessRule('WasmTestSubjectGroup', userGroup, 'enumerate');
       expect((await pep.queryAccessManager({userGroup})).subjectGroupAccessRules).to.be.empty;

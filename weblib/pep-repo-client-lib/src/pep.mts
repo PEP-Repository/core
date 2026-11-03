@@ -112,6 +112,16 @@ function combineColumnGroupAccessModes(a: ColumnGroupAccessModes, b: ColumnGroup
   };
 }
 
+/** Flags with only `mode` set, to pass a single mode */
+function singleColumnGroupAccessMode(mode: keyof ColumnGroupAccessModes): ColumnGroupAccessModes {
+  return {read: false, readMeta: false, write: false, writeMeta: false, [mode]: true};
+}
+
+/** Flags with only `mode` set, to pass a single mode */
+function singleSubjectGroupAccessMode(mode: keyof SubjectGroupAccessModes): SubjectGroupAccessModes {
+  return {access: false, enumerate: false, [mode]: true};
+}
+
 /** Get the access modes per column, sorted by column name, from the result of {@link Pep.listColumns} */
 export function getColumnModes(columnGroups: ColumnGroup[]): AccessibleColumn[] {
   const columnModes = new Map<string, ColumnGroupAccessModes>();
@@ -734,20 +744,24 @@ export default class Pep {
 
   // Access rules: require the Access Administrator user group
 
-  createColumnGroupAccessRule(columnGroup: string, userGroup: string, mode: 'read' | 'write' | 'read-meta' | 'write-meta'): Promise<void> {
-    return this.#wrapExec(() => this.#client.createColumnGroupAccessRule(columnGroup, userGroup, mode));
+  createColumnGroupAccessRule(columnGroup: string, userGroup: string, mode: keyof ColumnGroupAccessModes): Promise<void> {
+    return this.#wrapExec(() =>
+        this.#client.createColumnGroupAccessRule(columnGroup, userGroup, singleColumnGroupAccessMode(mode)));
   }
 
-  removeColumnGroupAccessRule(columnGroup: string, userGroup: string, mode: 'read' | 'write' | 'read-meta' | 'write-meta'): Promise<void> {
-    return this.#wrapExec(() => this.#client.removeColumnGroupAccessRule(columnGroup, userGroup, mode));
+  removeColumnGroupAccessRule(columnGroup: string, userGroup: string, mode: keyof ColumnGroupAccessModes): Promise<void> {
+    return this.#wrapExec(() =>
+        this.#client.removeColumnGroupAccessRule(columnGroup, userGroup, singleColumnGroupAccessMode(mode)));
   }
 
-  createSubjectGroupAccessRule(subjectGroup: string, userGroup: string, mode: 'access' | 'enumerate'): Promise<void> {
-    return this.#wrapExec(() => this.#client.createSubjectGroupAccessRule(subjectGroup, userGroup, mode));
+  createSubjectGroupAccessRule(subjectGroup: string, userGroup: string, mode: keyof SubjectGroupAccessModes): Promise<void> {
+    return this.#wrapExec(() =>
+        this.#client.createSubjectGroupAccessRule(subjectGroup, userGroup, singleSubjectGroupAccessMode(mode)));
   }
 
-  removeSubjectGroupAccessRule(subjectGroup: string, userGroup: string, mode: 'access' | 'enumerate'): Promise<void> {
-    return this.#wrapExec(() => this.#client.removeSubjectGroupAccessRule(subjectGroup, userGroup, mode));
+  removeSubjectGroupAccessRule(subjectGroup: string, userGroup: string, mode: keyof SubjectGroupAccessModes): Promise<void> {
+    return this.#wrapExec(() =>
+        this.#client.removeSubjectGroupAccessRule(subjectGroup, userGroup, singleSubjectGroupAccessMode(mode)));
   }
 
   /** @see {@link PepModule.pepHandleWasmException} */

@@ -131,6 +131,11 @@ SubjectGroupAccessModes SubjectGroupAccessModesFromEnum(const SubjectAccessModes
   };
 }
 
+SubjectAccessModes SubjectGroupAccessModesToEnum(const SubjectGroupAccessModes modes) {
+  return FlagsIf(SubjectAccessModes::Access, modes.access)
+      | FlagsIf(SubjectAccessModes::Enumerate, modes.enumerate);
+}
+
 /// One entry per column group and user group, with the modes of all their access rules
 std::vector<ColumnGroupAccessRuleInfo> CombineColumnGroupAccessRules(const std::vector<AmaQRColumnGroupAccessRule>& rules) {
   std::map<std::pair<std::string, std::string>, ColumnAccessModes> modesByGroups;
@@ -835,34 +840,34 @@ public:
     });
   }
 
-  /// \param mode "read", "write", "read-meta" or "write-meta"
-  WeblibApiVoidPromise createColumnGroupAccessRule(std::string columnGroup, std::string userGroup, std::string mode) {
+  /// \param mode The mode of the rule: exactly one flag set
+  WeblibApiVoidPromise createColumnGroupAccessRule(std::string columnGroup, std::string userGroup, ColumnGroupAccessModes mode) {
     return mutateAccessManager([columnGroup = std::move(columnGroup), userGroup = std::move(userGroup),
-                                mode = std::move(mode)](const AccessManagerProxy& am) {
+                                mode = ToSingleString(ColumnGroupAccessModesToEnum(mode))](const AccessManagerProxy& am) {
       return am.amaCreateColumnGroupAccessRule(columnGroup, userGroup, mode);
     });
   }
 
-  /// \param mode "read", "write", "read-meta" or "write-meta"
-  WeblibApiVoidPromise removeColumnGroupAccessRule(std::string columnGroup, std::string userGroup, std::string mode) {
+  /// \param mode The mode of the rule: exactly one flag set
+  WeblibApiVoidPromise removeColumnGroupAccessRule(std::string columnGroup, std::string userGroup, ColumnGroupAccessModes mode) {
     return mutateAccessManager([columnGroup = std::move(columnGroup), userGroup = std::move(userGroup),
-                                mode = std::move(mode)](const AccessManagerProxy& am) {
+                                mode = ToSingleString(ColumnGroupAccessModesToEnum(mode))](const AccessManagerProxy& am) {
       return am.amaRemoveColumnGroupAccessRule(columnGroup, userGroup, mode);
     });
   }
 
-  /// \param mode "access" or "enumerate"
-  WeblibApiVoidPromise createSubjectGroupAccessRule(std::string subjectGroup, std::string userGroup, std::string mode) {
+  /// \param mode The mode of the rule: exactly one flag set
+  WeblibApiVoidPromise createSubjectGroupAccessRule(std::string subjectGroup, std::string userGroup, SubjectGroupAccessModes mode) {
     return mutateAccessManager([subjectGroup = std::move(subjectGroup), userGroup = std::move(userGroup),
-                                mode = std::move(mode)](const AccessManagerProxy& am) {
+                                mode = ToSingleString(SubjectGroupAccessModesToEnum(mode))](const AccessManagerProxy& am) {
       return am.amaCreateGroupAccessRule(subjectGroup, userGroup, mode);
     });
   }
 
-  /// \param mode "access" or "enumerate"
-  WeblibApiVoidPromise removeSubjectGroupAccessRule(std::string subjectGroup, std::string userGroup, std::string mode) {
+  /// \param mode The mode of the rule: exactly one flag set
+  WeblibApiVoidPromise removeSubjectGroupAccessRule(std::string subjectGroup, std::string userGroup, SubjectGroupAccessModes mode) {
     return mutateAccessManager([subjectGroup = std::move(subjectGroup), userGroup = std::move(userGroup),
-                                mode = std::move(mode)](const AccessManagerProxy& am) {
+                                mode = ToSingleString(SubjectGroupAccessModesToEnum(mode))](const AccessManagerProxy& am) {
       return am.amaRemoveGroupAccessRule(subjectGroup, userGroup, mode);
     });
   }
