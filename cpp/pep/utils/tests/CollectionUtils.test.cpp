@@ -102,8 +102,14 @@ TEST(CollectionUtils_FillToCapacity, OffsetLimited) {
 }
 
 TEST(CollectionUtils_Generate, InvokesGeneratorForEveryElement) {
-  const auto nextInt = [calls = 0]() mutable { return calls++; };
+  auto nextInt = [calls = 0]() mutable { return calls++; };
   EXPECT_EQ(pep::Generate<4>(nextInt), (std::array{0, 1, 2, 3}));
+}
+
+TEST(CollectionUtils_Generate, ZeroGenerateDoesNotInvokeGenerator) {
+  auto nextInt = [calls = 0]() mutable { return calls++; };
+  EXPECT_EQ(pep::Generate<0>(nextInt), (std::array<int, 0>{}));
+  EXPECT_EQ(nextInt(), 0);
 }
 
 }
