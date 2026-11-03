@@ -26,6 +26,15 @@
 #include <pep/utils/Shared.hpp>
 #include <pep/utils/Timestamp.hpp>
 
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/operators/rx-zip.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <boost/algorithm/string/split.hpp>
+
 #include <ranges>
 #include <algorithm>
 #include <cassert>
@@ -42,16 +51,8 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include <vector>
-
-#include <rxcpp/operators/rx-concat_map.hpp>
-#include <rxcpp/operators/rx-filter.hpp>
-#include <rxcpp/operators/rx-flat_map.hpp>
-#include <rxcpp/operators/rx-map.hpp>
-#include <rxcpp/operators/rx-zip.hpp>
-#include <rxcpp/rx-lite.hpp>
-
-#include <boost/algorithm/string/split.hpp>
 
 using namespace std::chrono;
 using namespace pep::cli;
