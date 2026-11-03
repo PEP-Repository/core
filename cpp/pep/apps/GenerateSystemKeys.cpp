@@ -2,6 +2,7 @@
 #include <pep/auth/ServerTraits.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/crypto/ConstTime.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/application/CommandLineCommand.hpp>
 #include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters

@@ -20,6 +20,7 @@
 #include <pep/elgamal/CurveScalar.hpp>
 #include <pep/rsk/RskTranslator.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>

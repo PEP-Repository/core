@@ -5,13 +5,13 @@
 #include <gmock/gmock-matchers.h>
 
 #include <pep/async/tests/RxTestUtils.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/storagefacility/S3Credentials.PropertySerializer.hpp>
 #include <pep/storagefacility/S3Client.hpp>
-#include <pep/utils/CollectionUtils.hpp> // for RangeToOptional
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/asio/io_context.hpp>

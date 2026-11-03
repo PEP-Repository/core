@@ -1,8 +1,9 @@
 #include <gtest/gtest.h>
 
-#include <pep/rsk/Proofs.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/elgamal/CurveScalar.hpp>
+#include <pep/rsk/Proofs.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 
 namespace {
 

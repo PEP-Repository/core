@@ -1,5 +1,6 @@
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/elgamal/CurveScalar.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 
 #include <gtest/gtest.h>
 

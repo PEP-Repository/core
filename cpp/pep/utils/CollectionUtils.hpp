@@ -5,10 +5,8 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <functional>
 #include <iterator>
 #include <optional>
-#include <vector>
 #include <ranges>
 #include <span>
 #include <stdexcept>
