@@ -57,7 +57,7 @@ class GenerateSystemKeysApplication : public pep::Application {
 
       std::string masterPrivateKeySharePseudonyms = result.pseudonyms.text();
       std::string masterPrivateKeyShareData = result.data.text();
-      const auto [pseudonymsRekeyLocal, pseudonymsReshuffleLocal, dataRekeyLocal] = Generate<3>([] { return GenerateHMACKey(); });
+      const auto [pseudonymsRekeyLocal, pseudonymsReshuffleLocal, dataRekeyLocal] = Generate<3>(GenerateHMACKey);
 
       std::ofstream out;
       out.open(outPath.string());
