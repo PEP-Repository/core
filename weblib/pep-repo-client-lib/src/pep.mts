@@ -103,18 +103,22 @@ export interface AccessibleColumn {
   modes: ColumnGroupAccessModes;
 }
 
+function combineColumnGroupAccessModes(a: ColumnGroupAccessModes, b: ColumnGroupAccessModes): ColumnGroupAccessModes {
+  return {
+    read: a.read || b.read,
+    readMeta: a.readMeta || b.readMeta,
+    write: a.write || b.write,
+    writeMeta: a.writeMeta || b.writeMeta,
+  };
+}
+
 /** Get the access modes per column, sorted by column name, from the result of {@link Pep.listColumns} */
 export function getColumnModes(columnGroups: ColumnGroup[]): AccessibleColumn[] {
   const columnModes = new Map<string, ColumnGroupAccessModes>();
   for (const group of columnGroups) {
     for (const column of group.columns) {
       const modes = columnModes.get(column);
-      columnModes.set(column, modes ? {
-        read: modes.read || group.modes.read,
-        readMeta: modes.readMeta || group.modes.readMeta,
-        write: modes.write || group.modes.write,
-        writeMeta: modes.writeMeta || group.modes.writeMeta,
-      } : {...group.modes});
+      columnModes.set(column, modes ? combineColumnGroupAccessModes(modes, group.modes) : {...group.modes});
     }
   }
   return [...columnModes]
@@ -180,12 +184,17 @@ export interface UserQueryFilter {
 export interface AccessManagerState {
   columns: string[];
   columnGroups: {name: string; columns: string[]}[];
-  columnGroupAccessRules: {columnGroup: string; userGroup: string; mode: 'read' | 'write' | 'read-meta' | 'write-meta'}[];
+  /**
+   * Per column group and user group: `modes` of the explicit access rules,
+   * and `impliedOnlyModes` implied by those (e.g. `readMeta` by `read`) that are not explicit themselves
+   */
+  columnGroupAccessRules: {columnGroup: string; userGroup: string; modes: ColumnGroupAccessModes; impliedOnlyModes: ColumnGroupAccessModes}[];
   subjectGroups: string[];
-  subjectGroupAccessRules: {subjectGroup: string; userGroup: string; mode: 'access' | 'enumerate'}[];
+  /** Per subject group and user group */
+  subjectGroupAccessRules: {subjectGroup: string; userGroup: string; modes: SubjectGroupAccessModes}[];
 }
 
-/** The name and mode filters match exactly. Omitted filters match everything. */
+/** The name filters match exactly. Omitted filters match everything. */
 export interface AccessManagerFilter {
   /** Default: now, in server time */
   pointInTime?: Date | undefined;
@@ -194,10 +203,12 @@ export interface AccessManagerFilter {
   subjectGroup?: string | undefined;
   /** Only rules for this user group, and only the groups that have such a rule */
   userGroup?: string | undefined;
-  /** Only column group rules with this mode, and only the column groups that have such a rule */
-  columnGroupMode?: 'read' | 'write' | 'read-meta' | 'write-meta' | undefined;
-  /** Only subject group rules with this mode, and only the subject groups that have such a rule */
-  subjectGroupMode?: 'access' | 'enumerate' | undefined;
+}
+
+/** Result of {@link Pep.queryEffectiveAccessModes} */
+export interface EffectiveAccessModes {
+  columnGroups: {columnGroup: string; userGroup: string; modes: ColumnGroupAccessModes}[];
+  subjectGroups: {subjectGroup: string; userGroup: string; modes: SubjectGroupAccessModes}[];
 }
 
 interface RawUser extends UseJsStrings<rawTypes.User> {
@@ -665,6 +676,16 @@ export default class Pep {
       ...filter as Required<AccessManagerFilter>,
       pointInTime: filter.pointInTime?.getTime(),
     }));
+  }
+
+  /** The effective modes (explicit and implied) per group and user group, from the access rules */
+  async queryEffectiveAccessModes(filter: AccessManagerFilter = {}): Promise<EffectiveAccessModes> {
+    const state = await this.queryAccessManager(filter);
+    return {
+      columnGroups: state.columnGroupAccessRules.map(({columnGroup, userGroup, modes, impliedOnlyModes}) =>
+          ({columnGroup, userGroup, modes: combineColumnGroupAccessModes(modes, impliedOnlyModes)})),
+      subjectGroups: state.subjectGroupAccessRules,
+    };
   }
 
   createColumn(name: string): Promise<void> {

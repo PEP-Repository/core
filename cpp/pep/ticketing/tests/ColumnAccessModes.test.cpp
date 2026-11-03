@@ -83,6 +83,15 @@ TEST(ColumnAccessModes, EffectiveModesIncludesTheImplicitlyGrantedModes) {
   EXPECT_EQ(EffectiveModes(ColumnAccessModes::All), ColumnAccessModes::All);
 }
 
+TEST(ColumnAccessModes, ImplicitlyGrantedModesListsOnlyTheImplicitlyGrantedModes) {
+  EXPECT_EQ(ImplicitlyGrantedModes(ColumnAccessModes::Read), ColumnAccessModes::ReadMeta);
+  EXPECT_EQ(ImplicitlyGrantedModes(ColumnAccessModes::WriteMeta), ColumnAccessModes::Write);
+  EXPECT_EQ(ImplicitlyGrantedModes(ColumnAccessModes::ReadMeta | ColumnAccessModes::Write), ColumnAccessModes::None);
+  EXPECT_EQ(ImplicitlyGrantedModes(ColumnAccessModes::Read | ColumnAccessModes::ReadMeta), ColumnAccessModes::ReadMeta)
+      << "read implies read-meta, even though read-meta is also in the given modes";
+  EXPECT_EQ(ImplicitlyGrantedModes(ColumnAccessModes::None), ColumnAccessModes::None);
+}
+
 TEST(ColumnAccessModes, ImpliesModesTestsImplicitlyGrantedModes) {
   EXPECT_TRUE(ImpliesModes(ColumnAccessModes::Read, ColumnAccessModes::ReadMeta));
   EXPECT_FALSE(ImpliesModes(ColumnAccessModes::Write, ColumnAccessModes::WriteMeta));
