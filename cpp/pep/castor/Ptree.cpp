@@ -4,8 +4,15 @@
 #include <pep/utils/Log.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/none.hpp>
+#include <boost/optional/optional.hpp>
 
 #include <entities.hpp>
+
+#include <exception>
+#include <sstream>
+#include <string>
+#include <utility>
 
 namespace pep {
 namespace castor {

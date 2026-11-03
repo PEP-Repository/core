@@ -2,6 +2,11 @@
 #include <pep/utils/Log.hpp>
 #include <pep/castor/ApiKey.hpp>
 
+#include <exception>
+#include <filesystem>
+#include <ostream>
+#include <string>
+
 namespace pep {
 namespace castor {
 

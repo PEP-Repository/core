@@ -1,14 +1,26 @@
 #include <pep/cli/MultiCellQuery.hpp>
 #include <pep/async/RxDistinct.hpp>
-#include <pep/async/RxIterate.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/async/CreateObservable.hpp>
+#include <pep/cli/ColumnQuery.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <ranges>
+#include <cassert>
+#include <cstddef>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <vector>
 
 using namespace pep::cli;
 

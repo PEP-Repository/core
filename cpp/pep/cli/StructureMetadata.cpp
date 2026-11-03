@@ -1,10 +1,17 @@
 #include <map>
 #include <ranges>
+#include <iostream>
+#include <memory>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-#include <pep/application/Application.hpp>
 #include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/cli/Command.hpp>
@@ -13,6 +20,14 @@
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Stream.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for StructureMetadataKey, StructureMetadataType
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/messaging/Tail.hpp>
+
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep;
 using namespace pep::cli;

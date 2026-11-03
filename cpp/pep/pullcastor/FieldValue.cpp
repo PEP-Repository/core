@@ -1,8 +1,18 @@
 #include <pep/castor/OptionGroup.hpp>
 #include <pep/pullcastor/FieldValue.hpp>
+#include <pep/castor/DataPoint.hpp>
+#include <pep/castor/Field.hpp>
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/property_tree/ptree.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <functional>
+#include <memory>
+#include <set>
+#include <stdexcept>
+#include <string>
 
 namespace pep {
 namespace castor {

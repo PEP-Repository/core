@@ -1,6 +1,10 @@
+#include <pep/accessmanager/AmaMessages.hpp>
+
 #include <gtest/gtest.h>
 
-#include <pep/accessmanager/AmaMessages.hpp>
+#include <cstddef>
+#include <vector>
+#include <string>
 
 namespace {
 

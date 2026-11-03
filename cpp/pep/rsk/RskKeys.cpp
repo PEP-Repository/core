@@ -4,6 +4,8 @@
 #include <pep/utils/CollectionUtils.hpp>
 
 #include <stdexcept>
+#include <cstddef>
+#include <span>
 
 using namespace pep;
 

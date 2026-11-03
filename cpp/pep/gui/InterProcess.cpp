@@ -2,6 +2,10 @@
 #include <pep/utils/Defer.hpp>
 
 #include <stdexcept>
+#include <cstddef>
+#include <cstring>
+#include <functional>
+
 #include <QSystemSemaphore>
 
 #define PEP_GET_RAW_INTERPROCESS_MEMORY_VALUE(destination) memcpy(destination, implementor_->constData(), size_)

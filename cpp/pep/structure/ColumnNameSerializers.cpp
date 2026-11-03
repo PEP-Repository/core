@@ -1,5 +1,10 @@
 #include <pep/structure/ColumnNameSerializers.hpp>
 #include <pep/serialization/Serialization.hpp>
+#include <pep/structure/ColumnName.hpp>
+
+#include <Messages.pb.h> // for proto::ColumnNameSection
+
+#include <utility>
 
 namespace pep {
 

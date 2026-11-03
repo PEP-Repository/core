@@ -2,6 +2,15 @@
 #include <pep/async/tests/RxTestUtils.hpp>
 
 #include <stdexcept>
+#include <exception>
+#include <optional>
+#include <vector>
+
+#include <boost/asio/io_context.hpp>
+
+#include <gtest/gtest.h>
+
+#include <rxcpp/rx-lite.hpp>
 
 namespace {
 

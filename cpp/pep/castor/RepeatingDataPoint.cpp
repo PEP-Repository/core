@@ -1,5 +1,15 @@
 #include <pep/castor/BulkRetrieveChildren.hpp>
 #include <pep/castor/RepeatingDataPoint.hpp>
+#include <pep/castor/CastorConnection.hpp> // for castor::JsonPtr
+#include <pep/castor/DataPoint.hpp>
+#include <pep/castor/Participant.hpp>
+#include <pep/castor/RepeatingDataInstance.hpp>
+#include <pep/castor/Study.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <memory>
+#include <string>
 
 namespace pep {
 namespace castor {

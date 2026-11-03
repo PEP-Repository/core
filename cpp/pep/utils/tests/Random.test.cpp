@@ -4,6 +4,14 @@
 
 #include <algorithm>
 #include <vector>
+#include <cassert>
+#include <cstddef>
+#include <functional>
+#include <ios>
+#include <istream>
+#include <limits> // IWYU pragma: keep (used in assert)
+#include <string>
+#include <utility> // IWYU pragma: keep (used in assert)
 
 namespace {
 

@@ -1,6 +1,13 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/authserver/AuthServerProxy.hpp>
 #include <pep/authserver/AuthserverSerializers.hpp>
+#include <pep/authserver/AuthserverMessages.hpp> // for TokenRequest, TokenResponse
+#include <pep/utils/Timestamp.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <string>
+#include <utility>
 
 namespace pep {
 

@@ -3,9 +3,11 @@
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/serialization/Serialization.hpp>
+#include <pep/structure/StudyContext.hpp>
 
 #include <string>
 #include <vector>
+#include <utility>
 
 namespace {
 

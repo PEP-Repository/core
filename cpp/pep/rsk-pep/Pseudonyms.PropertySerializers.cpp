@@ -1,4 +1,7 @@
 #include <pep/rsk-pep/Pseudonyms.PropertySerializers.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+
+#include <string>
 
 using namespace pep;
 

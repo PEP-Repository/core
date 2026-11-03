@@ -61,6 +61,7 @@ Checks:
   - misc-confusable-identifiers
   - misc-coroutine-hostile-raii
   - misc-definitions-in-headers
+  - misc-include-cleaner # Include what you use
   - misc-misleading-bidirectional
   - misc-misleading-identifier
   - misc-new-delete-overloads
@@ -116,4 +117,44 @@ CheckOptions:
   # Ignore empty catch when it contains a comment with the word 'ignore'
   bugprone-empty-catch.IgnoreCatchWithKeywords: ignore
   bugprone-unused-return-value.AllowCastToVoid: true
+  # Headers that misc-include-cleaner should neither require nor flag as unused (regexes, matched as suffix of the path).
+  # include-cleaner suggests the header in which a symbol is declared. For the headers below, that's either a header
+  # that code shouldn't include directly, or include-cleaner can't see that a header is needed.
+  # Internal headers of system libraries, which implement the public headers that code should include instead:
+  # - /__[^/]+/.* and /_[^/]+\.h: macOS (libc++ and the SDK), e.g. <__chrono/duration.h> (include <chrono>)
+  #   and <_time.h> (include <ctime>).
+  # - /bits/.*: Linux (libstdc++ and glibc), e.g. <bits/stl_vector.h> (include <vector>)
+  #   and <bits/types/struct_timespec.h> (include <ctime>).
+  # - /asm[^/]*/.*: Linux kernel headers, e.g. <asm-generic/errno-base.h> for EINVAL (include <cerrno>).
+  # Internal headers of third-party libraries:
+  # - /boost/.*/detail/.* and /boost/.*/impl/.*: Boost's implementation details.
+  # - /Qt[A-Za-z]+/.*: Qt, whose lowercase headers (e.g. <qobject.h>) implement the public ones (e.g. <QObject>).
+  # Forward declaration headers and their full counterparts:
+  # - /boost/.*_fwd\.hpp and /nlohmann/json_fwd\.hpp: declare type aliases such as boost::property_tree::ptree,
+  #   boost::format and nlohmann::json. include-cleaner would require these even when the full header is included.
+  # - /boost/format\.hpp, /boost/property_tree/ptree\.hpp and /nlohmann/json\.hpp: define the classes behind those
+  #   aliases. As include-cleaner attributes the aliases to the forward declaration headers, it would otherwise
+  #   consider these full headers unused, even when they're needed to e.g. call member functions.
+  # Headers whose use include-cleaner can't see:
+  # - /rxcpp/.*: RxCpp's separate headers aren't self-contained (they need rx-lite.hpp or rx.hpp to be included first),
+  #   and its operator headers implement (member) functions that are declared elsewhere.
+  #   Include <rxcpp/rx-lite.hpp> plus the operator headers that you use.
+  # - /pep/.*Serializers?\.hpp and /pep/weblib/Emscripten[A-Za-z]*Binding\.hpp: our (property) serializers and
+  #   Emscripten bindings provide template specializations for symbols that are declared elsewhere.
+  misc-include-cleaner.IgnoreHeaders: >-
+    /__[^/]+/.*;
+    /_[^/]+\.h;
+    /bits/.*;
+    /asm[^/]*/.*;
+    /boost/.*/detail/.*;
+    /boost/.*/impl/.*;
+    /Qt[A-Za-z]+/.*;
+    /boost/.*_fwd\.hpp;
+    /nlohmann/json_fwd\.hpp;
+    /boost/format\.hpp;
+    /boost/property_tree/ptree\.hpp;
+    /nlohmann/json\.hpp;
+    /rxcpp/.*;
+    /pep/.*Serializers?\.hpp;
+    /pep/weblib/Emscripten[A-Za-z]*Binding\.hpp
   misc-throw-by-value-catch-by-reference.CheckThrowTemporaries: false

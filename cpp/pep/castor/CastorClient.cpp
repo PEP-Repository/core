@@ -1,12 +1,16 @@
 #include <pep/castor/CastorClient.hpp>
-#include <pep/utils/Exceptions.hpp>
 #include <pep/async/CreateObservable.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/castor/Study.hpp>
 #include <pep/castor/Ptree.hpp>
 #include <pep/utils/Timestamp.hpp>
+#include <pep/castor/CastorConnection.hpp> // for castor::AuthenticationStatus, castor::CastorException, castor::JsonPtr
+#include <pep/networking/EndPoint.hpp>
+#include <pep/networking/HTTPMessage.hpp> // for HTTPResponse, HTTPRequest
+#include <pep/networking/HttpClient.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <boost/algorithm/string/join.hpp>
+#include <boost/asio/io_context.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
@@ -14,11 +18,20 @@
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-take.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
+#include <rxcpp/rx-lite.hpp>
 
-#include <cmath>
 #include <ranges>
-#include <sstream>
 #include <string>
+#include <cassert>
+#include <chrono>
+#include <exception>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 using namespace std::literals;
 using namespace std::ranges;

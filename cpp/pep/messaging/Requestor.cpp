@@ -5,9 +5,23 @@
 #include <pep/async/OnAsio.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Exceptions.hpp>
+#include <pep/async/CreateObservable.hpp>
+#include <pep/messaging/MessageProperties.hpp> // for messaging::StreamId
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/messaging/Scheduler.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <cassert>
+#include <exception>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
 
 namespace pep::messaging {
 

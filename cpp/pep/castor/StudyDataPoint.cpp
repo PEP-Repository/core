@@ -1,6 +1,12 @@
 #include <pep/castor/BulkRetrieveChildren.hpp>
 #include <pep/castor/StudyDataPoint.hpp>
 #include <pep/castor/Participant.hpp>
+#include <pep/castor/Study.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <memory>
+#include <string>
 
 namespace pep {
 namespace castor {

@@ -3,7 +3,13 @@
 
 #include <boost/asio/io_context.hpp>
 #include <thread>
+#include <algorithm>
+#include <memory>
+#include <mutex>
+#include <string>
 #include <pep/utils/ThreadUtil.hpp>
+#include <pep/async/OnAsio.hpp>
+#include <pep/async/WorkGuard.hpp>
 
 namespace {
 const std::string LogTag("WorkerPool");

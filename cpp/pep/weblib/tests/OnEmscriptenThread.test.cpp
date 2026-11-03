@@ -6,6 +6,13 @@
 
 #include <gtest/gtest.h>
 
+#include <pthread.h>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <chrono>
+#include <utility>
+
 using namespace std::literals;
 
 namespace {

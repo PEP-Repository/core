@@ -1,6 +1,8 @@
+#include <pep/structure/ShortPseudonyms.hpp>
+
 #include <gtest/gtest.h>
 
-#include <pep/structure/ShortPseudonyms.hpp>
+#include <string>
 
 namespace {
 

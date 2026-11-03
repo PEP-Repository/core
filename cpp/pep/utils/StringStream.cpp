@@ -2,6 +2,13 @@
 
 #include <pep/utils/Defer.hpp>
 
+#include <cstddef>
+#include <ios>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <utility>
+
 // Note that tellg fails when the stream is at EOF on some implementations (e.g. libc++), which also throws if the stream has exceptions enabled.
 // So we check for EOF first, which implies that all input has been consumed.
 

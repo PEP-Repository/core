@@ -2,6 +2,12 @@
 #include <pep/crypto/GcmContext.hpp>
 #include <pep/utils/Random.hpp>
 
+#include <openssl/evp.h>
+
+#include <cstdint>
+#include <stdexcept>
+#include <string>
+
 namespace pep {
 
 EncryptedBase::EncryptedBase(const std::string& key,

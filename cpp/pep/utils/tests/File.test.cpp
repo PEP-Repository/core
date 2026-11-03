@@ -5,6 +5,9 @@
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Filesystem.hpp>
 #include <stdexcept>
+#include <optional>
+#include <string>
+#include <string_view>
 
 using namespace std::literals;
 

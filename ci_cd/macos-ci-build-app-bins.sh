@@ -50,14 +50,13 @@ else
     --force
 
   echo "Installing Conan packages."
-  # Set macOS version to prevent building things for different versions
+
   # We set build_type for build requirements as well (with :a), because macdeployqt copies its own dylibs,
   #  see https://github.com/conan-io/conan-center-index/issues/22693
   conan install "$PEP_MACOS_ROOT_DIR" \
     --lockfile="$PEP_MACOS_ROOT_DIR/docker-build/builder/conan/conan-ci.lock" \
     --profile:all="$PEP_MACOS_ROOT_DIR/docker-build/builder/conan/conan_profile" \
     --build=missing \
-    -s:a os.version=13.3 \
     -s:a build_type="$CMAKE_BUILD_TYPE" \
     -o "&:with_assessor=True" \
     -o "&:with_servers=False" \

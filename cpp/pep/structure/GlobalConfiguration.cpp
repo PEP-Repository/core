@@ -1,8 +1,19 @@
 #include <pep/structure/GlobalConfiguration.hpp>
-#include <pep/utils/Log.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
+#include <pep/structure/StudyContext.hpp>
 
 #include <algorithm>
 #include <ranges>
+#include <cassert>
+#include <cctype>
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <boost/algorithm/string/predicate.hpp>
 

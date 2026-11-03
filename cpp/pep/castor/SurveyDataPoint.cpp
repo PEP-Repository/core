@@ -3,9 +3,22 @@
 #include <pep/async/RxIterate.hpp>
 #include <pep/castor/BulkRetrieveChildren.hpp>
 #include <pep/castor/Ptree.hpp>
+#include <pep/castor/CastorConnection.hpp> // for castor::JsonPtr
+#include <pep/castor/CastorObject.hpp>
+#include <pep/castor/DataPoint.hpp>
+#include <pep/castor/Participant.hpp>
+#include <pep/castor/Study.hpp>
+#include <pep/castor/SurveyPackageInstance.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <cassert>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
 
 namespace pep {
 namespace castor {

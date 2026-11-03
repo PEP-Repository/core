@@ -1,10 +1,7 @@
 #include <pep/castor/Study.hpp>
 
-#include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/async/RxIterate.hpp>
 #include <pep/async/RxToVector.hpp>
-#include <pep/castor/ImportColumnNamer.hpp>
 #include <pep/castor/Site.hpp>
 #include <pep/castor/Participant.hpp>
 #include <pep/castor/Form.hpp>
@@ -16,9 +13,11 @@
 #include <pep/castor/Field.hpp>
 #include <pep/castor/RepeatingData.hpp>
 #include <pep/castor/Ptree.hpp>
+#include <pep/castor/CastorConnection.hpp>
+#include <pep/castor/CastorObject.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <boost/algorithm/string/join.hpp>
-#include <boost/property_tree/json_parser.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
@@ -29,6 +28,14 @@
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-replay.hpp>
 #include <rxcpp/operators/rx-take.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <cassert>
+#include <memory>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace pep {
 namespace castor {

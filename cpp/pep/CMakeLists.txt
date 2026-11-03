@@ -392,6 +392,9 @@ function(verify_headers_standalone target)
 
       set_target_properties(${target}_StandaloneHeaders PROPERTIES
         FOLDER pep-StandaloneHeaders
+        # Don't lint: the headers' code is already linted as part of the original target's sources,
+        # and misc-include-cleaner would report the (otherwise unused) #include in each generated source
+        CXX_CLANG_TIDY ""
       )
     endif()
   endif()

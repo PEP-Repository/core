@@ -1,10 +1,13 @@
 #include <pep/assessor/Async.hpp>
 
-#include <pep/utils/Exceptions.hpp>
-
 #include <QFutureWatcher>
 
 #include <QtConcurrent/QtConcurrent>
+
+#include <exception>
+#include <functional>
+#include <stdexcept>
+#include <utility>
 
 namespace {
 

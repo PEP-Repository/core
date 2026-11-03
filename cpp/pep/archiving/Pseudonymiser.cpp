@@ -1,8 +1,18 @@
 #include <pep/archiving/PseudonymiseInputFilter.hpp>
 #include <pep/archiving/Pseudonymiser.hpp>
-#include <pep/archiving/Tar.hpp>
 
 #include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/char_traits.hpp> // for boost::iostreams::WOULD_BLOCK
+#include <boost/iostreams/read.hpp>
+
+#include <array>
+#include <cassert>
+#include <cstdio>
+#include <functional>
+#include <ios>
+#include <istream>
+#include <stdexcept>
+#include <string>
 
 namespace pep {
 

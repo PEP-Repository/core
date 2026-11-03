@@ -1,5 +1,8 @@
 #include <pep/castor/CastorObject.hpp>
 #include <pep/castor/Ptree.hpp>
+#include <pep/castor/CastorConnection.hpp> // for castor::JsonPtr
+
+#include <string>
 
 namespace pep {
 namespace castor {

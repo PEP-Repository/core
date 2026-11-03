@@ -1,8 +1,15 @@
 #include <pep/assessor/assessorwidget.hpp>
 
 #include <pep/assessor/ui_assessorwidget.h>
+#include <pep/structure/GlobalConfiguration.hpp> // for AssessorDefinition
+#include <pep/structure/StudyContext.hpp>
 
 #include <ranges>
+#include <algorithm>
+#include <cstddef>
+#include <optional>
+#include <stdexcept>
+#include <vector>
 
 using namespace std::ranges;
 

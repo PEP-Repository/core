@@ -2,9 +2,21 @@
 #include <pep/utils/File.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/serialization/Serialization.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/rx-lite.hpp>
 #include <fstream>
+#include <cassert>
+#include <filesystem>
+#include <ios>
+#include <optional>
+#include <stdexcept>
 
 namespace pep {
 namespace cli {
@@ -39,7 +51,7 @@ rxcpp::observable<IndexedTicket2> TicketFile::GetTicket(CoreClient& client, cons
     throw std::runtime_error("Ticket request options must be passed if an external ticket is not provided");
   }
   else {
-    assert(!requestOpts.modes.empty());
+    assert(requestOpts.modes != ColumnAccessModes::None);
   }
 
   std::optional<std::filesystem::path> file;
@@ -47,10 +59,7 @@ rxcpp::observable<IndexedTicket2> TicketFile::GetTicket(CoreClient& client, cons
     assert(opts.has_value());
     file = parameterValues.get<std::filesystem::path>("ticket-out");
     // Tickets are written to file with the intent to use them for followup (e.g. "pepcli get") queries, which require the "read" privilege
-    auto mode = std::ranges::find(requestOpts.modes, "read");
-    if (mode == requestOpts.modes.cend()) {
-      requestOpts.modes.push_back("read");
-    }
+    requestOpts.modes |= ColumnAccessModes::Read;
   }
 
   rxcpp::observable<IndexedTicket2> result = client.requestTicket2(requestOpts);

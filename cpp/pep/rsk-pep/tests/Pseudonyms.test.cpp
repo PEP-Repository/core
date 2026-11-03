@@ -1,6 +1,8 @@
 #include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp>
 
 #include <string>
+#include <stdexcept>
 
 #include <gtest/gtest.h>
 

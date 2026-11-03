@@ -3,6 +3,9 @@
 #include <pep/structuredoutput/Csv.hpp>
 #include <pep/structuredoutput/Table.hpp>
 #include <sstream>
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace pep::structuredOutput::csv {
 

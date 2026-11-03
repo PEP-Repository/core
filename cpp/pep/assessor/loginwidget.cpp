@@ -6,10 +6,10 @@
 #include <pep/gui/QTrxGui.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/utils/Defer.hpp>
-#include <pep/assessor/Async.hpp>
-#include <pep/assessor/Installer.hpp>
 #include <pep/oauth-client/BrowserAuthorization.hpp>
+#include <pep/assessor/Branding.hpp>
+#include <pep/oauth-client/OAuthClient.hpp>
+#include <pep/async/IoContext_fwd.hpp>
 
 #include <QDebug>
 #include <QMessageBox>
@@ -18,10 +18,22 @@
 #include <QThread>
 #include <QFileDialog>
 
+#include "SparkleUpdater.h"
+
+#include <cstdlib>
+#include <exception>
+#include <filesystem>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <string>
+
 #ifdef _WIN32
+#include <pep/assessor/Async.hpp>
+#include <pep/assessor/Installer.hpp>
+
 #include <windows.h>
-#else
-#include <unistd.h>
 #endif /*_WIN32*/
 
 namespace {

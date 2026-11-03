@@ -1,15 +1,31 @@
 #include <chrono>
+#include <filesystem>
+#include <memory>
+#include <ranges>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/server/Server.hpp>
 
-#include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Shared.hpp>
 
 #include <prometheus/text_serializer.h>
 #include <prometheus/gauge.h>
+#include <prometheus/metric_family.h>
 #include <pep/utils/ApplicationMetrics.hpp>
+#include <pep/crypto/X509Certificate.hpp> // for X509RootCertificates
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/metrics/RegisteredMetrics.hpp>
+#include <pep/rsk/EGCache.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/server/MonitoringMessages.hpp> // for SignedMetricsRequest, MetricsResponse, ChecksumChainResponse
+#include <pep/async/IoContext_fwd.hpp>
+#include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 namespace pep {
 
@@ -89,47 +105,30 @@ Server::handleMetricsRequest(
   return messaging::BatchSingleMessage(MetricsResponse(body));
 }
 
-std::unordered_set<std::string> Server::getAllowedChecksumChainRequesters() {
-  return { UserGroup::Watchdog };
-}
-
-
 messaging::MessageBatches
 Server::handleChecksumChainRequest(
   std::shared_ptr<SignedChecksumChainRequest> signedRequest) {
+  const auto& handler = this->checksumChainHandler();
+
   auto certified = signedRequest->open(*getRootCAs());
-  UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), certified.signatory.organizationalUnit(), "Requesting checksum chains");
+  UserGroup::EnsureAccess(handler.allowedRequesters(), certified.signatory.organizationalUnit(), "Requesting checksum chains");
 
-  const auto& request = certified.message;
-  std::optional<uint64_t> maxCheckpoint;
-
-  if (!request.checkpoint.empty()) {
-    if (request.checkpoint.size() != 8)
-      throw Error("checkpoint field should either be 8 bytes or 0");
-    maxCheckpoint = UnpackUint64BE(request.checkpoint);
-  }
-
-  uint64_t checksum{}, checkpoint{};
-  computeChecksumChainChecksum(
-    request.name,
-    maxCheckpoint,
-    checksum,
-    checkpoint
-  );
-
-  ChecksumChainResponse resp;
-  resp.xorredChecksums = PackUint64BE(checksum);
-  resp.checkpoint = PackUint64BE(checkpoint);
-  return messaging::BatchSingleMessage(std::move(resp));
+  return handler.handle(certified.message)
+    .map([](ChecksumChainResponse response) -> messaging::MessageSequence {
+        return rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(std::move(response))));
+      });
 }
 
 messaging::MessageBatches
 Server::handleChecksumChainNamesRequest(
   std::shared_ptr<SignedChecksumChainNamesRequest> signedRequest) {
+  const auto& handler = this->checksumChainHandler();
+
   auto signatory = signedRequest->validate(*getRootCAs());
-  UserGroup::EnsureAccess(getAllowedChecksumChainRequesters(), signatory.organizationalUnit(), "Requesting checksum chain names");
+  UserGroup::EnsureAccess(handler.allowedRequesters(), signatory.organizationalUnit(), "Requesting checksum chain names");
+
   ChecksumChainNamesResponse resp;
-  resp.names = getChecksumChainNames();
+  resp.names = handler.chainNames() | std::ranges::to<std::vector>();
   return messaging::BatchSingleMessage(std::move(resp));
 }
 

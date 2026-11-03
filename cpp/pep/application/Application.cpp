@@ -2,9 +2,12 @@
 #include <pep/application/Unwinder.hpp>
 #include <pep/versioning/Version.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/utils/Defer.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Paths.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::LexedValues
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <cstdlib>
 #include <iostream>
@@ -13,15 +16,24 @@
 #include <filesystem>
 #include <ranges>
 #include <utility>
+#include <any>
+#include <cassert>
+#include <exception>
+#include <functional>
+#include <optional>
+#include <queue>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #ifdef _WIN32
 #include <sstream>
 #include <typeinfo>
+#include <pep/utils/Defer.hpp>
 #include <pep/utils/Win32Api.hpp>
 
 #include <shellapi.h>
-#else
-#include <unistd.h>
 #endif
 
 using namespace std::ranges;

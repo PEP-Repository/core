@@ -1,4 +1,13 @@
 #include <pep/networking/Connection.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/networking/Transport.hpp> // for networking::SizedTransfer, networking::DelimitedTransfer
+
+#include <cassert>
+#include <cstddef>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace pep::networking {
 

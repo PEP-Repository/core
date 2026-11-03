@@ -3,9 +3,17 @@
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Random.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/elgamal/CurveScalar.hpp>
 
 #include <iostream>
 #include <fstream>
+#include <cstddef>
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <vector>
 
 using namespace pep;
 

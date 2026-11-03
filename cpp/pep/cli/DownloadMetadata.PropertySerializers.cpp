@@ -1,5 +1,13 @@
 #include <pep/cli/DownloadMetadata.PropertySerializers.hpp>
 #include <pep/rsk-pep/Pseudonyms.PropertySerializers.hpp>
+#include <pep/cli/DownloadMetadata.hpp> // for cli::ParticipantIdentifier, cli::RecordDescriptor
+#include <pep/elgamal/ElgamalEncryption.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/utils/Timestamp.hpp>
+#include <pep/utils/XxHasher.hpp>
+
+#include <optional>
+#include <string>
 
 namespace pep {
 

@@ -1,11 +1,23 @@
 #include <pep/cli/Commands.hpp>
 #include <pep/cli/SingleCellCommand.hpp>
-#include <pep/utils/Defer.hpp>
 #include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/cli/Command.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <algorithm>
+#include <iostream>
+#include <memory>
+#include <utility>
+#include <vector>
 
 using namespace pep::cli;
 
@@ -18,7 +30,7 @@ public:
   }
 
 protected:
-  std::vector<std::string> ticketAccessModes() const override { return { "read-meta" }; }
+  pep::ColumnAccessModes ticketAccessModes() const override { return pep::ColumnAccessModes::ReadMeta; }
 
   rxcpp::observable<pep::FakeVoid> processCell(std::shared_ptr<pep::CoreClient> client, const pep::IndexedTicket2& ticket, const pep::PolymorphicPseudonym& pp, const std::string& column) override {
     auto entries = client->getHistory2(*ticket.getTicket(), std::vector<pep::PolymorphicPseudonym>({ pp }), std::vector<std::string>({ column }))

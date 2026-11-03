@@ -1,8 +1,19 @@
 #include <pep/storagefacility/FileStore.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for EncryptedKey
+#include <pep/morphing/Metadata.hpp> // for EncryptionScheme
+#include <pep/storagefacility/EntryContent.hpp>
+#include <pep/storagefacility/EntryPayload.hpp>
+#include <pep/storagefacility/PersistedEntryProperties.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <ranges>
+#include <cassert>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace std::ranges;
 

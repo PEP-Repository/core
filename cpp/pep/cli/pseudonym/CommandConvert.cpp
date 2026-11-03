@@ -1,17 +1,29 @@
-#include <algorithm>
-#include <array>
-#include <cctype>
-#include <optional>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
 #include <pep/async/FakeVoid.hpp>
+#include <pep/cli/Command.hpp>
+#include <pep/cli/Pseudonym.hpp>
 #include <pep/cli/pseudonym/CommandConvert.hpp>
 #include <pep/cli/structuredoutput/FormatParameter.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
-#include <ranges>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/rx-observable.hpp>
+
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <ranges>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -126,7 +138,7 @@ int CommandPseudonym::CommandConvert::execute() {
 
       pep::RequestTicket2Opts tOpts;
       tOpts.referenceSubjects = {pp};
-      tOpts.modes = {"read"};
+      tOpts.modes = ColumnAccessModes::Read;
       tOpts.includeAccessGroupPseudonyms = true;
 
       return client->requestTicket2(tOpts)

@@ -1,8 +1,24 @@
 #include <pep/networking/CertificateVerification.hpp>
 #include <pep/utils/Log.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/verify_context.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/OpensslUtils.hpp>
+
+#include <openssl/asn1.h>
+#include <openssl/bio.h>
+#include <openssl/crypto.h> // for X509, BIO
+#include <openssl/obj_mac.h> // for NID_ext_key_usage, NID_commonName
+#include <openssl/objects.h> // for OBJ_obj2txt
+#include <openssl/x509.h>
+#include <openssl/x509_vfy.h> // for X509_STORE_CTX_get_current_cert
+#include <openssl/x509v3.h> // for EXTENDED_KEY_USAGE
+
+#include <cassert>
+#include <cstddef>
+#include <memory>
+#include <string>
 
 #ifdef _WIN32
 #include <wincrypt.h>

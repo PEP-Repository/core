@@ -1,5 +1,17 @@
 #include <pep/async/RxTimeout.hpp>
+#include <pep/async/CreateObservable.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/async/OnAsio.hpp>
+
 #include <boost/asio/steady_timer.hpp>
+#include <boost/asio/error.hpp> // IWYU pragma: keep (used in assert)
+#include <boost/asio/io_context.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <cassert>
+#include <chrono>
+#include <memory>
 
 namespace pep {
 

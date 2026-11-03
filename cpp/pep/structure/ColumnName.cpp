@@ -1,12 +1,12 @@
 #include <pep/structure/ColumnName.hpp>
 
 #include <cassert>
-#include <algorithm>
-#include <iterator>
 #include <ranges>
 #include <regex>
 #include <stdexcept>
 #include <utility>
+#include <string>
+#include <vector>
 
 namespace {
 

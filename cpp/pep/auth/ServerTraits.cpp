@@ -1,9 +1,20 @@
 #include <pep/auth/Certificate.hpp>
 #include <pep/auth/ServerTraits.hpp>
+#include <pep/auth/EnrolledParty.hpp>
+#include <pep/crypto/X509Certificate.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <cassert>
 #include <ranges>
+#include <cctype>
+#include <cstddef>
+#include <functional>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 using namespace std::ranges;
 
