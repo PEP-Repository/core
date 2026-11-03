@@ -8,6 +8,8 @@
 
 - core#2962: `pepcli pseudonym convert` no longer requires access to the subject associated with the pseudonym.
 
+- `pepcli list --format` now also accepts `json-compact`, like `pepcli ama query` and `pepcli user query`.
+
 - core#3040: Fixed YAML output (e.g. of `pepcli ama query`, `user query` and `list --format yaml`) for strings containing line breaks, tabs or other control characters. These are now escaped (e.g. `\n`), so that YAML parsers no longer turn line breaks into spaces.
 
 - core#3008: Restructured the code that handles ticket request, into a process with 4 meaningful phases.
