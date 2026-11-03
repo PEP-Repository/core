@@ -1,6 +1,10 @@
 #include <pep/castor/Study.hpp>
 #include <pep/pullcastor/PullCastorUtils.hpp>
 #include <pep/pullcastor/TimestampedSpi.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <memory>
+#include <vector>
 
 namespace pep {
 namespace castor {

@@ -16,29 +16,73 @@
 #include <pep/structure/ColumnNameSerializers.hpp>
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
-#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/Filesystem.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/accessmanager/UserSerializers.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for GlobalConfigurationRequest, EncryptionKeyRequest
+#include <pep/accessmanager/AmaMessages.hpp> // for AmaQRColumn, AmaQueryResponse, AmaMutationRequest, ...
+#include <pep/accessmanager/UserMessages.hpp> // for SignedUserQuery, UserMutationResponse
+#include <pep/async/OnAsio.hpp>
+#include <pep/async/WorkerPool.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey, EncryptedKey
+#include <pep/key-components/KeyComponentServer.hpp>
+#include <pep/messaging/MessageHeader.hpp> // for messaging::NetMessageCapacityFactor
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/messaging/ServerConnection.hpp>
+#include <pep/messaging/Tail.hpp>
+#include <pep/metrics/RegisteredMetrics.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/rsk-pep/PseudonymTranslator.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/rsk/RskRecipient.hpp> // for RekeyRecipient
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/IndexList.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/server/ChecksumChainHandler.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/StudyContext.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms, TicketRequest2, SignedTicket2, ...
+#include <pep/transcryptor/TranscryptorMessages.hpp> // for TranscryptorRequestEntry, RekeyRequest, TranscryptorRequest, ...
+#include <pep/utils/NormalizedTypeNaming.hpp> // for NormalizedTypeNamer
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp> // for TimeNow
 
 #include <ranges>
 #include <sstream>
 #include <chrono>
 #include <utility>
-
-#include <boost/algorithm/string/join.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/property_tree/json_parser.hpp>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <ios>
+#include <map>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <unordered_map>
+#include <vector>
 
 #include <rxcpp/operators/rx-buffer_count.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <prometheus/gauge.h>
 #include <prometheus/summary.h>
+
+#include <boost/asio/io_context.hpp>
 
 using namespace std::ranges;
 
@@ -144,6 +188,12 @@ auto MakeStreamWithDeferredCleanup(const std::filesystem::path& path) {
     std::filesystem::remove(path);
   });
   return std::make_pair(stream, deferredCleanup);
+}
+
+ChecksumChainHandler::Requesters AmChecksumChainRequesters() {
+  auto result = ChecksumChainHandler::DefaultRequesters;
+  result.insert_range(UserGroup::Authserver);
+  return result;
 }
 
 } // namespace
@@ -297,7 +347,8 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
   backend_(parameters->getBackend()),
   globalConf_(parameters->getGlobalConfiguration()),
   lpMetrics_(std::make_shared<AccessManager::Metrics>(registry_)),
-  workerPool_(WorkerPool::getShared()) {
+  workerPool_(WorkerPool::getShared()),
+  checksumChainHandler_(backend_->checksumChains(), AmChecksumChainRequesters()) {
   backend_->setAccessManager(this);
   RegisterRequestHandlers(*this,
                           &AccessManager::handleTicketRequest2,
@@ -320,12 +371,6 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
 
 std::optional<std::filesystem::path> AccessManager::getStoragePath() {
   return EnsureDirectoryPath(backend_->getStoragePath().parent_path());
-}
-
-std::unordered_set<std::string> AccessManager::getAllowedChecksumChainRequesters() {
-  auto result = Server::getAllowedChecksumChainRequesters();
-  result.insert_range(UserGroup::Authserver);
-  return result;
 }
 
 messaging::MessageBatches AccessManager::handleGlobalConfigurationRequest(std::shared_ptr<GlobalConfigurationRequest> request) {
@@ -501,17 +546,6 @@ AccessManager::handleEncryptionKeyRequest(std::shared_ptr<SignedEncryptionKeyReq
         });
 }
 
-std::vector<std::string> AccessManager::getChecksumChainNames() const {
-  return backend_->getChecksumChainNames();
-}
-
-void AccessManager::computeChecksumChainChecksum(
-  const std::string& chain,
-  std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
-  uint64_t& checkpoint) {
-  backend_->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
-}
-
 struct AccessManager::TicketRequestContext {
   std::shared_ptr<AccessManager> server;
   uintmax_t requestNumber;
@@ -523,7 +557,7 @@ struct AccessManager::TicketRequestContext {
   std::size_t numAllAccessSubjects{};
   std::unordered_map<std::string, IndexList> columnGroupMap{};
   std::unordered_map<std::string, IndexList> subjectGroupMap{};
-  std::vector<std::string> requiredSubjectModes;
+  SubjectAccessModes requiredSubjectModes;
   TranscryptorRequest tsReq;
   TranscryptorRequestEntries tsReqEntries{};
   std::optional<PseudonymTranslator::Recipient> userRecipient;
@@ -554,8 +588,8 @@ std::shared_ptr<AccessManager::TicketRequestContext> AccessManager::admitTicketR
         .userGroup = certified.signatory.organizationalUnit()},
     .pps = request.accessSubjects,
     .requiredSubjectModes = request.participantGroups.empty()
-      ? std::vector<std::string>{"access"}
-      : std::vector<std::string>{"access", "enumerate"},
+      ? SubjectAccessModes::Access
+      : (SubjectAccessModes::Access | SubjectAccessModes::Enumerate),
     .tsReq {.request = std::move(signedRequest) },
     .userRecipient = request.includeUserGroupPseudonyms
       ? std::optional{RecipientForCertificate(signature.certificateChain().leaf())}
@@ -660,7 +694,7 @@ std::string AccessManager::identifyTicketRequestSubjects(TicketRequestContext& c
       ctx.server->backend_->checkParticipantAccess(ctx.ticket.userGroup, localPseudonym, ctx.requiredSubjectModes, ctx.ticket.timestamp);
     }
     const auto isClientProvidedAccessSubject = i < ctx.numClientProvidedAccessSubjects;
-    if (isClientProvidedAccessSubject && !ctx.server->backend_->hasLocalPseudonym(localPseudonym) && ctx.ticket.hasMode("write")) {
+    if (isClientProvidedAccessSubject && !ctx.server->backend_->hasLocalPseudonym(localPseudonym) && ImpliesModes(ctx.ticket.modes, ColumnAccessModes::Write)) {
       ctx.server->backend_->storeLocalPseudonymAndPP(localPseudonym, accessSubject.polymorphic);
     }
   }
@@ -762,7 +796,7 @@ rxcpp::observable<FakeVoid> AccessManager::removeOrAddParticipantsInGroupsForReq
     auto& [participantGroup, list] = entry;
     TicketRequest2 ticketRequest;
     ticketRequest.participantGroups = {participantGroup};
-    ticketRequest.modes = {"enumerate"};
+    ticketRequest.modes = ColumnAccessModes::_bogus_AmaTranscryptionOnly;
     ticketRequest.accessSubjects = list;
     std::string data = Serialization::ToString(ticketRequest);
     TranscryptorRequest tsRequest{

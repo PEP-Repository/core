@@ -2,12 +2,38 @@
 #include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxIterate.hpp>
-#include <pep/storagefacility/PageHash.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/async/CreateObservable.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/messaging/Tail.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataStoreRequest2, DataEnumerationRequest2, DataEnumerationResponse2
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp> // for TimeNow
 
 #include <ranges>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::ranges;
 
@@ -73,7 +99,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::storeData2(
   RequestTicket2Opts ticketRequest;
   ticketRequest.ticket = opts.ticket;
   ticketRequest.forceTicket = opts.forceTicket;
-  ticketRequest.modes = {"write"};
+  ticketRequest.modes = ColumnAccessModes::Write;
   for (const auto& entry : entries) {
     if (!ctx->columns.contains(entry.column)) {
       ctx->columns[entry.column] = static_cast<uint32_t>(
@@ -183,7 +209,7 @@ rxcpp::observable<DataStorageResult2> CoreClient::updateMetadata2(
   RequestTicket2Opts ticketRequest;
   ticketRequest.ticket = opts.ticket;
   ticketRequest.forceTicket = opts.forceTicket;
-  ticketRequest.modes = { "read", "write-meta" }; // We need read access so that we can re-encrypt-and-blind the AES keys
+  ticketRequest.modes = ColumnAccessModes::Read | ColumnAccessModes::WriteMeta; // We need read access so that we can re-encrypt-and-blind the AES keys
   for (const auto& entry : entries) {
     // Ensure that the ticket contains this entry's column(name) and PP, but
     // don't add duplicate items. We keep track of indices where the ticket
@@ -388,7 +414,7 @@ rxcpp::observable<HistoryResult> CoreClient::deleteData2(
   RequestTicket2Opts ticketRequest;
   ticketRequest.ticket = opts.ticket;
   ticketRequest.forceTicket = opts.forceTicket;
-  ticketRequest.modes = { "write" };
+  ticketRequest.modes = ColumnAccessModes::Write;
   for (const auto& entry : entries) {
     if (!ctx->columns.contains(entry.column)) {
       ctx->columns[entry.column] = static_cast<uint32_t>(

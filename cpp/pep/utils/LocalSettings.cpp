@@ -5,12 +5,18 @@
 #include <filesystem>
 #include <system_error>
 #include <utility>
-#include <sys/stat.h>
+#include <cassert>
+#include <cerrno>
+#include <exception>
+#include <fstream>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #include <boost/property_tree/ptree.hpp>
 #ifndef _WIN32
 #include <boost/property_tree/ini_parser.hpp>
-#include <sys/types.h>
 #include <pwd.h>
 #endif
 

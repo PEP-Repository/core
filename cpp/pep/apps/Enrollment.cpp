@@ -2,6 +2,18 @@
 
 #include <pep/apps/Enroller.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/application/Application.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/auth/ServerTraits.hpp>
+
+#include <algorithm>
+#include <memory>
+#include <optional>
+#include <ranges>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace std::ranges;
 

@@ -3,12 +3,20 @@
 #include <pep/pullcastor/SurveyAspectPuller.hpp>
 
 #include <pep/async/RxIterate.hpp>
-
-#include <boost/property_tree/json_parser.hpp>
+#include <pep/pullcastor/PullCastorUtils.hpp> // for PEP_PULLCASTOR_LOG
+#include <pep/pullcastor/StudyAspect.hpp>
+#include <pep/pullcastor/StudyAspectPuller.hpp>
+#include <pep/pullcastor/StudyPuller.hpp>
+#include <pep/structure/ShortPseudonyms.hpp> // for CastorStudyType
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <utility>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 namespace pep {
 namespace castor {

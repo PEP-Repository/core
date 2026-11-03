@@ -3,8 +3,14 @@
 #include <pep/serialization/TimestampSerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/serialization/Serialization.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/morphing/ServerVerifiers.hpp>
 
-#include <stdexcept>
+#include <cassert>
+#include <utility>
+
+#include <Messages.pb.h> // for proto::MetadataXEntry
+
 
 namespace pep {
 

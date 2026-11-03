@@ -5,6 +5,12 @@
 #include <emscripten/threading.h>
 #include <emscripten/val.h>
 
+#include <pthread.h>
+
+#include <ios>
+#include <ostream>
+#include <string>
+
 pep::weblib::ThreadPrintable::ThreadPrintable() noexcept
     : ThreadPrintable(::pthread_self()) {}
 

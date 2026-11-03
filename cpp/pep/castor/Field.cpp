@@ -1,6 +1,16 @@
 #include <pep/castor/Field.hpp>
 #include <pep/castor/OptionGroup.hpp>
 #include <pep/castor/Ptree.hpp>
+#include <pep/castor/CastorConnection.hpp> // for castor::JsonPtr
+#include <pep/castor/CastorObject.hpp>
+#include <pep/castor/Study.hpp>
+
+#include <boost/optional/optional.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <memory>
+#include <string>
 
 namespace pep{
 namespace castor {

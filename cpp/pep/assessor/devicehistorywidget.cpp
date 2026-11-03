@@ -2,8 +2,11 @@
 #include <pep/assessor/ui_devicehistorywidget.h>
 
 #include <pep/assessor/QDate.hpp>
+#include <pep/content/ParticipantDeviceHistory.hpp>
+#include <pep/structure/GlobalConfiguration.hpp> // for DeviceRegistrationDefinition
 
 #include <cassert>
+#include <cstddef>
 
 DeviceHistoryWidget::DeviceHistoryWidget(const pep::DeviceRegistrationDefinition& definition, QWidget *parent) :
   QWidget(parent),

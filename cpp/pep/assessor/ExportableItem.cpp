@@ -1,8 +1,12 @@
 #include <pep/assessor/ExportableItem.hpp>
 #include <pep/content/ParticipantDeviceHistory.hpp>
 #include <pep/utils/Timestamp.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
 
 #include <cassert>
+#include <functional>
+#include <optional>
+#include <string>
 
 ExportableShortPseudonymItem::ExportableShortPseudonymItem(const pep::ShortPseudonymDefinition& definition)
   : columnName_(definition.getColumn().getFullName()), description_(definition.getDescription()), visitNumber_(definition.getColumn().getVisitNumber()) {

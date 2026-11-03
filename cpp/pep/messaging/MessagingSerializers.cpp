@@ -1,6 +1,16 @@
 #include <pep/serialization/TimestampSerializer.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
+#include <pep/messaging/HousekeepingMessages.hpp> // for PingRequest, PingResponse, VersionResponse
+#include <pep/serialization/Serialization.hpp>
+#include <pep/versioning/Version.hpp>
+
 #include <boost/lexical_cast.hpp>
+
+#include <Messages.pb.h> // for proto::ConfigVersion
+
+#include <optional>
+#include <string>
+#include <utility>
 
 namespace pep {
 

@@ -1,7 +1,9 @@
 #include <pep/application/CommandLineSwitchAnnouncement.hpp>
 
-#include <algorithm>
+#include <algorithm> // IWYU pragma: keep (used in assert)
 #include <cassert>
+#include <cctype> // IWYU pragma: keep (used in assert)
+#include <string>
 
 namespace pep {
 namespace commandline {

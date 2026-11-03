@@ -2,8 +2,16 @@
 
 #include <pep/serialization/TimestampSerializer.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
+#include <pep/accessmanager/AmaMessages.hpp> // for AmaCreateColumn, AmaMutationRequest, AmaQueryResponse, ...
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Serialization.hpp>
 
 #include <ranges>
+#include <optional>
+#include <utility>
+#include <vector>
+
+#include <Messages.pb.h> // for proto::AmaCreateColumn
 
 using namespace std::ranges;
 

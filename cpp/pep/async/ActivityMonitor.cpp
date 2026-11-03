@@ -1,5 +1,15 @@
 #include <pep/async/ActivityMonitor.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/utils/Shared.hpp> // for WeakFrom
+
+#include <boost/asio/error.hpp> // for boost::asio::error::operation_aborted
+#include <boost/asio/io_context.hpp>
+
+#include <cassert>
+#include <chrono>
+#include <memory>
+#include <mutex>
+#include <string>
 
 using namespace std::chrono_literals;
 

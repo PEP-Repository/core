@@ -3,14 +3,29 @@
 #include <pep/utils/Timestamp.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Singleton.hpp>
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp>
 
 #include <boost/core/noncopyable.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/container_hash/hash.hpp>
 
 #include <unordered_map>
 #include <mutex>
 #include <shared_mutex>
 #include <atomic>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <ranges>
+#include <string>
+#include <utility>
+#include <vector>
 
 // There are currently two caches:
 //

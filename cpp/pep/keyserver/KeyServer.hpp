@@ -40,6 +40,9 @@ public:
 public:
   explicit KeyServer(std::shared_ptr<Parameters>);
 
+protected:
+  const ChecksumChainHandler& checksumChainHandler() const noexcept override { return checksumChainsHandler_; }
+
 private:
   messaging::MessageBatches handlePingRequest(std::shared_ptr<PingRequest> request);
   messaging::MessageBatches handleUserEnrollmentRequest(std::shared_ptr<EnrollmentRequest> enrollmentRequest);
@@ -58,6 +61,7 @@ private:
   X509Identity clientCa_;
   std::string oauthTokenSecret_;
   std::unique_ptr<tokenBlocking::Blocklist> blocklist_;
+  StandaloneChecksumChainHandler checksumChainsHandler_;
 };
 
 } // namespace pep

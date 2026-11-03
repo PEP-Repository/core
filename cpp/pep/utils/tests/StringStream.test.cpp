@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 
 #include <sstream>
+#include <ios>
+#include <utility>
 
 namespace {
 

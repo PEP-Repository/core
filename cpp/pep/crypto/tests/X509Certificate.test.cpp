@@ -3,10 +3,16 @@
 #include <pep/crypto/AsymmetricKey.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/crypto/tests/X509Certificate.Samples.test.hpp>
+#include <pep/utils/CollectionUtils.hpp> // for SpanToString
 
 #include <openssl/err.h>
 
 #include <string>
+#include <stdexcept>
+#include <unordered_map>
+#include <utility>
+
+#include <Messages.pb.h> // for proto::X509CertificateSigningRequest
 
 using namespace std::literals;
 

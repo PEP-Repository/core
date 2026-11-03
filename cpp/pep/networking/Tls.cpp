@@ -2,14 +2,43 @@
 #include <pep/networking/SslError.hpp>
 #include <pep/networking/Tls.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/networking/StreamSocket.hpp>
+#include <pep/networking/TcpBasedProtocol.hpp>
+#include <pep/utils/OperationResult.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/asio/ssl/verify_mode.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
 #include <boost/bind/bind.hpp>
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/error.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/error.hpp> // for boost::asio::error::ssl_category
+#include <boost/asio/ssl/stream_base.hpp>
+#include <boost/asio/ssl/verify_context.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <boost/asio/write.hpp>
+#include <boost/bind/placeholders.hpp> // for boost::placeholders::_1
+#include <boost/system/system_error.hpp>
 #include <openssl/ssl.h>
-#include <fstream>
+#include <fstream> // IWYU pragma: keep (used with SSLKEYLOGFILE)
+#include <openssl/err.h>
+#include <openssl/sslerr.h> // for SSL_R_UNINITIALIZED
+#include <openssl/tls1.h> // for SSL_set_tlsext_host_name
 #include <regex>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <utility>
 
 namespace pep::networking {
 

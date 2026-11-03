@@ -4,8 +4,17 @@
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Math.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/utils/Timestamp.hpp> // for TimeNow, TicksSinceEpoch
 
 #include <sstream>
+#include <chrono>
+#include <cstdint>
+#include <optional>
+#include <stdexcept>
+#include <string_view>
+#include <utility>
 
 using namespace std::chrono;
 

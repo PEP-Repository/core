@@ -2,31 +2,65 @@
 
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
-#include <pep/morphing/RepoKeys.hpp>
 #include <pep/morphing/RepoRecipient.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/transcryptor/TranscryptorSerializers.hpp>
-#include <pep/utils/ApplicationMetrics.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Shared.hpp>
-
-#include <boost/property_tree/json_parser.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for UserVerifiersResponse
+#include <pep/async/OnAsio.hpp>
+#include <pep/async/WorkerPool.hpp>
+#include <pep/auth/Signature.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey, EncryptedKey
+#include <pep/key-components/KeyComponentServer.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/messaging/ServerConnection.hpp>
+#include <pep/metrics/RegisteredMetrics.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/morphing/ServerVerifiers.hpp>
+#include <pep/rsk-pep/PseudonymTranslator.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/rsk/Proofs.hpp> // for ReshuffleRekeyVerifiers
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/server/SigningServer.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms
+#include <pep/transcryptor/Storage.hpp>
+#include <pep/transcryptor/TranscryptorMessages.hpp> // for TranscryptorRequest, TranscryptorRequestEntry, TranscryptorResponse, ...
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <prometheus/gauge.h>
 #include <prometheus/summary.h>
-#include <prometheus/text_serializer.h>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <chrono>
-#include <numeric>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <iterator>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <ranges>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <boost/asio/io_context.hpp>
 
 using namespace std::ranges;
 
@@ -36,7 +70,6 @@ namespace {
 const std::string LogTag ("Transcryptor");
 constexpr Severity TranscryptorRequestLoggingSeverity = Severity::Debug;
 constexpr Severity LogIssuedTicketRequestLoggingSeverity = Severity::Debug;
-constexpr Severity ChecksumChainCalculationLoggingSeverity = Severity::Debug;
 }
 
 Transcryptor::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
@@ -162,7 +195,7 @@ messaging::MessageBatches Transcryptor::handleTranscryptorRequest(std::shared_pt
 
   struct Context {
     uintmax_t requestNumber{};
-    std::vector<std::string> modes;
+    ColumnAccessModes modes = ColumnAccessModes::None;
     bool includeUserGroupPseudonyms{};
     SignedTicketRequest2 ticketRequest;
     std::optional<PseudonymTranslator::Recipient> userRecipient;
@@ -368,7 +401,7 @@ Transcryptor::handleLogIssuedTicketRequest(
     request->id,
     hash,
     std::move(ticket.columns),
-    std::move(ticket.modes),
+    ticket.modes,
     ticket.userGroup,
     ticket.timestamp
   );
@@ -423,7 +456,8 @@ Transcryptor::Transcryptor(std::shared_ptr<Parameters> parameters)
   accessManagerProxy_(messaging::ServerConnection::Create(this->getIoContext(), parameters->getAccessManagerEndPoint(), parameters->getRootCACertificatesFilePath()), *this, parameters->getAccessManagerEndPoint().expectedCommonName, getRootCAs()),
   storage_(parameters->getStorage()),
   lpMetrics_(std::make_shared<Metrics>(registry_)),
-  verifiers_(parameters->getVerifiers()) {
+  verifiers_(parameters->getVerifiers()),
+  checksumChainHandler_(storage_->checksumChains()) {
   RegisterRequestHandlers(*this,
                           &Transcryptor::handleTranscryptorRequest,
                           &Transcryptor::handleRekeyRequest,
@@ -445,22 +479,6 @@ Transcryptor::getMetricsRegistry()  {
 
   // Collect the base metrics and return the complete registry
   return SigningServer::getMetricsRegistry();
-}
-
-std::vector<std::string> Transcryptor::getChecksumChainNames() const {
-  return storage_->getChecksumChainNames();
-}
-
-void Transcryptor::computeChecksumChainChecksum(
-    const std::string& chain, std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
-    uint64_t& checkpoint) {
-  std::string when;
-  if (maxCheckpoint.has_value()) {
-    when = " at checkpoint " + std::to_string(*maxCheckpoint);
-  }
-  PEP_LOG(LogTag, ChecksumChainCalculationLoggingSeverity) << "Starting calculation for checksum chain " << chain << when;
-  storage_->computeChecksum(chain, maxCheckpoint, checksum, checkpoint);
-  PEP_LOG(LogTag, ChecksumChainCalculationLoggingSeverity) << "Finished calculation for checksum chain " << chain << when;
 }
 
 }

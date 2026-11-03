@@ -1,6 +1,11 @@
 #include <pep/pullcastor/ColumnBoundParticipantId.hpp>
 
 #include <boost/functional/hash.hpp>
+#include <boost/container_hash/hash.hpp>
+
+#include <cstddef>
+#include <functional>
+#include <string>
 
 namespace pep {
 namespace castor {

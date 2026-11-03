@@ -1,4 +1,10 @@
 #include <pep/serialization/IndexListSerializer.hpp>
+#include <pep/serialization/IndexList.hpp>
+
+#include <Messages.pb.h> // for proto::IndexList
+
+#include <cstdint>
+#include <vector>
 
 namespace pep {
 

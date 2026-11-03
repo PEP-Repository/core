@@ -1,11 +1,10 @@
 #include <pep/weblib/WeblibStructs.hpp>
+#include <pep/core-client/CoreClient.hpp> // IWYU pragma: keep (for member access on EnumerateResult)
 
-#include <pep/core-client/CoreClient.hpp>
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/MiscUtil.hpp>
 #include <pep/weblib/EmscriptenMapBinding.hpp>
 #include <pep/weblib/EmscriptenVectorBinding.hpp>
-#include <pep/weblib/ObservableStream.hpp>
+#include <pep/utils/TypeTraits.hpp> // for FieldAsConst
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/preprocessor/stringize.hpp>
@@ -13,6 +12,17 @@
 #include <boost/preprocessor/variadic/to_seq.hpp>
 
 #include <emscripten/bind.h>
+#include <emscripten/val.h>
+#include <emscripten/wire.h> // for emscripten::nonnull
+
+#include <cassert>
+#include <cstdint>
+#include <optional>
+#include <ranges>
+#include <span>
+#include <string>
+#include <unordered_map>
+#include <utility>
 
 using namespace emscripten;
 using namespace pep;
@@ -40,6 +50,10 @@ EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(ListQuery::columns)::value_type>();
   register_optional<decltype(ListQuery::mode)::value_type>();
   register_optional<decltype(std::declval<CellEntry>().partialMetadataView())::mapped_type::value_type>();
+  register_optional<decltype(User::displayId)::value_type>();
+  register_optional<decltype(User::primaryId)::value_type>();
+  register_optional<decltype(UserGroupMembership::expiration)::value_type>();
+  register_optional<decltype(UserGroupInfo::maxAuthValiditySeconds)::value_type>();
   register_optional<decltype(ListColumnsQuery::includeImplicitlyGranted)::value_type>();
 }
 
@@ -100,6 +114,28 @@ PEP_BINDINGS(StoreQuery,
 
 PEP_BINDINGS(StoreResult,
   id
+)
+
+PEP_BINDINGS(UserGroupMembership,
+  userGroup,
+  expiration
+)
+
+PEP_BINDINGS(User,
+  displayId,
+  primaryId,
+  otherUids,
+  groups
+)
+
+PEP_BINDINGS(UserGroupInfo,
+  name,
+  maxAuthValiditySeconds
+)
+
+PEP_BINDINGS(UserQueryResult,
+  users,
+  userGroups
 )
 
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {

@@ -1,9 +1,21 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/pullcastor/StorableContent.hpp>
+#include <pep/pullcastor/CellContent.hpp>
+#include <pep/pullcastor/ColumnBoundParticipantId.hpp>
+#include <pep/pullcastor/FieldValue.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <cassert>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <string>
+#include <utility>
 
 namespace pep {
 namespace castor {

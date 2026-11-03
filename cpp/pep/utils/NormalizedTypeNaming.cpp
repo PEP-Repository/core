@@ -1,5 +1,7 @@
 #include <pep/utils/NormalizedTypeNaming.hpp>
 #include <cassert>
+#include <stdexcept>
+#include <string>
 
 namespace pep {
 

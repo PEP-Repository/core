@@ -111,8 +111,8 @@ confirm_deletion() {
 
   [ -z "$no_dry_run" ] && fail "Dry run shouldn't arrive at this point"
   [ -n "$should_delete_single" ] && echo 'Actually, only the first of these will be deleted because of --delete-single'
-  # sh approximation of isatty
-  if [ -c /dev/stdin ]; then
+  # sh approximation of isatty. See https://stackoverflow.com/a/10022396
+  if [ -t 0 ]; then
     printf 'Delete these %s (y/n)? ' "$what_description"
     local choice
     read -r choice

@@ -1,5 +1,8 @@
 #include <pep/storagefacility/S3.hpp>
+#include <pep/storagefacility/S3Credentials.hpp> // for s3::Credentials, s3::HttpRequest
 #include <gtest/gtest.h>
+
+#include <boost/url/url.hpp>
 
 using boost::urls::url;
 

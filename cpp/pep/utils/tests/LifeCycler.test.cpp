@@ -1,5 +1,10 @@
 #include <pep/utils/LifeCycler.hpp>
+#include <pep/utils/Event.hpp>
+
 #include <gtest/gtest.h>
+
+#include <cstddef>
+#include <map>
 
 namespace {
 

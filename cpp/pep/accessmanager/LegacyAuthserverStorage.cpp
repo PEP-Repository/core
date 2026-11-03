@@ -1,14 +1,24 @@
 #include <pep/accessmanager/LegacyAuthserverStorage.hpp>
 
-#include <pep/auth/UserGroup.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/accessmanager/UserStorageRecords.hpp>
+#include <pep/accessmanager/UserIdFlags.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <unordered_map>
+#include <cstdint>
+#include <filesystem>
+#include <list>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <string>
+#include <tuple>
+#include <unordered_set>
+#include <utility>
 
-#include <boost/algorithm/string/predicate.hpp>
 #include <boost/functional/hash.hpp>
 #include <sqlite_orm/sqlite_orm.h>
 

@@ -2,11 +2,29 @@
 #include <pep/cli/Commands.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
-#include <pep/messaging/ResponseToVoid.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/ServerTraits.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/messaging/HousekeepingMessages.hpp> // for PingResponse
+#include <pep/server/ServerProxy.hpp>
+#include <pep/server/SigningServerProxy.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Timestamp.hpp> // for TimeNow
 
 #include <ranges>
+#include <algorithm>
+#include <cassert>
+#include <chrono>
+#include <iostream>
+#include <memory>
+#include <ostream>
+#include <stdexcept>
+#include <vector>
 
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep::cli;
 using namespace std::ranges;

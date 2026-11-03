@@ -1,6 +1,12 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/transcryptor/TranscryptorProxy.hpp>
 #include <pep/transcryptor/TranscryptorSerializers.hpp>
+#include <pep/messaging/Tail.hpp>
+#include <pep/transcryptor/TranscryptorMessages.hpp> // for TranscryptorResponse, TranscryptorRequest, RekeyRequest
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <utility>
 
 namespace pep {
 

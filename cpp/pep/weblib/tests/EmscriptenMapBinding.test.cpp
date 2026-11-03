@@ -1,6 +1,7 @@
 #include <pep/weblib/EmscriptenMapBinding.hpp>
 
-#include <pep/utils/CollectionUtils.hpp>
+
+#include <pep/utils/MapUtils.hpp> // for AnyMap
 
 #include <emscripten/bind.h>
 #include <emscripten/val.h>

@@ -1,6 +1,5 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
-#include <pep/application/Application.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
@@ -9,14 +8,48 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/cli/structuredoutput/FormatParameter.hpp>
 #include <pep/cli/structuredoutput/TreeFromAmaQueryResponse.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/accessmanager/AccessManagerProxy.hpp>
+#include <pep/accessmanager/AmaMessages.hpp> // for AmaQuery, AmaQueryResponse
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/StudyContext.hpp>
+#include <pep/structuredoutput/Common.hpp> // for structuredOutput::QueryDisplayConfig, structuredOutput::JsonConfig, structuredOutput::WhitespaceFormat, ...
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms
+#include <pep/utils/EnumUtils.hpp> // for FlagsIf, HasFlags
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <ranges>
+#include <algorithm>
+#include <cassert>
+#include <cctype>
+#include <cstdint>
+#include <functional>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <boost/algorithm/string/split.hpp>
 
@@ -797,7 +830,7 @@ private:
         return executeEventLoopFor([group = this->getParticipantGroupName()](std::shared_ptr<pep::CoreClient> client) {
           pep::RequestTicket2Opts requestTicketOpts;
           requestTicketOpts.participantGroups.emplace_back(group);
-          requestTicketOpts.modes.emplace_back("read-meta");
+          requestTicketOpts.modes |= pep::ColumnAccessModes::ReadMeta;
           return client->requestTicket2(requestTicketOpts)
             .flat_map([group, client](const pep::IndexedTicket2& indexed) {
             auto ticket = indexed.openTicketWithoutCheckingSignature();

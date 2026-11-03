@@ -1,7 +1,16 @@
 #include <pep/accessmanager/AccessManagerMessages.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/IndexList.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2, Ticket2
 
 #include <format>
 #include <ranges>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 using namespace std::ranges;
 
@@ -23,7 +32,7 @@ std::vector<std::string> IndexedTicket2::getColumns() const {
   return openTicketWithoutCheckingSignature()->columns;
 }
 
-std::vector<std::string> IndexedTicket2::getModes() const {
+ColumnAccessModes IndexedTicket2::getModes() const {
   return openTicketWithoutCheckingSignature()->modes;
 }
 

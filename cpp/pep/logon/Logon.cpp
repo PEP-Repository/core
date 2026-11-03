@@ -10,12 +10,31 @@
 #include <pep/utils/Paths.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/auth/OAuthToken.hpp>
+#include <pep/application/Application.hpp> // for PEP_DEFINE_MAIN_FUNCTION
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/async/FakeVoid.hpp>
+#include <pep/async/OnAsio.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <cassert>
+#include <chrono>
+#include <cstdlib>
+#include <exception>
+#include <filesystem>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <string>
+#include <string_view>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/post.hpp>
+#include <boost/asio/executor_work_guard.hpp> // for boost::asio::make_work_guard
+
+#include <rxcpp/rx-lite.hpp>
 
 namespace {
 

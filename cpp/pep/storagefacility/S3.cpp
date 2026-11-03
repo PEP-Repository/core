@@ -2,11 +2,20 @@
 
 #include <pep/utils/Hmac.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
-#include <pep/utils/Platform.hpp>
+#include <pep/utils/Platform.hpp> // for gmtime_r on Windows
 #include <pep/storagefacility/PageHash.hpp>
+#include <pep/networking/HTTPMessage.hpp>
+#include <pep/storagefacility/S3Credentials.hpp> // for s3::HttpRequest, s3::Credentials
 
 #include <ranges>
 #include <sstream>
+#include <algorithm>
+#include <ctime>
+#include <iomanip>
+#include <memory>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/algorithm/string/trim.hpp>
