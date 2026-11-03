@@ -11,6 +11,8 @@ fi
 
 SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
 SCRIPTPATH="$SCRIPTDIR/$(basename "$0")"
+TEMPDIR="$SCRIPTDIR/temp"
+mkdir -p "$TEMPDIR"
 command=${1:-interactive}
 pep_network="${2:-}"  # Optional PEP Docker network name for start/interactive commands
 properties_file="${3:-}"
@@ -105,7 +107,7 @@ make_properties_file() {
   local secret_key="$3"
 
   local temp_properties_file
-  temp_properties_file="$(mktemp)"
+  temp_properties_file="$(mktemp --tmpdir="$TEMPDIR")"
   cp "$custom_properties_file" "$temp_properties_file"
   # We don't support overriding these default values. For now that's good enough.
   cat <<EOF >> "$temp_properties_file"
@@ -206,6 +208,7 @@ stop_containers() {
   stop_container s3proxyproxy
   stop_container s3proxy
   stop_container s3proxy2
+  [ -d "$TEMPDIR" ] && rm -rf "$TEMPDIR"
 }
 
 run_containers_interactively() {
