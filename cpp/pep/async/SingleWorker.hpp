@@ -1,8 +1,13 @@
 #pragma once
 
 #include <pep/async/WorkGuard.hpp>
-#include <thread>
+
 #include <boost/asio/post.hpp>
+#include <boost/core/noncopyable.hpp>
+
+#include <memory>
+#include <mutex>
+#include <thread>
 
 namespace pep {
 

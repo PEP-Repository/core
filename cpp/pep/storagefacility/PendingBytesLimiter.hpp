@@ -3,11 +3,13 @@
 #include <pep/messaging/ReadThrottle.hpp>
 #include <pep/utils/Shared.hpp>
 
+#include <boost/core/noncopyable.hpp>
+
 #include <cstdint>
 #include <memory>
 #include <unordered_set>
+#include <utility>
 
-#include <boost/noncopyable.hpp>
 
 namespace prometheus {
 class Gauge;

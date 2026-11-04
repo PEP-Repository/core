@@ -4,7 +4,13 @@
 #include <pep/pullcastor/ColumnBoundParticipantId.hpp>
 #include <pep/pullcastor/PepParticipant.hpp>
 #include <pep/pullcastor/StorableContent.hpp>
-#include <pep/pullcastor/StudyAspect.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/utils/Shared.hpp>
+
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace pep {
 namespace castor {

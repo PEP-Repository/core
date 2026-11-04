@@ -2,6 +2,13 @@
 
 #include <pep/utils/PropertySerializer.hpp>
 
+#include <filesystem>
+#include <istream>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 
 namespace pep {
 

@@ -1,8 +1,12 @@
 #pragma once
 
 #include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/StudyContext.hpp>
 
 #include <QWidget>
+
+#include <optional>
+#include <vector>
 
 namespace Ui {
 class AssessorWidget;

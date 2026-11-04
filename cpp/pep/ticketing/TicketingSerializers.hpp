@@ -1,7 +1,8 @@
 #pragma once
 
-#include <pep/ticketing/TicketingMessages.hpp>
 #include <pep/serialization/ProtocolBufferedSerializer.hpp>
+#include <pep/ticketing/TicketingMessages.hpp>
+
 #include <Messages.pb.h>
 
 namespace pep {

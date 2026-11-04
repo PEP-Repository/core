@@ -1,11 +1,12 @@
 #pragma once
 
 #include <pep/utils/Attributes.hpp>
-#include <pep/utils/EnumUtils.hpp>
+#include <pep/utils/EnumUtils.hpp> // IWYU pragma: export (operators for flag enums)
+#include <pep/utils/TypeTraits.hpp> // for PEP_MARK_AS_FLAG_ENUM_TYPE
 
-#include <vector>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace pep::structuredOutput {
 

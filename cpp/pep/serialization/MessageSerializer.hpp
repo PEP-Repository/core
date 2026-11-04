@@ -1,15 +1,18 @@
 #pragma once
 
-#include <pep/utils/Log.hpp>
 #include <pep/serialization/MessageMagic.hpp>
 #include <pep/serialization/SerializeException.hpp>
-
-#include <istream>
-#include <sstream>
-#include <cstdint>
+#include <pep/utils/Log.hpp>
 
 #include <boost/iostreams/device/array.hpp>
 #include <boost/iostreams/stream.hpp>
+
+#include <istream>
+#include <ostream>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <utility>
 
 namespace pep {
 

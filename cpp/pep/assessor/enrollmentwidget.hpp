@@ -1,14 +1,18 @@
 #pragma once
 
+#include <pep/client/Client_fwd.hpp>
+#include <pep/content/ParticipantPersonalia.hpp>
+#include <pep/structure/StudyContext.hpp>
+#include <pep/utils/Log.hpp>
+
 #include <QPushButton>
 #include <QStackedWidget>
-#include <thread>
-#include <pep/client/Client_fwd.hpp>
-#include <pep/utils/Log.hpp>
-#include <pep/structure/StudyContext.hpp>
-#include <pep/assessor/participanteditor.hpp>
 
 #include <rxcpp/rx-lite.hpp>
+
+#include <memory>
+#include <string>
+
 
 namespace Ui {
 class EnrollmentWidget;

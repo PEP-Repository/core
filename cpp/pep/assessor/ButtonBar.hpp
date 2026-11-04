@@ -1,7 +1,10 @@
 #pragma once
 
 #include <pep/assessor/FlowLayout.hpp>
+
 #include <QPushButton>
+
+#include <functional>
 #include <vector>
 class ButtonBar : public QWidget {
   Q_OBJECT

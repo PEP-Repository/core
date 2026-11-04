@@ -1,9 +1,12 @@
 #pragma once
 
+#include <pep/accessmanager/UserMessages.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/cli/Command.hpp>
+#include <pep/cli/structuredoutput/TreeFromUserQueryResponse.hpp>
 #include <pep/cli/User.hpp>
 #include <pep/structuredoutput/Common.hpp>
-#include <pep/accessmanager/UserMessages.hpp>
-#include <pep/cli/structuredoutput/TreeFromUserQueryResponse.hpp>
 
 class pep::cli::CommandUser::CommandUserQuery : public ChildCommandOf<CommandUser> {
 public:

@@ -4,6 +4,8 @@
 
 #include <QDate>
 
+#include <chrono>
+
 namespace pep {
 [[nodiscard]] QDateTime MakeLocalQDateTime(const QDate& date, const QTime& time);
 

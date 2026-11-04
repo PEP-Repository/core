@@ -1,7 +1,15 @@
 #pragma once
 
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/Signed.hpp> // for MessageSigner
+#include <pep/crypto/X509Certificate.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
+#include <pep/messaging/ServerConnection.hpp>
 #include <pep/server/ServerProxy.hpp>
+
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace pep {
 

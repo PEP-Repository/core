@@ -3,7 +3,6 @@
 
 #include <rxcpp/rx-lite.hpp>
 
-#include <functional>
 
 namespace pep
 {

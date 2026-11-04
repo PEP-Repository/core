@@ -4,7 +4,13 @@
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Shared.hpp>
+
+#include <cassert>
+#include <exception>
+#include <functional>
+#include <memory>
 #include <optional>
+#include <vector>
 
 namespace pep {
 

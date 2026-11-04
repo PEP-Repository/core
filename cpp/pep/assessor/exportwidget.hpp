@@ -1,15 +1,23 @@
 #pragma once
 
-#include <pep/assessor/UserRole.hpp>
 #include <pep/assessor/ExportableItem.hpp>
+#include <pep/assessor/UserRole.hpp>
 #include <pep/assessor/VisitCaptions.hpp>
 #include <pep/core-client/CoreClient_fwd.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/StudyContext.hpp>
 #include <pep/utils/Log.hpp>
 
 #include <QListWidget>
 #include <QWidget>
 
 #include <rxcpp/rx-lite.hpp>
+
+#include <map>
+#include <memory>
+#include <ostream>
+#include <string>
+#include <vector>
 
 namespace Ui {
 class ExportWidget;

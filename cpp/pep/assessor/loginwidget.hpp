@@ -1,11 +1,16 @@
 #pragma once
 
-#include <pep/assessor/UserRole.hpp>
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/oauth-client/OAuthClient.hpp>
-#include <pep/assessor/Branding.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
 
 #include <QWidget>
+
+#include <exception>
 #include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
 
 #if defined(__APPLE__) && defined(__MACH__)
 # include <pep/assessor/SparkleUpdater.h>

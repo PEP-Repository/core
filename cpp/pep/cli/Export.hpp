@@ -1,11 +1,18 @@
 #pragma once
 
-#include <ostream>
-#include <pep/application/Application.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/CliApplication.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/structuredoutput/TableFromDownloadDirectory.hpp>
 #include <pep/structuredoutput/Table.hpp>
+
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <ostream>
 #include <string_view>
+#include <vector>
 
 namespace pep::cli {
 

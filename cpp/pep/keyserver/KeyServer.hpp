@@ -1,10 +1,21 @@
 #pragma once
 
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/auth/OAuthToken.hpp>
+#include <pep/auth/ServerTraits.hpp>
+#include <pep/crypto/X509Certificate.hpp>
 #include <pep/keyserver/KeyServerMessages.hpp>
 #include <pep/keyserver/tokenblocking/Blocklist.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/server/Server.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
+
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
 
 namespace pep {
 

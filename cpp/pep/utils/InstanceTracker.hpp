@@ -1,7 +1,9 @@
 #pragma once
 
-#include <boost/noncopyable.hpp>
-#include <utility>
+#include <boost/core/noncopyable.hpp>
+
+#include <cstddef>
+
 
 namespace pep {
 

@@ -8,6 +8,7 @@
 #include <pep/utils/Shared.hpp>
 
 #include <rxcpp/rx-lite.hpp>
+#include <rxcpp/operators/rx-on_error_resume_next.hpp>
 
 #include <memory>
 #include <string>

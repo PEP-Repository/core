@@ -1,8 +1,12 @@
 #pragma once
 
-#include <pep/core-client/CoreClient_fwd.hpp>
 #include <pep/async/RxCache.hpp>
-#include <pep/accessmanager/AccessManagerMessages.hpp>
+#include <pep/core-client/CoreClient_fwd.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2
+#include <pep/utils/Shared.hpp>
+
+#include <memory>
+#include <string>
 
 namespace pep {
 namespace castor {

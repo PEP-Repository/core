@@ -1,8 +1,18 @@
 #pragma once
 
+#include <pep/async/IoContext_fwd.hpp>
+#include <pep/auth/Signed.hpp> // for MessageSigner
+#include <pep/crypto/AsymmetricKey.hpp>
+#include <pep/crypto/X509Certificate.hpp> // for X509IdentityFiles, X509Identity
 #include <pep/messaging/HousekeepingMessages.hpp>
-#include <pep/server/Server.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
 #include <pep/server/CertificateRenewalMessages.hpp>
+#include <pep/server/Server.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
+
+#include <memory>
+#include <optional>
+#include <stdexcept>
 
 namespace pep {
 

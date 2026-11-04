@@ -1,5 +1,6 @@
 #pragma once
 
+#include <compare>
 #include <string>
 
 namespace pep {

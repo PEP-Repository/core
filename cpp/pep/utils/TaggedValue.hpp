@@ -1,14 +1,15 @@
 #pragma once
 
 #include <pep/utils/TypeTraits.hpp>
+
 #include <any>
 #include <cassert>
+#include <cstddef>
 #include <stdexcept>
+#include <type_traits>
 #include <typeindex>
-#include <typeinfo>
 #include <unordered_map>
 
-#include <boost/exception/error_info.hpp>
 
 namespace pep {
 

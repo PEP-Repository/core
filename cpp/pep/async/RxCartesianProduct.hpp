@@ -2,7 +2,13 @@
 
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxToVector.hpp>
+
+#include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
+
+#include <memory>
+#include <utility>
+#include <vector>
 
 namespace pep {
 

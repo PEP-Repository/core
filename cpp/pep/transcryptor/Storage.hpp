@@ -1,13 +1,20 @@
 #pragma once
 
-#include <vector>
-
-#include <pep/rsk/Proofs.hpp>
+#include <pep/crypto/X509Certificate.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/ticketing/TicketingMessages.hpp>
+#include <pep/rsk/Proofs.hpp>
 #include <pep/server/ChecksumChain.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp>
+#include <pep/utils/Timestamp.hpp>
 
+#include <cstdint>
 #include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace pep {
 
