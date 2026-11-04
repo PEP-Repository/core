@@ -6,7 +6,6 @@
 #include <filesystem>
 #include <string>
 
-
 namespace pep {
 
 class TemplateEnvironment {

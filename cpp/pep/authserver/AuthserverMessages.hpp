@@ -5,7 +5,6 @@
 
 #include <string>
 
-
 namespace pep {
 struct TokenRequest {
   std::string subject;

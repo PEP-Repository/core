@@ -10,7 +10,6 @@
 #include <unordered_set>
 #include <utility>
 
-
 namespace prometheus {
 class Gauge;
 }

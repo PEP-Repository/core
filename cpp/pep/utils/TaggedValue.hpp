@@ -10,7 +10,6 @@
 #include <typeindex>
 #include <unordered_map>
 
-
 namespace pep {
 
 /// \brief Associates (a value of) a particular type with a (unique) tag type, allowing such values to be stored in a TaggedValues container

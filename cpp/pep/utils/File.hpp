@@ -8,7 +8,6 @@
 #include <string>
 #include <string_view>
 
-
 namespace pep {
 
 std::string ReadFile(const std::filesystem::path& path);

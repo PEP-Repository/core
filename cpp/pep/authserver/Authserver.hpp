@@ -13,7 +13,6 @@
 
 #include <memory>
 
-
 namespace pep {
 
 class Authserver : public SigningServer {

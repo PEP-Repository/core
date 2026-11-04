@@ -9,7 +9,6 @@
 #include <string>
 #include <string_view>
 
-
 namespace pep {
 
 // Convenience struct for serialization routines

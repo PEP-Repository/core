@@ -4,7 +4,6 @@
 
 #include <cstddef>
 
-
 namespace pep {
 
 /// \brief Debug helper: encapsulate a `const InstanceTracker<MyType>` in your class to assign a unique ID to every instance.

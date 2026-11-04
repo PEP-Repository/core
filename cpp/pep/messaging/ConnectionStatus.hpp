@@ -2,7 +2,6 @@
 
 #include <boost/system/errc.hpp> // for boost::system::errc::make_error_code
 
-
 namespace pep {
 
 struct ConnectionStatus {
