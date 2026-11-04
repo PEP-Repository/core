@@ -175,8 +175,9 @@ SqliteStorage::~SqliteStorage() noexcept = default;
 
 std::vector<PurgeCycle> SqliteStorage::getPurgeCycles() const {
   return this->atomically([this]() {
-      return implementor_->raw.iterate<PurgeCycleRecord>(sqlite_orm::order_by(&PurgeCycleRecord::id).asc())
-        | std::ranges::to<std::vector>() // return type of sqlite_orm's "iterate" cannot be piped into std::views::transform directly
+      // We can't pipe the result of raw.iterate<> directly into std::views::transform because sqlite_orm's mapped_view is not movable
+      auto records = implementor_->raw.iterate<PurgeCycleRecord>(sqlite_orm::order_by(&PurgeCycleRecord::id).asc());
+      return records
         | std::views::transform(&RecordToPurgeCycle)
         | std::ranges::to<std::vector>();
     });
