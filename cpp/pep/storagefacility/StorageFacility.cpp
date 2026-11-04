@@ -27,6 +27,7 @@
 #include <pep/serialization/MessageMagic.hpp>
 #include <pep/serialization/Serialization.hpp>
 #include <pep/serialization/SerializeException.hpp>
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/server/SigningServer.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
 #include <pep/storagefacility/EntryName.hpp>

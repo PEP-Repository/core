@@ -27,6 +27,7 @@
 #include <pep/rsk/Proofs.hpp> // for ReshuffleRekeyVerifiers
 #include <pep/serialization/Error.hpp>
 #include <pep/serialization/Serialization.hpp>
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/server/SigningServer.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms
