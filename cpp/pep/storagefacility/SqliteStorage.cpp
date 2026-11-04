@@ -133,7 +133,7 @@ std::optional<int64_t> SqliteStorage::getRowId(const std::string& name) const {
   return RangeToOptional(
     implementor_->raw.select(&RowRecord::seqno,
       where(c(&RowRecord::pseudonym) == name),
-      limit(1)));
+      limit(1))); // limit(1) to guard against faulty/accidental (concurrently inserted?) duplicates in the table
 }
 
 std::optional<int64_t> SqliteStorage::getColumnId(const std::string& name) const {
@@ -141,7 +141,7 @@ std::optional<int64_t> SqliteStorage::getColumnId(const std::string& name) const
   return RangeToOptional(
     implementor_->raw.select(&ColumnRecord::seqno,
       where(c(&ColumnRecord::name) == name),
-      limit(1)));
+      limit(1))); // limit(1) to guard against faulty/accidental (concurrently inserted?) duplicates in the table
 }
 
 int64_t SqliteStorage::ensureRowId(const std::string& name) {
