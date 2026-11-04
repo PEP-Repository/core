@@ -117,7 +117,7 @@ void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
 
   assert(cycle.applied && !cycle.completed);
   try {
-    for (auto version : sqlite_.getIncludedCellVersions(cycle.id)) {
+    for (const auto& version : sqlite_.getIncludedCellVersions(cycle.id)) {
       this->getParticipant(version.cell.participant())->ensurePurgePersisted(*cycle.applied, version.cell.column(), version.timestamp);
     }
 
