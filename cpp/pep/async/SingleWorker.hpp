@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/async/WorkGuard.hpp>
 
 #include <boost/asio/post.hpp>
