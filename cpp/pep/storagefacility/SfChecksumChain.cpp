@@ -1,5 +1,13 @@
 #include <pep/storagefacility/SfChecksumChain.hpp>
-#include <pep/serialization/Error.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/storagefacility/FileStore.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <algorithm>
+#include <chrono>
+#include <memory>
+#include <optional>
+#include <utility>
 
 namespace pep {
 

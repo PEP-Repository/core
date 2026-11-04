@@ -3,10 +3,18 @@
 #include <pep/assessor/visitwidget.hpp>
 
 #include <pep/assessor/ui_visitwidget.h>
+#include <pep/assessor/ButtonBar.hpp>
+#include <pep/structure/GlobalConfiguration.hpp> // for AssessorDefinition
+#include <pep/structure/StudyContext.hpp>
 
 #include <QDialog>
 #include <QLabel>
 
+#include <algorithm>
+#include <cstddef>
+#include <functional>
+#include <optional>
+#include <vector>
 
 VisitWidget::VisitWidget(const std::vector<pep::AssessorDefinition>& assessors, pep::UserRole& currentPepRole_, pep::StudyContext& studyContext, QWidget *parent) :
   QWidget(parent),

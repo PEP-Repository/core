@@ -3,8 +3,23 @@
 
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
-#include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/authserver/AuthserverBackend.hpp>
+#include <pep/authserver/AuthserverMessages.hpp> // for SignedTokenRequest
+#include <pep/authserver/OAuthProvider.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/messaging/ServerConnection.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/server/ChecksumChainHandler.hpp>
+#include <pep/server/SigningServer.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+
+#include <boost/asio/io_context.hpp>
+
+#include <exception>
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace pep {
 

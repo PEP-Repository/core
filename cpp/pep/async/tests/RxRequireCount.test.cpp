@@ -4,6 +4,12 @@
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
+#include <boost/asio/io_context.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <exception>
+
 TEST(RxRequireCount, Works) {
   using namespace pep;
 

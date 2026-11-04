@@ -3,11 +3,16 @@
 #include <pep/assessor/ui_participantselector.h>
 
 #include <pep/assessor/InputValidationTooltip.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
 
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <cassert>
 #include <ranges>
+#include <algorithm>
+#include <stdexcept>
+#include <vector>
 #include <boost/algorithm/string/join.hpp>
 
 using namespace std::ranges;

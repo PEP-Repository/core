@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <array>
 #include <stdexcept>
+#include <functional>
+#include <ranges>
+#include <string_view>
 
 #include <gtest/gtest.h>
 

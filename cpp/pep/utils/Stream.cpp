@@ -1,7 +1,13 @@
-#include <pep/utils/Log.hpp>
 #include <pep/utils/Stream.hpp>
 
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <ios>
+#include <streambuf>
+
 #ifdef _WIN32
+# include <pep/utils/Log.hpp>
 # include <io.h>
 # include <fcntl.h>
 #endif

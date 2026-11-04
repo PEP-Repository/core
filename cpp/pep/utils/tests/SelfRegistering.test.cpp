@@ -2,6 +2,8 @@
 
 #include <pep/utils/tests/SelfRegistering.test.hpp>
 
+#include <algorithm>
+
 using namespace pep::tests;
 
 namespace {

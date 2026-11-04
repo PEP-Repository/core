@@ -1,4 +1,9 @@
 #include <pep/serialization/ErrorSerializer.hpp>
+#include <pep/serialization/Error.hpp>
+
+#include <Messages.pb.h> // for proto::Error
+
+#include <utility>
 
 namespace pep {
 

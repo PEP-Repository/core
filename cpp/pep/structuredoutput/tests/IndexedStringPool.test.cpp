@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <memory>
+#include <string>
 #include <pep/structuredoutput/IndexedStringPool.hpp>
 
 namespace {

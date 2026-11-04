@@ -3,6 +3,9 @@
 #include <pep/database/Storage.hpp>
 #include <pep/utils/Filesystem.hpp>
 
+#include <filesystem>
+#include <string>
+
 namespace {
 using namespace sqlite_orm;
 

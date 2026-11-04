@@ -1,9 +1,16 @@
 #include <pep/castor/Participant.hpp>
 #include <pep/castor/StudyDataPoint.hpp>
-#include <pep/castor/SurveyDataPoint.hpp>
-#include <pep/castor/SurveyPackageInstance.hpp>
 #include <pep/castor/RepeatingDataInstance.hpp>
 #include <pep/castor/Ptree.hpp>
+#include <pep/castor/CastorConnection.hpp> // for castor::JsonPtr
+#include <pep/castor/CastorObject.hpp> // for castor::SimpleCastorChildObject
+#include <pep/castor/Study.hpp>
+#include <pep/utils/Shared.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <memory>
+#include <string>
 
 namespace pep {
 namespace castor {

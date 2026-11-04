@@ -2,7 +2,11 @@
 
 #include <pep/cli/Export.hpp>
 #include <pep/structuredoutput/Json.hpp>
-#include <string_view>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/Command.hpp>
+#include <pep/structuredoutput/Table.hpp>
+
+#include <ostream>
 
 namespace {
 

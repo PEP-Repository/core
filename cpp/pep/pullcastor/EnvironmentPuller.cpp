@@ -1,6 +1,17 @@
 #include <pep/pullcastor/EnvironmentPuller.hpp>
 #include <chrono>
 #include <iostream>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <exception>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxRequireCount.hpp>
@@ -13,6 +24,29 @@
 #include <pep/utils/Configuration.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for ColumnAccess
+#include <pep/async/RxCache.hpp>
+#include <pep/castor/CastorConnection.hpp>
+#include <pep/castor/ImportColumnNamer.hpp>
+#include <pep/castor/Study.hpp>
+#include <pep/core-client/CoreClient.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/morphing/SystemPublicKeys.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/networking/HTTPMessage.hpp> // for HTTPRequest
+#include <pep/pullcastor/Metrics.hpp>
+#include <pep/pullcastor/PullCastorUtils.hpp> // for PEP_PULLCASTOR_LOG
+#include <pep/pullcastor/StorableContent.hpp> // for castor::StorableCellContent
+#include <pep/pullcastor/StoredData.hpp>
+#include <pep/pullcastor/StudyAspect.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/ColumnName.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
+#include <pep/utils/EnumUtils.hpp> // for HasFlags
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp> // for TimeNow
 
 #include <boost/asio/io_context.hpp>
 
@@ -22,6 +56,7 @@
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::ranges;
 

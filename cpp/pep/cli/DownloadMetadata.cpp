@@ -2,7 +2,27 @@
 
 #include <pep/utils/File.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/cli/DownloadMetadata.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/utils/CheckedPath.hpp>
+#include <pep/utils/Progress.hpp>
+#include <pep/utils/Timestamp.hpp>
+#include <pep/utils/XxHasher.hpp>
 #include <filesystem>
+#include <algorithm>
+#include <cassert>
+#include <chrono>
+#include <map>
+#include <memory>
+#include <optional>
+#include <ranges>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>

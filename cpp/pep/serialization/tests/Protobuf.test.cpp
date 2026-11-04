@@ -2,6 +2,10 @@
 
 #include <pep/serialization/ErrorSerializer.hpp>
 #include <pep/serialization/Serialization.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/MessageMagic.hpp>
+
+#include <string_view>
 
 using namespace pep;
 

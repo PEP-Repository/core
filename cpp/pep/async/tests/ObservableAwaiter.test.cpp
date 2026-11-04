@@ -1,11 +1,15 @@
-#include <pep/async/ObservableAwaiter.hpp>
+#include <pep/async/ObservableAwaiter.hpp> // IWYU pragma: keep (for co_await on observables)
 
 #include <pep/async/CallbackCoroutine.hpp>
 #include <pep/utils/TestError.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <gtest/gtest.h>
+
+#include <functional>
+#include <stdexcept>
 
 using namespace pep;
 

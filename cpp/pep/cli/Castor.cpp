@@ -1,14 +1,21 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 
-#include <pep/application/Application.hpp>
 #include <pep/client/Client.hpp>
-#include <pep/utils/Exceptions.hpp>
 #include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/accessmanager/AccessManagerProxy.hpp>
+#include <pep/accessmanager/AmaMessages.hpp> // for AmaQuery, AmaQueryResponse, AmaQRColumnGroup
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/CliApplication.hpp>
+#include <pep/core-client/CoreClient.hpp>
+#include <pep/structure/ColumnName.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -19,8 +26,28 @@
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <filesystem>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <fstream>
+#include <iomanip>
+#include <ios>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 using namespace pep::cli;
 using namespace std::ranges;

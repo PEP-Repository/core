@@ -1,5 +1,4 @@
-#include <pep/async/CreateObservable.hpp>
-#include <pep/async/ObservableAwaiter.hpp>
+#include <pep/async/ObservableAwaiter.hpp> // IWYU pragma: keep (for co_await on observables)
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/auth/OAuthError.hpp>
@@ -10,7 +9,6 @@
 #include <pep/ticketing/SubjectAccessModes.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/oauth-client/OAuthClient.hpp>
-#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/Exceptions.hpp>
@@ -26,6 +24,19 @@
 #include <pep/weblib/ThreadPrintable.hpp>
 #include <pep/weblib/WeblibApiPromise.hpp>
 #include <pep/weblib/WeblibStructs.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for ColumnAccess, ParticipantGroupAccess, IndexedTicket2
+#include <pep/accessmanager/UserMessages.hpp> // for QRUser, UserQueryResponse
+#include <pep/async/FakeVoid.hpp>
+#include <pep/async/OnAsio.hpp>
+#include <pep/auth/UserGroup.hpp>
+#include <pep/content/ParticipantPersonalia.hpp>
+#include <pep/core-client/CoreClient.hpp> // for RequestTicket2Opts, StoreData2Entry, DataStorageResult2
+#include <pep/messaging/ConnectionStatus.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
 
 #include <filesystem>
 #include <functional>
@@ -33,6 +44,22 @@
 #include <stdexcept>
 #include <thread>
 #include <utility>
+#include <algorithm>
+#include <cassert>
+#include <chrono>
+#include <cstddef>
+#include <cstdlib>
+#include <exception>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <ranges>
+#include <stop_token>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 #include <emscripten/emscripten.h>
 #include <emscripten/bind.h>
@@ -40,13 +67,15 @@
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/noncopyable.hpp>
+#include <boost/asio/executor_work_guard.hpp>
+#include <boost/core/noncopyable.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-distinct_until_changed.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/subjects/rx-replaysubject.hpp>
 #include <rxcpp/subjects/rx-subject.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep;
 using namespace pep::weblib;

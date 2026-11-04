@@ -11,13 +11,39 @@
 #include <pep/utils/File.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for ColumnAccess
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/ServerTraits.hpp>
+#include <pep/authserver/AuthServerProxy.hpp>
+#include <pep/content/ParticipantPersonalia.hpp>
+#include <pep/core-client/CoreClient.hpp>
+#include <pep/crypto/AsymmetricKey.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/keyserver/KeyServerMessages.hpp> // for EnrollmentRequest, EnrollmentResponse
+#include <pep/keyserver/KeyServerProxy.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/registrationserver/RegistrationServerProxy.hpp>
+#include <pep/utils/EnumUtils.hpp> // for HasFlags
 
 #include <ranges>
+#include <filesystem>
+#include <map>
+#include <memory>
+#include <optional>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <boost/asio/io_context.hpp>
 
 using namespace std::ranges;
 

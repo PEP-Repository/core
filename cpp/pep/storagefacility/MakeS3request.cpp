@@ -1,6 +1,15 @@
 #include <pep/application/Application.hpp>
 #include <pep/storagefacility/S3.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/storagefacility/S3Credentials.hpp> // for s3::HttpRequest, s3::Credentials
+
 #include <boost/algorithm/string/join.hpp>
+#include <boost/url/url.hpp>
+
+#include <cstdlib>
+#include <iostream>
+#include <string>
+#include <vector>
 
 using namespace pep;
 

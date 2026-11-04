@@ -4,13 +4,35 @@
 
 #include <pep/async/IoContextThread.hpp>
 #include <pep/httpserver/HTTPServer.hpp>
+#include <pep/networking/ExponentialBackoff.hpp>
+#include <pep/networking/HTTPMessage.hpp> // for HTTPResponse, HTTPRequest
 #include <pep/networking/HttpClient.hpp>
-#include <pep/utils/Defer.hpp>
+#include <pep/networking/HttpMethod.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/utils/Shared.hpp>
 
+#include <algorithm>
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <functional>
+#include <istream>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <tuple>
+#include <utility>
+#include <vector>
 
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/buffers_iterator.hpp> // for boost::asio::buffers_begin
+#include <boost/asio/completion_condition.hpp> // for boost::asio::transfer_exactly
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/read_until.hpp>
@@ -18,6 +40,8 @@
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/core/noncopyable.hpp>
+#include <boost/url/url.hpp>
 
 namespace {
 

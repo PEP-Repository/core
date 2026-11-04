@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <cstddef>
 
 namespace pep::structuredOutput {
 namespace {

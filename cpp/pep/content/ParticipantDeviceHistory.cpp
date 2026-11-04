@@ -1,8 +1,15 @@
 #include <pep/content/ParticipantDeviceHistory.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <algorithm>
-#include <functional>
 #include <ranges>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
 
 #include <boost/property_tree/json_parser.hpp>
 

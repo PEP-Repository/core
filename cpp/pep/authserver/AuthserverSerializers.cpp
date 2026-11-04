@@ -1,5 +1,11 @@
 #include <pep/authserver/AuthserverSerializers.hpp>
 #include <pep/serialization/TimestampSerializer.hpp>
+#include <pep/authserver/AuthserverMessages.hpp> // for TokenRequest, TokenResponse
+#include <pep/serialization/Serialization.hpp>
+
+#include <Messages.pb.h> // for proto::TokenRequest
+
+#include <utility>
 
 namespace pep {
 

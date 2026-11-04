@@ -1,12 +1,21 @@
 #include <pep/networking/HTTPMessage.hpp>
+#include <pep/networking/HttpMethod.hpp>
 
 #include <sstream>
 #include <cassert>
 
 #include <utility>
+#include <cstddef>
+#include <map>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/lexical_cast.hpp>
+#include <boost/url/encoding_opts.hpp>
+#include <boost/url/params_view.hpp>
+#include <boost/url/url.hpp>
 
 namespace pep {
 

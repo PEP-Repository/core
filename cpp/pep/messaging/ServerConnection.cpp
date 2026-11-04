@@ -4,6 +4,29 @@
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MiscUtil.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/messaging/Connection.hpp>
+#include <pep/messaging/ConnectionStatus.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/messaging/Node.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/utils/LifeCycler.hpp>
+#include <pep/utils/Shared.hpp> // for WeakFrom
+
+#include <boost/asio/io_context.hpp>
+#include <boost/system/errc.hpp> // for boost::system::errc::make_error_code
+#include <boost/system/system_error.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <cassert>
+#include <exception>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 using namespace std::literals;
 

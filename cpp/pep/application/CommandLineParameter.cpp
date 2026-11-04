@@ -1,9 +1,23 @@
 #include <pep/application/CommandLineParameter.hpp>
+#include <pep/application/CommandLineHelp.hpp> // for commandline::WriteHelpItem
+#include <pep/application/CommandLineSwitchAnnouncement.hpp>
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues, commandline::Values, commandline::LexedValues
 
-#include <numeric>
 #include <ranges>
 #include <utility>
 #include <iostream>
+#include <algorithm>
+#include <cassert>
+#include <exception>
+#include <functional>
+#include <optional>
+#include <queue>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <unordered_map>
+#include <vector>
 
 #include <boost/algorithm/string/join.hpp>
 

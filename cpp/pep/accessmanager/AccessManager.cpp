@@ -16,29 +16,73 @@
 #include <pep/structure/ColumnNameSerializers.hpp>
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
-#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/Filesystem.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/accessmanager/UserSerializers.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for GlobalConfigurationRequest, EncryptionKeyRequest
+#include <pep/accessmanager/AmaMessages.hpp> // for AmaQRColumn, AmaQueryResponse, AmaMutationRequest, ...
+#include <pep/accessmanager/UserMessages.hpp> // for SignedUserQuery, UserMutationResponse
+#include <pep/async/OnAsio.hpp>
+#include <pep/async/WorkerPool.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey, EncryptedKey
+#include <pep/key-components/KeyComponentServer.hpp>
+#include <pep/messaging/MessageHeader.hpp> // for messaging::NetMessageCapacityFactor
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/messaging/ServerConnection.hpp>
+#include <pep/messaging/Tail.hpp>
+#include <pep/metrics/RegisteredMetrics.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/rsk-pep/PseudonymTranslator.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/rsk/RskRecipient.hpp> // for RekeyRecipient
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/IndexList.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/server/ChecksumChainHandler.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/StudyContext.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms, TicketRequest2, SignedTicket2, ...
+#include <pep/transcryptor/TranscryptorMessages.hpp> // for TranscryptorRequestEntry, RekeyRequest, TranscryptorRequest, ...
+#include <pep/utils/NormalizedTypeNaming.hpp> // for NormalizedTypeNamer
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp> // for TimeNow
 
 #include <ranges>
 #include <sstream>
 #include <chrono>
 #include <utility>
-
-#include <boost/algorithm/string/join.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/property_tree/json_parser.hpp>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <ios>
+#include <map>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <unordered_map>
+#include <vector>
 
 #include <rxcpp/operators/rx-buffer_count.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <prometheus/gauge.h>
 #include <prometheus/summary.h>
+
+#include <boost/asio/io_context.hpp>
 
 using namespace std::ranges;
 

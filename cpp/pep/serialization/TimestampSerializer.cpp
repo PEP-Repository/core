@@ -1,4 +1,9 @@
 #include <pep/serialization/TimestampSerializer.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <Messages.pb.h> // for proto::Timestamp
+
+#include <chrono>
 
 namespace pep {
 
