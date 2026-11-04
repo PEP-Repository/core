@@ -143,12 +143,12 @@ start_s3proxy_container() {
   # Local paths exposed as a bind mount are prefixed with a slash to prevent Git Bash on Windows
   # from mangling those paths. See https://stackoverflow.com/a/50608818
   if [ -n "$properties_file" ]; then
-    "$docker" run --rm --detach --name "$name" -e S3PROXY_IDENTITY="$access_key" -e S3PROXY_CREDENTIAL="$secret_key" -e LOG_LEVEL=TRACE -p "$port":80 \
+    "$docker" run --rm --detach --name "$name" "${network_switch[@]}" -e S3PROXY_IDENTITY="$access_key" -e S3PROXY_CREDENTIAL="$secret_key" -e LOG_LEVEL=TRACE -p "$port":80 \
       -v "/$data_dir:/data" \
       -v "/$(make_properties_file "$properties_file" "$access_key" "$secret_key"):/s3proxy.properties" \
       "${S3PROXY_IMAGE}" java -XX:MaxRAMPercentage=75 -XX:+UseCompactObjectHeaders -DLOG_LEVEL=TRACE -jar /opt/s3proxy/s3proxy --properties /s3proxy.properties
   else
-    "$docker" run --rm --detach --name "$name" -e S3PROXY_IDENTITY="$access_key" -e S3PROXY_CREDENTIAL="$secret_key" -e LOG_LEVEL=TRACE -p "$port":80 \
+    "$docker" run --rm --detach --name "$name" "${network_switch[@]}" -e S3PROXY_IDENTITY="$access_key" -e S3PROXY_CREDENTIAL="$secret_key" -e LOG_LEVEL=TRACE -p "$port":80 \
       -v "/$data_dir:/data" \
       "${S3PROXY_IMAGE}"
   fi
