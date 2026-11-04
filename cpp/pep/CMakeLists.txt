@@ -48,6 +48,9 @@ if(ENABLE_CLANG_TIDY)
 
   find_program(CLANG_TIDY_PROGRAM clang-tidy)
   set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts})
+
+  # Needed to check headers (see clang-tidy-headers target below)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
 # Always enable certain compiler warnings if using either GCC or Clang
@@ -350,14 +353,15 @@ option(VERIFY_HEADERS_STANDALONE "Verify that headers #include all their depende
 
 # Fill a variable with (relative paths to) the .hpp files included in a target
 function(get_target_headers variable target)
-  # Iterate over the target's SOURCES
+  # Iterate over the target's SOURCES, which may be relative to the target's source directory
   get_target_property(srces ${target} SOURCES)
+  get_target_property(source_dir ${target} SOURCE_DIR)
   foreach(src ${srces})
     # If the source(file)name ends with ".hpp"...
     get_filename_component(ext "${src}" LAST_EXT)
     if("${ext}" STREQUAL ".hpp")
       # ...store the path as needed by "#include <this/one/here.hpp>" directives
-      file(REAL_PATH ${src} fullpath)
+      file(REAL_PATH ${src} fullpath BASE_DIRECTORY "${source_dir}")
       file(RELATIVE_PATH relpath "${CMAKE_SOURCE_DIR}/cpp" "${fullpath}")
       list(APPEND result "${relpath}")
     endif()
@@ -605,6 +609,67 @@ foreach(target IN LISTS all_targets)
     endif()
   endforeach()
 endforeach()
+
+##### Check headers' #includes with clang-tidy #####
+
+# clang-tidy's misc-include-cleaner only checks the #includes of the main file, i.e. of the source being compiled.
+# So run it on each header separately (making the header the main file), before anything else is compiled,
+# so that the build fails fast.
+if(ENABLE_CLANG_TIDY)
+  find_program(JQ_PROGRAM jq REQUIRED) # Used by clang-tidy-header.sh
+
+  # Targets generating headers that our headers #include: these must be built before the headers are checked
+  set(clang_tidy_headers_prerequisites)
+  foreach(target ${PROJECT_NAME}Protolib ${PROJECT_NAME}Protohash)
+    if(TARGET ${target})
+      list(APPEND clang_tidy_headers_prerequisites ${target})
+    endif()
+  endforeach()
+
+  set(checked_headers)
+  set(stamps)
+  foreach(target IN LISTS all_targets)
+    get_target_headers(headers ${target})
+    foreach(header IN LISTS headers)
+      # Skip headers outside the source tree (i.e. generated ones) and headers listed by multiple targets
+      if(header MATCHES "^\\.\\./" OR header IN_LIST checked_headers)
+        continue()
+      endif()
+      list(APPEND checked_headers ${header})
+
+      set(stamp "${CMAKE_BINARY_DIR}/clang-tidy-headers/${header}.stamp")
+      add_custom_command(
+        OUTPUT "${stamp}"
+        COMMAND ${INVOKE_SH} "${CMAKE_CURRENT_SOURCE_DIR}/clang-tidy-header.sh"
+          "${CMAKE_BINARY_DIR}/compile_commands.json" ${target} "${CMAKE_SOURCE_DIR}/cpp/${header}" "${stamp}"
+          ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts} --quiet "--checks=-*,misc-include-cleaner"
+          # Prevent errors for headers that define macros, which they (naturally) don't use themselves
+          --extra-arg=-Wno-unused-macros
+        DEPENDS
+          "${CMAKE_SOURCE_DIR}/cpp/${header}"
+          "${CMAKE_SOURCE_DIR}/.clang-tidy"
+          "${CMAKE_CURRENT_SOURCE_DIR}/clang-tidy-header.sh"
+        DEPFILE "${stamp}.d"
+        COMMENT "Checking #includes of ${header}"
+        VERBATIM
+      )
+      list(APPEND stamps "${stamp}")
+    endforeach()
+  endforeach()
+
+  add_custom_target(clang-tidy-headers DEPENDS ${stamps})
+  if(clang_tidy_headers_prerequisites)
+    add_dependencies(clang-tidy-headers ${clang_tidy_headers_prerequisites})
+  endif()
+
+  # Make compilation wait for the header checks
+  foreach(target IN LISTS all_targets)
+    get_target_property(type ${target} TYPE)
+    if(type MATCHES "^(EXECUTABLE|(STATIC|SHARED|MODULE|OBJECT)_LIBRARY)$" AND NOT target IN_LIST clang_tidy_headers_prerequisites)
+      add_dependencies(${target} clang-tidy-headers)
+    endif()
+  endforeach()
+endif()
 
 find_package(Doxygen QUIET)
 if(Doxygen_FOUND)
