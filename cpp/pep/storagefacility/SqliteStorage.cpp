@@ -201,7 +201,7 @@ PurgeCycle::Id SqliteStorage::createPurgeCycle(const PurgeCycle& cycle) {
 
       try {
         return boost::numeric_cast<PurgeCycle::Id>(id);
-      } catch (...) {
+      } catch (const boost::bad_numeric_cast&) {
         throw std::runtime_error("ID overflow in PurgeCycle table");
       }
     });
