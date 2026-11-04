@@ -9,6 +9,7 @@
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/server/Server.hpp>
 
+#include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Shared.hpp>
 

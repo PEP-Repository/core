@@ -41,7 +41,6 @@
 #include <pep/serialization/Error.hpp>
 #include <pep/serialization/IndexList.hpp>
 #include <pep/serialization/Serialization.hpp>
-#include <pep/server/ChecksumChainHandler.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/structure/StudyContext.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>

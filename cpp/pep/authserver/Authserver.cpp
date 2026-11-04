@@ -10,7 +10,6 @@
 #include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
 #include <pep/messaging/ServerConnection.hpp>
 #include <pep/networking/EndPoint.hpp>
-#include <pep/server/ChecksumChainHandler.hpp>
 #include <pep/server/SigningServer.hpp>
 #include <pep/utils/Log.hpp> // for Severity
 
