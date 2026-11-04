@@ -73,7 +73,7 @@ public:
   ~RegistrationServer() override;
 
 protected:
-  const ChecksumChainProvider& checksumChainProvider() const noexcept override { return checksumChainProvider_; }
+  const ChecksumChains& checksumChains() const noexcept override { return checksumChains_; }
 
 private:
   messaging::MessageBatches handleSignedPEPIdRegistrationRequest(std::shared_ptr<SignedPEPIdRegistrationRequest> lpRequest);
@@ -87,7 +87,7 @@ private:
   ::sqlite3* shadowStorage_ = nullptr;
   std::shared_ptr<CoreClient> client_;
   AsymmetricKey shadowPublicKey_;
-  StandaloneChecksumChainProvider checksumChainProvider_;
+  ChecksumChains checksumChains_;
   std::shared_ptr<RxCache<std::shared_ptr<GlobalConfiguration>>> globalConfiguration_;
   std::shared_ptr<ShortPseudonymCache> shortPseudonyms_;
 #ifdef WITH_CASTOR

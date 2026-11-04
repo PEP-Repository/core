@@ -146,12 +146,6 @@ auto MakeStreamWithDeferredCleanup(const std::filesystem::path& path) {
   return std::make_pair(stream, deferredCleanup);
 }
 
-ChecksumChainProvider::Requesters AmChecksumChainRequesters() {
-  auto result = ChecksumChainProvider::DefaultRequesters;
-  result.insert_range(UserGroup::Authserver);
-  return result;
-}
-
 } // namespace
 
 AccessManager::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
@@ -303,8 +297,7 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
   backend_(parameters->getBackend()),
   globalConf_(parameters->getGlobalConfiguration()),
   lpMetrics_(std::make_shared<AccessManager::Metrics>(registry_)),
-  workerPool_(WorkerPool::getShared()),
-  checksumChainProvider_(backend_->checksumChains(), AmChecksumChainRequesters()) {
+  workerPool_(WorkerPool::getShared()) {
   backend_->setAccessManager(this);
   RegisterRequestHandlers(*this,
                           &AccessManager::handleTicketRequest2,
@@ -327,6 +320,10 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
 
 std::optional<std::filesystem::path> AccessManager::getStoragePath() {
   return EnsureDirectoryPath(backend_->getStoragePath().parent_path());
+}
+
+const ChecksumChains& AccessManager::checksumChains() const noexcept {
+  return backend_->checksumChains();
 }
 
 messaging::MessageBatches AccessManager::handleGlobalConfigurationRequest(std::shared_ptr<GlobalConfigurationRequest> request) {

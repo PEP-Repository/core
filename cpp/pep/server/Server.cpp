@@ -117,13 +117,12 @@ Server::handleMetricsRequest(
 messaging::MessageBatches
 Server::handleChecksumChainRequest(
   std::shared_ptr<SignedChecksumChainRequest> signedRequest) {
-  const auto& handler = this->checksumChainProvider();
 
   auto certified = signedRequest->open(*getRootCAs());
-  UserGroup::EnsureAccess(handler.allowedRequesters(), certified.signatory.organizationalUnit(), "Requesting checksum chains");
+  UserGroup::EnsureAccess({ UserGroup::Watchdog }, certified.signatory.organizationalUnit(), "Requesting checksum chains");
 
   const auto& request = certified.message;
-  auto values = handler.chains().chain(request.name).get(ChecksumChainValueFromString(request.checkpoint));
+  auto values = this->checksumChains().chain(request.name).get(ChecksumChainValueFromString(request.checkpoint));
 
   return messaging::BatchSingleMessage(
     ChecksumChainResponse{
@@ -135,13 +134,12 @@ Server::handleChecksumChainRequest(
 messaging::MessageBatches
 Server::handleChecksumChainNamesRequest(
   std::shared_ptr<SignedChecksumChainNamesRequest> signedRequest) {
-  const auto& handler = this->checksumChainProvider();
 
   auto signatory = signedRequest->validate(*getRootCAs());
-  UserGroup::EnsureAccess(handler.allowedRequesters(), signatory.organizationalUnit(), "Requesting checksum chain names");
+  UserGroup::EnsureAccess({ UserGroup::Watchdog }, signatory.organizationalUnit(), "Requesting checksum chain names");
 
   ChecksumChainNamesResponse resp;
-  resp.names = handler.chains().names() | std::ranges::to<std::vector>();
+  resp.names = this->checksumChains().names() | std::ranges::to<std::vector>();
   return messaging::BatchSingleMessage(std::move(resp));
 }
 

@@ -60,8 +60,7 @@ messaging::MessageBatches Authserver::handleTokenRequest(std::shared_ptr<SignedT
 Authserver::Authserver(std::shared_ptr<Parameters> parameters)
   : SigningServer(parameters),
   backend_(std::make_shared<AuthserverBackend>(parameters->getBackendParams())),
-  oAuth_(OAuthProvider::Create(parameters->getOAuthParams(), backend_)),
-  checksumChainProvider_(ChecksumChains{ /* none */ }) {
+  oAuth_(OAuthProvider::Create(parameters->getOAuthParams(), backend_)) {
   RegisterRequestHandlers(*this,
                           &Authserver::handleTokenRequest);
 }

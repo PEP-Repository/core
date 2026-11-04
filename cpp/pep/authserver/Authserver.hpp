@@ -30,14 +30,14 @@ public:
   explicit Authserver(std::shared_ptr<Parameters> parameters);
 
 protected:
-  const ChecksumChainProvider& checksumChainProvider() const noexcept override { return checksumChainProvider_; }
+  const ChecksumChains& checksumChains() const noexcept override { return checksumChains_; }
 
 private:
   messaging::MessageBatches handleTokenRequest(std::shared_ptr<SignedTokenRequest> signedRequest);
 
   std::shared_ptr<AuthserverBackend> backend_;
   std::shared_ptr<OAuthProvider> oAuth_;
-  StandaloneChecksumChainProvider checksumChainProvider_;
+  ChecksumChains checksumChains_; // none
 };
 
 }
