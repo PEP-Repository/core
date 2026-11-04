@@ -43,8 +43,9 @@ style: |
   - `Cross-Origin-Embedder-Policy: require-corp`
   - `Cross-Origin-Opener-Policy: same-origin`
   - *Don't* use `<meta http-equiv=... />`
-* Pages served over HTTPS need a Weblib built with `-DPEP_WEBLIB_USE_WSS=ON`
+* Pages served over HTTPS connect with secure WebSockets (`wss://`), pages served over HTTP connect with `ws://`
   - Browsers block plain `ws://` from `https://` pages
+  - Override with `websocketScheme` in `Pep.create`, e.g. `wss://` from an `http://` page
   - The PEP servers must then be reachable via websockify with a publicly trusted certificate, see `/docker/websockify/`
 * Compression recommended
   - On-the-fly GZip fast:
