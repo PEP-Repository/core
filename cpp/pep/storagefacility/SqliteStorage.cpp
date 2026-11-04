@@ -113,7 +113,7 @@ struct SqliteStorage::Implementor : public pep::database::Storage<MakeRawStorage
 
 void SqliteStorage::performAtomically(const Action& action) const {
   // Prevent reentrancy from other threads while allowing recursive calls (from the thread holding the lock)
-  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  std::lock_guard lock(mutex_);
 
   // Determine if we're already in a transaction, i.e. this is a recursive invocation
   assert(transactionLevel_ != std::numeric_limits<decltype(transactionLevel_)>::max());

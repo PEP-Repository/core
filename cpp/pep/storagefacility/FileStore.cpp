@@ -134,7 +134,7 @@ void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
   post(*ioContext_, [self = SharedFrom(*this)]() { // Let the ASIO thread...
       // ... join this (purgePersistence_) thread to clean up...
       {
-        std::scoped_lock lock(self->purgePersistenceMux_);
+        std::lock_guard lock(self->purgePersistenceMux_);
         assert(self->purgePersistence_.joinable());
         self->purgePersistence_.join();
         assert(!self->purgePersistence_.joinable());
