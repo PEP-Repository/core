@@ -286,10 +286,8 @@ describe('Pep', () => {
     after(() => deleteObjects(entries));
 
     it('should find the subject of one of its reference IDs', () => pep.runHandleWasmException(async () => {
-      // Registering generates the subject's reference IDs
-      const subject = await pep.registerParticipant(
-          {firstName: 'Reference', middleName: '', lastName: 'Test', dateOfBirth: new Date(2000, 0, 1)}, true);
-      entries = await Array.fromAsync(pep.list({subjects: [subject], columns: [referenceIdColumn]}));
+      // The integration test setup generated the subject's reference IDs
+      entries = await Array.fromAsync(pep.list({subjects: ['WasmTestSubjectSmall'], columns: [referenceIdColumn]}));
       expect(entries).to.have.length(1);
       const [referenceIdEntry] = entries as [CellEntry];
       let referenceId = '';

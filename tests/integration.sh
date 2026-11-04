@@ -571,6 +571,18 @@ if should_run_test weblib; then
   pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectSmall
   pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectLarge
 
+  # Reference IDs (short pseudonyms) for WasmTestSubjectSmall, to find it by. Like in the registration test, store
+  # placeholders for the Castor ones first: this environment has no Castor connection to create those
+  mapfile -t castor_columns < <(jq --raw-output '.short_pseudonyms[] | select(.castor) | .column' \
+    "$DATA_DIR/accessmanager/GlobalConfiguration.json")
+  pepcli --oauth-token-group "Access Administrator" ama cgar create ShortPseudonyms "Research Assessor" write
+  for column in "${castor_columns[@]}"; do
+    pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectSmall -c "$column" \
+      -d CastorPlaceholder --file-extension .txt
+  done
+  pepcli --oauth-token-group "Access Administrator" ama cgar remove ShortPseudonyms "Research Assessor" write
+  pepcli --oauth-token-group "Research Assessor" register ensure-complete WasmTestSubjectSmall
+
   trace mkdir -p ./dist-test/
   trace cp "$DATA_DIR"/{client/{ClientConfig.json,ShadowAdministration.pub},keyserver/OAuthTokenSecret.json} "$PKI_DIR_ON_HOST/rootCA.cert" ./dist-test/
 
