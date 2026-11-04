@@ -1235,6 +1235,17 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
 }
 
 Timestamp StorageFacility::getUniqueChangeTimestamp(bool forPurgeCycle) {
+  /* Each individual cell's history must be identical every time a checksum chain is calculated over it, to keep the checksum chain calculation consistent.
+   * Since the calculation includes both commits (additions) and purges (deletions), these changes must be ordered consistently every time we process them.
+   * We do so by ensuring that within a single cell
+   * - all versions have unique validFrom timestamps, which we enforce by not accepting requests that specify multiple updates to a single cell, and
+   * - no purge cycle (.applied) timestamp is equal to any version's validFrom timestamp.
+   * Since purge cycles (may) affect multiple cells, the cycle's (.applied) timestamp must be distinct from all versions in all affected cells. To ensure
+   * that this is the case, instead of checking (only) affected cells, we simply keep the last commit timestamp of _all_ cells in our lastChangeTimestamp_
+   * field. Then, when we want to commit (a) cell version(s) or apply a purge cycle, we ensure that
+   * - for commits, we don't produce a timestamp that collides with a purge cycle, and
+   * - for purge cycles, we don't produce a timestamp that collides with another purge cycle or with any commit.
+  */
   return sqlite_->atomically([this, forPurgeCycle]() { // Prevent TOCTOU problems w.r.t. purge cycle existence
 
       // Prevent collision with purge cycle 'applied' timestamps to ensure history consistency
@@ -1298,6 +1309,14 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()),
   checksumChainHandler_(fileStore_->checksumChains()) {
+
+  for (const auto& participant : fileStore_->participants()) {
+    for (const auto& cell : participant->cells()) {
+      for (const auto& version : cell->versions()) {
+        lastChangeTimestamp_ = std::max(lastChangeTimestamp_, version.validFrom);
+      }
+    }
+  }
 
   // Resume persisting purges that were not completed when the the process ran last time
   fileStore_->persistPendingPurges();

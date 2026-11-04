@@ -125,6 +125,11 @@ private:
 
   Metadata compileMetadata(std::string column, const FileStore::Entry& entry);
   PurgeCycle createPurgeCycle(PurgeCycle::Definition definition);
+
+  /// \brief Returns a timestamp that does not collide with other timestamps in the history of cell versions
+  /// \param forPurgeCycle Whether the timestamp will be the moment that a purge cycle is applied (true) or when cell version(s) are committed (false)
+  /// \return A timestamp that's sufficiently unique for the requested purpose
+  /// \remark See this method's implementation for its rationale.
   Timestamp getUniqueChangeTimestamp(bool forPurgeCycle);
 
   template <typename TEntry>
@@ -151,7 +156,7 @@ private:
   boost::asio::steady_timer timer_;
   const uint8_t parallelisationWidth_ = 0; // passed to RxParallelConcat
   const uint64_t dataSizeResolution_;
-  Timestamp lastChangeTimestamp_{};
+  Timestamp lastChangeTimestamp_{}; // the timestamp of the last committed entry (or entries) in the file store
   LocalChecksumChainHandler checksumChainHandler_;
 };
 
