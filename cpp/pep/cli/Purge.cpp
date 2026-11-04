@@ -125,7 +125,7 @@ commandline::Parameters CommandPurge::BackCatalog::getSupportedParameters() cons
 int CommandPurge::BackCatalog::execute() {
   auto raw = this->getParameterValues().has("raw");
   return this->executeEventLoopForClient(true, [raw](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
-    return client->getStorageFacilityProxy()->createPurgeCycle(PurgeCycle::Definition(BackCatalogPurgeFilter))
+    return client->getStorageFacilityProxy()->announcePurgeCycle(PurgeCycle::Definition(BackCatalogPurgeFilter))
       .map([raw](PurgeCycle cycle) {
           if (raw) {
             std::cout << cycle.id << std::endl;

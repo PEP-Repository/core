@@ -90,7 +90,7 @@ rxcpp::observable<PurgeCycle> StorageFacilityProxy::listPurgeCycles() const {
   return this->sendRequest<PurgeCycle>(this->sign(PurgeListRequest{}));
 }
 
-rxcpp::observable<PurgeCycle> StorageFacilityProxy::createPurgeCycle(PurgeCycle::Definition definition) const {
+rxcpp::observable<PurgeCycle> StorageFacilityProxy::announcePurgeCycle(PurgeCycle::Definition definition) const {
   return this->sendRequest<PurgeCycle>(this->sign(PurgeAnnounceRequest{
       .definition = std::move(definition),
     }))
