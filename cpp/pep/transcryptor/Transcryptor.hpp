@@ -62,7 +62,7 @@ public:
 protected:
   std::optional<std::filesystem::path> getStoragePath() override;
   std::shared_ptr<prometheus::Registry> getMetricsRegistry() override;
-  const ChecksumChainHandler& checksumChainHandler() const noexcept override { return checksumChainHandler_; }
+  const ChecksumChains& checksumChains() const noexcept override;
 
 private:
   messaging::MessageBatches handleTranscryptorRequest(std::shared_ptr<TranscryptorRequest> pRequest, messaging::MessageSequence entriesObservable);
@@ -78,7 +78,6 @@ private:
   ServerVerifiers verifiers_;
   uintmax_t nextTranscryptorRequestNumber_ = 1U;
   uintmax_t nextLogIssuedTicketRequestNumber_ = 1U;
-  LocalChecksumChainHandler checksumChainHandler_;
 };
 
 /// Hashes a pair of pseudonym lists into a single value.

@@ -1164,6 +1164,10 @@ void StorageFacility::statsTimer(const boost::system::error_code& e) {
   timer_.async_wait(boost::bind(&pep::StorageFacility::statsTimer, this, boost::asio::placeholders::error));
 }
 
+const ChecksumChains& StorageFacility::checksumChains() const noexcept {
+  return fileStore_->checksumChains();
+}
+
 StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameters> parameters)
   : SigningServer(parameters),
   pseudonymKey_(parameters->getPseudonymKey()), encIdKey_(parameters->getEncIdKey()),
@@ -1180,8 +1184,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
     PendingBytesLimiter::Gauges{ .pendingBytes = &metrics_->pendingPageBytes, .paused = &metrics_->readingPaused })),
   timer_(*parameters->getIoContext()),
   parallelisationWidth_(parameters->getParallelisationWidth()),
-  dataSizeResolution_(parameters->getDataSizeResolution()),
-  checksumChainHandler_(fileStore_->checksumChains()) {
+  dataSizeResolution_(parameters->getDataSizeResolution()) {
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
                           &StorageFacility::handleDataReadRequest2,

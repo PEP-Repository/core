@@ -456,8 +456,7 @@ Transcryptor::Transcryptor(std::shared_ptr<Parameters> parameters)
   accessManagerProxy_(messaging::ServerConnection::Create(this->getIoContext(), parameters->getAccessManagerEndPoint(), parameters->getRootCACertificatesFilePath()), *this, parameters->getAccessManagerEndPoint().expectedCommonName, getRootCAs()),
   storage_(parameters->getStorage()),
   lpMetrics_(std::make_shared<Metrics>(registry_)),
-  verifiers_(parameters->getVerifiers()),
-  checksumChainHandler_(storage_->checksumChains()) {
+  verifiers_(parameters->getVerifiers()) {
   RegisterRequestHandlers(*this,
                           &Transcryptor::handleTranscryptorRequest,
                           &Transcryptor::handleRekeyRequest,
@@ -479,6 +478,10 @@ Transcryptor::getMetricsRegistry()  {
 
   // Collect the base metrics and return the complete registry
   return SigningServer::getMetricsRegistry();
+}
+
+const ChecksumChains& Transcryptor::checksumChains() const noexcept {
+  return storage_->checksumChains();
 }
 
 }
