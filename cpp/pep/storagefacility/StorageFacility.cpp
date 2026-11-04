@@ -1203,28 +1203,30 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
 
       bool empty = true;
 
-      try {
-        for (const FileStore::Participant* participant : fileStore_->participants()) {
-          for (const FileStore::Cell* cell : participant->cells()) {
-            const FileStore::CellVersions& versions = cell->versions();
-            auto end = versions.end();
-            if (!versions.empty()) { // Don't purge the last/latest/current cell version
-              --end;
-            }
-            for (auto i = versions.begin(); i != end; ++i) {
-              if (!i->purgedAt) { // If this cell version isn't purged yet...
-                storagefacility::SqliteStorage::CellVersionSpec version{
-                  .cell = EntryName(participant->name(), cell->columnName()),
-                  .timestamp = i->validFrom,
-                };
+      for (const FileStore::Participant* participant : fileStore_->participants()) {
+        for (const FileStore::Cell* cell : participant->cells()) {
+          const FileStore::CellVersions& versions = cell->versions();
+          auto end = versions.end();
+          if (!versions.empty()) { // Don't purge the last/latest/current cell version
+            --end;
+          }
+          for (auto i = versions.begin(); i != end; ++i) {
+            if (!i->purgedAt) { // If this cell version isn't purged yet...
+              storagefacility::SqliteStorage::CellVersionSpec version{
+                .cell = EntryName(participant->name(), cell->columnName()),
+                .timestamp = i->validFrom,
+              };
+
+              try {
                 sqlite_->addToPurgeCycle(id, version);
-                empty = false;
+              } catch (const storagefacility::SqliteStorage::ConstraintViolation&) {
+                throw Error("Storage Facility entries may only be included in a single purge cycle");
               }
+
+              empty = false;
             }
           }
         }
-      } catch (const storagefacility::SqliteStorage::ConstraintViolation&) {
-        throw Error("Storage Facility entries may only be included in a single purge cycle");
       }
 
       if (empty) {
