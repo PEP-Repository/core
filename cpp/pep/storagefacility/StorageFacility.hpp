@@ -96,7 +96,6 @@ public:
 
 public:
   explicit StorageFacility(std::shared_ptr<Parameters> parameters);
-  ~StorageFacility() noexcept override; // Can't be defined here because SqliteStorage destructor is unknown
 
 protected:
   std::optional<std::filesystem::path> getStoragePath() override;

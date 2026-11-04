@@ -1342,8 +1342,6 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   statsTimer({});
 }
 
-StorageFacility::~StorageFacility() noexcept = default;
-
 FileStore::Metrics StorageFacility::getRoundedFileStoreMetrics(const std::set<std::string>& columns) const {
   auto precise = fileStore_->getMetrics(columns);
 
