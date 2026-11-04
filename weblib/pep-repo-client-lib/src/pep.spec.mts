@@ -275,6 +275,36 @@ describe('Pep', () => {
     });
   });
 
+  describe('#findSubjectByReferenceId()', () => {
+    before(() => authenticateAs('Research Assessor'));
+
+    // Without study context, so every registered subject gets one
+    const referenceIdColumn = 'ShortPseudonym.Visit1.FMRI';
+
+    // The entries of both listings below
+    let entries: CellEntry[] = [];
+    after(() => deleteObjects(entries));
+
+    it('should find the subject of one of its reference IDs', () => pep.runHandleWasmException(async () => {
+      // Registering generates the subject's reference IDs
+      const subject = await pep.registerParticipant(
+          {firstName: 'Reference', middleName: '', lastName: 'Test', dateOfBirth: new Date(2000, 0, 1)}, true);
+      entries = await Array.fromAsync(pep.list({subjects: [subject], columns: [referenceIdColumn]}));
+      expect(entries).to.have.length(1);
+      const [referenceIdEntry] = entries as [CellEntry];
+      let referenceId = '';
+      for await (using data of pep.retrieve([referenceIdEntry])) {
+        referenceId = await concatStringsAsync(data.content.pipeThrough(new TextDecoderStream()));
+      }
+
+      const found = await pep.findSubjectByReferenceId(referenceId);
+      const foundEntries = await Array.fromAsync(pep.list({subjects: [found], columns: [referenceIdColumn]}));
+      entries.push(...foundEntries);
+      // Polymorphic pseudonyms are randomized, so check that the found one leads to the same cell
+      expect(foundEntries.map(entry => entry.id)).to.deep.equal([referenceIdEntry.id]);
+    }));
+  });
+
   describe('user management', () => {
     const suffix = crypto.randomUUID();
     const uid = `weblib-test-user-${suffix}`;

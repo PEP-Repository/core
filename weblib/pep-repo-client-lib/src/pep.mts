@@ -470,8 +470,12 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.unenroll());
   }
 
-  /** Start OAuth authentication to enroll user */
-  async authenticate(): Promise<void> {
+  /**
+   * Start OAuth authentication to enroll user
+   * @param options.onSignInWindowDone Called when the sign-in window has reported back, before
+   *   the (slower) enrollment with the PEP servers that the returned promise also waits for
+   */
+  async authenticate({onSignInWindowDone}: {onSignInWindowDone?: () => void} = {}): Promise<void> {
     const landingPage = this.#config.authLandingPage;
     if (!landingPage) {
       throw new Error("authLandingPage config was not set");
@@ -483,6 +487,7 @@ export default class Pep {
         const authChan = new BroadcastChannel('pep-auth-code-' + crypto.randomUUID());
         authChan.addEventListener('message', ev => {
           const msg = ev.data as AuthenticationChannelMessage;
+          onSignInWindowDone?.();
           if ('code' in msg) {
             oauthClient!.completeAuthentication(msg.code)
                 .then(resolve, reject);
@@ -533,6 +538,16 @@ export default class Pep {
   /** List subject groups the user has any access to, with the access modes */
   listSubjectGroups(): Promise<SubjectGroup[]> {
     return this.#wrapExec(() => this.#client.listSubjectGroups());
+  }
+
+  /**
+   * Find the subject with a reference ID (called short pseudonym in PEP's configuration), e.g. from a
+   * link of another system. Requires read access to the reference ID's column, and access + enumerate
+   * on a subject group containing the subject.
+   * @returns The subject's polymorphic pseudonym, to pass as subject to e.g. {@link store} or {@link list}
+   */
+  findSubjectByReferenceId(referenceId: string): Promise<string> {
+    return this.#wrapExec(() => this.#client.findSubjectByReferenceId(referenceId));
   }
 
   /** Register a subject */
