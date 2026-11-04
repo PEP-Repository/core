@@ -2,6 +2,7 @@
 #include <pep/auth/ServerTraits.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/crypto/ConstTime.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/application/CommandLineCommand.hpp>
 #include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
@@ -56,9 +57,7 @@ class GenerateSystemKeysApplication : public pep::Application {
 
       std::string masterPrivateKeySharePseudonyms = result.pseudonyms.text();
       std::string masterPrivateKeyShareData = result.data.text();
-      std::string pseudonymsRekeyLocal = GenerateHMACKey();
-      std::string pseudonymsReshuffleLocal = GenerateHMACKey();
-      std::string dataRekeyLocal = GenerateHMACKey();
+      const auto [pseudonymsRekeyLocal, pseudonymsReshuffleLocal, dataRekeyLocal] = Generate<3>(GenerateHMACKey);
 
       std::ofstream out;
       out.open(outPath.string());

@@ -9,6 +9,7 @@
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/server/Server.hpp>
 
+#include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Shared.hpp>
 
@@ -28,6 +29,30 @@
 #include <rxcpp/rx-lite.hpp>
 
 namespace pep {
+
+namespace {
+
+constexpr size_t FormattedChecksumChainValueLength = 8U;
+
+std::string ChecksumChainValueToString(uint64_t value) {
+  auto result = PackUint64BE(value);
+  assert(result.size() == FormattedChecksumChainValueLength);
+  return result;
+}
+
+std::optional<uint64_t> ChecksumChainValueFromString(const std::string& str) {
+  std::optional<uint64_t> result;
+  if (!str.empty()) {
+    if (str.size() != FormattedChecksumChainValueLength) {
+      throw Error("checkpoint field should either be " + std::to_string(FormattedChecksumChainValueLength) + " bytes or 0");
+    }
+    result = UnpackUint64BE(str);
+  }
+  return result;
+}
+
+}
+
 
 Server::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry) :
   RegisteredMetrics(registry),
@@ -108,27 +133,29 @@ Server::handleMetricsRequest(
 messaging::MessageBatches
 Server::handleChecksumChainRequest(
   std::shared_ptr<SignedChecksumChainRequest> signedRequest) {
-  const auto& handler = this->checksumChainHandler();
 
   auto certified = signedRequest->open(*getRootCAs());
-  UserGroup::EnsureAccess(handler.allowedRequesters(), certified.signatory.organizationalUnit(), "Requesting checksum chains");
+  UserGroup::EnsureAccess({ UserGroup::Watchdog }, certified.signatory.organizationalUnit(), "Requesting checksum chains");
 
-  return handler.handle(certified.message)
-    .map([](ChecksumChainResponse response) -> messaging::MessageSequence {
-        return rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(std::move(response))));
-      });
+  const auto& request = certified.message;
+  auto values = this->checksumChains().chain(request.name).get(ChecksumChainValueFromString(request.checkpoint));
+
+  return messaging::BatchSingleMessage(
+    ChecksumChainResponse{
+      .xorredChecksums = ChecksumChainValueToString(values.checksum),
+      .checkpoint = ChecksumChainValueToString(values.checkpoint),
+    });
 }
 
 messaging::MessageBatches
 Server::handleChecksumChainNamesRequest(
   std::shared_ptr<SignedChecksumChainNamesRequest> signedRequest) {
-  const auto& handler = this->checksumChainHandler();
 
   auto signatory = signedRequest->validate(*getRootCAs());
-  UserGroup::EnsureAccess(handler.allowedRequesters(), signatory.organizationalUnit(), "Requesting checksum chain names");
+  UserGroup::EnsureAccess({ UserGroup::Watchdog }, signatory.organizationalUnit(), "Requesting checksum chain names");
 
   ChecksumChainNamesResponse resp;
-  resp.names = handler.chainNames() | std::ranges::to<std::vector>();
+  resp.names = this->checksumChains().names() | std::ranges::to<std::vector>();
   return messaging::BatchSingleMessage(std::move(resp));
 }
 

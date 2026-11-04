@@ -1,8 +1,9 @@
 #include <gtest/gtest.h>
 
-#include <pep/rsk/Proofs.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/elgamal/CurveScalar.hpp>
+#include <pep/rsk/Proofs.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 
 namespace {
 
@@ -88,8 +89,7 @@ TEST(Proofs, RskProof) {
         pep::CurvePoint::Random(),
         pep::CurvePoint::Random());
     pep::ElgamalEncryption post;
-    auto rekey = pep::CurveScalar::Random();
-    auto reshuffle = pep::CurveScalar::Random();
+    const auto [rekey, reshuffle] = pep::Generate<2>(pep::CurveScalar::Random);
 
     auto proof = pep::RskProof::CertifiedRsk(pre, post, reshuffle, rekey);
 

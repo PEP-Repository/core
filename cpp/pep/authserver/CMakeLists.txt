@@ -11,7 +11,6 @@ verify_headers_standalone(${PROJECT_NAME}AuthserverApilib)
 
 if(WITH_SERVERS)
   add_library(${PROJECT_NAME}Authserverlib
-    ChecksumChainForwarder.cpp ChecksumChainForwarder.hpp
     OAuthProvider.cpp OAuthProvider.hpp
     AuthserverBackend.cpp AuthserverBackend.hpp
     Authserver.cpp Authserver.hpp

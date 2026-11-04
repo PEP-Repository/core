@@ -20,6 +20,7 @@
 #include <pep/elgamal/CurveScalar.hpp>
 #include <pep/rsk/RskTranslator.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
@@ -321,8 +322,7 @@ static pep::EncryptionKeyRequest CreateRandomEncryptionKeyRequest() {
   for (int i = 0; i < 200; i++)
     ticket.columns.push_back("Column" + std::to_string(i));
   ticket.userGroup = "some user group";
-  auto p1 = pep::LocalPseudonym::Random();
-  auto p4 = pep::LocalPseudonym::Random();
+  const auto [p1, p4] = pep::Generate<2>(pep::LocalPseudonym::Random);
   for (int i = 0; i < 600; i++) {
     auto q = pep::ElgamalPublicKey::Random();
     pep::LocalPseudonyms lp;
