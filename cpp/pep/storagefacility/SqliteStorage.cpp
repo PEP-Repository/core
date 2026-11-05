@@ -242,19 +242,18 @@ void SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const CellVersionSpec& ce
 
 std::set<SqliteStorage::CellVersionSpec> SqliteStorage::getIncludedCellVersions(PurgeCycle::Id id) const {
   return this->atomically([this, id]() {
-      std::set<CellVersionSpec> result;
-
       using namespace sqlite_orm;
-      for (auto entry : implementor_->raw.iterate(select(columns(&RowRecord::pseudonym, &ColumnRecord::name, &PurgeEntryRecord::timestamp),
+      return implementor_->raw.iterate(select(columns(&RowRecord::pseudonym, &ColumnRecord::name, &PurgeEntryRecord::timestamp),
         inner_join<PurgeEntryRecord>(on(c(&PurgeEntryRecord::row) == c(&RowRecord::seqno) && c(&PurgeEntryRecord::column) == c(&ColumnRecord::seqno))),
-        where(c(&PurgeEntryRecord::cycle) == id)))) {
-        auto& [participant, column, dbMillis] = entry;
-        result.emplace(CellVersionSpec{
-            .cell = EntryName(std::move(participant), std::move(column)),
-            .timestamp = database::TimestampFromUnixMillis(dbMillis),
-          });
-      }
-      return result;
+        where(c(&PurgeEntryRecord::cycle) == id)))
+        | std::views::transform([](auto tuple) {
+            auto& [participant, column, dbMillis] = tuple;
+            return CellVersionSpec{
+                .cell = EntryName(std::move(participant), std::move(column)),
+                .timestamp = database::TimestampFromUnixMillis(dbMillis),
+            };
+          })
+        | std::ranges::to<std::set>();
     });
 }
 
