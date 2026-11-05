@@ -78,7 +78,13 @@ std::optional<Timestamp> OptionalTimestampFromUnixMillis(database::UnixMillis mi
 }
 
 database::UnixMillis OptionalTimestampToUnixMillis(const std::optional<Timestamp>& timestamp) {
-  return database::TimestampToUnixMillis(timestamp.value_or(Timestamp{ /* zero */ }));
+  if (timestamp.has_value()) {
+    if (*timestamp == Timestamp{ /* zero */ }) {
+      throw Error("Absent timestamp requires different representation"); // Should have been nullopt
+    }
+    return database::TimestampToUnixMillis(*timestamp);
+  }
+  return 0;
 }
 
 PurgeCycle RecordToPurgeCycle(PurgeCycleRecord record) {
