@@ -3,8 +3,23 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/pullcastor/PepParticipant.hpp>
 #include <pep/pullcastor/PullCastorUtils.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/pullcastor/CellContent.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2
 
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <cassert>
+#include <cstdint>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace pep {
 namespace castor {

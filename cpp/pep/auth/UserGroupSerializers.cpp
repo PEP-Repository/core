@@ -1,4 +1,11 @@
 #include <pep/auth/UserGroupSerializers.hpp>
+#include <pep/auth/UserGroup.hpp>
+
+#include <Messages.pb.h> // for proto::UserGroup
+
+#include <chrono>
+#include <cstdint>
+#include <utility>
 
 namespace pep {
 

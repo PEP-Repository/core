@@ -10,11 +10,50 @@
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MapUtils.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for StructureMetadataType, FindUserResponse, EncryptionKeyRequest, ...
+#include <pep/accessmanager/AmaMessages.hpp> // for AmaMutationRequest, AmaQueryResponse, AmaQuery, ...
+#include <pep/accessmanager/Records.hpp> // for ParticipantGroupParticipant
+#include <pep/accessmanager/UserIdFlags.hpp>
+#include <pep/accessmanager/UserMessages.hpp> // for UserMutationResponse, UserMutationRequest, UserQueryResponse
+#include <pep/async/FakeVoid.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/IndexList.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/structure/ColumnName.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for TicketRequest2, Ticket2
+#include <pep/utils/EnumUtils.hpp> // for FlagsIf, HasFlags
+#include <pep/utils/Timestamp.hpp>
 
 #include <algorithm>
 #include <ranges>
+#include <cassert>
+#include <cstdint>
+#include <filesystem>
+#include <format>
+#include <limits>
+#include <map>
+#include <memory>
+#include <optional>
+#include <set>
+#include <span>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 #include <boost/algorithm/string/join.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-concat.hpp>
+#include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/operators/rx-map.hpp>
 
 using namespace std::ranges;
 

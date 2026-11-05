@@ -1,12 +1,12 @@
 #pragma once
 
-#include <nlohmann/json.hpp>
 #include <pep/structuredoutput/Table.hpp>
-#include <pep/structuredoutput/Common.hpp>
-#include <pep/accessmanager/UserMessages.hpp>
-#include <pep/accessmanager/AmaMessages.hpp>
+
+#include <nlohmann/json.hpp>
 
 #include <boost/property_tree/ptree_fwd.hpp>
+
+#include <utility>
 
 namespace pep::structuredOutput {
 

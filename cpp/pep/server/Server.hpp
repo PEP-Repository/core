@@ -2,11 +2,23 @@
 
 #include <pep/async/IoContext_fwd.hpp>
 #include <pep/auth/ServerTraits.hpp>
+#include <pep/crypto/X509Certificate.hpp> // for X509RootCertificates
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
 #include <pep/messaging/RequestHandler.hpp>
 #include <pep/metrics/RegisteredMetrics.hpp>
 #include <pep/rsk/EGCache.hpp>
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/server/MonitoringMessages.hpp>
-#include <pep/server/ChecksumChainHandler.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
+
+#include <prometheus/registry.h>
+
+#include <chrono>
+#include <exception>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
 
 namespace pep {
 
@@ -42,7 +54,7 @@ protected:
 
   virtual std::shared_ptr<prometheus::Registry> getMetricsRegistry();
 
-  virtual const ChecksumChainHandler& checksumChainHandler() const noexcept = 0;
+  virtual const ChecksumChains& checksumChains() const noexcept = 0;
 
   const std::shared_ptr<boost::asio::io_context>& getIoContext() const noexcept { return ioContext_; }
   std::shared_ptr<X509RootCertificates> getRootCAs() const noexcept { return rootCAs_; }

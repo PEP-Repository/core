@@ -1,6 +1,10 @@
 #include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp>
+
+#include <pep/utils/CollectionUtils.hpp>
 
 #include <string>
+#include <stdexcept>
 
 #include <gtest/gtest.h>
 
@@ -50,15 +54,13 @@ TEST(Pseudonyms, nonDeterminism) {
   const auto [sk, pk] = ElgamalEncryption::CreateKeyPair();
   {
     const auto local = LocalPseudonym::Random();
-    const auto encrypted1 = local.encrypt(pk);
-    const auto encrypted2 = local.encrypt(pk);
+    const auto [encrypted1, encrypted2] = Generate<2>([&] { return local.encrypt(pk); });
     EXPECT_NE(encrypted1, encrypted2) << "Encrypting a local pseudonym should be non-deterministic";
   }
   {
     const auto [sk, pk] = ElgamalEncryption::CreateKeyPair();
     const std::string id("PEP1234");
-    const auto polymorph1 = PolymorphicPseudonym::FromIdentifier(pk, id);
-    const auto polymorph2 = PolymorphicPseudonym::FromIdentifier(pk, id);
+    const auto [polymorph1, polymorph2] = Generate<2>([&] { return PolymorphicPseudonym::FromIdentifier(pk, id); });
     EXPECT_NE(polymorph1, polymorph2) << "Generating a polymorphic pseudonym should be non-deterministic";
   }
 }

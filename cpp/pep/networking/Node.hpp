@@ -2,6 +2,11 @@
 
 #include <pep/networking/Connection.hpp>
 #include <pep/networking/Protocol.hpp>
+#include <pep/utils/Event.hpp>
+#include <pep/utils/LifeCycler.hpp>
+
+#include <memory>
+#include <string>
 #include <unordered_map>
 
 namespace pep::networking {

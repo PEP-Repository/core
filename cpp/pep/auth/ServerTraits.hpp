@@ -2,7 +2,11 @@
 
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/crypto/X509Certificate.hpp>
+
+#include <cstddef>
 #include <functional>
+#include <optional>
+#include <string>
 #include <unordered_set>
 
 namespace pep {

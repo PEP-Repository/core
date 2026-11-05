@@ -6,6 +6,14 @@
 #include <boost/asio/post.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/bind/bind.hpp>
+#include <boost/asio/error.hpp> // for boost::asio::error::operation_aborted
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <memory>
+#include <string>
+#include <thread>
+#include <utility>
 
 namespace pep {
 

@@ -1,6 +1,8 @@
 #include <pep/utils/XxHasher.hpp>
 
 #include <cassert>
+#include <cstddef>
+#include <stdexcept>
 
 namespace pep {
 

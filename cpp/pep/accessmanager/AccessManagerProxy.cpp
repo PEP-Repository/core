@@ -4,8 +4,23 @@
 #include <pep/rsk/RskSerializers.hpp>
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/ticketing/TicketingSerializers.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2, EncryptionKeyRequest, VerifiersResponse, ...
+#include <pep/async/FakeVoid.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/messaging/Tail.hpp>
+#include <pep/structure/ColumnName.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2, TicketRequest2
 
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace pep {
 
@@ -49,13 +64,13 @@ rxcpp::observable<UserVerifiersResponse> AccessManagerProxy::requestUserVerifier
 
 rxcpp::observable<ColumnAccess> AccessManagerProxy::getAccessibleColumns(bool includeImplicitlyGranted, ColumnAccessModes requireModes) const {
   ColumnAccessRequest request{ includeImplicitlyGranted, requireModes };
-  return this->sendRequest<ColumnAccessResponse>(this->sign(std::move(request))) //NOLINT(performance-move-const-arg) may change
+  return this->sendRequest<ColumnAccessResponse>(this->sign(std::move(request)))
     .op(RxGetOne());
 }
 
 rxcpp::observable<ParticipantGroupAccess> AccessManagerProxy::getAccessibleParticipantGroups(bool includeImplicitlyGranted) const {
   ParticipantGroupAccessRequest request{ includeImplicitlyGranted };
-  return this->sendRequest<ParticipantGroupAccessResponse>(this->sign(std::move(request))) //NOLINT(performance-move-const-arg) may change
+  return this->sendRequest<ParticipantGroupAccessResponse>(this->sign(std::move(request)))
     .op(RxGetOne());
 }
 

@@ -1,7 +1,8 @@
 #pragma once
 
-#include <pep/transcryptor/TranscryptorMessages.hpp>
 #include <pep/serialization/ProtocolBufferedSerializer.hpp>
+#include <pep/transcryptor/TranscryptorMessages.hpp>
+
 #include <Messages.pb.h>
 
 namespace pep {

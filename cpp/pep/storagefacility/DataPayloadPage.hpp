@@ -1,8 +1,11 @@
 #pragma once
 
-#include <exception>
-
 #include <pep/morphing/Metadata.hpp>
+
+#include <cstdint>
+#include <exception>
+#include <string>
+#include <string_view>
 
 namespace pep {
 

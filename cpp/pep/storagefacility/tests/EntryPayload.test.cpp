@@ -1,8 +1,11 @@
 #include <memory>
 #include <type_traits>
+#include <cstdint>
+#include <vector>
 
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/storagefacility/PersistedEntryProperties.hpp>
+#include <pep/storagefacility/EntryName.hpp>
 
 #include <gtest/gtest.h>
 

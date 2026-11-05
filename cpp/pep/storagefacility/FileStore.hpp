@@ -1,14 +1,27 @@
 #pragma once
 
-#include <pep/utils/CheckedPath.hpp>
-#include <pep/utils/Shared.hpp>
+#include <pep/async/IoContext_fwd.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/morphing/Metadata.hpp>
 #include <pep/server/ChecksumChain.hpp>
 #include <pep/storagefacility/EntryContent.hpp>
-#include <pep/messaging/MessageSequence.hpp>
+#include <pep/storagefacility/EntryName.hpp>
+#include <pep/storagefacility/EntryPayload.hpp>
+#include <pep/storagefacility/PageStore.hpp>
+#include <pep/utils/CheckedPath.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
+#include <pep/utils/PropertyBasedContainer.hpp>
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp>
 
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
-#include <string>
+#include <map>
 #include <memory>
+#include <set>
+#include <string>
+#include <utility>
 
 namespace pep {
 

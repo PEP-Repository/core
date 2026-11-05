@@ -1,4 +1,9 @@
 #include <pep/pullcastor/CastorParticipant.hpp>
+#include <pep/async/RxCache.hpp>
+#include <pep/castor/Participant.hpp>
+#include <pep/pullcastor/StudyPuller.hpp>
+
+#include <memory>
 
 namespace pep {
 namespace castor {

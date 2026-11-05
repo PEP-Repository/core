@@ -1,16 +1,29 @@
 #pragma once
 
-#include <pep/core-client/CoreClient_fwd.hpp>
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/async/RxCache.hpp>
+#include <pep/auth/ServerTraits.hpp>
+#include <pep/castor/CastorConnection.hpp>
+#include <pep/core-client/CoreClient_fwd.hpp>
+#include <pep/crypto/AsymmetricKey.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/registrationserver/RegistrationServerMessages.hpp>
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/server/SigningServer.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
-#include <pep/registrationserver/RegistrationServerMessages.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
 
 #ifdef WITH_CASTOR
 #include <pep/castor/Study.hpp>
 #endif
 
 #include <sqlite3.h>
+
+#include <cstddef>
+#include <filesystem>
+#include <memory>
+#include <string>
 
 namespace pep {
 /*
@@ -73,7 +86,7 @@ public:
   ~RegistrationServer() override;
 
 protected:
-  const ChecksumChainHandler& checksumChainHandler() const noexcept override { return checksumChainHandler_; }
+  const ChecksumChains& checksumChains() const noexcept override { return checksumChains_; }
 
 private:
   messaging::MessageBatches handleSignedPEPIdRegistrationRequest(std::shared_ptr<SignedPEPIdRegistrationRequest> lpRequest);
@@ -87,7 +100,7 @@ private:
   ::sqlite3* shadowStorage_ = nullptr;
   std::shared_ptr<CoreClient> client_;
   AsymmetricKey shadowPublicKey_;
-  StandaloneChecksumChainHandler checksumChainHandler_;
+  ChecksumChains checksumChains_;
   std::shared_ptr<RxCache<std::shared_ptr<GlobalConfiguration>>> globalConfiguration_;
   std::shared_ptr<ShortPseudonymCache> shortPseudonyms_;
 #ifdef WITH_CASTOR

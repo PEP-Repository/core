@@ -1,8 +1,12 @@
 #include <chrono>
+#include <exception>
+#include <memory>
+#include <ostream>
 
+#include <boost/asio/io_context.hpp> // IWYU pragma: keep (other headers only forward declare io_context)
 #include <boost/property_tree/json_parser.hpp>
-
 #include <rxcpp/rx-lite.hpp>
+
 #include <rxcpp/operators/rx-any.hpp>
 #include <rxcpp/operators/rx-timeout.hpp>
 #include <rxcpp/operators/rx-merge.hpp>
@@ -11,12 +15,12 @@
 
 #include <gtest/gtest.h>
 
-#include <pep/castor/CastorClient.hpp>
 #include <pep/castor/Study.hpp>
 #include <pep/castor/tests/FakeCastorApi.hpp>
 #include <pep/castor/tests/Responses.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Timestamp.hpp>
+#include <pep/castor/CastorConnection.hpp> // for castor::CastorException, castor::AuthenticationStatus, castor::JsonPtr
 
 using namespace std::literals;
 

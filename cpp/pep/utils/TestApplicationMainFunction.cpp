@@ -3,6 +3,13 @@
 #include <pep/utils/Log.hpp>
 
 #include <cmath>
+#include <cstddef>
+#include <iostream>
+#include <memory>
+#include <ostream>
+#include <span>
+
+#include <gtest/gtest.h> // for testing::AddGlobalTestEnvironment
 
 int main(int argc, char* argv[]) {
   std::span<const char* const> args(argv, static_cast<std::size_t>(argc));

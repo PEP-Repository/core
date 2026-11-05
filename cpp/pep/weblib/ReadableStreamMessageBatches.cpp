@@ -9,10 +9,10 @@
 
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
+#include <emscripten/wire.h> // for emscripten::typed_memory_view, emscripten::allow_raw_pointers
 
 #include <rxcpp/operators/rx-subscribe_on.hpp>
-
-#include <boost/noncopyable.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -22,6 +22,11 @@
 #include <optional>
 #include <span>
 #include <stdexcept>
+#include <cstddef>
+#include <string>
+#include <utility>
+
+#include <boost/core/noncopyable.hpp>
 
 using namespace emscripten;
 using namespace pep;

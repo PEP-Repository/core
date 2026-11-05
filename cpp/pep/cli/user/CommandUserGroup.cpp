@@ -2,8 +2,22 @@
 #include <pep/application/CommandLineCommandWrappers.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/structuredoutput/Common.hpp>
+#include <pep/accessmanager/AccessManagerProxy.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::Values
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/UserGroup.hpp>
+#include <pep/cli/Command.hpp>
+#include <pep/cli/User.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <chrono>
+#include <memory>
+#include <queue>
+#include <vector>
 
 using namespace pep::cli;
 

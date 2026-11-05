@@ -1,5 +1,7 @@
 #include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
 
+#include <string>
+
 // Contents were copied from core/config/projects/gum/accessmanager/GlobalConfiguration.json
 
 //language=json

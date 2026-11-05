@@ -1,5 +1,8 @@
 #include <pep/utils/MiscUtil.hpp>
+
 #include <gtest/gtest.h>
+
+#include <optional>
 
 namespace {
 

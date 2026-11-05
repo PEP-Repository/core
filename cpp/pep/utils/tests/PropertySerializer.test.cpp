@@ -1,5 +1,8 @@
 #include <pep/utils/PropertySerializer.hpp>
+
 #include <gtest/gtest.h>
+
+#include <filesystem>
 
 namespace {
 struct PathEncapsulator {

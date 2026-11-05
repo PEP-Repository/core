@@ -1,4 +1,12 @@
 #include <pep/auth/Signed.hpp>
+#include <pep/auth/Signature.hpp>
+#include <pep/crypto/X509Certificate.hpp> // for X509Identity, X509RootCertificates
+
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace pep {
 

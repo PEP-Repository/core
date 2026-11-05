@@ -1,9 +1,15 @@
 #pragma once
 
+#include <pep/auth/Signature.hpp>
+#include <pep/crypto/X509Certificate.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/rsk/Proofs.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
+
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace pep {
 

@@ -1,4 +1,5 @@
 #include <pep/assessor/ButtonBar.hpp>
+#include <pep/assessor/FlowLayout.hpp>
 
 ButtonBar::ButtonBar(QWidget* parent) {
   flowlayout_ = new FlowLayout();

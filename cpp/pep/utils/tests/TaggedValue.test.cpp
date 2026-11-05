@@ -1,5 +1,9 @@
 #include <pep/utils/TaggedValue.hpp>
+
 #include <gtest/gtest.h>
+
+#include <optional>
+#include <string>
 
 namespace {
 

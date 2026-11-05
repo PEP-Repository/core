@@ -3,6 +3,7 @@
 #include <pep/serialization/Error.hpp>
 #include <pep/utils/FlagNames.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/utils/TypeTraits.hpp> // for FlagEnum
 
 #include <cstddef>
 #include <format>

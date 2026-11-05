@@ -2,6 +2,8 @@
 
 #include <pep/utils/Defer.hpp>
 
+#include <utility>
+
 namespace {
 
 TEST(Defer, Defer) {

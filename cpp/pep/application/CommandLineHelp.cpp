@@ -1,7 +1,10 @@
 #include <pep/application/CommandLineHelp.hpp>
 
 #include <iomanip>
-#include <vector>
+#include <cstddef>
+#include <ios>
+#include <ostream>
+#include <string>
 
 namespace pep {
 namespace commandline {

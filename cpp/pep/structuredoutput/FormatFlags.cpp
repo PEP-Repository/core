@@ -2,6 +2,10 @@
 
 #include <pep/utils/FlagNames.hpp>
 
+#include <string>
+#include <string_view>
+#include <vector>
+
 namespace pep::structuredOutput {
 namespace {
 

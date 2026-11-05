@@ -1,16 +1,15 @@
 #pragma once
 
+#include <cstddef>
+#include <functional>
+
 extern "C" {
 #include <panda/scalar.h>
 }
 
-#include <array>
-#include <compare>
-#include <cstdint>
 #include <string>
 #include <string_view>
 
-#include <pep/utils/CollectionUtils.hpp>
 
 namespace pep {
 

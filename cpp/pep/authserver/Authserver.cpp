@@ -3,8 +3,22 @@
 
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
-#include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/authserver/AuthserverBackend.hpp>
+#include <pep/authserver/AuthserverMessages.hpp> // for SignedTokenRequest
+#include <pep/authserver/OAuthProvider.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/messaging/ServerConnection.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/server/SigningServer.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+
+#include <boost/asio/io_context.hpp>
+
+#include <exception>
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace pep {
 
@@ -47,10 +61,6 @@ void Authserver::Parameters::check() const {
   backendParams_.check();
   oauthParams_.check();
   SigningServer::Parameters::check();
-}
-
-const ChecksumChainHandler& Authserver::checksumChainHandler() const noexcept {
-  return backend_->checksumChainForwarder();
 }
 
 messaging::MessageBatches Authserver::handleTokenRequest(std::shared_ptr<SignedTokenRequest> signedRequest) {

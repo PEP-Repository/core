@@ -1,6 +1,8 @@
 #pragma once
 
+#include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-observe_on.hpp>
+
 #include <sys/types.h>
 
 namespace pep::weblib {

@@ -1,9 +1,16 @@
 #include <pep/utils/Configuration.hpp>
 
 #include <ranges>
+#include <cassert>
+#include <filesystem>
+#include <istream>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <boost/property_tree/json_parser.hpp>
-#include <pep/utils/CollectionUtils.hpp>
 
 using namespace std::ranges;
 

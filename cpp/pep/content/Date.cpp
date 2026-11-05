@@ -2,6 +2,16 @@
 
 #include <iomanip>
 #include <regex>
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <chrono>
+#include <functional>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/join.hpp>

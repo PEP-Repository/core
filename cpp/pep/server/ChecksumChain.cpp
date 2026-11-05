@@ -2,6 +2,10 @@
 #include <pep/server/ChecksumChain.hpp>
 #include <ranges>
 #include <stdexcept>
+#include <memory>
+#include <set>
+#include <string>
+#include <utility>
 
 namespace pep {
 

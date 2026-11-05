@@ -1,10 +1,19 @@
 #pragma once
 
-#include <pep/networking/TcpBasedProtocol.hpp>
 #include <pep/crypto/X509Certificate.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/networking/TcpBasedProtocol.hpp>
 
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/core/noncopyable.hpp>
+
+#include <cstdint>
 #include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
 
 namespace pep::networking {
 

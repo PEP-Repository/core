@@ -1,12 +1,14 @@
 #include <pep/structuredoutput/Tree.hpp>
 #include <pep/structuredoutput/Yaml.hpp>
+#include <pep/structuredoutput/Common.hpp> // for structuredOutput::WhitespaceFormat
+#include <pep/structuredoutput/Table.hpp>
 
-#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <cstdint>
 #include <limits>
 #include <sstream>
+#include <utility>
 
 namespace {
 namespace yaml = pep::structuredOutput::yaml;

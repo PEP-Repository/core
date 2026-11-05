@@ -1,5 +1,7 @@
 #include <pep/utils/Event.hpp>
 
+#include <utility>
+
 namespace pep {
 
 EventSubscription::EventSubscription(EventSubscription&& other) noexcept

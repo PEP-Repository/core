@@ -1,6 +1,11 @@
 #pragma once
-#include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
+
+#include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 using ExportDataCell = std::optional<std::string>;
 using ExportDataRow = std::vector<ExportDataCell>;

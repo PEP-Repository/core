@@ -1,10 +1,15 @@
 #pragma once
 
 #include <pep/utils/Paths.hpp>
-#include <boost/log/sources/record_ostream.hpp>
+
+#include <boost/log/sources/record_ostream.hpp> // IWYU pragma: keep (for PEP_LOG)
 #include <boost/log/sources/severity_channel_logger.hpp>
 
+#include <cstdint>
+#include <memory>
 #include <ostream>
+#include <string>
+#include <vector>
 
 namespace pep {
 

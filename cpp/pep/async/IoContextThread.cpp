@@ -2,9 +2,16 @@
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/ThreadUtil.hpp>
+#include <pep/async/WorkGuard.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <stop_token>
+#include <cstdlib>
+#include <exception>
+#include <memory>
+#include <string>
+#include <thread>
+#include <utility>
 
 namespace pep {
 

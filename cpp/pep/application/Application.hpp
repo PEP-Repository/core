@@ -1,15 +1,24 @@
 #pragma once
 
-#include <optional>
-#include <span>
-#include <string_view>
-#include <vector>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::LexedValues
+#include <pep/utils/Configuration_fwd.hpp>
+#include <pep/utils/Log.hpp>
 
 #include <boost/type_traits/is_base_of.hpp>
 
-#include <pep/application/CommandLineCommand.hpp>
-#include <pep/utils/Configuration_fwd.hpp>
-#include <pep/utils/Log.hpp>
+#include <exception>
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <span>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #define PEP_DEFINE_C_MAIN_FUNCTION(applicationType) \
   int main(int argc, char* argv[]) { \

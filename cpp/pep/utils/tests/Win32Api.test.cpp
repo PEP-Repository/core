@@ -1,10 +1,10 @@
+#ifdef _WIN32
+
 #include <pep/utils/Win32Api.hpp>
 
 #include <pep/utils/Defer.hpp>
 
 #include <gtest/gtest.h>
-
-#ifdef _WIN32
 
 using namespace pep;
 

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <cstdint>
-#include <stdexcept>
-#include <vector>
-#include <utility>
 #include <compare>
+#include <cstdint>
 #include <ranges>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 
 namespace pep {
 

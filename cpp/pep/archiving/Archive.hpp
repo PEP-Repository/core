@@ -1,10 +1,14 @@
 #pragma once
 
-#include <optional>
-#include <memory>
-
 #include <pep/archiving/Pseudonymiser.hpp>
 #include <pep/utils/CheckedPath.hpp>
+
+#include <cstdint>
+#include <filesystem>
+#include <ios>
+#include <memory>
+#include <optional>
+#include <string_view>
 
 namespace pep {
 

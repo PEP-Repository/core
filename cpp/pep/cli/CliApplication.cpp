@@ -1,22 +1,42 @@
 #include <pep/application/CommandLineCommandWrappers.hpp>
-#include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/crypto/ConstTime.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Exceptions.hpp>
+#include <pep/application/Application.hpp> // for PEP_DEFINE_MAIN_FUNCTION
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineUtility.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/async/WorkGuard.hpp>
+#include <pep/auth/OAuthToken.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Paths.hpp> // for GetResourceWorkingDirForOS
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp> // for TimeNow
 
 #include <iostream>
-#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <algorithm> // IWYU pragma: keep (used in assert)
+#include <cassert>
+#include <chrono>
+#include <exception>
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <optional>
 
 #include <boost/asio/io_context.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::chrono;
 using namespace std::literals;

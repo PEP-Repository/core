@@ -1,10 +1,28 @@
 #pragma once
 
-#include <pep/accessmanager/UserMessages.hpp>
 #include <pep/accessmanager/AccessManager.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for EncryptionKeyRequest, StructureMetadataType
+#include <pep/accessmanager/AmaMessages.hpp> // for AmaQueryResponse
+#include <pep/accessmanager/UserMessages.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/IndexList.hpp>
 #include <pep/server/ChecksumChain.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/ticketing/SubjectAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for TicketRequest2
+#include <pep/utils/Timestamp.hpp>
+
+#include <cstdint>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <set>
+#include <span>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace pep {
 

@@ -7,25 +7,60 @@
 #include <pep/async/RxBeforeTermination.hpp>
 #include <pep/async/RxCartesianProduct.hpp>
 #include <pep/async/RxEnsureProgress.hpp>
-#include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxRequireCount.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
 #include <pep/async/RxInstead.hpp>
-#include <pep/async/RxToUnorderedMap.hpp>
+#include <pep/async/RxToUnorderedMap.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
 #include <pep/structure/ShortPseudonyms.hpp>
-#include <pep/auth/EnrolledParty.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/async/ActivityMonitor.hpp>
+#include <pep/async/RxCache.hpp>
+#include <pep/async/RxIterate.hpp>
+#include <pep/castor/CastorConnection.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
+#include <pep/castor/Study.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
+#include <pep/crypto/AsymmetricKey.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/morphing/Metadata.hpp>
+#include <pep/registrationserver/RegistrationServerMessages.hpp> // for SignedPEPIdRegistrationRequest, PEPIdRegistrationResponse
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/server/SigningServer.hpp>
+#include <pep/structure/ColumnName.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
 
-#include <boost/property_tree/json_parser.hpp>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <exception>
+#include <filesystem>
+#include <limits>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
 #include <rxcpp/operators/rx-take.hpp>
+#include <rxcpp/rx-lite.hpp>
 
-#include <iostream>
+#include <boost/asio/io_context.hpp>
+
+#include <sqlite3.h>
 
 #ifdef WITH_CASTOR
 #include <pep/castor/Participant.hpp>
@@ -468,7 +503,7 @@ RegistrationServer::RegistrationServer(std::shared_ptr<Parameters> parameters)
   : SigningServer(parameters),
   client_(parameters->getClient()),
   shadowPublicKey_(parameters->getShadowPublicKey()),
-  checksumChainHandler_(ChecksumChains(std::make_unique<ShadowShortPseudonymsChecksumChain>(*this))),
+  checksumChains_(std::make_unique<ShadowShortPseudonymsChecksumChain>(*this)),
   globalConfiguration_(CreateRxCache([client = client_]() {return RxEnsureProgress(*client->getIoContext(), "Global configuration retrieval", client->getGlobalConfiguration()); })),
   shortPseudonyms_(ShortPseudonymCache::Create(*this, parameters->getShadowStorageFile())) // cannot get a shared_ptr<RegistrationServer> during construction
 #ifdef WITH_CASTOR

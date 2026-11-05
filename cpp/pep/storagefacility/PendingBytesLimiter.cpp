@@ -1,10 +1,15 @@
 #include <pep/storagefacility/PendingBytesLimiter.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/messaging/ReadThrottle.hpp>
 
 #include <prometheus/gauge.h>
 
 #include <cassert>
 #include <stdexcept>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace pep {
 

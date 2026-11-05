@@ -1,7 +1,12 @@
 #include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPublicKey, ElgamalPrivateKey
 
 #include <stdexcept>
-#include <utility>
+#include <cstddef>
+#include <functional>
+#include <string>
+#include <string_view>
 
 using namespace pep;
 

@@ -1,6 +1,12 @@
 #include <pep/utils/OpensslUtils.hpp>
 #include <openssl/err.h>
+#include <openssl/bio.h>
+#include <openssl/crypto.h> // for BIO
 #include <pep/utils/Defer.hpp>
+
+#include <cstddef>
+#include <stdexcept>
+#include <string>
 
 namespace pep {
 

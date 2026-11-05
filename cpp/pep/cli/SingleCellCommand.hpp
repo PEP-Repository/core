@@ -1,8 +1,18 @@
 #pragma once
 
+#include <pep/accessmanager/AccessManagerMessages.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/core-client/CoreClient_fwd.hpp>
-#include <pep/accessmanager/AccessManagerMessages.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <string>
 
 namespace pep::cli {
 

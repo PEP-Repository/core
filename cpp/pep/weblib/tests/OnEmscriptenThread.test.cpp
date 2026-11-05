@@ -6,6 +6,15 @@
 
 #include <gtest/gtest.h>
 
+#include <pthread.h>
+
+#include <rxcpp/rx-lite.hpp>
+#include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/operators/rx-observe_on.hpp>
+
+#include <chrono>
+#include <utility>
+
 using namespace std::literals;
 
 namespace {

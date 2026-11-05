@@ -6,12 +6,15 @@
 #include <emscripten/em_js.h>
 #include <emscripten/val.h>
 #include <rxcpp/rx-lite.hpp>
+#include <emscripten/bind.h> // for emscripten::class_
+#include <emscripten/wire.h> // for emscripten::allow_raw_pointers
 #include <rxcpp/operators/rx-map.hpp>
 
 #include <gtest/gtest.h>
 
 #include <stdexcept>
 #include <string_view>
+#include <exception>
 
 using namespace emscripten;
 using namespace pep;

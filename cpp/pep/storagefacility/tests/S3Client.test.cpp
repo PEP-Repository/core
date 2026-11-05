@@ -1,14 +1,15 @@
 #include <pep/storagefacility/S3Client.hpp>
 #include <pep/storagefacility/tests/sftest.hpp>
-
-#include <gtest/gtest.h>
-
-#include <pep/utils/Exceptions.hpp>
-#include <pep/application/Application.hpp>
 #include <pep/async/tests/RxTestUtils.hpp>
 #include <pep/utils/Defer.hpp>
 
+#include <gtest/gtest.h>
+
 #include <numeric>
+#include <memory>
+#include <string>
+
+#include <boost/asio/io_context.hpp>
 
 using namespace pep;
 using namespace pep::s3;

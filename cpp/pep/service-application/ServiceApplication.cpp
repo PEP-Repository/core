@@ -1,4 +1,10 @@
 #include <pep/service-application/ServiceApplication.hpp>
+#include <pep/application/Application.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/utils/Log.hpp> // for Severity
+
+#include <optional>
+#include <string>
 
 namespace pep {
 

@@ -3,6 +3,30 @@
 #include <pep/messaging/ConnectionFailureException.hpp>
 #include <pep/networking/Server.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/messaging/Connection.hpp>
+#include <pep/messaging/RequestHandler.hpp>
+#include <pep/networking/Client.hpp>
+#include <pep/networking/Connection.hpp>
+#include <pep/networking/Node.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/utils/Event.hpp>
+#include <pep/utils/LifeCycler.hpp>
+#include <pep/utils/Shared.hpp> // for WeakFrom
+#include <pep/versioning/GitlabVersion.hpp>
+#include <pep/versioning/Version.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <algorithm>
+#include <cassert>
+#include <exception>
+#include <memory>
+#include <optional>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 using namespace std::ranges;
 

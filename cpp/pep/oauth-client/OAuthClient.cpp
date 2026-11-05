@@ -4,22 +4,34 @@
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Base64.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/utils/Win32Api.hpp>
 #include <pep/networking/SendHttpRequest.hpp>
 
 #include <cassert>
 #include <sstream>
+#include <filesystem>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
 
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/url/url.hpp>
 
-#include <pep/async/CreateObservable.hpp>
+#ifdef WIN32
+#include <pep/utils/Win32Api.hpp>
+#endif
+
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/OnAsio.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
+#include <pep/networking/HTTPMessage.hpp>
 
 namespace {
   std::string GenerateCodeVerifier() {

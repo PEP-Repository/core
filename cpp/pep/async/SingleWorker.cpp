@@ -1,5 +1,10 @@
 #include <pep/async/SingleWorker.hpp>
+#include <pep/async/WorkGuard.hpp>
+
 #include <boost/asio/io_context.hpp>
+
+#include <memory>
+#include <mutex>
 
 namespace pep {
 

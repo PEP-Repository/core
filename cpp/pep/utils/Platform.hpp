@@ -1,5 +1,9 @@
 #pragma once
 
+// This header provides platform-specific (system) functions, such as timegm and htonl, in a portable way.
+// Have include-cleaner consider its (system) includes to be provided by this header.
+// IWYU pragma: begin_exports
+
 #ifdef _WIN32
 
 #define WIN32_LEAN_AND_MEAN
@@ -25,8 +29,10 @@ inline time_t timegm(tm *tm) noexcept {
 
 #else
 #include <unistd.h>
+#include <time.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <pthread.h>
@@ -38,3 +44,5 @@ inline time_t timegm(tm *tm) noexcept {
 #endif
 
 #endif
+
+// IWYU pragma: end_exports

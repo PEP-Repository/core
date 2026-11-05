@@ -1,13 +1,32 @@
 #include "pep/ticketing/SubjectAccessModes.hpp"
 #include <gtest/gtest.h>
-#include <pep/utils/File.hpp>
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
 
 #include <pep/accessmanager/Storage.hpp>
+#include <pep/accessmanager/AccessManager.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for EncryptionKeyRequest, ColumnAccess, StructureMetadataType
+#include <pep/accessmanager/AmaMessages.hpp> // for AmaQuery
+#include <pep/accessmanager/UserIdFlags.hpp>
+#include <pep/auth/UserGroup.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPublicKey
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/IndexList.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for TicketRequest2, Ticket2
+#include <pep/utils/Timestamp.hpp>
 
 #include <filesystem>
+#include <algorithm>
+#include <format>
+#include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <vector>
 #include <gmock/gmock-matchers.h>
 
 using namespace pep;

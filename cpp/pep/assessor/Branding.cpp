@@ -3,6 +3,10 @@
 #include <pep/utils/Log.hpp>
 #include <pep/assessor/Branding.PropertySerializer.hpp>
 
+#include <filesystem>
+#include <optional>
+#include <string>
+
 namespace {
 
 const std::string LogTag = "PEP Assessor branding";

@@ -1,4 +1,7 @@
 #include <pep/utils/ThreadUtil.hpp>
+
+#include <optional>
+#include <string>
 #ifdef _WIN32
 # include <pep/utils/Win32Api.hpp>
 # include <processthreadsapi.h>

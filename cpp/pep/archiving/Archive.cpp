@@ -3,11 +3,19 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
-#include <numeric>
-#include <ranges>
 #include <cassert>
+#include <cstdint>
+#include <exception>
+#include <ios>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 #include <pep/utils/File.hpp>
+#include <pep/archiving/Pseudonymiser.hpp>
+#include <pep/utils/CheckedPath.hpp> // for CheckedRelativeFilePath, CheckedFileName
 
 using namespace std::ranges;
 

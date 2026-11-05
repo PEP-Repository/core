@@ -1,7 +1,21 @@
 #include <pep/structure/StructureSerializers.hpp>
 #include <pep/serialization/Serialization.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
+#include <pep/structure/StudyContext.hpp>
 
 #include <ranges>
+#include <cassert>
+#include <limits> // IWYU pragma: keep (used in assert)
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <utility>
+#include <vector>
+
+#include <Messages.pb.h> // for proto::CastorStorageDefinition
+
+#include <google/protobuf/stubs/port.h> // for google::protobuf::uint32
 
 using namespace std::ranges;
 

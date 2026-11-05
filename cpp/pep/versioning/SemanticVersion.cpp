@@ -1,10 +1,10 @@
 #include <pep/versioning/SemanticVersion.hpp>
 
 #include <vector>
+#include <string>
+#include <tuple>
 
 #include <boost/algorithm/string/join.hpp>
-#include <boost/lexical_cast.hpp>
-#include <pep/serialization/Error.hpp>
 
 namespace pep {
 SemanticVersion::SemanticVersion(

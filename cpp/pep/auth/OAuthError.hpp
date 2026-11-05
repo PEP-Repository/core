@@ -1,10 +1,10 @@
 #pragma once
 
-#include <optional>
-#include <stdexcept>
-#include <string>
-
 #include <boost/url/url.hpp>
+
+#include <exception>
+#include <optional>
+#include <string>
 
 namespace pep {
 

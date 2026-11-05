@@ -1,6 +1,11 @@
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 
+#include <cassert>
+#include <cstddef>
+#include <iterator>
+#include <ranges>
+
 namespace pep {
 
 size_t AmaQRColumnGroup::FillToProtobufSerializationCapacity(AmaQRColumnGroup& dest, size_t cap, const AmaQRColumnGroup& source, size_t offset, size_t padding) {

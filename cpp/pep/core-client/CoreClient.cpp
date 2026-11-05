@@ -1,4 +1,3 @@
-#include <pep/async/CreateObservable.hpp>
 #include <pep/async/RxCache.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxRequireCount.hpp>
@@ -13,11 +12,47 @@
 #include <pep/utils/File.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MapUtils.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for ParticipantGroupAccess, IndexedTicket2
+#include <pep/accessmanager/AccessManagerProxy.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/async/WorkerPool.hpp>
+#include <pep/auth/Signed.hpp> // for MessageSigner
+#include <pep/crypto/X509Certificate.hpp> // for X509RootCertificates
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/server/ServerProxy.hpp>
+#include <pep/storagefacility/StorageFacilityProxy.hpp>
+#include <pep/structure/StudyContext.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms
+#include <pep/transcryptor/TranscryptorProxy.hpp>
+#include <pep/utils/EnumUtils.hpp> // for HasFlags
+#include <pep/utils/Shared.hpp>
 
 #include <ranges>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <exception>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/asio/io_context.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
@@ -30,6 +65,7 @@
 #include <rxcpp/operators/rx-take.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::ranges;
 

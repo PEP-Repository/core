@@ -7,6 +7,12 @@
 #include <openssl/bn.h>
 #include <openssl/err.h>
 #include <openssl/sha.h>
+#include <openssl/bio.h>
+#include <openssl/crypto.h> // for X509_NAME, X509, BIO, ...
+#include <openssl/obj_mac.h> // for NID_commonName
+#include <openssl/objects.h> // for OBJ_obj2txt
+#include <openssl/pemerr.h> // for PEM_R_NO_START_LINE
+#include <openssl/safestack.h> // for STACK_OF
 
 #include <boost/numeric/conversion/cast.hpp>
 
@@ -17,9 +23,9 @@
 #include <pep/utils/OpensslUtils.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/Shared.hpp>
 
 #include <pep/crypto/X509Certificate.hpp>
+#include <pep/crypto/AsymmetricKey.hpp>
 
 #include <ctime> //for tm, time_t
 #include <chrono>
@@ -31,6 +37,12 @@
 #include <array>
 #include <span>
 #include <string_view>
+#include <cassert>
+#include <compare>
+#include <cstdint>
+#include <memory>
+#include <utility>
+#include <vector>
 
 namespace pep {
 

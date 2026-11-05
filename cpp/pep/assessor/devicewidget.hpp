@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/structure/GlobalConfiguration.hpp>
+
 #include <QWidget>
 
 namespace Ui {

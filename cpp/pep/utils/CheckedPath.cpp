@@ -3,6 +3,9 @@
 #include <pep/utils/File.hpp>
 #include <pep/utils/Log.hpp>
 
+#include <stdexcept>
+#include <utility>
+
 namespace pep {
 
 void CheckedPath::ensureNonEmpty() const {
