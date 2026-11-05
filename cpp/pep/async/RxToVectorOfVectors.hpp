@@ -1,9 +1,12 @@
 #pragma once
 
 #include <pep/utils/VectorOfVectors.hpp>
-#include <memory>
+
 #include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-reduce.hpp>
+
+#include <memory>
+#include <vector>
 
 namespace pep {
 

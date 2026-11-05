@@ -1,10 +1,20 @@
 #pragma once
 
+#include <pep/async/RxCache.hpp>
+#include <pep/castor/DataPoint.hpp>
+#include <pep/castor/RepeatingDataInstance.hpp>
 #include <pep/castor/Study.hpp>
 #include <pep/pullcastor/EnvironmentPuller.hpp>
 #include <pep/pullcastor/FieldValue.hpp>
-#include <pep/pullcastor/PullCastorUtils.hpp>
 #include <pep/pullcastor/RepeatingDataPuller.hpp>
+#include <pep/pullcastor/StorableContent.hpp> // for castor::StorableCellContent
+#include <pep/pullcastor/StudyAspect.hpp>
+#include <pep/utils/Shared.hpp>
+
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace pep {
 namespace castor {

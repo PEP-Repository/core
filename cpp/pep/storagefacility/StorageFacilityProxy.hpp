@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/messaging/Tail.hpp>
 #include <pep/server/SigningServerProxy.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>

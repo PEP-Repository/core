@@ -1,13 +1,17 @@
 #pragma once
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/networking/EndPoint.hpp>
-#include <pep/messaging/MessageSequence.hpp>
-#include <pep/storagefacility/S3.hpp>
+#include <pep/storagefacility/S3Credentials.hpp> // for s3::Credentials
 #include <pep/utils/Shared.hpp>
 
 #include <rxcpp/rx-lite.hpp>
-#include <pep/async/IoContext_fwd.hpp>
 
 #include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace pep::s3 {
 

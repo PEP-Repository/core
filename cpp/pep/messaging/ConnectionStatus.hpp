@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/system/error_code.hpp>
+#include <boost/system/errc.hpp> // for boost::system::errc::make_error_code
 
 namespace pep {
 

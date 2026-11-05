@@ -1,8 +1,14 @@
 #pragma once
 
 #include <pep/utils/SelfRegistering.hpp>
+
 #include <boost/type_index.hpp>
+
 #include <algorithm>
+#include <cstddef>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
 #include <vector>
 
 namespace pep::tests {

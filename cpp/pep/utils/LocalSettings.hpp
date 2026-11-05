@@ -1,6 +1,8 @@
 #pragma once
 
 #include <boost/property_tree/ptree.hpp>
+
+#include <memory>
 #include <string>
 
 namespace pep {

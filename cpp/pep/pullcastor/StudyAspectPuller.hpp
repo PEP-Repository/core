@@ -1,7 +1,14 @@
 #pragma once
 
 #include <pep/pullcastor/CastorParticipant.hpp>
-#include <pep/utils/EnumUtils.hpp>
+#include <pep/pullcastor/StorableContent.hpp> // for castor::StorableColumnContent
+#include <pep/pullcastor/StudyAspect.hpp>
+#include <pep/pullcastor/StudyPuller.hpp>
+
+#include <boost/core/noncopyable.hpp>
+
+#include <memory>
+#include <string>
 
 namespace pep {
 namespace castor {

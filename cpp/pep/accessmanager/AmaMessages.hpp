@@ -1,8 +1,13 @@
 #pragma once
 
 #include <pep/auth/Signed.hpp>
-#include <pep/utils/Timestamp.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <cstddef>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace pep {
 

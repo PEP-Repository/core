@@ -1,6 +1,10 @@
 #pragma once
 
 #include <pep/serialization/Serialization.hpp>
+#include <pep/utils/NormalizedTypeNaming.hpp> // for NormalizedTypeNamer
+
+#include <string>
+#include <utility>
 
 namespace pep {
 

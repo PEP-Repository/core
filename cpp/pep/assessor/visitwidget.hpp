@@ -1,13 +1,17 @@
 #pragma once
 
-#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/assessor/ButtonBar.hpp>
 #include <pep/assessor/UserRole.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/StudyContext.hpp>
 
 #include <QHBoxLayout>
+#include <QLabel>
 #include <QPushButton>
 #include <QWidget>
-#include <QLabel>
-#include <pep/assessor/ButtonBar.hpp>
+
+#include <optional>
+#include <vector>
 
 namespace Ui {
 class VisitWidget;

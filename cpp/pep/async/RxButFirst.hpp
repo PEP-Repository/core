@@ -4,7 +4,9 @@
 #include <rxcpp/operators/rx-tap.hpp>
 
 #include <cassert>
-#include <functional>
+#include <exception>
+#include <memory>
+#include <type_traits>
 
 namespace pep
 {

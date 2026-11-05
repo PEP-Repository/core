@@ -1,8 +1,13 @@
 #pragma once
 
 #include <pep/application/Application.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
 #include <pep/server/NetworkedServer.hpp>
-#include <pep/utils/Configuration.hpp>
+#include <pep/utils/Configuration.hpp> // IWYU pragma: keep (needs the complete type)
+#include <pep/utils/Log.hpp> // for Severity
+
+#include <optional>
+#include <string>
 
 namespace pep {
 

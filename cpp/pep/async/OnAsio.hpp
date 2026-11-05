@@ -1,10 +1,13 @@
 #pragma once
 
+#include <pep/async/CreateObservable.hpp>
+#include <pep/async/IoContext_fwd.hpp>
+
+#include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-observe_on.hpp>
 #include <rxcpp/operators/rx-subscribe_on.hpp>
 
-#include <pep/async/CreateObservable.hpp>
-#include <pep/async/IoContext_fwd.hpp>
+#include <type_traits>
 
 namespace pep {
 

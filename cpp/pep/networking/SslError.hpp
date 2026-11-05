@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/asio/ssl/error.hpp>
+#include <boost/system/error_code.hpp> // IWYU pragma: keep (error_code is declared in an internal Boost header)
 
 namespace pep::networking {
 

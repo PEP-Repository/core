@@ -1,7 +1,10 @@
 #pragma once
 
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 
+#include <cstdint>
 #include <memory>
 
 namespace pep {

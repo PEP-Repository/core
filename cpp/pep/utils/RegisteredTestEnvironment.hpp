@@ -1,8 +1,13 @@
 #pragma once
 
-#include <gtest/gtest.h>
 #include <pep/utils/SelfRegistering.hpp>
+
+#include <gtest/gtest.h>
+
 #include <functional>
+#include <optional>
+#include <span>
+#include <type_traits>
 
 namespace pep {
 

@@ -78,6 +78,9 @@
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/rx-lite.hpp>
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 #include <prometheus/gauge.h>
 #include <prometheus/summary.h>

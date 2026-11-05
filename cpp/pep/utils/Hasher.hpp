@@ -1,8 +1,10 @@
 #pragma once
 
+#include <boost/core/noncopyable.hpp>
+
+#include <cstddef>
 #include <istream>
 #include <string_view>
-#include <boost/core/noncopyable.hpp>
 
 namespace pep {
 

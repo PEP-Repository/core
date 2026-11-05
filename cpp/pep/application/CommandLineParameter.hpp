@@ -4,12 +4,19 @@
 #include <pep/application/CommandLineValue.hpp>
 #include <pep/application/CommandLineValueSpecification.hpp>
 #include <pep/utils/Shared.hpp>
+
+#include <exception>
 #include <functional>
 #include <initializer_list>
+#include <memory>
+#include <optional>
+#include <ostream>
 #include <queue>
 #include <set>
-#include <optional>
+#include <stdexcept>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace pep {

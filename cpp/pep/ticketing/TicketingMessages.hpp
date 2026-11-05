@@ -1,8 +1,16 @@
 #pragma once
 
-#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/auth/Signature.hpp>
 #include <pep/auth/Signed.hpp>
+#include <pep/crypto/X509Certificate.hpp> // for X509Identity, X509RootCertificates
+#include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace pep {
 

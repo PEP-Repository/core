@@ -1,8 +1,10 @@
 #pragma once
 
+#include <pep/utils/Hasher.hpp>
+
 #include <xxhash.h>
 
-#include <pep/utils/Hasher.hpp>
+#include <cstddef>
 
 namespace pep {
 

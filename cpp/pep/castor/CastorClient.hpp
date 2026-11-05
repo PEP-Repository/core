@@ -1,7 +1,19 @@
 #pragma once
 
-#include <pep/networking/HttpClient.hpp>
 #include <pep/castor/CastorConnection.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/networking/HttpClient.hpp>
+#include <pep/networking/HTTPMessage.hpp> // for HTTPRequest, HTTPResponse
+#include <pep/utils/Event.hpp>
+#include <pep/utils/LifeCycler.hpp>
+#include <pep/utils/Shared.hpp>
+
+#include <boost/asio/io_context.hpp>
+
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
 
 namespace pep {
 namespace castor {

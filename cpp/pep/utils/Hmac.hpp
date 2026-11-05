@@ -1,10 +1,11 @@
 #pragma once
 
+#include <pep/utils/CollectionUtils.hpp>
+
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
-
-#include <pep/utils/CollectionUtils.hpp>
 
 namespace pep {
 
