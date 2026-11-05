@@ -615,7 +615,7 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
         // Remove ".entry" file
         PEP_LOG(LogTag, Severity::Debug) << "Removing un-purged state from " << entryPath;
         remove(entryPath);
-        // Absence is asserted below
+        // Absence is asserted below (outside conditional branch)
       }
       else {
         // No ".entry" file exists (anymore): previous attempt (failed or) was interrupted after it had been removed
