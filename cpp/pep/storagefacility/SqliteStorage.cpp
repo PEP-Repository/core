@@ -289,15 +289,13 @@ std::optional<Timestamp> SqliteStorage::pendingPurgeTimestamp(const CellVersionS
       using namespace sqlite_orm;
       auto millis = database::TimestampToUnixMillis(cellVersion.timestamp);
 
-      auto applied = implementor_->raw.select(&PurgeCycleRecord::applied,
-        inner_join<PurgeEntryRecord>(on(c(&PurgeEntryRecord::cycle) == c(&PurgeCycleRecord::id))),
-        where(c(&PurgeEntryRecord::row) == rowId && c(&PurgeEntryRecord::column) == columnId && c(&PurgeEntryRecord::timestamp) == millis
-          && c(&PurgeCycleRecord::applied) != 0 && c(&PurgeCycleRecord::completed) == 0));
-      if (applied.empty()) {
-        return std::nullopt;
-      }
-      assert(applied.size() == 1U);
-      return database::TimestampFromUnixMillis(applied.front());
+      return RangeToOptional(implementor_->raw.iterate(
+          select(&PurgeCycleRecord::applied,
+          inner_join<PurgeEntryRecord>(on(c(&PurgeEntryRecord::cycle) == c(&PurgeCycleRecord::id))),
+          where(c(&PurgeEntryRecord::row) == rowId && c(&PurgeEntryRecord::column) == columnId && c(&PurgeEntryRecord::timestamp) == millis
+            && c(&PurgeCycleRecord::applied) != 0 && c(&PurgeCycleRecord::completed) == 0)))
+        | std::views::transform(&database::TimestampFromUnixMillis)
+      );
     });
 }
 
