@@ -6,6 +6,8 @@
 
 ## Changes in upcoming release (1.9)
 
+- core#3049: Fixed a bug where `pepcli register participant` did not ensure completion of short pseudonyms.
+
 - core#2962: `pepcli pseudonym convert` no longer requires access to the subject associated with the pseudonym.
 
 - `pepcli list --format` now also accepts `json-compact`, like `pepcli ama query` and `pepcli user query`.
