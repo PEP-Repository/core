@@ -1,7 +1,9 @@
 #pragma once
 
-#include <memory>
 #include <rxcpp/rx-lite.hpp>
+
+#include <memory>
+#include <type_traits>
 
 namespace pep {
 

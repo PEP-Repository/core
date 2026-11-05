@@ -1,10 +1,17 @@
 #pragma once
 
 #include <pep/archiving/Archive.hpp>
+#include <pep/utils/CheckedPath.hpp>
 #include <pep/utils/Shared.hpp>
 #include <pep/utils/XxHasher.hpp>
 
+#include <cstdint>
+#include <filesystem>
+#include <ios>
 #include <map>
+#include <memory>
+#include <string>
+#include <string_view>
 
 namespace pep {
 

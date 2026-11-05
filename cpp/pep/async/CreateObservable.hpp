@@ -2,10 +2,11 @@
 
 #include <pep/utils/BuildFlavor.hpp>
 
+#include <rxcpp/rx-lite.hpp>
+
 #include <cassert>
 #include <exception>
-
-#include <rxcpp/rx-lite.hpp>
+#include <memory> // IWYU pragma: keep (used in debug builds)
 
 namespace pep {
 

@@ -1,13 +1,19 @@
 #pragma once
 
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/storagefacility/S3Client.hpp>
-#include <pep/application/Application.hpp>
+#include <pep/storagefacility/S3Credentials.hpp> // for s3::Credentials
 #include <pep/utils/Paths.hpp>
 
-#include <filesystem>
-#include <string>
-
 #include <boost/lexical_cast.hpp>
+
+#include <cstdint>
+#include <cstdlib>
+#include <filesystem>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace pep::sftest {
   // helper function

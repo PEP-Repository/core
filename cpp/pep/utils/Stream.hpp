@@ -1,6 +1,8 @@
 #pragma once
 
 #include <pep/utils/Hasher.hpp>
+
+#include <ios>
 #include <streambuf>
 
 #ifdef _WIN32

@@ -2,6 +2,8 @@
 
 #include <boost/core/noncopyable.hpp>
 
+#include <functional>
+
 extern "C" {
 #include <panda/group.h>
 }
@@ -13,7 +15,6 @@ extern "C" {
 #include <string_view>
 
 #include <pep/elgamal/CurveScalar.hpp>
-#include <pep/utils/CollectionUtils.hpp>
 
 namespace pep {
 

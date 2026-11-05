@@ -1,7 +1,13 @@
 #pragma once
 
 #include <pep/auth/Signature.hpp>
+#include <pep/crypto/X509Certificate.hpp> // for X509RootCertificates, X509Identity
 #include <pep/serialization/Serialization.hpp>
+#include <pep/utils/NormalizedTypeNaming.hpp> // for NormalizedTypeNamer
+
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace pep {
 

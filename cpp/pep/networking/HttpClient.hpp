@@ -1,12 +1,31 @@
 #pragma once
 
 #include <pep/networking/Client.hpp>
+#include <pep/networking/Connection.hpp>
 #include <pep/networking/EndPoint.hpp>
+#include <pep/networking/ExponentialBackoff.hpp>
 #include <pep/networking/HTTPMessage.hpp>
+#include <pep/networking/HttpMethod.hpp>
+#include <pep/networking/Transport.hpp> // for networking::SizedTransfer
+#include <pep/utils/Event.hpp>
+#include <pep/utils/LifeCycler.hpp>
+#include <pep/utils/Shared.hpp>
+
 #include <rxcpp/rx-lite.hpp>
+
+#include <boost/asio/io_context.hpp>
+#include <boost/url/url.hpp>
+
 #include <chrono>
+#include <cstddef>
+#include <exception>
 #include <filesystem>
 #include <functional>
+#include <memory>
+#include <optional>
+#include <queue>
+#include <string>
+#include <utility>
 
 namespace pep::networking {
 

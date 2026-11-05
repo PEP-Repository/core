@@ -1,6 +1,7 @@
 #pragma once
 
-#include <boost/noncopyable.hpp>
+#include <boost/core/noncopyable.hpp>
+
 #include <functional>
 #include <memory>
 #include <optional>

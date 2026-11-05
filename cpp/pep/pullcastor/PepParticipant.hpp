@@ -3,6 +3,13 @@
 #include <pep/core-client/CoreClient_fwd.hpp>
 #include <pep/pullcastor/CellContent.hpp>
 #include <pep/pullcastor/PullCastorUtils.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2
+#include <pep/utils/Shared.hpp>
+
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace pep {
 namespace castor {

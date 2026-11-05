@@ -1,16 +1,29 @@
 #pragma once
 
-#include <pep/core-client/CoreClient_fwd.hpp>
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/async/RxCache.hpp>
+#include <pep/auth/ServerTraits.hpp>
+#include <pep/castor/CastorConnection.hpp>
+#include <pep/core-client/CoreClient_fwd.hpp>
+#include <pep/crypto/AsymmetricKey.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/registrationserver/RegistrationServerMessages.hpp>
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/server/SigningServer.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
-#include <pep/registrationserver/RegistrationServerMessages.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
 
 #ifdef WITH_CASTOR
 #include <pep/castor/Study.hpp>
 #endif
 
 #include <sqlite3.h>
+
+#include <cstddef>
+#include <filesystem>
+#include <memory>
+#include <string>
 
 namespace pep {
 /*

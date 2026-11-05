@@ -1,9 +1,10 @@
 #pragma once
 
+#include <openssl/crypto.h> // for BIO
+
 #include <stdexcept>
 #include <string>
 
-#include <openssl/bio.h>
 
 namespace pep {
 

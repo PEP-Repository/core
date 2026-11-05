@@ -1,7 +1,10 @@
 #pragma once
 
 #include <pep/messaging/ConnectionStatus.hpp>
+
 #include <QWidget>
+
+#include <string>
 
 namespace Ui {
 class NotConnectedWidget;

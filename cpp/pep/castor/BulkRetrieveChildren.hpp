@@ -1,11 +1,21 @@
 #pragma once
 
 #include <pep/async/RxToUnorderedMap.hpp>
+#include <pep/castor/CastorConnection.hpp> // for castor::JsonPtr
 #include <pep/castor/CastorObject.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+#include <rxcpp/operators/rx-filter.hpp>
+
 #include <boost/property_tree/ptree.hpp>
 
-#include <rxcpp/operators/rx-filter.hpp>
-#include <ranges>
+#include <algorithm> // IWYU pragma: keep (used in debug builds)
+#include <cassert>
+#include <memory>
+#include <ranges> // IWYU pragma: keep (used in debug builds)
+#include <string>
+#include <type_traits>
+#include <unordered_map>
 
 namespace pep {
 namespace castor {

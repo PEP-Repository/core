@@ -2,6 +2,7 @@
 
 #include <pep/serialization/ProtocolBufferedSerializer.hpp>
 #include <pep/utils/Timestamp.hpp>
+
 #include <Messages.pb.h>
 
 namespace pep {

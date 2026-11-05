@@ -1,9 +1,10 @@
 #pragma once
 
+#include <chrono>
+#include <optional>
+#include <ostream>
 #include <string>
 #include <string_view>
-#include <optional>
-#include <chrono>
 #include <unordered_set>
 
 namespace pep {

@@ -1,9 +1,13 @@
 #pragma once
 
 #include <pep/serialization/ProtocolBufferedSerializer.hpp>
-#include <pep/utils/CollectionUtils.hpp>
 
-#include <vector>
+#include <google/protobuf/repeated_ptr_field.h>
+
+#include <ostream>
+#include <ranges>
+#include <string>
+#include <string_view>
 
 namespace pep {
 

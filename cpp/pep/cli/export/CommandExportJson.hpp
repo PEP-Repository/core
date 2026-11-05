@@ -1,8 +1,10 @@
 #pragma once
 
-#include <ostream>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
 #include <pep/cli/Export.hpp>
-#include <pep/cli/Command.hpp>
+#include <pep/structuredoutput/Table.hpp>
+
+#include <ostream>
 #include <string_view>
 
 /// CLI command to convert pulled data to JSON

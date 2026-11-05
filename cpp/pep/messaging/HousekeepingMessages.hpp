@@ -1,8 +1,11 @@
 #pragma once
 
-#include <pep/versioning/Version.hpp>
 #include <pep/auth/Signed.hpp>
 #include <pep/utils/Timestamp.hpp>
+#include <pep/versioning/Version.hpp>
+
+#include <cstdint>
+#include <optional>
 
 namespace pep {
 

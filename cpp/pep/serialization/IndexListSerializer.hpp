@@ -2,6 +2,7 @@
 
 #include <pep/serialization/IndexList.hpp>
 #include <pep/serialization/ProtocolBufferedSerializer.hpp>
+
 #include <Messages.pb.h>
 
 namespace pep {

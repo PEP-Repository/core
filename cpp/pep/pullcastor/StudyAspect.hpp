@@ -4,6 +4,9 @@
 
 #include <rxcpp/rx-lite.hpp>
 
+#include <memory>
+#include <string>
+
 namespace pep {
 namespace castor {
 

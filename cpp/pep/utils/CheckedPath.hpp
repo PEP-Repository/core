@@ -1,8 +1,12 @@
 #pragma once
 
 #include <concepts>
+#include <cstddef>
 #include <filesystem>
+#include <functional>
 #include <ostream>
+#include <string>
+#include <utility>
 
 namespace pep {
 

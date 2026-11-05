@@ -3,11 +3,12 @@
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 
+#include <rxcpp/rx-lite.hpp>
+
+#include <exception>
 #include <functional>
 #include <optional>
 #include <utility>
-
-#include <rxcpp/rx-lite.hpp>
 
 namespace pep {
 

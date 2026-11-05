@@ -4,9 +4,10 @@
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Timestamp.hpp>
 
-#include <map>
-#include <unordered_map>
 #include <boost/property_tree/ptree_fwd.hpp>
+
+#include <map> // IWYU pragma: keep (used in debug builds)
+#include <unordered_map> // IWYU pragma: keep (used in release builds)
 
 #define PEP_PULLCASTOR_LOG(level) PEP_LOG("PullCastor", level)
 

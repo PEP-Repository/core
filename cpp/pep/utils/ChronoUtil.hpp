@@ -1,14 +1,21 @@
 #pragma once
 
-#include <chrono>
-#include <cmath>
-#include <sstream>
-#include <string>
-#include <iomanip>
+#include <pep/utils/StringStream.hpp>
+
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/trim.hpp>
 
-#include <pep/utils/StringStream.hpp>
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <iomanip>
+#include <ostream>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <utility>
 
 namespace pep::chrono {
 namespace detail {

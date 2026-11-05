@@ -1,7 +1,9 @@
 #pragma once
 
-#include <pep/server/CertificateRenewalMessages.hpp>
 #include <pep/auth/SigningSerializers.hpp>
+#include <pep/server/CertificateRenewalMessages.hpp>
+
+#include <Messages.pb.h> // for proto::CsrRequest
 
 namespace pep {
 

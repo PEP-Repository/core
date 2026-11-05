@@ -1,7 +1,14 @@
 #pragma once
 
 #include <pep/serialization/Serialization.hpp>
+
 #include <rxcpp/rx-lite.hpp>
+
+#include <cstddef>
+#include <istream>
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace pep::messaging {
 
