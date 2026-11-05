@@ -249,10 +249,10 @@ std::set<SqliteStorage::CellVersionSpec> SqliteStorage::getIncludedCellVersions(
         where(c(&PurgeEntryRecord::cycle) == id
           && c(&PurgeEntryRecord::row) == c(&RowRecord::seqno)
           && c(&PurgeEntryRecord::column) == c(&ColumnRecord::seqno))))) {
-        const auto& participant = std::get<0>(entry);
-        const auto& column = std::get<1>(entry);
+        auto& participant = std::get<0>(entry);
+        auto& column = std::get<1>(entry);
         result.emplace(CellVersionSpec{
-            .cell = EntryName(participant, column),
+            .cell = EntryName(std::move(participant), std::move(column)),
             .timestamp = database::TimestampFromUnixMillis(std::get<2>(entry)),
           });
       }

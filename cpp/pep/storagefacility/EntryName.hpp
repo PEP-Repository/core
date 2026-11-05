@@ -14,7 +14,7 @@ private:
 public:
   static constexpr char Delimiter = '/'; // Don't change: we need this to (also) serve as a path delimiter on the file system and S3 page store
 
-  EntryName(const std::string& participant, const std::string& column) : EntryName(participant, true, column) {}
+  EntryName(std::string participant, std::string column) : EntryName(std::move(participant), true, std::move(column)) {}
   EntryName(const LocalPseudonym& pseudonym, const std::string& column) : EntryName(pseudonym.text(), false, column) {}
 
   const std::string& participant() const noexcept { return participant_; }
