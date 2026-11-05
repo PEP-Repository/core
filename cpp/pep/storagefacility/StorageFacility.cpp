@@ -1252,7 +1252,8 @@ Timestamp StorageFacility::getUniqueChangeTimestamp(bool forPurgeCycle) {
 
       // Prevent collision with purge cycle 'applied' timestamps to ensure history consistency
       auto existing = sqlite_->getPurgeCycles()
-        | views::transform([](const PurgeCycle& cycle) { return cycle.applied; })
+        | views::filter([](const PurgeCycle& cycle) { return cycle.applied.has_value(); })
+        | views::transform([](const PurgeCycle& cycle) { return *cycle.applied; })
         | to<std::set>();
       if (forPurgeCycle) {
         // Prevent collision with the last (non-purge-cycle) timestamp that we produced
