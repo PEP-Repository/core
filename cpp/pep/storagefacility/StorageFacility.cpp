@@ -1260,11 +1260,22 @@ Timestamp StorageFacility::getUniqueChangeTimestamp(bool forPurgeCycle) {
         existing.emplace(lastChangeTimestamp_);
       }
 
-      // Get current timestamp until it's unique
+      auto threshold = existing.empty() ? Timestamp{ /* zero */} : *existing.rbegin();
+
+      // Get current timestamp until it's newer than existing timestamps (that we shouldn't collide with)
       Timestamp result;
       do {
         result = TimeNow();
-      } while (existing.contains(result));
+
+        if (result < threshold) {
+          std::ostringstream stream;
+          stream << "Can't generate a unique timestamp from current time " << TicksSinceEpoch<std::chrono::milliseconds>(result)
+            << " because a newer commit or purge cycle already exists with timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(threshold);
+          auto message = std::move(stream).str();
+          PEP_LOG(LogTag, Severity::Critical) << message;
+          throw std::runtime_error(std::move(message)); // Not an "Error": we don't want to expose our snafu tothe (client or) end user
+        }
+      } while (result == threshold);
 
       if (!forPurgeCycle) {
         // Prevent next invocation from producing the same value for a purge cycle
