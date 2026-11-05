@@ -634,7 +634,7 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
     });
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoadFile(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension) {
+std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoadFile(Cell& cell, const CheckedFileName& filename, const std::optional<std::filesystem::path>& extension) {
   // Preferably load the ".entry" file. If a ".purged" file also exists, purge persistence for this file has been
   // interrupted (e.g. because the process was killed), likely leaving the ".purged" file partially written and
   // therefore corrupt.

@@ -108,7 +108,7 @@ public:
     // Allow EntryChange to invoke SharedConstructor<Entry>::Create (which we inherit privately)
     friend class EntryChange;
 
-    static std::shared_ptr<Entry> TryLoadFile(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension);
+    static std::shared_ptr<Entry> TryLoadFile(Cell& cell, const CheckedFileName& filename, const std::optional<std::filesystem::path>& extension);
 
   private:
     static const std::string FileExtension;
