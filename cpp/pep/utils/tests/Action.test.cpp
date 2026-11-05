@@ -24,10 +24,7 @@ TEST(Action, SupportsHeterogeneousSignatures) {
 
 TEST(Action, PropagatesExceptions) {
   // Make a random(ized) "what" text
-  constexpr size_t bytes = 64U;
-  char raw[bytes];
-  pep::RandomBytes(raw);
-  auto encoded = pep::EncodeBase64Url(std::string(raw, bytes));
+  auto encoded = pep::EncodeBase64Url(pep::RandomString(64U));
 
   EXPECT_THAT( // Ensure that...
     [encoded]() { pep::PerformAsAction(&JustInvokeItAlready, [&encoded]() {throw std::runtime_error(encoded); }); }, // ... when the callback raises an exception...
