@@ -69,7 +69,7 @@ func Get() (
 	
 	// Check if files are missing or corrupted
 	for index, r := range records {
-		if index > len(fileInfos) {
+		if index >= len(fileInfos) {
 			missingCanaries = append(missingCanaries, r)
 		} else {
 			buf, err := ReadIfUnpurged(&fileInfos[index])
