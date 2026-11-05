@@ -246,9 +246,8 @@ std::set<SqliteStorage::CellVersionSpec> SqliteStorage::getIncludedCellVersions(
 
       using namespace sqlite_orm;
       for (auto entry : implementor_->raw.iterate(select(columns(&RowRecord::pseudonym, &ColumnRecord::name, &PurgeEntryRecord::timestamp),
-        where(c(&PurgeEntryRecord::cycle) == id
-          && c(&PurgeEntryRecord::row) == c(&RowRecord::seqno)
-          && c(&PurgeEntryRecord::column) == c(&ColumnRecord::seqno))))) {
+        inner_join<PurgeEntryRecord>(on(c(&PurgeEntryRecord::row) == c(&RowRecord::seqno) && c(&PurgeEntryRecord::column) == c(&ColumnRecord::seqno))),
+        where(c(&PurgeEntryRecord::cycle) == id)))) {
         auto& [participant, column, dbMillis] = entry;
         result.emplace(CellVersionSpec{
             .cell = EntryName(std::move(participant), std::move(column)),
