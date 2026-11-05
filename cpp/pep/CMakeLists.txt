@@ -619,15 +619,10 @@ if(ENABLE_CLANG_TIDY)
   find_program(JQ_PROGRAM jq REQUIRED) # Used by clang-tidy-header.sh
 
   # Targets generating headers that our headers #include: these must be built before the headers are checked
-  set(clang_tidy_headers_prerequisites)
-  foreach(target ${PROJECT_NAME}Protolib ${PROJECT_NAME}Protohash)
-    if(TARGET ${target})
-      list(APPEND clang_tidy_headers_prerequisites ${target})
-    endif()
-  endforeach()
+  set(clang_tidy_headers_prerequisites ${PROJECT_NAME}Protolib ${PROJECT_NAME}Protohash)
 
   set(checked_headers)
-  set(stamps)
+  set(checks)
   foreach(target IN LISTS all_targets)
     get_target_headers(headers ${target})
     foreach(header IN LISTS headers)
@@ -637,30 +632,25 @@ if(ENABLE_CLANG_TIDY)
       endif()
       list(APPEND checked_headers ${header})
 
-      set(stamp "${CMAKE_BINARY_DIR}/clang-tidy-headers/${header}.stamp")
+      # A name for the check: SYMBOLIC tells the build system that no such file is created, so the check always runs
+      set(check "${CMAKE_BINARY_DIR}/clang-tidy-headers/${header}")
+      set_source_files_properties("${check}" PROPERTIES SYMBOLIC TRUE)
       add_custom_command(
-        OUTPUT "${stamp}"
-        COMMAND ${INVOKE_SH} "${CMAKE_CURRENT_SOURCE_DIR}/clang-tidy-header.sh"
-          "${CMAKE_BINARY_DIR}/compile_commands.json" ${target} "${CMAKE_SOURCE_DIR}/cpp/${header}" "${stamp}"
+        OUTPUT "${check}"
+        COMMAND ${INVOKE_SH} "${CMAKE_SOURCE_DIR}/scripts/clang-tidy-header.sh"
+          "${CMAKE_BINARY_DIR}/compile_commands.json" ${target} "${CMAKE_SOURCE_DIR}/cpp/${header}"
           ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts} --quiet "--checks=-*,misc-include-cleaner"
           # Prevent errors for headers that define macros, which they (naturally) don't use themselves
           --extra-arg=-Wno-unused-macros
-        DEPENDS
-          "${CMAKE_SOURCE_DIR}/cpp/${header}"
-          "${CMAKE_SOURCE_DIR}/.clang-tidy"
-          "${CMAKE_CURRENT_SOURCE_DIR}/clang-tidy-header.sh"
-        DEPFILE "${stamp}.d"
         COMMENT "Checking #includes of ${header}"
         VERBATIM
       )
-      list(APPEND stamps "${stamp}")
+      list(APPEND checks "${check}")
     endforeach()
   endforeach()
 
-  add_custom_target(clang-tidy-headers DEPENDS ${stamps})
-  if(clang_tidy_headers_prerequisites)
-    add_dependencies(clang-tidy-headers ${clang_tidy_headers_prerequisites})
-  endif()
+  add_custom_target(clang-tidy-headers DEPENDS ${checks})
+  add_dependencies(clang-tidy-headers ${clang_tidy_headers_prerequisites})
 
   # Make compilation wait for the header checks
   foreach(target IN LISTS all_targets)
