@@ -270,7 +270,7 @@ std::set<Timestamp> SqliteStorage::getPurgedTimestamps(PurgeCycle::Id id, const 
           where(c(&PurgeEntryRecord::cycle) == id
             && c(&PurgeEntryRecord::row) == *rowId
             && c(&PurgeEntryRecord::column) == *columnId)))
-          | std::views::transform([](database::UnixMillis millis) {return database::TimestampFromUnixMillis(millis); })
+          | std::views::transform(&database::TimestampFromUnixMillis)
           | std::ranges::to<std::set>();
       }
 
