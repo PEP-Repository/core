@@ -268,13 +268,12 @@ std::set<Timestamp> SqliteStorage::getPurgedTimestamps(PurgeCycle::Id id, const 
       auto columnId = this->getColumnId(cell.column());
 
       if (rowId.has_value() && columnId.has_value()) {
-        for (auto millis : implementor_->raw.iterate(select(&PurgeEntryRecord::timestamp,
+        result = implementor_->raw.iterate(select(&PurgeEntryRecord::timestamp,
           where(c(&PurgeEntryRecord::cycle) == id
             && c(&PurgeEntryRecord::row) == *rowId
-            && c(&PurgeEntryRecord::column) == *columnId)))) {
-          [[maybe_unused]] auto emplaced = result.emplace(database::TimestampFromUnixMillis(millis)).second;
-          assert(emplaced);
-        }
+            && c(&PurgeEntryRecord::column) == *columnId)))
+          | std::views::transform([](database::UnixMillis millis) {return database::TimestampFromUnixMillis(millis); })
+          | std::ranges::to<std::set>();
       }
 
       return result;
