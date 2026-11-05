@@ -58,15 +58,15 @@ auto MakeRawStorage(std::string path) {
       make_column("applied", &PurgeCycleRecord::applied),
       make_column("completed", &PurgeCycleRecord::completed)),
 
-    make_unique_index("idx_PurgeEntry",
-      &PurgeEntryRecord::row,
-      &PurgeEntryRecord::column,
-      &PurgeEntryRecord::timestamp),
     make_table("PurgeEntry",
       make_column("cycle", &PurgeEntryRecord::cycle),
       make_column("row", &PurgeEntryRecord::row),
       make_column("column", &PurgeEntryRecord::column),
-      make_column("timestamp", &PurgeEntryRecord::timestamp))
+      make_column("timestamp", &PurgeEntryRecord::timestamp),
+      unique(
+        &PurgeEntryRecord::row,
+        &PurgeEntryRecord::column,
+        &PurgeEntryRecord::timestamp))
   );
 }
 
