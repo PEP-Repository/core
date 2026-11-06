@@ -599,11 +599,11 @@ retrieve-lockfile:
     - *run-tests
   after_script:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
-    - *stage-artifacts
-    - *ccache-print
     # Linter findings, shown on the MR page. Also when the job failed: reports are uploaded regardless.
     - python3 scripts/clang-tidy-codequality.py "$BUILD_DIRECTORY/clang-tidy-fixes" . > gl-code-quality-report.json
       || echo "Could not create the Code Quality report, see above"
+    - *stage-artifacts
+    - *ccache-print
   artifacts:
     reports:
       junit: temp/*.xml
