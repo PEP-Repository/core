@@ -690,9 +690,18 @@ ubuntu-lts-debug:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
       variables:
         ENABLE_COVERAGE: "ON"
+    # Ready MRs: only measure coverage when C++ code, its build or tests changed (compared with the target branch)
     - if: *mr-ready
+      changes:
+        - cpp/**/*
+        - messages/**/*
+        - tests/**/*
+        - CMakeLists.txt
+        - cmake/**/*
+        - conanfile.py
       variables:
         ENABLE_COVERAGE: "ON"
+    - if: *mr-ready
   before_script:
     - !reference [.ubuntu-build-base, before_script]
     - |
