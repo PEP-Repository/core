@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
+# Packages the macOS apps (PEP Assessor, pepcli and derivatives) into a zip file, from an existing build of the
+# pepLogon, pepAssessor and pepcli targets (see the macos-client job in .gitlab-ci.yml).
+# For local use, pass the build type (default: Debug); the build is then expected in build/<build type>.
 set -eo pipefail
 
 BUILD_DIR="${BUILD_DIRECTORY:-build}"
 
 echo "Starting CI job script for creation of macOS binaries."
-export CMAKE_COLOR_DIAGNOSTICS=ON  # Let CMake pass -fcolor-diagnostics
-export CLICOLOR_FORCE=1  # Colored output for e.g. Conan & Ninja (otherwise -fcolor-diagnostics still won't work)
 
 if [[ -n "$CI_PROJECT_DIR" ]]; then
     PEP_MACOS_ROOT_DIR="$CI_PROJECT_DIR"
@@ -23,114 +24,22 @@ fi
 
 echo "Creating macOS CI artifacts for $CI_COMMIT_REF_NAME build."
 
-# Check if the "build" directory already exists.
-if [[ -d "$PEP_MACOS_ROOT_DIR/$BUILD_DIR" ]]; then
-    # If CI_COMMIT_REF_NAME is not "local", exit with an error message.
-    if [[ "$CI_COMMIT_REF_NAME" != "local" ]]; then
-        echo "Build directory $PEP_MACOS_ROOT_DIR/$BUILD_DIR already exists."
-    else
-        echo "Performing incremental build on existing build directory."
-    fi
-fi
-
 if [[ "$CI_COMMIT_REF_NAME" == "local" ]]; then
-  LOCAL_BUILD_INFRA=${1:-local}
-  LOCAL_BUILD_TYPE=${2:-Debug}
-  MACOS_CMAKE_CONFIGURE_PRESET="$(tr "[:upper:]" "[:lower:]" <<< "$LOCAL_BUILD_INFRA"_"$LOCAL_BUILD_TYPE")"
-  MACOS_CMAKE_BUILD_PRESET="${MACOS_CMAKE_CONFIGURE_PRESET}_build"
-  conan install ./ --build=missing -s:a build_type="$LOCAL_BUILD_TYPE"
+  BUILD_TYPE_DIR="${1:-Debug}"
 else
-  export CC=clang CXX=clang++
-
-  CMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE:-Release}"
-
-  conan remote add pep-local-recipes \
-    "$PEP_MACOS_ROOT_DIR/docker-build/builder/conan/local-recipes" \
-    --type local-recipes-index \
-    --force
-
-  echo "Installing Conan packages."
-
-  # We set build_type for build requirements as well (with :a), because macdeployqt copies its own dylibs,
-  #  see https://github.com/conan-io/conan-center-index/issues/22693
-  conan install "$PEP_MACOS_ROOT_DIR" \
-    --lockfile="$PEP_MACOS_ROOT_DIR/docker-build/builder/conan/conan-ci.lock" \
-    --profile:all="$PEP_MACOS_ROOT_DIR/docker-build/builder/conan/conan_profile" \
-    --build=missing \
-    -s:a build_type="$CMAKE_BUILD_TYPE" \
-    -o "&:with_assessor=True" \
-    -o "&:with_servers=False" \
-    -o "&:with_castor=False" \
-    -o "&:with_tests=False" \
-    -o "&:with_benchmark=False" \
-    -o "&:custom_build_folder=True" \
-    --output-folder="./$BUILD_DIR/" && true
-  conan_error="$?"
-
-  # Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
-  conan remote remove pep-local-recipes
-
-  if [[ "$conan_error" != 0 ]]; then
-    exit "$conan_error"
-  fi
-
-  if [[ -n "$CLEAN_CONAN" ]]; then
-    echo 'Cleaning Conan cache.'
-    # Remove old recipes
-    conan remove '*' --lru 4w --confirm
-    # Remove old packages
-    conan remove '*:*' --lru 4w --confirm
-    # Remove some temporary build files (excludes binaries)
-    conan cache clean --build --temp
-  fi
-
-  echo "Configuring CMake project."
-  MACOS_CMAKE_CONFIGURE_PRESET="conan-$(echo "$CMAKE_BUILD_TYPE" | tr '[:upper:]' '[:lower:]')"
-  MACOS_CMAKE_BUILD_PRESET=$MACOS_CMAKE_CONFIGURE_PRESET
+  BUILD_TYPE_DIR="."
 fi
-
-BUILD_TYPE_DIR="${LOCAL_BUILD_TYPE:-.}"
 
 # Apparently conan scripts use unset variables, so temporarily disable check for this
 set +u
-# Add macdeployqt, cmake etc. to PATH
+# Add macdeployqt etc. to PATH
 # Suppress shellcheck
 # shellcheck source=/dev/null
 . "$PEP_MACOS_ROOT_DIR/$BUILD_DIR/$BUILD_TYPE_DIR/generators/conanbuild.sh"
 set -u
 
-ENABLE_DEPRECATION_ERRORS="${ENABLE_DEPRECATION_ERRORS:-true}"
-BUILD_GO_SERVERS="${BUILD_GO_SERVERS:-OFF}"
-
-# Let Ninja continue after build errors (-k 0) if wanted, see BUILD_KEEP_GOING in .gitlab-ci.yml
-keep_going_args=()
-if [ "${BUILD_KEEP_GOING:-}" = yes ] || [ "${BUILD_KEEP_GOING_ALWAYS:-}" = yes ]; then
-  keep_going_args=(-- -k 0)
-fi
-
-cmake -S "$PEP_MACOS_ROOT_DIR" --preset "$MACOS_CMAKE_CONFIGURE_PRESET" \
-  -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-  -DBUILD_GO_SERVERS="$BUILD_GO_SERVERS" \
-  -DENABLE_OAUTH_TEST_USERS=OFF \
-  -DDEPRECATED_WARNINGS_AS_ERROR="$ENABLE_DEPRECATION_ERRORS"
-
 echo "Removing old macOS_artifacts folder."
 rm -rf "$PEP_MACOS_ROOT_DIR/$BUILD_DIR/macOS_artifacts"
-
-# Build pepLogon utility.
-echo "Building pepLogon utility."
-(
-  cd "$PEP_MACOS_ROOT_DIR"
-  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepLogon ${keep_going_args[@]+"${keep_going_args[@]}"}
-)
-
-# Build PEP Assessor.
-echo "Building PEP Assessor."
-(
-  cd "$PEP_MACOS_ROOT_DIR"
-  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepAssessor ${keep_going_args[@]+"${keep_going_args[@]}"}
-)
 
 PEP_MACOS_ASSESSOR_APP_NAME="PEP Assessor"
 PEP_MACOS_ASSESSOR_APP_BUILD_ROOT_DIR="$PEP_MACOS_ROOT_DIR/$BUILD_DIR/macOS_artifacts/assessor_app/$PEP_MACOS_ASSESSOR_APP_NAME.app"
@@ -208,13 +117,6 @@ create_cli_app() {
         "$PEP_MACOS_ROOT_DIR/installer/macOS/macos-create-info-plist.sh" "$app_name"
     )
 }
-
-# Build pepcli utility.
-echo "Building pepcli utility."
-(
-  cd "$PEP_MACOS_ROOT_DIR"
-  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepcli ${keep_going_args[@]+"${keep_going_args[@]}"}
-)
 
 PEP_MACOS_CLI_APP_NAME="PEP Command Line Interface"
 PEP_MACOS_CLI_APP_BUILD_ROOT_DIR="$PEP_MACOS_ROOT_DIR/$BUILD_DIR/macOS_artifacts/cli_app/$PEP_MACOS_CLI_APP_NAME.app"

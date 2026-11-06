@@ -44,7 +44,7 @@ variables:
   # For CI scripts
   CLEAN_CONAN: 1
 
-  # Defaults, used in .configure-conan-and-cmake
+  # Defaults, used in .conan-install
   CONAN_FLAGS:
     -o &:with_assessor=False
     -o &:with_castor=$WITH_CASTOR
@@ -563,8 +563,10 @@ retrieve-lockfile:
     paths:
       - ./docker-build/builder/conan/conan-ci.lock
 
-.configure-conan-and-cmake: &configure-conan-and-cmake
-  # Do not build dependencies, should already be built in docker-build
+# Installs Conan packages for $CMAKE_BUILD_TYPE, with the extra arguments in $CONAN_FLAGS.
+# Docker jobs don't build dependencies: they should already be built in docker-build.
+#language=bash
+.conan-install: &conan-install
   - concurrency_option_conan=""
   - |
     if [ -n "$concurrency_limit" ]; then
@@ -584,7 +586,18 @@ retrieve-lockfile:
     -o "&:with_tests=$WITH_TESTS"
     -o "&:with_benchmark=$WITH_BENCHMARK"
     -o "&:custom_build_folder=True"
-    --output-folder=./$BUILD_DIRECTORY/
+    --output-folder=./$BUILD_DIRECTORY/ && true
+  - conan_error="$?"
+  # Remove remote such that jobs on (non-Docker) runners that don't have the local-recipes folder don't fail
+  - conan remote remove pep-local-recipes
+  - |
+    if [[ "$conan_error" != 0 ]]; then
+      exit "$conan_error"
+    fi
+
+# Configures CMake (in preset conan-$build_type_lower) after .conan-install
+#language=bash
+.cmake-configure: &cmake-configure
   - build_type_lower=$(echo $CMAKE_BUILD_TYPE | tr '[:upper:]' '[:lower:]')
   - *set-enable-deprecation-errors
   - >
@@ -599,6 +612,10 @@ retrieve-lockfile:
     -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
     -DPEP_WEBLIB_USE_WSS=${PEP_WEBLIB_USE_WSS:-OFF}
     -DENABLE_COVERAGE=${ENABLE_COVERAGE:-OFF}
+
+.configure-conan-and-cmake: &configure-conan-and-cmake
+  - *conan-install
+  - *cmake-configure
 
 .ubuntu-build-base:
   <<: *ccache-configuration
@@ -1183,24 +1200,64 @@ test-windows-debug:
 
 #################### MacOS ####################
 
-macos-client:
-  <<: *ccache-configuration
+# Unlike in Docker, Conan dependencies are built on the runner itself (when not cached), using our profile.
+# We set build_type for build requirements as well (-s:b), because macdeployqt copies its own dylibs,
+# see https://github.com/conan-io/conan-center-index/issues/22693
+#language=bash
+.macos-conan-install: &macos-conan-install
+  - export CMAKE_COLOR_DIAGNOSTICS=ON  # Let CMake pass -fcolor-diagnostics
+  - export CLICOLOR_FORCE=1  # Colored output for e.g. Conan & Ninja (otherwise -fcolor-diagnostics still won't work)
+  - CONAN_FLAGS="--profile:all=./docker-build/builder/conan/conan_profile --build=missing -s:b build_type=$CMAKE_BUILD_TYPE $CONAN_FLAGS"
+  - *conan-install
+  - |
+    if [[ -n "$CLEAN_CONAN" ]]; then
+    echo 'Cleaning Conan cache.'
+    # Remove old recipes
+    conan remove '*' --lru 4w --confirm
+    # Remove old packages
+    conan remove '*:*' --lru 4w --confirm
+    # Remove some temporary build files (excludes binaries)
+    conan cache clean --build --temp
+    fi
+  # Put cmake, ninja, macdeployqt etc. in PATH
+  - . "./$BUILD_DIRECTORY/generators/conanbuild.sh"
+
+.macos-build-base:
   stage: build
+  needs:
+    - job: retrieve-lockfile
+      optional: true
   parallel:
     matrix:
       - ARCH: [x86_64, arm64]
   tags:
     - macos-${ARCH}
-  needs:
-    - job: retrieve-lockfile
-      optional: true
   variables:
-    BUILD_GO_SERVERS: "off"
+    HTTPSERVER_WITH_TLS: "ON"
+
+macos-client:
+  extends: .macos-build-base
+  <<: *ccache-configuration
+  variables:
+    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
+    CONAN_FLAGS: >-
+      -o &:with_assessor=True
+      -o &:with_servers=False
+      -o &:with_castor=False
+    WITH_TESTS: "False"
+    WITH_BENCHMARK: "False"
+    BUILD_GO_SERVERS: "OFF"
+    VERIFY_HEADERS_STANDALONE: "OFF"
   rules: *run-in-every-pipeline
+  #language=bash
   script:
     - *checkout-docker-build-script-sh-steps
-    - *set-enable-deprecation-errors
-    - ENABLE_DEPRECATION_ERRORS="$enable_deprecation_errors" ./ci_cd/macos-ci-build-app-bins.sh
+    - export CC=clang CXX=clang++
+    - *macos-conan-install
+    - *cmake-configure
+    - *set-keep-going-option
+    - cmake --build --preset conan-$build_type_lower --target pepLogon pepAssessor pepcli $keep_going_option
+    - ./ci_cd/macos-ci-build-app-bins.sh
   after_script:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
     - *ccache-print
@@ -1210,24 +1267,23 @@ macos-client:
       - $BUILD_DIRECTORY/macOS_${ARCH}_bins.zip
 
 macos-debug:
-  stage: build
-  needs:
-    - job: retrieve-lockfile
-      optional: true
+  extends: .macos-build-base
   rules:
     - if: $BUILD_ALL_TARGETS != ''
       when: on_success
     - when: manual
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
       allow_failure: true
-  parallel:
-    matrix:
-      - ARCH: [x86_64, arm64]
-  tags:
-    - macos-${ARCH}
   variables:
     CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    WITH_CASTOR: "True"
+    CONAN_FLAGS: >-
+      -o &:with_assessor=True
+      -o &:with_servers=True
+      -o &:with_castor=True
+    WITH_TESTS: "True"
+    WITH_BENCHMARK: "True"
+    BUILD_GO_SERVERS: "ON"
+    VERIFY_HEADERS_STANDALONE: "ON"
     MEM_ANALYSIS_TOOL: "leaks"
     TESTS: >-
       $UNIT_TESTS_BASE
@@ -1236,56 +1292,10 @@ macos-debug:
   #language=bash
   script:
     - *checkout-docker-build-script-sh-steps
-    - export CMAKE_COLOR_DIAGNOSTICS=ON  # Let CMake pass -fcolor-diagnostics
-    - export CLICOLOR_FORCE=1  # Colored output for e.g. Conan & Ninja (otherwise -fcolor-diagnostics still won't work)
-    - >
-      conan remote add pep-local-recipes
-      "$CI_PROJECT_DIR/docker-build/builder/conan/local-recipes"
-      --type local-recipes-index
-      --force
-    - >
-      conan install .
-      --lockfile="docker-build/builder/conan/conan-ci.lock"
-      --profile:all="docker-build/builder/conan/conan_profile"
-      --build=missing
-      -s:a build_type="$CMAKE_BUILD_TYPE"
-      -o "&:with_assessor=True"
-      -o "&:with_servers=True"
-      -o "&:with_castor=$WITH_CASTOR"
-      -o "&:with_tests=True"
-      -o "&:with_benchmark=True"
-      -o "&:custom_build_folder=True"
-      --output-folder="./$BUILD_DIRECTORY/" && true
-    - conan_error="$?"
-    # Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
-    - conan remote remove pep-local-recipes
-    - |
-      if [[ "$conan_error" != 0 ]]; then
-        exit "$conan_error"
-      fi
-    - |
-      if [[ -n "$CLEAN_CONAN" ]]; then
-      echo 'Cleaning Conan cache.'
-      # Remove old recipes
-      conan remove '*' --lru 4w --confirm
-      # Remove old packages
-      conan remove '*:*' --lru 4w --confirm
-      # Remove some temporary build files (excludes binaries)
-      conan cache clean --build --temp
-      fi
-    # Put cmake & ninja in PATH
-    - . "./$BUILD_DIRECTORY/generators/conanbuild.sh"
-    - *set-enable-deprecation-errors
-    - >
-      cmake --preset conan-debug
-      -DCMAKE_C_COMPILER_LAUNCHER=ccache
-      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-      -DBUILD_GO_SERVERS=ON
-      -DENABLE_OAUTH_TEST_USERS=OFF
-      -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
-      -DVERIFY_HEADERS_STANDALONE=ON
+    - *macos-conan-install
+    - *cmake-configure
     - *set-keep-going-option
-    - cmake --build --preset conan-debug $keep_going_option
+    - cmake --build --preset conan-$build_type_lower $keep_going_option
     - *run-tests
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
   artifacts:
