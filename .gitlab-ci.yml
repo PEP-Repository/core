@@ -252,24 +252,18 @@ workflow:
     # Manual, scheduled and triggered runs still get a branch pipeline.
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_OPEN_MERGE_REQUESTS && $CI_COMMIT_REF_PROTECTED != "true"
       when: never
-
-    # Every rule below runs the pipeline (MR pipeline for MRs from unprotected branches, branch pipeline otherwise).
-    # Note that CI_COMMIT_BRANCH is empty in MR pipelines, use e.g. ${CI_COMMIT_BRANCH:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
-    # for the branch name. They only differ in auto-cancel and keep-going behaviour, and the pipeline name.
-
-    # MR pipelines: same as the rules further below for ready MRs and feature branches, but also set the pipeline name.
-    # Inputs and pipeline variables can't be given to MR pipelines, so they never match the linted rule, and a draft MR
-    # always auto-cancels (unless AUTO_CANCEL_ON_JOB_FAILURE is set in the project's CI/CD settings).
+    # Ready MR: build everything, keep going after compile errors, and always run all jobs including linter and coverage (if C++ code changed)
     - if: *mr-ready
       variables:
+        BUILD_ALL_TARGETS: 'yes'
         BUILD_KEEP_GOING_ALWAYS: 'yes'
         MR_PIPELINE_NAME: 'READY: $CI_MERGE_REQUEST_TITLE'
+    # Draft MR: build essentials, fail fast, cancel as soon as a job fails
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $AUTO_CANCEL_ON_JOB_FAILURE == "yes"
       auto_cancel:
         on_job_failure: all
       variables:
         MR_PIPELINE_NAME: 'DRAFT: $CI_MERGE_REQUEST_TITLE'
-
     # Main and linting pipelines: report all failures, so never auto-cancel and always keep going.
     # A separate variable, as the Run pipeline form passes BUILD_KEEP_GOING (default 'no'), overriding workflow variables.
     - if: *always-linted-branches
