@@ -218,7 +218,7 @@ variables:
   # Use color for gtest output
   GTEST_COLOR: 1
 
-# Pipeline for a non-draft MR: runs same jobs as main, linter and coverage.
+# Pipeline for a non-draft MR: runs same jobs as main, including linter and coverage.
 # Marking an MR ready doesn't start a pipeline: push or use "Run pipeline".
 # TODO: Trigger a pipeline when an MR is marked ready (can be done with a webhook to trigger a pipeline via the API)
 .mr-ready: &mr-ready '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_DRAFT != "true"'
@@ -674,6 +674,8 @@ ubuntu-lts-debug:
       variables:
         ENABLE_COVERAGE: "ON"
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+      variables:
+        ENABLE_COVERAGE: "ON"
     - if: *mr-ready
       variables:
         ENABLE_COVERAGE: "ON"
@@ -745,6 +747,8 @@ ubuntu-lts-debug:
     - 'echo "Line Coverage: ${line_pct}%"'
   coverage: '/Line Coverage: (\d+\.?\d*)%/'
   artifacts:
+    # Links to the report from the MR page
+    expose_as: 'Coverage report'
     paths:
       - htmlcov/
     reports:
@@ -764,7 +768,7 @@ pages:
     - job: ubuntu-lts-debug
       artifacts: true
   rules:
-    - if: "'$[[ inputs.test_coverage ]]' == 'coverage' && $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   #language=sh
   script:
     - if [ ! -f htmlcov/unit/index.html ] || [ ! -f htmlcov/combined/index.html ]; then
