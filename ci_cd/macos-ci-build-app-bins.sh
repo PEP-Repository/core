@@ -102,6 +102,12 @@ set -u
 ENABLE_DEPRECATION_ERRORS="${ENABLE_DEPRECATION_ERRORS:-true}"
 BUILD_GO_SERVERS="${BUILD_GO_SERVERS:-OFF}"
 
+# Let Ninja continue after build errors (-k 0) if wanted, see BUILD_KEEP_GOING in .gitlab-ci.yml
+keep_going_args=()
+if [ "${BUILD_KEEP_GOING:-}" = yes ] || [ "${BUILD_KEEP_GOING_ALWAYS:-}" = yes ]; then
+  keep_going_args=(-- -k 0)
+fi
+
 cmake -S "$PEP_MACOS_ROOT_DIR" --preset "$MACOS_CMAKE_CONFIGURE_PRESET" \
   -DCMAKE_C_COMPILER_LAUNCHER=ccache \
   -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
@@ -116,14 +122,14 @@ rm -rf "$PEP_MACOS_ROOT_DIR/$BUILD_DIR/macOS_artifacts"
 echo "Building pepLogon utility."
 (
   cd "$PEP_MACOS_ROOT_DIR"
-  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepLogon
+  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepLogon ${keep_going_args[@]+"${keep_going_args[@]}"}
 )
 
 # Build PEP Assessor.
 echo "Building PEP Assessor."
 (
   cd "$PEP_MACOS_ROOT_DIR"
-  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepAssessor
+  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepAssessor ${keep_going_args[@]+"${keep_going_args[@]}"}
 )
 
 PEP_MACOS_ASSESSOR_APP_NAME="PEP Assessor"
@@ -207,7 +213,7 @@ create_cli_app() {
 echo "Building pepcli utility."
 (
   cd "$PEP_MACOS_ROOT_DIR"
-  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepcli
+  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepcli ${keep_going_args[@]+"${keep_going_args[@]}"}
 )
 
 PEP_MACOS_CLI_APP_NAME="PEP Command Line Interface"
