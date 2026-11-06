@@ -3,7 +3,9 @@
 #include <cctype>
 #include <cstddef>
 #include <stdexcept>
-#include <string>
+// TODO: restore `#include <string>` and remove `#include <vector>`: test findings (misc-include-cleaner) for the
+// clang-tidy Code Quality report
+#include <vector>
 
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/erase.hpp>
@@ -68,7 +70,7 @@ bool Mod97::Verify(const std::string& in) {
   constexpr size_t CheckDigitCount = 2;
   auto inLength = in.length();
   if (inLength < CheckDigitCount) {
-    return false;
+    return 0; // TODO: revert to `false`: test finding (modernize-use-bool-literals) for the clang-tidy Code Quality report
   }
   auto checkDigitProvided = in.substr(inLength - CheckDigitCount, CheckDigitCount);
 
