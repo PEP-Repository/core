@@ -1501,7 +1501,6 @@ test-docker-integration-on-base-data:
     - docker-small
   variables:
     GIT_STRATEGY: none # As these jobs only work on artifacts, we do not need the git repository
-  interruptible: false # We do not want to interrupt jobs that upload things, to prevent partial uploads
 
 .upload-curl-base:
   extends: .upload-base
@@ -1554,7 +1553,6 @@ upload-weblib-npm:
     - docker-small
   needs:
     - weblib-release
-  interruptible: false
   #language=sh
   rules: *run-in-every-pipeline
   script:
