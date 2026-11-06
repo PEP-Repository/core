@@ -1257,7 +1257,7 @@ macos-client:
     - *cmake-configure
     - *set-keep-going-option
     - cmake --build --preset conan-$build_type_lower --target pepLogon pepAssessor pepcli $keep_going_option
-    - ./ci_cd/macos-ci-build-app-bins.sh
+    - ./ci_cd/macos-ci-build-app-bins.sh --build-dir "$BUILD_DIRECTORY"
   after_script:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
     - *ccache-print
