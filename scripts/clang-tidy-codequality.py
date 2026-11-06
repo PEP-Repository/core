@@ -36,19 +36,14 @@ def line_number(path: Path, offset: int) -> int:
   return bisect.bisect_right(line_starts_cache[path], offset)
 
 
-def shorten(text: str, max_length: int = 80) -> str:
-  """Text on a single line, truncated to max_length."""
-  text = " ".join(text.split())
-  return text if len(text) <= max_length else text[:max_length - 1] + "…"
-
-
 def describe_fix(replacements: list[dict]) -> str:
   """The automatic fix that clang-tidy suggests, e.g. "add `#include <string>`"."""
   parts = []
   for replacement in replacements:
     offset, length = replacement.get("Offset", 0), replacement.get("Length", 0)
     old = content(Path(replacement["FilePath"]).resolve())[offset:offset + length].decode(errors="replace")
-    old, new = shorten(old), shorten(replacement.get("ReplacementText", ""))
+    # On a single line, with whitespace collapsed
+    old, new = " ".join(old.split()), " ".join(replacement.get("ReplacementText", "").split())
     if old and new:
       parts.append(f"replace `{old}` with `{new}`")
     elif old:
