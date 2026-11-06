@@ -81,6 +81,11 @@ run_peplogon() {
     return 0
 }
 
+# Warn about Intel Mac support ending. Text duplicated from pep::Application::MacOsX86DeprecationWarning: keep in sync
+if [ "$(uname -m)" = "x86_64" ]; then
+    show_alert "Intel Mac support ending" "Support for PEP on Intel (x86) Macs will be discontinued on March 1, 2027. After that date, PEP software will only be available for Apple silicon Macs."
+fi
+
 # Use Sparkle to check for updates
 if "$SPARKLE_EXECUTABLE" "$PEP_APP_DIR" --probe; then
     # Ask the user if they want to install the updates

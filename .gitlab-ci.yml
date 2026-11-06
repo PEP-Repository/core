@@ -204,13 +204,33 @@ variables:
   # Use color for gtest output
   GTEST_COLOR: 1
 
+# Pipeline for a non-draft MR: runs same jobs as main, linter and coverage.
+# Marking an MR ready doesn't start a pipeline: push or use "Run pipeline".
+# TODO: Trigger a pipeline when an MR is marked ready (can be done with a webhook to trigger a pipeline via the API)
+.mr-ready: &mr-ready '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_DRAFT != "true"'
+
+# For jobs without conditions. Every job needs `rules:`, as jobs without them are left out of MR pipelines
+# as they default to `only: [branches, tags]` (see https://docs.gitlab.com/ci/yaml/deprecated_keywords/#onlyrefs--exceptrefs).
+# The analyse-source job checks this with ci_cd/check-ci-yml.py.
+.run-in-every-pipeline: &run-in-every-pipeline
+  - when: on_success
+
 # Applies to whole pipeline
 workflow:
   rules:
-    # Do not create MR pipelines (see https://docs.gitlab.com/ee/ci/pipelines/merge_request_pipelines.html ).
-    # As soon as we use one `rules:` tag in a job, that job would run on any MR pipeline, unless specified otherwise.
-    # Prevent that by disabling the whole pipeline in this case
-    - if: $CI_PIPELINE_SOURCE != 'merge_request_event'
+    # MR from a protected branch (main, stable, release-X.Y): no MR pipeline, it keeps branch pipelines,
+    # as their publish/deploy jobs need protected variables, which MR pipelines don't get
+    - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_PROTECTED == "true"
+      when: never
+    # MR from any other branch: MR pipeline. Note that CI_COMMIT_BRANCH is empty in MR pipelines,
+    # use e.g. ${CI_COMMIT_BRANCH:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} for the branch name
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # Push to an unprotected branch with an open MR: skip, the MR pipeline covers it.
+    # Manual, scheduled and triggered runs still get a branch pipeline.
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_OPEN_MERGE_REQUESTS && $CI_COMMIT_REF_PROTECTED != "true"
+      when: never
+    # Everything else (branches without an MR, tags, schedules, ...)
+    - when: always
 
 include:
   - local: /ci_cd/pep-foss-ci-settings.yml
@@ -231,9 +251,14 @@ include:
     - if: '$CI_COMMIT_REF_NAME =~ /^binaries_for_[0-9]+$/'
       when: never
 
-# Main, stable, release and hotfix branches are always linted, regardless of the autolinting input
+# Always linted, regardless of the autolinting input: main, stable, release-X.Y, hotfix branches, and ready (non-draft) MRs
+# (duplicates .mr-ready, keep in sync)
 .always-linted-branches: &always-linted-branches
-  $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH || $CI_COMMIT_REF_NAME == $PEP_FOSS_TESTING_BRANCH || $CI_COMMIT_REF_NAME =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN || $CI_COMMIT_REF_NAME =~ $PEP_FOSS_HOTFIX_BRANCH_PATTERN
+  $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH ||
+  $CI_COMMIT_REF_NAME == $PEP_FOSS_TESTING_BRANCH ||
+  $CI_COMMIT_REF_NAME =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN ||
+  $CI_COMMIT_REF_NAME =~ $PEP_FOSS_HOTFIX_BRANCH_PATTERN ||
+  ($CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_DRAFT != "true")
 
 # Must be last in rules, as it will not run more rules
 .set-enable-linter-and-terminate-rules:
@@ -347,9 +372,11 @@ analyse-source:
   variables:
     GIT_SUBMODULE_STRATEGY: none
     GIT_DEPTH: 1
+  rules: *run-in-every-pipeline
   before_script:
-    - apk add --no-cache bash git shellcheck check-jsonschema
+    - apk add --no-cache bash git shellcheck check-jsonschema py3-yaml
   script:
+    - ./ci_cd/check-ci-yml.py
     - ./scripts/analyse-scripts.sh
     - ./scripts/analyse-source.sh
     - ./scripts/validate-config.sh ./config/local/
@@ -608,6 +635,9 @@ ubuntu-lts-debug:
       variables:
         ENABLE_COVERAGE: "ON"
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+    - if: *mr-ready
+      variables:
+        ENABLE_COVERAGE: "ON"
   before_script:
     - !reference [.ubuntu-build-base, before_script]
     - |
@@ -722,6 +752,7 @@ ubuntu-lts-debug-without-castor:
     - .ubuntu-lts-debug-settings
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+    - if: *mr-ready
   variables:
     WITH_CASTOR: "False"
     TESTS: >-
@@ -889,6 +920,7 @@ ubuntu-lts-release-without-castor:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
     # Needed by build-tutorial-docker-image
     - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
+    - if: *mr-ready
   variables:
     BUILD_GO_SERVERS: "off"
     WITH_CASTOR: "False"
@@ -954,6 +986,7 @@ ubuntu-rolling-release:
     - .ubuntu-rolling-settings
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+    - if: *mr-ready
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
     VERIFY_HEADERS_STANDALONE: "on"
@@ -969,6 +1002,7 @@ pep-connector:
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   tags:
     - docker-small
+  rules: *run-in-every-pipeline
   script:
     # Get major and minor version from version.json
     - PEP_VERSION_MAJOR=$(./scripts/parse-version.sh get-major version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
@@ -998,6 +1032,7 @@ flatpak:
     - docker
     - fast
   image: ${BUILDER_IMAGE_FLATPAK}
+  rules: *run-in-every-pipeline
   script:
     - *set_concurrency_limit
     - |
@@ -1031,6 +1066,7 @@ windows-client:
   tags:
     - windows-parallel
   #language=powershell
+  rules: *run-in-every-pipeline
   script:
     - *checkout-docker-build-script-powershell-steps
     # Explicitly invoke cmd with call for proper error propagation when statements follow (conditional) exit /B inside if (see !1744)
@@ -1097,6 +1133,7 @@ test-windows-debug:
     # May still run in parallel with build jobs.
     - windows-sequential
   needs: [windows-debug]
+  rules: *run-in-every-pipeline
   script:
     - *run-tests-windows
     - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
@@ -1119,6 +1156,7 @@ macos-client:
       optional: true
   variables:
     BUILD_GO_SERVERS: "off"
+  rules: *run-in-every-pipeline
   script:
     - *checkout-docker-build-script-sh-steps
     - *set-enable-deprecation-errors
@@ -1251,6 +1289,7 @@ weblib-release:
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
     PEP_WEBLIB_USE_WSS: "ON"
+  rules: *run-in-every-pipeline
 
 weblib-integration:
   extends:
@@ -1280,6 +1319,7 @@ docker-images:
     - ubuntu-lts-release
     - pep-connector
   #language=sh
+  rules: *run-in-every-pipeline
   script:
     - *docker_login
     - docker buildx build --pull
@@ -1329,6 +1369,7 @@ build-tutorial-docker-image:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
     # Needed by publish-tutorial-image
     - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
+    - if: *mr-ready
   needs:
     - ubuntu-lts-release-without-castor
   #language=sh
@@ -1359,6 +1400,7 @@ test-pep-services-image:
     # Use tests in $STAGING_DIRECTORY from artifacts
     - ubuntu-lts-release
   #language=sh
+  rules: *run-in-every-pipeline
   script:
     # First make sure included apps like pepcli work
     - /app/pepcli --version
@@ -1379,6 +1421,7 @@ test-docker-integration:
   needs:
     - job: docker-images
       artifacts: false
+  rules: *run-in-every-pipeline
   script:
     - *docker_login
     # We only run the s3-roundtrip test on the second run, when we have already created the integration_data directory,
@@ -1398,6 +1441,7 @@ test-docker-integration-on-base-data:
   needs:
     - job: docker-images
       artifacts: false
+  rules: *run-in-every-pipeline
   script:
     - *docker_login
     - foss_dir="$PWD"
@@ -1428,6 +1472,7 @@ upload-wix-library:
   extends: .upload-curl-base
   needs: [windows-client]
   # fully single quoted, as ':' token is used
+  rules: *run-in-every-pipeline
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
@@ -1444,6 +1489,7 @@ upload-macos-client:
       parallel:
         matrix:
           - ARCH: ['$[[ matrix.ARCH ]]']
+  rules: *run-in-every-pipeline
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
@@ -1453,6 +1499,7 @@ upload-macos-client:
 upload-flatpak:
   extends: .upload-curl-base
   needs: [flatpak]
+  rules: *run-in-every-pipeline
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
@@ -1468,6 +1515,7 @@ upload-weblib-npm:
     - weblib-release
   interruptible: false
   #language=sh
+  rules: *run-in-every-pipeline
   script:
     # Add Node.js to PATH
     - . ~/.profile
@@ -1515,6 +1563,7 @@ retag-pep-docker-images:
     - job: test-docker-integration-on-base-data
       artifacts: false
   #language=sh
+  rules: *run-in-every-pipeline
   script:
     - *docker_login
     - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
@@ -1590,12 +1639,13 @@ update-foss-submodule-in-dtap:
   rules:
     - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
       when: never
-    - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_HOTFIX_BRANCH_PATTERN
+    - if: $CI_COMMIT_REF_NAME =~ $PEP_FOSS_HOTFIX_BRANCH_PATTERN
       when: manual
       allow_failure: true
     - !reference [.skip-for-binaries-for-xyz, rules]
     # Not for tag pipelines
     - if: $CI_COMMIT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   tags:
     - docker-small
   image: alpine:latest
@@ -1624,17 +1674,20 @@ update-foss-submodule-in-dtap:
       --shallow-submodules
       "$CI_SERVER_URL/$DTAP_PROJ.git" dtap
 
+    # CI_COMMIT_BRANCH is empty in MR pipelines
+    - 'foss_branch="${CI_COMMIT_BRANCH:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}"'
+
     # Checkout the branch in dtap corresponding to current foss branch or create it
     - cd dtap
     - new_branch=''
     # Make sure we actually create a tracking branch in this shallow clone
-    - git remote set-branches origin "$CI_COMMIT_BRANCH"
+    - git remote set-branches origin "$foss_branch"
     # Does the remote branch exist?
-    - if git fetch origin "$CI_COMMIT_BRANCH"; then
-    -   git switch "$CI_COMMIT_BRANCH"
+    - if git fetch origin "$foss_branch"; then
+    -   git switch "$foss_branch"
     - else
     #   Create new branch from default branch
-    -   git checkout -b "$CI_COMMIT_BRANCH"
+    -   git checkout -b "$foss_branch"
     -   new_branch=yes
     - fi
 
@@ -1644,14 +1697,14 @@ update-foss-submodule-in-dtap:
     # Check if the foss submodule is already on the commit we want to update it to
     - if [ "$(git rev-parse HEAD)" != "$CI_COMMIT_SHA" ]; then
     #   Update the pep/dtap repo's pep/foss submodule to this commit
-    -   git remote set-branches origin "$CI_COMMIT_BRANCH"
-    -   git fetch origin "$CI_COMMIT_BRANCH"
-    -   git switch "$CI_COMMIT_BRANCH"
+    -   git remote set-branches origin "$foss_branch"
+    -   git fetch origin "$foss_branch"
+    -   git switch "$foss_branch"
     #   Is the commit SHA from this pipeline still the tip of our branch?
     -   |
         tip="$(git rev-parse HEAD)"
         if [ "$tip" != "$CI_COMMIT_SHA" ]; then
-          >&2 echo "This ($CI_COMMIT_SHA) is not the latest $CI_PROJECT_NAME commit for $CI_COMMIT_BRANCH, that is $tip"
+          >&2 echo "This ($CI_COMMIT_SHA) is not the latest $CI_PROJECT_NAME commit for $foss_branch, that is $tip"
           >&2 echo 'Skipping dtap update'
           exit 1 # Dont skip silently, so that follow-up dtap pipeline wont run with wrong commit
         fi
@@ -1661,13 +1714,13 @@ update-foss-submodule-in-dtap:
     -   |
         git commit -m "FOSS submodule update for pipeline ${CI_PIPELINE_ID}
         ${CI_JOB_URL}"
-    -   git push origin "$CI_COMMIT_BRANCH" -o ci.skip
+    -   git push origin "$foss_branch" -o ci.skip
     -   echo "Made commit at ${CI_SERVER_URL}/$DTAP_PROJ/-/commit/$(git rev-parse HEAD)"
 
     - elif [ -n "$new_branch" ]; then
     -   cd ..
     #   Push new branch using existing commit
-    -   git push --set-upstream origin "$CI_COMMIT_BRANCH" -o ci.skip
+    -   git push --set-upstream origin "$foss_branch" -o ci.skip
 
     - else
     #   The dtap repo's pep/foss submodule is already on this commit
@@ -1689,4 +1742,6 @@ trigger-dtap-pipeline:
       when: never
     - !reference [ .skip-for-binaries-for-xyz, rules ]
     - if: $CI_COMMIT_BRANCH
+      when: on_success
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: on_success
