@@ -600,6 +600,7 @@ retrieve-lockfile:
     -DCMAKE_C_COMPILER_LAUNCHER=ccache
     -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
     -DENABLE_CLANG_TIDY="$ENABLE_LINTER"
+    -DCMAKE_CXX_CLANG_TIDY_EXPORT_FIXES_DIR="$CI_PROJECT_DIR/$BUILD_DIRECTORY/clang-tidy-fixes"
     -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
     -DENABLE_OAUTH_TEST_USERS=OFF
     -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
@@ -645,11 +646,15 @@ retrieve-lockfile:
     - *run-tests
   after_script:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
+    # Linter findings, shown on the MR page. Also when the job failed: reports are uploaded regardless.
+    - python3 scripts/clang-tidy-codequality.py "$BUILD_DIRECTORY/clang-tidy-fixes" . > gl-code-quality-report.json
+      || echo "Could not create the Code Quality report, see above"
     - *stage-artifacts
     - *ccache-print
   artifacts:
     reports:
       junit: temp/*.xml
+      codequality: gl-code-quality-report.json
 
 .ubuntu-lts-settings:
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
