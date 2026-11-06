@@ -122,14 +122,14 @@ rm -rf "$PEP_MACOS_ROOT_DIR/$BUILD_DIR/macOS_artifacts"
 echo "Building pepLogon utility."
 (
   cd "$PEP_MACOS_ROOT_DIR"
-  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepLogon ${keep_going_args[@]+"${keep_going_args[@]}"}
+  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepLogon "${keep_going_args[@]}"
 )
 
 # Build PEP Assessor.
 echo "Building PEP Assessor."
 (
   cd "$PEP_MACOS_ROOT_DIR"
-  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepAssessor ${keep_going_args[@]+"${keep_going_args[@]}"}
+  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepAssessor "${keep_going_args[@]}"
 )
 
 PEP_MACOS_ASSESSOR_APP_NAME="PEP Assessor"
@@ -213,7 +213,7 @@ create_cli_app() {
 echo "Building pepcli utility."
 (
   cd "$PEP_MACOS_ROOT_DIR"
-  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepcli ${keep_going_args[@]+"${keep_going_args[@]}"}
+  cmake --build --preset "$MACOS_CMAKE_BUILD_PRESET" --target pepcli "${keep_going_args[@]}"
 )
 
 PEP_MACOS_CLI_APP_NAME="PEP Command Line Interface"
