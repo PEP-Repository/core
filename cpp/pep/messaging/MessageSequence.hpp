@@ -1,7 +1,17 @@
 #pragma once
 
 #include <pep/serialization/Serialization.hpp>
+#include <pep/utils/Shared.hpp>
 #include <rxcpp/rx-lite.hpp>
+
+#include <boost/noncopyable.hpp>
+
+#include <functional>
+#include <memory>
+#include <optional>
+#include <ranges>
+#include <stdexcept>
+#include <string>
 
 namespace pep::messaging {
 
@@ -63,5 +73,81 @@ extern const std::size_t DefaultPageSizeRelease;
 ///                .map([](std::shared_ptr<std::string> page) { return ProcessPage(page); })
 ///                .subscribe(...);
 MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream);
+
+/// \brief A function that produces the next (serialized) message, or nullptr if there are no more messages.
+using MessageProducer = std::function<std::shared_ptr<std::string>()>;
+
+/// \brief Creates MessageBatches containing messages that are produced (one at a time) by a function.
+/// \param produce The function that produces messages. Exceptions that it raises are propagated as errors on the
+///                (inner) MessageSequence for which the message was being produced.
+/// \return MessageBatches that each contain (at most) a single message.
+/// \remark Messages are produced lazily, in the same manner as IStreamToMessageBatches: the function is only invoked when
+///         an (inner) MessageSequence is subscribed to, and the (outer) MessageBatches only produce a followup
+///         MessageSequence after the previous one has been exhausted. The final MessageSequence is empty, since we only
+///         know that there are no more messages after the function has said so.
+MessageBatches ProducerToMessageBatches(MessageProducer produce);
+
+namespace detail {
+
+inline std::shared_ptr<std::string> ToMessage(std::shared_ptr<std::string> message) {
+  if (message == nullptr) {
+    throw std::invalid_argument("Cannot send a null message");
+  }
+  return message;
+}
+
+inline std::shared_ptr<std::string> ToMessage(std::string message) {
+  return MakeSharedCopy(std::move(message));
+}
+
+std::shared_ptr<std::string> ToMessage(auto message) {
+  return ToMessage(Serialization::ToString(std::move(message)));
+}
+
+/// \brief Iterates over a range, producing a (serialized) message for each element.
+template <std::ranges::input_range TRange>
+class RangeMessageProducer : public SharedConstructor<RangeMessageProducer<TRange>>, boost::noncopyable {
+  friend SharedConstructor<RangeMessageProducer>;
+
+  TRange range_;
+  std::optional<std::ranges::iterator_t<TRange>> position_; // Unset until we've started iterating
+
+  explicit RangeMessageProducer(TRange range) : range_(std::move(range)) {}
+
+public:
+  /// \brief Produces a message for the next element of the range.
+  /// \return The message, or nullptr if the range has been exhausted.
+  std::shared_ptr<std::string> next() {
+    // Only start or advance the iterator when a message is requested, so that (e.g.) generators do their work lazily
+    if (position_.has_value()) {
+      ++*position_;
+    }
+    else {
+      position_.emplace(std::ranges::begin(range_));
+    }
+
+    if (*position_ == std::ranges::end(range_)) {
+      return nullptr;
+    }
+    return ToMessage(std::ranges::iter_move(*position_));
+  }
+};
+
+}
+
+/// \brief Creates MessageBatches containing the elements of a range as messages.
+/// \tparam TRange An input range of either serialized messages (std::shared_ptr<std::string> or std::string), or of
+///                instances of a type that can be serialized (using the Serialization class).
+/// \param range The range whose elements to send. Elements are moved out of it as they're needed.
+/// \return MessageBatches that each contain (at most) a single message: see ProducerToMessageBatches.
+/// \remark The range is iterated as messages are needed (lazily, in between event loop iterations), so any data that it
+///         refers to must remain valid until the MessageBatches have been exhausted. A pep::Generator can e.g. keep such
+///         data alive by holding a std::shared_ptr to it in its coroutine frame.
+/// \remark Each element is sent as a separate message, so its (serialized) size must not exceed MaxSizeOfMessage.
+template <std::ranges::input_range TRange>
+MessageBatches RangeToMessageBatches(TRange range) {
+  auto producer = detail::RangeMessageProducer<TRange>::Create(std::move(range));
+  return ProducerToMessageBatches([producer = std::move(producer)] { return producer->next(); });
+}
 
 }
