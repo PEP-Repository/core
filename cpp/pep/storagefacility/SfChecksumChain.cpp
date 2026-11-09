@@ -16,77 +16,43 @@ ChecksumChain::Checkpoint TimestampToCheckpoint(Timestamp timestamp) {
  * 4. participant-a/column-y/timestamp-3
  * 5. participant-a/column-y/timestamp-5
  * 6. participant-b/column-x/timestamp-1
- * Purges of cell versions are processed at the timestamp when the purge cycle was applied: e.g. if
- * participant-a/column-y/timestamp-1 (entry 3) was purged
- * - at timestamp 2, the purge is processed between entries 3 and 4.
- * - at timestamp 4, the purge is processed between entries 4 and 5.
+ * Purges of cell versions are processed after cell version contents.
  */
 class FilesChecksumChain : public SfChecksumChain {
-private:
-  struct PurgeRecord {
-    // Must be ordered deterministically to prevent checksum chain calculation differences, and since...
-    Checkpoint purgedAt; // ... multiple cell versions may have been purged at the same time (as part of the same cycle)...
-    Checkpoint validFrom; // ...we include the (unique) timestamp of the cell version itself
+protected:
+  Result addCell(Result result, Checkpoint max, const FileStore::Cell& cell) const override {
+    /*
+    * Persistent issues:
+    * now:  StorageFacility: checksum for chain files@000001a1ac85aebf changed: 59421e21e74d01be != 59421e21e7fd3db9
+    */
 
-    Checksum checksum() const { return purgedAt ^ validFrom; } // Just a unique value for the purging of this cell version
+    // Let base class implementation (invoke our method to) process cell version(content)s
+    result = SfChecksumChain::addCell(result, max, cell);
 
-    std::strong_ordering operator<=>(const PurgeRecord&) const = default;
-  };
-
-  mutable std::set<PurgeRecord> purgeRecords_;
-
-  Result addPurgeChecksums(Result result, Checkpoint max) const {
-    while (!purgeRecords_.empty()) {
-      auto first = purgeRecords_.begin();
-      const auto& record = *first;
-      if (record.purgedAt > max) {
-        assert(std::ranges::all_of(purgeRecords_, [max](const PurgeRecord& rec) {return rec.purgedAt > max; }));
+    // Process any purges that occurred before the max checkpoint
+    for (const FileStore::CellVersion& version : cell.versions()) {
+      auto versionCheckpoint = TimestampToCheckpoint(version.validFrom);
+      if (versionCheckpoint > max) {
         break;
       }
 
-      result.checksum ^= record.checksum();
-      result.checkpoint = std::max(result.checkpoint, record.purgedAt);
-      purgeRecords_.erase(first);
+      if (version.purgedAt) {
+        auto purgeCheckpoint = TimestampToCheckpoint(*version.purgedAt);
+        if (purgeCheckpoint < max) {
+          auto add = purgeCheckpoint ^ versionCheckpoint; // Just a unique value for the purging of this cell version
+          result.checksum ^= add;
+          result.checkpoint = std::max(result.checkpoint, purgeCheckpoint);
+        }
+      }
     }
-
-    return result;
-  }
-
-protected:
-  Result addCell(Result result, Checkpoint max, const FileStore::Cell& cell) const override {
-    assert(purgeRecords_.empty() && "State wasn't cleared by processing of previous cell");
-
-    // Let base class implementation (invoke our method to) process cell versions
-    result = SfChecksumChain::addCell(result, max, cell);
-    // Process any purges that occurred (after the last cell version but) before the max checkpoint
-    result = this->addPurgeChecksums(result, max);
-    // Discard remaining purge records for this cell, to clear the state for (processing of) the next cell
-    purgeRecords_.clear();
 
     return result;
   }
 
   Result addCellVersion(Result result, const FileStore::CellVersion& version) const override {
-    // Process any purges that occurred before this cell version was stored.
-    // Defensive programming: we subtract 1 from the version's timestamp to process only purges that occurred **before**
-    // this version appeared, even though SF already ensures that purge cycle timestamps don't collide with storage
-    // timestamps.
-    result = this->addPurgeChecksums(result, TimestampToCheckpoint(version.validFrom) - 1);
-
     // Process this cell version itself
     result.checksum ^= version.checksumSubstitute;
     // result.checkpoint is updated by this->addCell (who is calling us)
-
-    // If this cell version was purged, record the timestamp so the purge can be processed into the checksum chain at
-    // the appropriate checkpoint
-    if (version.purgedAt.has_value()) {
-      assert(*version.purgedAt > version.validFrom);
-      [[maybe_unused]] auto emplaced = purgeRecords_.emplace(PurgeRecord{
-        .purgedAt = TimestampToCheckpoint(*version.purgedAt),
-        .validFrom = TimestampToCheckpoint(version.validFrom),
-        }).second;
-      assert(emplaced);
-    }
 
     return result;
   }
