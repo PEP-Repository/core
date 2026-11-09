@@ -609,17 +609,11 @@ public:
         .flat_map([subject = std::move(query.subject), column = std::move(query.column),
                    metadata = std::move(query.metadata), batches = std::move(batches)](const std::shared_ptr<Weblib>& self) {
           return self->client_->parsePPorIdentity(subject)
-              .map([](PolymorphicPseudonym pp) {
-                return std::make_shared<PolymorphicPseudonym>(std::move(pp));
-              })
-              .flat_map([self, column, metadata, batches](std::shared_ptr<PolymorphicPseudonym> pp) {
-                std::map<std::string, MetadataXEntry> xMetadata;
+              .flat_map([self, column, metadata, batches](const PolymorphicPseudonym& pp) {
+                StoreData2Entry entry(std::make_shared<PolymorphicPseudonym>(pp), column, batches);
                 for (const auto& [key, value] : metadata) {
-                  xMetadata.emplace(key, MetadataXEntry::FromPlaintext(value, false, false));
+                  entry.xMetadata.emplace(key, MetadataXEntry::FromPlaintext(value, false, false));
                 }
-
-                StoreData2Entry entry(pp, column, batches);
-                entry.xMetadata = std::move(xMetadata);
 
                 return self->client_->storeData2({entry}, StoreData2Opts{})
                     .map([](const DataStorageResult2& result) {
