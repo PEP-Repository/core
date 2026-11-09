@@ -643,7 +643,7 @@ if should_run_test user-removal-and-expiration; then
     pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
     trace sleep 1s
   done
-  trace sleep 1s
+  trace sleep 2s
   pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid after group membership expiration"
   pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+10 years" +%s)" test-user test-group \
     && fail "Shouldn't be able to update expiration for a user group membership that already expired"

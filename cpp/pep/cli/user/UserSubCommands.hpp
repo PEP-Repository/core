@@ -1,9 +1,15 @@
 #pragma once
 
 #include <pep/accessmanager/AccessManagerProxy.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/Command.hpp>
 #include <pep/cli/User.hpp>
 
+#include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+
+#include <string>
 
 namespace pep::cli {
 class CommandUser::UserSubCommand : public ChildCommandOf<CommandUser> {

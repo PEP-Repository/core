@@ -1,8 +1,15 @@
 #pragma once
 
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/cli/Command.hpp>
 #include <pep/cli/Token.hpp>
 
+#include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+
+#include <memory>
+#include <optional>
+#include <vector>
 
 /// CLI command to manage which authentication tokens are blocked.
 class pep::cli::CommandToken::CommandTokenBlock : public ChildCommandOf<CommandToken> {

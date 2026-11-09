@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/key-components/KeyComponentServerProxy.hpp>
+#include <pep/messaging/Tail.hpp>
 #include <pep/transcryptor/TranscryptorMessages.hpp>
 
 namespace pep {

@@ -1,17 +1,18 @@
 #pragma once
 
-#include <pep/utils/CollectionUtils.hpp>
+#include <pep/utils/TypeTraits.hpp> // for ByteLike
 
 #include <array>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <ios>
 #include <limits>
 #include <random>
-#include <ranges>
 #include <span>
 #include <streambuf>
 #include <string>
-#include <utility>
+#include <vector>
 
 namespace pep {
 

@@ -3,7 +3,11 @@
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxToSet.hpp>
 
+#include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
+
+#include <memory>
+#include <unordered_set>
 
 namespace pep {
 

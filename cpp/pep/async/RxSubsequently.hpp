@@ -1,7 +1,11 @@
 #pragma once
 
 #include <pep/async/CreateObservable.hpp>
+
+#include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
+
+#include <functional>
 
 namespace pep {
 

@@ -3,6 +3,7 @@
 #include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-ignore_elements.hpp>
+
 #include <cassert>
 
 namespace pep {

@@ -1,8 +1,13 @@
 #pragma once
 
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/crypto/X509Certificate.hpp>
 #include <pep/networking/EndPoint.hpp>
 #include <pep/networking/Protocol.hpp>
+
+#include <cstdint>
+#include <filesystem>
+#include <memory>
 
 namespace pep::messaging {
 

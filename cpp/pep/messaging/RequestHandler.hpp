@@ -1,9 +1,15 @@
 #pragma once
 
-#include <pep/serialization/Serialization.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/messaging/ReadThrottle.hpp>
+#include <pep/serialization/MessageMagic.hpp>
+#include <pep/serialization/Serialization.hpp>
+
 #include <cassert>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
 
 namespace pep::messaging {
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/auth/Signed.hpp>
+#include <pep/crypto/X509Certificate.hpp>
 
 namespace pep {
 

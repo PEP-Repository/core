@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 namespace pep {
 /// \brief Decode base64 URL encoded data. Based on code from http://sakhnik.blogspot.nl/2007/04/base64-transformations-in-c.html

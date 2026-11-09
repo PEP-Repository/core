@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/utils/Attributes.hpp>
-#include <pep/utils/EnumUtils.hpp>
+#include <pep/utils/EnumUtils.hpp> // IWYU pragma: export (operators for flag enums)
 #include <pep/utils/TypeTraits.hpp>
 
 #include <bit>
@@ -9,6 +9,7 @@
 #include <compare>
 #include <cstdint>
 #include <ostream>
+#include <string>
 #include <utility>
 
 namespace pep::messaging {

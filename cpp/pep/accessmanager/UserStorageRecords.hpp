@@ -1,11 +1,14 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <optional>
-#include <pep/utils/Timestamp.hpp>
 #include <pep/accessmanager/UserIdFlags.hpp>
 #include <pep/database/Record.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <tuple>
+#include <vector>
 
 namespace pep {
 

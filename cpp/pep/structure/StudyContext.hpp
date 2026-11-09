@@ -2,7 +2,9 @@
 
 #include <pep/structure/ShortPseudonyms.hpp>
 
+#include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace pep {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/elgamal/ElgamalEncryption.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
 
 namespace pep::tests {

@@ -1,19 +1,36 @@
 #pragma once
 
-#include <pep/async/FakeVoid.hpp>
-#include <pep/networking/Connection.hpp>
-#include <pep/networking/ExponentialBackoff.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/messaging/MessageHeader.hpp>
+#include <pep/messaging/MessageProperties.hpp> // for messaging::MessageId, messaging::StreamId
+#include <pep/messaging/MessageSequence.hpp>
 #include <pep/messaging/ReadThrottle.hpp>
 #include <pep/messaging/RequestHandler.hpp>
 #include <pep/messaging/Requestor.hpp>
-#include <pep/serialization/Serialization.hpp>
+#include <pep/messaging/Scheduler.hpp>
+#include <pep/networking/Connection.hpp>
+#include <pep/networking/ConnectivityAttempt.hpp>
+#include <pep/networking/ExponentialBackoff.hpp>
+#include <pep/networking/Transport.hpp> // for networking::SizedTransfer
+#include <pep/serialization/MessageMagic.hpp>
+#include <pep/utils/Event.hpp>
+#include <pep/utils/LifeCycler.hpp>
 
-#include <boost/asio/steady_timer.hpp>
 #include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-reduce.hpp>
+
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/steady_timer.hpp>
+
+#include <chrono>
+#include <cstdint>
+#include <exception>
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace pep::messaging {
 

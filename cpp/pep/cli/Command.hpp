@@ -1,6 +1,17 @@
 #pragma once
 
-#include <pep/cli/CliApplication.hpp>
+#include <pep/application/CommandLineCommand.hpp> // for commandline::ChildCommandOf
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp> // IWYU pragma: export
+#include <pep/client/Client_fwd.hpp>
+#include <pep/core-client/CoreClient_fwd.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <functional>
+#include <memory>
+#include <string>
+#include <type_traits>
 
 namespace pep::cli {
 
@@ -38,7 +49,6 @@ public:
     return this->executeEventLoopFor(true, callback);
   }
 };
-
 
 /// \brief Utility base for commands supported by the pepcli application.
 /// \tparam TParent The parent command type. Should be either CliApplication or a(nother) ChildCommandOf<> specialization.

@@ -6,8 +6,8 @@
 */ 
 
 #include <QLayout>
-#include <QWidget>
 #include <QStyle>
+#include <QWidget>
 
 class FlowLayout : public QLayout {
 public:

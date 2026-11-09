@@ -1,7 +1,10 @@
 #pragma once
 
 #include <pep/networking/Node.hpp>
+#include <pep/networking/Protocol.hpp>
 #include <pep/utils/Shared.hpp>
+
+#include <memory>
 
 namespace pep::networking {
 

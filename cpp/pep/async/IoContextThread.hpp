@@ -1,10 +1,11 @@
 #pragma once
 
-#include <string>
-#include <thread>
-
 #include <pep/async/IoContext_fwd.hpp>
 #include <pep/async/WorkGuard.hpp>
+
+#include <memory>
+#include <string>
+#include <thread>
 
 namespace pep {
 

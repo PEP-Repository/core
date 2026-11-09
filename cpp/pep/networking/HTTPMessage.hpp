@@ -1,17 +1,16 @@
 #pragma once
 
-#include <cstdint>
-#include <functional>
-#include <string>
-#include <vector>
-#include <map>
-#include <memory>
-#include <optional>
-
-#include <pep/utils/Compare.hpp>
 #include <pep/networking/HttpMethod.hpp>
+#include <pep/utils/Compare.hpp>
 
 #include <boost/url/url.hpp>
+
+#include <cstddef>
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace pep {
 

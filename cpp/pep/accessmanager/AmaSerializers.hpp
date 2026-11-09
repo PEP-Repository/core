@@ -1,7 +1,9 @@
 #pragma once
 
-#include <pep/auth/SigningSerializers.hpp>
 #include <pep/accessmanager/AmaMessages.hpp>
+#include <pep/auth/SigningSerializers.hpp>
+
+#include <Messages.pb.h> // for proto::AmaCreateColumn
 
 namespace pep {
 

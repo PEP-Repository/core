@@ -1,16 +1,20 @@
 #pragma once
 
-#include <openssl/x509.h>
-#include <openssl/asn1.h>
-
 #include <pep/crypto/AsymmetricKey.hpp>
 #include <pep/utils/Configuration_fwd.hpp>
 
-#include <list>
+#include <openssl/evp.h> // for X509
+#include <openssl/x509.h>
+
 #include <chrono>
+#include <compare>
+#include <filesystem>
+#include <list>
+#include <memory>
 #include <optional>
 #include <string>
-#include <filesystem>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 namespace pep {

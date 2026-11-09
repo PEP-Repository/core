@@ -1,9 +1,11 @@
 #pragma once
 
+#include <concepts>
 #include <functional>
 #include <numeric>
 #include <ranges>
 #include <string>
+#include <string_view>
 
 // For implementors:
 // Constant-time functions cannot use branching (if, ternary, short-circuit logic, ...) on secrets.
