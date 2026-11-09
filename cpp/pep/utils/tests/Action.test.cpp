@@ -1,8 +1,5 @@
 #include <pep/utils/Action.hpp>
-#include <pep/utils/Base64.hpp>
-#include <pep/utils/Random.hpp>
-
-#include <gmock/gmock-matchers.h>
+#include <pep/utils/TestError.hpp>
 #include <gtest/gtest.h>
 
 namespace {
@@ -23,10 +20,8 @@ TEST(Action, SupportsHeterogeneousSignatures) {
 }
 
 TEST(Action, PropagatesExceptions) {
-  // Make a random(ized) "what" text
-  auto encoded = pep::EncodeBase64Url(pep::RandomString(64U));
+  using pep::TestError;
 
-  EXPECT_THAT( // Ensure that...
-    [encoded]() { pep::PerformAsAction(&JustInvokeItAlready, [&encoded]() {throw std::runtime_error(encoded); }); }, // ... when the callback raises an exception...
-    ::testing::ThrowsMessage<std::runtime_error>(::testing::StrEq(encoded))); // ... the "PerformAsAction" function propagates that original exception
+  EXPECT_THROW(pep::PerformAsAction(&JustInvokeItAlready, []() {throw TestError(); }), // When the callback raises an exception...
+    TestError); // ... the "PerformAsAction" function should propagate that original exception
 }
