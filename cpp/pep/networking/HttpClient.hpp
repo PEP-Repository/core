@@ -33,6 +33,11 @@ public:
     DelayCallback delayCallback;
   };
 
+  /// \brief Callback that is invoked on a request right before it is written to the connection, e.g. to sign it with a current timestamp.
+  /// \remark Can be invoked multiple times for the same request, e.g. when it's resent after a connection error or a transient HTTP error.
+  /// \remark If the callback throws, the request isn't sent and the exception is passed to the observable returned by "sendRequest".
+  using PrepareCallback = std::function<void(HTTPRequest&)>;
+
   class Parameters {
   public:
     Parameters(boost::asio::io_context& ioContext, boost::urls::url absoluteBase, std::optional<std::string> expectedCommonName = std::nullopt);
@@ -50,6 +55,9 @@ public:
     const RetryParameters& retryParameters() const noexcept { return retryParameters_; }
     const RetryParameters& retryParameters(RetryParameters assign) { return retryParameters_ = std::move(assign); }
 
+    const PrepareCallback& onPrepareRequest() const noexcept { return onPrepareRequest_; }
+    const PrepareCallback& onPrepareRequest(PrepareCallback assign) { return onPrepareRequest_ = std::move(assign); }
+
     std::shared_ptr<Client> createBinaryClient() const;
 
   private:
@@ -62,6 +70,7 @@ public:
     std::optional<std::filesystem::path> caCertFilePath_;
     ExponentialBackoff::Parameters reconnectParameters_;
     RetryParameters retryParameters_;
+    PrepareCallback onPrepareRequest_;
   };
 
 private:
