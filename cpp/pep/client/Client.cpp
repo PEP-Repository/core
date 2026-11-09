@@ -5,7 +5,6 @@
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
-#include <pep/async/RxToEmpty.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
