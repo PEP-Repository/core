@@ -1,8 +1,10 @@
 #pragma once
 
+#include <pep/storagefacility/PrefixedStrings.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>
-
 #include <pep/utils/Generator.hpp>
+
+#include <cstddef>
 
 namespace pep {
 

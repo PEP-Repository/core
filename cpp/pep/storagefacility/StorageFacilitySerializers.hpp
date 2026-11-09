@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/PrefixedStrings.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>
 #include <pep/auth/SigningSerializers.hpp>
 
