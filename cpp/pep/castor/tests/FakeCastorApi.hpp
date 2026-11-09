@@ -77,7 +77,7 @@ private:
     const std::string& role() const noexcept { return role_; }
 
     void start();
-    void stop(bool force = true);
+    void stop();
   };
 
   TemporaryX509IdentityFiles identity_;
