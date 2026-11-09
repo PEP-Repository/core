@@ -1,4 +1,7 @@
-#include <benchmark/benchmark.h>
+#include <benchmark/registration.h>
+#include <benchmark/state.h>
+#include <benchmark/types.h>
+#include <benchmark/utils.h>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/core/noncopyable.hpp> // IWYU pragma: keep (used without NDEBUG)
