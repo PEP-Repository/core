@@ -38,7 +38,7 @@ protected:
 
       if (version.purgedAt) {
         auto purgeCheckpoint = TimestampToCheckpoint(*version.purgedAt);
-        if (purgeCheckpoint < max) {
+        if (purgeCheckpoint <= max) {
           auto add = purgeCheckpoint ^ versionCheckpoint; // Just a unique value for the purging of this cell version
           result.checksum ^= add;
           result.checkpoint = std::max(result.checkpoint, purgeCheckpoint);
