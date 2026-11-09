@@ -251,6 +251,8 @@ Generator<PrefixedStringsEntry> FileStore::Cell::pagePaths() const {
   if (latest == nullptr) { // E.g. if a store was canceled
     co_return;
   }
+  // These are unique, because page names within a version are unique,
+  // and we're only including a single version.
   for (auto&& path : latest->getPageNames()) {
     co_yield PrefixedString{.string = std::move(path)};
   }
