@@ -103,11 +103,9 @@ ConsumedBatches Consume(pep::messaging::MessageBatches batches) {
 }
 
 std::vector<std::string> Contents(const ConsumedBatches& consumed) {
-  std::vector<std::string> result;
-  for (const auto& message : consumed.messages) {
-    result.push_back(*message);
-  }
-  return result;
+  return consumed.messages
+    | std::views::transform([](const std::shared_ptr<std::string>& message) { return *message; })
+    | std::ranges::to<std::vector>();
 }
 
 }
