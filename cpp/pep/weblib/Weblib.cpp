@@ -85,18 +85,21 @@ UserGroup FromUserGroupInfo(UserGroupInfo group) {
   };
 }
 
+UserGroupMembership ToUserGroupMembership(QRUserGroupMembership membership) {
+  return UserGroupMembership{
+      .userGroup = std::move(membership.userGroup),
+      .expiration = membership.expiration.transform(ToJsTime),
+  };
+}
+
 User ToUser(QRUser user) {
   return User{
       .displayId = std::move(user.displayId),
       .primaryId = std::move(user.primaryId),
       .otherUids = std::move(user.otherUids),
       .groups = user.groups
-        | views::transform([](const QRUserGroupMembership& membership) {
-          return UserGroupMembership{
-              .userGroup = membership.userGroup,
-              .expiration = membership.expiration.transform(ToJsTime),
-          };
-        })
+        | views::as_rvalue
+        | views::transform(ToUserGroupMembership)
         | to<std::vector>(),
   };
 }
@@ -746,6 +749,7 @@ public:
         .map([](AmaQueryResponse response) {
           return AccessManagerState{
               .columns = response.columns
+                | views::as_rvalue
                 | views::transform(&AmaQRColumn::name)
                 | to<std::vector>(),
               .columnGroups = response.columnGroups
@@ -754,6 +758,7 @@ public:
                 | to<std::vector>(),
               .columnGroupAccessRules = CombineColumnGroupAccessRules(response.columnGroupAccessRules),
               .subjectGroups = response.participantGroups
+                | views::as_rvalue
                 | views::transform(&AmaQRParticipantGroup::name)
                 | to<std::vector>(),
               .subjectGroupAccessRules = CombineSubjectGroupAccessRules(response.participantGroupAccessRules),
