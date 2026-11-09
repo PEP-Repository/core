@@ -12,6 +12,7 @@
 #include <pep/async/RxParallelConcat.hpp>
 #include <pep/utils/ApplicationMetrics.hpp>
 #include <pep/auth/EnrolledParty.hpp>
+#include <pep/storagefacility/PagePathResponseChunker.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/storagefacility/SFIdSerializer.hpp>
 #include <pep/messaging/MessageHeader.hpp>
@@ -30,6 +31,7 @@
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
 
+#include <pep/utils/Generator.hpp>
 #include <ranges>
 #include <unordered_map>
 #include <sstream>
@@ -113,6 +115,14 @@ bool ReadOptionalNonZeroConfigValue(T& destination, const Configuration& config,
   }
 
   return false;
+}
+
+/// \brief Produces (self-contained) PagePathResponse messages listing the paths of a FileStore's (current) pages.
+/// \remark Our coroutine frame keeps the store alive while we (lazily) iterate over its page paths.
+Generator<PagePathResponse> PagePathResponses(std::shared_ptr<FileStore> fileStore, size_t messageCapacity) {
+  for (auto&& response : ChunkPagePaths(fileStore->pagePaths(), messageCapacity)) {
+    co_yield std::move(response);
+  }
 }
 
 const std::string LogTag("StorageFacility");
@@ -426,7 +436,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       re.entry.polymorphicKey.ensurePacked();
 
       auto& sfEntry = re.fileStoreEntry;
-      re.entry.id = encryptId(sfEntry->getName().string(), sfEntry->getValidFrom());
+      re.entry.id = encryptId(std::format("{}", sfEntry->getName()), sfEntry->getValidFrom());
 
       return re;
     })
@@ -730,7 +740,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 
       for (size_t j = 0; j < i; ++j) { // TODO: improve performance: we don't want an inner loop making this O(n^2)
         if (ctx->entries[j]->getName() == entryChange->getName()) {
-          PEP_LOG(LogTag, Severity::Error) << "Single request contained duplicate entry change for " + entryChange->getName().string();
+          PEP_LOG(LogTag, Severity::Error) << "Single request contained duplicate entry change for " << std::format("{}", entryChange->getName());
           // Don't send our internal representation (local pseudonym contained in the entry's name) back to the client
           throw Error("Cannot store multiple values for column " + col + ". The duplicate entries are at indices " + std::to_string(i) + " and " + std::to_string(j));
         }
@@ -813,7 +823,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
               auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
               for (auto [entry, entryId, i] : views::zip(ctx->entries, ctx->ids, views::iota(0uz))) {
                 try {
-                  auto id = encryptId(entry->getName().string(), time);
+                  auto id = encryptId(std::format("{}", entry->getName()), time);
                   std::move(*entry).commit(time);
                   entryId = id;
                 }
@@ -939,7 +949,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
   MetadataUpdateResponse2 response;
   for (const auto& change : changes) {
-    auto id = this->encryptId(change->getName().string(), time);
+    auto id = this->encryptId(std::format("{}", change->getName()), time);
     std::move(*change).commit(time);
     response.ids.push_back(id);
   }
@@ -1058,7 +1068,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
         continue;
       }
 
-      auto entryName = EntryName(participant.name(), col).string();
+      auto entryName = std::format("{}", EntryName(participant.name(), col));
       const FileStore::Cell& cell = **iCell;
       for (const auto& version : cell.versions()) {
         response.entries.push_back({
@@ -1109,25 +1119,8 @@ messaging::MessageBatches StorageFacility::handlePagePathRequest(std::shared_ptr
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({ UserGroup::SystemAdministrator }, accessGroup);
 
-  return CreateObservable<messaging::MessageSequence>([fileStore = fileStore_](rxcpp::subscriber<messaging::MessageSequence> subscriber) {
-    auto all = fileStore->pagePaths();
-    auto i = all.cbegin(), end = all.cend();
-
-    while (i != end) {
-      PagePathResponse chunk;
-      FillToCapacity(std::inserter(chunk.paths, chunk.paths.end()), messaging::NetMessageCapacity, subrange{ i, end });
-      if (chunk.paths.size() == 0U) {
-        throw std::runtime_error("Could not create network-portable set of page paths");
-      }
-
-      // Update the source iterator (the position in "all" page paths) so we skip processed items in the next iteration
-      // Unfortunately we can't "i += ..." because std::set does not provide random access iteration
-      std::advance(i, chunk.paths.size());
-
-      subscriber.on_next(rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(std::move(chunk)))));
-    }
-    subscriber.on_completed();
-    });
+  // Produce messages lazily (one at a time) so that we don't need to keep all page paths in memory
+  return messaging::RangeToMessageBatches(PagePathResponses(fileStore_, messaging::NetMessageCapacity));
 }
 
 std::string StorageFacility::encryptId(std::string path, Timestamp time) {
@@ -1156,7 +1149,7 @@ Metadata StorageFacility::compileMetadata(
 
   auto payloadTimestamp = content->getOriginalPayloadEntryTimestamp();
   if (payloadTimestamp.has_value()) {
-    result.setOriginalPayloadEntryId(this->encryptId(entry.getName().string(), *payloadTimestamp));
+    result.setOriginalPayloadEntryId(this->encryptId(std::format("{}", entry.getName()), *payloadTimestamp));
   }
 
   // Extract the 'extra' PEP metadata entries from

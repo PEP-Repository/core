@@ -23,6 +23,7 @@ if(WITH_SERVERS)
       EntryPayload.cpp EntryPayload.hpp
       PersistedEntryProperties.cpp PersistedEntryProperties.hpp
       FileStore.cpp FileStore.hpp
+      PagePathResponseChunker.cpp PagePathResponseChunker.hpp
       PageStore.cpp PageStore.hpp
       PendingBytesLimiter.cpp PendingBytesLimiter.hpp
       S3.cpp S3.hpp

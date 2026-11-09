@@ -3,9 +3,11 @@
 #include <pep/utils/CheckedPath.hpp>
 #include <pep/utils/Shared.hpp>
 #include <pep/storagefacility/EntryContent.hpp>
+#include <pep/storagefacility/PrefixedStrings.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 
 #include <filesystem>
+#include <pep/utils/Generator.hpp>
 #include <string>
 #include <memory>
 
@@ -59,7 +61,8 @@ public:
     uint64_t payloadSize() const;
     bool isOriginalPayloadOwner() const;
 
-    std::set<std::string> pagePaths() const;
+    /// \remark Callers must keep this instance alive while they iterate over the result.
+    Generator<std::string> getPageNames() const;
   };
 
   /// \brief Represents a pending update to a cell. A new Entry will be created when an EntryChange is commit()ted.
@@ -150,7 +153,8 @@ public:
     void addEntry(std::shared_ptr<Entry> entry);
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
 
-    std::set<std::string> pagePaths() const; // for latest version
+    /// Get page paths for latest version. Does not include participant or column prefixes.
+    Generator<PrefixedStringsEntry> pagePaths() const;
   };
 
   class Participant {
@@ -177,7 +181,8 @@ public:
     void getMetrics(size_t& entryCount, uint64_t& totalPayloadBytes, uint64_t& rollingPayloadBytes, const std::set<std::string>& columns) const;
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
 
-    std::set<std::string> pagePaths() const; // for latest version
+    /// Get page paths for latest cell versions. Does not include participant prefix.
+    Generator<PrefixedStringsEntry> pagePaths() const;
   };
 
 private:
@@ -218,7 +223,12 @@ public:
     return path_;
   }
 
-  std::set<std::string> pagePaths() const; // for latest version
+  /// \brief Produces the paths of the (latest versions of the) store's pages, as (single) PrefixedString entries
+  ///        under participant and column prefixes.
+  /// \remark Callers must keep this instance alive while they iterate over the result. Iteration may be interleaved with
+  ///         (other) operations on the store, as long as they're performed on the same thread: participants and cells
+  ///         that are added in the meantime may or may not be included in the results.
+  Generator<PrefixedStringsEntry> pagePaths() const;
 };
 
 }
