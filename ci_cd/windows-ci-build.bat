@@ -6,6 +6,30 @@ REM Variables are prefixed with "PEP" to reduce chances of naming collisions.
 echo Starting CI job script for Windows build
 REM Colored output for e.g. Conan
 set CLICOLOR_FORCE=1
+
+REM Isolate this build from other builds running concurrently on the same runner (under the same user account).
+REM Otherwise, when one CI job ends (or is cancelled or times out), the runner kills its process tree,
+REM which may include helper processes that a concurrent job is still using.
+REM See https://gitlab.pep.cs.ru.nl/pep/ops/-/work_items/293#note_54996.
+REM This is only done for CI builds, so that local (incremental) builds can still benefit from the shared processes.
+if not "%CI_JOB_ID%" == "" (
+  REM MSBuild by default leaves worker nodes running after a build, and later builds may reuse them,
+  REM  including concurrent builds in other CI jobs. When such a node is killed, MSBuild fails with
+  REM  "error MSB4166: Child node [...] exited prematurely".
+  REM  See https://github.com/dotnet/msbuild/blob/main/documentation/wiki/MSBuild-Environment-Variables.md
+  REM  and -nodeReuse at https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-command-line-reference
+  set MSBUILDDISABLENODEREUSE=1
+
+  REM With /Zi, which is the default debug information format for CMake MSVC builds, cl.exe writes PDB files via MSPDBSRV.EXE.
+  REM  By default, a single instance is shared by all builds of the same user. When it is killed, cl.exe fails with
+  REM  "error C1090: PDB API call failed, error code '23': (0x00000006)".
+  REM  The undocumented _MSPDBSRV_ENDPOINT_ environment variable selects which MSPDBSRV.EXE instance is used,
+  REM  so we give each CI job its own instance.
+  REM  See https://issues.jenkins.io/browse/JENKINS-9104 for the same problem with Jenkins,
+  REM  and https://learn.microsoft.com/en-us/cpp/build/reference/fs-force-synchronous-pdb-writes for MSPDBSRV.EXE.
+  set _MSPDBSRV_ENDPOINT_=pep-ci-job-%CI_JOB_ID%
+)
+
 SET WhatToBuild=%1
 SET BuildType=%2
 
