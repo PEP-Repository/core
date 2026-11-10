@@ -25,7 +25,7 @@ public:
   bool isDefaulted() const noexcept { return started_ == pep::Timestamp() && ended_ == pep::Timestamp(); }
   bool contains(pep::Timestamp when) const noexcept;
   bool isContiguousWith(const TimeRange& other) const;
-  bool overlapsWith(const TimeRange& other) const;
+  bool intersectsWith(const TimeRange& other) const;
 };
 
 bool TimeRange::contains(pep::Timestamp when) const noexcept {
@@ -36,7 +36,7 @@ bool TimeRange::isContiguousWith(const TimeRange& other) const {
   return this->contains(other.started_) || this->contains(other.ended_);
 }
 
-bool TimeRange::overlapsWith(const TimeRange& other) const {
+bool TimeRange::intersectsWith(const TimeRange& other) const {
   return this->isContiguousWith(other)
     && started_ != other.ended_
     && ended_ != other.started_;
@@ -88,14 +88,14 @@ Contention Contention::Run(pep::ReaderWriterLock& rwl, bool write) {
 
 TEST(ReaderWriterLock, Works) {
   constexpr size_t ThreadCount = 200;
-  constexpr unsigned OverlappingReadAttempts = 5;
+  constexpr unsigned IntersectingReadAttempts = 5;
   constexpr unsigned ReaderToWriterRatio = 3; // One writer to this many readers: e.g. if set to 3, then 1 in 4 threads will be a writer (and 3 in 4 will be a reader)
 
   static_assert(ReaderToWriterRatio != 0, "Can't modulate very well otherwise, can I now?");
   constexpr unsigned ReaderToWriterDivisor = ReaderToWriterRatio + 1;
 
-  bool overlapping_read_found = false;
-  for (unsigned attempt = 0; (attempt < OverlappingReadAttempts) && !overlapping_read_found; ++attempt) {
+  bool intersecting_read_found = false;
+  for (unsigned attempt = 0; (attempt < IntersectingReadAttempts) && !intersecting_read_found; ++attempt) {
     std::array<std::thread, ThreadCount> threads;
     std::array<Contention, ThreadCount> results;
     pep::ReaderWriterLock rwl;
@@ -113,39 +113,39 @@ TEST(ReaderWriterLock, Works) {
       thread.join();
     }
 
-    // Check overlaps in results
+    // Check intersections in results
     for (size_t i = 0; i < ThreadCount; ++i) {
       ASSERT_FALSE(results[i].isDefaulted()) << "Thread " << i << " did not assign a result value";
 
-      // Find (first) overlapping result in [i + 1, ThreadCount)
-      std::optional<size_t> iOverlapping;
-      for (size_t j = i + 1; j < ThreadCount && !iOverlapping; ++j) {
-        if (results[i].ran().overlapsWith(results[j].ran())) {
-          iOverlapping = j;
+      // Find (first) intersecting result in [i + 1, ThreadCount)
+      std::optional<size_t> iIntersecting;
+      for (size_t j = i + 1; j < ThreadCount && !iIntersecting; ++j) {
+        if (results[i].ran().intersectsWith(results[j].ran())) {
+          iIntersecting = j;
         }
       }
 
-      // Deal with overlapping results if they were found
-      if (iOverlapping) {
-        if (results[i].wrote() || results[*iOverlapping].wrote()) {
+      // Deal with intersecting results if they were found
+      if (iIntersecting) {
+        if (results[i].wrote() || results[*iIntersecting].wrote()) {
           auto threadType = [&results](size_t i) { return results[i].wrote() ? "writer" : "reader"; };
-          FAIL() << "Overlap between " << threadType(i) << " thread " << i
-            << " and " << threadType(*iOverlapping) << "thread " << *iOverlapping;
+          FAIL() << "Intersection found between " << threadType(i) << " thread " << i
+            << " and " << threadType(*iIntersecting) << "thread " << *iIntersecting;
         }
         else {
-          overlapping_read_found = true;
+          intersecting_read_found = true;
         }
       }
     }
   }
 
-  // We'd expect to find at least one overlapping read, given the values of our OverlappingReadAttempts and ThreadCount and ReaderToWriterRatio
+  // We'd expect to find at least one intersecting read, given the values of our IntersectingReadAttempts and ThreadCount and ReaderToWriterRatio
   constexpr auto Writers = ThreadCount / ReaderToWriterDivisor
     + ((ThreadCount % ReaderToWriterDivisor == 0) ? 0 : 1); // Modulo bias favors writers
   constexpr auto Readers = ThreadCount - Writers;
 
-  EXPECT_TRUE(overlapping_read_found) << "Reader/writer lock seems to interleave readers: no overlapping read found"
-    << " after " << OverlappingReadAttempts << " attempts, each of which"
+  EXPECT_TRUE(intersecting_read_found) << "Reader/writer lock seems to interleave readers: no intersecting read found"
+    << " after " << IntersectingReadAttempts << " attempts, each of which"
     << " used " << Readers << " reader threads"
     << " and " << Writers << " writer threads";
 }
