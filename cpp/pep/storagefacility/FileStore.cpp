@@ -163,6 +163,8 @@ FileStore::FileStore(
   pagestore_(PageStore::Create(io_context, metrics_registry, pageStoreConfig)),
   checksumChains_(SfChecksumChain::CreateAll(*this))
 {
+  // File system access doesn't need to be synchronized because our purge persistence thread isn't running
+
   // throws when an error occurs while creating any of the given directories in the supplied path
   std::filesystem::create_directories(path_);
 
@@ -191,15 +193,18 @@ FileStore::FileStore(
 FileStore::Participant::Participant(FileStore& store, std::string name, bool load)
   : store_(store), name_(std::move(name)) {
   if (load) {
-    for (const auto& p : std::filesystem::directory_iterator(this->path())) {
-      if (p.is_directory()) {
-        cells_.emplace(std::make_unique<Cell>(*this, p.path().filename().string(), true));
-      }
-    }
+    store.fileSystem_.read([this]() {
+        for (const auto& p : std::filesystem::directory_iterator(this->path())) {
+          if (p.is_directory()) {
+            cells_.emplace(std::make_unique<Cell>(*this, p.path().filename().string(), true));
+          }
+        }
+      });
   }
   else {
-    // throws when an error occurs while creating any of the given directories in the supplied path
-    std::filesystem::create_directories(this->path());
+    store.fileSystem_.write([this]() {
+      // throws when an error occurs while creating any of the given directories in the supplied path
+      std::filesystem::create_directories(this->path()); });
   }
 }
 
