@@ -45,7 +45,7 @@ style: |
   - *Don't* use `<meta http-equiv=... />`
 * Pages served over HTTPS connect with secure WebSockets (`wss://`), pages served over HTTP connect with `ws://`
   - Browsers block plain `ws://` from `https://` pages
-  - Override with `websocketScheme` in `Pep.create`, e.g. `wss://` from an `http://` page
+  - Override with `secureWebsocket` in `Pep.create`, e.g. `secureWebsocket: true` to use `wss://` from an `http://` page
   - The PEP servers must then be reachable via websockify with a publicly trusted certificate, see `/docker/websockify/`
 * Compression recommended
   - On-the-fly GZip fast:

@@ -66,7 +66,11 @@ export interface InitConfig {
   clientConfig: URL | ClientConfig;
   configFileContentOverrides?: { [key in keyof ConfigFiles]?: string | undefined };
   authLandingPage?: URL | null;
-  websocketScheme?: 'ws://' | 'wss://';
+  /**
+   * Whether to connect to the PEP servers over secure WebSockets (wss://).
+   * Defaults to true when the page is served over https:, false otherwise.
+   */
+  secureWebsocket?: boolean;
 }
 
 /** Replace EmbindString (or union involving EmbindString) members with plain string. */
@@ -317,6 +321,8 @@ export default class Pep {
     // Persist ClientKeys.json to keep user logged in
     clientConfig.EnrolledPartyKeysFile = '/persist/ClientKeys.json';
 
+    const secureWebsocket = config.secureWebsocket ?? globalThis.location?.protocol === 'https:';
+
     // These members must be listed in -sINCOMING_MODULE_JS_API
     let Module: PepModule | {
       thisProgram: string,
@@ -325,7 +331,7 @@ export default class Pep {
       /// This ends up in `argv[0]`
       thisProgram: 'pepWeblib',
       /// Emscripten appends host and port to a URL that is only a scheme
-      websocket: {url: config.websocketScheme ?? (globalThis.location?.protocol === 'https:' ? 'wss://' : 'ws://')},
+      websocket: {url: secureWebsocket ? 'wss://' : 'ws://'},
     };
 
     Module = await initModule(Module) as PepModule;
