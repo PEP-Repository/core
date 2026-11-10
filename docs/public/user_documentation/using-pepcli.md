@@ -853,7 +853,7 @@ The `purge` command's various sub-commands allow data to be irrevocably removed 
 
 Items remain accessible until the purge cycle has been confirmed, after which they immediately become inaccessible to users ("purged"). The cycle will be marked "completed" later, after repository servers have performed some additional background tasks.
 
-After purging, any attempts to access affected cell versions (e.g. using `pepcli get`](#get)) will result in an error. Purged cell versions will only show up in cell [histories](#history) anymore, where they will be listed as having been purged at the moment that the cycle was confirmed (i.e. applied).
+After purging, the only thing left in PEP will be a marker that a data version once existed. These markers are used to produce an error for any attempts to access affected cell versions, e.g. using [`pepcli get`](#get). Purged cell versions will only show up in cell [histories](#history) anymore, where they will be listed as having been purged at the moment that the cycle was confirmed (i.e. applied).
 
 ### purge back-catalog
 
