@@ -124,6 +124,7 @@ void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
     auto updated = cycle;
     updated.completed = TimeNow();
     sqlite_.updatePurgeCycle(updated);
+    PEP_LOG(LogTag, Severity::Info) << "Completed persistence of purge cycle " << updated.id;
   }
   catch (...) {
     // Eat all exceptions to prevent the thread from taking down the entire process
