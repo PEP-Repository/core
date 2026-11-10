@@ -90,18 +90,45 @@ if(MSVC)
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /ignore:4099")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /ignore:4099")
 
-  # Multi-processor compilation (/MP): we don't add a plain /MP here (which would mean "one process per logical CPU"),
-  #  because:
+  # Parallel compilation.
+  # By default, MSBuild builds multiple projects in parallel (-maxCpuCount, in Visual Studio:
+  #  Tools > Options > Projects and Solutions > Build and Run > Maximum number of parallel project builds),
+  #  and the compiler compiles multiple sources of each project in parallel (/MP), so the number of compiler processes multiplies.
+  #  See https://learn.microsoft.com/en-us/cpp/build/reference/mp-build-with-multiple-processes#the-msbuild-tool
+  # MSBuild's Multi-ToolTask (MTT) scheduler instead starts one cl.exe per source file itself, and with
+  #  EnforceProcessCountAcrossBuilds it limits the number of compiler processes across all projects and MSBuild instances
+  #  on the machine. See https://devblogs.microsoft.com/cppblog/improved-parallelism-in-msbuild/
+  # The limit is MSBuild property MultiProcMaxCount, which defaults to environment variable MultiProcMaxCount, or else to
+  #  CL_MPCount, which Visual Studio sets from Tools > Options > Projects and Solutions > VC++ Project Settings >
+  #  Maximum concurrent C++ compilations (0 for the number of logical CPUs).
+  # For their definitions, see Microsoft.Cpp.Common.props and Microsoft.CppCommon.targets in the Visual Studio
+  #  installation, under MSBuild\Microsoft\VC\v180.
+  # Note that dependencies built by Conan are not affected by this setting: use the environment variables
+  #  UseMultiToolTask=true and EnforceProcessCountAcrossBuilds=true for that, as ci_cd/windows-ci-build.bat does.
+  if(CMAKE_GENERATOR MATCHES "^Visual Studio")
+    option(USE_MSBUILD_MULTI_TOOL_TASK "Use MSBuild's Multi-ToolTask scheduler to limit the number of compiler processes machine-wide" ON)
+    if(USE_MSBUILD_MULTI_TOOL_TASK)
+      # Sets these properties in the Globals property group of each generated project, so this also applies to builds
+      #  from the IDE. Note that this overrides environment variables of the same name.
+      list(APPEND CMAKE_VS_GLOBALS "UseMultiToolTask=true" "EnforceProcessCountAcrossBuilds=true")
+    endif()
+  endif()
+
+  # We don't add a plain /MP here (which would mean "one process per logical CPU"), because:
   #  - Conan's CMakeToolchain already adds /MP<tools.build:jobs> for Visual Studio generators,
   #    and a plain /MP after it would override that setting.
-  #  - With MSBuild's Multi-ToolTask scheduler (UseMultiToolTask=true, as used by ci_cd/windows-ci-build.bat),
-  #    /MP is ignored anyway: MSBuild then starts one cl.exe per source file itself, limited by MultiProcMaxCount.
-  #  Note that /MP multiplies with the number of projects MSBuild builds in parallel (-maxCpuCount),
-  #  see https://learn.microsoft.com/en-us/cpp/build/reference/mp-build-with-multiple-processes#the-msbuild-tool
-  #  and https://devblogs.microsoft.com/cppblog/improved-parallelism-in-msbuild/
-  # COMPILE_SEQUENTIALLY (/MP1) has no effect with MTT either: set environment variable MultiProcMaxCount=1 instead.
+  #  - With MTT, /MP is dropped anyway.
   option(COMPILE_SEQUENTIALLY "Compile one source at a time")
   if(COMPILE_SEQUENTIALLY)
+    # MTT drops /MP, so /MP1 has no effect: refuse to configure rather than silently compile in parallel.
+    # MTT may also be enabled via an environment variable (as checked here), though it is read at build time,
+    #  not at configure time.
+    string(TOLOWER "$ENV{UseMultiToolTask}" use_multi_tool_task_env)
+    if(CMAKE_GENERATOR MATCHES "^Visual Studio" AND (USE_MSBUILD_MULTI_TOOL_TASK OR use_multi_tool_task_env STREQUAL "true"))
+      message(FATAL_ERROR "COMPILE_SEQUENTIALLY has no effect with MSBuild's Multi-ToolTask scheduler (MTT). "
+        "Either disable MTT (set USE_MSBUILD_MULTI_TOOL_TASK=OFF and unset environment variable UseMultiToolTask), "
+        "or use MTT with environment variable MultiProcMaxCount=1 instead of COMPILE_SEQUENTIALLY.")
+    endif()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP1")
   endif()
 

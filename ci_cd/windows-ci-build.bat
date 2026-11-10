@@ -44,6 +44,7 @@ REM These are MSBuild properties that default to the environment variables of th
 REM  For their definitions, see Microsoft.Cpp.Common.props and Microsoft.CppCommon.targets in the Visual Studio installation,
 REM  under MSBuild\Microsoft\VC\v180.
 REM This also applies to dependencies that Conan builds using MSBuild.
+REM  For our own projects, cpp/config.cmake also enables MTT, see USE_MSBUILD_MULTI_TOOL_TASK there.
 REM Linking is not limited by MTT, but only by the number of projects that MSBuild builds concurrently,
 REM  which we pass to Conan as tools.microsoft.msbuild:max_cpu_count below.
 set UseMultiToolTask=true
