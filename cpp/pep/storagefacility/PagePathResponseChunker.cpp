@@ -3,6 +3,7 @@
 #include <span>
 #include <stdexcept>
 #include <utility>
+#include <pep/utils/VariantUtils.hpp>
 
 namespace pep {
 
@@ -115,24 +116,17 @@ Generator<PagePathResponse> ChunkPagePaths(Generator<PrefixedStringsEntry> entri
   ChunkBuilder builder(capacity);
 
   for (auto&& entry : entries) {
-    if (auto* push = std::get_if<PushPrefix>(&entry)) {
-      builder.pushPrefix(std::move(push->prefix));
-    }
-    else if (std::holds_alternative<PopPrefix>(entry)) {
-      builder.popPrefix();
-    }
-    else {
-      auto* single = std::get_if<PrefixedString>(&entry);
-      auto strings = single != nullptr ? std::span(&single->string, 1U) : std::span(std::get<PrefixedStrings>(entry).strings);
-      for (auto& str : strings) {
-        if (!builder.tryAdd(str)) {
-          if (!builder.empty()) {
-            co_yield builder.take();
-          }
-          if (!builder.tryAdd(str)) {
-            throw std::runtime_error("String (with its prefixes) is too large to fit into a single chunk");
-          }
-        }
+    auto strings = std::visit(variant_utils::Overloaded{
+      [&](PushPrefix& push) -> std::span<std::string> { builder.pushPrefix(std::move(push.prefix)); return {}; },
+      [&](PopPrefix&) -> std::span<std::string> { builder.popPrefix(); return {}; },
+      [&](PrefixedString& single) -> std::span<std::string> { return {&single.string, 1U}; },
+      [&](PrefixedStrings& multiple) -> std::span<std::string> { return multiple.strings; },
+    }, entry);
+    for (auto& str : strings) {
+      if (builder.tryAdd(str)) { continue; }
+      if (!builder.empty()) { co_yield builder.take(); }
+      if (!builder.tryAdd(str)) {
+        throw std::runtime_error("String (with its prefixes) is too large to fit into a single chunk");
       }
     }
   }
