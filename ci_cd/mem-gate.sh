@@ -62,16 +62,19 @@ oom_kills() {
 }
 
 # Waits until $1 MiB seems available (on top of the reserve), then registers the start of a command needing it.
-# The "starts" file lists "<start time in µs> <MiB>" of recently started commands.
+# The "starts" file lists "<start time in µs> <MiB>" of recently started commands. Without lock_fd, recent starts are not
+# taken into account.
 wait_for_memory() {
   local need=$1 wait_start=$EPOCHSECONDS waiting=false now_us start_us start_mib recent_mib fits
   local -a recent
   while true; do
-    flock "$lock_fd"
     now_us=${EPOCHREALTIME/[.,]/}
     recent=()
     recent_mib=0
-    if [[ -f $state_dir/starts ]]; then
+    if [[ -n $lock_fd ]]; then
+      flock "$lock_fd"
+    fi
+    if [[ -n $lock_fd && -f $state_dir/starts ]]; then
       while read -r start_us start_mib; do
         if [[ -n $start_mib ]] && (( now_us - start_us < ramp_seconds * 1000000 )); then
           recent+=("$start_us $start_mib")
@@ -87,11 +90,13 @@ wait_for_memory() {
       log "Still not ${need} MiB of available memory after ${max_wait_seconds}s, giving up waiting"
       fits=true
     fi
-    if $fits; then
-      recent+=("$now_us $need")
+    if [[ -n $lock_fd ]]; then
+      if $fits; then
+        recent+=("$now_us $need")
+      fi
+      printf '%s\n' "${recent[@]}" >"$state_dir/starts"
+      flock --unlock "$lock_fd"
     fi
-    printf '%s\n' "${recent[@]}" >"$state_dir/starts"
-    flock --unlock "$lock_fd"
 
     if $fits; then
       if $waiting; then
@@ -108,9 +113,9 @@ wait_for_memory() {
   done
 }
 
-# If we cannot coordinate, don't gate (but still rerun when OOM-killed)
+# If we cannot coordinate with other commands via the state directory, only look at currently available memory
 lock_fd=
-if mkdir -p "$state_dir" 2>/dev/null; then
+if command -v flock >/dev/null && mkdir -p "$state_dir" 2>/dev/null; then
   # `{ ... ; } 2>...`: group for stderr redirection, but don't start a subshell
   # `exec ...>...`: apply redirections to current script
   # `{lock_fd}`: store new file descriptor into lock_fd
@@ -120,9 +125,7 @@ fi
 
 need_mib=$command_mib
 for (( attempt = 1; ; attempt++ )); do
-  if [[ -n $lock_fd ]]; then
-    wait_for_memory "$need_mib"
-  fi
+  wait_for_memory "$need_mib"
 
   oom_kills_before=$(oom_kills)
   # Raise the OOM score for <command> only (via a subshell, not for this script), which does not require privileges.
@@ -145,7 +148,7 @@ for (( attempt = 1; ; attempt++ )); do
   log "$command_name was killed by the OOM killer, rerunning it (attempt $(( attempt + 1 ))/$max_attempts)"
   (( need_mib *= 2 ))
   # Rerun one command at a time, so that heavy commands do not keep killing each other
-  if [[ -z ${retry_lock_fd-} ]] && { exec {retry_lock_fd}>>"$state_dir/retry.lock"; } 2>/dev/null; then
+  if [[ -n $lock_fd && -z ${retry_lock_fd-} ]] && { exec {retry_lock_fd}>>"$state_dir/retry.lock"; } 2>/dev/null; then
     # retry_lock_fd will be unlocked when we exit
     flock "$retry_lock_fd"
   fi
