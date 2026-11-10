@@ -339,6 +339,50 @@ describe('Pep', () => {
       expect((await pep.listUsers({groupFilter: userGroup})).userGroups).to.be.empty;
     }));
   });
+
+  describe('subject group management', () => {
+    const subjectGroup = `WeblibTestSubjectGroup-${crypto.randomUUID()}`;
+    const subject = 'WasmTestSubjectSmall'; // Prepared by integration.sh, with one cell in WasmTestColumnGroup
+
+    async function listTestSubjectGroups() {
+      return (await pep.listSubjectGroups()).filter(({name}) => name === subjectGroup);
+    }
+
+    /** @returns Whether the test subject group has no subjects, seen through their cells in WasmTestColumnGroup */
+    async function isEmpty() {
+      const entries = await Array.fromAsync(pep.list({
+        subjectGroups: [subjectGroup],
+        columnGroups: ['WasmTestColumnGroup'],
+        mode: 'read-meta',
+      }));
+      deleteObjects(entries);
+      return entries.length === 0;
+    }
+
+    // The Data Administrator has implicit access to all subject groups (so listSubjectGroups lists them all),
+    // and may list the cells of all column groups with mode read-meta
+    before(() => authenticateAs('Data Administrator'));
+    
+    after(async () => {
+      // Remove what is left if a test failed halfway.
+      await pep.runHandleWasmException(() => pep.removeSubjectGroup(subjectGroup, true)).catch(() => {});
+    });
+
+    it('should create and remove subject groups, and add and remove subjects', () => pep.runHandleWasmException(async () => {
+      await pep.createSubjectGroup(subjectGroup);
+      expect(await listTestSubjectGroups()).to.have.lengthOf(1);
+      expect(await isEmpty()).to.be.true;
+
+      await pep.addSubjectToGroup(subjectGroup, subject);
+      expect(await isEmpty()).to.be.false;
+
+      await pep.removeSubjectFromGroup(subjectGroup, subject);
+      expect(await isEmpty()).to.be.true;
+
+      await pep.removeSubjectGroup(subjectGroup);
+      expect(await listTestSubjectGroups()).to.be.empty;
+    }));
+  });
 });
 
 describe('getColumnModes()', () => {

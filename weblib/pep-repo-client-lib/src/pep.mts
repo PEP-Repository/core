@@ -628,6 +628,27 @@ export default class Pep {
     return this.#wrapExec(() => this.#client.updateUserGroupExpiration(uid, group, expiration?.getTime()));
   }
 
+  // Subject groups and which subjects are in them: changes require the Data Administrator user group
+
+  createSubjectGroup(name: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.createSubjectGroup(name));
+  }
+
+  /** @param force Also remove the group when it still has subjects, or access rules refer to it */
+  removeSubjectGroup(name: string, force: boolean = false): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeSubjectGroup(name, force));
+  }
+
+  /** @param subject A polymorphic pseudonym (as in {@link CellEntry.subjectEncryptedOriginId}) or participant identifier */
+  addSubjectToGroup(subjectGroup: string, subject: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.addSubjectToGroup(subjectGroup, subject));
+  }
+
+  /** @param subject A polymorphic pseudonym (as in {@link CellEntry.subjectEncryptedOriginId}) or participant identifier */
+  removeSubjectFromGroup(subjectGroup: string, subject: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeSubjectFromGroup(subjectGroup, subject));
+  }
+
   /** @see {@link PepModule.pepHandleWasmException} */
   handleWasmException(ex: WasmException) {
     return this.#mod.pepHandleWasmException(ex);

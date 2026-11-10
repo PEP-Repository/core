@@ -234,10 +234,22 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
   }
 
   /// Run \p mutate on the io_context thread
-  WeblibApiVoidPromise mutateUsers(std::function<rxcpp::observable<FakeVoid>(const AccessManagerProxy&)> mutate) {
+  WeblibApiVoidPromise mutateAccessManager(std::function<rxcpp::observable<FakeVoid>(const AccessManagerProxy&)> mutate) {
     co_await onIoThread()
         .flat_map([mutate = std::move(mutate)](const std::shared_ptr<Weblib>& self) {
           return mutate(*self->client_->getAccessManagerProxy());
+        });
+  }
+
+  /// Resolve a polymorphic pseudonym or participant identifier to a polymorphic pseudonym.
+  static rxcpp::observable<PolymorphicPseudonym> parseSubject(const std::shared_ptr<Weblib>& self, std::string subject) {
+    return self->client_->parsePpsOrIdentities({std::move(subject)})
+        .op(RxGetOne("PolymorphicPseudonym"))
+        .map([](std::shared_ptr<std::vector<PolymorphicPseudonym>> pps) {
+          if (pps->empty()) {
+            throw std::runtime_error("No pseudonym found");
+          }
+          return pps->front();
         });
   }
 
@@ -579,15 +591,9 @@ public:
     co_return co_await onIoThread()
         .flat_map([subject = std::move(query.subject), column = std::move(query.column),
                    metadata = std::move(query.metadata), batches = std::move(batches)](const std::shared_ptr<Weblib>& self) {
-          return self->client_->parsePpsOrIdentities({subject})
-              .op(RxGetOne("PolymorphicPseudonym"))
-              .map([](std::shared_ptr<std::vector<PolymorphicPseudonym>> pps) {
-                if (pps->empty()) {
-                  throw std::runtime_error("No pseudonym found");
-                }
-                return std::make_shared<PolymorphicPseudonym>(pps->front());
-              })
-              .flat_map([self, column, metadata, batches](std::shared_ptr<PolymorphicPseudonym> pp) {
+          return parseSubject(self, subject)
+              .flat_map([self, column, metadata, batches](const PolymorphicPseudonym& subjectPp) {
+                auto pp = std::make_shared<PolymorphicPseudonym>(subjectPp);
                 std::map<std::string, MetadataXEntry> xMetadata;
                 for (const auto& [key, value] : metadata) {
                   xMetadata.emplace(key, MetadataXEntry::FromPlaintext(value, false, false));
@@ -629,86 +635,121 @@ public:
   }
 
   WeblibApiVoidPromise createUser(std::string uid) {
-    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+    return mutateAccessManager([uid = std::move(uid)](const AccessManagerProxy& am) {
       return am.createUser(uid);
     });
   }
 
   WeblibApiVoidPromise removeUser(std::string uid) {
-    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+    return mutateAccessManager([uid = std::move(uid)](const AccessManagerProxy& am) {
       return am.removeUser(uid);
     });
   }
 
   WeblibApiVoidPromise addUserIdentifier(std::string existingUid, std::string newUid, bool isPrimaryId, bool isDisplayId) {
-    return mutateUsers([existingUid = std::move(existingUid), newUid = std::move(newUid), isPrimaryId, isDisplayId](
+    return mutateAccessManager([existingUid = std::move(existingUid), newUid = std::move(newUid), isPrimaryId, isDisplayId](
         const AccessManagerProxy& am) {
       return am.addUserIdentifier(existingUid, newUid, isPrimaryId, isDisplayId);
     });
   }
 
   WeblibApiVoidPromise removeUserIdentifier(std::string uid) {
-    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+    return mutateAccessManager([uid = std::move(uid)](const AccessManagerProxy& am) {
       return am.removeUserIdentifier(uid);
     });
   }
 
   WeblibApiVoidPromise setUserPrimaryId(std::string uid) {
-    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+    return mutateAccessManager([uid = std::move(uid)](const AccessManagerProxy& am) {
       return am.setUserPrimaryId(uid);
     });
   }
 
   WeblibApiVoidPromise unsetUserPrimaryId(std::string uid) {
-    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+    return mutateAccessManager([uid = std::move(uid)](const AccessManagerProxy& am) {
       return am.unsetUserPrimaryId(uid);
     });
   }
 
   WeblibApiVoidPromise setUserDisplayId(std::string uid) {
-    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+    return mutateAccessManager([uid = std::move(uid)](const AccessManagerProxy& am) {
       return am.setUserDisplayId(uid);
     });
   }
 
   WeblibApiVoidPromise createUserGroup(UserGroupInfo group) {
-    return mutateUsers([group = FromUserGroupInfo(std::move(group))](const AccessManagerProxy& am) {
+    return mutateAccessManager([group = FromUserGroupInfo(std::move(group))](const AccessManagerProxy& am) {
       return am.createUserGroup(group);
     });
   }
 
   WeblibApiVoidPromise modifyUserGroup(UserGroupInfo group) {
-    return mutateUsers([group = FromUserGroupInfo(std::move(group))](const AccessManagerProxy& am) {
+    return mutateAccessManager([group = FromUserGroupInfo(std::move(group))](const AccessManagerProxy& am) {
       return am.modifyUserGroup(group);
     });
   }
 
   WeblibApiVoidPromise removeUserGroup(std::string name) {
-    return mutateUsers([name = std::move(name)](const AccessManagerProxy& am) {
+    return mutateAccessManager([name = std::move(name)](const AccessManagerProxy& am) {
       return am.removeUserGroup(name);
     });
   }
 
   /// \param expiration Milliseconds since the Unix epoch, or no expiration when undefined
   WeblibApiVoidPromise addUserToGroup(std::string uid, std::string group, std::optional<double> expiration) {
-    return mutateUsers([uid = std::move(uid), group = std::move(group), expiration = expiration.transform(FromJsTime)](
+    return mutateAccessManager([uid = std::move(uid), group = std::move(group), expiration = expiration.transform(FromJsTime)](
         const AccessManagerProxy& am) {
       return am.addUserToGroup(uid, group, expiration);
     });
   }
 
   WeblibApiVoidPromise removeUserFromGroup(std::string uid, std::string group, bool blockTokens) {
-    return mutateUsers([uid = std::move(uid), group = std::move(group), blockTokens](const AccessManagerProxy& am) {
+    return mutateAccessManager([uid = std::move(uid), group = std::move(group), blockTokens](const AccessManagerProxy& am) {
       return am.removeUserFromGroup(uid, group, blockTokens);
     });
   }
 
   /// \param expiration Milliseconds since the Unix epoch, or no expiration when undefined
   WeblibApiVoidPromise updateUserGroupExpiration(std::string uid, std::string group, std::optional<double> expiration) {
-    return mutateUsers([uid = std::move(uid), group = std::move(group), expiration = expiration.transform(FromJsTime)](
+    return mutateAccessManager([uid = std::move(uid), group = std::move(group), expiration = expiration.transform(FromJsTime)](
         const AccessManagerProxy& am) {
       return am.updateExpiration(uid, group, expiration);
     });
+  }
+
+
+  // Create a new subject group. The group is empty at first, and can be filled with addSubjectToGroup.
+  WeblibApiVoidPromise createSubjectGroup(std::string name) {
+    return mutateAccessManager([name = std::move(name)](const AccessManagerProxy& am) {
+      return am.amaCreateParticipantGroup(name);
+    });
+  }
+
+  /// \param force Also remove the group when it still has subjects, or access rules refer to it
+  WeblibApiVoidPromise removeSubjectGroup(std::string name, bool force) {
+    return mutateAccessManager([name = std::move(name), force](const AccessManagerProxy& am) {
+      return am.amaRemoveParticipantGroup(name, force);
+    });
+  }
+
+  /// \param subject A polymorphic pseudonym or participant identifier
+  WeblibApiVoidPromise addSubjectToGroup(std::string subjectGroup, std::string subject) {
+    co_await onIoThread()
+        .flat_map([subjectGroup = std::move(subjectGroup), subject = std::move(subject)](const std::shared_ptr<Weblib>& self) {
+          return parseSubject(self, subject).flat_map([self, subjectGroup](const PolymorphicPseudonym& pp) {
+            return self->client_->getAccessManagerProxy()->amaAddParticipantToGroup(subjectGroup, pp);
+          });
+        });
+  }
+
+  /// \param subject A polymorphic pseudonym or participant identifier
+  WeblibApiVoidPromise removeSubjectFromGroup(std::string subjectGroup, std::string subject) {
+    co_await onIoThread()
+        .flat_map([subjectGroup = std::move(subjectGroup), subject = std::move(subject)](const std::shared_ptr<Weblib>& self) {
+          return parseSubject(self, subject).flat_map([self, subjectGroup](const PolymorphicPseudonym& pp) {
+            return self->client_->getAccessManagerProxy()->amaRemoveParticipantFromGroup(subjectGroup, pp);
+          });
+        });
   }
 };
 
@@ -744,6 +785,10 @@ EMSCRIPTEN_BINDINGS(weblib) {
       .function("addUserToGroup", &Weblib::addUserToGroup)
       .function("removeUserFromGroup", &Weblib::removeUserFromGroup)
       .function("updateUserGroupExpiration", &Weblib::updateUserGroupExpiration)
+      .function("createSubjectGroup", &Weblib::createSubjectGroup)
+      .function("removeSubjectGroup", &Weblib::removeSubjectGroup)
+      .function("addSubjectToGroup", &Weblib::addSubjectToGroup)
+      .function("removeSubjectFromGroup", &Weblib::removeSubjectFromGroup)
   ;
   class_<Weblib::OAuthClient>("OAuthClient")
       .function("completeAuthentication", &Weblib::OAuthClient::completeAuthentication)
