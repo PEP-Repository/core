@@ -5,6 +5,8 @@
 #   "<listen port> <target host>:<target port>"
 # one service per line.
 
+# TODO: PEP's own TLS still runs inside the WSS (double encryption), see https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/3003.
+
 set -eu
 
 usage() {
