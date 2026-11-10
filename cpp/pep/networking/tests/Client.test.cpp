@@ -65,7 +65,8 @@ private:
   pep::EventSubscription connectionConnectivityChangeSubscription_;
 
   unsigned attempts_ = 0U;
-  std::optional<unsigned> successfulAttempt_; ///< The (1-based) number of the successful attempt
+  /// The (1-based) index of the successful attempt, if one occurred.
+  std::optional<unsigned> successfulAttempt_;
   std::optional<pep::testing::TimePoint> lastAttempt_;
 
   /// The number of (failed) attempts after the successful one
