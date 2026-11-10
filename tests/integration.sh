@@ -581,6 +581,11 @@ if should_run_test weblib; then
       -d CastorPlaceholder --file-extension .txt
   done
   pepcli --oauth-token-group "Access Administrator" ama cgar remove ShortPseudonyms "Research Assessor" write
+  # For a subject with short pseudonyms but no ParticipantIdentifier cell, like WasmTestSubjectSmall (never registered,
+  # only stored to), ensure-complete would store that identifier, which Research Assessor may not write. Store it here,
+  # so ensure-complete only generates the missing short pseudonyms
+  write_registration_server_cell ParticipantIdentifier store -p WasmTestSubjectSmall -d WasmTestSubjectSmall \
+    --file-extension .txt
   pepcli --oauth-token-group "Research Assessor" register ensure-complete WasmTestSubjectSmall
 
   trace mkdir -p ./dist-test/
