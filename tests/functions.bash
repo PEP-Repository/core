@@ -232,7 +232,7 @@ restart_servers() {
 wait_for_servers() {
   local server
   for server in accessmanager authserver keyserver registrationserver storagefacility transcryptor; do
-    pepcli ping --server "$server" > /dev/null
+    pepcli ping --server "$server" >/dev/null
   done
 }
 
