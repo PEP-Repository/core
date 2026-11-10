@@ -66,11 +66,9 @@ public:
 };
 
 std::chrono::milliseconds Contention::RandomDuration() {
-  static_assert(CHAR_BIT == 8);
-  unsigned char randomized; // [0, 256)
-  pep::RandomBytes({ &randomized, 1 });
-  unsigned int msec = randomized % 4U; // [0, 64)
-  return std::chrono::milliseconds(msec);
+  pep::CryptoUrbg rng;
+  std::uniform_int_distribution<std::chrono::milliseconds::rep> dist(0, 63);
+  return std::chrono::milliseconds(dist(rng));
 }
 
 TimeRange Contention::SpendSomeTime() {
