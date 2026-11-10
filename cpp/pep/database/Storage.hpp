@@ -72,7 +72,7 @@ private:
   void transactionallyPerform(Action action) {
     auto guard = raw.transaction_guard();
     action();
-    guard.commit_on_destroy = true;
+    guard.commit();
   }
 
 public:
