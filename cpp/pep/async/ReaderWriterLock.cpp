@@ -48,7 +48,9 @@ void ReaderWriterThreadLock::performLocked(bool write, const Action& action) {
   auto decrement = [&]() {
       std::scoped_lock lock(mutex_);
       assert(accesses->contains(self) && "We incremented its value a couple of lines ago");
-      (*accesses)[self]--;
+      if (--(*accesses)[self] == 0U) {
+        accesses->erase(self);
+      }
     };
   PEP_DEFER(decrement());
 
