@@ -55,6 +55,11 @@ EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(UserGroupMembership::expiration)::value_type>();
   register_optional<decltype(UserGroupInfo::maxAuthValiditySeconds)::value_type>();
   register_optional<decltype(ListColumnsQuery::includeImplicitlyGranted)::value_type>();
+  register_optional<decltype(AccessManagerFilter::pointInTime)::value_type>();
+  register_optional<decltype(AccessManagerFilter::column)::value_type>();
+  register_optional<decltype(AccessManagerFilter::columnGroup)::value_type>();
+  register_optional<decltype(AccessManagerFilter::subjectGroup)::value_type>();
+  register_optional<decltype(AccessManagerFilter::userGroup)::value_type>();
 }
 
 PEP_BINDINGS(ListColumnsQuery,
@@ -77,7 +82,7 @@ PEP_BINDINGS(ColumnGroupAccessModes,
   writeMeta
 )
 
-PEP_BINDINGS(ColumnGroup,
+PEP_BINDINGS(AccessibleColumnGroup,
   name,
   modes,
   columns
@@ -136,6 +141,40 @@ PEP_BINDINGS(UserGroupInfo,
 PEP_BINDINGS(UserQueryResult,
   users,
   userGroups
+)
+
+PEP_BINDINGS(ColumnGroup,
+  name,
+  columns
+)
+
+PEP_BINDINGS(ColumnGroupAccessRuleInfo,
+  columnGroup,
+  userGroup,
+  modes,
+  impliedOnlyModes
+)
+
+PEP_BINDINGS(SubjectGroupAccessRuleInfo,
+  subjectGroup,
+  userGroup,
+  modes
+)
+
+PEP_BINDINGS(AccessManagerFilter,
+  pointInTime,
+  column,
+  columnGroup,
+  subjectGroup,
+  userGroup
+)
+
+PEP_BINDINGS(AccessManagerState,
+  columns,
+  columnGroups,
+  columnGroupAccessRules,
+  subjectGroups,
+  subjectGroupAccessRules
 )
 
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {

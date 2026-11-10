@@ -380,7 +380,7 @@ WeblibApiPromise listColumns() {
       return self->client_->getAccessManagerProxy()
         ->getAccessibleColumns(true, { "read" });
     })
-    .map([](const ColumnAccess& access) -> std::vector<ColumnGroup> {
+    .map([](const ColumnAccess& access) -> std::vector<AccessibleColumnGroup> {
       return ...;
     });
 }

@@ -28,13 +28,17 @@ PEP_MARK_AS_FLAG_ENUM_TYPE(::pep::ColumnAccessModes)
 
 namespace pep {
 
-/// Returns \p modes extended with the modes that would be granted implicitly
+/// Returns the modes that \p modes grants implicitly, whether or not they are in \p modes as well
 ///
 /// Read grants ReadMeta and WriteMeta grants Write.
-constexpr ColumnAccessModes EffectiveModes(const ColumnAccessModes modes) noexcept {
-  return modes
-    | FlagsIf(ColumnAccessModes::ReadMeta, HasFlags(modes, ColumnAccessModes::Read))
+constexpr ColumnAccessModes ImplicitlyGrantedModes(const ColumnAccessModes modes) noexcept {
+  return FlagsIf(ColumnAccessModes::ReadMeta, HasFlags(modes, ColumnAccessModes::Read))
     | FlagsIf(ColumnAccessModes::Write, HasFlags(modes, ColumnAccessModes::WriteMeta));
+}
+
+/// Returns \p modes extended with the modes that would be granted implicitly
+constexpr ColumnAccessModes EffectiveModes(const ColumnAccessModes modes) noexcept {
+  return modes | ImplicitlyGrantedModes(modes);
 }
 
 /// True if the (implied) \p granted modes cover the \p required modes
