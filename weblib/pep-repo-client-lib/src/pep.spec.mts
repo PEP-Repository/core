@@ -346,7 +346,25 @@ describe('Pep', () => {
     const columnGroup = `WeblibTestColumnGroup-${suffix}`;
     const subjectGroup = `WeblibTestSubjectGroup-${suffix}`;
 
+    /** @returns Whether the test subject group has no subjects, seen through their cells in WasmTestColumnGroup */
+    async function isEmpty() {
+      // The Data Administrator may list the cells of all column groups with mode read-meta
+      const entries = await Array.fromAsync(pep.list({
+        subjectGroups: [subjectGroup],
+        columnGroups: ['WasmTestColumnGroup'],
+        mode: 'read-meta',
+      }));
+      deleteObjects(entries);
+      return entries.length === 0;
+    }
+
     before(() => authenticateAs('Data Administrator'));
+    after(async () => {
+      // Remove what is left if a test failed halfway.
+      await pep.runHandleWasmException(() => pep.removeColumnGroup(columnGroup, true)).catch(() => {});
+      await pep.runHandleWasmException(() => pep.removeColumn(column)).catch(() => {});
+      await pep.runHandleWasmException(() => pep.removeSubjectGroup(subjectGroup, true)).catch(() => {});
+    });
 
     it('should create and remove columns and column groups', () => pep.runHandleWasmException(async () => {
       // pointInTime is in server time, these moments are in client time. Those clocks are the same in the
@@ -384,16 +402,13 @@ describe('Pep', () => {
     it('should create and remove subject groups, and add and remove subjects', () => pep.runHandleWasmException(async () => {
       await pep.createSubjectGroup(subjectGroup);
       expect((await pep.queryAccessManager({subjectGroup})).subjectGroups).to.deep.equal([subjectGroup]);
+      expect(await isEmpty()).to.be.true;
 
       await pep.addSubjectToGroup(subjectGroup, 'WasmTestSubjectSmall');
-      // The query does not list a group's subjects, but removing a group that has them fails without force
-      const removalError = await pep.runHandleWasmException(() => pep.removeSubjectGroup(subjectGroup))
-          .then(() => undefined, (ex: unknown) => ex);
-      expect(removalError).to.be.an.instanceOf(Error)
-          .and.to.have.property('message').that.includes('1 participants found in group');
+      expect(await isEmpty()).to.be.false;
 
       await pep.removeSubjectFromGroup(subjectGroup, 'WasmTestSubjectSmall');
-      // Succeeds without force, as the group is empty again
+      expect(await isEmpty()).to.be.true;
       await pep.removeSubjectGroup(subjectGroup);
 
       expect((await pep.queryAccessManager()).subjectGroups).to.not.include(subjectGroup);
