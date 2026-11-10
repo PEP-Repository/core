@@ -400,9 +400,12 @@ cleanup:
 #language=sh
 .use-mem-gate: &use-mem-gate |
   mem_gate_launcher="$CI_PROJECT_DIR/ci_cd/mem-gate.sh"
-  export CCACHE_PREFIX="\"$mem_gate_launcher\""
   # Note: no quotes, ccache splits prefix_command on spaces and doesn't interpret quotes (so the path cannot contain spaces)
   export CCACHE_PREFIX="$mem_gate_launcher"
+  # Give mem-gate.sh a copy of the job's stderr, which is inherited through CMake, Ninja and ccache. This way, its messages
+  # show up in the job log immediately, and are not captured (and cached!) by ccache as part of the compiler's output.
+  exec {mem_gate_log_fd}>&2
+  export MEM_GATE_LOG_FD="$mem_gate_log_fd"
 
 #language=sh
 # We don't want errors about [[deprecated]] library functions in stable/release branches

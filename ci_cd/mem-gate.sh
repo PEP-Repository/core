@@ -16,6 +16,10 @@
 #   MEM_GATE_MAX_ATTEMPTS      Maximum number of times to run <command> (default 3)
 #   MEM_GATE_STATE_DIR         Directory to coordinate commands in; can be shared between containers to also coordinate
 #                              commands of different CI jobs (default ${TMPDIR:-/tmp}/mem-gate)
+#   MEM_GATE_LOG_FD            Open file descriptor to write messages to, instead of stderr. Use this when running via
+#                              ccache's prefix_command, as ccache would otherwise store our messages along with the
+#                              compiler's output and replay them on every cache hit. Messages written to an inherited
+#                              descriptor also bypass the output buffering of Ninja
 
 command_mib=${MEM_GATE_COMMAND_MIB:-1024}
 reserve_mib=${MEM_GATE_RESERVE_MIB:-1024}
@@ -44,6 +48,14 @@ available_mib() {
   echo "$available"
 }
 
+log() {
+  local message="mem-gate $$: $*"
+  # Fall back to stderr if the descriptor is not open (anymore)
+  if [[ -z ${MEM_GATE_LOG_FD-} ]] || ! { echo "$message" >&"$MEM_GATE_LOG_FD"; } 2>/dev/null; then
+    echo "$message" >&2
+  fi
+}
+
 # Prints the number of processes in our cgroup killed by the OOM killer, or nothing if unknown
 oom_kills() {
   awk '$1 == "oom_kill" { print $2 }' "$cgroup_dir/memory.events" 2>/dev/null
@@ -52,7 +64,7 @@ oom_kills() {
 # Waits until $1 MiB seems available (on top of the reserve), then registers the start of a command needing it.
 # The "starts" file lists "<start time in µs> <MiB>" of recently started commands.
 wait_for_memory() {
-  local need=$1 wait_start=$EPOCHSECONDS now_us start_us start_mib recent_mib fits
+  local need=$1 wait_start=$EPOCHSECONDS waiting=false now_us start_us start_mib recent_mib fits
   local -a recent
   while true; do
     flock "$lock_fd"
@@ -72,7 +84,7 @@ wait_for_memory() {
     if (( $(available_mib) - recent_mib >= need + reserve_mib )); then
       fits=true
     elif (( EPOCHSECONDS - wait_start >= max_wait_seconds )); then
-      echo "mem-gate $$: Waited ${max_wait_seconds}s for ${need} MiB of available memory, starting $command_name anyway" >&2
+      log "Still not ${need} MiB of available memory after ${max_wait_seconds}s, giving up waiting"
       fits=true
     fi
     if $fits; then
@@ -82,10 +94,16 @@ wait_for_memory() {
     flock --unlock "$lock_fd"
 
     if $fits; then
+      if $waiting; then
+        log "Starting $command_name after waiting $(( EPOCHSECONDS - wait_start ))s"
+      fi
       return
     fi
+    if ! $waiting; then
+      log "Waiting for ${need} MiB of available memory to start $command_name"
+      waiting=true
+    fi
     local sleep_time=0.$(( RANDOM % 5 + 5 ))s
-    echo "mem-gate $$: Waiting ${sleep_time} for ${need} MiB to start $command_name..." >&2
     sleep "$sleep_time"
   done
 }
@@ -124,7 +142,7 @@ for (( attempt = 1; ; attempt++ )); do
     exit "$status"
   fi
 
-  echo "mem-gate $$: $command_name was killed by the OOM killer, rerunning it (attempt $(( attempt + 1 ))/$max_attempts)" >&2
+  log "$command_name was killed by the OOM killer, rerunning it (attempt $(( attempt + 1 ))/$max_attempts)"
   (( need_mib *= 2 ))
   # Rerun one command at a time, so that heavy commands do not keep killing each other
   if [[ -z ${retry_lock_fd-} ]] && { exec {retry_lock_fd}>>"$state_dir/retry.lock"; } 2>/dev/null; then
