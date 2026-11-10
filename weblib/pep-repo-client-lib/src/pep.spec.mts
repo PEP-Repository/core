@@ -375,6 +375,12 @@ describe('Pep', () => {
       expect((await pep.queryAccessManager({subjectGroup})).subjectGroups).to.deep.equal([subjectGroup]);
 
       await pep.addSubjectToGroup(subjectGroup, 'WasmTestSubjectSmall');
+      // The query does not list a group's subjects, but removing a group that has them fails without force
+      const removalError = await pep.runHandleWasmException(() => pep.removeSubjectGroup(subjectGroup))
+          .then(() => undefined, (ex: unknown) => ex);
+      expect(removalError).to.be.an.instanceOf(Error)
+          .and.to.have.property('message').that.includes('1 participants found in group');
+
       await pep.removeSubjectFromGroup(subjectGroup, 'WasmTestSubjectSmall');
       // Succeeds without force, as the group is empty again
       await pep.removeSubjectGroup(subjectGroup);
