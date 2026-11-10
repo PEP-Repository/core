@@ -24,6 +24,7 @@ public:
   const std::string& column() const noexcept { return column_; }
 
   LocalPseudonym pseudonym() const { return LocalPseudonym::FromText(this->participant()); }
+  [[nodiscard]] std::string string() const;
 
   bool operator==(const EntryName& rhs) const { return this->memberValues() == rhs.memberValues(); }
   bool operator<(const EntryName& rhs) const { return this->memberValues() < rhs.memberValues(); }
@@ -39,7 +40,5 @@ struct std::formatter<pep::EntryName> {
     return ctx.begin(); // We just have "{}", no format specifiers
   }
 
-  auto format(const pep::EntryName& name, format_context& ctx) const {
-    return std::format_to(ctx.out(), "{}{}{}", name.participant(), pep::EntryName::Delimiter, name.column());
-  }
+  auto format(const pep::EntryName& name, format_context& ctx) const;
 };

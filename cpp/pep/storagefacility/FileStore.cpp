@@ -347,7 +347,7 @@ void FileStore::Entry::save() const {
   std::ostringstream out;
 
   out << EntryFileType;
-  WriteBinary(out, std::format("{}", this->getName()));
+  WriteBinary(out, this->getName().string());
   WriteBinary(out, static_cast<std::uint64_t>(TicksSinceEpoch<milliseconds>(validFrom_)));
 
   std::vector<PageId> pages;
@@ -462,7 +462,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
 
   // Read the entry's contents from the file
   auto storedName = ReadBinary(infile, std::string());
-  if (storedName != std::format("{}", cell.entryName())) {
+  if (storedName != cell.entryName().string()) {
     throw std::runtime_error("could not read file (wrong entry name)");
   }
 

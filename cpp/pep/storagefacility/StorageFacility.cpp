@@ -436,7 +436,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       re.entry.polymorphicKey.ensurePacked();
 
       auto& sfEntry = re.fileStoreEntry;
-      re.entry.id = encryptId(std::format("{}", sfEntry->getName()), sfEntry->getValidFrom());
+      re.entry.id = encryptId(sfEntry->getName().string(), sfEntry->getValidFrom());
 
       return re;
     })
@@ -740,7 +740,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 
       for (size_t j = 0; j < i; ++j) { // TODO: improve performance: we don't want an inner loop making this O(n^2)
         if (ctx->entries[j]->getName() == entryChange->getName()) {
-          PEP_LOG(LogTag, Severity::Error) << "Single request contained duplicate entry change for " << std::format("{}", entryChange->getName());
+          PEP_LOG(LogTag, Severity::Error) << std::format("Single request contained duplicate entry change for {}", entryChange->getName());
           // Don't send our internal representation (local pseudonym contained in the entry's name) back to the client
           throw Error("Cannot store multiple values for column " + col + ". The duplicate entries are at indices " + std::to_string(i) + " and " + std::to_string(j));
         }
@@ -823,7 +823,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
               auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
               for (auto [entry, entryId, i] : views::zip(ctx->entries, ctx->ids, views::iota(0uz))) {
                 try {
-                  auto id = encryptId(std::format("{}", entry->getName()), time);
+                  auto id = encryptId(entry->getName().string(), time);
                   std::move(*entry).commit(time);
                   entryId = id;
                 }
@@ -949,7 +949,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
   auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
   MetadataUpdateResponse2 response;
   for (const auto& change : changes) {
-    auto id = this->encryptId(std::format("{}", change->getName()), time);
+    auto id = this->encryptId(change->getName().string(), time);
     std::move(*change).commit(time);
     response.ids.push_back(id);
   }
@@ -1068,7 +1068,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
         continue;
       }
 
-      auto entryName = std::format("{}", EntryName(participant.name(), col));
+      auto entryName = EntryName(participant.name(), col).string();
       const FileStore::Cell& cell = **iCell;
       for (const auto& version : cell.versions()) {
         response.entries.push_back({
@@ -1149,7 +1149,7 @@ Metadata StorageFacility::compileMetadata(
 
   auto payloadTimestamp = content->getOriginalPayloadEntryTimestamp();
   if (payloadTimestamp.has_value()) {
-    result.setOriginalPayloadEntryId(this->encryptId(std::format("{}", entry.getName()), *payloadTimestamp));
+    result.setOriginalPayloadEntryId(this->encryptId(entry.getName().string(), *payloadTimestamp));
   }
 
   // Extract the 'extra' PEP metadata entries from
