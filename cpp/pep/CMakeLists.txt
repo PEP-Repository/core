@@ -47,7 +47,8 @@ if(ENABLE_CLANG_TIDY)
   list(APPEND clang_tidy_opts "--extra-arg=-DPEP_DUMMY_CLANG_TIDY_HASH=${clang_tidy_hash}")
 
   find_program(CLANG_TIDY_PROGRAM clang-tidy)
-  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts})
+  set(CLANG_TIDY_LAUNCHER "" CACHE STRING "Command to prefix clang-tidy invocations with, like CMAKE_CXX_COMPILER_LAUNCHER")
+  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_LAUNCHER} ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts})
 endif()
 
 # Always enable certain compiler warnings if using either GCC or Clang

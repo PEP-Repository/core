@@ -394,6 +394,14 @@ cleanup:
     >&2 echo "Concurrency limit is $concurrency_limit"
   fi
 
+# Jobs can invoke this anchor to make actual compilations (ccache misses) and clang-tidy runs wait for enough available
+# memory, and rerun them if they are OOM-killed anyway (see ci_cd/mem-gate.sh for settings, e.g. MEM_GATE_COMMAND_MIB).
+# Sets "mem_gate_launcher" to the wrapper to prefix such commands with.
+#language=sh
+.use-mem-gate: &use-mem-gate |
+  mem_gate_launcher="$CI_PROJECT_DIR/ci_cd/mem-gate.sh"
+  export CCACHE_PREFIX="\"$mem_gate_launcher\""
+
 #language=sh
 # We don't want errors about [[deprecated]] library functions in stable/release branches
 .set-enable-deprecation-errors: &set-enable-deprecation-errors
@@ -520,6 +528,7 @@ retrieve-lockfile:
     -DCMAKE_C_COMPILER_LAUNCHER=ccache
     -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
     -DENABLE_CLANG_TIDY="$ENABLE_LINTER"
+    -DCLANG_TIDY_LAUNCHER="${mem_gate_launcher:-}"
     -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
     -DENABLE_OAUTH_TEST_USERS=OFF
     -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
@@ -550,6 +559,7 @@ retrieve-lockfile:
     -     concurrency_limit="$LINTER_CONCURRENCY_LIMIT"
     -   fi
     - fi
+    - *use-mem-gate
     - *configure-conan-and-cmake
     - cmake --build --preset conan-$build_type_lower
 
@@ -612,7 +622,7 @@ ubuntu-lts-debug:
   script:
     - !reference [.ubuntu-build-base, script]
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
-    - | 
+    - |
        if [ "${ENABLE_COVERAGE:-OFF}" != "ON" ]; then
          echo "Skipping code coverage processing steps"
          exit 0
@@ -626,7 +636,7 @@ ubuntu-lts-debug:
        for BINARY in $UNIT_TESTS_ALL_NATIVE $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
          BINARIES="$BINARIES --object $BUILD_DIRECTORY/$BINARY"
        done
-    
+
     - IGNORE_REGEX=".*(proto/generated/|/tests/|/apps/).*"
 
       # Generate HTML report
@@ -746,6 +756,7 @@ ubuntu-lts-debug-without-castor:
     - git diff --name-only "${LAST_PROCESSED_SHA}" "${CURRENT_SHA}" --no-relative cpp/pep > index.txt
     - *checkout-docker-build-script-sh-steps
     - *set_concurrency_limit
+    - *use-mem-gate
     - *configure-conan-and-cmake
     - bear -- cmake --build --preset conan-$build_type_lower
     - infer capture --reactive
