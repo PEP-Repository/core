@@ -103,7 +103,7 @@ public:
 
   void ensureAllPrefixesPopped() const {
     if (!prefixes_.empty()) {
-      throw std::logic_error("Not all prefixes have been popped");
+      throw std::runtime_error("Not all prefixes have been popped");
     }
   }
 };
