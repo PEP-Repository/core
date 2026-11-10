@@ -21,7 +21,7 @@ export default (env, argv) => ({
   externals: [
     // Keep consistent with tests.html
     {
-      mocha: 'script mocha@https://unpkg.com/mocha@11/mocha.js',
+      mocha: 'script mocha@https://unpkg.com/mocha@12/mocha.js',
     },
   ],
 
