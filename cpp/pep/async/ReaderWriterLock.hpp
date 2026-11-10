@@ -2,10 +2,10 @@
 
 #include <pep/utils/Action.hpp>
 #include <boost/noncopyable.hpp>
-#include <map>
 #include <mutex>
 #include <shared_mutex>
 #include <thread>
+#include <unordered_map>
 
 namespace pep {
 
@@ -52,7 +52,7 @@ class ReaderWriterThreadLock : boost::noncopyable {
 private:
   ReaderWriterLock nonRecursive_;
 
-  using Accesses = std::map<std::thread::id, unsigned>;
+  using Accesses = std::unordered_map<std::thread::id, unsigned>;
   Accesses reads_;
   Accesses writes_;
   std::mutex mutex_;
