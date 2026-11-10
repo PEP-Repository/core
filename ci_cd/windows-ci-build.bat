@@ -30,6 +30,35 @@ if not "%CI_JOB_ID%" == "" (
   set _MSPDBSRV_ENDPOINT_=pep-ci-job-%CI_JOB_ID%
 )
 
+REM Limit build parallelism, based on the number of CPUs and the amount of RAM, see windows-build-parallelism.ps1.
+REM By default, MSBuild builds -maxCpuCount projects concurrently, and the compiler runs /MP processes for each project,
+REM  so the number of compiler processes multiplies, and concurrent CI jobs on the same machine multiply it further.
+REM  See https://learn.microsoft.com/en-us/cpp/build/reference/mp-build-with-multiple-processes#the-msbuild-tool
+REM Instead, we use MSBuild's Multi-ToolTask (MTT) scheduler, see https://devblogs.microsoft.com/cppblog/improved-parallelism-in-msbuild/
+REM - UseMultiToolTask=true: MSBuild itself starts one cl.exe per source file, at most MultiProcMaxCount at a time.
+REM   The /MP compiler option is then dropped.
+REM - EnforceProcessCountAcrossBuilds=true: the MultiProcMaxCount limit is enforced across all projects and all MSBuild
+REM   instances (using a named semaphore), and therefore across concurrent CI jobs on the same machine.
+REM   Because of this, MultiProcMaxCount is based on the resources of the whole machine and should be the same for all builds on it.
+REM These are MSBuild properties that default to the environment variables of the same name.
+REM  For their definitions, see Microsoft.Cpp.Common.props and Microsoft.CppCommon.targets in the Visual Studio installation,
+REM  under MSBuild\Microsoft\VC\v180.
+REM This also applies to dependencies that Conan builds using MSBuild.
+REM Linking is not limited by MTT, but only by the number of projects that MSBuild builds concurrently,
+REM  which we pass to Conan as tools.microsoft.msbuild:max_cpu_count below.
+set UseMultiToolTask=true
+set EnforceProcessCountAcrossBuilds=true
+for /f "usebackq tokens=1,* delims==" %%A in (`pwsh -NoProfile -ExecutionPolicy Bypass -File "%~dp0windows-build-parallelism.ps1"`) do set "%%A=%%B"
+if "%MultiProcMaxCount%" == "" (
+  echo Could not determine build parallelism.
+  exit /B 1
+)
+if "%PEP_MSBUILD_MAX_CPU_COUNT%" == "" (
+  echo Could not determine build parallelism.
+  exit /B 1
+)
+echo Using at most %MultiProcMaxCount% compiler processes and %PEP_MSBUILD_MAX_CPU_COUNT% concurrent MSBuild projects.
+
 SET WhatToBuild=%1
 SET BuildType=%2
 
@@ -83,12 +112,20 @@ if exist "%BUILD_DIR%" (
 echo Installing Conan packages.
 
 REM `__` will be replaced by `:` in script. Workaround for https://github.com/PowerShell/PowerShell/issues/16432.
+REM tools.microsoft.msbuild:max_cpu_count sets MSBuild's -maxCpuCount for dependencies that Conan builds,
+REM  and for our own build via the generated CMake build preset (since Conan 2.34, see https://github.com/conan-io/conan/pull/20360).
+REM  Without it, MSBuild builds only one project at a time.
+REM tools.build:jobs is used for dependencies that Conan builds using other build systems (e.g. Ninja),
+REM  which are not limited by MultiProcMaxCount. For Visual Studio generators, Conan also uses it for /MP, but MTT drops that.
+REM See https://docs.conan.io/2/reference/config_files/global_conf.html
 pwsh -ExecutionPolicy Bypass -File ".\docker-build\scripts\windows-ci-conan.ps1" ^
   install .\docker-build\builder\conan\conanfile.py ^
   --lockfile=.\docker-build\builder\conan\conan-ci.lock ^
   --profile__all=.\docker-build\builder\conan\conan_profile ^
   --build=missing ^
   -s__a build_type="%BuildType%" ^
+  -c__a "tools.microsoft.msbuild:max_cpu_count=%PEP_MSBUILD_MAX_CPU_COUNT%" ^
+  -c__a "tools.build:jobs=%MultiProcMaxCount%" ^
   -o "&:with_assessor=True" ^
   -o "&:with_servers=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:with_castor=%PEP_CONAN_BUILD_ADDITIONALS%" ^

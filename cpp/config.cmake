@@ -90,12 +90,19 @@ if(MSVC)
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /ignore:4099")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /ignore:4099")
 
-  # Allow multi-processor compilation: see https://blogs.msdn.microsoft.com/visualstudio/2010/03/07/tuning-c-build-parallelism-in-vs2010/
+  # Multi-processor compilation (/MP): we don't add a plain /MP here (which would mean "one process per logical CPU"),
+  #  because:
+  #  - Conan's CMakeToolchain already adds /MP<tools.build:jobs> for Visual Studio generators,
+  #    and a plain /MP after it would override that setting.
+  #  - With MSBuild's Multi-ToolTask scheduler (UseMultiToolTask=true, as used by ci_cd/windows-ci-build.bat),
+  #    /MP is ignored anyway: MSBuild then starts one cl.exe per source file itself, limited by MultiProcMaxCount.
+  #  Note that /MP multiplies with the number of projects MSBuild builds in parallel (-maxCpuCount),
+  #  see https://learn.microsoft.com/en-us/cpp/build/reference/mp-build-with-multiple-processes#the-msbuild-tool
+  #  and https://devblogs.microsoft.com/cppblog/improved-parallelism-in-msbuild/
+  # COMPILE_SEQUENTIALLY (/MP1) has no effect with MTT either: set environment variable MultiProcMaxCount=1 instead.
   option(COMPILE_SEQUENTIALLY "Compile one source at a time")
   if(COMPILE_SEQUENTIALLY)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP1")
-  else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
   endif()
 
   # Fix C1128: number of sections exceeded object file format limit: compile with /bigobj
