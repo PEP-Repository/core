@@ -4,15 +4,26 @@
 
 #include <pep/utils/Log.hpp>
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Exceptions.hpp>
 
-#include <boost/noncopyable.hpp>
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 #include <rxcpp/rx-lite.hpp>
+#include <emscripten/wire.h> // for emscripten::typed_memory_view, emscripten::allow_raw_pointers
 
 #include <atomic>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <memory>
+#include <span>
+#include <string>
+#include <string_view>
+#include <utility>
+
+#include <boost/core/noncopyable.hpp>
+
 
 using namespace emscripten;
 using namespace pep;

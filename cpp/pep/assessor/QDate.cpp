@@ -1,4 +1,8 @@
 #include <pep/assessor/QDate.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <chrono>
+#include <version>
 
 using namespace pep;
 

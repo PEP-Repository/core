@@ -7,6 +7,8 @@
 #include <emscripten/val.h>
 
 #include <utility>
+#include <memory>
+#include <string>
 
 using namespace pep;
 

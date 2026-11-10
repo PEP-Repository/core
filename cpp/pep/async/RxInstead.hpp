@@ -3,6 +3,7 @@
 #include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-ignore_elements.hpp>
 #include <rxcpp/operators/rx-reduce.hpp>
+
 #include <cassert>
 
 namespace pep {

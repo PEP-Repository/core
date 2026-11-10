@@ -1,10 +1,12 @@
 #pragma once
 
-#include <exception>
-#include <vector>
-
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/serialization/Serializer.hpp>
+
+#include <exception>
+#include <utility>
 
 namespace pep {
 

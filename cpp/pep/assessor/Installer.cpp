@@ -1,3 +1,5 @@
+#ifdef _WIN32
+
 #include <pep/utils/Paths.hpp>
 #include <pep/versioning/Version.hpp>
 #include <pep/utils/Defer.hpp>
@@ -12,8 +14,6 @@
 #include <boost/property_tree/xml_parser.hpp>
 
 #include <QFileDialog>
-
-#ifdef _WIN32
 
 /* Macro PEP_INSTALLER_BROWSE_LOCALLY is a development and debug helper.
  * If defined, the installer (and its metadata file) aren't downloaded from the PEP server.

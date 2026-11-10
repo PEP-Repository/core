@@ -7,25 +7,60 @@
 #include <pep/async/RxBeforeTermination.hpp>
 #include <pep/async/RxCartesianProduct.hpp>
 #include <pep/async/RxEnsureProgress.hpp>
-#include <pep/async/RxRequireCount.hpp>
+#include <pep/async/RxRequireCount.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
 #include <pep/async/RxInstead.hpp>
-#include <pep/async/RxToUnorderedMap.hpp>
+#include <pep/async/RxToUnorderedMap.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
 #include <pep/structure/ShortPseudonyms.hpp>
-#include <pep/auth/EnrolledParty.hpp>
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/async/ActivityMonitor.hpp>
+#include <pep/async/RxCache.hpp>
+#include <pep/async/RxIterate.hpp>
+#include <pep/castor/CastorConnection.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
+#include <pep/castor/Study.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
+#include <pep/crypto/AsymmetricKey.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/morphing/Metadata.hpp>
+#include <pep/registrationserver/RegistrationServerMessages.hpp> // for SignedPEPIdRegistrationRequest, PEPIdRegistrationResponse
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/server/SigningServer.hpp>
+#include <pep/structure/ColumnName.hpp> // IWYU pragma: keep (used with WITH_CASTOR)
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
 
-#include <boost/property_tree/json_parser.hpp>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <exception>
+#include <filesystem>
+#include <limits>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-on_error_resume_next.hpp>
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
 #include <rxcpp/operators/rx-take.hpp>
+#include <rxcpp/rx-lite.hpp>
 
-#include <iostream>
+#include <boost/asio/io_context.hpp>
+
+#include <sqlite3.h>
 
 #ifdef WITH_CASTOR
 #include <pep/castor/Participant.hpp>
@@ -94,6 +129,74 @@ int ParseSqliteSelectCountResult(void *pArg, int argc, char **argv, char **colum
 }
 
 }
+
+class RegistrationServer::ShadowShortPseudonymsChecksumChain : public ChecksumChain {
+private:
+  const RegistrationServer& server_;
+
+public:
+  ShadowShortPseudonymsChecksumChain(const RegistrationServer& server) noexcept
+    : ChecksumChain("shadow-short-pseudonyms"), server_(server) {}
+
+  Result get(const std::optional<Checkpoint>& maxCheckpoint) const override {
+    if (server_.shadowStorage_ == nullptr) {
+      throw std::runtime_error("Shadow storage unavailable for checksum chain calculation");
+    }
+
+    Result result;
+
+    auto max = maxCheckpoint.has_value()
+      ? static_cast<int64_t>(*maxCheckpoint)
+      : std::numeric_limits<int64_t>::max();
+
+    sqlite3_stmt* stmt{};
+
+    sqlite3_prepare_v2(server_.shadowStorage_,
+      "SELECT \
+          `Id`, \
+          `EncryptedShortPseudonym`, \
+          `EncryptedIdentifier` \
+        FROM ShadowShortPseudonyms \
+        Where Id <= ?;",
+      -1, &stmt, nullptr);
+    sqlite3_bind_int64(stmt, 1, max);
+
+    int ncols = -1;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+      if (ncols == -1)
+        ncols = sqlite3_column_count(stmt);
+      result.checkpoint = std::max(result.checkpoint, static_cast<uint64_t>(sqlite3_column_int64(stmt, 0)));
+
+      Sha256 sha;
+
+      for (int i = 0; i < ncols; i++) {
+        switch (sqlite3_column_type(stmt, i)) {
+        case SQLITE_BLOB:
+          sha.update(
+            static_cast<const uint8_t*>(sqlite3_column_blob(stmt, i)),
+            static_cast<size_t>(sqlite3_column_bytes(stmt, i))
+          );
+          break;
+        case SQLITE_TEXT:
+          sha.update(
+            static_cast<const uint8_t*>(sqlite3_column_text(stmt, i)),
+            static_cast<size_t>(sqlite3_column_bytes(stmt, i))
+          );
+          break;
+        default:
+          break;
+        }
+      }
+
+      auto digest = sha.digest();
+      result.checksum ^= UnpackUint64BE(digest);
+    }
+    sqlite3_finalize(stmt);
+
+    return result;
+  }
+};
 
 class RegistrationServer::ShortPseudonymCache : public std::enable_shared_from_this<ShortPseudonymCache> {
   friend class SharedConstructor<ShortPseudonymCache>;
@@ -400,6 +503,7 @@ RegistrationServer::RegistrationServer(std::shared_ptr<Parameters> parameters)
   : SigningServer(parameters),
   client_(parameters->getClient()),
   shadowPublicKey_(parameters->getShadowPublicKey()),
+  checksumChains_(std::make_unique<ShadowShortPseudonymsChecksumChain>(*this)),
   globalConfiguration_(CreateRxCache([client = client_]() {return RxEnsureProgress(*client->getIoContext(), "Global configuration retrieval", client->getGlobalConfiguration()); })),
   shortPseudonyms_(ShortPseudonymCache::Create(*this, parameters->getShadowStorageFile())) // cannot get a shared_ptr<RegistrationServer> during construction
 #ifdef WITH_CASTOR
@@ -513,69 +617,6 @@ rxcpp::observable<std::shared_ptr<castor::Participant>> RegistrationServer::stor
   });
 }
 #endif
-
-std::vector<std::string> RegistrationServer::getChecksumChainNames() const {
-  return {"shadow-short-pseudonyms"};
-}
-
-void RegistrationServer::computeChecksumChainChecksum(
-    const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-    uint64_t& checksum, uint64_t& checkpoint) {
-  checksum = 0;
-  checkpoint = 0;
-
-  if (!maxCheckpoint)
-    maxCheckpoint = std::numeric_limits<int64_t>::max();
-
-  sqlite3_stmt* stmt{};
-
-  if (chain == "shadow-short-pseudonyms") {
-    sqlite3_prepare_v2(shadowStorage_,
-                        "SELECT \
-            `Id`, \
-            `EncryptedShortPseudonym`, \
-            `EncryptedIdentifier` \
-          FROM ShadowShortPseudonyms \
-          Where Id <= ?;",
-                        -1, &stmt, nullptr);
-  } else {
-    throw Error("Unknown checksumchain");
-  }
-  sqlite3_bind_int64(stmt, 1, static_cast<int64_t>(*maxCheckpoint));
-
-  int ncols = -1;
-
-  while (sqlite3_step(stmt) == SQLITE_ROW) {
-    if (ncols == -1)
-      ncols = sqlite3_column_count(stmt);
-    checkpoint = std::max(checkpoint, static_cast<uint64_t>(sqlite3_column_int64(stmt, 0)));
-
-    Sha256 sha;
-
-    for (int i = 0; i < ncols; i++) {
-      switch (sqlite3_column_type(stmt, i)) {
-      case SQLITE_BLOB:
-        sha.update(
-          static_cast<const uint8_t*>(sqlite3_column_blob(stmt, i)),
-          static_cast<size_t>(sqlite3_column_bytes(stmt, i))
-        );
-        break;
-      case SQLITE_TEXT:
-        sha.update(
-          static_cast<const uint8_t*>(sqlite3_column_text(stmt, i)),
-          static_cast<size_t>(sqlite3_column_bytes(stmt, i))
-        );
-        break;
-      default:
-        break;
-      }
-    }
-
-    auto digest = sha.digest();
-    checksum ^= UnpackUint64BE(digest);
-  }
-  sqlite3_finalize(stmt);
-}
 
 messaging::MessageBatches RegistrationServer::handleSignedPEPIdRegistrationRequest(std::shared_ptr<SignedPEPIdRegistrationRequest> signedRequest) {
   signedRequest->validate(*this->getRootCAs());

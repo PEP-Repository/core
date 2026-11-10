@@ -4,19 +4,45 @@
 #include <pep/utils/Log.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
-#include <pep/async/RxToEmpty.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for ColumnAccess
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/ServerTraits.hpp>
+#include <pep/authserver/AuthServerProxy.hpp>
+#include <pep/content/ParticipantPersonalia.hpp>
+#include <pep/core-client/CoreClient.hpp>
+#include <pep/crypto/AsymmetricKey.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/keyserver/KeyServerMessages.hpp> // for EnrollmentRequest, EnrollmentResponse
+#include <pep/keyserver/KeyServerProxy.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/registrationserver/RegistrationServerProxy.hpp>
+#include <pep/utils/EnumUtils.hpp> // for HasFlags
 
 #include <ranges>
+#include <filesystem>
+#include <map>
+#include <memory>
+#include <optional>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <boost/asio/io_context.hpp>
 
 using namespace std::ranges;
 
@@ -28,7 +54,7 @@ const std::string LogTag("Client");
 
 }
 
-rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string& mode, rxcpp::observable<std::string> columns) {
+rxcpp::observable<std::string> Client::getInaccessibleColumns(ColumnAccessModes mode, rxcpp::observable<std::string> columns) {
   return columns.op(RxToSet()) // Create a set of columns we still need to check
     .zip(this->getAccessManagerProxy()->getAccessibleColumns(true)) // Combine it with "the stuff we have access to"
     .flat_map([mode](const auto& context) {
@@ -38,7 +64,7 @@ rxcpp::observable<std::string> Client::getInaccessibleColumns(const std::string&
     // For every column group...
     for (const auto& cg : access.columnGroups) {
       const auto& cgAccess = cg.second;
-      if (contains(cgAccess.modes, mode)) { // ...if we have the requested access mode to that group...
+      if (HasFlags(cgAccess.modes, mode)) { // ...if we have the requested access mode to that group...
         for (auto index : cgAccess.columns.indices) { // ...remove the associated columns from the set-of-columns-that-we-need-to-check
           remaining->erase(access.columns[index]);
         }
@@ -75,7 +101,7 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
   values->emplace("IsTestParticipant", CellProperties{BoolToString(isTestParticipant), ".txt"});
 
   return this
-      ->getInaccessibleColumns("write",
+      ->getInaccessibleColumns(ColumnAccessModes::Write,
                                RxIterate(*values).map([](const auto& pair) { return pair.first; }))
       .op(RxToSet())
       .tap([](std::shared_ptr<std::set<std::string>> inaccessible) {
@@ -104,8 +130,8 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
                        })
           | to<std::vector>();
 
-        // Store data in PEP
-        auto process = storeData2(entries).op(RxToEmpty<FakeVoid>());
+        // Store data in PEP. Emit a single item once storage has finished to enable the flat_map below.
+        auto process = storeData2(entries).op(RxInstead(FakeVoid()));
         if (complete) {
           process = process.flat_map([this, identifier](FakeVoid) {
             return completeParticipantRegistration(identifier, true);

@@ -1,34 +1,52 @@
-#include <pep/application/Application.hpp>
-#include <pep/utils/Exceptions.hpp>
-#include <pep/utils/File.hpp>
-#include <pep/utils/MiscUtil.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/async/FakeVoid.hpp>
 #include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxToVector.hpp>
-#include <pep/core-client/CoreClient.hpp>
-#include <pep/morphing/MorphingSerializers.hpp>
-
+#include <pep/cli/CliApplication.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/cli/MultiCellQuery.hpp>
+#include <pep/cli/structuredoutput/FormatParameter.hpp>
 #include <pep/cli/TicketFile.hpp>
-
-#include <iostream>
-#include <ranges>
-
-#include <boost/algorithm/hex.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/lexical_cast.hpp>
-
+#include <pep/core-client/CoreClient.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/morphing/MorphingSerializers.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structuredoutput/Common.hpp>
+#include <pep/structuredoutput/FormatFlags.hpp>
 #include <pep/structuredoutput/Tree.hpp>
-#include <pep/structuredoutput/Json.hpp>
-#include <pep/structuredoutput/Yaml.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <google/protobuf/util/json_util.h>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <boost/algorithm/hex.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
+
+#include <iostream>
+#include <ranges>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 using namespace pep::cli;
+using namespace pep::enumUtils;
 namespace pt = boost::property_tree;
 
 namespace {
@@ -57,7 +75,7 @@ protected:
       + pep::commandline::Parameter("metadata", "Print metadata - which may contain encrypted entries when only an ID was returned for the file in question; apply pepcli get to the ID to get the decrypted entries").shorthand('m')
       + pep::commandline::Parameter("no-inline-data", "Never retrieve data inline; only return IDs")
       + pep::commandline::Parameter("group-output", "Group the output per participant").shorthand('g')
-      + pep::commandline::Parameter("format", "The format of the output.").value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({"yaml", "json"})).defaultsTo("json"));
+      + pep::structuredOutput::FormatParameter(pep::structuredOutput::FormatFlags::Json | pep::structuredOutput::FormatFlags::Yaml, "json");
   }
 
   int execute() override {
@@ -150,7 +168,7 @@ protected:
       pep::EnumerateAndRetrieveData2Opts earOpts;
       bool printMetadata = false;
       bool groupOutput = false;
-      std::string format;
+      pep::structuredOutput::FormatConfig formatConfig;
       std::shared_ptr<pep::GlobalConfiguration> globalConfig;
       std::unordered_map<uint32_t, SubjectData> subjects;
       size_t dataCount{ 0 };
@@ -249,7 +267,7 @@ protected:
         ctx->earOpts.includeAccessGroupPseudonyms = ctx->parameterValues.has("local-pseudonyms");
         ctx->printMetadata = ctx->parameterValues.has("metadata");
         ctx->groupOutput = ctx->parameterValues.has("group-output");
-        ctx->format = ctx->parameterValues.get<std::string>("format");
+        ctx->formatConfig = pep::structuredOutput::FormatConfigFrom(ctx->parameterValues);
 
         // Only fetch GlobalConfiguration if we need it for brief local pseudonyms
         rxcpp::observable<pep::FakeVoid> configObservable;
@@ -269,7 +287,7 @@ protected:
         tOpts.columns = ctx->earOpts.columns;
         tOpts.columnGroups = ctx->earOpts.columnGroups;
         tOpts.participantGroups = ctx->earOpts.groups;
-        tOpts.modes = {ctx->earOpts.includeData ? "read" : "read-meta"};
+        tOpts.modes = ctx->earOpts.includeData ? pep::ColumnAccessModes::Read : pep::ColumnAccessModes::ReadMeta;
         tOpts.includeAccessGroupPseudonyms = ctx->earOpts.includeAccessGroupPseudonyms;
         return pep::cli::TicketFile::GetTicket(*client, ctx->parameterValues, tOpts)
         .flat_map([client, ctx](pep::IndexedTicket2 ticket)
@@ -301,11 +319,7 @@ protected:
         auto tree = ctx->results.empty()
           ? pep::structuredOutput::Tree::FromJson(nlohmann::ordered_json::array())
           : pep::structuredOutput::Tree::FromPropertyTree(ctx->results);
-        if (ctx->format == "json") {
-          pep::structuredOutput::json::append(std::cout, tree) << std::endl;
-        } else {
-          pep::structuredOutput::yaml::append(std::cout, tree) << std::flush; // yaml output already ends with a newline
-        }
+        pep::structuredOutput::WriteStructured(std::cout, tree, ctx->formatConfig);
 
         ctx->printQueryInfo();
         if (ctx->hasPrintedData) {

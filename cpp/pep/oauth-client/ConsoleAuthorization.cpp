@@ -1,6 +1,12 @@
 #include <pep/oauth-client/ConsoleAuthorization.hpp>
+#include <pep/oauth-client/OAuthClient.hpp>
+#include <pep/async/IoContext_fwd.hpp>
 
 #include <iostream>
+#include <memory>
+#include <string>
+
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep;
 

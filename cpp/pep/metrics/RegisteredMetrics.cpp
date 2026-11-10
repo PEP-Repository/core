@@ -1,5 +1,10 @@
 #include <pep/metrics/RegisteredMetrics.hpp>
 
+#include <prometheus/registry.h>
+
+#include <memory>
+#include <stdexcept>
+
 namespace pep {
 
 RegisteredMetrics::RegisteredMetrics(std::shared_ptr<prometheus::Registry> registry)

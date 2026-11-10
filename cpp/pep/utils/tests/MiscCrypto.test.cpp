@@ -1,8 +1,11 @@
-#include <boost/algorithm/hex.hpp>
-#include <gtest/gtest.h>
-
 #include <pep/utils/Hmac.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
+
+#include <gtest/gtest.h>
+
+#include <boost/algorithm/hex.hpp>
+
+#include <string>
 
 namespace {
 

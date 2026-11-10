@@ -1,11 +1,22 @@
 #pragma once
 
-#include <pep/utils/Configuration_fwd.hpp>
-#include <pep/server/MonitoringMessages.hpp>
+#include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/auth/OAuthToken.hpp>
+#include <pep/auth/Signed.hpp> // for MessageSigner
 #include <pep/auth/UserGroup.hpp>
 #include <pep/authserver/AuthserverMessages.hpp>
-#include <pep/accessmanager/AccessManagerProxy.hpp>
+#include <pep/crypto/X509Certificate.hpp> // for X509Identity, X509RootCertificates
+#include <pep/messaging/ServerConnection.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <chrono>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace pep {
 
@@ -47,9 +58,6 @@ public:
 
 public:
   explicit AuthserverBackend(const Parameters &params);
-
-  std::vector<std::string> getChecksumChainNames() const;
-  rxcpp::observable<ChecksumChainResponse> handleChecksumChainRequest(ChecksumChainRequest request);
 
   rxcpp::observable<std::optional<std::vector<UserGroup>>>
   findUserGroupsAndStorePrimaryIdIfMissing(

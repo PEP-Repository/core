@@ -1,8 +1,14 @@
 #pragma once
 
 #include <pep/application/CommandLineParameter.hpp>
-#include <functional>
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues, commandline::LexedValues
+
+#include <cassert>
+#include <memory>
+#include <optional>
+#include <queue>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace pep {

@@ -1,13 +1,27 @@
 #pragma once
 
-#include <pep/utils/CheckedPath.hpp>
-#include <pep/utils/Shared.hpp>
-#include <pep/storagefacility/EntryContent.hpp>
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/messaging/MessageSequence.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/storagefacility/EntryContent.hpp>
+#include <pep/storagefacility/EntryName.hpp>
+#include <pep/storagefacility/EntryPayload.hpp>
+#include <pep/storagefacility/PageStore.hpp>
+#include <pep/utils/CheckedPath.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
+#include <pep/utils/PropertyBasedContainer.hpp>
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp>
 
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
-#include <string>
+#include <map>
 #include <memory>
+#include <set>
+#include <string>
+#include <utility>
 
 namespace pep {
 
@@ -206,6 +220,8 @@ private:
   CheckedPath path_;
   std::shared_ptr<PageStore> pagestore_;
 
+  ChecksumChains checksumChains_;
+
   const std::string& getColumnString(const std::string& value);
   EntryContent::MetadataEntry makeMetadataEntry(std::string key, std::string value);
 
@@ -228,6 +244,8 @@ public:
   }
 
   std::set<std::string> pagePaths() const; // for latest version
+
+  const ChecksumChains& checksumChains() const noexcept { return checksumChains_; }
 };
 
 }

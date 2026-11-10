@@ -1,6 +1,9 @@
 #pragma once
 
 #include <pep/application/Application.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+
+#include <optional>
 
 namespace pep {
 namespace commandline {

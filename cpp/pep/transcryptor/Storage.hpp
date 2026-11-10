@@ -1,25 +1,31 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <optional>
-#include <unordered_map>
-
-#include <pep/rsk/Proofs.hpp>
+#include <pep/crypto/X509Certificate.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/rsk/Proofs.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
-#include <pep/transcryptor/ChecksumChain.hpp>
-#include <pep/utils/PropertyBasedContainer.hpp>
+#include <pep/utils/Timestamp.hpp>
 
+#include <cstdint>
 #include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace pep {
 
 class TranscryptorStorage {
+public:
+  struct Implementor;
+
 private:
   std::string path_;
-  std::shared_ptr<TranscryptorStorageBackend> storage_;
-  PropertyBasedContainer<std::unique_ptr<transcryptor::ChecksumChain>, &transcryptor::ChecksumChain::name>::set checksumChains_;
+  std::shared_ptr<Implementor> implementor_;
+  ChecksumChains checksumChains_;
 
   void ensureInitialized();
   void ensureInitialized_unguarded(bool& migrated);
@@ -50,7 +56,7 @@ private:
 
   std::string logTicketRequest(
     const std::vector<LocalPseudonym>& localPseudonyms,
-    const std::vector<std::string>& modes,
+    ColumnAccessModes modes,
     SignedTicketRequest2 ticketRequest,
     std::string pseudonymHash);
 
@@ -58,14 +64,11 @@ private:
     const std::string& id,
     const std::string& pseudonymHash,
     std::vector<std::string> columns,
-    std::vector<std::string> modes,
+    ColumnAccessModes modes,
     const std::string& accessGroup,
     Timestamp timestamp);
 
-  std::vector<std::string> getChecksumChainNames();
-
-  void computeChecksum(const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-        uint64_t& checksum, uint64_t& checkpoint);
+  const ChecksumChains& checksumChains() const noexcept { return checksumChains_; }
 };
 
 }

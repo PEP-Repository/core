@@ -2,6 +2,9 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <stdexcept>
+
 using namespace pep;
 
 namespace {

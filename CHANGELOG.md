@@ -6,7 +6,15 @@
 
 ## Changes in upcoming release (1.9)
 
+- core#3049: Fixed a bug where `pepcli register participant` did not ensure completion of short pseudonyms.
+
+- core#2705: Support for Intel (x86) Macs will be discontinued on March 1, 2027. On Intel Macs, pepAssessor, pepLogon and pepcli now print a warning about this to the console when started. pepAssessor also shows it on its login window, and the PEP Download Tool and PEP Upload Tool show it in a pop-up.
+
 - core#2962: `pepcli pseudonym convert` no longer requires access to the subject associated with the pseudonym.
+
+- `pepcli list --format` now also accepts `json-compact`, like `pepcli ama query` and `pepcli user query`.
+
+- core#3040: Fixed YAML output (e.g. of `pepcli ama query`, `user query` and `list --format yaml`) for strings containing line breaks, tabs or other control characters. These are now escaped (e.g. `\n`), so that YAML parsers no longer turn line breaks into spaces.
 
 - core#3008: Restructured the code that handles ticket request, into a process with 4 meaningful phases.
   This makes it easier to maintain and extend. The documentation was updated to reflect the new structure of the process.
@@ -139,7 +147,7 @@
 
 - core#298: `PEP_GROUP_REPOSITORY_TOKEN` and `DOCS_GROUP_WRITE_REPOSITORY_TOKEN` CI variables can be removed after all projects are updated. Also update <https://docs.pages.pep.cs.ru.nl/private/ops/main/procedures_maintenance/update-gitlab-pep-group-access-tokens/> to remove the instructions for these tokens.
 
-- !2608: Configurations that relied on an unencrypted connection on port 25 must now specify `smtp_security: "none"`, which cannot be combined with `smtp_auth_required`.
+- !2608: Python `MailSender` configurations that relied on an unencrypted SMTP connection on port 25 must now specify `smtp_security: "none"`, which cannot be combined with `smtp_auth_required`.
 
 ### Hotfixes for release 1.8
 

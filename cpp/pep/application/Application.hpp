@@ -1,14 +1,24 @@
 #pragma once
 
-#include <optional>
-#include <span>
-#include <vector>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::LexedValues
+#include <pep/utils/Configuration_fwd.hpp>
+#include <pep/utils/Log.hpp>
 
 #include <boost/type_traits/is_base_of.hpp>
 
-#include <pep/application/CommandLineCommand.hpp>
-#include <pep/utils/Configuration_fwd.hpp>
-#include <pep/utils/Log.hpp>
+#include <exception>
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <span>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #define PEP_DEFINE_C_MAIN_FUNCTION(applicationType) \
   int main(int argc, char* argv[]) { \
@@ -99,6 +109,11 @@ class Application : public commandline::Command {
   Configuration loadMainConfigFile();
 
  public:
+  // Duplicated in the macOS Download and Upload Tool scripts (installer/macOS/runpep{down,up}load.sh): keep in sync
+  static constexpr std::string_view MacOsX86DeprecationWarning =
+    "Support for PEP on Intel (x86) Macs will be discontinued on March 1, 2027. "
+    "After that date, PEP software will only be available for Apple silicon Macs.";
+
   ~Application() override;
 
   template <class TDerived>

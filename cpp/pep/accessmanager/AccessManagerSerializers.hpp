@@ -3,6 +3,8 @@
 #include <pep/accessmanager/AccessManagerMessages.hpp>
 #include <pep/auth/SigningSerializers.hpp>
 
+#include <Messages.pb.h> // for proto::GlobalConfigurationRequest
+
 namespace pep {
 
 PEP_DEFINE_EMPTY_SERIALIZER(GlobalConfigurationRequest);

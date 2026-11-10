@@ -3,14 +3,36 @@
 #include <pep/accessmanager/AccessManagerMessages.hpp>
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
+#include <pep/async/FakeVoid.hpp>
 #include <pep/async/WorkerPool.hpp>
+#include <pep/auth/ServerTraits.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey
 #include <pep/key-components/KeyComponentServer.hpp>
 #include <pep/keyserver/KeyServerProxy.hpp>
+#include <pep/messaging/MessageHeader.hpp> // for messaging::MaxSizeOfMessage
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/metrics/RegisteredMetrics.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicketRequest2
+#include <pep/transcryptor/TranscryptorMessages.hpp> // for TranscryptorResponse
 #include <pep/transcryptor/TranscryptorProxy.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
 
+#include <prometheus/registry.h>
+
+#include <boost/asio/io_context.hpp>
+
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace pep {
 
@@ -67,11 +89,7 @@ public:
 
 protected:
   std::optional<std::filesystem::path> getStoragePath() override;
-  std::unordered_set<std::string> getAllowedChecksumChainRequesters() override;
-  std::vector<std::string> getChecksumChainNames() const override;
-  void computeChecksumChainChecksum(
-    const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-    uint64_t& checksum, uint64_t& checkpoint) override;
+  const ChecksumChains& checksumChains() const noexcept override;
 
 private:
   /// Internal state shared by all phases of handleTicketRequest2.

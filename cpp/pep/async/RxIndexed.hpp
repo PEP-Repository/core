@@ -3,6 +3,9 @@
 #include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 
+#include <cstddef>
+#include <utility>
+
 namespace pep {
 
 /// Add indices to each item using std::pair, starting at 0

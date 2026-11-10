@@ -1,10 +1,14 @@
 #include <pep/morphing/RepoRecipient.hpp>
 
 #include <pep/auth/ServerTraits.hpp>
+#include <pep/auth/EnrolledParty.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/rsk/RskRecipient.hpp>
 
 #include <cassert>
 #include <stdexcept>
-#include <string_view>
+#include <string>
+#include <utility>
 
 using namespace pep;
 

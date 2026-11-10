@@ -25,6 +25,10 @@ const std::string LogTag("Unwinder");
 #include <sys/utsname.h>
 #include <cxxabi.h>
 #include <dirent.h>
+#ifdef __linux__
+#include <cstdint>
+#include <sys/ucontext.h>
+#endif
 #elif _WIN32
 #include <DbgHelp.h>
 #pragma comment(lib, "DbgHelp")

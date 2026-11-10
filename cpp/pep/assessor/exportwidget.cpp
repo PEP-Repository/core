@@ -8,17 +8,37 @@
 #include <cassert>
 #include <fstream>
 #include <ranges>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <map>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include <QFileDialog>
 #include <QStandardPaths>
 #include <pep/gui/QTrxGui.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/assessor/ExportableItem.hpp>
+#include <pep/assessor/UserRole.hpp>
+#include <pep/assessor/VisitCaptions.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/StudyContext.hpp>
 
-#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/replace.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::ranges;
 

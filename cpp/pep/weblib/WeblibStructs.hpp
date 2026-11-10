@@ -32,6 +32,8 @@ struct ListQuery {
 
 /// Access modes of the enrolled User Group to a column group.
 /// Includes implied ones, unless \c ListColumnsQuery::includeImplicitlyGranted is false
+/// \note Cannot be replaced by `ColumnAccessModes`, because Embind enums can only represent individual flags/values and
+/// not combinations of flags/values.
 struct ColumnGroupAccessModes {
   bool read = false;
   bool readMeta = false;
@@ -107,7 +109,7 @@ struct CellData {
 struct StoreQuery {
   std::string subject;
   std::string column;
-  emscripten::val blob;
+  emscripten::val reader;
   std::unordered_map<std::string, std::string> metadata;
 };
 
@@ -122,6 +124,43 @@ struct ParticipantPersonalia {
   std::string dateOfBirth;
 
   [[nodiscard]] auto operator<=>(const ParticipantPersonalia&) const = default;
+};
+
+/// Used in the result of listUsers, to list the groups of each User
+struct UserGroupMembership {
+  std::string userGroup;
+  /// Milliseconds since the Unix epoch. double to prevent it being mapped to bigint
+  std::optional<double> expiration;
+
+  [[nodiscard]] auto operator<=>(const UserGroupMembership&) const = default;
+};
+
+/// Used in the result of listUsers
+struct User {
+  std::optional<std::string> displayId;
+  std::optional<std::string> primaryId;
+  std::vector<std::string> otherUids;
+  std::vector<UserGroupMembership> groups;
+
+  [[nodiscard]] auto operator<=>(const User&) const = default;
+};
+
+/// Used in the result of listUsers, and as input of createUserGroup and modifyUserGroup.
+/// Named differently from pep::UserGroup to prevent ambiguity
+struct UserGroupInfo {
+  std::string name;
+  /// double to prevent it being mapped to bigint
+  std::optional<double> maxAuthValiditySeconds;
+
+  [[nodiscard]] auto operator<=>(const UserGroupInfo&) const = default;
+};
+
+/// Used as the result of listUsers
+struct UserQueryResult {
+  std::vector<User> users;
+  std::vector<UserGroupInfo> userGroups;
+
+  [[nodiscard]] auto operator<=>(const UserQueryResult&) const = default;
 };
 
 }

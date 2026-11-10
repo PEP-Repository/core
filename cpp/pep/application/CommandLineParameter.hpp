@@ -4,12 +4,19 @@
 #include <pep/application/CommandLineValue.hpp>
 #include <pep/application/CommandLineValueSpecification.hpp>
 #include <pep/utils/Shared.hpp>
+
+#include <exception>
 #include <functional>
 #include <initializer_list>
+#include <memory>
+#include <optional>
+#include <ostream>
 #include <queue>
 #include <set>
-#include <optional>
+#include <stdexcept>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace pep {
@@ -56,7 +63,7 @@ class Parameter {
 private:
   std::string name_;
   std::optional<std::string> description_;
-  std::set<SwitchAnnouncement> aliases_;
+  std::set<SwitchAnnouncement, SwitchAnnouncement::TextLess> aliases_;
   std::shared_ptr<ValueSpecificationBase> valueSpecification_;
 
   // Deprecation state: at most one of these is set
@@ -99,7 +106,7 @@ public:
   const std::optional<std::string>& getDescription() const noexcept { return description_; }
 
   SwitchAnnouncement getCanonicalAnnouncement() const;
-  std::set<SwitchAnnouncement> getAnnouncements() const;
+  std::set<SwitchAnnouncement, SwitchAnnouncement::TextLess> getAnnouncements() const;
   std::shared_ptr<const ValueSpecificationBase> getValueSpecification() const noexcept { return valueSpecification_; }
   [[nodiscard]] bool hasTransformer() const noexcept { return transformer_ != nullptr; }
   [[nodiscard]] bool isNoLongerSupported() const noexcept { return noLongerSupportedMessage_.has_value(); }

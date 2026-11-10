@@ -4,8 +4,12 @@
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Hmac.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp>
+#include <pep/rsk-pep/DataTranslationKeys.hpp>
 
 #include <stdexcept>
+#include <string_view>
 
 using namespace pep;
 

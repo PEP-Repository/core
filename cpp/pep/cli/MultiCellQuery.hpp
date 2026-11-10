@@ -1,10 +1,16 @@
 #pragma once
 
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
 #include <pep/cli/ColumnQuery.hpp>
 #include <pep/core-client/CoreClient_fwd.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 
 #include <rxcpp/rx-lite.hpp>
+
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace pep::cli {
 

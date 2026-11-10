@@ -1,6 +1,13 @@
 #include <pep/utils/Paths.hpp>
 
+#include <cstdlib>
+#include <filesystem>
+
+#ifdef __EMSCRIPTEN__
+#include <stdexcept>
+#else
 #include <boost/dll/runtime_symbol_info.hpp>
+#endif
 
 namespace pep {
 

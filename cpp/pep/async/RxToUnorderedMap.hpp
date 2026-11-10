@@ -1,8 +1,12 @@
 #pragma once
 
-#include <unordered_map>
 #include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-reduce.hpp>
+
+#include <memory>
+#include <stdexcept>
+#include <type_traits>
+#include <unordered_map>
 
 namespace pep {
 

@@ -1,8 +1,20 @@
 #pragma once
 
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/Signed.hpp>
+#include <pep/messaging/ConnectionStatus.hpp>
+#include <pep/messaging/HousekeepingMessages.hpp> // for PingResponse
+#include <pep/messaging/MessageSequence.hpp>
 #include <pep/messaging/ServerConnection.hpp>
 #include <pep/messaging/Tail.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/MessageMagic.hpp>
+#include <pep/serialization/Serialization.hpp>
 #include <pep/server/MonitoringMessages.hpp>
+
+#include <memory>
+#include <string_view>
+#include <typeinfo>
 
 namespace pep {
 

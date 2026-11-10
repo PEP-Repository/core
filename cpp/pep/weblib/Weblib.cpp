@@ -1,32 +1,65 @@
-#include <pep/async/CreateObservable.hpp>
-#include <pep/async/ObservableAwaiter.hpp>
+#include <pep/async/ObservableAwaiter.hpp> // IWYU pragma: keep (for co_await on observables)
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/auth/OAuthError.hpp>
 #include <pep/auth/OAuthToken.hpp>
+#include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/client/Client.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/oauth-client/OAuthClient.hpp>
-#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/Exceptions.hpp>
-#include <pep/utils/File.hpp>
 #include <pep/utils/ThreadUtil.hpp>
-#include <pep/weblib/BlobMessageBatches.hpp>
+#include <pep/utils/Timestamp.hpp>
+
 #include <pep/weblib/EmscriptenValPtr.hpp>
 #include <pep/weblib/EmscriptenVectorBinding.hpp>
 #include <pep/weblib/ObservableByteStream.hpp>
 #include <pep/weblib/ObservableStream.hpp>
 #include <pep/weblib/OnEmscriptenThread.hpp>
+#include <pep/weblib/ReadableStreamMessageBatches.hpp>
 #include <pep/weblib/ThreadPrintable.hpp>
 #include <pep/weblib/WeblibApiPromise.hpp>
 #include <pep/weblib/WeblibStructs.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for ColumnAccess, ParticipantGroupAccess, IndexedTicket2
+#include <pep/accessmanager/UserMessages.hpp> // for QRUser, UserQueryResponse
+#include <pep/async/FakeVoid.hpp>
+#include <pep/async/OnAsio.hpp>
+#include <pep/auth/UserGroup.hpp>
+#include <pep/content/ParticipantPersonalia.hpp>
+#include <pep/core-client/CoreClient.hpp> // for RequestTicket2Opts, StoreData2Entry, DataStorageResult2
+#include <pep/messaging/ConnectionStatus.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
 
 #include <filesystem>
+#include <functional>
 #include <numeric>
 #include <stdexcept>
 #include <thread>
 #include <utility>
+#include <algorithm>
+#include <cassert>
+#include <chrono>
+#include <cstddef>
+#include <cstdlib>
+#include <exception>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <ranges>
+#include <stop_token>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 #include <emscripten/emscripten.h>
 #include <emscripten/bind.h>
@@ -34,13 +67,15 @@
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/noncopyable.hpp>
+#include <boost/asio/executor_work_guard.hpp>
+#include <boost/core/noncopyable.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-distinct_until_changed.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/subjects/rx-replaysubject.hpp>
 #include <rxcpp/subjects/rx-subject.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep;
 using namespace pep::weblib;
@@ -51,36 +86,69 @@ using namespace std::ranges;
 namespace {
 const std::string LogTag = "Weblib";
 
-ColumnGroupAccessModes ColumnGroupAccessModesFromStrings(const std::vector<std::string>& modes) {
-  return {
-      .read = contains(modes, "read"),
-      .readMeta = contains(modes, "read-meta"),
-      .write = contains(modes, "write"),
-      .writeMeta = contains(modes, "write-meta"),
+// Timestamps are passed to JS as milliseconds since the Unix epoch, like Date.getTime()
+double ToJsTime(Timestamp timestamp) {
+  return static_cast<double>(TicksSinceEpoch<std::chrono::milliseconds>(timestamp));
+}
+
+Timestamp FromJsTime(double millisecondsSinceEpoch) {
+  return Timestamp{std::chrono::milliseconds{static_cast<std::chrono::milliseconds::rep>(millisecondsSinceEpoch)}};
+}
+
+UserGroupInfo ToUserGroupInfo(UserGroup group) {
+  return UserGroupInfo{
+      .name = std::move(group.name),
+      .maxAuthValiditySeconds = group.maxAuthValidity.transform([](std::chrono::seconds validity) {
+        return static_cast<double>(validity.count());
+      }),
   };
 }
 
-std::vector<std::string> ColumnGroupAccessModesToStrings(const ColumnGroupAccessModes& modes) {
-  std::vector<std::string> result;
-  if (modes.read) {
-    result.emplace_back("read");
-  }
-  if (modes.readMeta) {
-    result.emplace_back("read-meta");
-  }
-  if (modes.write) {
-    result.emplace_back("write");
-  }
-  if (modes.writeMeta) {
-    result.emplace_back("write-meta");
-  }
-  return result;
+UserGroup FromUserGroupInfo(UserGroupInfo group) {
+  return UserGroup{
+      .name = std::move(group.name),
+      .maxAuthValidity = group.maxAuthValiditySeconds.transform([](double seconds) {
+        return std::chrono::seconds{static_cast<std::chrono::seconds::rep>(seconds)};
+      }),
+  };
 }
 
-SubjectGroupAccessModes SubjectGroupAccessModesFromStrings(const std::vector<std::string>& modes) {
+User ToUser(QRUser user) {
+  return User{
+      .displayId = std::move(user.displayId),
+      .primaryId = std::move(user.primaryId),
+      .otherUids = std::move(user.otherUids),
+      .groups = user.groups
+        | views::transform([](const QRUserGroupMembership& membership) {
+          return UserGroupMembership{
+              .userGroup = membership.userGroup,
+              .expiration = membership.expiration.transform(ToJsTime),
+          };
+        })
+        | to<std::vector>(),
+  };
+}
+
+ColumnGroupAccessModes ColumnGroupAccessModesFromEnum(const ColumnAccessModes modes){
   return {
-      .access = contains(modes, "access"),
-      .enumerate = contains(modes, "enumerate"),
+      .read = HasFlags(modes, ColumnAccessModes::Read),
+      .readMeta = HasFlags(modes, ColumnAccessModes::ReadMeta),
+      .write = HasFlags(modes, ColumnAccessModes::Write),
+      .writeMeta = HasFlags(modes, ColumnAccessModes::WriteMeta)
+  };
+}
+
+ColumnAccessModes ColumnGroupAccessModesToEnum(const ColumnGroupAccessModes modes) {
+  return FlagsIf(ColumnAccessModes::Read, modes.read)
+      | FlagsIf(ColumnAccessModes::ReadMeta, modes.readMeta)
+      | FlagsIf(ColumnAccessModes::Write, modes.write)
+      | FlagsIf(ColumnAccessModes::WriteMeta, modes.writeMeta);
+}
+
+SubjectGroupAccessModes SubjectGroupAccessModesFromEnum(const SubjectAccessModes modes) {
+  return {
+      .access = HasFlags(modes, SubjectAccessModes::Access),
+      .enumerate = HasFlags(modes, SubjectAccessModes::Enumerate)
   };
 }
 
@@ -163,6 +231,14 @@ class Weblib final : public std::enable_shared_from_this<Weblib>, public SharedC
   rxcpp::observable<std::shared_ptr<Weblib>> onIoThread() {
     return rxcpp::observable<>::just(shared_from_this())
         .subscribe_on(*asioWorker_);
+  }
+
+  /// Run \p mutate on the io_context thread
+  WeblibApiVoidPromise mutateUsers(std::function<rxcpp::observable<FakeVoid>(const AccessManagerProxy&)> mutate) {
+    co_await onIoThread()
+        .flat_map([mutate = std::move(mutate)](const std::shared_ptr<Weblib>& self) {
+          return mutate(*self->client_->getAccessManagerProxy());
+        });
   }
 
 public:
@@ -332,7 +408,7 @@ public:
     co_return co_await onIoThread()
         .flat_map([
           includeImplicitlyGranted = query.includeImplicitlyGranted.value_or(true),
-          requireModes = ColumnGroupAccessModesToStrings(query.requireModes)
+          requireModes = ColumnGroupAccessModesToEnum(query.requireModes)
          ](const std::shared_ptr<Weblib>& self) {
           return self->client_->getAccessManagerProxy()->getAccessibleColumns(includeImplicitlyGranted, requireModes);
         })
@@ -342,7 +418,7 @@ public:
               const auto& [name, columnGroup] = entry;
               return ColumnGroup{
                   .name = name,
-                  .modes = ColumnGroupAccessModesFromStrings(columnGroup.modes),
+                  .modes = ColumnGroupAccessModesFromEnum(columnGroup.modes),
                   .columns = to<std::vector>(SafeIndexInto(columnGroup.columns.indices, access.columns)),
               };
             })
@@ -362,7 +438,7 @@ public:
               const auto& [name, modes] = entry;
               return SubjectGroup{
                   .name = name,
-                  .modes = SubjectGroupAccessModesFromStrings(modes),
+                  .modes = SubjectGroupAccessModesFromEnum(modes),
               };
             })
             | to<std::vector>();
@@ -388,7 +464,7 @@ public:
                 .referenceSubjects = {},
                 .columnGroups = std::move(query->columnGroups).value_or(std::vector<std::string>{}),
                 .columns = std::move(query->columns).value_or(std::vector<std::string>{}),
-                .modes = {query->mode.value_or("read")},
+                .modes = pep::ParseColumnAccessMode(query->mode.value_or("read")),
                 .includeAccessGroupPseudonyms = true,
               });
           });
@@ -496,22 +572,13 @@ public:
   /// \returns \c Promise<StoreResult>
   WeblibApiPromise store(StoreQuery query) {
     // We're still on the main thread here: decide how the data will be produced
-    if (!query.blob.instanceof(val::global("Blob"))) {
-      throw std::invalid_argument("blob must be a Blob or File");
-    }
-    // A File also has name, derive fileExtension from it, like pepcli does from --input-path.
-    std::string fileExtension;
-    if (const val name = query.blob["name"]; name.isString()) {
-      fileExtension = std::filesystem::path(name.as<std::string>()).extension().string();
-    }
     messaging::MessageBatches batches =
-        BlobToMessageBatches(std::move(query.blob), messaging::DefaultPageSize, *asioWorker_);
+        ReadableStreamToMessageBatches(std::move(query.reader), messaging::DefaultPageSize, *asioWorker_);
 
     // Capture the members separately, so that the query (holding a val) does not cross to the io thread
     co_return co_await onIoThread()
         .flat_map([subject = std::move(query.subject), column = std::move(query.column),
-                   metadata = std::move(query.metadata), batches = std::move(batches),
-                   fileExtension = std::move(fileExtension)](const std::shared_ptr<Weblib>& self) {
+                   metadata = std::move(query.metadata), batches = std::move(batches)](const std::shared_ptr<Weblib>& self) {
           return self->client_->parsePpsOrIdentities({subject})
               .op(RxGetOne("PolymorphicPseudonym"))
               .map([](std::shared_ptr<std::vector<PolymorphicPseudonym>> pps) {
@@ -520,15 +587,10 @@ public:
                 }
                 return std::make_shared<PolymorphicPseudonym>(pps->front());
               })
-              .flat_map([self, column, metadata, batches, fileExtension](std::shared_ptr<PolymorphicPseudonym> pp) {
+              .flat_map([self, column, metadata, batches](std::shared_ptr<PolymorphicPseudonym> pp) {
                 std::map<std::string, MetadataXEntry> xMetadata;
                 for (const auto& [key, value] : metadata) {
                   xMetadata.emplace(key, MetadataXEntry::FromPlaintext(value, false, false));
-                }
-                // Placed after explicit fileExtension,
-                // so the derived extension fails to insert if an explicit one is present
-                if (IsValidFileExtension(fileExtension)) {
-                  xMetadata.emplace(MetadataXEntry::MakeFileExtension(fileExtension));
                 }
 
                 StoreData2Entry entry(pp, column, batches);
@@ -542,6 +604,111 @@ public:
                     });
               });
         });
+  }
+
+  /// List users and user groups, as of the current server time. Empty filters match everything.
+  /// \returns \c Promise<UserQueryResult>
+  WeblibApiPromise listUsers(std::string groupFilter, std::string userFilter) {
+    co_return co_await onIoThread()
+        .flat_map([query = UserQuery{.at = std::nullopt, .groupFilter = std::move(groupFilter), .userFilter = std::move(userFilter)}](
+            const std::shared_ptr<Weblib>& self) {
+          return self->client_->getAccessManagerProxy()->userQuery(query);
+        })
+        .map([](UserQueryResponse response) {
+          return UserQueryResult{
+              .users = response.users
+                | views::as_rvalue
+                | views::transform(ToUser)
+                | to<std::vector>(),
+              .userGroups = response.userGroups
+                | views::as_rvalue
+                | views::transform(ToUserGroupInfo)
+                | to<std::vector>(),
+          };
+        });
+  }
+
+  WeblibApiVoidPromise createUser(std::string uid) {
+    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+      return am.createUser(uid);
+    });
+  }
+
+  WeblibApiVoidPromise removeUser(std::string uid) {
+    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+      return am.removeUser(uid);
+    });
+  }
+
+  WeblibApiVoidPromise addUserIdentifier(std::string existingUid, std::string newUid, bool isPrimaryId, bool isDisplayId) {
+    return mutateUsers([existingUid = std::move(existingUid), newUid = std::move(newUid), isPrimaryId, isDisplayId](
+        const AccessManagerProxy& am) {
+      return am.addUserIdentifier(existingUid, newUid, isPrimaryId, isDisplayId);
+    });
+  }
+
+  WeblibApiVoidPromise removeUserIdentifier(std::string uid) {
+    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+      return am.removeUserIdentifier(uid);
+    });
+  }
+
+  WeblibApiVoidPromise setUserPrimaryId(std::string uid) {
+    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+      return am.setUserPrimaryId(uid);
+    });
+  }
+
+  WeblibApiVoidPromise unsetUserPrimaryId(std::string uid) {
+    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+      return am.unsetUserPrimaryId(uid);
+    });
+  }
+
+  WeblibApiVoidPromise setUserDisplayId(std::string uid) {
+    return mutateUsers([uid = std::move(uid)](const AccessManagerProxy& am) {
+      return am.setUserDisplayId(uid);
+    });
+  }
+
+  WeblibApiVoidPromise createUserGroup(UserGroupInfo group) {
+    return mutateUsers([group = FromUserGroupInfo(std::move(group))](const AccessManagerProxy& am) {
+      return am.createUserGroup(group);
+    });
+  }
+
+  WeblibApiVoidPromise modifyUserGroup(UserGroupInfo group) {
+    return mutateUsers([group = FromUserGroupInfo(std::move(group))](const AccessManagerProxy& am) {
+      return am.modifyUserGroup(group);
+    });
+  }
+
+  WeblibApiVoidPromise removeUserGroup(std::string name) {
+    return mutateUsers([name = std::move(name)](const AccessManagerProxy& am) {
+      return am.removeUserGroup(name);
+    });
+  }
+
+  /// \param expiration Milliseconds since the Unix epoch, or no expiration when undefined
+  WeblibApiVoidPromise addUserToGroup(std::string uid, std::string group, std::optional<double> expiration) {
+    return mutateUsers([uid = std::move(uid), group = std::move(group), expiration = expiration.transform(FromJsTime)](
+        const AccessManagerProxy& am) {
+      return am.addUserToGroup(uid, group, expiration);
+    });
+  }
+
+  WeblibApiVoidPromise removeUserFromGroup(std::string uid, std::string group, bool blockTokens) {
+    return mutateUsers([uid = std::move(uid), group = std::move(group), blockTokens](const AccessManagerProxy& am) {
+      return am.removeUserFromGroup(uid, group, blockTokens);
+    });
+  }
+
+  /// \param expiration Milliseconds since the Unix epoch, or no expiration when undefined
+  WeblibApiVoidPromise updateUserGroupExpiration(std::string uid, std::string group, std::optional<double> expiration) {
+    return mutateUsers([uid = std::move(uid), group = std::move(group), expiration = expiration.transform(FromJsTime)](
+        const AccessManagerProxy& am) {
+      return am.updateExpiration(uid, group, expiration);
+    });
   }
 };
 
@@ -563,6 +730,20 @@ EMSCRIPTEN_BINDINGS(weblib) {
       .function("store", &Weblib::store)
       .function("list", &Weblib::list)
       .function("retrieve", &Weblib::retrieve)
+      .function("listUsers", &Weblib::listUsers)
+      .function("createUser", &Weblib::createUser)
+      .function("removeUser", &Weblib::removeUser)
+      .function("addUserIdentifier", &Weblib::addUserIdentifier)
+      .function("removeUserIdentifier", &Weblib::removeUserIdentifier)
+      .function("setUserPrimaryId", &Weblib::setUserPrimaryId)
+      .function("unsetUserPrimaryId", &Weblib::unsetUserPrimaryId)
+      .function("setUserDisplayId", &Weblib::setUserDisplayId)
+      .function("createUserGroup", &Weblib::createUserGroup)
+      .function("modifyUserGroup", &Weblib::modifyUserGroup)
+      .function("removeUserGroup", &Weblib::removeUserGroup)
+      .function("addUserToGroup", &Weblib::addUserToGroup)
+      .function("removeUserFromGroup", &Weblib::removeUserFromGroup)
+      .function("updateUserGroupExpiration", &Weblib::updateUserGroupExpiration)
   ;
   class_<Weblib::OAuthClient>("OAuthClient")
       .function("completeAuthentication", &Weblib::OAuthClient::completeAuthentication)

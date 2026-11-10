@@ -2,6 +2,9 @@
 
 #include <pep/messaging/MessageProperties.hpp>
 
+#include <cstddef>
+#include <cstdint>
+
 namespace pep::messaging {
 
 using MessageLength = uint32_t;

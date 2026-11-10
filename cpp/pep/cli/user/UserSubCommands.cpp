@@ -1,5 +1,12 @@
 #include <pep/cli/user/UserSubCommands.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/Command.hpp>
+#include <pep/cli/User.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <memory>
+#include <string>
 
 using namespace pep::cli;
 

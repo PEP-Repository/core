@@ -1,13 +1,23 @@
 #pragma once
 
+#include <pep/async/IoContextThread.hpp>
+#include <pep/castor/CastorConnection.hpp>
+#include <pep/crypto/tests/TemporaryX509IdentityFiles.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/networking/Server.hpp>
+#include <pep/utils/Event.hpp>
+#include <pep/utils/Shared.hpp>
+
 #include <gtest/gtest.h>
 
-#include <pep/castor/CastorConnection.hpp>
-#include <pep/async/IoContextThread.hpp>
-#include <pep/networking/Server.hpp>
-#include <pep/crypto/tests/TemporaryX509IdentityFiles.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/core/noncopyable.hpp>
 
-#include <boost/asio/streambuf.hpp>
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace pep {
 namespace castor {
@@ -67,7 +77,7 @@ private:
     const std::string& role() const noexcept { return role_; }
 
     void start();
-    void stop(bool force = true);
+    void stop();
   };
 
   TemporaryX509IdentityFiles identity_;

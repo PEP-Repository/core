@@ -1,8 +1,16 @@
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Raw.hpp>
-#include <sstream>
 
 #include <gtest/gtest.h>
+
+#include <sstream>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <map>
+#include <utility>
+#include <vector>
+#include <string>
 
 namespace {
 

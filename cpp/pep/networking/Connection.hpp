@@ -1,6 +1,16 @@
 #pragma once
 
+#include <pep/networking/ConnectivityAttempt.hpp>
 #include <pep/networking/Protocol.hpp>
+#include <pep/networking/Transport.hpp>
+#include <pep/utils/Event.hpp>
+
+#include <cstddef>
+#include <exception>
+#include <functional>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 namespace pep::networking {
 

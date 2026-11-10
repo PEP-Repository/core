@@ -1,19 +1,28 @@
 #pragma once
 
-#include <pep/core-client/CoreClient_fwd.hpp>
-#include <pep/utils/Shared.hpp>
-#include <pep/cli/DownloadMetadata.hpp>
 #include <pep/async/FakeVoid.hpp>
-#include <pep/utils/Filesystem.hpp>
+#include <pep/cli/DownloadMetadata.hpp>
+#include <pep/core-client/CoreClient_fwd.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/utils/CheckedPath.hpp>
+#include <pep/utils/Filesystem.hpp>
+#include <pep/utils/Progress.hpp>
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/XxHasher.hpp>
 
 #include <rxcpp/rx-lite.hpp>
 
-#include <functional>
-#include <vector>
-#include <filesystem>
-
 #include <xxhash.h>
+
+#include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace pep::cli {
 

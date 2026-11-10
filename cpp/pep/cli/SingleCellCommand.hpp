@@ -1,8 +1,18 @@
 #pragma once
 
+#include <pep/accessmanager/AccessManagerMessages.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/core-client/CoreClient_fwd.hpp>
-#include <pep/accessmanager/AccessManagerMessages.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <string>
 
 namespace pep::cli {
 
@@ -17,7 +27,7 @@ protected:
   void finalizeParameters() override;
   int execute() override;
 
-  virtual std::vector<std::string> ticketAccessModes() const = 0;
+  virtual pep::ColumnAccessModes ticketAccessModes() const = 0;
   virtual rxcpp::observable<pep::FakeVoid> processCell(std::shared_ptr<pep::CoreClient> client, const pep::IndexedTicket2& ticket, const pep::PolymorphicPseudonym& pp, const std::string& column) = 0;
 
   static rxcpp::observable<pep::FakeVoid> WriteJson(std::ostream& destination, rxcpp::observable<pep::HistoryResult> results);
@@ -29,7 +39,7 @@ protected:
     : SingleCellCommand(name, description, parent) {
   }
 
-  std::vector<std::string> ticketAccessModes() const override;
+  pep::ColumnAccessModes ticketAccessModes() const override;
   rxcpp::observable<pep::FakeVoid> processCell(std::shared_ptr<pep::CoreClient> client, const pep::IndexedTicket2& ticket, const pep::PolymorphicPseudonym& pp, const std::string& column) override;
 
   virtual rxcpp::observable<pep::FakeVoid> performModification(std::shared_ptr<pep::CoreClient> client, const pep::StoreData2Opts& opts, std::shared_ptr<pep::PolymorphicPseudonym> pp, const std::string& column) = 0;

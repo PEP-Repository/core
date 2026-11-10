@@ -1,6 +1,10 @@
 
 #include <pep/utils/Bitpacking.hpp>
 
+#include <cstdint>
+#include <string>
+#include <string_view>
+
 namespace pep {
 
 std::string PackUint8(uint8_t x) {

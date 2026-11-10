@@ -3,6 +3,8 @@
 #include <pep/castor/DataPoint.hpp>
 #include <pep/castor/Field.hpp>
 
+#include <memory>
+
 namespace pep {
 namespace castor {
 

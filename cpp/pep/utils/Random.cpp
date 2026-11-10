@@ -2,11 +2,20 @@
 
 #include <pep/utils/Math.hpp>
 #include <pep/utils/OpensslUtils.hpp>
+#include <pep/utils/CollectionUtils.hpp> // for CopyToRange
 
-#include <boost/noncopyable.hpp>
 #include <openssl/rand.h>
 #include <cassert>
 #include <cstring>
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <ios>
+#include <random>
+#include <span>
+#include <tuple>
+
+#include <boost/core/noncopyable.hpp>
 
 namespace pep {
 

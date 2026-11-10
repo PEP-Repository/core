@@ -1,9 +1,12 @@
 #pragma once
 
-#include <functional>
-#include <optional>
 #include <filesystem>
-
+#include <functional>
+#include <ios>
+#include <istream>
+#include <optional>
+#include <string>
+#include <string_view>
 
 namespace pep {
 

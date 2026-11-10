@@ -1,6 +1,18 @@
 #pragma once
 
+#include <pep/async/IoContext_fwd.hpp>
+#include <pep/messaging/MessageProperties.hpp> // for messaging::StreamId
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
 #include <pep/messaging/Scheduler.hpp>
+#include <pep/utils/Shared.hpp>
+
+#include <boost/core/noncopyable.hpp>
+
+#include <cstddef>
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
 
 namespace pep::messaging {
 

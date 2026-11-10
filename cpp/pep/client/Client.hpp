@@ -1,13 +1,23 @@
 #pragma once
 
-#include <pep/client/Client_fwd.hpp>
-
+#include <pep/async/FakeVoid.hpp>
 #include <pep/authserver/AuthServerProxy.hpp>
-#include <pep/core-client/CoreClient.hpp>
+#include <pep/client/Client_fwd.hpp>
 #include <pep/content/ParticipantPersonalia.hpp>
+#include <pep/core-client/CoreClient.hpp>
+#include <pep/crypto/AsymmetricKey.hpp>
 #include <pep/keyserver/KeyServerProxy.hpp>
-#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/networking/EndPoint.hpp>
 #include <pep/registrationserver/RegistrationServerProxy.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
+
+#include <boost/asio/io_context.hpp>
+
+#include <memory>
+#include <string>
 
 namespace pep {
 
@@ -118,7 +128,7 @@ private:
   Client(const Builder& builder);
 
   rxcpp::observable<FakeVoid> generateShortPseudonyms(PolymorphicPseudonym pp, const std::string& identifier);
-  rxcpp::observable<std::string> getInaccessibleColumns(const std::string& mode, rxcpp::observable<std::string> columns);
+  rxcpp::observable<std::string> getInaccessibleColumns(ColumnAccessModes mode, rxcpp::observable<std::string> columns);
 };
 
 }

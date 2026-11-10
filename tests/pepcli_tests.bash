@@ -634,14 +634,16 @@ if should_run_test user-removal-and-expiration; then
   pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid when the user is removed from the group"
   trace sleep 1s
 
-  expiration="$($DATE_CMD -d "now+5 seconds" +%s)"
+  # Raised from 5 to 15 seconds: on CI, addTo once took ~9 seconds, so the membership expired before the token was issued.
+  expiration="$($DATE_CMD -d "now+15 seconds" +%s)"
   pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
   token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  [ "$($DATE_CMD -d "now+1 second" +%s)" -lt "$expiration" ] || fail "Test setup took too long: group membership already expired before the token could be tested, rerun or consider increasing the expiration time in the test"
   while [ "$($DATE_CMD -d "now+1 second" +%s)" -lt "$expiration" ]; do # We compare with now+1 second, so the following doesn't fail if in the meantime the current time increased to the next second
     pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
     trace sleep 1s
   done
-  trace sleep 1s
+  trace sleep 2s
   pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid after group membership expiration"
   pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+10 years" +%s)" test-user test-group \
     && fail "Shouldn't be able to update expiration for a user group membership that already expired"
@@ -1009,6 +1011,50 @@ if should_run_test s3-roundtrip; then
   done
 
   test_cleanup "$S3_ROUNDTRIP_CONFIG"
+fi
+
+if should_run_test s3-stale-messages; then
+  if [ "$USE_DOCKER" = false ]; then
+    printGreen "(Not running tests: s3-stale-messages, which needs the S3 servers that run in Docker)"
+  else
+    # core#3044 We used to have the problem that s3 messages that were pending for too long, got rejected by S3 because they were too old
+    # We test that scenario here
+    S3_ROUNDTRIP_CONFIG='{
+      "columnGroups": [{
+        "name": "StaleMessageColumns",
+        "columns": [ "StaleMessageColumn" ],
+        "cgars": {  "Research Assessor": [ "read", "write" ] }
+      }]
+    }'
+
+    test_setup "$S3_ROUNDTRIP_CONFIG"
+
+    # 10 MiB = 10 pages on release builds, 20 on debug. Storage facility has 5 s3 clients, so that is 2-4 pages per client
+    large_random_data_file=$(make_large_random_data_file "large-random-data.bin")
+
+    # We make s3proxy add a latency of 5100ms, and set the maximum timeskew to 5s.
+    # Then if we queue multiple messages at once, e.g. by uploading a file consisting of enough pages, the follow-up messages are queued longer than the maximum timeskew
+    cat <<EOF >> "$DATA_DIR/s3proxy_high_latency.properties"
+s3proxy.latency-blobstore.*.latency=5100
+s3proxy.maximum-timeskew=5
+EOF
+
+    trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" stop
+    TMPDIR="$DATA_DIR" trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" start pep-network "$DATA_DIR/s3proxy_high_latency.properties"
+    trace sleep 10
+
+    pepcli --oauth-token-group "Research Assessor" store -p "stale-message-participant" -c StaleMessageColumn -i "$large_random_data_file"
+
+    trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" stop
+    trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" start pep-network
+    trace sleep 10
+
+    pepcli --oauth-token-group "Research Assessor" delete -p "stale-message-participant" -c StaleMessageColumn
+
+    execute . rm "$large_random_data_file"
+
+    test_cleanup "$S3_ROUNDTRIP_CONFIG"
+  fi
 fi
 
 ####################

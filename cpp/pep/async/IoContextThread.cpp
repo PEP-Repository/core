@@ -2,9 +2,16 @@
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/ThreadUtil.hpp>
+#include <pep/async/WorkGuard.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <stop_token>
+#include <cstdlib>
+#include <exception>
+#include <memory>
+#include <string>
+#include <thread>
+#include <utility>
 
 namespace pep {
 
@@ -39,10 +46,10 @@ IoContextThread::IoContextThread(const std::string& name, std::shared_ptr<boost:
   thread_ = std::jthread([name, io_context](std::stop_token stop) { RunIoContext(name, io_context, std::move(stop)); });
 }
 
-void IoContextThread::stop(bool force) noexcept {
+void IoContextThread::stop() noexcept {
   guard_.reset(); // Allow io_context::run to terminate
-  if (force) {
-    thread_ = std::jthread(); // Make our thread_ instance clean up and join
+  if (thread_.joinable()) {
+    thread_.join();
   }
 }
 

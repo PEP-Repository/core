@@ -1,10 +1,14 @@
 #pragma once
 
-#include <functional>
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/completion_condition.hpp> // for boost::asio::transfer_exactly
 #include <boost/asio/read.hpp>
 #include <boost/asio/read_until.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/write.hpp>
+
+#include <cstddef>
+#include <functional>
 
 namespace pep::networking {
 

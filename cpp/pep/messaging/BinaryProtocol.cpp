@@ -1,7 +1,18 @@
 #include <pep/messaging/BinaryProtocol.hpp>
-#include <pep/networking/Tcp.hpp>
+#include <pep/networking/Tcp.hpp> // IWYU pragma: keep (used with UNENCRYPTED_MESSAGING)
 #include <pep/networking/Tls.hpp>
-#include <pep/utils/Log.hpp>
+#include <pep/utils/Log.hpp> // IWYU pragma: keep (used with UNENCRYPTED_MESSAGING)
+#include <pep/crypto/X509Certificate.hpp> // for X509IdentityFiles
+#include <pep/networking/EndPoint.hpp>
+#include <pep/networking/Protocol.hpp>
+
+#include <boost/asio/io_context.hpp>
+
+#include <cstdint>
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace pep::messaging {
 

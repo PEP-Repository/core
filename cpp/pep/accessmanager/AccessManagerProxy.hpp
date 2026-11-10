@@ -3,8 +3,21 @@
 #include <pep/accessmanager/AccessManagerMessages.hpp>
 #include <pep/accessmanager/AmaMessages.hpp>
 #include <pep/accessmanager/UserMessages.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/UserGroup.hpp>
 #include <pep/key-components/KeyComponentServerProxy.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/messaging/Tail.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/ColumnName.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2
+#include <pep/utils/Timestamp.hpp>
+
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace pep {
 
@@ -26,7 +39,7 @@ public:
   rxcpp::observable<VerifiersResponse> requestVerifiers() const;
   rxcpp::observable<UserVerifiersResponse> requestUserVerifiers(UserVerifiersRequest request) const;
 
-  rxcpp::observable<ColumnAccess> getAccessibleColumns(bool includeImplicitlyGranted, const std::vector<std::string>& requireModes = {}) const;
+  rxcpp::observable<ColumnAccess> getAccessibleColumns(bool includeImplicitlyGranted, ColumnAccessModes requireModes = ColumnAccessModes::None) const;
   rxcpp::observable<ParticipantGroupAccess> getAccessibleParticipantGroups(bool includeImplicitlyGranted) const;
 
   rxcpp::observable<FakeVoid> amaCreateColumn(std::string name) const;

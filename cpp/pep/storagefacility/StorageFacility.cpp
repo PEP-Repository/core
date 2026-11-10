@@ -1,29 +1,55 @@
 #include <pep/storagefacility/StorageFacility.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/crypto/ConstTime.hpp>
-#include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/utils/File.hpp>
 #include <pep/async/CreateObservable.hpp>
 #include <pep/async/RxBeforeTermination.hpp>
 #include <pep/utils/Random.hpp>
-#include <pep/utils/Hasher.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxParallelConcat.hpp>
-#include <pep/utils/ApplicationMetrics.hpp>
-#include <pep/auth/EnrolledParty.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/storagefacility/SFIdSerializer.hpp>
 #include <pep/messaging/MessageHeader.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
+#include <pep/async/OnAsio.hpp>
+#include <pep/async/WorkerPool.hpp>
+#include <pep/auth/Signed.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/messaging/ReadThrottle.hpp>
+#include <pep/metrics/RegisteredMetrics.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/morphing/Metadata.hpp> // for EncryptionScheme
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/IndexList.hpp>
+#include <pep/serialization/MessageMagic.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/serialization/SerializeException.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/server/SigningServer.hpp>
+#include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/EntryName.hpp>
+#include <pep/storagefacility/FileStore.hpp>
+#include <pep/storagefacility/PendingBytesLimiter.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for SignedDataEnumerationRequest2, DataEnumerationResponse2, DataStoreRequest2
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for Ticket2, LocalPseudonyms
+#include <pep/utils/CollectionUtils.hpp> // for FillToCapacity
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp> // for TimeNow
+#include <pep/utils/XxHasher.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string/join.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/placeholders.hpp>
-
 #include <rxcpp/rx-lite.hpp>
+#include <boost/asio/error.hpp> // for boost::asio::error::operation_aborted
+#include <boost/asio/io_context.hpp>
+#include <boost/bind/bind.hpp>
+
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
@@ -33,6 +59,23 @@
 #include <ranges>
 #include <unordered_map>
 #include <sstream>
+#include <cassert>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <limits>
+#include <memory>
+#include <optional>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #include <prometheus/gauge.h>
 #include <prometheus/summary.h>
@@ -277,64 +320,6 @@ void StorageFacility::Parameters::check() const {
   // FIXME: check if errors happend during startup of file store
 }
 
-std::vector<std::string> StorageFacility::getChecksumChainNames() const {
-  return {
-    "files",
-    "entry-count"
-  };
-}
-
-void StorageFacility::computeChecksumChainChecksum(
-  const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-  uint64_t& checksum, uint64_t& checkpoint) {
-
-  // both "files" and "entry-count" checksums are computed by adding
-  // one entry at a time, via:
-  std::function<void(const FileStore::CellVersion&)> add;
-
-  if (chain == "files") {
-    add = [&checksum](const FileStore::CellVersion& version) {
-      auto checksumSubstitute = version.checksumSubstitute;
-      checksum ^= checksumSubstitute;
-    };
-  }
-  else if (chain == "entry-count") {
-    add = [&checksum](const FileStore::CellVersion& version) {
-      checksum++;
-    };
-  }
-  else {
-    throw Error("Unknown checksumchain");
-  }
-
-  checksum = 0;
-  checkpoint = 0;
-
-  if (!maxCheckpoint) {
-    // The Storage Facility uses a timestamp as checkpoint
-    maxCheckpoint = TicksSinceEpoch<std::chrono::milliseconds>(TimeNow() - 1min);
-  }
-
-  /* Checksums over cell versions must be calculated in (backward compatible) lexicographic order, e.g.
-   * 1. participant-a/column-x/timestamp-1
-   * 2. participant-a/column-x/timestamp-2
-   * 3. participant-a/column-y/timestamp-1
-   * 4. participant-b/column-x/timestamp-1
-   */
-  for (const auto& participant : fileStore_->participants()) {
-    for (const auto& cell : participant->cells()) {
-      for (const auto& version : cell->versions()) {
-        std::uint64_t validFromMs{ static_cast<std::uint64_t>(TicksSinceEpoch<std::chrono::milliseconds>(version.validFrom)) };
-        if (validFromMs <= *maxCheckpoint) {
-          checkpoint = std::max(checkpoint, validFromMs);
-          add(version);
-        }
-
-      }
-    }
-  }
-}
-
 messaging::MessageBatches
 StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumerationRequest2> signedRequest) {
   PEP_LOG(LogTag, Severity::Debug) << "Received DataEnumerationRequest2";
@@ -345,7 +330,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
   auto certified = signedRequest->open(rootCAs);
   const auto& request = certified.message;
   auto accessGroup = certified.signatory.organizationalUnit();
-  auto ticket = request.ticket.open(rootCAs, accessGroup, "read-meta");
+  auto ticket = request.ticket.open(rootCAs, accessGroup, ColumnAccessModes::ReadMeta);
 
   struct ResponseEntry {
     DataEnumerationEntry2 entry;
@@ -473,7 +458,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
     auto ticket = request.ticket.open(
       *rootCAs,
       userGroup,
-      "read-meta"
+      ColumnAccessModes::ReadMeta
     );
 
     // Create look-up-tables for columns and pseudonyms from ticket
@@ -545,7 +530,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
   auto ticket = request.ticket.open(
     *rootCAs,
     userGroup,
-    "read"
+    ColumnAccessModes::Read
   );
 
   // Create look-up-tables for columns and pseudonyms from ticket
@@ -684,7 +669,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
     auto request = MakeSharedCopy(std::move(certified.message));
     auto ticket = request->ticket.open(*rootCAs, certified.signatory.organizationalUnit());
 
-    if (!ticket.hasMode("write")) {
+    if (!ImpliesModes(ticket.modes, ColumnAccessModes::Write)) {
       throw Error("Ticket is missing \"write\" access mode");
     }
 
@@ -880,9 +865,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
 
   auto ticket = request->ticket.open(*rootCAs, userGroup);
 
-  if (!ticket.hasMode("write-meta")) {
-    throw Error("Ticket is missing write-meta access mode");
-  }
+  if (!ImpliesModes(ticket.modes, ColumnAccessModes::WriteMeta)) { throw Error("Ticket is missing write-meta access mode"); }
 
   // Fill a vector with indices of pseudonyms that we want/need decrypted
   auto pseudIndices = request->entries
@@ -1015,7 +998,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({UserGroup::DataAdministrator, UserGroup::Watchdog}, accessGroup);
 
-  auto ticket = request.ticket.open(*rootCAs, accessGroup, "read-meta");
+  auto ticket = request.ticket.open(*rootCAs, accessGroup, ColumnAccessModes::ReadMeta);
 
   DataHistoryResponse2 response;
 
@@ -1180,6 +1163,10 @@ void StorageFacility::statsTimer(const boost::system::error_code& e) {
 
   timer_.expires_after(60s);
   timer_.async_wait(boost::bind(&pep::StorageFacility::statsTimer, this, boost::asio::placeholders::error));
+}
+
+const ChecksumChains& StorageFacility::checksumChains() const noexcept {
+  return fileStore_->checksumChains();
 }
 
 StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameters> parameters)

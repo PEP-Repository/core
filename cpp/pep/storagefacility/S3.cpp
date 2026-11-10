@@ -2,11 +2,20 @@
 
 #include <pep/utils/Hmac.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
-#include <pep/utils/Platform.hpp>
+#include <pep/utils/Platform.hpp> // for gmtime_r on Windows
 #include <pep/storagefacility/PageHash.hpp>
+#include <pep/networking/HTTPMessage.hpp>
+#include <pep/storagefacility/S3Credentials.hpp> // for s3::HttpRequest, s3::Credentials
 
 #include <ranges>
 #include <sstream>
+#include <algorithm>
+#include <ctime>
+#include <iomanip>
+#include <memory>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/algorithm/string/trim.hpp>
@@ -22,16 +31,11 @@ namespace pep::s3::request
 
 void Sign(HttpRequest& request, const Credentials& credentials)
 {
-  if(request.hasHeader("Authorization"))
-    throw std::runtime_error("Authorization header already set");
 
-  if(!request.hasHeader("X-Amz-Date"))
-    request.setHeader("X-Amz-Date", XAmzDateHeader());
-
-  if(!request.hasHeader("X-Amz-Content-Sha256"))
-    request.setHeader("X-Amz-Content-Sha256",
+  request.setHeader("X-Amz-Date", XAmzDateHeader());
+  request.setHeader("X-Amz-Content-Sha256",
         XAmzContentSha256Header(request.getBodyparts()));
-
+  request.removeHeader("Authorization"); //Otherwise, the old value of the header (if it was previously set) is used in the calculation of the new value
   request.setHeader("Authorization",
       AuthorizationHeader(request, credentials));
 }

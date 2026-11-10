@@ -1,9 +1,18 @@
 #include <pep/networking/Server.hpp>
 #include <pep/networking/Tcp.hpp>
 #include <pep/utils/TestTiming.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/networking/Transport.hpp> // for networking::SizedTransfer, networking::DelimitedTransfer
+#include <pep/utils/Shared.hpp>
 
 #include <boost/asio/steady_timer.hpp>
+#include <boost/asio/io_context.hpp>
 #include <gtest/gtest.h>
+
+#include <cstddef>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 using namespace std::literals;
 

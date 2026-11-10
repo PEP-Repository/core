@@ -1,16 +1,31 @@
 #include <pep/storagefacility/S3Client.hpp>
 #include <pep/networking/HttpClient.hpp>
 #include <pep/utils/Log.hpp>
-
-#include <pep/utils/OpenSSLHasher.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/networking/HTTPMessage.hpp> // for HTTPRequest, HTTPResponse
+#include <pep/networking/HttpMethod.hpp>
+#include <pep/storagefacility/S3.hpp> // for s3::request::Sign
+#include <pep/storagefacility/S3Credentials.hpp> // for s3::Credentials
+#include <pep/utils/Compare.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <sstream>
+#include <algorithm>
+#include <cassert>
+#include <memory>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep;
 using namespace pep::s3;
@@ -33,7 +48,6 @@ public:
 
 private:
   std::shared_ptr<networking::HttpClient> http_;
-  Credentials credentials_;
   EndPoint endpoint_;
 
   rxcpp::observable<std::string> putObject(
@@ -72,13 +86,19 @@ std::shared_ptr<networking::HttpClient> CreateHttpClient(const Client::Parameter
 
   networking::HttpClient::Parameters httpParameters(*params.ioContext, useHttps, params.endpoint);
   httpParameters.caCertFilepath(params.caCertPath);
+
+  // Sign requests right before they're sent instead of when they're created: requests may wait in the
+  // HttpClient's queue, or be resent after an error, and S3 rejects requests whose X-Amz-Date is too old.
+  httpParameters.onPrepareRequest([credentials = params.credentials](HTTPRequest& request) {
+    pep::s3::request::Sign(request, credentials);
+  });
+
   return networking::HttpClient::Create(std::move(httpParameters));
 }
 
 ClientImp::ClientImp(const Client::Parameters& params)
   : Client(),
     http_(CreateHttpClient(params)),
-    credentials_(params.credentials),
     endpoint_(params.endpoint)
 {
   // nothing to do
@@ -178,8 +198,6 @@ rxcpp::observable<std::string> ClientImp::putObject(
       "/" + bucket + "/" + name, // path
       networking::HttpMethod::Put, payload);
 
-  request::Sign(request, credentials_);
-
   return http_->sendRequest(std::move(request)).map(
 
   [self = SharedFrom(*this), name](HTTPResponse resp) -> std::string {
@@ -204,8 +222,6 @@ messaging::MessageSequence
   auto request = this->requestTemplate(
       "/" + bucket + "/" + name,
       networking::HttpMethod::Get);
-
-  request::Sign(request, credentials_);
 
   return http_->sendRequest(std::move(request)).map(
 

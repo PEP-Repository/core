@@ -1,18 +1,33 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/trim.hpp>
-#include <boost/asio/read.hpp>
-#include <boost/asio/read_until.hpp>
-
 #include <rxcpp/rx-lite.hpp>
 
 #include <pep/castor/tests/FakeCastorApi.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/utils/Paths.hpp>
 #include <pep/networking/Tls.hpp>
 #include <pep/utils/Exceptions.hpp>
+#include <pep/async/IoContextThread.hpp>
+#include <pep/castor/ApiKey.hpp>
+#include <pep/castor/CastorConnection.hpp>
+#include <pep/crypto/tests/TemporaryX509IdentityFiles.hpp>
+#include <pep/networking/Connection.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/networking/Server.hpp>
+#include <pep/networking/Transport.hpp> // for networking::DelimitedTransfer, networking::SizedTransfer
+#include <pep/utils/Shared.hpp>
+
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <map>
+#include <memory>
+#include <ostream>
+#include <sstream>
+#include <stdexcept>
+#include <string>
 
 namespace pep {
 namespace castor {
@@ -192,10 +207,10 @@ FakeCastorTest::FakeCastorTest()
 
 void FakeCastorTest::TearDown() {
   castorConnection_ = nullptr;
-  clientSide_.stop(false);
+  clientSide_.stop();
 
   server_->stop();
-  serverSide_.stop(false);
+  serverSide_.stop();
 }
 
 void FakeCastorTest::Side::start() {
@@ -205,7 +220,7 @@ void FakeCastorTest::Side::start() {
   thread_ = std::make_shared<IoContextThread>("Fake Castor test " + this->role(), ioContext_);
 }
 
-void FakeCastorTest::Side::stop(bool force) {
+void FakeCastorTest::Side::stop() {
   if (ioContext_ == nullptr) {
     throw std::runtime_error("Can't stop FakeCastorTest::Side multiple times");
   }
@@ -213,7 +228,7 @@ void FakeCastorTest::Side::stop(bool force) {
     throw std::runtime_error("Can't stop an unstarted FakeCastorTest::Side");
   }
   ioContext_.reset(); // Allow detection that this instance has already been stop()ped
-  thread_->stop(force);
+  thread_->stop();
 }
 
 FakeCastorApi::FakeCastorApi(const pep::networking::Protocol::ServerParameters& parameters, uint16_t port, std::shared_ptr<Options> options)

@@ -1,6 +1,10 @@
 #include <pep/rsk-pep/DataTranslator.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Random.hpp>
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp>
+#include <pep/rsk/RskKeys.hpp> // for KeyFactorSecret
 
 #include <gtest/gtest.h>
 
@@ -8,6 +12,8 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <span>
+#include <stdexcept>
 
 using namespace pep;
 

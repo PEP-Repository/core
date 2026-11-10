@@ -1,18 +1,29 @@
 #pragma once
 
-#include <filesystem>
-#include <string>
-#include <unordered_map>
-#include <set>
-#include <vector>
-
+#include <pep/accessmanager/AccessManager.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for StructureMetadataType
 #include <pep/accessmanager/Backend.hpp>
-#include <pep/structure/ColumnName.hpp>
 #include <pep/accessmanager/Records.hpp>
-#include <pep/utils/Timestamp.hpp>
-#include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/accessmanager/UserMessages.hpp>
 #include <pep/accessmanager/UserIdFlags.hpp>
+#include <pep/accessmanager/UserMessages.hpp>
+#include <pep/auth/UserGroup.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/structure/ColumnName.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <cstdint>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <set>
+#include <span>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace pep {
 
@@ -29,6 +40,7 @@ private:
   std::filesystem::path storagePath_;
   std::shared_ptr<Implementor> implementor_;
   std::shared_ptr<GlobalConfiguration> globalConf_;
+  ChecksumChains checksumChains_;
   std::unordered_map<LocalPseudonym, PolymorphicPseudonym> lpToPpMap_; // Use a map as checking existence and retrieval of a key takes O(1) time
 
   // Initialisation
@@ -64,10 +76,7 @@ public:
   Storage(std::filesystem::path path, std::shared_ptr<GlobalConfiguration> globalConf);
 
   // Sanity checks
-  std::vector<std::string> getChecksumChainNames();
-  void computeChecksum(const std::string& chain, std::optional<uint64_t> maxCheckpoint,
-                       uint64_t& checksum, uint64_t& checkpoint);
-
+  const ChecksumChains& checksumChains() const noexcept { return checksumChains_; }
 
   std::filesystem::path getPath() {
     return storagePath_;

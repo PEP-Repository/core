@@ -4,17 +4,40 @@
 #include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/async/RxRequireCount.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 
 #include <fstream>
-#include <ranges>
+#include <algorithm>
+#include <chrono>
+#include <exception>
+#include <filesystem>
+#include <ios>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 #include <pep/messaging/MessageSequence.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for FindUserResponse
+#include <pep/accessmanager/AccessManagerProxy.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/OAuthToken.hpp>
+#include <pep/auth/Signed.hpp> // for MessageSigner
+#include <pep/authserver/AuthserverMessages.hpp> // for TokenResponse, TokenRequest
+#include <pep/crypto/X509Certificate.hpp> // for X509Identity, X509RootCertificates
+#include <pep/messaging/ConnectionStatus.hpp>
+#include <pep/messaging/ServerConnection.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Timestamp.hpp>
 
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-take.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::ranges;
 
@@ -113,38 +136,15 @@ void AuthserverBackend::Parameters::check() const {
     throw std::runtime_error("rootCertificates must not be empty");
   }
 }
-const std::unordered_map<std::string, std::string> checksumNameMappings{
-    {"groups", "user-groups"}, {"user-groups-v2", "user-group-users-legacy"}};
 
 AuthserverBackend::AuthserverBackend(const Parameters &params)
     : MessageSigner(params.getSigningIdentity()),
       accessManager_(std::make_shared<AccessManagerProxy>(params.getAccessManager(), *this, params.getAccessManagerEndPoint().expectedCommonName, params.getRootCertificates())),
       tokenExpiration_(params.getTokenExpiration()),
-      oauthTokenSecret_(params.getOAuthTokenSecret()){
+      oauthTokenSecret_(params.getOAuthTokenSecret()) {
   if (params.getStorageFile() && std::filesystem::exists(*params.getStorageFile())) {
     migrateDatabase(*params.getStorageFile());
   }
-}
-
-std::vector<std::string> AuthserverBackend::getChecksumChainNames() const {
-  return checksumNameMappings
-    | views::keys
-    | to<std::vector>();
-}
-
-rxcpp::observable<ChecksumChainResponse> AuthserverBackend::handleChecksumChainRequest(ChecksumChainRequest request) {
-  // authserver used to have it's own storage, but that has been moved to the
-  // access manager. To make sure the migration from authserver to access
-  // manager goes correctly, we keep the old checksum chains, but instead of
-  // calculating them here, we pass them on to the accessmanager.
-  //TODO: When the migration has succeeded, this can be removed in a following release.
-  auto checksumMapping = checksumNameMappings.find(request.name);
-  if (checksumMapping == checksumNameMappings.end()) {
-    throw Error("Checksum chain " + request.name + " not found");
-  }
-  request.name = checksumMapping->second;
-  return accessManager_->requestChecksumChain(std::move(request))
-    .op(RxGetOne());
 }
 
 rxcpp::observable<std::optional<std::vector<UserGroup>>> AuthserverBackend::findUserGroupsAndStorePrimaryIdIfMissing(

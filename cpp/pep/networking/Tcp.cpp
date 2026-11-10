@@ -1,4 +1,13 @@
 #include <pep/networking/Tcp.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/networking/StreamSocket.hpp>
+#include <pep/networking/TcpBasedProtocol.hpp>
+
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
+
+#include <memory>
 
 namespace pep::networking {
 

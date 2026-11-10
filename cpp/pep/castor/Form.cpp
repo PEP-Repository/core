@@ -1,6 +1,12 @@
 #include <pep/castor/Form.hpp>
 #include <pep/castor/Visit.hpp>
 #include <pep/castor/Ptree.hpp>
+#include <pep/castor/CastorConnection.hpp> // for castor::JsonPtr
+#include <pep/castor/CastorObject.hpp> // for castor::SimpleCastorChildObject
+#include <pep/castor/Study.hpp>
+
+#include <memory>
+#include <string>
 
 namespace pep {
 namespace castor {

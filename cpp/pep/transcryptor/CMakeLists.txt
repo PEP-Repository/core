@@ -15,7 +15,7 @@ if(WITH_SERVERS)
   add_library(${PROJECT_NAME}Transcryptorlib
       Storage.cpp Storage.hpp
       Transcryptor.cpp Transcryptor.hpp
-      ChecksumChain.cpp ChecksumChain.hpp
+      TsChecksumChain.cpp TsChecksumChain.hpp
   )
 
   target_link_libraries(${PROJECT_NAME}Transcryptorlib

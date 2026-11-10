@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 
 namespace pep {
 /// \brief Mixin to help object creation as a shared_ptr. Especially helpful for classes that (directly or indirectly) inherit std::enable_shared_from_this<>.

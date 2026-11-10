@@ -1,6 +1,11 @@
 #include <pep/rsk-pep/PseudonymTranslator.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Random.hpp>
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey, ElgamalPublicKey
+#include <pep/rsk-pep/PseudonymTranslationKeys.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
 
 #include <gtest/gtest.h>
 
@@ -8,6 +13,7 @@
 #include <optional>
 #include <utility>
 #include <vector>
+#include <span>
 
 using namespace pep;
 

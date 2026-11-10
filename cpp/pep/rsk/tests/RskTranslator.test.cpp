@@ -1,6 +1,16 @@
 #include <pep/rsk/RskTranslator.hpp>
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp>
+#include <pep/rsk/Proofs.hpp> // for ReshuffleRekeyVerifiers
+#include <pep/rsk/RskKeys.hpp> // for KeyFactorSecret
+#include <pep/rsk/RskRecipient.hpp>
+#include <pep/utils/CollectionUtils.hpp> // for SpanToString
 
 #include <stdexcept>
+#include <array>
+#include <cstdint>
+#include <span>
 
 #include <gtest/gtest.h>
 

@@ -2,6 +2,9 @@
 
 #include <pep/auth/UserGroup.hpp>
 
+#include <optional>
+#include <string>
+
 namespace pep {
 
 std::optional<UserRole> UserRole::GetForOAuthRole(const std::string& oauthRole) {

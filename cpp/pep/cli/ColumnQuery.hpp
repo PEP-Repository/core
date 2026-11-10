@@ -1,6 +1,10 @@
 #pragma once
 
 #include <pep/application/CommandLineParameter.hpp>
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+
+#include <string>
+#include <vector>
 
 namespace pep::cli {
 

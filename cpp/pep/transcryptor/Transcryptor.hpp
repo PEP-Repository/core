@@ -2,16 +2,29 @@
 
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/async/WorkerPool.hpp>
+#include <pep/auth/ServerTraits.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey
 #include <pep/key-components/KeyComponentServer.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/metrics/RegisteredMetrics.hpp>
+#include <pep/morphing/ServerVerifiers.hpp>
 #include <pep/networking/EndPoint.hpp>
-#include <pep/rsk-pep/DataTranslator.hpp>
-#include <pep/rsk-pep/PseudonymTranslator.hpp>
-#include <pep/transcryptor/TranscryptorMessages.hpp>
-
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms
 #include <pep/transcryptor/Storage.hpp>
+#include <pep/transcryptor/TranscryptorMessages.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
 
+#include <prometheus/registry.h>
+
+#include <boost/asio/io_context.hpp>
+
+#include <cstdint>
+#include <filesystem>
+#include <memory>
 #include <optional>
 #include <span>
+#include <string>
 
 namespace pep {
 
@@ -62,10 +75,7 @@ public:
 protected:
   std::optional<std::filesystem::path> getStoragePath() override;
   std::shared_ptr<prometheus::Registry> getMetricsRegistry() override;
-  std::vector<std::string> getChecksumChainNames() const override;
-  void computeChecksumChainChecksum(
-    const std::string& chain, std::optional<uint64_t> maxCheckpoint, uint64_t& checksum,
-    uint64_t& checkpoint) override;
+  const ChecksumChains& checksumChains() const noexcept override;
 
 private:
   messaging::MessageBatches handleTranscryptorRequest(std::shared_ptr<TranscryptorRequest> pRequest, messaging::MessageSequence entriesObservable);

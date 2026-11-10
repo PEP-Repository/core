@@ -2,6 +2,9 @@
 
 #include <pep/auth/Signed.hpp>
 
+#include <string>
+#include <vector>
+
 namespace pep {
 
 struct MetricsRequest {};

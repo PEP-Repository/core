@@ -2,9 +2,12 @@
 
 #include <pep/serialization/Serialization.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
+#include <pep/rsk/Proofs.hpp>
 
-#include <stdexcept>
 #include <utility>
+
+#include <Messages.pb.h> // for proto::ScalarMultProof
 
 namespace pep {
 

@@ -1,12 +1,23 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/client/Client.hpp>
-#include <pep/application/Application.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/auth/ServerTraits.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/server/MonitoringMessages.hpp> // for MetricsResponse
+#include <pep/server/ServerProxy.hpp>
 
 #include <ranges>
+#include <algorithm>
+#include <cassert>
+#include <iostream>
+#include <memory>
+#include <ostream>
+#include <vector>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep::cli;
 using namespace std::ranges;

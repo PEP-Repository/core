@@ -1,7 +1,9 @@
 #pragma once
 
-#include <pep/server/MonitoringMessages.hpp>
 #include <pep/auth/SigningSerializers.hpp>
+#include <pep/server/MonitoringMessages.hpp>
+
+#include <Messages.pb.h> // for proto::MetricsRequest
 
 namespace pep {
 

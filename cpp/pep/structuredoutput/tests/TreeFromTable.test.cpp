@@ -1,7 +1,9 @@
-#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <pep/structuredoutput/Tree.hpp>
+#include <pep/structuredoutput/Table.hpp>
+
+#include <string_view>
 
 namespace {
 using json = nlohmann::ordered_json;

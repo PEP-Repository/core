@@ -13,6 +13,17 @@
 #include <pep/utils/ChronoUtil.hpp>
 
 #include <ranges>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for ColumnAccess, ParticipantGroupAccess, IndexedTicket2
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/CliApplication.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2
+#include <pep/utils/EnumUtils.hpp> // for HasFlags
+#include <pep/utils/Shared.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-concat_map.hpp>
@@ -21,10 +32,29 @@
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <boost/algorithm/string/split.hpp>
 
 #include <utility>
+#include <cassert>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <functional>
+#include <iomanip>
+#include <ios>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <ratio>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 using namespace pep::cli;
 using namespace std::ranges;
@@ -76,7 +106,7 @@ protected:
   rxcpp::observable<std::shared_ptr<const pep::ColumnAccess>> getMetaReadableColumnGroups(std::shared_ptr<pep::CoreClient> client) {
     if (metaReadableColumnGroups_ == nullptr) {
       metaReadableColumnGroups_ = pep::CreateRxCache([client]() {
-        return client->getAccessManagerProxy()->getAccessibleColumns(true, { "read-meta" })
+        return client->getAccessManagerProxy()->getAccessibleColumns(true, pep::ColumnAccessModes::ReadMeta)
           .op(pep::RxGetOne("column access specification"))
           .map([](pep::ColumnAccess access) {
             return PtrAsConst(pep::MakeSharedCopy(std::move(access)));
@@ -99,8 +129,7 @@ protected:
           std::set<std::string> result;
           for (const auto& group : access.participantGroups) {
             const auto& modes = group.second;
-            if (contains(modes, "access")
-              && contains(modes, "enumerate")) {
+            if (HasFlags(modes, pep::SubjectAccessModes::Access | pep::SubjectAccessModes::Enumerate)) {
               result.emplace(group.first);
             }
           }
@@ -413,7 +442,7 @@ protected:
           .concat_map([this, client, ownResult, pgs, pps, counts](std::shared_ptr<ColumnExtensions> columnExtensions) {
           counts->processingColumns(columnExtensions->size());
           pep::RequestTicket2Opts ticketRequest;
-          ticketRequest.modes.emplace_back("read-meta");
+          ticketRequest.modes = pep::ColumnAccessModes::ReadMeta;
           ticketRequest.includeAccessGroupPseudonyms = true;
           ticketRequest.participantGroups = *pgs;
           ticketRequest.accessSubjects = *pps;
@@ -576,7 +605,7 @@ private:
     }
 
     auto opts = std::make_shared<pep::RequestTicket2Opts>();
-    opts->modes = { "read-meta", "write-meta" };
+    opts->modes = pep::ColumnAccessModes::ReadMeta | pep::ColumnAccessModes::WriteMeta;
     opts->includeAccessGroupPseudonyms = true;
     opts->columns = MultiCellQuery::GetColumns(this->getParameterValues());
     opts->columnGroups = MultiCellQuery::GetColumnGroups(this->getParameterValues());
@@ -744,7 +773,7 @@ protected:
         const auto& vm = this->getParameterValues();
 
         pep::RequestTicket2Opts opts;
-        opts.modes = { "read-meta" };
+        opts.modes = pep::ColumnAccessModes::ReadMeta;
         opts.includeAccessGroupPseudonyms = true;
         opts.participantGroups = MultiCellQuery::GetParticipantGroups(vm);
         opts.columnGroups = MultiCellQuery::GetColumnGroups(vm);
