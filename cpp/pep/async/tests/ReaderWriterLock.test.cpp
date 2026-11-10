@@ -1,4 +1,5 @@
 #include <pep/async/ReaderWriterLock.hpp>
+#include <pep/utils/Math.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Timestamp.hpp>
 #include <gtest/gtest.h>
@@ -90,7 +91,7 @@ TEST(ReaderWriterLock, Works) {
   constexpr unsigned ReaderToWriterRatio = 3; // One writer to this many readers: e.g. if set to 3, then 1 in 4 threads will be a writer (and 3 in 4 will be a reader)
 
   static_assert(ReaderToWriterRatio != 0, "Can't modulate very well otherwise, can I now?");
-  constexpr unsigned ReaderToWriterDivisor = ReaderToWriterRatio + 1;
+  constexpr size_t ReaderToWriterDivisor = ReaderToWriterRatio + 1;
 
   bool intersectingReadFound = false;
   for (unsigned attempt = 0; (attempt < IntersectingReadAttempts) && !intersectingReadFound; ++attempt) {
@@ -138,8 +139,7 @@ TEST(ReaderWriterLock, Works) {
   }
 
   // We'd expect to find at least one intersecting read, given the values of our IntersectingReadAttempts and ThreadCount and ReaderToWriterRatio
-  constexpr auto Writers = ThreadCount / ReaderToWriterDivisor
-    + ((ThreadCount % ReaderToWriterDivisor == 0) ? 0 : 1); // Modulo bias favors writers
+  constexpr auto Writers = pep::CeilDiv(ThreadCount, ReaderToWriterDivisor); // Modulo bias favors writers
   constexpr auto Readers = ThreadCount - Writers;
 
   EXPECT_TRUE(intersectingReadFound) << "Reader/writer lock seems to interleave readers: no intersecting read found"
