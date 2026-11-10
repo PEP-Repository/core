@@ -3,7 +3,7 @@
  */
 
 import {expect} from 'chai';
-import Pep, {CellEntry, ClientConfig, getColumnModes, InitConfig, ListColumnsQuery} from "./pep.mjs";
+import Pep, {CellEntry, ClientConfig, getColumnModes, getEffectiveAccessModes, InitConfig, ListColumnsQuery} from "./pep.mjs";
 import {binaryToString, concatStringsAsync, deleteObjects} from "./utils.mjs";
 
 const isNode = !!globalThis.process;
@@ -383,10 +383,10 @@ describe('Pep', () => {
     }));
 
     it('should query the effective access modes', () => pep.runHandleWasmException(async () => {
-      expect(await pep.queryEffectiveAccessModes({
+      expect(getEffectiveAccessModes(await pep.queryAccessManager({
         columnGroup: 'WasmTestMetaColumnGroup',
         subjectGroup: 'WasmTestEnumerateSubjectGroup',
-      })).to.deep.equal({
+      }))).to.deep.equal({
         // Explicit rules: read-meta, write-meta
         columnGroups: [{
           columnGroup: 'WasmTestMetaColumnGroup',
@@ -413,5 +413,33 @@ describe('getColumnModes()', () => {
       {name: 'x', modes: {...none, readMeta: true, write: true}},
       {name: 'y', modes: {...none, readMeta: true}},
     ]);
+  });
+});
+
+describe('getEffectiveAccessModes()', () => {
+  it('should add the implied modes to the explicit ones', () => {
+    const none = {read: false, readMeta: false, write: false, writeMeta: false};
+    const subjectGroupAccessRules = [
+      {subjectGroup: 'SubjectGroupA', userGroup: 'UserGroupA', modes: {access: true, enumerate: false}},
+    ];
+    expect(getEffectiveAccessModes({
+      columns: [],
+      columnGroups: [],
+      columnGroupAccessRules: [{
+        columnGroup: 'GroupA',
+        userGroup: 'UserGroupA',
+        modes: {...none, read: true, writeMeta: true},
+        impliedOnlyModes: {...none, readMeta: true, write: true},
+      }],
+      subjectGroups: [],
+      subjectGroupAccessRules,
+    })).to.deep.equal({
+      columnGroups: [{
+        columnGroup: 'GroupA',
+        userGroup: 'UserGroupA',
+        modes: {read: true, readMeta: true, write: true, writeMeta: true},
+      }],
+      subjectGroups: subjectGroupAccessRules,
+    });
   });
 });
