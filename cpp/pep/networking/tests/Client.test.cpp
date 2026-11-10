@@ -36,17 +36,18 @@ public:
   }
 };
 
-// Verifies that a client reconnects (observing exponential backoff) after losing its connection, and that shutting the
-// client down cancels a pending reconnect attempt. Timing is only verified in ways that a busy/slow machine can't break:
-// - the client's backoff between reconnect attempts must be _at least_ the expected duration, and
-// - the I/O context must terminate _before_ a (pending) reconnect attempt would have been made. We shut the client down
-//   while it waits for such an attempt, using backoff parameters that make that wait very long compared to the rest of
-//   the test.
+/// \brief Verifies that a client reconnects (observing exponential backoff) after losing its connection, and that shutting the
+/// client down cancels a pending reconnect attempt.
+/// \details Timing is only verified in ways that a busy/slow machine can't break:
+/// - the client's backoff between reconnect attempts must be _at least_ the expected duration, and
+/// - the I/O context must terminate _before_ a (pending) reconnect attempt would have been made. We shut the client down
+///   while it waits for such an attempt, using backoff parameters that make that wait very long compared to the rest of
+///   the test.
 class ClientConnectivityHandler : public std::enable_shared_from_this<ClientConnectivityHandler>, public pep::SharedConstructor<ClientConnectivityHandler> {
   friend class pep::SharedConstructor<ClientConnectivityHandler>;
 
 public:
-  /// \brief The number of failed reconnect attempts after which the client is shut down
+  /// The number of failed reconnect attempts after which the client is shut down
   static constexpr unsigned RequiredReconnectFailures = 2U;
 
 private:
@@ -64,10 +65,10 @@ private:
   pep::EventSubscription connectionConnectivityChangeSubscription_;
 
   unsigned attempts_ = 0U;
-  std::optional<unsigned> successfulAttempt_; // The (1-based) number of the successful attempt
+  std::optional<unsigned> successfulAttempt_; ///< The (1-based) number of the successful attempt
   std::optional<pep::testing::TimePoint> lastAttempt_;
 
-  /// \brief The number of (failed) attempts after the successful one
+  /// The number of (failed) attempts after the successful one
   unsigned unsuccessfulAttempts() const noexcept {
     auto result = attempts_;
     if (successfulAttempt_.has_value()) {
@@ -170,13 +171,15 @@ public:
     ASSERT_TRUE(lastAttempt_.has_value()) << "Client didn't attempt to connect to server";
     ASSERT_GT(attempts_, 0U) << "Client didn't attempt to connect to server";
     ASSERT_TRUE(successfulAttempt_.has_value()) << "Client couldn't connect to server";
-    ASSERT_EQ(this->unsuccessfulAttempts(), RequiredReconnectFailures) << "Client didn't attempt to reconnect (often enough) after connection was lost";
+    ASSERT_EQ(this->unsuccessfulAttempts(), RequiredReconnectFailures)
+      << "Client didn't attempt to reconnect (often enough) after connection was lost";
 
     // The client was shut down while waiting for its next reconnect attempt, which it started after we recorded
     // "lastAttempt_". If shutdown didn't cancel that wait, the I/O context would have kept running until the wait was
     // over, i.e. until at least the backoff duration had passed since "lastAttempt_".
     auto pendingBackoff = backoffParameters_.timeoutAfter(this->unsuccessfulAttempts());
-    ASSERT_LT(pep::testing::Clock::now() - *lastAttempt_, pendingBackoff) << "Client shutdown (and hence I/O context termination) shouldn't wait for exponential backoff. Does the Client cancel the timer?";
+    ASSERT_LT(pep::testing::Clock::now() - *lastAttempt_, pendingBackoff)
+      << "Client shutdown (and hence I/O context termination) shouldn't wait for exponential backoff. Does the Client cancel the timer?";
   }
 };
 
@@ -193,7 +196,7 @@ TEST_F(Client, Reconnects) { // TODO: simplify
     });
   server->start();
 
-  // The client waits 25ms and 1s for its (failing) reconnect attempts. Then it's shut down while waiting 40s for the
+  // The client waits 25ms and 1s for its (failing) reconnect attempts. Then it's shut down while waiting 40s (25ms*(40^2)) for the
   // next attempt: the test fails if the I/O context keeps running that long.
   static_assert(ClientConnectivityHandler::RequiredReconnectFailures == 2U, "Backoff parameters are tailored to this number of reconnect failures");
   auto backoffParams = pep::ExponentialBackoff::Parameters(25ms, 1min, 40);
