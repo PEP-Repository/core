@@ -62,7 +62,7 @@ public:
 
   void popPrefix() {
     if (prefixes_.empty()) {
-      throw std::logic_error("Cannot pop prefix: no prefix has been pushed");
+      throw std::runtime_error("Cannot pop prefix: no prefix has been pushed");
     }
     if (pushedPrefixCount_ == prefixes_.size()) {
       chunk_.paths.emplace_back(PopPrefix{}); // Fits because tryAdd reserved space to pop every pushed prefix

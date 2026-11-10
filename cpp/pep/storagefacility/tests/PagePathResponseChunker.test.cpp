@@ -129,8 +129,8 @@ TEST(PagePathResponseChunker, RejectsStringsThatDontFit) {
 }
 
 TEST(PagePathResponseChunker, RejectsUnbalancedInput) {
-  EXPECT_THROW(Chunk({PopPrefix{}}, 1000U), std::logic_error);
-  EXPECT_THROW(Chunk({PushPrefix{.prefix = "participant/"}}, 1000U), std::logic_error);
+  EXPECT_THROW(Chunk({PopPrefix{}}, 1000U), std::runtime_error);
+  EXPECT_THROW(Chunk({PushPrefix{.prefix = "participant/"}}, 1000U), std::runtime_error);
 }
 
 }
