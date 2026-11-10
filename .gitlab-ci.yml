@@ -993,9 +993,18 @@ flatpak:
     # Pass through environment variables used by ./cpp/pep/CMakeLists.txt
     - |
       rm -f ./flatpak.env
-      for env in CI_PROJECT_PATH CI_COMMIT_REF_NAME CI_COMMIT_SHA CI_PIPELINE_ID CI_JOB_ID CCACHE_EXPIRATION_TIME; do
+      for env in CI_PROJECT_PATH CI_COMMIT_REF_NAME CI_COMMIT_SHA CI_PIPELINE_ID CI_JOB_ID CCACHE_EXPIRATION_TIME \
+          MEM_GATE_COMMAND_MIB MEM_GATE_RESERVE_MIB MEM_GATE_RAMP_SECONDS MEM_GATE_MAX_WAIT_SECONDS MEM_GATE_MAX_ATTEMPTS; do
         echo "export $env=$(printf %q "${!env}")" >>./flatpak.env
       done
+    # Like .use-mem-gate, but evaluated in the build sandbox, where the sources are copied to $PWD and our file
+    # descriptors are not inherited. Its /bin/sh may not be Bash, hence the fixed file descriptor.
+    - |
+      cat >>./flatpak.env <<'EOF'
+      export CCACHE_PREFIX="$PWD/ci_cd/mem-gate.sh"
+      exec 9>&2
+      export MEM_GATE_LOG_FD=9
+      EOF
     - flatpak-builder $concurrency_option --ccache --repo ./flatpak-repo ./flatpak-build ./flatpak/nl.ru.cs.pep.client.yml
     - flatpak build-bundle ./flatpak-repo ./pep.flatpak nl.ru.cs.pep.client --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
   after_script:
