@@ -63,6 +63,9 @@ auto MakeRawStorage(std::string path) {
       make_column("row", &PurgeEntryRecord::row),
       make_column("column", &PurgeEntryRecord::column),
       make_column("timestamp", &PurgeEntryRecord::timestamp),
+      foreign_key(&PurgeEntryRecord::cycle).references(&PurgeCycleRecord::id),
+      foreign_key(&PurgeEntryRecord::row).references(&RowRecord::seqno),
+      foreign_key(&PurgeEntryRecord::column).references(&ColumnRecord::seqno),
       unique(
         &PurgeEntryRecord::row,
         &PurgeEntryRecord::column,
