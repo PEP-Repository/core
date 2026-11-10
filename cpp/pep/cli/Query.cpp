@@ -4,6 +4,7 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/storagefacility/PrefixedStrings.hpp>
 #include <pep/utils/Math.hpp>
 #include <pep/utils/MiscUtil.hpp>
 
@@ -349,11 +350,8 @@ private:
     int execute() override {
       return this->executeEventLoopFor(true, [](std::shared_ptr<pep::CoreClient> client) {
         return client->getStorageFacilityProxy()->requestPagePaths()
-          .map([](const pep::PagePathResponse& response) {
-              for (const auto& path : response.paths) {
-                std::cout << path << '\n';
-              }
-              std::cout.flush();
+          .map([](pep::PagePathResponse response) {
+              pep::WritePrefixedStrings(std::cout, std::move(response.paths));
               return pep::FakeVoid();
             });
         });
