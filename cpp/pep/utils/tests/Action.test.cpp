@@ -17,6 +17,10 @@ TEST(Action, SupportsHeterogeneousSignatures) {
   int instance = 365;
   int& returned = pep::PerformAsAction(&JustInvokeItAlready, [&]() -> int& { return instance; });
   EXPECT_EQ(std::addressof(instance), std::addressof(returned));
+
+  auto invoked = false;
+  pep::PerformAsAction(&JustInvokeItAlready, [](bool &assign) { assign = true; /* but return void */ }, invoked);
+  EXPECT_TRUE(invoked) << "Either not invoked or not passed by reference"; // Or not assigned but we're seeing the test code here
 }
 
 TEST(Action, PropagatesExceptions) {
