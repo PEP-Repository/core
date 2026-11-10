@@ -349,16 +349,27 @@ describe('Pep', () => {
     before(() => authenticateAs('Data Administrator'));
 
     it('should create and remove columns and column groups', () => pep.runHandleWasmException(async () => {
+      // pointInTime is in server time, these moments are in client time. Those clocks are the same in the
+      // integration test, but leaving a margin is free here
+      const oneMinuteMs = 60_000;
+      const beforeTest = new Date(Date.now() - oneMinuteMs);
+
       await pep.createColumn(column);
       await pep.createColumnGroup(columnGroup);
       await pep.addColumnToGroup(column, columnGroup);
 
       let state = await pep.queryAccessManager({columnGroup});
       expect(state.columnGroups).to.deep.equal([{name: columnGroup, columns: [column]}]);
+      expect((await pep.queryAccessManager({columnGroup, pointInTime: beforeTest})).columnGroups).to.be.empty;
+      // No margin here: that would need waiting before and after this moment
+      const whileInGroup = new Date();
 
       await pep.removeColumnFromGroup(column, columnGroup);
       state = await pep.queryAccessManager({columnGroup});
       expect(state.columnGroups).to.deep.equal([{name: columnGroup, columns: []}]);
+      // The past is unchanged
+      expect((await pep.queryAccessManager({columnGroup, pointInTime: whileInGroup})).columnGroups)
+          .to.deep.equal([{name: columnGroup, columns: [column]}]);
 
       // force removes the column membership as well
       await pep.addColumnToGroup(column, columnGroup);
