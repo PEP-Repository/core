@@ -10,16 +10,23 @@ std::function<void(const Action&)> ReaderWriterThreadLock::makeLockingPerformer(
 void ReaderWriterThreadLock::performLocked(bool write, const Action& action) {
   bool acquire = true;
   std::function<void(ReaderWriterLock&, const Action&)> acquireAndInvoke;
-  auto self = std::this_thread::get_id();
   Accesses* accesses;
+
+  auto self = std::this_thread::get_id();
+  auto accessing = [&self](const Accesses& accesses) { // Returns TRUE if this ("self") thread's access count in the specified Accesses (exists and) is nonzero
+    auto position = accesses.find(self);
+    if (position == accesses.end()) {
+      return false;
+    }
+    return position->second != 0U;
+    };
 
   { // Prevent other threads from updating our state while we're manipulating it
     std::scoped_lock lock(mutex_);
 
     if (write) {
-      if (writes_[self] == 0U) { // If we're not holding a writer lock...
-        auto reading = reads_.find(self);
-        if (reading != reads_.end() && reading->second != 0U) { // ... but we're holding a reader lock...
+      if (!accessing(writes_)) { // If we're not holding a writer lock...
+        if (accessing(reads_)) { // ... but we're holding a reader lock...
           // ... then we can't acquire a writer lock from our nonRecursive_ implementor (because it would deadlock)
           throw std::runtime_error("Can't acquire writer lock because a reader lock is already held");
         }
@@ -28,8 +35,7 @@ void ReaderWriterThreadLock::performLocked(bool write, const Action& action) {
       acquireAndInvoke = [](ReaderWriterLock& nonrecursive, const Action& action) { return nonrecursive.write(action); };
     }
     else {
-      auto writing = writes_.find(self);
-      if (writing != writes_.end() && writing->second != 0U) {
+      if (accessing(writes_)) {
         acquire = false; // We can read within the writer lock that we're already holding
       }
       accesses = &reads_;
@@ -47,7 +53,7 @@ void ReaderWriterThreadLock::performLocked(bool write, const Action& action) {
   // Defined in a separate lambda because the PEP_DEFER macro doesn't combine well with multi-line code.
   auto decrement = [&]() {
       std::scoped_lock lock(mutex_);
-      assert(accesses->contains(self) && "We incremented its value a couple of lines ago");
+      assert(accessing(*accesses) && "We incremented our access count a couple of lines ago");
       if (--(*accesses)[self] == 0U) {
         accesses->erase(self);
       }
