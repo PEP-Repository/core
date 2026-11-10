@@ -1148,7 +1148,7 @@ Conversion does not require any access rights to the subject associated with the
 
 ## store
 
-You can store data with this command:-
+You can store data with this command:
 
 ```plaintext
 pepcli store -c <column name> -p <participant> -i /PATH/TO/DATA/FILE
@@ -1166,7 +1166,7 @@ The flags are:
 
 ## delete
 
-A cell can be cleared using the following command:-
+A cell can be cleared using the following command:
 
 ```plaintext
 pepcli delete -c <column name> -p <participant>
