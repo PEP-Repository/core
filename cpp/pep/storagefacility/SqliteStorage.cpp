@@ -43,12 +43,14 @@ auto MakeRawStorage(std::string path) {
     make_table("Row",
       make_column("seqno", &RowRecord::seqno,
         primary_key().autoincrement()),
-      make_column("pseudonym", &RowRecord::pseudonym)),
+      make_column("pseudonym", &RowRecord::pseudonym),
+      unique(&RowRecord::pseudonym)),
 
     make_table("Column",
       make_column("seqno", &ColumnRecord::seqno,
         primary_key().autoincrement()),
-      make_column("name", &ColumnRecord::name)),
+      make_column("name", &ColumnRecord::name),
+      unique(&ColumnRecord::name)),
 
     make_table("PurgeCycle",
       make_column("id", &PurgeCycleRecord::id,
@@ -141,16 +143,14 @@ std::optional<int64_t> SqliteStorage::getRowId(const std::string& name) const {
   using namespace sqlite_orm;
   return RangeToOptional(
     implementor_->raw.select(&RowRecord::seqno,
-      where(c(&RowRecord::pseudonym) == name),
-      limit(1))); // limit(1) to guard against faulty/accidental (concurrently inserted?) duplicates in the table
+      where(c(&RowRecord::pseudonym) == name))); // Can produce a maximum of 1 RowRecord due to unique constraint
 }
 
 std::optional<int64_t> SqliteStorage::getColumnId(const std::string& name) const {
   using namespace sqlite_orm;
   return RangeToOptional(
     implementor_->raw.select(&ColumnRecord::seqno,
-      where(c(&ColumnRecord::name) == name),
-      limit(1))); // limit(1) to guard against faulty/accidental (concurrently inserted?) duplicates in the table
+      where(c(&ColumnRecord::name) == name))); // Can produce a maximum of 1 ColumnRecord due to unique constraint
 }
 
 int64_t SqliteStorage::ensureRowId(const std::string& name) {
