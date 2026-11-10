@@ -36,6 +36,6 @@ EntryName EntryName::Parse(const std::string& sfId) {
 
 }
 
-auto std::formatter<pep::EntryName>::format(const pep::EntryName& name, format_context& ctx) const {
+auto std::formatter<pep::EntryName>::format(const pep::EntryName& name, format_context& ctx) const -> format_context::iterator {
   return std::format_to(ctx.out(), "{}{}{}", name.participant(), pep::EntryName::Delimiter, name.column());
 }

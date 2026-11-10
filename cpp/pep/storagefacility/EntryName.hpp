@@ -40,5 +40,5 @@ struct std::formatter<pep::EntryName> {
     return ctx.begin(); // We just have "{}", no format specifiers
   }
 
-  auto format(const pep::EntryName& name, format_context& ctx) const;
+  format_context::iterator format(const pep::EntryName& name, format_context& ctx) const;
 };
