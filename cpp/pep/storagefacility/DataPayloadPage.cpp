@@ -1,12 +1,17 @@
-#include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Bitpacking.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
 #include <pep/serialization/Serialization.hpp>
 #include <pep/crypto/GcmContext.hpp>
+#include <pep/morphing/Metadata.hpp>
 
 #include <stdexcept>
+#include <cstdint>
+#include <string>
+#include <string_view>
+
+#include <openssl/evp.h>
 
 namespace pep {
 

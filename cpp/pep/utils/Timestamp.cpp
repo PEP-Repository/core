@@ -9,6 +9,12 @@
 #include <regex>
 #include <sstream>
 #include <stdexcept>
+#include <chrono>
+#include <exception>
+#include <ios>
+#include <string>
+#include <string_view>
+#include <utility>
 
 #include <boost/date_time/c_local_time_adjustor.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
@@ -17,8 +23,12 @@
 #include <boost/date_time/gregorian/gregorian_io.hpp>
 #include <boost/date_time/local_time/local_date_time.hpp>
 #include <boost/date_time/local_time/local_time_io.hpp>
-#include <boost/make_shared.hpp>
 #include <boost/numeric/conversion/cast.hpp>
+#include <boost/date_time/gregorian/greg_day.hpp>
+#include <boost/date_time/gregorian/greg_month.hpp>
+#include <boost/date_time/gregorian/greg_year.hpp>
+#include <boost/date_time/special_defs.hpp> // for boost::date_time::not_a_date_time
+#include <boost/smart_ptr/make_shared_object.hpp>
 
 using namespace std::chrono;
 

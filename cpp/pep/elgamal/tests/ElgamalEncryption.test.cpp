@@ -1,6 +1,10 @@
 #include <pep/elgamal/ElgamalEncryption.hpp>
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
 
 #include <gtest/gtest.h>
+
+#include <stdexcept>
 
 namespace {
 

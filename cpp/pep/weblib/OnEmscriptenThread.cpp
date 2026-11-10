@@ -7,6 +7,16 @@
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
 
+#include <pthread.h>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <chrono>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
+
 using namespace pep;
 
 static const std::string LogTag("emscripten_scheduler");

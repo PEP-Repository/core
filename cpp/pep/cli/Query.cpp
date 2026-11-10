@@ -7,12 +7,34 @@
 #include <pep/utils/Math.hpp>
 #include <pep/utils/MiscUtil.hpp>
 
-#include <ranges>
 #include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for ColumnAccess, ParticipantGroupAccess
+#include <pep/accessmanager/AmaMessages.hpp> // for AmaQuery, AmaQueryResponse, AmaQRColumnGroup
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/CliApplication.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataSizeRequest
+#include <pep/ticketing/SubjectAccessModes.hpp>
+#include <pep/utils/EnumUtils.hpp> // for HasFlags
+#include <pep/utils/Timestamp.hpp>
+
+#include <algorithm>
+#include <cstdint>
+#include <cstdlib>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep::cli;
 

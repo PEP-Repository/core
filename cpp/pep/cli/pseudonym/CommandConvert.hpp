@@ -1,7 +1,13 @@
 #pragma once
 
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/Command.hpp>
 #include <pep/cli/Pseudonym.hpp>
+
+#include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+
+#include <optional>
 
 namespace pep::cli {
 

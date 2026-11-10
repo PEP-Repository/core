@@ -1,8 +1,12 @@
 #pragma once
 
+#include <pep/async/RxCache.hpp>
 #include <pep/castor/Participant.hpp>
 #include <pep/castor/RepeatingDataInstance.hpp>
 #include <pep/pullcastor/StudyPuller.hpp>
+#include <pep/utils/Shared.hpp>
+
+#include <memory>
 
 namespace pep {
 namespace castor {

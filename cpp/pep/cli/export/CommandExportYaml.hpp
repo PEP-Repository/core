@@ -1,7 +1,10 @@
 #pragma once
 
 #include <pep/cli/Export.hpp>
-#include <pep/cli/Command.hpp>
+#include <pep/structuredoutput/Table.hpp>
+
+#include <ostream>
+#include <string_view>
 
 /// CLI command to convert pulled data to YAML
 class pep::cli::CommandExport::CommandExportYaml: public CommandExport::ChildCommand {

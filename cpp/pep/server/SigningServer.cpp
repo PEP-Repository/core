@@ -6,6 +6,20 @@
 #include <pep/utils/File.hpp>
 #include <pep/utils/Shared.hpp>
 #include <pep/server/CertificateRenewalSerializers.hpp>
+#include <pep/auth/Signed.hpp> // for MessageSigner
+#include <pep/crypto/AsymmetricKey.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/messaging/HousekeepingMessages.hpp> // for PingRequest, PingResponse
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/server/CertificateRenewalMessages.hpp> // for SignedCsrRequest, CsrResponse
+#include <pep/server/Server.hpp>
+#include <pep/async/IoContext_fwd.hpp>
+
+#include <memory>
+#include <optional>
+#include <stdexcept>
 
 namespace pep {
 

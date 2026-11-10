@@ -4,6 +4,7 @@
 
 #include <openssl/evp.h>
 
+#include <cstddef>
 #include <string>
 
 namespace pep {

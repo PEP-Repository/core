@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/utils/EnumUtils.hpp>
+#include <pep/utils/TypeTraits.hpp> // for FlagEnum
 
 #include <boost/algorithm/string/join.hpp>
 

@@ -1,17 +1,16 @@
 #pragma once
 
-#include <cstdint>
-#include <functional>
-#include <string>
-#include <vector>
-#include <map>
-#include <memory>
-#include <optional>
-
-#include <pep/utils/Compare.hpp>
 #include <pep/networking/HttpMethod.hpp>
+#include <pep/utils/Compare.hpp>
 
 #include <boost/url/url.hpp>
+
+#include <cstddef>
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace pep {
 
@@ -51,6 +50,8 @@ public:
   bool hasHeader(const std::string& name) const;
   //! Set header with `name` to `value`. Overwrites if header with `name` exists. Adds a new header otherwise.
   void setHeader(std::string name, std::string value);
+  //! Remove header with `name` if it exists. No-op otherwise
+  void removeHeader(std::string name);
   //! \return Value of header with `name`.
   std::string header(const std::string& name) const;
   //! \return The headers - make a copy if necessary!

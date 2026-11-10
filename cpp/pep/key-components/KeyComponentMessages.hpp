@@ -3,6 +3,8 @@
 #include <pep/auth/Signed.hpp>
 #include <pep/elgamal/CurveScalar.hpp>
 
+#include <optional>
+
 namespace pep {
 
 struct KeyComponentRequest {

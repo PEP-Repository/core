@@ -8,9 +8,14 @@
 
 #include <emscripten/bind.h>
 #include <rxcpp/rx-lite.hpp>
+#include <emscripten/val.h>
 #include <rxcpp/operators/rx-subscribe_on.hpp>
 
 #include <stdexcept>
+#include <exception>
+#include <functional>
+#include <string>
+#include <utility>
 
 using namespace emscripten;
 using namespace pep;

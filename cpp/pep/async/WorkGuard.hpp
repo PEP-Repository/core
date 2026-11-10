@@ -1,7 +1,9 @@
 #pragma once
 
 #include <pep/async/IoContext_fwd.hpp>
-#include <boost/noncopyable.hpp>
+
+#include <boost/core/noncopyable.hpp>
+
 #include <memory>
 
 namespace pep {

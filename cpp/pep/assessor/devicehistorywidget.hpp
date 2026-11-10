@@ -1,10 +1,12 @@
 #pragma once
 
-#include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/content/ParticipantDeviceHistory.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
 
-#include <QWidget>
 #include <QListWidgetItem>
+#include <QWidget>
+
+#include <cstddef>
 
 namespace Ui {
 class DeviceHistoryWidget;

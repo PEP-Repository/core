@@ -4,12 +4,29 @@
 #include <pep/utils/File.hpp>
 #include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
+#include <pep/client/Client.hpp>
+#include <pep/crypto/AsymmetricKey.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <boost/asio/io_context.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 #include <cstdint>
 #include <fstream>
+#include <exception>
+#include <filesystem>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <utility>
+
+#include <rxcpp/rx-lite.hpp>
 
 namespace pep {
 

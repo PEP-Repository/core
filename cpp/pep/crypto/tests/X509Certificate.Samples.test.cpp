@@ -1,5 +1,8 @@
 #include <pep/crypto/tests/X509Certificate.Samples.test.hpp>
 
+#include <string>
+#include <vector>
+
 // Provides hard-coded sample certificates.
 // (Some of) these certificates in this file will exipire in 2125.
 

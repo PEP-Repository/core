@@ -4,6 +4,8 @@
 
 #include <QWidget>
 
+#include <string>
+
 namespace Ui {
 class ParticipantSelector;
 }

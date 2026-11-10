@@ -2,6 +2,8 @@
 
 #include <prometheus/registry.h>
 
+#include <memory>
+
 namespace pep {
 
 /// \brief Base class for (Prometheus) metrics. Ensures the Registry stays alive for as long as the metrics (instance) exists.

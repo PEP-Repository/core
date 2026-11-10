@@ -1,8 +1,10 @@
 #pragma once
 
+#include <pep/auth/SigningSerializers.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>
-#include <pep/auth/SigningSerializers.hpp>
+
+#include <Messages.pb.h> // for proto::DataEnumerationRequest2
 
 namespace pep {
 

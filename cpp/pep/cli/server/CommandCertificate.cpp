@@ -1,10 +1,34 @@
-#include <regex>
-#include <boost/log/keywords/target.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/cli/server/CommandCertificate.hpp>
 #include <pep/utils/File.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/ServerTraits.hpp>
+#include <pep/cli/CliApplication.hpp> // for cli::LogTag
+#include <pep/cli/Server.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/server/SigningServerProxy.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+
+#include <algorithm>
+#include <cassert>
+#include <filesystem>
+#include <format>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <ranges>
+#include <stdexcept>
+#include <string_view>
+#include <unordered_set>
+#include <vector>
 #include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <boost/algorithm/string/classification.hpp> // for boost::is_any_of
 
 using namespace pep::cli;
 using namespace std::ranges;

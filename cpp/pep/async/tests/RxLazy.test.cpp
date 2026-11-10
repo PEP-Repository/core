@@ -1,12 +1,20 @@
-#include <gtest/gtest.h>
+#include <pep/async/RxLazy.hpp>
+#include <pep/async/OnAsio.hpp>
+#include <pep/async/tests/RxTestUtils.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
+#include <rxcpp/rx-lite.hpp>
 
-#include <pep/async/RxLazy.hpp>
-#include <pep/async/OnAsio.hpp>
-#include <pep/async/tests/RxTestUtils.hpp>
+#include <gtest/gtest.h>
+
+#include <boost/asio/io_context.hpp>
+
+#include <exception>
+#include <stdexcept>
+#include <vector>
+#include <string>
 
 using namespace pep;
 

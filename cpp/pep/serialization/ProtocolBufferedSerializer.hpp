@@ -1,10 +1,24 @@
 #pragma once
 
+#include <pep/serialization/MessageMagic.hpp>
 #include <pep/serialization/MessageSerializer.hpp>
+#include <pep/serialization/SerializeException.hpp>
 #include <pep/serialization/Serializer.hpp>
 
+#include <climits>
+#include <concepts>
+#include <cstddef>
+#include <functional>
+#include <istream>
 #include <limits>
+#include <ostream>
 #include <ranges>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
 
 #ifdef __clang__ // Prevent "unknown pragma" from other compilers
 // Work around Clang deprecation warning for protobuf header, despite it being marked as a system header.
@@ -13,8 +27,12 @@
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif // __clang__
 
+#include <google/protobuf/descriptor.h>
 #include <google/protobuf/repeated_field.h>
+#include <google/protobuf/repeated_ptr_field.h>
 #include <google/protobuf/util/json_util.h>
+
+#include <boost/preprocessor/cat.hpp>
 
 #ifdef __clang__ // Prevent "unknown pragma" from other compilers
 #pragma clang diagnostic pop

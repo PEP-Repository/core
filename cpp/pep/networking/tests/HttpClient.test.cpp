@@ -4,13 +4,37 @@
 
 #include <pep/async/IoContextThread.hpp>
 #include <pep/httpserver/HTTPServer.hpp>
+#include <pep/networking/ExponentialBackoff.hpp>
+#include <pep/networking/HTTPMessage.hpp> // for HTTPResponse, HTTPRequest
 #include <pep/networking/HttpClient.hpp>
-#include <pep/utils/Defer.hpp>
+#include <pep/networking/HttpMethod.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/utils/Shared.hpp>
 
+#include <algorithm>
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <functional>
+#include <istream>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <thread>
+#include <tuple>
+#include <utility>
+#include <vector>
 
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/buffers_iterator.hpp> // for boost::asio::buffers_begin
+#include <boost/asio/completion_condition.hpp> // for boost::asio::transfer_exactly
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/read_until.hpp>
@@ -18,6 +42,8 @@
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/core/noncopyable.hpp>
+#include <boost/url/url.hpp>
 
 namespace {
 
@@ -351,6 +377,101 @@ TEST_F(HttpClient, LimitsRetries) {
   parameters.maxRetries = 0;
   std::tie(response, served) = RetrieveWithRetries(server, "/disabled", { pep::HTTPResponse(503U, "Service Unavailable") }, parameters);
   EXPECT_EQ(served, 1U);
+}
+
+TEST_F(HttpClient, PreparesEachAttempt) {
+  const std::string relativeUri = "/prepare";
+  constexpr size_t numAttempts = 3U;
+  auto attempts = std::make_shared<std::vector<std::string>>();
+  auto attemptsMutex = std::make_shared<std::mutex>();
+  this->server().registerHandler(relativeUri, false, [attempts, attemptsMutex](const pep::HTTPRequest& request, const std::string&) {
+    std::lock_guard<std::mutex> lock(*attemptsMutex);
+    attempts->push_back(request.hasHeader("X-Attempt") ? request.header("X-Attempt") : "");
+    return attempts->size() < numAttempts ? pep::HTTPResponse(503U, "Service Unavailable") : pep::HTTPResponse(200U, "OK", ResponseBody);
+    });
+
+  boost::asio::io_context ioContext;
+  pep::networking::HttpClient::Parameters parameters(ioContext, boost::urls::url("http://localhost:" + std::to_string(AsyncHttpServer::Port) + relativeUri));
+  parameters.retryParameters(FastRetryParameters());
+  auto prepared = std::make_shared<unsigned>(0U);
+  parameters.onPrepareRequest([prepared](pep::HTTPRequest& request) {
+    request.setHeader("X-Attempt", std::to_string(++*prepared)); // Overwrites the value set by an earlier attempt
+    });
+  auto client = pep::networking::HttpClient::Create(std::move(parameters));
+  client->start();
+
+  std::optional<pep::HTTPResponse> received;
+  client->sendRequest(client->makeRequest())
+    .subscribe(
+      [&received](const pep::HTTPResponse& response) { received = response; },
+      [client](const std::exception_ptr&) {client->shutdown(); },
+      [client]() {client->shutdown(); }
+    );
+  ioContext.run();
+
+  ASSERT_TRUE(received.has_value());
+  EXPECT_EQ(received->getStatusCode(), 200U);
+  // Every attempt that reached the server was prepared anew. (Additional preparations may have taken place if the client
+  // had to reconnect before (re)sending, which happens because our civetweb-based server closes connections after responding.)
+  {
+    std::lock_guard<std::mutex> lock(*attemptsMutex);
+    ASSERT_EQ(attempts->size(), numAttempts);
+    unsigned previous = 0U;
+    for (const auto& attempt : *attempts) {
+      auto current = static_cast<unsigned>(std::stoul(attempt));
+      EXPECT_GT(current, previous) << "Server received a request that wasn't prepared anew";
+      previous = current;
+    }
+    EXPECT_EQ(previous, *prepared) << "Last preparation wasn't sent";
+  }
+}
+
+TEST_F(HttpClient, ReportsPreparationFailure) {
+  const std::string relativeUri = "/prepare-fails";
+  auto served = std::make_shared<std::atomic<unsigned>>(0U);
+  this->server().registerHandler(relativeUri, false, [served](const pep::HTTPRequest&, const std::string&) {
+    ++*served;
+    return pep::HTTPResponse(200U, "OK", ResponseBody);
+    });
+
+  boost::asio::io_context ioContext;
+  pep::networking::HttpClient::Parameters parameters(ioContext, boost::urls::url("http://localhost:" + std::to_string(AsyncHttpServer::Port) + relativeUri));
+  auto prepared = std::make_shared<unsigned>(0U);
+  parameters.onPrepareRequest([prepared](pep::HTTPRequest&) {
+    if (++*prepared == 1U) { // Only throw the first time. We want the follow-up request to succeed.
+      throw std::runtime_error("Can't prepare");
+    }
+    });
+  auto client = pep::networking::HttpClient::Create(std::move(parameters));
+  client->start();
+
+  bool received = false;
+  std::exception_ptr error;
+  std::optional<pep::HTTPResponse> followup;
+  client->sendRequest(client->makeRequest())
+    .subscribe(
+      [&received](const pep::HTTPResponse&) { received = true; },
+      [client, &error, &followup](const std::exception_ptr& e) {
+        error = e;
+        // Send a follow-up request over the (already established) connection. Besides checking that the client remains usable,
+        // this ensures that the server has picked up the connection before the test ends: civetweb leaks the socket if it's
+        // stopped while the connection is still queued, which valgrind reports as an open file descriptor at exit.
+        client->sendRequest(client->makeRequest())
+          .subscribe(
+            [&followup](const pep::HTTPResponse& response) { followup = response; },
+            [client](const std::exception_ptr&) {client->shutdown(); },
+            [client]() {client->shutdown(); }
+          );
+      }
+    );
+  ioContext.run();
+
+  EXPECT_FALSE(received);
+  ASSERT_NE(error, nullptr);
+  EXPECT_TRUE(pep::GetExceptionMessage(error).contains("Can't prepare"));
+  ASSERT_TRUE(followup.has_value()) << "Client didn't recover from preparation failure";
+  EXPECT_EQ(followup->getStatusCode(), 200U);
+  EXPECT_EQ(served->load(), 1U);
 }
 
 // Not part of the HttpClient fixture: this test uses its own server

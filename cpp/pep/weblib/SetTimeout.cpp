@@ -5,6 +5,11 @@
 #include <emscripten/val.h>
 
 #include <cstdint>
+#include <chrono>
+#include <functional>
+#include <memory>
+#include <ratio>
+#include <utility>
 
 using namespace emscripten;
 using namespace pep::weblib;

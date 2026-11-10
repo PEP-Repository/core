@@ -1,10 +1,14 @@
 #pragma once
 
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/transcryptor/Storage.hpp>
+
+#include <boost/core/noncopyable.hpp>
+
 #include <cstdint>
-#include <memory>
+#include <optional>
 #include <string>
-#include <boost/noncopyable.hpp>
+#include <utility>
 
 namespace pep {
 

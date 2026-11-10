@@ -3,6 +3,13 @@
 #include <pep/serialization/FlagNames.hpp>
 #include <pep/utils/FlagNames.hpp>
 
+#include <array>
+#include <span>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
 namespace pep {
 namespace {
 

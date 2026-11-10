@@ -1,8 +1,18 @@
 #pragma once
 
-#include <pep/utils/PropertyBasedContainer.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
+#include <pep/morphing/Metadata.hpp> // for EncryptionScheme
 #include <pep/storagefacility/EntryPayload.hpp>
+#include <pep/storagefacility/PersistedEntryProperties.hpp>
+#include <pep/utils/PropertyBasedContainer.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <boost/core/noncopyable.hpp>
+
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace pep {
 

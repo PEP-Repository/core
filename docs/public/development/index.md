@@ -4,3 +4,4 @@ Resources for developers contributing to the PEP codebase, including build instr
 
 1. [Getting started](building_pep/index.md)
 2. [PEP codebase architecture](cpp/index.md)
+3. [CI pipelines](ci-pipelines.md)

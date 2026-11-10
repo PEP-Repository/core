@@ -1,7 +1,10 @@
 #pragma once
 
-#include <functional>
 #include <QSharedMemory>
+
+#include <cstddef>
+#include <functional>
+#include <type_traits>
 
 class InterProcessMemory : public QObject {
   Q_OBJECT

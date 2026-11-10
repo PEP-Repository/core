@@ -2,12 +2,38 @@
 #include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxIterate.hpp>
-#include <pep/storagefacility/PageHash.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/async/CreateObservable.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/messaging/Tail.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataStoreRequest2, DataEnumerationRequest2, DataEnumerationResponse2
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp> // for TimeNow
 
 #include <ranges>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::ranges;
 

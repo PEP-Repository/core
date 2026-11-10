@@ -2,6 +2,9 @@
 
 #include <pep/async/CreateObservable.hpp>
 
+#include <memory>
+#include <queue>
+
 namespace pep {
 
 /// \brief Empties an std::queue<>, returning an observable that produces the queue's items.

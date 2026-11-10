@@ -1,16 +1,40 @@
 #pragma once
 
-#include <pep/server/SigningServer.hpp>
 #include <pep/async/WorkerPool.hpp>
-#include <pep/utils/XxHasher.hpp>
+#include <pep/auth/ServerTraits.hpp>
+#include <pep/auth/Signed.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/messaging/ReadThrottle.hpp>
+#include <pep/metrics/RegisteredMetrics.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/server/SigningServer.hpp>
+#include <pep/storagefacility/EntryContent.hpp>
 #include <pep/storagefacility/FileStore.hpp>
 #include <pep/storagefacility/PendingBytesLimiter.hpp>
-#include <pep/storagefacility/StorageFacilityMessages.hpp>
 #include <pep/storagefacility/SFId.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms
+#include <pep/utils/Configuration_fwd.hpp>
+#include <pep/utils/Timestamp.hpp>
+#include <pep/utils/XxHasher.hpp>
 
+#include <prometheus/registry.h>
+
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/steady_timer.hpp>
+
+#include <cstdint>
 #include <filesystem>
+#include <functional>
+#include <memory>
 #include <optional>
+#include <set>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace pep {
 
@@ -93,7 +117,7 @@ public:
 protected:
   std::optional<std::filesystem::path> getStoragePath() override;
   void statsTimer(const boost::system::error_code& e);
-  const ChecksumChainHandler& checksumChainHandler() const noexcept override { return checksumChainHandler_; }
+  const ChecksumChains& checksumChains() const noexcept override;
 
 private:
   messaging::MessageBatches handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumerationRequest2> signedRequest);
@@ -135,7 +159,6 @@ private:
   boost::asio::steady_timer timer_;
   const uint8_t parallelisationWidth_ = 0; // passed to RxParallelConcat
   const uint64_t dataSizeResolution_;
-  LocalChecksumChainHandler checksumChainHandler_;
 };
 
 }

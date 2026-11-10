@@ -1,10 +1,13 @@
 #pragma once
 
-#include <pep/core-client/CoreClient_fwd.hpp>
-#include <pep/application/CommandLineParameter.hpp>
 #include <pep/accessmanager/AccessManagerMessages.hpp>
+#include <pep/application/CommandLineParameter.hpp>
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/core-client/CoreClient_fwd.hpp>
 
 #include <rxcpp/rx-lite.hpp>
+
+#include <optional>
 
 namespace pep {
 namespace cli {

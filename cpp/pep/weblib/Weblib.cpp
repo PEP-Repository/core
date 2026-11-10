@@ -1,5 +1,4 @@
-#include <pep/async/CreateObservable.hpp>
-#include <pep/async/ObservableAwaiter.hpp>
+#include <pep/async/ObservableAwaiter.hpp> // IWYU pragma: keep (for co_await on observables)
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/auth/OAuthError.hpp>
@@ -10,7 +9,6 @@
 #include <pep/ticketing/SubjectAccessModes.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/oauth-client/OAuthClient.hpp>
-#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/Exceptions.hpp>
@@ -26,6 +24,19 @@
 #include <pep/weblib/ThreadPrintable.hpp>
 #include <pep/weblib/WeblibApiPromise.hpp>
 #include <pep/weblib/WeblibStructs.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for ColumnAccess, ParticipantGroupAccess, IndexedTicket2
+#include <pep/accessmanager/UserMessages.hpp> // for QRUser, UserQueryResponse
+#include <pep/async/FakeVoid.hpp>
+#include <pep/async/OnAsio.hpp>
+#include <pep/auth/UserGroup.hpp>
+#include <pep/content/ParticipantPersonalia.hpp>
+#include <pep/core-client/CoreClient.hpp> // for RequestTicket2Opts, StoreData2Entry, DataStorageResult2
+#include <pep/messaging/ConnectionStatus.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
 
 #include <filesystem>
 #include <functional>
@@ -34,6 +45,22 @@
 #include <stdexcept>
 #include <thread>
 #include <utility>
+#include <algorithm>
+#include <cassert>
+#include <chrono>
+#include <cstddef>
+#include <cstdlib>
+#include <exception>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <ranges>
+#include <stop_token>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 #include <emscripten/emscripten.h>
 #include <emscripten/bind.h>
@@ -41,13 +68,15 @@
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/noncopyable.hpp>
+#include <boost/asio/executor_work_guard.hpp>
+#include <boost/core/noncopyable.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-distinct_until_changed.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/subjects/rx-replaysubject.hpp>
 #include <rxcpp/subjects/rx-subject.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep;
 using namespace pep::weblib;
@@ -85,18 +114,21 @@ UserGroup FromUserGroupInfo(UserGroupInfo group) {
   };
 }
 
+UserGroupMembership ToUserGroupMembership(QRUserGroupMembership membership) {
+  return UserGroupMembership{
+      .userGroup = std::move(membership.userGroup),
+      .expiration = membership.expiration.transform(ToJsTime),
+  };
+}
+
 User ToUser(QRUser user) {
   return User{
       .displayId = std::move(user.displayId),
       .primaryId = std::move(user.primaryId),
       .otherUids = std::move(user.otherUids),
       .groups = user.groups
-        | views::transform([](const QRUserGroupMembership& membership) {
-          return UserGroupMembership{
-              .userGroup = membership.userGroup,
-              .expiration = membership.expiration.transform(ToJsTime),
-          };
-        })
+        | views::as_rvalue
+        | views::transform(ToUserGroupMembership)
         | to<std::vector>(),
   };
 }
@@ -627,17 +659,11 @@ public:
         .flat_map([subject = std::move(query.subject), column = std::move(query.column),
                    metadata = std::move(query.metadata), batches = std::move(batches)](const std::shared_ptr<Weblib>& self) {
           return self->client_->parsePPorIdentity(subject)
-              .map([](PolymorphicPseudonym pp) {
-                return std::make_shared<PolymorphicPseudonym>(std::move(pp));
-              })
-              .flat_map([self, column, metadata, batches](std::shared_ptr<PolymorphicPseudonym> pp) {
-                std::map<std::string, MetadataXEntry> xMetadata;
+              .flat_map([self, column, metadata, batches](const PolymorphicPseudonym& pp) {
+                StoreData2Entry entry(std::make_shared<PolymorphicPseudonym>(pp), column, batches);
                 for (const auto& [key, value] : metadata) {
-                  xMetadata.emplace(key, MetadataXEntry::FromPlaintext(value, false, false));
+                  entry.xMetadata.emplace(key, MetadataXEntry::FromPlaintext(value, false, false));
                 }
-
-                StoreData2Entry entry(pp, column, batches);
-                entry.xMetadata = std::move(xMetadata);
 
                 return self->client_->storeData2({entry}, StoreData2Opts{})
                     .map([](const DataStorageResult2& result) {
@@ -770,6 +796,7 @@ public:
         .map([](AmaQueryResponse response) {
           return AccessManagerState{
               .columns = response.columns
+                | views::as_rvalue
                 | views::transform(&AmaQRColumn::name)
                 | to<std::vector>(),
               .columnGroups = response.columnGroups
@@ -778,6 +805,7 @@ public:
                 | to<std::vector>(),
               .columnGroupAccessRules = CombineColumnGroupAccessRules(response.columnGroupAccessRules),
               .subjectGroups = response.participantGroups
+                | views::as_rvalue
                 | views::transform(&AmaQRParticipantGroup::name)
                 | to<std::vector>(),
               .subjectGroupAccessRules = CombineSubjectGroupAccessRules(response.participantGroupAccessRules),

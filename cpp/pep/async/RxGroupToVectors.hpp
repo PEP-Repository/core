@@ -2,11 +2,18 @@
 
 #include <pep/async/RxToUnorderedMap.hpp>
 #include <pep/async/RxToVector.hpp>
-#include <cassert>
+
+#include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
-#include <rxcpp/operators/rx-take.hpp> // Should be included before rx-group_by.hpp: see e.g. https://gitlab.pep.cs.ru.nl/pep/core/-/jobs/241940#L13
 #include <rxcpp/operators/rx-group_by.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/operators/rx-take.hpp> // Should be included before rx-group_by.hpp: see e.g. https://gitlab.pep.cs.ru.nl/pep/core/-/jobs/241940#L13
+
+#include <cassert>
+#include <memory>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace pep {
 

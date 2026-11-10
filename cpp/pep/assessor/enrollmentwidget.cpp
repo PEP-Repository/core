@@ -1,23 +1,25 @@
 #include <pep/assessor/enrollmentwidget.hpp>
-#include <pep/assessor/InputValidationTooltip.hpp>
 #include <pep/assessor/ui_enrollmentwidget.h>
 #include <pep/assessor/ui_confirmenrollmentwidget.h>
-#include <pep/assessor/UserRole.hpp>
-#include <pep/gui/QTrxGui.hpp>
 #include <pep/assessor/mainwindow.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/client/Client.hpp>
+#include <pep/assessor/participanteditor.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/content/ParticipantPersonalia.hpp>
+#include <pep/structure/StudyContext.hpp>
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <QGridLayout>
 #include <QClipboard>
 #include <QDialog>
 
-#include <boost/property_tree/json_parser.hpp>
-
 #include <rxcpp/operators/rx-delay.hpp>
 #include <rxcpp/operators/rx-take_until.hpp>
 
-#include <pep/versioning/Version.hpp>
+#include <exception>
+#include <memory>
+#include <string>
 
 EnrollmentWidget::EnrollmentWidget(std::shared_ptr<pep::Client> client, MainWindow* parent, const pep::StudyContext& studyContext)
   : QStackedWidget(parent), ui_(new Ui::EnrollmentWidget), mainWindow_(parent), pepClient_(client), studyContext_(studyContext), doneCompletingRegistration_(false), continueButtonPressed_(false) {

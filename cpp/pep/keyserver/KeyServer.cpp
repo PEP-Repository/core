@@ -2,14 +2,33 @@
 #include <pep/keyserver/KeyServerSerializers.hpp>
 #include <pep/keyserver/tokenblocking/SqliteBlocklist.hpp>
 
-#include <boost/property_tree/json_parser.hpp>
 #include <chrono>
+#include <cassert>
+#include <exception>
+#include <filesystem>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
 #include <pep/auth/ServerTraits.hpp>
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/crypto/ConstTime.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/auth/EnrolledParty.hpp> // IWYU pragma: keep (used in assert)
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/keyserver/KeyServerMessages.hpp> // for EnrollmentRequest, EnrollmentResponse, TokenBlockingCreateResponse
+#include <pep/keyserver/tokenblocking/Blocklist.hpp> // for tokenBlocking::IsBlocking
+#include <pep/keyserver/tokenblocking/BlocklistEntry.hpp>
+#include <pep/keyserver/tokenblocking/TokenIdentifier.hpp>
+#include <pep/messaging/HousekeepingMessages.hpp> // for PingRequest, PingResponse
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/serialization/Serialization.hpp>
+#include <pep/server/Server.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Timestamp.hpp> // for TimeNow
+#include <pep/async/IoContext_fwd.hpp>
 
 namespace pep {
 namespace {
@@ -148,8 +167,7 @@ KeyServer::KeyServer(std::shared_ptr<Parameters> parameters)
   : Server(parameters),
     clientCa_(*parameters->getClientCa()),
     oauthTokenSecret_(parameters->getOauthTokenSecret()),
-    blocklist_(tokenBlocking::SqliteBlocklist::CreateWithStorageLocation(parameters->getBlocklistStoragePath())),
-    checksumChainsHandler_(ChecksumChains( /* none */ )) {
+    blocklist_(tokenBlocking::SqliteBlocklist::CreateWithStorageLocation(parameters->getBlocklistStoragePath())) {
   RegisterRequestHandlers(
       *this,
       &KeyServer::handlePingRequest,

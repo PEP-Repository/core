@@ -40,6 +40,7 @@ set(PEPCLI_SRCS
     Server.cpp Server.hpp
     SingleCellCommand.cpp SingleCellCommand.hpp
     Store.cpp
+    structuredoutput/FormatParameter.cpp structuredoutput/FormatParameter.hpp
     structuredoutput/TableFromDownloadDirectory.cpp structuredoutput/TableFromDownloadDirectory.hpp
     StructureMetadata.cpp
     TicketFile.cpp TicketFile.hpp

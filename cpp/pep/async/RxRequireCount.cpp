@@ -1,5 +1,16 @@
 #include <pep/async/CreateObservable.hpp>
 #include <pep/async/RxRequireCount.hpp>
+#include <pep/async/FakeVoid.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <cstddef>
+#include <exception>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace pep {
 

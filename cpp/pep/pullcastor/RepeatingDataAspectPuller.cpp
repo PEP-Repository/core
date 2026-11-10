@@ -2,6 +2,18 @@
 #include <pep/async/RxToVector.hpp>
 #include <pep/pullcastor/RepeatingDataAspectPuller.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <pep/async/RxCache.hpp>
+#include <pep/pullcastor/CastorParticipant.hpp>
+#include <pep/pullcastor/FieldValue.hpp>
+#include <pep/pullcastor/RepeatingDataPuller.hpp>
+#include <pep/pullcastor/StorableContent.hpp> // for castor::StorableColumnContent
+#include <pep/pullcastor/StudyAspect.hpp>
+#include <pep/pullcastor/StudyAspectPuller.hpp>
+#include <pep/pullcastor/StudyPuller.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <memory>
 
 namespace pep {
 namespace castor {

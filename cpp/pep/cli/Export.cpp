@@ -10,9 +10,25 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/structuredoutput/Table.hpp>
 #include <pep/utils/Filesystem.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/cli/DownloadDirectory.hpp>
+#include <pep/cli/DownloadMetadata.hpp> // for cli::ParticipantIdentifier
+#include <pep/cli/structuredoutput/TableFromDownloadDirectory.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/utils/Progress.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <stdexcept>
 #include <string_view>
+#include <array>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <utility>
+#include <vector>
 
 using namespace pep::cli;
 

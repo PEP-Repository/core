@@ -4,6 +4,14 @@
 #include <pep/async/CreateObservable.hpp>
 #include <pep/utils/Exceptions.hpp>
 
+#include <boost/asio/io_context.hpp>
+
+#include <chrono>
+#include <exception>
+#include <memory>
+#include <string>
+#include <utility>
+
 namespace pep {
 
 /// \brief Monitors an observable, logging a warning if it shows no activity.

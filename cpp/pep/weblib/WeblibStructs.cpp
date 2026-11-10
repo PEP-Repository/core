@@ -1,11 +1,10 @@
 #include <pep/weblib/WeblibStructs.hpp>
+#include <pep/core-client/CoreClient.hpp> // IWYU pragma: keep (for member access on EnumerateResult)
 
-#include <pep/core-client/CoreClient.hpp>
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/MiscUtil.hpp>
 #include <pep/weblib/EmscriptenMapBinding.hpp>
 #include <pep/weblib/EmscriptenVectorBinding.hpp>
-#include <pep/weblib/ObservableStream.hpp>
+#include <pep/utils/TypeTraits.hpp> // for FieldAsConst
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/preprocessor/stringize.hpp>
@@ -13,6 +12,17 @@
 #include <boost/preprocessor/variadic/to_seq.hpp>
 
 #include <emscripten/bind.h>
+#include <emscripten/val.h>
+#include <emscripten/wire.h> // for emscripten::nonnull
+
+#include <cassert>
+#include <cstdint>
+#include <optional>
+#include <ranges>
+#include <span>
+#include <string>
+#include <unordered_map>
+#include <utility>
 
 using namespace emscripten;
 using namespace pep;

@@ -2,9 +2,13 @@
 
 #include <pep/serialization/Error.hpp>
 #include <pep/utils/PropertyBasedContainer.hpp>
+
 #include <cstdint>
+#include <memory>
 #include <optional>
+#include <set>
 #include <string>
+#include <utility>
 
 namespace pep {
 

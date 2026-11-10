@@ -1,7 +1,12 @@
-#include <pep/application/Application.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/cli/Pseudonym.hpp>
 #include <pep/cli/pseudonym/CommandConvert.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/cli/Command.hpp>
+
+#include <memory>
+#include <vector>
 
 namespace pep::cli {
 

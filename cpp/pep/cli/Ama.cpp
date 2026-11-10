@@ -1,26 +1,58 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
-#include <pep/application/Application.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/auth/UserGroup.hpp>
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/structuredoutput/Json.hpp>
-#include <pep/structuredoutput/Yaml.hpp>
-#include <pep/structuredoutput/Tree.hpp>
+#include <pep/cli/structuredoutput/FormatParameter.hpp>
 #include <pep/cli/structuredoutput/TreeFromAmaQueryResponse.hpp>
-
-#include <ranges>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/accessmanager/AccessManagerProxy.hpp>
+#include <pep/accessmanager/AmaMessages.hpp> // for AmaQuery, AmaQueryResponse
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/StudyContext.hpp>
+#include <pep/structuredoutput/Common.hpp> // for structuredOutput::QueryDisplayConfig, structuredOutput::JsonConfig, structuredOutput::WhitespaceFormat, ...
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms
+#include <pep/utils/EnumUtils.hpp> // for FlagsIf, HasFlags
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <boost/algorithm/string/split.hpp>
+
+#include <ranges>
+#include <algorithm>
+#include <cassert>
+#include <cctype>
+#include <cstdint>
+#include <functional>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <variant>
+#include <vector>
 
 using namespace std::chrono;
 using namespace pep::cli;
@@ -410,10 +442,7 @@ private:
           .noLongerSupported("Use --include and --format options instead.")
         + pep::commandline::Parameter("include", "Prints only specified type of data (can be repeated).")
              .value(pep::commandline::Value<std::string>().allow(std::vector<std::string>({columnsOpt, columnGroupsOpt, columnGroupAccessRulesOpt, participantGroupsOpt, participantGroupAccessRulesOpt})).multiple())
-        + pep::commandline::Parameter("format", "The format of the output.")
-            .value(pep::commandline::Value<std::string>()
-                .allow(std::vector<std::string>({"yaml", "json", "json-compact"}))
-                .defaultsTo("yaml"))
+        + so::FormatParameter()
         + pep::commandline::Parameter("point-in-time", "Query for the situation at the specified point-in-time. Defaults to now if omitted")
              .value(pep::commandline::Value<pep::Timestamp>())
         + pep::commandline::Parameter("column", "Show results related to this column (exact match required). You can combine multiple filters to narrow down the results.").value(pep::commandline::Value<std::string>())
@@ -428,12 +457,11 @@ private:
       namespace so = pep::structuredOutput;
       using namespace pep::enumUtils;
       using Flags = so::AmaQueryFlags;
-      using FormatConfig = decltype(so::QueryDisplayConfig<so::AmaQueryFlags>::formatConfig);
 
       const auto isIncluded = [includedTypes = values.getOptionalMultiple<std::string>("include")](const auto key) {
         return includedTypes.empty() || contains(includedTypes, key.simple);
       };
-      const auto format = values.get<std::string>("format");
+      const auto formatConfig = so::FormatConfigFrom(values, so::YamlConfig{.includeArraySizeComments = true, .includeEmptyArrayComments = true});
 
       return {
         .flags =
@@ -442,16 +470,8 @@ private:
             FlagsIf(Flags::PrintColumnGroupAccessRules, isIncluded(so::queryKeys::columnGroupAccessRules)) |
             FlagsIf(Flags::PrintParticipantGroups, isIncluded(so::queryKeys::participantGroups)) |
             FlagsIf(Flags::PrintParticipantGroupAccessRules, isIncluded(so::queryKeys::participantGroupAccessRules)),
-        .useDescriptiveKeys = (format == "yaml"),
-        .formatConfig = [&format] () -> FormatConfig {
-            if (format == "json") {
-              return so::JsonConfig{};
-            } else if (format == "json-compact") {
-              return so::JsonConfig{.wsFormat = so::WhitespaceFormat::Compact};
-            } else {
-              return so::YamlConfig{.includeArraySizeComments = true, .includeEmptyArrayComments = true};
-            }
-        }(),
+        .useDescriptiveKeys = std::holds_alternative<so::YamlConfig>(formatConfig),
+        .formatConfig = formatConfig,
       };
     }
 
@@ -471,13 +491,7 @@ private:
       return executeEventLoopFor([values = this->getParameterValues()](std::shared_ptr<pep::CoreClient> client) {
         return client->getAccessManagerProxy()->amaQuery(extractQuery(values)).map([displayConfig = extractConfig(values)](pep::AmaQueryResponse res) {
           namespace so = pep::structuredOutput;
-          auto tree = so::TreeFrom(res, displayConfig);
-
-          if (displayConfig.format() == so::Format::Json) {
-            so::json::append(std::cout, tree, std::get<so::JsonConfig>(displayConfig.formatConfig)) << std::endl;
-          } else {
-            so::yaml::append(std::cout, tree, std::get<so::YamlConfig>(displayConfig.formatConfig)) << std::flush; // yaml output already ends with a newline
-          }
+          so::WriteStructured(std::cout, so::TreeFrom(res, displayConfig), displayConfig.formatConfig);
 
           if (pep::HasFlags(displayConfig.flags, so::AmaQueryFlags::PrintColumnGroupAccessRules)) {
             std::cerr << "The \"read\" access privilege grants access to \"read-meta\" data as well." << std::endl;

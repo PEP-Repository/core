@@ -12,14 +12,40 @@
 #include <pep/transcryptor/TsChecksumChain.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/database/Storage.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/database/Record.hpp> // for database::UnixMillis
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPublicKey
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/rsk/Proofs.hpp> // for ReshuffleRekeyVerifiers
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicketRequest2
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Timestamp.hpp>
 
 #include <sqlite_orm/sqlite_orm.h>
 
 #include <boost/algorithm/hex.hpp>
-#include <boost/range/algorithm/set_algorithm.hpp>
 
 #include <ranges>
 #include <utility>
+#include <algorithm>
+#include <cassert>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <filesystem>
+#include <iomanip>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include <Messages.pb.h> // for proto::SignedTicketRequest2
 
 // The schema of the database is defined in the TsCreateDb() function.
 // For each table, we have a struct <TableName>Record that represents a

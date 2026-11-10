@@ -1,5 +1,6 @@
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/crypto/tests/X509Certificate.Samples.test.hpp>
+#include <pep/crypto/X509Certificate.hpp>
 #include <gtest/gtest.h>
 
 TEST(EnrolledParty, NotFromTlsCertificate) {

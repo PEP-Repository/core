@@ -2,6 +2,7 @@
 
 #include <exception>
 #include <string>
+#include <utility>
 
 class SerializeException : public std::exception {
  public:

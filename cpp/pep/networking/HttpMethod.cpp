@@ -1,5 +1,9 @@
 #include <pep/networking/HttpMethod.hpp>
+
 #include <boost/bimap.hpp>
+
+#include <stdexcept>
+#include <string>
 
 namespace pep::networking {
 

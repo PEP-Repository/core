@@ -7,8 +7,30 @@
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/IndexList.hpp>
+#include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataEnumerationRequest2, DataEnumerationResponse2
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2, Ticket2, LocalPseudonyms
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
 
 #include <ranges>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <format>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <rxcpp/operators/rx-buffer_count.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
@@ -16,6 +38,7 @@
 #include <rxcpp/operators/rx-group_by.hpp>
 #include <rxcpp/operators/rx-take.hpp>
 #include <rxcpp/operators/rx-zip.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::ranges;
 

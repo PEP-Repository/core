@@ -1,10 +1,21 @@
 #include <pep/async/RxSubsequently.hpp>
 #include <pep/utils/Defer.hpp>
+#include <pep/async/CreateObservable.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <gtest/gtest.h>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/rx-lite.hpp>
 #include <numeric>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <exception>
+#include <functional>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace {
 

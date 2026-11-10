@@ -6,11 +6,27 @@
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
 #include <pep/auth/UserGroupSerializers.hpp>
-#include <pep/utils/CollectionUtils.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/rsk/RskSerializers.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2, EncryptionKeyRequest, ColumnAccess, ...
+#include <pep/auth/UserGroup.hpp>
+#include <pep/serialization/IndexList.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2
 
 #include <ranges>
+#include <cassert>
+#include <cstddef>
+#include <memory>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+#include <Messages.pb.h> // for proto::IndexedTicket2
 
 using namespace std::ranges;
 

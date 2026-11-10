@@ -65,3 +65,7 @@ rotated_logs/*
 
 # infer cache
 infer_state/
+
+# Claude
+/.claude/worktrees/
+CLAUDE.local.md

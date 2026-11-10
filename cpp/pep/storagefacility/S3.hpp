@@ -1,7 +1,10 @@
 #pragma once
 
-#include <pep/networking/HTTPMessage.hpp>
 #include <pep/storagefacility/S3Credentials.hpp>
+
+#include <memory>
+#include <string>
+#include <vector>
 
 // Tools to communicate with S3-compatible storage via the REST API.
 //

@@ -1,8 +1,11 @@
 #pragma once
 
-#include <pep/accessmanager/UserMessages.hpp>
 #include <pep/structuredoutput/Common.hpp>
+#include <pep/structuredoutput/Table.hpp>
 #include <pep/structuredoutput/Tree.hpp>
+
+#include <ostream>
+#include <string>
 
 namespace pep::structuredOutput::yaml {
 

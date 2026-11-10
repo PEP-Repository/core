@@ -1,7 +1,12 @@
 #pragma once
 
 #include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
 
+#include <cstddef>
+#include <functional>
+#include <string>
+#include <string_view>
 #include <utility>
 
 namespace pep {

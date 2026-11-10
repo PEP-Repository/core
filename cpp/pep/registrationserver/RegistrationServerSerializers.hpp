@@ -1,7 +1,9 @@
 #pragma once
 
-#include <pep/registrationserver/RegistrationServerMessages.hpp>
 #include <pep/auth/SigningSerializers.hpp>
+#include <pep/registrationserver/RegistrationServerMessages.hpp>
+
+#include <Messages.pb.h> // for proto::PEPIdRegistrationRequest
 
 namespace pep {
 

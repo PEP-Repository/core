@@ -1,12 +1,20 @@
 #pragma once
 
-#include <pep/storagefacility/EntryName.hpp>
-#include <pep/storagefacility/PersistedEntryProperties.hpp>
-#include <pep/storagefacility/PageStore.hpp>
 #include <pep/messaging/MessageSequence.hpp>
+#include <pep/storagefacility/EntryName.hpp>
+#include <pep/storagefacility/PageStore.hpp>
+#include <pep/storagefacility/PersistedEntryProperties.hpp>
 
-#include <typeinfo>
 #include <xxhash.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace pep {
 

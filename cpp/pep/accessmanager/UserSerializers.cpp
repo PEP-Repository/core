@@ -1,6 +1,16 @@
 #include <pep/accessmanager/UserSerializers.hpp>
 #include <pep/auth/UserGroupSerializers.hpp>
 #include <pep/serialization/TimestampSerializer.hpp>
+#include <pep/accessmanager/UserMessages.hpp> // for CreateUser, UserMutationRequest, UserQueryResponse, ...
+#include <pep/serialization/Serialization.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <Messages.pb.h> // for proto::CreateUser
+
+#include <optional>
+#include <ranges>
+#include <utility>
+#include <vector>
 
 namespace pep {
 

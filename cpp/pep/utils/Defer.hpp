@@ -2,8 +2,9 @@
 
 #include <pep/utils/TypeTraits.hpp>
 
-#include <memory>
 #include <boost/preprocessor/cat.hpp>
+
+#include <memory>
 
 // golang-like defer based on
 //   https://www.gingerbill.org/article/defer-in-cpp.html

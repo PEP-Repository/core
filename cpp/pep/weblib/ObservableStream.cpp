@@ -3,13 +3,20 @@
 #include <pep/weblib/ObservableStreamHelpers.hpp>
 
 #include <pep/utils/Log.hpp>
-#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Exceptions.hpp>
 
-#include <boost/noncopyable.hpp>
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 #include <rxcpp/rx-lite.hpp>
+#include <emscripten/wire.h> // for emscripten::allow_raw_pointers
+
+#include <boost/core/noncopyable.hpp>
+
+#include <cassert>
+#include <exception>
+#include <memory>
+#include <string>
+#include <utility>
 
 using namespace emscripten;
 using namespace pep;

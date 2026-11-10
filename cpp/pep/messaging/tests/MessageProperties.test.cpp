@@ -5,6 +5,7 @@
 
 #include <sstream>
 #include <stdexcept>
+#include <string>
 
 namespace pep::messaging {
 namespace {

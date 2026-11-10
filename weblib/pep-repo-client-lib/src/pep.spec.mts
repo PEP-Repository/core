@@ -3,7 +3,7 @@
  */
 
 import {expect} from 'chai';
-import Pep, {CellEntry, ClientConfig, getColumnModes, InitConfig, ListColumnsQuery} from "./pep.mjs";
+import Pep, {CellEntry, ClientConfig, getColumnModes, getEffectiveAccessModes, InitConfig, ListColumnsQuery} from "./pep.mjs";
 import {binaryToString, concatStringsAsync, deleteObjects} from "./utils.mjs";
 
 const isNode = !!globalThis.process;
@@ -376,19 +376,48 @@ describe('Pep', () => {
     const columnGroup = `WeblibTestColumnGroup-${suffix}`;
     const subjectGroup = `WeblibTestSubjectGroup-${suffix}`;
 
+    /** @returns Whether the test subject group has no subjects, seen through their cells in WasmTestColumnGroup */
+    async function isEmpty() {
+      // The Data Administrator may list the cells of all column groups with mode read-meta
+      const entries = await Array.fromAsync(pep.list({
+        subjectGroups: [subjectGroup],
+        columnGroups: ['WasmTestColumnGroup'],
+        mode: 'read-meta',
+      }));
+      deleteObjects(entries);
+      return entries.length === 0;
+    }
+
     before(() => authenticateAs('Data Administrator'));
+    after(async () => {
+      // Remove what is left if a test failed halfway.
+      await pep.runHandleWasmException(() => pep.removeColumnGroup(columnGroup, true)).catch(() => {});
+      await pep.runHandleWasmException(() => pep.removeColumn(column)).catch(() => {});
+      await pep.runHandleWasmException(() => pep.removeSubjectGroup(subjectGroup, true)).catch(() => {});
+    });
 
     it('should create and remove columns and column groups', () => pep.runHandleWasmException(async () => {
+      // pointInTime is in server time, these moments are in client time. Those clocks are the same in the
+      // integration test, but leaving a margin is free here
+      const oneMinuteMs = 60_000;
+      const beforeTest = new Date(Date.now() - oneMinuteMs);
+
       await pep.createColumn(column);
       await pep.createColumnGroup(columnGroup);
       await pep.addColumnToGroup(column, columnGroup);
 
       let state = await pep.queryAccessManager({columnGroup});
       expect(state.columnGroups).to.deep.equal([{name: columnGroup, columns: [column]}]);
+      expect((await pep.queryAccessManager({columnGroup, pointInTime: beforeTest})).columnGroups).to.be.empty;
+      // No margin here: that would need waiting before and after this moment
+      const whileInGroup = new Date();
 
       await pep.removeColumnFromGroup(column, columnGroup);
       state = await pep.queryAccessManager({columnGroup});
       expect(state.columnGroups).to.deep.equal([{name: columnGroup, columns: []}]);
+      // The past is unchanged
+      expect((await pep.queryAccessManager({columnGroup, pointInTime: whileInGroup})).columnGroups)
+          .to.deep.equal([{name: columnGroup, columns: [column]}]);
 
       // force removes the column membership as well
       await pep.addColumnToGroup(column, columnGroup);
@@ -403,20 +432,23 @@ describe('Pep', () => {
     it('should create and remove subject groups, and add and remove subjects', () => pep.runHandleWasmException(async () => {
       await pep.createSubjectGroup(subjectGroup);
       expect((await pep.queryAccessManager({subjectGroup})).subjectGroups).to.deep.equal([subjectGroup]);
+      expect(await isEmpty()).to.be.true;
 
       await pep.addSubjectToGroup(subjectGroup, 'WasmTestSubjectSmall');
+      expect(await isEmpty()).to.be.false;
+
       await pep.removeSubjectFromGroup(subjectGroup, 'WasmTestSubjectSmall');
-      // Succeeds without force, as the group is empty again
+      expect(await isEmpty()).to.be.true;
       await pep.removeSubjectGroup(subjectGroup);
 
       expect((await pep.queryAccessManager()).subjectGroups).to.not.include(subjectGroup);
     }));
 
     it('should query the effective access modes', () => pep.runHandleWasmException(async () => {
-      expect(await pep.queryEffectiveAccessModes({
+      expect(getEffectiveAccessModes(await pep.queryAccessManager({
         columnGroup: 'WasmTestMetaColumnGroup',
         subjectGroup: 'WasmTestEnumerateSubjectGroup',
-      })).to.deep.equal({
+      }))).to.deep.equal({
         // Explicit rules: read-meta, write-meta
         columnGroups: [{
           columnGroup: 'WasmTestMetaColumnGroup',
@@ -478,5 +510,33 @@ describe('getColumnModes()', () => {
       {name: 'x', modes: {...none, readMeta: true, write: true}},
       {name: 'y', modes: {...none, readMeta: true}},
     ]);
+  });
+});
+
+describe('getEffectiveAccessModes()', () => {
+  it('should add the implied modes to the explicit ones', () => {
+    const none = {read: false, readMeta: false, write: false, writeMeta: false};
+    const subjectGroupAccessRules = [
+      {subjectGroup: 'SubjectGroupA', userGroup: 'UserGroupA', modes: {access: true, enumerate: false}},
+    ];
+    expect(getEffectiveAccessModes({
+      columns: [],
+      columnGroups: [],
+      columnGroupAccessRules: [{
+        columnGroup: 'GroupA',
+        userGroup: 'UserGroupA',
+        modes: {...none, read: true, writeMeta: true},
+        impliedOnlyModes: {...none, readMeta: true, write: true},
+      }],
+      subjectGroups: [],
+      subjectGroupAccessRules,
+    })).to.deep.equal({
+      columnGroups: [{
+        columnGroup: 'GroupA',
+        userGroup: 'UserGroupA',
+        modes: {read: true, readMeta: true, write: true, writeMeta: true},
+      }],
+      subjectGroups: subjectGroupAccessRules,
+    });
   });
 });

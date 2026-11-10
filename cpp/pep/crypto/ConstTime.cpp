@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string_view>
+#include <concepts>
+#include <string>
 
 namespace pep::const_time {
 

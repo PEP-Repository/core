@@ -1,9 +1,20 @@
 #include <pep/elgamal/CurvePoint.hpp>
 
 #include <stdexcept>
+#include <algorithm>
+#include <compare>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <string>
+#include <string_view>
 
 #include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Random.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
+#include <pep/utils/CollectionUtils.hpp> // for SpanToString
+
+#include <panda/group.h>
 
 using namespace std::string_literals;
 

@@ -1,12 +1,21 @@
 #pragma once
 
-#include <pep/client/Client_fwd.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
 #include <pep/application/CommandLineUtility.hpp>
 #include <pep/async/FakeVoid.hpp>
 #include <pep/async/WorkGuard.hpp>
 #include <pep/auth/OAuthToken.hpp>
+#include <pep/client/Client_fwd.hpp>
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <rxcpp/rx-lite.hpp>
+
+#include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace pep::cli {
 

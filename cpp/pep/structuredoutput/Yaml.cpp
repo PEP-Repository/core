@@ -1,10 +1,16 @@
 #include <pep/structuredoutput/Yaml.hpp>
-
-#include <pep/utils/ChronoUtil.hpp>
+#include <pep/structuredoutput/Common.hpp> // for structuredOutput::YamlConfig, structuredOutput::WhitespaceFormat
+#include <pep/structuredoutput/Tree.hpp>
 
 #include <format>
 #include <locale>
 #include <string_view>
+#include <algorithm>
+#include <cctype>
+#include <cstddef>
+#include <ostream>
+#include <sstream>
+#include <utility>
 
 namespace pep::structuredOutput::yaml {
 namespace {

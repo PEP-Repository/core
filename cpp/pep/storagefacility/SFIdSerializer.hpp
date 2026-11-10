@@ -1,7 +1,9 @@
 #pragma once
 
-#include <pep/storagefacility/SFId.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/storagefacility/SFId.hpp>
+
+#include <Messages.pb.h> // for proto::SFId
 
 namespace pep {
 

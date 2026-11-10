@@ -1,12 +1,16 @@
 #pragma once
 
+#include <pep/castor/CastorConnection.hpp>
 #include <pep/utils/BuildFlavor.hpp>
 
+#include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 
-#include <pep/castor/CastorConnection.hpp>
-#include <pep/utils/Shared.hpp>
+#include <cassert>
+#include <memory>
+#include <string>
+#include <type_traits>
 
 namespace pep {
 namespace castor {

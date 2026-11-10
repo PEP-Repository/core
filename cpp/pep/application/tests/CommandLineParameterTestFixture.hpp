@@ -2,13 +2,16 @@
 
 #include <pep/application/CommandLineCommand.hpp>
 #include <pep/application/CommandLineCommandWrappers.hpp>
-#include <pep/application/CommandLineValue.hpp>
 #include <pep/application/CommandLineParameter.hpp>
+#include <pep/application/CommandLineValue.hpp>
 
+#include <initializer_list>
 #include <map>
-#include <string>
-#include <vector>
+#include <memory>
 #include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace pep::application::test {
 

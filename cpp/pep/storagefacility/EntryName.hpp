@@ -2,6 +2,9 @@
 
 #include <pep/rsk-pep/Pseudonyms.hpp>
 
+#include <string>
+#include <tuple>
+
 namespace pep {
 
 class EntryName {

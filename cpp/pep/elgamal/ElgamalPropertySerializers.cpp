@@ -1,4 +1,8 @@
 #include <pep/elgamal/ElgamalPropertySerializers.hpp>
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
+
+#include <string>
 
 namespace pep {
 

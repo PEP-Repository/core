@@ -5,6 +5,8 @@
 #include <boost/algorithm/hex.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
 
+#include <string>
+
 namespace pep
 {
 template <typename... Args>

@@ -1,6 +1,8 @@
 #include <pep/utils/CollectionUtils.hpp>
 
 #include <cassert>
+#include <cstddef>
+#include <string_view>
 
 size_t pep::FindLongestPrefixAtEnd(const std::string_view haystack, std::string_view needle) {
   for (needle = needle.substr(0, haystack.size());;

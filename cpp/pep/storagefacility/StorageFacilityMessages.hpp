@@ -5,6 +5,13 @@
 #include <pep/morphing/Metadata.hpp>
 #include <pep/serialization/IndexList.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <cstdint>
+#include <optional>
+#include <set>
+#include <string>
+#include <vector>
 
 namespace pep {
 

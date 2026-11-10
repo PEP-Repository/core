@@ -1,11 +1,28 @@
 #include <pep/castor/ImportColumnNamer.hpp>
-#include <pep/castor/Visit.hpp>
-#include <pep/utils/EnumUtils.hpp>
+#include <pep/castor/Visit.hpp> // IWYU pragma: keep (other headers only forward declare Visit)
+#include <pep/castor/CastorConnection.hpp>
+#include <pep/castor/Form.hpp>
+#include <pep/castor/Participant.hpp>
+#include <pep/castor/Study.hpp>
+#include <pep/castor/Survey.hpp>
+#include <pep/castor/SurveyPackage.hpp>
+#include <pep/castor/SurveyStep.hpp>
+#include <pep/structure/ColumnName.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
 
 #include <boost/algorithm/string/join.hpp>
 
 #include <ranges>
 #include <utility>
+#include <cassert>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+#include <rxcpp/rx-lite.hpp>
+#include <rxcpp/operators/rx-concat.hpp>
 
 namespace pep {
 namespace castor {

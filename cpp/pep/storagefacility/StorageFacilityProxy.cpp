@@ -5,7 +5,22 @@
 #include <pep/storagefacility/StorageFacilityProxy.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/utils/XxHasher.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/messaging/Tail.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataEnumerationResponse2, DataStoreRequest2, DataEnumerationRequest2, ...
+#include <pep/utils/Shared.hpp>
+
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <format>
+#include <memory>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace pep {
 

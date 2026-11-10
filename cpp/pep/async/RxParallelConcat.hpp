@@ -1,10 +1,14 @@
 #pragma once
 
-#include <cassert>
-#include <optional>
-
 #include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
+
+#include <cassert>
+#include <cstddef>
+#include <exception>
+#include <memory>
+#include <optional>
+#include <queue>
 
 namespace pep
 {

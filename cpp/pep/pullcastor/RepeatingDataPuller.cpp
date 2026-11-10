@@ -6,11 +6,27 @@
 #include <pep/castor/RepeatingDataForm.hpp>
 #include <pep/pullcastor/FieldValue.hpp>
 #include <pep/pullcastor/StudyPuller.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/async/RxCache.hpp>
+#include <pep/castor/Field.hpp>
+#include <pep/castor/RepeatingData.hpp>
+#include <pep/castor/RepeatingDataInstance.hpp>
+#include <pep/pullcastor/RepeatingDataPuller.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <boost/property_tree/ptree.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <algorithm>
+#include <cassert>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 using namespace std::ranges;
 

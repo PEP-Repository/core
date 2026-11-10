@@ -3,15 +3,16 @@
 #include <pep/assessor/mainwindow.hpp>
 #include <pep/assessor/enrollmentwidget.hpp>
 #include <pep/assessor/loginwidget.hpp>
-#include <pep/assessor/participantwidget.hpp>
-#include <pep/assessor/UserRole.hpp>
 #include <pep/async/IoContextThread.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Paths.hpp>
-#include <pep/gui/QTrxGui.hpp>
 #include <pep/gui/InterProcess.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/assessor/VisitCaptions.hpp>
+#include <pep/content/ParticipantDeviceHistory.hpp>
+#include <pep/utils/Configuration.hpp>
 #include <QStyleFactory>
 #include <QApplication>
 #include <QMessageBox>
@@ -20,9 +21,17 @@
 #include <QStandardPaths>
 
 #include <filesystem>
-#include <iostream>
 #include <ranges>
-#include <thread>
+#include <cstddef>
+#include <cstdlib>
+#include <exception>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+#include <boost/asio/io_context.hpp>
 
 #ifdef _WIN32
 #include <windows.h>

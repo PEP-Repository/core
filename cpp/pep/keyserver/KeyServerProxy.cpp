@@ -2,6 +2,12 @@
 #include <pep/keyserver/KeyServerProxy.hpp>
 #include <pep/keyserver/KeyServerSerializers.hpp>
 #include <pep/messaging/MessagingSerializers.hpp>
+#include <pep/keyserver/KeyServerMessages.hpp> // for EnrollmentResponse, EnrollmentRequest, TokenBlockingCreateResponse
+#include <pep/messaging/HousekeepingMessages.hpp> // for PingResponse, PingRequest
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <utility>
 
 namespace pep {
 
@@ -28,7 +34,7 @@ rxcpp::observable<TokenBlockingCreateResponse> KeyServerProxy::requestTokenBlock
 }
 
 rxcpp::observable<TokenBlockingRemoveResponse> KeyServerProxy::requestTokenBlockingRemove(TokenBlockingRemoveRequest request) const {
-  return this->sendRequest<TokenBlockingRemoveResponse>(this->sign(std::move(request))) //NOLINT(performance-move-const-arg) may change
+  return this->sendRequest<TokenBlockingRemoveResponse>(this->sign(std::move(request)))
     .op(RxGetOne());
 }
 

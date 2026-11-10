@@ -5,6 +5,14 @@
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/structure/ColumnName.hpp>
 
+#include <compare>
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <tuple>
+#include <type_traits>
+#include <vector>
+
 namespace pep {
 // All record types also have an acssociated struct type containing only the data about the columns, access modes, etc. So no tombstones, timestamps, seqno's, and other metadata.
 // This allows for sets of named structs that can be equality checked on only these datapoints.

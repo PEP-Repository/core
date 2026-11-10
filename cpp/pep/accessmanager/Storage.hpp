@@ -1,18 +1,29 @@
 #pragma once
 
-#include <filesystem>
-#include <string>
-#include <unordered_map>
-#include <set>
-#include <vector>
-
+#include <pep/accessmanager/AccessManager.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for StructureMetadataType
 #include <pep/accessmanager/Backend.hpp>
-#include <pep/structure/ColumnName.hpp>
 #include <pep/accessmanager/Records.hpp>
-#include <pep/utils/Timestamp.hpp>
-#include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/accessmanager/UserMessages.hpp>
 #include <pep/accessmanager/UserIdFlags.hpp>
+#include <pep/accessmanager/UserMessages.hpp>
+#include <pep/auth/UserGroup.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/structure/ColumnName.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <cstdint>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <set>
+#include <span>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace pep {
 

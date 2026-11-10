@@ -1,22 +1,30 @@
 #pragma once
 
-#include <pep/serialization/IndexList.hpp>
-#include <pep/ticketing/SubjectAccessModes.hpp>
-#include <pep/ticketing/TicketingMessages.hpp>
-#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/auth/Signed.hpp>
+#include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/X509Certificate.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/morphing/Metadata.hpp>
 #include <pep/morphing/ServerVerifiers.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/auth/Signed.hpp>
-#include <pep/structure/ColumnName.hpp>
-#include <pep/auth/UserGroup.hpp>
-#include <pep/crypto/X509Certificate.hpp>
+#include <pep/rsk/Proofs.hpp>
+#include <pep/serialization/IndexList.hpp>
 #include <pep/serialization/Serializer.hpp>
+#include <pep/structure/ColumnName.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/SubjectAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp>
 
 #include <compare>
 #include <cstdint>
+#include <memory>
+#include <mutex>
+#include <optional>
 #include <ostream>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace pep {
 

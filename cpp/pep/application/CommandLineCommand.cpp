@@ -1,15 +1,27 @@
 #include <pep/application/Application.hpp>
 #include <pep/application/CommandLineAutocomplete.hpp>
 #include <pep/versioning/Version.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineHelp.hpp> // for commandline::WriteHelpItem
+#include <pep/application/CommandLineParameter.hpp> // for commandline::CommandPath
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues, commandline::LexedValues
 
 #include <algorithm>
-#include <iomanip>
 #include <iostream>
 #include <filesystem>
 #include <vector>
+#include <cassert>
+#include <cstdlib>
+#include <exception>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <queue>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 #include <boost/algorithm/string/join.hpp>
-#include <boost/format.hpp>
 
 using namespace std::ranges;
 

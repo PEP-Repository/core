@@ -1,6 +1,12 @@
 #include <pep/auth/SigningSerializers.hpp>
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/serialization/TimestampSerializer.hpp>
+#include <pep/auth/Signature.hpp>
+#include <pep/serialization/Serialization.hpp>
+
+#include <Messages.pb.h> // for proto::Signature
+
+#include <utility>
 
 namespace pep {
 

@@ -10,6 +10,17 @@
 #include <pep/assessor/participantwidget.hpp>
 #include <pep/gui/QTrxGui.hpp>
 #include <pep/client/Client.hpp>
+#include <pep/assessor/Branding.hpp>
+#include <pep/assessor/UserRole.hpp>
+#include <pep/assessor/VisitCaptions.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/core-client/CoreClient.hpp> // for ShortPseudonymFormatError, EnumerateAndRetrieveResult
+#include <pep/messaging/ConnectionStatus.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/StudyContext.hpp>
+#include <pep/utils/Configuration.hpp>
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -17,12 +28,25 @@
 #include <rxcpp/operators/rx-subscribe.hpp>
 #include <rxcpp/operators/rx-take.hpp>
 #include <rxcpp/operators/rx-merge.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <QDebug>
 #include <QDir>
 #include <QSettings>
 #include <QTimer>
 #include <QToolTip>
+
+#include <array>
+#include <cassert>
+#include <exception>
+#include <functional>
+#include <initializer_list>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <utility>
 
 namespace {
 

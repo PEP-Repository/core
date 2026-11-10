@@ -2,8 +2,19 @@
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/pullcastor/Metrics.hpp>
+#include <pep/metrics/RegisteredMetrics.hpp>
 
 #include <prometheus/text_serializer.h>
+#include <prometheus/counter.h>
+#include <prometheus/gauge.h>
+#include <prometheus/metric_family.h>
+#include <prometheus/registry.h>
+
+#include <exception>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <vector>
 
 namespace pep {
 namespace castor {

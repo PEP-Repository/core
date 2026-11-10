@@ -1,11 +1,14 @@
 #pragma once
 
 #include <pep/metrics/RegisteredMetrics.hpp>
-#include <optional>
-#include <filesystem>
-#include <prometheus/registry.h>
+
 #include <prometheus/counter.h>
 #include <prometheus/gauge.h>
+#include <prometheus/registry.h>
+
+#include <filesystem>
+#include <optional>
+#include <string>
 
 namespace pep {
 namespace castor {

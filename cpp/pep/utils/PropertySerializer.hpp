@@ -2,13 +2,18 @@
 
 #include <pep/utils/TaggedValue.hpp>
 
+#include <boost/property_tree/exceptions.hpp> // for boost::property_tree::ptree_error
+#include <boost/property_tree/ptree.hpp>
+
+#include <algorithm>
+#include <filesystem>
 #include <optional>
 #include <ranges>
+#include <stdexcept>
+#include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
-
-#include <filesystem>
-#include <boost/property_tree/ptree.hpp>
 
 namespace pep {
 

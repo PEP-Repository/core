@@ -4,6 +4,12 @@
 #include <pep/crypto/X509Certificate.hpp>
 #include <pep/keyserver/tokenblocking/BlocklistEntry.hpp>
 #include <pep/keyserver/tokenblocking/TokenIdentifier.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace pep {
 

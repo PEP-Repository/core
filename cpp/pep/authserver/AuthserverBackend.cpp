@@ -4,17 +4,40 @@
 #include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/ChronoUtil.hpp>
 #include <pep/utils/Configuration.hpp>
-#include <pep/async/RxRequireCount.hpp>
 #include <pep/server/MonitoringSerializers.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 
 #include <fstream>
-#include <ranges>
+#include <algorithm>
+#include <chrono>
+#include <exception>
+#include <filesystem>
+#include <ios>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 #include <pep/messaging/MessageSequence.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for FindUserResponse
+#include <pep/accessmanager/AccessManagerProxy.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/OAuthToken.hpp>
+#include <pep/auth/Signed.hpp> // for MessageSigner
+#include <pep/authserver/AuthserverMessages.hpp> // for TokenResponse, TokenRequest
+#include <pep/crypto/X509Certificate.hpp> // for X509Identity, X509RootCertificates
+#include <pep/messaging/ConnectionStatus.hpp>
+#include <pep/messaging/ServerConnection.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Timestamp.hpp>
 
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-take.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::ranges;
 
@@ -118,8 +141,7 @@ AuthserverBackend::AuthserverBackend(const Parameters &params)
     : MessageSigner(params.getSigningIdentity()),
       accessManager_(std::make_shared<AccessManagerProxy>(params.getAccessManager(), *this, params.getAccessManagerEndPoint().expectedCommonName, params.getRootCertificates())),
       tokenExpiration_(params.getTokenExpiration()),
-      oauthTokenSecret_(params.getOAuthTokenSecret()),
-      checksumChainForwarder_(*accessManager_) {
+      oauthTokenSecret_(params.getOAuthTokenSecret()) {
   if (params.getStorageFile() && std::filesystem::exists(*params.getStorageFile())) {
     migrateDatabase(*params.getStorageFile());
   }

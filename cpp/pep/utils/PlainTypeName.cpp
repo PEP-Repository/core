@@ -1,5 +1,8 @@
 #include <pep/utils/PlainTypeName.hpp>
+
 #include <boost/algorithm/string/erase.hpp>
+
+#include <string>
 
 namespace pep::detail {
 

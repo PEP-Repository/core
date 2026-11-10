@@ -2,12 +2,16 @@
 #include <pep/cli/Commands.hpp>
 #include <pep/cli/TicketFile.hpp>
 
-#include <pep/utils/Exceptions.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/async/RxInstead.hpp>
-#include <pep/utils/File.hpp>
 #include <pep/utils/Stream.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <boost/algorithm/hex.hpp>
 
@@ -15,8 +19,18 @@
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <fstream>
+#include <ios>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <utility>
+
+#include <google/protobuf/util/json_util.h> // for google::protobuf::util::MessageToJsonString
 
 using namespace pep::cli;
 

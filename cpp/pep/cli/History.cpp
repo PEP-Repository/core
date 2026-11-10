@@ -1,11 +1,23 @@
 #include <pep/cli/Commands.hpp>
 #include <pep/cli/SingleCellCommand.hpp>
-#include <pep/utils/Defer.hpp>
 #include <pep/async/RxConcatenateVectors.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/cli/Command.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <algorithm>
+#include <iostream>
+#include <memory>
+#include <utility>
+#include <vector>
 
 using namespace pep::cli;
 

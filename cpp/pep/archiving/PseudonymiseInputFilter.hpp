@@ -1,13 +1,19 @@
 #pragma once
 
-#include <array>
-#include <cassert>
-#include <ios>
-#include <string>
-
 #include <boost/iostreams/char_traits.hpp>
 #include <boost/iostreams/concepts.hpp>
-#include <boost/iostreams/operations.hpp>
+#include <boost/iostreams/operations.hpp> // IWYU pragma: keep (for boost::iostreams::read, called from template code)
+
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstddef>
+#include <cstdint> // IWYU pragma: keep (used in debug builds)
+#include <cstdio>
+#include <cstring>
+#include <ios>
+#include <limits> // IWYU pragma: keep (used in debug builds)
+#include <string>
 
 namespace pep {
 class PseudonymiseInputFilter : public boost::iostreams::multichar_input_filter {

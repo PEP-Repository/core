@@ -1,8 +1,13 @@
 #pragma once
 
-#include <functional>
 #include <pep/cli/DownloadDirectory.hpp>
+#include <pep/cli/DownloadMetadata.hpp> // for cli::ParticipantIdentifier
 #include <pep/structuredoutput/Table.hpp>
+
+#include <cstddef>
+#include <filesystem>
+#include <functional>
+#include <string>
 #include <variant>
 
 namespace pep::structuredOutput {

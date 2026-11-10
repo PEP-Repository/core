@@ -1,8 +1,20 @@
 #pragma once
 
+#include <pep/application/CommandLineCommand.hpp> // for commandline::ChildCommandOf
+#include <pep/application/CommandLineParameter.hpp>
 #include <pep/apps/Enrollment.hpp>
+#include <pep/auth/EnrolledParty.hpp>
 #include <pep/auth/ServerTraits.hpp>
 #include <pep/client/Client.hpp>
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
+
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace pep {
 

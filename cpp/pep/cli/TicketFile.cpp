@@ -2,9 +2,21 @@
 #include <pep/utils/File.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/serialization/Serialization.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/rx-lite.hpp>
 #include <fstream>
+#include <cassert>
+#include <filesystem>
+#include <ios>
+#include <optional>
+#include <stdexcept>
 
 namespace pep {
 namespace cli {

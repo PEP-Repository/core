@@ -4,10 +4,25 @@
 #include <pep/networking/Tcp.hpp>
 #include <pep/utils/OnFatalTestFailure.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/asio/io_context.hpp>
 
 #include <pep/utils/TestTiming.hpp>
+#include <pep/networking/Connection.hpp>
+#include <pep/networking/Transport.hpp> // for networking::SizedTransfer, networking::DelimitedTransfer
+#include <pep/utils/Defer.hpp>
+#include <pep/utils/Event.hpp>
+#include <pep/utils/LifeCycler.hpp>
+#include <pep/utils/Shared.hpp>
 #include <gtest/gtest.h>
 #include <cmath>
+#include <algorithm>
+#include <cassert>
+#include <chrono>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace std::literals;
 

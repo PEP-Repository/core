@@ -1,5 +1,11 @@
 #include <pep/storagefacility/S3Credentials.PropertySerializer.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/storagefacility/S3Credentials.hpp> // for s3::Credentials
+
+#include <filesystem>
+#include <optional>
+#include <stdexcept>
+#include <string>
 
 namespace pep
 {

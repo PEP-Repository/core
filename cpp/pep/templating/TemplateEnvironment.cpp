@@ -1,5 +1,8 @@
 #include <pep/templating/TemplateEnvironment.hpp>
 
+#include <filesystem>
+#include <string>
+
 namespace pep {
 TemplateEnvironment::TemplateEnvironment(const std::filesystem::path& rootDir) :
     environment_((rootDir / ".").lexically_normal().string()) { //Appending "/." to it, and then normalizing, ensures we have a directory separator at the end.

@@ -1,11 +1,22 @@
 #pragma once
 
 #include <pep/networking/EndPoint.hpp>
+#include <pep/networking/InstanceBound.hpp>
 #include <pep/networking/Protocol.hpp>
 #include <pep/networking/SocketReadBuffer.hpp>
+#include <pep/networking/StreamSocket.hpp>
+#include <pep/networking/Transport.hpp> // for networking::SizedTransfer
 #include <pep/utils/Shared.hpp>
 
+#include <boost/asio/basic_socket.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
+
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace pep::networking {
 
