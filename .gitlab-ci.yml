@@ -401,6 +401,8 @@ cleanup:
 .use-mem-gate: &use-mem-gate |
   mem_gate_launcher="$CI_PROJECT_DIR/ci_cd/mem-gate.sh"
   export CCACHE_PREFIX="\"$mem_gate_launcher\""
+  # Note: no quotes, ccache splits prefix_command on spaces and doesn't interpret quotes (so the path cannot contain spaces)
+  export CCACHE_PREFIX="$mem_gate_launcher"
 
 #language=sh
 # We don't want errors about [[deprecated]] library functions in stable/release branches
