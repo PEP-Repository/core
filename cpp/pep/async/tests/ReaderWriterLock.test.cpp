@@ -92,8 +92,8 @@ TEST(ReaderWriterLock, Works) {
   static_assert(ReaderToWriterRatio != 0, "Can't modulate very well otherwise, can I now?");
   constexpr unsigned ReaderToWriterDivisor = ReaderToWriterRatio + 1;
 
-  bool intersecting_read_found = false;
-  for (unsigned attempt = 0; (attempt < IntersectingReadAttempts) && !intersecting_read_found; ++attempt) {
+  bool intersectingReadFound = false;
+  for (unsigned attempt = 0; (attempt < IntersectingReadAttempts) && !intersectingReadFound; ++attempt) {
     std::array<std::thread, ThreadCount> threads;
     std::array<Contention, ThreadCount> results;
     pep::ReaderWriterLock rwl;
@@ -131,7 +131,7 @@ TEST(ReaderWriterLock, Works) {
             << " and " << threadType(*iIntersecting) << "thread " << *iIntersecting;
         }
         else {
-          intersecting_read_found = true;
+          intersectingReadFound = true;
         }
       }
     }
@@ -142,7 +142,7 @@ TEST(ReaderWriterLock, Works) {
     + ((ThreadCount % ReaderToWriterDivisor == 0) ? 0 : 1); // Modulo bias favors writers
   constexpr auto Readers = ThreadCount - Writers;
 
-  EXPECT_TRUE(intersecting_read_found) << "Reader/writer lock seems to interleave readers: no intersecting read found"
+  EXPECT_TRUE(intersectingReadFound) << "Reader/writer lock seems to interleave readers: no intersecting read found"
     << " after " << IntersectingReadAttempts << " attempts, each of which"
     << " used " << Readers << " reader threads"
     << " and " << Writers << " writer threads";
