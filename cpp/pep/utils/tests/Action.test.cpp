@@ -20,7 +20,7 @@ TEST(Action, SupportsHeterogeneousSignatures) {
 
   auto invoked = false;
   pep::PerformAsAction(&JustInvokeItAlready, [](bool &assign) { assign = true; /* but return void */ }, invoked);
-  EXPECT_TRUE(invoked) << "Either not invoked or not passed by reference"; // Or not assigned but we're seeing the test code here
+  EXPECT_TRUE(invoked) << "Either not invoked or not passed by reference"; // Or not assigned, but since we're looking at the test code...
 }
 
 TEST(Action, PropagatesExceptions) {
