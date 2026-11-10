@@ -80,7 +80,7 @@ TEST(FileStore, Basic) {
   for (size_t i = 0; page.size() < pep::InlinePageThreshold; i++)
     page += " " + std::to_string(i);
 
-  auto change = store->modifyEntry(name, true);
+  auto change = store->modifyEntry(name, false);
   ASSERT_NE(nullchange, change);
   change->setContent(std::make_unique<EntryContent>(
     EntryContent::Metadata(),
@@ -90,11 +90,11 @@ TEST(FileStore, Basic) {
   context.exhaust<std::string>(change->appendPage(std::make_shared<std::string>(page), page.size(), 0));
   std::move(*change).commit(1_unixMs);
 
-  change = store->modifyEntry(name, false);
+  change = store->modifyEntry(name, true);
   ASSERT_NE(nullchange, change);
   EXPECT_EQ(1, change->content()->payload()->pageCount());
 
-  auto duplicateChange = store->modifyEntry(name, false);
+  auto duplicateChange = store->modifyEntry(name, true);
   std::move(*change).commit(3_unixMs);
   EXPECT_ANY_THROW(std::move(*duplicateChange).commit(3_unixMs));
 
@@ -138,7 +138,7 @@ TEST(FileStore, PagePathsWithEmptyCell) {
   auto store = context.store;
 
   // Create a cell without committing an entry to it, e.g. like when a store is cancelled
-  auto change = store->modifyEntry(pep::EntryName(pep::LocalPseudonym::Random(), "test"), true);
+  auto change = store->modifyEntry(pep::EntryName(pep::LocalPseudonym::Random(), "test"), false);
   ASSERT_NE(nullptr, change);
   change.reset();
 
@@ -151,13 +151,13 @@ TEST(FileStore, PathTraversal) {
 
   auto dummyLp = pep::LocalPseudonym::Random();
 
-  ASSERT_NO_THROW(store->modifyEntry({dummyLp, "test"}, true));
+  ASSERT_NO_THROW(store->modifyEntry({dummyLp, "test"}, false));
 
-  EXPECT_THROW(store->modifyEntry({dummyLp, ".."}, true),
+  EXPECT_THROW(store->modifyEntry({dummyLp, ".."}, false),
     std::invalid_argument);
-  EXPECT_THROW(store->modifyEntry({dummyLp, "/test"}, true),
+  EXPECT_THROW(store->modifyEntry({dummyLp, "/test"}, false),
     std::runtime_error);
-  EXPECT_THROW(store->modifyEntry({dummyLp, ""}, true),
+  EXPECT_THROW(store->modifyEntry({dummyLp, ""}, false),
     std::runtime_error);
 }
 

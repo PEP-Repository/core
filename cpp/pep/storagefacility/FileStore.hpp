@@ -247,7 +247,14 @@ public:
   PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;
 
   std::shared_ptr<Entry> lookup(const EntryName& name, Timestamp validAt = Timestamp::max());
-  std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool createIfNeeded = false, bool requireUnpurged = true);
+
+  /// \brief Pends a new version in a cell
+  /// \param name The (name of) the entry/cell where the new version should be created
+  /// \param requireExisting Whether a previous version must exist (and not be a tombstone)
+  /// \param requireUnpurged Whether the previous version (if it exists) must be un-purged
+  /// \return (A non-null shared_ptr to) an EntryChange for the specified cell
+  /// \throws An Error if the current/latest cell state doesn't satisfy the specified requirements
+  std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool requireExisting = true, bool requireUnpurged = true);
 
   EntryContent::Metadata makeMetadataMap(const std::map<std::string, MetadataXEntry>& xentries);
   std::map<std::string, MetadataXEntry> extractMetadataMap(const EntryContent::Metadata& metadata);

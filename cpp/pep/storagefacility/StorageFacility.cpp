@@ -680,14 +680,11 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 
       auto& col = ticket.columns.at(entry.columnIndex);
 
-      // Modify entry, only creating a new one if we don't require an overwrite
-      auto entryChange = fileStore_->modifyEntry(EntryName(*ctx->pseudonyms[i], col), !requireContentOverwrite, false);
-      if (entryChange == nullptr) {
-        throw Error("Cannot find cell to update");
-      }
-      if (requireContentOverwrite && entryChange->isTombstone()) {
-        throw Error("Cannot update cell that has been previously cleared/deleted");
-      }
+      // Modify entry
+      auto entryChange = fileStore_->modifyEntry(EntryName(*ctx->pseudonyms[i], col), requireContentOverwrite,
+        false // We're going to store a fresh payload (or a tombstone), so we don't care if previous version was purged
+      );
+      assert(entryChange != nullptr);
 
       for (size_t j = 0; j < i; ++j) { // TODO: improve performance: we don't want an inner loop making this O(n^2)
         if (ctx->entries[j]->getName() == entryChange->getName()) {
@@ -856,13 +853,11 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
     assert(localPseudonyms[entry.pseudonymIndex].has_value());
     EntryName key(*localPseudonyms[entry.pseudonymIndex], column);
 
-    auto entryChange = fileStore_->modifyEntry(key, false, true);
-    if (entryChange == nullptr) {
-      throw Error("Cannot find cell to update metadata for");
-    }
-    if (entryChange->isTombstone()) {
-      throw Error("Cannot update metadata for a deleted cell");
-    }
+    auto entryChange = fileStore_->modifyEntry(key,
+      true, // We need the previous (non-tombstone) version to provide a payload for us
+      true // We need the payload to actually exist
+    );
+    assert(entryChange != nullptr);
     if (DataPayloadPage::EncryptionIncludesMetadata(EncryptionScheme(entryChange->content()->getEncryptionScheme()))) {
       throw Error("Metadata for this cell cannot be updated without re-uploading the payload data");
     }

@@ -366,8 +366,11 @@ void FileStore::Cell::ensurePurgePersisted(Timestamp purgedAt, Timestamp cellVer
   Entry::EnsurePurgePersisted(purgedAt, *this, cellVersion);
 }
 
-std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool createIfNeeded, bool requireUnpurged) {
+std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool requireExisting, bool requireUnpurged) {
   if (auto entry = lookup(name)) {
+    if (requireExisting && entry->isTombstone()) {
+      throw Error("Cannot update cell that has been previously cleared/deleted");
+    }
     if (requireUnpurged) {
       entry->throwErrorIfPurged("FileStore::modifyEntry");
     }
@@ -376,11 +379,10 @@ std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& 
     if (!entry->getPurgedAt()) {
       return EntryChange::Create(*entry);
     }
-    // else entry is purged: ignore the "createIfNeeded" parameter and let default handling (below) create a fresh EntryChange
+    // else entry is purged: let default handling (below) create a fresh EntryChange
   }
-  else if (!createIfNeeded) {
-    // Entry doesn't exist yet and caller doesn't want to create a new one
-    return nullptr;
+  else if (requireExisting) {
+    throw Error("Cannot find cell to update");
   }
 
   // Entry didn't exist or was purged: create an EntryChange that's not based on a previous version
