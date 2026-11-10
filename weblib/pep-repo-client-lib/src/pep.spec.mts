@@ -298,8 +298,10 @@ describe('Pep', () => {
       const found = await pep.findSubjectByReferenceId(referenceId);
       const foundEntries = await Array.fromAsync(pep.list({subjects: [found], columns: [referenceIdColumn]}));
       entries.push(...foundEntries);
-      // Polymorphic pseudonyms are randomized, so check that the found one leads to the same cell
-      expect(foundEntries.map(entry => entry.id)).to.deep.equal([referenceIdEntry.id]);
+      // Polymorphic pseudonyms are randomized, and so are cell ids (encrypted anew for each listing). Check that the
+      // found subject is the same through its local pseudonym, which is fixed for a user group
+      expect(foundEntries.map(entry => entry.subjectLocalPseudonym))
+          .to.deep.equal([referenceIdEntry.subjectLocalPseudonym]);
     }));
   });
 
