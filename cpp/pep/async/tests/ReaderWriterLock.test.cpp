@@ -159,8 +159,15 @@ TEST(ReaderWriterLock, Recursive) {
       });
     }));
 
-  // ReaderWriterThreadLock supports recursive writes, in which case (plain, non-recursive) ReaderWriterLock would have deadlocked. Trust me, I've tested.
+  // Recursive reads are also supported by ReaderWriterThreadLock (but it only uses a single shared_lock internally)
   pep::ReaderWriterThreadLock rwtl;
+  EXPECT_EQ(0U, rwtl.read([&]() {
+    return rwtl.read([&]() {
+      return value;
+      });
+    }));
+
+  // ReaderWriterThreadLock supports recursive writes, in which case (plain, non-recursive) ReaderWriterLock would have deadlocked. Trust me, I've tested.
   EXPECT_NO_FATAL_FAILURE(
     rwtl.write([&]() {
       rwtl.write([&]() {
