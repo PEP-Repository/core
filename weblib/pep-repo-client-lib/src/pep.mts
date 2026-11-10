@@ -69,6 +69,7 @@ export interface InitConfig {
   /**
    * Whether to connect to the PEP servers over secure WebSockets (wss://).
    * Defaults to true when the page is served over https:, false otherwise.
+   * Some browsers (e.g. Safari) block unsecure websockets on https: pages.
    */
   secureWebsocket?: boolean;
 }

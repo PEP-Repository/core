@@ -58,10 +58,6 @@ set_target_properties(${PROJECT_NAME}Weblib PROPERTIES
 
 set(PEP_WEBLIB_ENVIRONMENT "web,node" CACHE STRING "Environment(s) to build ${PROJECT_NAME}Weblib for")
 
-# Browsers refuse plain ws:// connections from a page served over https, except to localhost.
-# So a web client that is served over https must use secure WebSockets (wss://), with a publicly trusted certificate
-# We use websockify for this (see docker/websockify/). PEP's own TLS still runs inside the WSS (double encryption), TODO: fix, core#3003.
-
 # See https://emscripten.org/docs/tools_reference/settings_reference.html
 target_link_options(${PROJECT_NAME}Weblib PRIVATE
     "-sENVIRONMENT=${PEP_WEBLIB_ENVIRONMENT}"
