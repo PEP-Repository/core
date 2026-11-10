@@ -283,6 +283,12 @@ void StorageFacility::Parameters::check() const {
   if (dataSizeResolution_ == 0U) {
     throw std::runtime_error("dataSizeResolution cannot be zero");
   }
+  if (storagePath_.empty()) {
+    throw std::runtime_error("storagePath must be set");
+  }
+  if (storageFile_.empty()) {
+    throw std::runtime_error("storageFile must be set");
+  }
   // FIXME: check if errors happend during startup of file store
 }
 
