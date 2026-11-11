@@ -108,7 +108,7 @@ public:
     // Allow EntryChange to invoke SharedConstructor<Entry>::Create (which we inherit privately)
     friend class EntryChange;
 
-    static std::shared_ptr<Entry> TryLoadFile(Cell& cell, const CheckedFileName& filename, const std::optional<std::filesystem::path>& extension);
+    static std::shared_ptr<Entry> TryLoadFile(Cell& cell, const CheckedFileName& filename);
 
   private:
     static const std::string FileExtension;
@@ -136,7 +136,7 @@ public:
     messaging::MessageSequence readPage(size_t index);
 
     void save() const;
-    static std::shared_ptr<Entry> TryLoad(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension = std::nullopt);
+    static std::shared_ptr<Entry> TryLoad(Cell& cell, const CheckedFileName& filename);
     static std::shared_ptr<Entry> Load(Cell& cell, Timestamp timestamp);
     static void EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Timestamp version); // on disk
   };

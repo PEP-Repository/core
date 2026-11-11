@@ -225,12 +225,8 @@ FileStore::Cell::Cell(Participant& participant, const std::string& columnName, b
   if (load) {
     participant_.fileStore().fileSystem_.read([this]() {
         for (const auto& i : std::filesystem::directory_iterator(this->path())) {
-          const auto& path = i.path();
-          if (path.has_extension()) {
-            auto entry = Entry::TryLoad(*this, CheckedFileName(path.stem()), path.extension());
-            if (entry != nullptr) {
-              this->addEntry(entry);
-            }
+          if (auto entry = Entry::TryLoad(*this, CheckedFileName(i.path().filename()))) {
+            this->addEntry(entry);
           }
         }
       });
@@ -584,7 +580,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
   // This may lead to security issues.
   // So basically, we should not run the production StorageFacility on Windows with the current code.
   auto timestampStr = std::to_string(TicksSinceEpoch<milliseconds>(timestamp));
-  auto result = TryLoad(cell, CheckedFileName(timestampStr));
+  auto result = TryLoad(cell, CheckedFileName(timestampStr + FileExtension));
   if (result == nullptr) {
     throw std::runtime_error("Could not load entry for cell " + cell.entryName().string()
         + " at timestamp " + timestampStr);
@@ -593,13 +589,14 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
 }
 
 void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Timestamp version) {
-  auto filename = CheckedFileName(std::to_string(TicksSinceEpoch<milliseconds>(version)));
-  std::filesystem::path entryPath = cell.path() / (filename + FileExtension);
-  std::filesystem::path purgedPath = cell.path() / (filename + PurgedFileExtension);
+  auto stem = std::to_string(TicksSinceEpoch<milliseconds>(version));
+  auto filename = CheckedFileName(stem + FileExtension);
+  std::filesystem::path entryPath = cell.path() / filename;
+  std::filesystem::path purgedPath = cell.path() / CheckedFileName(stem + PurgedFileExtension);
 
   cell.participant().fileStore().fileSystem_.write([&]() {
       // Load the ".entry" file
-      auto entry = TryLoadFile(cell, filename, FileExtension);
+      auto entry = TryLoadFile(cell, filename);
       if (entry == nullptr) {
         auto msg = "Purge persistence can't load entry file from " + entryPath.string();
         PEP_LOG(LogTag, Severity::Error) << msg;
@@ -640,11 +637,13 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
     });
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoadFile(Cell& cell, const CheckedFileName& filename, const std::optional<std::filesystem::path>& extension) {
-  std::filesystem::path path = cell.path() / (filename + FileExtension);
+std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoadFile(Cell& cell, const CheckedFileName& filename) {
+  if (filename.path().extension() != FileExtension) { // Caller has found a non-entry file and attempts to load it
+    return nullptr;
+  }
 
-  if ((extension.has_value() && *extension != FileExtension) // Caller has found a non-entry file and attempts to load it
-    || !std::filesystem::is_regular_file(path)) { // This is not one of our files
+  auto path = (cell.path() / filename).path();
+  if (!std::filesystem::is_regular_file(path)) { // This is not one of our files
     return nullptr;
   }
 
@@ -704,8 +703,8 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoadFile(Cell& cell, cons
   return Entry::Create(cell, validFrom, purgedAt, checksumSubstitute, std::move(entryContent));
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedFileName& filename, std::optional<std::filesystem::path> extension) {
-  auto result = TryLoadFile(cell, filename, std::move(extension));
+std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedFileName& filename) {
+  auto result = TryLoadFile(cell, filename);
   if (result != nullptr && !result->getPurgedAt()) { // The loaded file does not contain a "purged-at" timestamp
     storagefacility::SqliteStorage::CellVersionSpec version{
       .cell = cell.entryName(),
