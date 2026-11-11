@@ -620,10 +620,8 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
         entry->save(PurgedFileExtension);
         assert(exists(purgedPath));
 
-        // Remove ".entry" file
-        PEP_LOG(LogTag, Severity::Debug) << "Removing un-purged state from " << entryPath;
-        remove(entryPath);
-        // Absence is asserted below (outside conditional branch)
+        // Don't remove the ".entry" file: it'll be (atomically) removed by the call to "rename" below.
+        // See https://en.cppreference.com/cpp/filesystem/rename
       }
       else {
         // No ".entry" file exists (anymore): previous attempt (failed or) was interrupted after it had been removed
