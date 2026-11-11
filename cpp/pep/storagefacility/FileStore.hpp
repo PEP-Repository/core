@@ -210,6 +210,12 @@ public:
   };
 
 private:
+  /// \brief Constructor
+  /// \param sqlite (A reference to) the SqliteStorage instance associated with this file store. Caller must ensure that the reference remains valid throughout this instance's lifetime.
+  /// \param metadatapath The path to the file store's "meta" directory, where it can store its (subdirectories and) files.
+  /// \param pageStoreConfig The configuration for the backing page store.
+  /// \param io_context The I/O context associated with asynchronous code for the calling thread.
+  /// \param metrics_registry The (optional) metrics registry where this instance may register its metrics
   FileStore(
     storagefacility::SqliteStorage& sqlite,
     const std::filesystem::path& metadatapath,
