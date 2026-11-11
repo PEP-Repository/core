@@ -641,22 +641,9 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoadFile(Cell& cell, const CheckedFileName& filename, const std::optional<std::filesystem::path>& extension) {
-  // Preferably load the ".entry" file. If a ".purged" file also exists, purge persistence for this file has been
-  // interrupted (e.g. because the process was killed), likely leaving the ".purged" file partially written and
-  // therefore corrupt.
   std::filesystem::path path = cell.path() / (filename + FileExtension);
 
-  // If the ".entry" file does not exist, load the ".purged" file if that exists. The situation will only occur if
-  // purge persistence was interrupted (e.g. the process killed) after the ".purged" file was (fully) written and the
-  // original ".entry" file deleted, but before the ".purged" file could be renamed to ".entry".
-  if (!exists(path)) {
-    path = (cell.path() / (filename + PurgedFileExtension)).path();
-    if (!exists(path)) {
-      return nullptr;
-    }
-  }
-
-  if ((extension.has_value() && *extension != path.extension()) // Caller (has found a file and) attempts to load a file that doesn't represent the entry's current state
+  if ((extension.has_value() && *extension != FileExtension) // Caller has found a non-entry file and attempts to load it
     || !std::filesystem::is_regular_file(path)) { // This is not one of our files
     return nullptr;
   }
