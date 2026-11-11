@@ -225,7 +225,10 @@ DataHistoryEntry2 Serializer<DataHistoryEntry2>::fromProtocolBuffer(proto::DataH
     .purgedAt{},
   };
   if (source.has_purged_at()) {
-    result.purgedAt = Serialization::FromProtocolBuffer(std::move(*source.mutable_purged_at()));
+    auto purgedAt = Serialization::FromProtocolBuffer(std::move(*source.mutable_purged_at()));
+    if (purgedAt != Timestamp{/* zero */ }) {
+      result.purgedAt = purgedAt;
+    }
   }
   return result;
 }
@@ -236,6 +239,7 @@ void Serializer<DataHistoryEntry2>::moveIntoProtocolBuffer(proto::DataHistoryEnt
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.timestamp);
   *dest.mutable_id() = std::move(value.id);
   if (value.purgedAt.has_value()) {
+    assert(*value.purgedAt != Timestamp{ /* zero */ });
     Serialization::MoveIntoProtocolBuffer(*dest.mutable_purged_at(), *value.purgedAt);
   }
 }
