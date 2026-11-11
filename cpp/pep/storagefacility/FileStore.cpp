@@ -236,8 +236,8 @@ FileStore::Cell::Cell(Participant& participant, const std::string& columnName, b
       });
   }
   else {
-    // throws when an error occurs while creating any of the given directories in the supplied path
     participant_.fileStore().fileSystem_.write([this]() {
+        // throws when an error occurs while creating any of the given directories in the supplied path
         std::filesystem::create_directories(this->path());
       });
   }
