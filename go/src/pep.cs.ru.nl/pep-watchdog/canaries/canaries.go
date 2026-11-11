@@ -24,7 +24,7 @@ type CanaryFileRecord struct {
 	Value       []byte `yaml:",flow"`
 }
 
-func ReadIfUnpurged(info *pep.FileInfo) ([]byte, error) {
+func readIfUnpurged(info *pep.FileInfo) ([]byte, error) {
 	if info.PurgedAt != nil {
 		return nil, nil
 	}
@@ -72,7 +72,7 @@ func Get() (
 		if index >= len(fileInfos) {
 			missingCanaries = append(missingCanaries, r)
 		} else {
-			buf, err := ReadIfUnpurged(&fileInfos[index])
+			buf, err := readIfUnpurged(&fileInfos[index])
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -87,7 +87,7 @@ func Get() (
 
 	for index := len(records); index < len(fileInfos); index++ {
 		fileInfo := fileInfos[index]
-		val, err := ReadIfUnpurged(&fileInfo)
+		val, err := readIfUnpurged(&fileInfo)
 		if err != nil {
 			return nil, nil, nil, err
 		}
