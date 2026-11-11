@@ -855,6 +855,8 @@ Items remain accessible until the purge cycle has been confirmed, after which th
 
 After purging, the only thing left in PEP will be a marker that a data version once existed. These markers are used to produce an error for any attempts to access affected cell versions, e.g. using [`pepcli get`](#get). Purged cell versions will only show up in cell [histories](#history) anymore, where they will be listed as having been purged at the moment that the cycle was confirmed (i.e. applied).
 
+After cell versions have been purged, the associated (encrypted) payload data in the underlying bulk storage (e.g. S3 bucket) may be deleted, since PEP will no longer (try to) access them. Note that PEP does not delete those data itself.
+
 ### purge back-catalog
 
 A user with `Data Administrator` privileges can request that all items be discarded from the repository that do not belong to the current (latest or "rolling") data set:
