@@ -483,10 +483,6 @@ void FileStore::Entry::throwErrorIfPurged(const std::string& logContext) const {
 }
 
 void FileStore::Entry::save() const {
-  this->save(FileExtension);
-}
-
-void FileStore::Entry::save(const std::string& extension) const {
   std::ostringstream out;
 
   out << EntryFileType;
@@ -508,7 +504,7 @@ void FileStore::Entry::save(const std::string& extension) const {
   std::string content = std::move(out).str();
   XXH64_hash_t hash = XXH64(content.data(), content.length(), 0ULL);
 
-  this->getCell().participant().fileStore().fileSystem_.write([this, &extension, &content, hash]() {
+  this->getCell().participant().fileStore().fileSystem_.write([this, &content, hash]() {
       std::filesystem::path tempfile = this->getFilePath(".tmp");
       std::ofstream outfile;
       outfile.open(tempfile, std::ios::binary | std::ios::out | std::ios::trunc);
@@ -522,7 +518,7 @@ void FileStore::Entry::save(const std::string& extension) const {
       }
       outfile.close();
 
-      std::filesystem::rename(tempfile, this->getFilePath(extension));
+      std::filesystem::rename(tempfile, this->getFilePath(FileExtension));
     });
 }
 
@@ -608,7 +604,7 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
       else {
         PEP_LOG(LogTag, Severity::Debug) << "Persisting purge into " << entryPath;
         entry->markPurged(purgedAt);
-        entry->save(FileExtension);
+        entry->save();
         PEP_LOG(LogTag, Severity::Info) << "Persisted purge into " << entryPath;
       }
     });

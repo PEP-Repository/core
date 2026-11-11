@@ -121,7 +121,6 @@ public:
     Entry(Cell& cell, Timestamp validFrom, std::optional<Timestamp> purgedAt, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
 
     CheckedPath getFilePath(const std::string& extension) const;
-    void save(const std::string& extension) const;
 
   public:
     std::unique_ptr<EntryContent> cloneContent() const;
