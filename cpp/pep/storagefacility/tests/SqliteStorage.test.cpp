@@ -3,17 +3,27 @@
 #include <pep/storagefacility/SqliteStorage.hpp>
 #include <gtest/gtest.h>
 
+namespace {
+
+pep::PurgeCycle MakePurgeCycle(pep::Timestamp announced) {
+  return pep::PurgeCycle{
+    .id{},
+    .definition = pep::PurgeCycle::Definition(pep::BackCatalogPurgeFilter),
+    .announced = announced,
+    .applied{},
+    .completed{},
+  };
+}
+
+}
+
 TEST(SqliteStorage, Basics) {
   using pep::storagefacility::SqliteStorage;
   SqliteStorage storage(pep::database::BasicStorage::StoreInMemory);
   EXPECT_TRUE(storage.getPurgeCycles().empty());
 
   const auto announcement = pep::TimeNow();
-  const auto cycle1id = storage.createPurgeCycle(pep::PurgeCycle{
-    .id{},
-    .definition = pep::PurgeCycle::Definition(pep::BackCatalogPurgeFilter),
-    .announced = announcement
-    });
+  const auto cycle1id = storage.createPurgeCycle(MakePurgeCycle(announcement));
   EXPECT_EQ(storage.getPurgeCycles().size(), 1);
 
   auto cycle1 = storage.getPurgeCycle(cycle1id);
@@ -27,11 +37,7 @@ TEST(SqliteStorage, Basics) {
   };
   EXPECT_ANY_THROW(storage.addToPurgeCycle(cycle1id + 1, cellVersion0)) << "Should refuse to add to nonexistent cycle";
 
-  const auto cycle2id = storage.createPurgeCycle(pep::PurgeCycle{
-    .id{},
-    .definition = pep::PurgeCycle::Definition(pep::BackCatalogPurgeFilter),
-    .announced = announcement
-    });
+  const auto cycle2id = storage.createPurgeCycle(MakePurgeCycle(announcement));
   EXPECT_EQ(storage.getPurgeCycles().size(), 2);
 
   storage.addToPurgeCycle(cycle1id, cellVersion0);
@@ -82,11 +88,7 @@ TEST(SqliteStorage, Atomicity) {
       .timestamp = pep::TimeNow()
   };
   storage.atomically([&]() {
-    cycle = storage.createPurgeCycle(pep::PurgeCycle{
-      .id{},
-      .definition = pep::PurgeCycle::Definition(pep::BackCatalogPurgeFilter),
-      .announced = pep::TimeNow()
-      });
+    cycle = storage.createPurgeCycle(MakePurgeCycle(pep::TimeNow()));
     storage.addToPurgeCycle(cycle, cellVersion0);
     });
   EXPECT_NE(cycle, pep::PurgeCycle::Id{});
