@@ -10,6 +10,7 @@ TEST(SqliteStorage, Basics) {
 
   const auto announcement = pep::TimeNow();
   const auto cycle1id = storage.createPurgeCycle(pep::PurgeCycle{
+    .id{},
     .definition = pep::PurgeCycle::Definition(pep::BackCatalogPurgeFilter),
     .announced = announcement
     });
@@ -27,6 +28,7 @@ TEST(SqliteStorage, Basics) {
   EXPECT_ANY_THROW(storage.addToPurgeCycle(cycle1id + 1, cellVersion0)) << "Should refuse to add to nonexistent cycle";
 
   const auto cycle2id = storage.createPurgeCycle(pep::PurgeCycle{
+    .id{},
     .definition = pep::PurgeCycle::Definition(pep::BackCatalogPurgeFilter),
     .announced = announcement
     });
@@ -81,6 +83,7 @@ TEST(SqliteStorage, Atomicity) {
   };
   storage.atomically([&]() {
     cycle = storage.createPurgeCycle(pep::PurgeCycle{
+      .id{},
       .definition = pep::PurgeCycle::Definition(pep::BackCatalogPurgeFilter),
       .announced = pep::TimeNow()
       });
