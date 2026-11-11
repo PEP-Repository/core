@@ -584,28 +584,28 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
 }
 
 void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Timestamp version) {
-  auto stem = std::to_string(TicksSinceEpoch<milliseconds>(version));
-  auto filename = CheckedFileName(stem + FileExtension);
-  std::filesystem::path entryPath = cell.path() / filename;
+  auto timestampStr = std::to_string(TicksSinceEpoch<milliseconds>(version));
 
   cell.participant().fileStore().fileSystem_.write([&]() {
       // Load the ".entry" file
-      auto entry = TryLoadFile(cell, filename);
+      auto entry = TryLoadFile(cell, CheckedFileName(timestampStr + FileExtension));
       if (entry == nullptr) {
-        auto msg = "Purge persistence can't load entry file from " + entryPath.string();
+        std::ostringstream stream;
+        stream << "Purge persistence can't load entry file for cell " << cell.entryName().string() << " at timestamp " << timestampStr;
+        auto msg = std::move(stream).str();
         PEP_LOG(LogTag, Severity::Error) << msg;
         throw std::runtime_error(msg);
       }
 
       if (entry->getPurgedAt().has_value()) {
-        PEP_LOG(LogTag, Severity::Debug) << "Purge has previously been persisted into " << entryPath;
+        PEP_LOG(LogTag, Severity::Debug) << "Purge has previously been persisted for cell " << cell.entryName().string() << " at timestamp " << timestampStr;
         assert(entry->getPurgedAt() == purgedAt);
       }
       else {
-        PEP_LOG(LogTag, Severity::Debug) << "Persisting purge into " << entryPath;
+        PEP_LOG(LogTag, Severity::Debug) << "Persisting purge for cell " << cell.entryName().string() << " at timestamp " << timestampStr;
         entry->markPurged(purgedAt);
         entry->save();
-        PEP_LOG(LogTag, Severity::Info) << "Persisted purge into " << entryPath;
+        PEP_LOG(LogTag, Severity::Info) << "Persisted purge for cell " << cell.entryName().string() << " at timestamp " << timestampStr;
       }
     });
 }
