@@ -598,39 +598,39 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
   std::filesystem::path purgedPath = cell.path() / (filename + PurgedFileExtension);
 
   cell.participant().fileStore().fileSystem_.write([&]() {
-      // Process ".entry" file if it exists
-      if (auto entry = TryLoadFile(cell, filename, FileExtension)) {
-        if (entry->getPurgedAt().has_value()) {
-          PEP_LOG(LogTag, Severity::Debug) << "Purge has previously been persisted into " << entryPath;
-          assert(entry->getPurgedAt() == purgedAt);
-          return;
-        }
-
-        PEP_LOG(LogTag, Severity::Debug) << "Persisting purge into " << entryPath;
-
-        // Clean up (possibly corrupt file left behind by) failed or interrupted previous persistence attempt
-        if (exists(purgedPath)) {
-          PEP_LOG(LogTag, Severity::Debug) << "Discarding previous purge persistence attempt at " << purgedPath;
-          remove(purgedPath);
-          assert(!exists(purgedPath));
-        }
-
-        // Save ".purged" file
-        entry->markPurged(purgedAt);
-        entry->save(PurgedFileExtension);
-        assert(exists(purgedPath));
-
-        // Don't remove the ".entry" file: it'll be (atomically) removed by the call to "rename" below.
-        // See https://en.cppreference.com/cpp/filesystem/rename
-      }
-      else {
-        // No ".entry" file exists (anymore): previous attempt (failed or) was interrupted after it had been removed
-        PEP_LOG(LogTag, Severity::Debug) << "Resuming previous purge persistence attempt at " << purgedPath;
+      // Load the ".entry" file
+      auto entry = TryLoadFile(cell, filename, FileExtension);
+      if (entry == nullptr) {
+        auto msg = "Purge persistence can't load entry file from " + entryPath.string();
+        PEP_LOG(LogTag, Severity::Error) << msg;
+        throw std::runtime_error(msg);
       }
 
-      // A ".purged" file exists and the corresponding ".entry" file does not: rename
+      if (entry->getPurgedAt().has_value()) {
+        PEP_LOG(LogTag, Severity::Debug) << "Purge has previously been persisted into " << entryPath;
+        assert(entry->getPurgedAt() == purgedAt);
+        return;
+      }
+
+      PEP_LOG(LogTag, Severity::Debug) << "Persisting purge into " << entryPath;
+
+      // Clean up (possibly corrupt file left behind by) failed or interrupted previous persistence attempt
+      if (exists(purgedPath)) {
+        PEP_LOG(LogTag, Severity::Debug) << "Discarding previous purge persistence attempt at " << purgedPath;
+        remove(purgedPath);
+        assert(!exists(purgedPath));
+      }
+
+      // Save ".purged" file
+      entry->markPurged(purgedAt);
+      entry->save(PurgedFileExtension);
+      assert(exists(purgedPath));
+
+      // Don't (separately) remove the ".entry" file: it'll be (atomically) removed by the call to "rename" below.
+      // See https://en.cppreference.com/cpp/filesystem/rename
+
+      // Rename the ".purged" file to ".entry", overwriting the ".entry" file
       PEP_LOG(LogTag, Severity::Debug) << "Finalizing purge persistence of " << entryPath;
-      assert(!exists(entryPath));
       assert(exists(purgedPath));
       rename(purgedPath, entryPath);
       assert(exists(entryPath));
