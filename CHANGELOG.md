@@ -6,6 +6,8 @@
 
 ## Changes in upcoming release (1.9)
 
+- core#3049: Fixed a bug where `pepcli register participant` did not ensure completion of short pseudonyms.
+
 - core#2705: Support for Intel (x86) Macs will be discontinued on March 1, 2027. On Intel Macs, pepAssessor, pepLogon and pepcli now print a warning about this to the console when started. pepAssessor also shows it on its login window, and the PEP Download Tool and PEP Upload Tool show it in a pop-up.
 
 - core#2962: `pepcli pseudonym convert` no longer requires access to the subject associated with the pseudonym.

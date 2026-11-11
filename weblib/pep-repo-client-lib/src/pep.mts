@@ -66,6 +66,12 @@ export interface InitConfig {
   clientConfig: URL | ClientConfig;
   configFileContentOverrides?: { [key in keyof ConfigFiles]?: string | undefined };
   authLandingPage?: URL | null;
+  /**
+   * Whether to connect to the PEP servers over secure WebSockets (wss://).
+   * Defaults to true when the page is served over https:, false otherwise.
+   * Some browsers (e.g. Safari) block unsecure websockets on https: pages.
+   */
+  secureWebsocket?: boolean;
 }
 
 /** Replace EmbindString (or union involving EmbindString) members with plain string. */
@@ -93,7 +99,8 @@ export interface ListColumnsQuery {
   requireModes?: Partial<ColumnGroupAccessModes> | undefined;
 }
 
-export interface ColumnGroup extends UseJsStrings<rawTypes.ColumnGroup> {
+/** Used in the result of {@link Pep.listColumns} */
+export interface AccessibleColumnGroup extends UseJsStrings<rawTypes.AccessibleColumnGroup> {
   columns: string[];
 }
 
@@ -103,18 +110,32 @@ export interface AccessibleColumn {
   modes: ColumnGroupAccessModes;
 }
 
+function combineColumnGroupAccessModes(a: ColumnGroupAccessModes, b: ColumnGroupAccessModes): ColumnGroupAccessModes {
+  return {
+    read: a.read || b.read,
+    readMeta: a.readMeta || b.readMeta,
+    write: a.write || b.write,
+    writeMeta: a.writeMeta || b.writeMeta,
+  };
+}
+
+/** Flags with only `mode` set, to pass a single mode */
+function singleColumnGroupAccessMode(mode: keyof ColumnGroupAccessModes): ColumnGroupAccessModes {
+  return {read: false, readMeta: false, write: false, writeMeta: false, [mode]: true};
+}
+
+/** Flags with only `mode` set, to pass a single mode */
+function singleSubjectGroupAccessMode(mode: keyof SubjectGroupAccessModes): SubjectGroupAccessModes {
+  return {access: false, enumerate: false, [mode]: true};
+}
+
 /** Get the access modes per column, sorted by column name, from the result of {@link Pep.listColumns} */
-export function getColumnModes(columnGroups: ColumnGroup[]): AccessibleColumn[] {
+export function getColumnModes(columnGroups: AccessibleColumnGroup[]): AccessibleColumn[] {
   const columnModes = new Map<string, ColumnGroupAccessModes>();
   for (const group of columnGroups) {
     for (const column of group.columns) {
       const modes = columnModes.get(column);
-      columnModes.set(column, modes ? {
-        read: modes.read || group.modes.read,
-        readMeta: modes.readMeta || group.modes.readMeta,
-        write: modes.write || group.modes.write,
-        writeMeta: modes.writeMeta || group.modes.writeMeta,
-      } : {...group.modes});
+      columnModes.set(column, modes ? combineColumnGroupAccessModes(modes, group.modes) : {...group.modes});
     }
   }
   return [...columnModes]
@@ -130,6 +151,7 @@ export interface ParticipantPersonalia extends UseJsStrings<Omit<rawTypes.Partic
 }
 
 export interface StoreQuery {
+  /** A participant identifier, polymorphic pseudonym or (brief) local pseudonym */
   subject: string;
   column: string;
   data: string | Blob | ReadableStream<Uint8Array>;
@@ -176,13 +198,66 @@ export interface UserQueryFilter {
   userFilter?: string | undefined;
 }
 
+/** Used in the result of {@link Pep.queryAccessManager} */
+export interface ColumnGroup extends UseJsStrings<rawTypes.ColumnGroup> {
+  columns: string[];
+}
+
+/**
+ * Per column group and user group: `modes` of the explicit access rules,
+ * and `impliedOnlyModes` implied by those (e.g. `readMeta` by `read`) that are not explicit themselves
+ */
+export type ColumnGroupAccessRule = UseJsStrings<rawTypes.ColumnGroupAccessRuleInfo>;
+
+/** Per subject group and user group: the modes of the access rules */
+export type SubjectGroupAccessRule = UseJsStrings<rawTypes.SubjectGroupAccessRuleInfo>;
+
+/** Result of {@link Pep.queryAccessManager} */
+export interface AccessManagerState {
+  columns: string[];
+  columnGroups: ColumnGroup[];
+  columnGroupAccessRules: ColumnGroupAccessRule[];
+  subjectGroups: string[];
+  subjectGroupAccessRules: SubjectGroupAccessRule[];
+}
+
+/** The name filters match exactly. Omitted filters match everything. */
+export interface AccessManagerFilter {
+  /** Default: now, in server time */
+  pointInTime?: Date | undefined;
+  column?: string | undefined;
+  columnGroup?: string | undefined;
+  subjectGroup?: string | undefined;
+  /** Only rules for this user group, and only the groups that have such a rule */
+  userGroup?: string | undefined;
+}
+
+/** Result of {@link getEffectiveAccessModes} */
+export interface EffectiveAccessModes {
+  /** With `modes` including the implied ones */
+  columnGroups: Omit<ColumnGroupAccessRule, 'impliedOnlyModes'>[];
+  subjectGroups: SubjectGroupAccessRule[];
+}
+
+/**
+ * Get the effective modes (explicit and implied) per group and user group, from the result of
+ * {@link Pep.queryAccessManager}
+ */
+export function getEffectiveAccessModes(state: AccessManagerState): EffectiveAccessModes {
+  return {
+    columnGroups: state.columnGroupAccessRules.map(({columnGroup, userGroup, modes, impliedOnlyModes}) =>
+        ({columnGroup, userGroup, modes: combineColumnGroupAccessModes(modes, impliedOnlyModes)})),
+    subjectGroups: state.subjectGroupAccessRules,
+  };
+}
+
 interface RawUser extends UseJsStrings<rawTypes.User> {
   groups: UseJsStrings<rawTypes.UserGroupMembership>[];
 }
 
 export interface ListQuery {
   subjectGroups?: string[] | undefined;
-  /** Loose subjects to request (any format that would be recognized by pepcli) */
+  /** Loose subjects to request: each a participant identifier, polymorphic pseudonym or (brief) local pseudonym */
   subjects?: string[] | undefined;
   columnGroups?: string[] | undefined;
   columns?: string[] | undefined;
@@ -316,12 +391,17 @@ export default class Pep {
     // Persist ClientKeys.json to keep user logged in
     clientConfig.EnrolledPartyKeysFile = '/persist/ClientKeys.json';
 
+    const secureWebsocket = config.secureWebsocket ?? globalThis.location?.protocol === 'https:';
+
     // These members must be listed in -sINCOMING_MODULE_JS_API
     let Module: PepModule | {
       thisProgram: string,
+      websocket: {url: string},
     } = {
       /// This ends up in `argv[0]`
       thisProgram: 'pepWeblib',
+      /// Emscripten appends host and port to a URL that is only a scheme
+      websocket: {url: secureWebsocket ? 'wss://' : 'ws://'},
     };
 
     Module = await initModule(Module) as PepModule;
@@ -475,9 +555,12 @@ export default class Pep {
    * List column groups the user has any access to, with the access modes.
    * Use {@link getColumnModes} to get the modes per column.
    */
-  listColumns(query: ListColumnsQuery = {}): Promise<ColumnGroup[]> {
+  listColumns(query: ListColumnsQuery = {}): Promise<AccessibleColumnGroup[]> {
+    //TODO(workaround) Cast to Required<ListColumnsQuery> because of https://github.com/emscripten-core/emscripten/issues/25978,
+    // remove it with EMSDK 5.0.0+
     return this.#wrapExec(() => this.#client.listColumns({
-      includeImplicitlyGranted: query.includeImplicitlyGranted,
+      ...query as Required<ListColumnsQuery>,
+      // Embind requires every flag
       requireModes: {read: false, readMeta: false, write: false, writeMeta: false, ...query.requireModes},
     }));
   }
@@ -626,6 +709,84 @@ export default class Pep {
 
   updateUserGroupExpiration(uid: string, group: string, expiration: Date | null | undefined): Promise<void> {
     return this.#wrapExec(() => this.#client.updateUserGroupExpiration(uid, group, expiration?.getTime()));
+  }
+
+  // Data administration: changes require the Data Administrator user group,
+  // querying also allows the Access Administrator and Repository Manager user groups
+
+  queryAccessManager(filter: AccessManagerFilter = {}): Promise<AccessManagerState> {
+    //TODO(workaround) Cast to Required<AccessManagerFilter> because of https://github.com/emscripten-core/emscripten/issues/25978,
+    // remove it with EMSDK 5.0.0+
+    return this.#wrapExec(() => this.#client.queryAccessManager({
+      ...filter as Required<AccessManagerFilter>,
+      pointInTime: filter.pointInTime?.getTime(),
+    }));
+  }
+
+  createColumn(name: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.createColumn(name));
+  }
+
+  removeColumn(name: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeColumn(name));
+  }
+
+  createColumnGroup(name: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.createColumnGroup(name));
+  }
+
+  /** @param force Also remove the group's column memberships and access rules. Without it, removal fails if there are any. */
+  removeColumnGroup(name: string, force: boolean = false): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeColumnGroup(name, force));
+  }
+
+  addColumnToGroup(column: string, columnGroup: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.addColumnToGroup(column, columnGroup));
+  }
+
+  removeColumnFromGroup(column: string, columnGroup: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeColumnFromGroup(column, columnGroup));
+  }
+
+  createSubjectGroup(name: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.createSubjectGroup(name));
+  }
+
+  /** @param force Also remove the group's subject memberships and access rules. Without it, removal fails if there are any. */
+  removeSubjectGroup(name: string, force: boolean = false): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeSubjectGroup(name, force));
+  }
+
+  /** @param subject A participant identifier, polymorphic pseudonym or (brief) local pseudonym */
+  addSubjectToGroup(subjectGroup: string, subject: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.addSubjectToGroup(subjectGroup, subject));
+  }
+
+  /** @param subject A participant identifier, polymorphic pseudonym or (brief) local pseudonym */
+  removeSubjectFromGroup(subjectGroup: string, subject: string): Promise<void> {
+    return this.#wrapExec(() => this.#client.removeSubjectFromGroup(subjectGroup, subject));
+  }
+
+  // Access rules: require the Access Administrator user group
+
+  createColumnGroupAccessRule(columnGroup: string, userGroup: string, mode: keyof ColumnGroupAccessModes): Promise<void> {
+    return this.#wrapExec(() =>
+        this.#client.createColumnGroupAccessRule(columnGroup, userGroup, singleColumnGroupAccessMode(mode)));
+  }
+
+  removeColumnGroupAccessRule(columnGroup: string, userGroup: string, mode: keyof ColumnGroupAccessModes): Promise<void> {
+    return this.#wrapExec(() =>
+        this.#client.removeColumnGroupAccessRule(columnGroup, userGroup, singleColumnGroupAccessMode(mode)));
+  }
+
+  createSubjectGroupAccessRule(subjectGroup: string, userGroup: string, mode: keyof SubjectGroupAccessModes): Promise<void> {
+    return this.#wrapExec(() =>
+        this.#client.createSubjectGroupAccessRule(subjectGroup, userGroup, singleSubjectGroupAccessMode(mode)));
+  }
+
+  removeSubjectGroupAccessRule(subjectGroup: string, userGroup: string, mode: keyof SubjectGroupAccessModes): Promise<void> {
+    return this.#wrapExec(() =>
+        this.#client.removeSubjectGroupAccessRule(subjectGroup, userGroup, singleSubjectGroupAccessMode(mode)));
   }
 
   /** @see {@link PepModule.pepHandleWasmException} */

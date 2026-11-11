@@ -6,6 +6,7 @@
 
 #include <functional>
 #include <vector>
+
 class ButtonBar : public QWidget {
   Q_OBJECT
 

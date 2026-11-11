@@ -53,12 +53,12 @@ struct ListColumnsQuery {
 };
 
 /// Used in the result of listColumns
-struct ColumnGroup {
+struct AccessibleColumnGroup {
   std::string name;
   ColumnGroupAccessModes modes;
   std::vector<std::string> columns;
 
-  [[nodiscard]] auto operator<=>(const ColumnGroup&) const = default;
+  [[nodiscard]] auto operator<=>(const AccessibleColumnGroup&) const = default;
 };
 
 struct EnrolledUser {
@@ -161,6 +161,59 @@ struct UserQueryResult {
   std::vector<UserGroupInfo> userGroups;
 
   [[nodiscard]] auto operator<=>(const UserQueryResult&) const = default;
+};
+
+/// Used in the result of queryAccessManager
+struct ColumnGroup {
+  std::string name;
+  std::vector<std::string> columns;
+
+  [[nodiscard]] auto operator<=>(const ColumnGroup&) const = default;
+};
+
+/// Used in the result of queryAccessManager.
+/// Named differently from pep::ColumnGroupAccessRule to prevent ambiguity
+struct ColumnGroupAccessRuleInfo {
+  std::string columnGroup;
+  std::string userGroup;
+  /// The modes of the explicit access rules
+  ColumnGroupAccessModes modes;
+  /// The modes implied by \c modes, e.g. "read-meta" by "read", that are not explicit themselves
+  ColumnGroupAccessModes impliedOnlyModes;
+
+  [[nodiscard]] auto operator<=>(const ColumnGroupAccessRuleInfo&) const = default;
+};
+
+/// Used in the result of queryAccessManager
+struct SubjectGroupAccessRuleInfo {
+  std::string subjectGroup;
+  std::string userGroup;
+  SubjectGroupAccessModes modes;
+
+  [[nodiscard]] auto operator<=>(const SubjectGroupAccessRuleInfo&) const = default;
+};
+
+/// Input of queryAccessManager. Each filter matches an exact name, omitted filters match everything
+struct AccessManagerFilter {
+  /// Milliseconds since the Unix epoch; omitted for the current server time. double to prevent it being mapped to bigint
+  std::optional<double> pointInTime;
+  std::optional<std::string> column;
+  std::optional<std::string> columnGroup;
+  std::optional<std::string> subjectGroup;
+  std::optional<std::string> userGroup;
+
+  [[nodiscard]] auto operator<=>(const AccessManagerFilter&) const = default;
+};
+
+/// Used as the result of queryAccessManager
+struct AccessManagerState {
+  std::vector<std::string> columns;
+  std::vector<ColumnGroup> columnGroups;
+  std::vector<ColumnGroupAccessRuleInfo> columnGroupAccessRules;
+  std::vector<std::string> subjectGroups;
+  std::vector<SubjectGroupAccessRuleInfo> subjectGroupAccessRules;
+
+  [[nodiscard]] auto operator<=>(const AccessManagerState&) const = default;
 };
 
 }

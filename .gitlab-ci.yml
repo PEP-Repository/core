@@ -218,7 +218,7 @@ variables:
   # Use color for gtest output
   GTEST_COLOR: 1
 
-# Pipeline for a non-draft MR: runs same jobs as main, linter and coverage.
+# Pipeline for a non-draft MR: runs same jobs as main, including linter and coverage.
 # Marking an MR ready doesn't start a pipeline: push or use "Run pipeline".
 # TODO: Trigger a pipeline when an MR is marked ready (can be done with a webhook to trigger a pipeline via the API)
 .mr-ready: &mr-ready '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_DRAFT != "true"'
@@ -240,6 +240,7 @@ variables:
 
 # Applies to whole pipeline
 workflow:
+  name: '$MR_PIPELINE_NAME'
   auto_cancel:
     on_job_failure: none
   rules:
@@ -251,11 +252,18 @@ workflow:
     # Manual, scheduled and triggered runs still get a branch pipeline.
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_OPEN_MERGE_REQUESTS && $CI_COMMIT_REF_PROTECTED != "true"
       when: never
-
-    # Every rule below runs the pipeline (MR pipeline for MRs from unprotected branches, branch pipeline otherwise).
-    # Note that CI_COMMIT_BRANCH is empty in MR pipelines, use e.g. ${CI_COMMIT_BRANCH:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
-    # for the branch name. They only differ in auto-cancel and keep-going behaviour.
-
+    # Ready MR: build everything, keep going after compile errors, and always run all jobs including linter and coverage (if C++ code changed)
+    - if: *mr-ready
+      variables:
+        BUILD_ALL_TARGETS: 'yes'
+        BUILD_KEEP_GOING_ALWAYS: 'yes'
+        MR_PIPELINE_NAME: 'READY: $CI_MERGE_REQUEST_TITLE'
+    # Draft MR: build essentials, fail fast, cancel as soon as a job fails
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $AUTO_CANCEL_ON_JOB_FAILURE == "yes"
+      auto_cancel:
+        on_job_failure: all
+      variables:
+        MR_PIPELINE_NAME: 'DRAFT: $CI_MERGE_REQUEST_TITLE'
     # Main and linting pipelines: report all failures, so never auto-cancel and always keep going.
     # A separate variable, as the Run pipeline form passes BUILD_KEEP_GOING (default 'no'), overriding workflow variables.
     - if: *always-linted-branches
@@ -605,12 +613,12 @@ retrieve-lockfile:
     -DCMAKE_C_COMPILER_LAUNCHER=ccache
     -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
     -DENABLE_CLANG_TIDY="$ENABLE_LINTER"
+    -DCMAKE_CXX_CLANG_TIDY_EXPORT_FIXES_DIR="$CI_PROJECT_DIR/$BUILD_DIRECTORY/clang-tidy-fixes"
     -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
     -DENABLE_OAUTH_TEST_USERS=OFF
     -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
     -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
     -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
-    -DPEP_WEBLIB_USE_WSS=${PEP_WEBLIB_USE_WSS:-OFF}
     -DENABLE_COVERAGE=${ENABLE_COVERAGE:-OFF}
 
 .configure-conan-and-cmake: &configure-conan-and-cmake
@@ -654,11 +662,15 @@ retrieve-lockfile:
     - *run-tests
   after_script:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
+    # Linter findings, shown on the MR page. Also when the job failed: reports are uploaded regardless.
+    - python3 scripts/clang-tidy-codequality.py "$BUILD_DIRECTORY/clang-tidy-fixes" . > gl-code-quality-report.json
+      || echo "Could not create the Code Quality report, see above"
     - *stage-artifacts
     - *ccache-print
   artifacts:
     reports:
       junit: temp/*.xml
+      codequality: gl-code-quality-report.json
 
 .ubuntu-lts-settings:
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
@@ -691,9 +703,20 @@ ubuntu-lts-debug:
       variables:
         ENABLE_COVERAGE: "ON"
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
-    - if: *mr-ready
       variables:
         ENABLE_COVERAGE: "ON"
+    # Ready MRs: only measure coverage when C++ code, its build or tests changed (compared with the target branch)
+    - if: *mr-ready
+      changes:
+        - cpp/**/*
+        - messages/**/*
+        - tests/**/*
+        - CMakeLists.txt
+        - cmake/**/*
+        - conanfile.py
+      variables:
+        ENABLE_COVERAGE: "ON"
+    - if: *mr-ready
   before_script:
     - !reference [.ubuntu-build-base, before_script]
     - |
@@ -762,6 +785,8 @@ ubuntu-lts-debug:
     - 'echo "Line Coverage: ${line_pct}%"'
   coverage: '/Line Coverage: (\d+\.?\d*)%/'
   artifacts:
+    # Links to the report from the MR page
+    expose_as: 'Coverage report'
     paths:
       - htmlcov/
     reports:
@@ -781,7 +806,7 @@ pages:
     - job: ubuntu-lts-debug
       artifacts: true
   rules:
-    - if: "'$[[ inputs.test_coverage ]]' == 'coverage' && $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   #language=sh
   script:
     - if [ ! -f htmlcov/unit/index.html ] || [ ! -f htmlcov/combined/index.html ]; then
@@ -1339,7 +1364,6 @@ weblib-release:
     - .weblib-base
   variables:
     CMAKE_BUILD_TYPE: "$RELEASE_MODE"
-    PEP_WEBLIB_USE_WSS: "ON"
   rules: *run-in-every-pipeline
 
 weblib-integration:
@@ -1511,7 +1535,6 @@ test-docker-integration-on-base-data:
     - docker-small
   variables:
     GIT_STRATEGY: none # As these jobs only work on artifacts, we do not need the git repository
-  interruptible: false # We do not want to interrupt jobs that upload things, to prevent partial uploads
 
 .upload-curl-base:
   extends: .upload-base
@@ -1564,7 +1587,6 @@ upload-weblib-npm:
     - docker-small
   needs:
     - weblib-release
-  interruptible: false
   #language=sh
   rules: *run-in-every-pipeline
   script:

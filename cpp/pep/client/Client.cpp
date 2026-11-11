@@ -5,7 +5,6 @@
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
-#include <pep/async/RxToEmpty.hpp>
 #include <pep/async/RxToSet.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/File.hpp>
@@ -131,8 +130,8 @@ rxcpp::observable<std::string> Client::registerParticipant(const ParticipantPers
                        })
           | to<std::vector>();
 
-        // Store data in PEP
-        auto process = storeData2(entries).op(RxToEmpty<FakeVoid>());
+        // Store data in PEP. Emit a single item once storage has finished to enable the flat_map below.
+        auto process = storeData2(entries).op(RxInstead(FakeVoid()));
         if (complete) {
           process = process.flat_map([this, identifier](FakeVoid) {
             return completeParticipantRegistration(identifier, true);
