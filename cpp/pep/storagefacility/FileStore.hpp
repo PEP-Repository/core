@@ -108,8 +108,6 @@ public:
     // Allow EntryChange to invoke SharedConstructor<Entry>::Create (which we inherit privately)
     friend class EntryChange;
 
-    static std::shared_ptr<Entry> TryLoadFile(Cell& cell, const CheckedFileName& filename);
-
   private:
     static const std::string FileExtension;
     static const std::string PurgedFileExtension; // used (only) during purge persistence
@@ -250,6 +248,7 @@ private:
   Participant* getParticipant(const std::string& name) const;
   Participant& provideParticipant(const std::string& name);
 
+  void markPurged(const PurgeCycle& cycle);
   void persistPurgeCycleAsync(PurgeCycle cycle); // Entry point for the purgePersistence_ thread
 
 public:

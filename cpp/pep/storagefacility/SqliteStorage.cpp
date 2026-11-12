@@ -260,25 +260,4 @@ std::set<SqliteStorage::CellVersionSpec> SqliteStorage::getIncludedCellVersions(
     });
 }
 
-std::optional<Timestamp> SqliteStorage::pendingPurgeTimestamp(const CellVersionSpec& cellVersion) const {
-  return this->atomically([this, &cellVersion]() -> std::optional<Timestamp> {
-      auto rowId = this->getRowId(cellVersion.cell.participant());
-      auto columnId = this->getColumnId(cellVersion.cell.column());
-      if (!rowId.has_value() || !columnId.has_value()) {
-        return std::nullopt;
-      }
-
-      using namespace sqlite_orm;
-      auto millis = database::TimestampToUnixMillis(cellVersion.timestamp);
-
-      return RangeToOptional(implementor_->raw.iterate(
-          select(&PurgeCycleRecord::applied,
-          inner_join<PurgeEntryRecord>(on(c(&PurgeEntryRecord::cycle) == c(&PurgeCycleRecord::id))),
-          where(c(&PurgeEntryRecord::row) == rowId && c(&PurgeEntryRecord::column) == columnId && c(&PurgeEntryRecord::timestamp) == millis
-            && c(&PurgeCycleRecord::applied) != 0 && c(&PurgeCycleRecord::completed) == 0)))
-        | std::views::transform(&database::TimestampFromUnixMillis)
-      );
-    });
-}
-
 }

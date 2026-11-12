@@ -69,10 +69,17 @@ TEST(SqliteStorage, Basics) {
   EXPECT_EQ(storage.getIncludedCellVersions(cycle1id).size(), 3);
   EXPECT_EQ(storage.getIncludedCellVersions(cycle2id).size(), 0);
 
-  EXPECT_EQ(storage.pendingPurgeTimestamp(cellVersion0), std::nullopt) << "Cycle hasn't been applied yet";
+  EXPECT_FALSE(storage.getPurgeCycle(cycle1id).applied.has_value());
   cycle1.applied = pep::TimeNow();
   storage.updatePurgeCycle(cycle1);
-  EXPECT_EQ(storage.pendingPurgeTimestamp(cellVersion0), cycle1.applied);
+  EXPECT_TRUE(storage.getPurgeCycle(cycle1id).applied.has_value());
+  EXPECT_EQ(storage.getIncludedCellVersions(cycle1id).size(), 3);
+
+  EXPECT_FALSE(storage.getPurgeCycle(cycle1id).completed.has_value());
+  cycle1.completed = pep::TimeNow();
+  storage.updatePurgeCycle(cycle1);
+  EXPECT_TRUE(storage.getPurgeCycle(cycle1id).completed.has_value());
+  EXPECT_EQ(storage.getIncludedCellVersions(cycle1id).size(), 3);
 }
 
 TEST(SqliteStorage, Atomicity) {

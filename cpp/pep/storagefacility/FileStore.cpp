@@ -111,6 +111,22 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
   return **participants_.emplace(std::make_unique<Participant>(*this, name)).first;
 }
 
+void FileStore::markPurged(const PurgeCycle& cycle) {
+  assert(cycle.applied);
+
+  std::unordered_map<std::string, Participant::VersionTimestampsByColumn> byParticipant;
+  for (const auto& spec : sqlite_.getIncludedCellVersions(cycle.id)) {
+    [[maybe_unused]] auto emplaced = byParticipant[spec.cell.participant()][spec.cell.column()].emplace(spec.timestamp).second;
+    assert(emplaced);
+  }
+  for (const auto& p : byParticipant) {
+    auto& [name, byColumn] = p;
+    auto participant = this->getParticipant(name);
+    assert(participant != nullptr);
+    participant->markPurged(*cycle.applied, byColumn);
+  }
+}
+
 void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
   // Entry point for the purgePersistence_ thread
 
@@ -163,11 +179,10 @@ FileStore::FileStore(
   pagestore_(PageStore::Create(io_context, metrics_registry, pageStoreConfig)),
   checksumChains_(SfChecksumChain::CreateAll(*this))
 {
-  // File system access doesn't need to be synchronized because our purge persistence thread isn't running
-
   // throws when an error occurs while creating any of the given directories in the supplied path
   std::filesystem::create_directories(path_);
 
+  // Load cell versions from disk. File system access doesn't need to be synchronized because our purge persistence thread isn't running.
   auto start_time = steady_clock::now();
   for (const auto& p : std::filesystem::directory_iterator(path_)) {
     auto name = p.path().filename().string();
@@ -175,6 +190,11 @@ FileStore::FileStore(
       [[maybe_unused]] auto emplaced = participants_.emplace(std::make_unique<Participant>(*this, name, true)).second;
       assert(emplaced);
     }
+  }
+
+  // Mark versions purged that are included in purge cycles that have been applied (confirmed) but not (completely) persisted yet
+  for (auto cycle : sqlite_.getPurgeCycles() | std::views::filter([](const PurgeCycle& cycle) {return cycle.applied && !cycle.completed; })) {
+    this->markPurged(cycle);
   }
 
   auto entryCount = this->getMetrics().entryCount;
@@ -284,21 +304,7 @@ void FileStore::persistPendingPurges() {
 }
 
 void FileStore::applyPurgeCycle(const PurgeCycle& cycle) {
-  assert(cycle.applied);
-
-  std::unordered_map<std::string, Participant::VersionTimestampsByColumn> byParticipant;
-  for (const auto& spec : sqlite_.getIncludedCellVersions(cycle.id)) {
-    [[maybe_unused]] auto emplaced = byParticipant[spec.cell.participant()][spec.cell.column()].emplace(spec.timestamp).second;
-    assert(emplaced);
-  }
-
-  for (const auto& p : byParticipant) {
-    auto& [participantName, byColumn] = p;
-    auto participant = this->getParticipant(participantName);
-    assert(participant != nullptr);
-    participant->markPurged(*cycle.applied, byColumn);
-  }
-
+  this->markPurged(cycle);
   this->persistPendingPurges();
 }
 
@@ -327,8 +333,12 @@ std::shared_ptr<FileStore::Entry> FileStore::Cell::lookup(Timestamp validAt) {
   if (it->validFrom == latest_->getValidFrom()) {
     return latest_;
   }
-  return participant_.fileStore().fileSystem_.read([this, timestamp = it->validFrom]() {
-      return Entry::Load(*this, timestamp);
+  return participant_.fileStore().fileSystem_.read([this, timestamp = it->validFrom, purgedAt = it->purgedAt]() {
+      auto result = Entry::Load(*this, timestamp);
+      if (purgedAt && !result->getPurgedAt()) { // If the .entry file didn't contain a "purged-at" (yet) but it's included in a pending (i.e. applied/confirmed) purge cycle:
+        result->markPurged(*purgedAt);
+      }
+      return result;
     });
 }
 
@@ -597,7 +607,7 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
 
   cell.participant().fileStore().fileSystem_.write([&]() {
       // Load the ".entry" file
-      auto entry = TryLoadFile(cell, CheckedFileName(timestampStr + FileExtension));
+      auto entry = TryLoad(cell, CheckedFileName(timestampStr + FileExtension));
       if (entry == nullptr) {
         std::ostringstream stream;
         stream << "Purge persistence can't load entry file for cell " << cell.entryName().string() << " version " << timestampStr;
@@ -619,7 +629,7 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
     });
 }
 
-std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoadFile(Cell& cell, const CheckedFileName& filename) {
+std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedFileName& filename) {
   if (filename.path().extension() != FileExtension) { // Caller has found a non-entry file and attempts to load it
     return nullptr;
   }
@@ -683,21 +693,6 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoadFile(Cell& cell, cons
     throw std::invalid_argument("hash did not match for file " + path.string());
 
   return Entry::Create(cell, validFrom, purgedAt, checksumSubstitute, std::move(entryContent));
-}
-
-std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedFileName& filename) {
-  auto result = TryLoadFile(cell, filename);
-  if (result != nullptr && !result->getPurgedAt()) { // The loaded file does not contain a "purged-at" timestamp
-    storagefacility::SqliteStorage::CellVersionSpec version{
-      .cell = cell.entryName(),
-      .timestamp = result->getValidFrom(),
-    };
-    if (auto pendingPurgedAt = result->getFileStore().sqlite_.pendingPurgeTimestamp(version)) {
-      // This entry is included in a pending (i.e. applied but not yet completed) purge cycle
-      result->markPurged(*pendingPurgedAt);
-    }
-  }
-  return result;
 }
 
 FileStore::Entry::Entry(EntryChange&& source, Timestamp validFrom)
