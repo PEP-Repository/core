@@ -156,7 +156,7 @@ Data storage and retrieval:
 - [`list`](#list) lists data available in PEP.
 - [`pull`](#pull) stores a data set in files on your local machine.
 - [`store`](#store) stores data in a specific cell.
-- [`delete`](#delete) removes data from a specific cell. (Note that the data can still still be accessed by users with appropriate privileges.)
+- [`delete`](#delete) removes data from a specific cell. (Note that the data can still be accessed by users with appropriate privileges.)
 
 Administrative tasks:
 
