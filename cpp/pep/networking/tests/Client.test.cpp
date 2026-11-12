@@ -4,10 +4,24 @@
 #include <pep/networking/Tcp.hpp>
 #include <pep/utils/OnFatalTestFailure.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/post.hpp>
 
 #include <pep/utils/TestTiming.hpp>
+#include <pep/networking/Connection.hpp>
+#include <pep/networking/Transport.hpp> // for networking::SizedTransfer, networking::DelimitedTransfer
+#include <pep/utils/Defer.hpp>
+#include <pep/utils/Event.hpp>
+#include <pep/utils/LifeCycler.hpp>
+#include <pep/utils/Shared.hpp>
 #include <gtest/gtest.h>
-#include <cmath>
+#include <cassert>
+#include <chrono>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace std::literals;
 
@@ -22,10 +36,22 @@ public:
   }
 };
 
+/// \brief Verifies that a client reconnects (observing exponential backoff) after losing its connection, and that shutting the
+/// client down cancels a pending reconnect attempt.
+/// \details Timing is only verified in ways that a busy/slow machine can't break:
+/// - the client's backoff between reconnect attempts must be _at least_ the expected duration, and
+/// - the I/O context must terminate _before_ a (pending) reconnect attempt would have been made. We shut the client down
+///   while it waits for such an attempt, using backoff parameters that make that wait very long compared to the rest of
+///   the test.
 class ClientConnectivityHandler : public std::enable_shared_from_this<ClientConnectivityHandler>, public pep::SharedConstructor<ClientConnectivityHandler> {
   friend class pep::SharedConstructor<ClientConnectivityHandler>;
 
+public:
+  /// The number of failed reconnect attempts after which the client is shut down
+  static constexpr unsigned RequiredReconnectFailures = 2U;
+
 private:
+  boost::asio::io_context& ioContext_;
   pep::ExponentialBackoff::Parameters backoffParameters_;
 
   std::shared_ptr<pep::networking::Client> client_;
@@ -39,9 +65,11 @@ private:
   pep::EventSubscription connectionConnectivityChangeSubscription_;
 
   unsigned attempts_ = 0U;
+  /// The (1-based) index of the successful attempt, if one occurred.
   std::optional<unsigned> successfulAttempt_;
   std::optional<pep::testing::TimePoint> lastAttempt_;
 
+  /// The number of (failed) attempts after the successful one
   unsigned unsuccessfulAttempts() const noexcept {
     auto result = attempts_;
     if (successfulAttempt_.has_value()) {
@@ -78,6 +106,7 @@ private:
   }
 
   void handleConnectionAttempt(bool successful) {
+    ++attempts_;
     if (successful) {
       if (successfulAttempt_.has_value()) {
         PEP_DEFER(client_->shutdown());
@@ -88,17 +117,21 @@ private:
       // Try to read something from the (disconnected) server so that the client can (attempt to) reconnect
       auto buffer = std::make_shared<std::string>(1U, '\0');
       connection_->asyncRead(&buffer->front(), buffer->size(), [buffer](const pep::networking::SizedTransfer::Result&) { /* ignore */});
-    } else {
-      this->verifyLatency(); // TODO: shut down client if test condition is failed
+    } else if (successfulAttempt_.has_value()) { // A reconnect attempt
+      // (We don't verify latency of initial connection attempts: the client notifies those _after_ it starts waiting.)
+      this->verifyLatency();
 
-      if (successfulAttempt_.has_value() && this->unsuccessfulAttempts() >= 3) { // Stop after a couple of failed reconnect attempts
-        this->shutdownClient();
+      if (this->unsuccessfulAttempts() == RequiredReconnectFailures) {
+        // Shut down the client while it waits for its next reconnect attempt. Since the client starts waiting _after_
+        // notifying us of this (failed) attempt, we can't shut it down right away: we'd prevent it from waiting at all.
+        boost::asio::post(ioContext_, [weak = pep::WeakFrom(*this)] { pep::AcquireShared(weak)->shutdownClient(); });
       }
     }
     // TODO: terminate at some point if no connection can be successfully established
 
-    lastAttempt_ = pep::testing::Clock::now(); // See comment in "verifyLatency" method: the client's reconnect attempt actually started a little earlier than "now"
-    ++attempts_;
+    // The client notifies us synchronously, and only starts waiting for its next (re)connect attempt after we return.
+    // So the wait starts _after_ this point in time: see "verifyLatency" and "postRunValidate".
+    lastAttempt_ = pep::testing::Clock::now();
   }
 
   void shutdownClient() {
@@ -113,22 +146,15 @@ private:
     auto unsuccessful = this->unsuccessfulAttempts();
     assert(unsuccessful > 0U);
 
-    auto latency = backoffParameters_.minTimeout() * std::pow(backoffParameters_.backoffFactor(), unsuccessful - 1U); // Calculate wait duration for this attempt
-    latency = std::min(latency, static_cast<decltype(latency)>(backoffParameters_.maxTimeout())); // Cap at max value
-    auto latencyMsec = duration_cast<std::chrono::milliseconds>(latency); // Convert to milliseconds
-
-    // Reconnect is started _before_ notifying us, so its timer had already been running before handleConnectionAttempt's previous invocation,
-    // which assigned "now" to the "lastAttempt_" variable. Consequently, the reconnect attempt started earlier than the value that we
-    // recorded, and it may therefore also currently be a little earlier than "lastAttempt_ plus the expected/required latency".
-    // To prevent our test from failing (as it e.g. did in https://gitlab.pep.cs.ru.nl/pep/core/-/jobs/359703#L570), we subtract some msec
-    // from the (expected/required) latency. E.g. if the client (connection) needed to wait 200 msec before reconnecting, it's acceptable if it
-    // re-invokes our callback after 190 msec.
-    constexpr auto MaxInvocationOverhead = 10ms;
-    ASSERT_GE(pep::testing::MillisecondsSince(*lastAttempt_), latencyMsec - MaxInvocationOverhead) << "Client didn't observe latency during reconnect attempt";
+    // The client started waiting for this attempt after (losing the connection that it established in) the previous
+    // attempt, i.e. after we recorded "lastAttempt_". So at least the backoff duration must have passed since then. This
+    // holds regardless of how much longer the client (or this callback) may have been delayed by a busy machine.
+    auto backoff = backoffParameters_.timeoutAfter(unsuccessful - 1U);
+    ASSERT_GE(pep::testing::Clock::now() - *lastAttempt_, backoff) << "Client didn't observe latency during reconnect attempt";
   }
 
-  explicit ClientConnectivityHandler(const pep::ExponentialBackoff::Parameters& backoffParameters) // TODO: don't require separate reconnect parameters
-    : backoffParameters_(backoffParameters) {}
+  ClientConnectivityHandler(boost::asio::io_context& ioContext, const pep::ExponentialBackoff::Parameters& backoffParameters) // TODO: don't require separate reconnect parameters
+    : ioContext_(ioContext), backoffParameters_(backoffParameters) {}
 
 public:
   void handle(std::shared_ptr<pep::networking::Client> client) {
@@ -145,13 +171,16 @@ public:
     ASSERT_TRUE(shutdownNotified_) << "Client didn't send shutdown notification";
     ASSERT_TRUE(lastAttempt_.has_value()) << "Client didn't attempt to connect to server";
     ASSERT_GT(attempts_, 0U) << "Client didn't attempt to connect to server";
-
-    auto minBackoffMsec = duration_cast<std::chrono::milliseconds>(backoffParameters_.minTimeout());
-    ASSERT_LT(pep::testing::MillisecondsSince(*lastAttempt_), minBackoffMsec) << "Client shutdown (and hence I/O context termination) shouldn't wait for exponential backoff. Does the Client cancel the timer?";
-
-    ASSERT_GT(attempts_, 1U) << "Client should have made at least two connection attempts: one successful plus one unsuccessful";
     ASSERT_TRUE(successfulAttempt_.has_value()) << "Client couldn't connect to server";
-    ASSERT_GT(this->unsuccessfulAttempts(), 0U) << "Client didn't attempt to reconnect after connection was lost";
+    ASSERT_EQ(this->unsuccessfulAttempts(), RequiredReconnectFailures)
+      << "Client didn't attempt to reconnect (often enough) after connection was lost";
+
+    // The client was shut down while waiting for its next reconnect attempt, which it started after we recorded
+    // "lastAttempt_". If shutdown didn't cancel that wait, the I/O context would have kept running until the wait was
+    // over, i.e. until at least the backoff duration had passed since "lastAttempt_".
+    auto pendingBackoff = backoffParameters_.timeoutAfter(this->unsuccessfulAttempts());
+    ASSERT_LT(pep::testing::Clock::now() - *lastAttempt_, pendingBackoff)
+      << "Client shutdown (and hence I/O context termination) shouldn't wait for exponential backoff. Does the Client cancel the timer?";
   }
 };
 
@@ -168,11 +197,14 @@ TEST_F(Client, Reconnects) { // TODO: simplify
     });
   server->start();
 
-  auto backoffParams = pep::ExponentialBackoff::Parameters(500ms, 1s);
+  // The client waits 25ms and 1s for its (failing) reconnect attempts. Then it's shut down while waiting 40s (25ms*(40^2)) for the
+  // next attempt: the test fails if the I/O context keeps running that long.
+  static_assert(ClientConnectivityHandler::RequiredReconnectFailures == 2U, "Backoff parameters are tailored to this number of reconnect failures");
+  auto backoffParams = pep::ExponentialBackoff::Parameters(25ms, 1min, 40);
   auto clientParameters = server->createClientParameters();
   auto client = pep::networking::Client::Create(*clientParameters, backoffParams);
 
-  auto clientHandler = ClientConnectivityHandler::Create(backoffParams);
+  auto clientHandler = ClientConnectivityHandler::Create(ioContext, backoffParams);
   clientHandler->handle(client);
 
   client->start();
