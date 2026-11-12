@@ -901,7 +901,7 @@ If (a cycle has been confirmed but) the time of completion is absent, servers ar
 
 ### purge confirm
 
-Users with `Repository Manager` privileges can apply purge cycles that have previously been [defined](purge-back-catalog) by a `Data Administrator`. Since **this command irrevocably discards cell versions**, users must make very sure that the data should indeed be destroyed:
+Users with `Repository Manager` privileges can apply purge cycles that have previously been [defined](#purge-back-catalog) by a `Data Administrator`. Since **this command irrevocably discards cell versions**, users must make very sure that the data should indeed be destroyed:
 
 ```plaintext
 pepcli purge confirm <id>
