@@ -591,21 +591,21 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
       auto entry = TryLoadFile(cell, CheckedFileName(timestampStr + FileExtension));
       if (entry == nullptr) {
         std::ostringstream stream;
-        stream << "Purge persistence can't load entry file for cell " << cell.entryName().string() << " at timestamp " << timestampStr;
+        stream << "Purge persistence can't load entry file for cell " << cell.entryName().string() << " version " << timestampStr;
         auto msg = std::move(stream).str();
         PEP_LOG(LogTag, Severity::Error) << msg;
         throw std::runtime_error(msg);
       }
 
       if (entry->getPurgedAt().has_value()) {
-        PEP_LOG(LogTag, Severity::Debug) << "Purge has previously been persisted for cell " << cell.entryName().string() << " at timestamp " << timestampStr;
+        PEP_LOG(LogTag, Severity::Debug) << "Purge has previously been persisted for cell " << cell.entryName().string() << " version " << timestampStr;
         assert(entry->getPurgedAt() == purgedAt);
       }
       else {
-        PEP_LOG(LogTag, Severity::Debug) << "Persisting purge for cell " << cell.entryName().string() << " at timestamp " << timestampStr;
+        PEP_LOG(LogTag, Severity::Debug) << "Persisting purge for cell " << cell.entryName().string() << " version " << timestampStr;
         entry->markPurged(purgedAt);
         entry->save();
-        PEP_LOG(LogTag, Severity::Info) << "Persisted purge for cell " << cell.entryName().string() << " at timestamp " << timestampStr;
+        PEP_LOG(LogTag, Severity::Info) << "Persisted purge for cell " << cell.entryName().string() << " version " << timestampStr;
       }
     });
 }
