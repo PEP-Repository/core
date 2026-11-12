@@ -388,6 +388,11 @@ std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& 
 FileStore::EntryChange::EntryChange(Cell& cell)
   : EntryBase(cell, GenerateChecksumSubstitute(), nullptr),
     lastEntryValidFrom_{/*zero*/} {
+  // We may be storing into a non-empty cell, e.g. if the latest version was purged
+  const CellVersions& versions = cell.versions();
+  if (!versions.empty()) {
+    lastEntryValidFrom_ = versions.rbegin()->validFrom;
+  }
 }
 
 FileStore::EntryChange::EntryChange(const Entry& overwrites)
