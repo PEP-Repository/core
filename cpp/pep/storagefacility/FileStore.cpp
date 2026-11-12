@@ -475,7 +475,7 @@ void FileStore::Entry::markPurged(Timestamp at) {
 void FileStore::Entry::throwErrorIfPurged(const std::string& logContext) const {
   if (purgedAt_.has_value()) {
     auto name = this->getName();
-    PEP_LOG(LogTag, Severity::Error)
+    PEP_LOG(LogTag, Severity::Warning)
       << logContext << " can't process "
       << " entry purged at " << TicksSinceEpoch<std::chrono::milliseconds>(*purgedAt_)
       << " (i.e. " << TimestampToXmlDateTime(*purgedAt_) << ')'
