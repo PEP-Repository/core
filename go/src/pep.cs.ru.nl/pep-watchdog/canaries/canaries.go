@@ -5,8 +5,6 @@ import (
 	"io/ioutil"
 	"time"
 
-	pep "pep.cs.ru.nl/gopep"
-
 	"github.com/bwesterb/bolthold"
 
 	"pep.cs.ru.nl/pep-watchdog/shared"
@@ -24,29 +22,13 @@ type CanaryFileRecord struct {
 	Value       []byte `yaml:",flow"`
 }
 
-func readIfUnpurged(info *pep.FileInfo) ([]byte, error) {
-	if info.PurgedAt != nil {
-		return nil, nil
-	}
-	
-	fr, err := shared.Pep.OpenFile(info)
-	if err != nil {
-		return nil, fmt.Errorf("OpenFile: %v", err)
-	}
-	
-	buf, err := ioutil.ReadAll(fr)
-	if err != nil {
-		return nil, fmt.Errorf("ioutil.ReadAll: %v", err)
-	}
-	
-	return buf, nil
-}
-
 func Get() (
 	records []CanaryFileRecord,
 	unknownCanaries []CanaryFileRecord,
 	missingCanaries []CanaryFileRecord,
 	err error) {
+
+	expectedValues := make(map[string]int)
 
 	// Retrieve list of canary files from local database
 	err = shared.Db.Find(&records, nil)
@@ -66,39 +48,44 @@ func Get() (
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("FileHistory: %v", err)
 	}
+
+  for index, info := range fileInfos {
+	  if info.PurgedAt == nil {
+	    fr, err := shared.Pep.OpenFile(&info)
+	    if err != nil {
+		    return nil, nil, nil, fmt.Errorf("OpenFile: %v", err)
+	    }
 	
-	// Check if files are missing or corrupted
-	for index, r := range records {
-		if index >= len(fileInfos) {
-			missingCanaries = append(missingCanaries, r)
-		} else {
-			buf, err := readIfUnpurged(&fileInfos[index])
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			
-			if buf != nil { // Can only check contents if the entry wasn't purged
-				if string(buf) != string(r.Value) {
-					missingCanaries = append(missingCanaries, r) // TODO: report corrupted instead
-				}
-			}
-		}
-	}
+	    buf, err := ioutil.ReadAll(fr)
+	    if err != nil {
+		    return nil, nil, nil, fmt.Errorf("ioutil.ReadAll: %v", err)
+	    }
+	
+      expectedValues[string(buf)] = index
+    }
+  }
 
-	for index := len(records); index < len(fileInfos); index++ {
-		fileInfo := fileInfos[index]
-		val, err := readIfUnpurged(&fileInfo)
-		if err != nil {
-			return nil, nil, nil, err
-		}
+  for _, r := range records {
+		if _, ok := expectedValues[string(r.Value)]; !ok {
+      // Server did not produce a canary (version) for this record, or the version was purged
+		  missingCanaries = append(missingCanaries, r)
+    } else {
+      // Received this record's canary version payload from the server
+			expectedValues[string(r.Value)] = -1
+    }
+  }
 
-		unknownCanaries = append(unknownCanaries,
-			CanaryFileRecord{
-				Created:     fileInfo.Metadata.Timestamp,
-				Identifier2: fileInfo.Identifier,
-				Value:       val,
-			})
-	}
+  for val, index := range expectedValues {
+    if index >= 0 { // We received a(n unpurged) cell version that we don't have a record for
+      fileInfo := fileInfos[index]
+			unknownCanaries = append(unknownCanaries,
+				CanaryFileRecord{
+					Created:     fileInfo.Metadata.Timestamp,
+					Identifier2: fileInfo.Identifier,
+					Value:       []byte(val),
+				})
+    }
+  }
 
 	return
 }
