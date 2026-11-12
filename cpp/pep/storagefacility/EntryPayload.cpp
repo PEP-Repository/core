@@ -3,11 +3,11 @@
 #include <pep/utils/Shared.hpp>
 #include <pep/serialization/Error.hpp>
 #include <pep/storagefacility/EntryPayload.hpp>
-#include <pep/utils/MapUtils.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/storagefacility/EntryName.hpp>
 #include <pep/storagefacility/PageStore.hpp>
 #include <pep/storagefacility/PersistedEntryProperties.hpp>
+#include <pep/utils/Generator.hpp>
 
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/rx-lite.hpp>
@@ -16,10 +16,9 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <memory>
 #include <optional>
-#include <ranges>
-#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -36,8 +35,12 @@ const std::string FileSizeKey = "filesize";
 const std::string PageSizeKey = "pagesize";
 const std::string InlinePageKey = "inline-page";
 
+std::string GetPageName(XXH64_hash_t xxhash) {
+  return std::format("{}.page", xxhash);
+}
+
 std::string GetPagePath(const EntryName& entry, XXH64_hash_t xxhash) {
-  return entry.string() + EntryName::Delimiter + std::to_string(xxhash) + ".page";
+  return std::format("{}{}{}", entry, EntryName::Delimiter, GetPageName(xxhash));
 }
 
 }
@@ -169,7 +172,9 @@ rxcpp::observable<std::string> PagedEntryPayload::appendPage(PageStore& pageStor
 
   // Throw an exception when a duplicate hash is found
   if (contains(pages_, xxhash)) {
-    throw std::runtime_error("FileStore error, duplicate data hash found in Entry Change: " + name.string() + ", a hashing collision has (likely) occurred.");
+    throw std::runtime_error(std::format(
+      "FileStore error, duplicate data hash found in Entry Change: {}, "
+      "a hashing collision has (likely) occurred.", name));
   }
 
   this->pages_.push_back(xxhash);
@@ -201,12 +206,10 @@ std::optional<uint64_t> PagedEntryPayload::pageSize() const {
   return pageSize_;
 }
 
-std::set<std::string> PagedEntryPayload::getPagePaths(const EntryName& name) const {
-  std::set<std::string> result;
-  InsertNonDuplicates(result, pages_ | views::transform([&name](PageId hash) {
-    return GetPagePath(name, hash);
-    }));
-  return result;
+Generator<std::string> PagedEntryPayload::getPageNames() const {
+  for (auto page : pages_) { // Pages are never modified after creation
+    co_yield GetPageName(page);
+  }
 }
 
 messaging::MessageSequence PagedEntryPayload::readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const {

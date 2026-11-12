@@ -4,14 +4,16 @@
 #include <pep/serialization/TimestampSerializer.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
-#include <pep/utils/MapUtils.hpp>
+#include <pep/utils/VariantUtils.hpp>
 #include <pep/serialization/Serialization.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/PrefixedStrings.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataEnumerationRequest2, DataEnumerationResponse2, DataStoreRequest2, ...
 
 #include <ranges>
 #include <stdexcept>
 #include <utility>
+#include <variant>
 
 #include <Messages.pb.h> // for proto::DataEnumerationRequest2
 
@@ -301,14 +303,70 @@ void Serializer<DataSizeResponse>::moveIntoProtocolBuffer(proto::DataSizeRespons
   dest.set_rolling_blocks(value.rollingBlocks);
 }
 
+PrefixedString Serializer<PrefixedString>::fromProtocolBuffer(proto::PrefixedString&& source) const {
+  return PrefixedString{
+    .string = std::move(*source.mutable_string()),
+  };
+}
+
+void Serializer<PrefixedString>::moveIntoProtocolBuffer(proto::PrefixedString& dest, PrefixedString value) const {
+  dest.set_string(std::move(value.string));
+}
+
+PrefixedStrings Serializer<PrefixedStrings>::fromProtocolBuffer(proto::PrefixedStrings&& source) const {
+  return PrefixedStrings{
+    .strings = *source.mutable_strings() | views::as_rvalue | to<std::vector>(),
+  };
+}
+
+void Serializer<PrefixedStrings>::moveIntoProtocolBuffer(proto::PrefixedStrings& dest, PrefixedStrings value) const {
+  auto strings = views::as_rvalue(value.strings);
+  dest.mutable_strings()->Assign(strings.begin(), strings.end());
+}
+
+PushPrefix Serializer<PushPrefix>::fromProtocolBuffer(proto::PushPrefix&& source) const {
+  return PushPrefix{
+    .prefix = std::move(*source.mutable_prefix()),
+  };
+}
+
+void Serializer<PushPrefix>::moveIntoProtocolBuffer(proto::PushPrefix& dest, PushPrefix value) const {
+  dest.set_prefix(std::move(value.prefix));
+}
+
+PrefixedStringsEntry Serializer<PrefixedStringsEntry>::fromProtocolBuffer(proto::PrefixedStringsEntry&& source) const {
+  switch (source.entry_case()) {
+  case proto::PrefixedStringsEntry::kString:
+    return Serialization::FromProtocolBuffer(std::move(*source.mutable_string()));
+  case proto::PrefixedStringsEntry::kStrings:
+    return Serialization::FromProtocolBuffer(std::move(*source.mutable_strings()));
+  case proto::PrefixedStringsEntry::kPushPrefix:
+    return Serialization::FromProtocolBuffer(std::move(*source.mutable_push_prefix()));
+  case proto::PrefixedStringsEntry::kPopPrefix:
+    return Serialization::FromProtocolBuffer(std::move(*source.mutable_pop_prefix()));
+  case proto::PrefixedStringsEntry::ENTRY_NOT_SET:
+    break;
+  }
+  throw std::invalid_argument("PrefixedStringsEntry does not contain a (known) entry type");
+}
+
+void Serializer<PrefixedStringsEntry>::moveIntoProtocolBuffer(proto::PrefixedStringsEntry& dest, PrefixedStringsEntry value) const {
+  std::visit(variant_utils::Overloaded{
+    [&dest](PrefixedString&& string) { Serialization::MoveIntoProtocolBuffer(*dest.mutable_string(), std::move(string)); },
+    [&dest](PrefixedStrings&& strings) { Serialization::MoveIntoProtocolBuffer(*dest.mutable_strings(), std::move(strings)); },
+    [&dest](PushPrefix&& pushPrefix) { Serialization::MoveIntoProtocolBuffer(*dest.mutable_push_prefix(), std::move(pushPrefix)); },
+    [&dest](PopPrefix&& popPrefix) { Serialization::MoveIntoProtocolBuffer(*dest.mutable_pop_prefix(), popPrefix); },
+  }, std::move(value));
+}
+
 PagePathResponse Serializer<PagePathResponse>::fromProtocolBuffer(proto::PagePathResponse&& source) const {
   PagePathResponse result;
-  InsertNonDuplicates(result.paths, source.paths());
+  Serialization::AssignFromRepeatedProtocolBuffer(result.paths, std::move(*source.mutable_paths()));
   return result;
 }
 
 void Serializer<PagePathResponse>::moveIntoProtocolBuffer(proto::PagePathResponse& dest, PagePathResponse value) const {
-  dest.mutable_paths()->Assign(value.paths.begin(), value.paths.end());
+  Serialization::AssignToRepeatedProtocolBuffer(*dest.mutable_paths(), std::move(value.paths));
 }
 
 }

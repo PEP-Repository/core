@@ -2,6 +2,7 @@
 
 #include <pep/auth/SigningSerializers.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/PrefixedStrings.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>
 
 #include <Messages.pb.h> // for proto::DataEnumerationRequest2
@@ -46,6 +47,11 @@ PEP_DEFINE_CODED_SERIALIZER(DataPayloadPage);
 
 PEP_DEFINE_EMPTY_SERIALIZER(PagePathRequest);
 PEP_DEFINE_SIGNED_SERIALIZATION(PagePathRequest);
+PEP_DEFINE_CODED_SERIALIZER(PrefixedString);
+PEP_DEFINE_CODED_SERIALIZER(PrefixedStrings);
+PEP_DEFINE_CODED_SERIALIZER(PushPrefix);
+PEP_DEFINE_EMPTY_SERIALIZER(PopPrefix);
+PEP_DEFINE_CODED_SERIALIZER(PrefixedStringsEntry);
 PEP_DEFINE_CODED_SERIALIZER(PagePathResponse);
 
 }

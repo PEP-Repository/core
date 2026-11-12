@@ -47,7 +47,8 @@ if(ENABLE_CLANG_TIDY)
   list(APPEND clang_tidy_opts "--extra-arg=-DPEP_DUMMY_CLANG_TIDY_HASH=${clang_tidy_hash}")
 
   find_program(CLANG_TIDY_PROGRAM clang-tidy)
-  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts})
+  set(CLANG_TIDY_LAUNCHER "" CACHE STRING "Command to prefix clang-tidy invocations with, like CMAKE_CXX_COMPILER_LAUNCHER")
+  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_LAUNCHER} ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts})
 
   # Needed to check headers (see clang-tidy-headers target below)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -639,7 +640,7 @@ if(ENABLE_CLANG_TIDY)
         OUTPUT "${check}"
         COMMAND ${INVOKE_SH} "${CMAKE_SOURCE_DIR}/scripts/clang-tidy-header.sh"
           "${CMAKE_BINARY_DIR}/compile_commands.json" ${target} "${CMAKE_SOURCE_DIR}/cpp/${header}"
-          ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts} --quiet "--checks=-*,misc-include-cleaner"
+          ${CLANG_TIDY_LAUNCHER} ${CLANG_TIDY_PROGRAM} ${clang_tidy_opts} --quiet "--checks=-*,misc-include-cleaner"
           # Prevent errors for headers that define macros, which they (naturally) don't use themselves
           --extra-arg=-Wno-unused-macros
         COMMENT "Checking #includes of ${header}"

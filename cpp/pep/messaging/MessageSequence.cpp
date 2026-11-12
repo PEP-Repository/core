@@ -14,6 +14,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace pep::messaging {
 
@@ -76,6 +77,51 @@ extern const std::size_t DefaultPageSize = DefaultPageSizeRelease;
 MessageBatches IStreamToMessageBatches(std::shared_ptr<std::istream> stream) {
   return pep::CreateObservable<MessageSequence>([stream](rxcpp::subscriber<MessageSequence> outer) {
     ProvideBatch(stream, outer);
+    });
+}
+
+namespace {
+
+/// \brief State shared by the MessageSequences ("batches") that ProducerToMessageBatches produces.
+struct ProducedBatchesState {
+  MessageProducer produce;
+  bool exhausted = false;
+};
+
+/// \brief Produces a MessageSequence ("batch") containing (at most) a single message.
+/// \remark Postpones production of the message until someone .subscribe()s to the MessageSequence
+MessageSequence MakeProducedBatch(std::shared_ptr<ProducedBatchesState> state) {
+  return CreateObservable<std::shared_ptr<std::string>>([state = std::move(state)](const rxcpp::subscriber<std::shared_ptr<std::string>>& inner) {
+    if (auto message = state->produce()) {
+      inner.on_next(std::move(message));
+    }
+    else {
+      state->exhausted = true;
+    }
+    inner.on_completed(); // Each batch consists of (a maximum of) a single message
+    });
+}
+
+void ProvideProducedBatch(std::shared_ptr<ProducedBatchesState> state, const rxcpp::subscriber<MessageSequence>& outer) {
+  if (state->exhausted) {
+    outer.on_completed();
+  }
+  else {
+    outer.on_next(
+      MakeProducedBatch(state) // Provide (at most) a single message as a MessageSequence ("batch")...
+      .op(RxSubsequently([state = std::move(state), outer] mutable { // ...that must be exhausted before...
+        ProvideProducedBatch(std::move(state), outer); // ...continuing with the next batch (if any)
+      }))
+    );
+  }
+}
+
+}
+
+MessageBatches ProducerToMessageBatches(MessageProducer produce) {
+  auto state = std::make_shared<ProducedBatchesState>(std::move(produce));
+  return pep::CreateObservable<MessageSequence>([state = std::move(state)](const rxcpp::subscriber<MessageSequence>& outer) {
+    ProvideProducedBatch(state, outer);
     });
 }
 

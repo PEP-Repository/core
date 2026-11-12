@@ -465,6 +465,19 @@ cleanup:
     >&2 echo "Concurrency limit is $concurrency_limit"
   fi
 
+# Jobs can invoke this anchor to make actual compilations (ccache misses) and clang-tidy runs wait for enough available
+# memory, and rerun them if they are OOM-killed anyway (see ci_cd/mem-gate.sh for settings, e.g. MEM_GATE_COMMAND_MIB).
+# Sets "mem_gate_launcher" to the wrapper to prefix such commands with.
+#language=sh
+.use-mem-gate: &use-mem-gate |
+  mem_gate_launcher="$CI_PROJECT_DIR/ci_cd/mem-gate.sh"
+  # Note: no quotes, ccache splits prefix_command on spaces and doesn't interpret quotes (so the path cannot contain spaces)
+  export CCACHE_PREFIX="$mem_gate_launcher"
+  # Give mem-gate.sh a copy of the job's stderr, which is inherited through CMake, Ninja and ccache. This way, its messages
+  # show up in the job log immediately, and are not captured (and cached!) by ccache as part of the compiler's output.
+  exec {mem_gate_log_fd}>&2
+  export MEM_GATE_LOG_FD="$mem_gate_log_fd"
+
 #language=sh
 # Sets "keep_going_option" to the `cmake --build` arguments that make Ninja continue after build errors (-k 0),
 # if wanted (see BUILD_KEEP_GOING). Linting jobs always keep going, to report all linter findings at once.
@@ -601,6 +614,7 @@ retrieve-lockfile:
     -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
     -DENABLE_CLANG_TIDY="$ENABLE_LINTER"
     -DCMAKE_CXX_CLANG_TIDY_EXPORT_FIXES_DIR="$CI_PROJECT_DIR/$BUILD_DIRECTORY/clang-tidy-fixes"
+    -DCLANG_TIDY_LAUNCHER="${mem_gate_launcher:-}"
     -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
     -DENABLE_OAUTH_TEST_USERS=OFF
     -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
@@ -630,6 +644,7 @@ retrieve-lockfile:
     -     concurrency_limit="$LINTER_CONCURRENCY_LIMIT"
     -   fi
     - fi
+    - *use-mem-gate
     - *configure-conan-and-cmake
     - *set-keep-going-option
     - cmake --build --preset conan-$build_type_lower $keep_going_option
@@ -869,6 +884,7 @@ ubuntu-lts-debug-without-castor:
     - git diff --name-only "${LAST_PROCESSED_SHA}" "${CURRENT_SHA}" --no-relative cpp/pep > index.txt
     - *checkout-docker-build-script-sh-steps
     - *set_concurrency_limit
+    - *use-mem-gate
     - *configure-conan-and-cmake
     - *set-keep-going-option
     - bear -- cmake --build --preset conan-$build_type_lower $keep_going_option
@@ -1109,9 +1125,18 @@ flatpak:
     # Pass through environment variables used by ./cpp/pep/CMakeLists.txt
     - |
       rm -f ./flatpak.env
-      for env in CI_PROJECT_PATH CI_COMMIT_REF_NAME CI_COMMIT_SHA CI_PIPELINE_ID CI_JOB_ID CCACHE_EXPIRATION_TIME; do
+      for env in CI_PROJECT_PATH CI_COMMIT_REF_NAME CI_COMMIT_SHA CI_PIPELINE_ID CI_JOB_ID CCACHE_EXPIRATION_TIME \
+          MEM_GATE_COMMAND_MIB MEM_GATE_RESERVE_MIB MEM_GATE_RAMP_SECONDS MEM_GATE_MAX_WAIT_SECONDS MEM_GATE_MAX_ATTEMPTS; do
         echo "export $env=$(printf %q "${!env}")" >>./flatpak.env
       done
+    # Like .use-mem-gate, but evaluated in the build sandbox, where the sources are copied to $PWD and our file
+    # descriptors are not inherited. Its /bin/sh may not be Bash, hence the fixed file descriptor.
+    - |
+      cat >>./flatpak.env <<'EOF'
+      export CCACHE_PREFIX="$PWD/ci_cd/mem-gate.sh"
+      exec 9>&2
+      export MEM_GATE_LOG_FD=9
+      EOF
     - flatpak-builder $concurrency_option --ccache --repo ./flatpak-repo ./flatpak-build ./flatpak/nl.ru.cs.pep.client.yml
     - flatpak build-bundle ./flatpak-repo ./pep.flatpak nl.ru.cs.pep.client --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
   after_script:
