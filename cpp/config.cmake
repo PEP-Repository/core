@@ -113,7 +113,7 @@ if(MSVC)
     option(USE_MSBUILD_MULTI_TOOL_TASK "Use MSBuild's Multi-ToolTask scheduler to limit the number of compiler processes machine-wide (ignored with COMPILE_SEQUENTIALLY)" ON)
   endif()
 
-  # We don't add a plain /MP here (which would mean "one process per logical CPU"), because:
+  # We don't add a plain /MP here in case NOT COMPILE_SEQUENTIALLY (which would mean "one process per logical CPU"), because:
   #  - Conan's CMakeToolchain already adds /MP<tools.build:jobs> for Visual Studio generators,
   #    and a plain /MP after it would override that setting.
   #  - With MTT, /MP is dropped anyway.
