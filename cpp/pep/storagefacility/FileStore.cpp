@@ -212,19 +212,17 @@ FileStore::FileStore(
 
 FileStore::Participant::Participant(FileStore& store, std::string name, bool load)
   : store_(store), name_(std::move(name)) {
+  std::lock_guard lock(store.fileSystemMux_);
   if (load) {
-    store.fileSystem_.read([this]() {
-        for (const auto& p : std::filesystem::directory_iterator(this->path())) {
-          if (p.is_directory()) {
-            cells_.emplace(std::make_unique<Cell>(*this, p.path().filename().string(), true));
-          }
+      for (const auto& p : std::filesystem::directory_iterator(this->path())) {
+        if (p.is_directory()) {
+          cells_.emplace(std::make_unique<Cell>(*this, p.path().filename().string(), true));
         }
-      });
+      }
   }
   else {
-    store.fileSystem_.write([this]() {
-      // throws when an error occurs while creating any of the given directories in the supplied path
-      std::filesystem::create_directories(this->path()); });
+    // throws when an error occurs while creating any of the given directories in the supplied path
+    std::filesystem::create_directories(this->path());
   }
 }
 
@@ -241,20 +239,17 @@ FileStore::CellVersion FileStore::CellVersion::FromEntry(const Entry& entry) {
 
 FileStore::Cell::Cell(Participant& participant, const std::string& columnName, bool load)
   : participant_(participant), columnName_(participant.fileStore().getColumnString(columnName)) {
+  std::lock_guard lock(participant_.fileStore().fileSystemMux_);
   if (load) {
-    participant_.fileStore().fileSystem_.read([this]() {
-        for (const auto& i : std::filesystem::directory_iterator(this->path())) {
-          if (auto entry = Entry::TryLoad(*this, CheckedFileName(i.path().filename()))) {
-            this->addEntry(entry);
-          }
-        }
-      });
+    for (const auto& i : std::filesystem::directory_iterator(this->path())) {
+      if (auto entry = Entry::TryLoad(*this, CheckedFileName(i.path().filename()))) {
+        this->addEntry(entry);
+      }
+    }
   }
   else {
-    participant_.fileStore().fileSystem_.write([this]() {
-        // throws when an error occurs while creating any of the given directories in the supplied path
-        std::filesystem::create_directories(this->path());
-      });
+    // throws when an error occurs while creating any of the given directories in the supplied path
+    std::filesystem::create_directories(this->path());
   }
 }
 
@@ -333,13 +328,15 @@ std::shared_ptr<FileStore::Entry> FileStore::Cell::lookup(Timestamp validAt) {
   if (it->validFrom == latest_->getValidFrom()) {
     return latest_;
   }
-  return participant_.fileStore().fileSystem_.read([this, timestamp = it->validFrom, purgedAt = it->purgedAt]() {
-      auto result = Entry::Load(*this, timestamp);
-      if (purgedAt && !result->getPurgedAt()) { // If the .entry file didn't contain a "purged-at" (yet) but it's included in a pending (i.e. applied/confirmed) purge cycle:
-        result->markPurged(*purgedAt);
-      }
-      return result;
-    });
+
+  std::lock_guard lock(this->participant().fileStore().fileSystemMux_);
+  auto result = Entry::Load(*this, it->validFrom);
+  if (auto purgedAt = it->purgedAt) {
+    if (!result->getPurgedAt()) { // If the .entry file didn't contain a "purged-at" (yet) but it's included in a pending (i.e. applied/confirmed) purge cycle:
+      result->markPurged(*purgedAt);
+    }
+  }
+  return result;
 }
 
 std::set<std::string> FileStore::Cell::pagePaths() const {
@@ -523,22 +520,21 @@ void FileStore::Entry::save() const {
   std::string content = std::move(out).str();
   XXH64_hash_t hash = XXH64(content.data(), content.length(), 0ULL);
 
-  this->getCell().participant().fileStore().fileSystem_.write([this, &content, hash]() {
-      std::filesystem::path tempfile = this->getFilePath(".tmp");
-      std::ofstream outfile;
-      outfile.open(tempfile, std::ios::binary | std::ios::out | std::ios::trunc);
-      if (!outfile.is_open())
-        throw std::invalid_argument("could not write file: " + tempfile.string());
+  std::filesystem::path tempfile = this->getFilePath(".tmp");
+  std::ofstream outfile;
+  std::lock_guard lock(this->getCell().participant().fileStore().fileSystemMux_);
+  outfile.open(tempfile, std::ios::binary | std::ios::out | std::ios::trunc);
+  if (!outfile.is_open())
+    throw std::invalid_argument("could not write file: " + tempfile.string());
 
-      outfile << content;
-      WriteBinary(outfile, uint64_t{ hash });
-      if (!outfile) {
-        throw std::runtime_error("failed to write content to file: " + tempfile.string());
-      }
-      outfile.close();
+  outfile << content;
+  WriteBinary(outfile, uint64_t{ hash });
+  if (!outfile) {
+    throw std::runtime_error("failed to write content to file: " + tempfile.string());
+  }
+  outfile.close();
 
-      std::filesystem::rename(tempfile, this->getFilePath(FileExtension));
-    });
+  std::filesystem::rename(tempfile, this->getFilePath(FileExtension));
 }
 
 void FileStore::EntryChange::commit(Timestamp availableFrom) && {
@@ -605,28 +601,27 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
 void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Timestamp version) {
   auto timestampStr = std::to_string(TicksSinceEpoch<milliseconds>(version));
 
-  cell.participant().fileStore().fileSystem_.write([&]() {
-      // Load the ".entry" file
-      auto entry = TryLoad(cell, CheckedFileName(timestampStr + FileExtension));
-      if (entry == nullptr) {
-        std::ostringstream stream;
-        stream << "Purge persistence can't load entry file for cell " << cell.entryName().string() << " version " << timestampStr;
-        auto msg = std::move(stream).str();
-        PEP_LOG(LogTag, Severity::Error) << msg;
-        throw std::runtime_error(msg);
-      }
+  std::lock_guard lock(cell.participant().fileStore().fileSystemMux_);
+  // Load the ".entry" file
+  auto entry = TryLoad(cell, CheckedFileName(timestampStr + FileExtension));
+  if (entry == nullptr) {
+    std::ostringstream stream;
+    stream << "Purge persistence can't load entry file for cell " << cell.entryName().string() << " version " << timestampStr;
+    auto msg = std::move(stream).str();
+    PEP_LOG(LogTag, Severity::Error) << msg;
+    throw std::runtime_error(msg);
+  }
 
-      if (entry->getPurgedAt().has_value()) {
-        PEP_LOG(LogTag, Severity::Debug) << "Purge has previously been persisted for cell " << cell.entryName().string() << " version " << timestampStr;
-        assert(entry->getPurgedAt() == purgedAt);
-      }
-      else {
-        PEP_LOG(LogTag, Severity::Debug) << "Persisting purge for cell " << cell.entryName().string() << " version " << timestampStr;
-        entry->markPurged(purgedAt);
-        entry->save();
-        PEP_LOG(LogTag, Severity::Info) << "Persisted purge for cell " << cell.entryName().string() << " version " << timestampStr;
-      }
-    });
+  if (entry->getPurgedAt().has_value()) {
+    PEP_LOG(LogTag, Severity::Debug) << "Purge has previously been persisted for cell " << cell.entryName().string() << " version " << timestampStr;
+    assert(entry->getPurgedAt() == purgedAt);
+  }
+  else {
+    PEP_LOG(LogTag, Severity::Debug) << "Persisting purge for cell " << cell.entryName().string() << " version " << timestampStr;
+    entry->markPurged(purgedAt);
+    entry->save();
+    PEP_LOG(LogTag, Severity::Info) << "Persisted purge for cell " << cell.entryName().string() << " version " << timestampStr;
+  }
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedFileName& filename) {
