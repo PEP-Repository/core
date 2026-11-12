@@ -260,27 +260,6 @@ std::set<SqliteStorage::CellVersionSpec> SqliteStorage::getIncludedCellVersions(
     });
 }
 
-std::set<Timestamp> SqliteStorage::getPurgedTimestamps(PurgeCycle::Id id, const EntryName& cell) const {
-  return this->atomically([this, id, &cell]() {
-      std::set<Timestamp> result;
-
-      using namespace sqlite_orm;
-      auto rowId = this->getRowId(cell.participant());
-      auto columnId = this->getColumnId(cell.column());
-
-      if (rowId.has_value() && columnId.has_value()) {
-        result = implementor_->raw.iterate(select(&PurgeEntryRecord::timestamp,
-          where(c(&PurgeEntryRecord::cycle) == id
-            && c(&PurgeEntryRecord::row) == *rowId
-            && c(&PurgeEntryRecord::column) == *columnId)))
-          | std::views::transform(&database::TimestampFromUnixMillis)
-          | std::ranges::to<std::set>();
-      }
-
-      return result;
-    });
-}
-
 std::optional<Timestamp> SqliteStorage::pendingPurgeTimestamp(const CellVersionSpec& cellVersion) const {
   return this->atomically([this, &cellVersion]() -> std::optional<Timestamp> {
       auto rowId = this->getRowId(cellVersion.cell.participant());

@@ -284,10 +284,21 @@ void FileStore::persistPendingPurges() {
 }
 
 void FileStore::applyPurgeCycle(const PurgeCycle& cycle) {
-  assert(cycle.applied && !cycle.completed);
-  for (auto& participant : participants_) {
-    participant->applyPurgeCycle(cycle);
+  assert(cycle.applied);
+
+  std::unordered_map<std::string, Participant::VersionTimestampsByColumn> byParticipant;
+  for (const auto& spec : sqlite_.getIncludedCellVersions(cycle.id)) {
+    [[maybe_unused]] auto emplaced = byParticipant[spec.cell.participant()][spec.cell.column()].emplace(spec.timestamp).second;
+    assert(emplaced);
   }
+
+  for (const auto& p : byParticipant) {
+    auto& [participantName, byColumn] = p;
+    auto participant = this->getParticipant(participantName);
+    assert(participant != nullptr);
+    participant->markPurged(*cycle.applied, byColumn);
+  }
+
   this->persistPendingPurges();
 }
 
@@ -328,14 +339,7 @@ std::set<std::string> FileStore::Cell::pagePaths() const {
   return latest_->pagePaths();
 }
 
-void FileStore::Cell::applyPurgeCycle(const PurgeCycle& cycle) {
-  assert(cycle.applied);
-
-  auto timestamps = this->participant().fileStore().sqlite_.getPurgedTimestamps(cycle.id, this->entryName());
-  if (timestamps.empty()) { // Nothing to do: no need to iterate over our versions_
-    return;
-  }
-
+void FileStore::Cell::markPurged(Timestamp purgedAt, const VersionTimestamps& cellVersions) {
   // A set<> only provides read-only access to its items, so we can't update (entries in) our versions_ in place.
   // So instead we create a new set<> with updated items and overwrite our entire versions_ member.
   // No need to synchronize because the purge persistence thread doesn't touch (data derived from) our versions_ field.
@@ -343,8 +347,8 @@ void FileStore::Cell::applyPurgeCycle(const PurgeCycle& cycle) {
 
   for (auto version : versions_) {
     if (!version.purgedAt.has_value()) {
-      if (timestamps.contains(version.validFrom)) {
-        version.purgedAt = cycle.applied;
+      if (cellVersions.contains(version.validFrom)) {
+        version.purgedAt = purgedAt;
         if (version.validFrom == latest_->getValidFrom()) {
           latest_->markPurged(*version.purgedAt);
         }
@@ -825,9 +829,12 @@ std::set<std::string> FileStore::Participant::pagePaths() const {
   return result;
 }
 
-void FileStore::Participant::applyPurgeCycle(const PurgeCycle& cycle) {
-  for (auto& cell : cells_) {
-    cell->applyPurgeCycle(cycle);
+void FileStore::Participant::markPurged(Timestamp purgedAt, const VersionTimestampsByColumn& vsByColumn) {
+  for (const auto& c : vsByColumn) {
+    auto& [columnName, versions] = c;
+    auto cell = this->getCell(columnName);
+    assert(cell != nullptr);
+    cell->markPurged(purgedAt, versions);
   }
 }
 

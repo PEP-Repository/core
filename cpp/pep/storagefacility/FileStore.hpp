@@ -175,7 +175,9 @@ public:
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
 
     std::set<std::string> pagePaths() const; // for latest version
-    void applyPurgeCycle(const PurgeCycle& cycle); // in memory
+
+    using VersionTimestamps = std::set<Timestamp>;
+    void markPurged(Timestamp purgedAt, const VersionTimestamps& cellVersions); // in memory
     void ensurePurgePersisted(Timestamp purgedAt, Timestamp cellVersion); // on disk
   };
 
@@ -204,7 +206,9 @@ public:
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
 
     std::set<std::string> pagePaths() const; // for latest version
-    void applyPurgeCycle(const PurgeCycle& cycle); // in memory
+
+    using VersionTimestampsByColumn = std::unordered_map<std::string, Cell::VersionTimestamps>;
+    void markPurged(Timestamp purgedAt, const VersionTimestampsByColumn& vsByColumn); // in memory
     void ensurePurgePersisted(Timestamp purgedAt, const std::string& column, Timestamp version); // on disk
   };
 

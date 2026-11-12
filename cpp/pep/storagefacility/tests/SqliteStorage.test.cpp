@@ -57,8 +57,6 @@ TEST(SqliteStorage, Basics) {
       .timestamp = cellVersion0.timestamp + std::chrono::milliseconds(2)
     });
   EXPECT_EQ(storage.getIncludedCellVersions(cycle1id).size(), 3);
-  EXPECT_EQ(storage.getPurgedTimestamps(cycle1id, entryName).size(), 3);
-  EXPECT_EQ(storage.getPurgedTimestamps(cycle1id, pep::EntryName(entryName.pseudonym(), "d")).size(), 0);
 
   storage.addToPurgeCycle(cycle2id, SqliteStorage::CellVersionSpec{
       .cell = entryName,
@@ -66,7 +64,6 @@ TEST(SqliteStorage, Basics) {
     });
   EXPECT_EQ(storage.getIncludedCellVersions(cycle1id).size(), 3);
   EXPECT_EQ(storage.getIncludedCellVersions(cycle2id).size(), 1);
-  EXPECT_EQ(storage.getPurgedTimestamps(cycle2id, entryName).size(), 1);
 
   storage.deletePurgeCycle(cycle2id);
   EXPECT_EQ(storage.getIncludedCellVersions(cycle1id).size(), 3);

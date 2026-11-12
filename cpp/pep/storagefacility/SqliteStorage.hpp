@@ -55,12 +55,6 @@ public:
   /// \return cell version(specification)s that are included in the specified purge cycle.
   std::set<CellVersionSpec> getIncludedCellVersions(PurgeCycle::Id id) const;
 
-  /// \brief Returns timestamps ("versions") for the specified cell that are included in the specified purge cycle
-  /// \param id the purge cycle ID
-  /// \param cell the cell to inspect
-  /// \return timestamps ("versions") for the specified cell that are included in the specified purge cycle
-  std::set<Timestamp> getPurgedTimestamps(PurgeCycle::Id id, const EntryName& cell) const;
-
   /// \brief Returns the ("applied") timestamp of the purge cycle that includes the specified cell version, if that cycle hasn't been completed yet.
   /// \param cellVersion the cell version to inspect
   /// \return the timestamp of the cycle in which the specified cell version is/was/will-be purged, or std::nullopt if (1) the cell version isn't included in a purge cycle or (2) its purge cycle has been completed.
