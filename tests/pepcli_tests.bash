@@ -1464,7 +1464,7 @@ if should_run_test purging; then
     fail "Didn't get expected five history entries in:\n$hist"
   fi
   if [ "$(echo "$hist" | jq -r '.[].purgedAt | select( . != null )' | wc -l)" -ne 0 ]; then
-    fail "Found purged items in:\n$purged"
+    fail "Found purged items in:\n$hist"
   fi
   
   # Keep track of some version(ID)s
