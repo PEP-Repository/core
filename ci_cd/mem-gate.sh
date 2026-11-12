@@ -33,19 +33,21 @@ command_name=${1##*/}
 cgroup_dir=/sys/fs/cgroup$(sed -n 's/^0:://p' /proc/self/cgroup 2>/dev/null)
 
 # Prints available memory in MiB: the minimum of what the system and our cgroup's limit (if any) allow
-available_mib() {
-  local available limit current inactive
-  available=$(awk '$1 == "MemAvailable:" { print int($2 / 1024) }' /proc/meminfo)
+get_available_mib() {
+  local available_mib limit current inactive limit_remaining_mib
+  # Remaining physical memory of the machine (including cache that can be reclaimed)
+  available_mib=$(awk '$1 == "MemAvailable:" { print int($2 / 1024) }' /proc/meminfo)
+  # Now cap that to what remains of our cgroup limit
   if [[ -r $cgroup_dir/memory.max ]] && limit=$(<"$cgroup_dir/memory.max") && [[ $limit != max ]]; then
     current=$(<"$cgroup_dir/memory.current")
     # Inactive page cache can be reclaimed
     inactive=$(awk '$1 == "inactive_file" { print $2 }' "$cgroup_dir/memory.stat")
-    (( limit = (limit - current + ${inactive:-0}) / 1048576 ))
-    if (( limit < available )); then
-      available=$limit
+    (( limit_remaining_mib = (limit - current + ${inactive:-0}) / (1024*1024) ))
+    if (( limit_remaining_mib < available_mib )); then
+      available_mib=$limit_remaining_mib
     fi
   fi
-  echo "$available"
+  echo "$available_mib"
 }
 
 log() {
@@ -84,7 +86,7 @@ wait_for_memory() {
     fi
 
     fits=false
-    if (( $(available_mib) - recent_mib >= need + reserve_mib )); then
+    if (( $(get_available_mib) - recent_mib >= need + reserve_mib )); then
       fits=true
     elif (( EPOCHSECONDS - wait_start >= max_wait_seconds )); then
       log "Still not ${need} MiB of available memory after ${max_wait_seconds}s, giving up waiting"
