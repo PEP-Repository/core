@@ -105,31 +105,28 @@ if(MSVC)
   #  installation, under MSBuild\Microsoft\VC\v180.
   # Note that dependencies built by Conan are not affected by this setting: use the environment variables
   #  UseMultiToolTask=true and EnforceProcessCountAcrossBuilds=true for that, as ci_cd/windows-ci-build.bat does.
+  # CMAKE_VS_GLOBALS sets properties in the Globals property group of each generated project, so this also applies to
+  #  builds from the IDE. These definitions override environment variables of the same name,
+  #  see https://learn.microsoft.com/en-us/visualstudio/msbuild/how-to-use-environment-variables-in-a-build
+  #  They also take precedence over the defaults in Microsoft.Cpp.Common.props, which only apply to empty properties.
   if(CMAKE_GENERATOR MATCHES "^Visual Studio")
-    option(USE_MSBUILD_MULTI_TOOL_TASK "Use MSBuild's Multi-ToolTask scheduler to limit the number of compiler processes machine-wide" ON)
-    if(USE_MSBUILD_MULTI_TOOL_TASK)
-      # Sets these properties in the Globals property group of each generated project, so this also applies to builds
-      #  from the IDE. Note that this overrides environment variables of the same name.
-      list(APPEND CMAKE_VS_GLOBALS "UseMultiToolTask=true" "EnforceProcessCountAcrossBuilds=true")
-    endif()
+    option(USE_MSBUILD_MULTI_TOOL_TASK "Use MSBuild's Multi-ToolTask scheduler to limit the number of compiler processes machine-wide (ignored with COMPILE_SEQUENTIALLY)" ON)
   endif()
 
   # We don't add a plain /MP here (which would mean "one process per logical CPU"), because:
   #  - Conan's CMakeToolchain already adds /MP<tools.build:jobs> for Visual Studio generators,
   #    and a plain /MP after it would override that setting.
   #  - With MTT, /MP is dropped anyway.
-  option(COMPILE_SEQUENTIALLY "Compile one source at a time")
+  option(COMPILE_SEQUENTIALLY "Compile one source at a time (per project)")
   if(COMPILE_SEQUENTIALLY)
-    # MTT drops /MP, so /MP1 has no effect: refuse to configure rather than silently compile in parallel.
-    # MTT may also be enabled via an environment variable (as checked here), though it is read at build time,
-    #  not at configure time.
-    string(TOLOWER "$ENV{UseMultiToolTask}" use_multi_tool_task_env)
-    if(CMAKE_GENERATOR MATCHES "^Visual Studio" AND (USE_MSBUILD_MULTI_TOOL_TASK OR use_multi_tool_task_env STREQUAL "true"))
-      message(FATAL_ERROR "COMPILE_SEQUENTIALLY has no effect with MSBuild's Multi-ToolTask scheduler (MTT). "
-        "Either disable MTT (set USE_MSBUILD_MULTI_TOOL_TASK=OFF and unset environment variable UseMultiToolTask), "
-        "or use MTT with environment variable MultiProcMaxCount=1 instead of COMPILE_SEQUENTIALLY.")
-    endif()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP1")
+    if(CMAKE_GENERATOR MATCHES "^Visual Studio")
+      # MTT drops /MP, so explicitly disable MTT for /MP1 to take effect,
+      #  also when it is enabled via an environment variable (e.g. by ci_cd/windows-ci-build.bat).
+      list(APPEND CMAKE_VS_GLOBALS "UseMultiToolTask=false")
+    endif()
+  elseif(USE_MSBUILD_MULTI_TOOL_TASK)
+    list(APPEND CMAKE_VS_GLOBALS "UseMultiToolTask=true" "EnforceProcessCountAcrossBuilds=true")
   endif()
 
   # Fix C1128: number of sections exceeded object file format limit: compile with /bigobj
