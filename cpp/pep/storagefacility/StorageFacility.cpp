@@ -1240,12 +1240,13 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
 Timestamp StorageFacility::getUniqueChangeTimestamp(bool forPurgeCycle) {
   /* Each individual cell's history must be identical every time a checksum chain is calculated over it, to keep the checksum chain calculation consistent.
    * Since the calculation includes both commits (additions) and purges (deletions), these changes must be ordered consistently every time we process them.
-   * We do so by ensuring that within a single cell
+   * While the calculation (currently) processes commits before purges, that is an implementation detail, and in principle each individual cell must have an
+   * unambiguous sequence of events that defines its history. We do so by ensuring that within a single cell
    * - all versions have unique validFrom timestamps, which we enforce by not accepting requests that specify multiple updates to a single cell, and
    * - no purge cycle (.applied) timestamp is equal to any version's validFrom timestamp.
-   * Since purge cycles (may) affect multiple cells, the cycle's (.applied) timestamp must be distinct from all versions in all affected cells. To ensure
-   * that this is the case, instead of checking (only) affected cells, we simply keep the last commit timestamp of _all_ cells in our lastChangeTimestamp_
-   * field. Then, when we want to commit (a) cell version(s) or apply a purge cycle, we ensure that
+   * Since purge cycles (may) affect multiple cells, the cycle's (.applied) timestamp must be distinct from all commit timestamps for all affected cells.
+   * We could check only affected cells, but it's easier to just keep the last commit timestamp of _all_ cells in our lastChangeTimestamp_ field. Then,
+   * when we want to commit (a) cell version(s) or apply a purge cycle, we ensure that
    * - for commits, we don't produce a timestamp that collides with a purge cycle, and
    * - for purge cycles, we don't produce a timestamp that collides with another purge cycle or with any commit.
   */
