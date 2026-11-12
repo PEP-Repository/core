@@ -857,6 +857,8 @@ After purging, the only thing left in PEP will be a marker that a data version o
 
 After cell versions have been purged, the associated (encrypted) payload data in the underlying bulk storage (e.g. S3 bucket) may be deleted, since PEP will no longer (try to) access them. Note that PEP does not delete those data itself.
 
+PEP's "Watchdog" monitoring software may be configured to periodically store data and check whether those data are still present. If (versions of) such "canary" data are purged, Watchdog will detect those versions as "missing". In that case, Watchdog's canary file status must be synchronized to make it accept the new situation.
+
 ### purge back-catalog
 
 A user with `Data Administrator` privileges can request that all items be discarded from the repository that do not belong to the current (latest or "rolling") data set:
