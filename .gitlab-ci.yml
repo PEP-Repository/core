@@ -25,13 +25,12 @@ stages:
   - triggers
 
 variables:
-  GIT_SUBMODULE_STRATEGY: recursive
-  FF_SCRIPT_SECTIONS: 'true'  # Enable collapsible sections per script line, with timings
-  FF_TIMESTAMPS: true
+  FF_SCRIPT_SECTIONS: true  # Enable collapsible sections per script line, with timings
 
+  GIT_SUBMODULE_STRATEGY: recursive
   # The after_script: cannot fail. However, since gitlab runner 17.1 AFTER_SCRIPT_IGNORE_ERRORS can be set
   # to change this behaviour. See: https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/4758
-  AFTER_SCRIPT_IGNORE_ERRORS: 'false'
+  AFTER_SCRIPT_IGNORE_ERRORS: false
 
   BUILD_DIRECTORY: build
   STAGING_DIRECTORY: build/staging
@@ -43,11 +42,6 @@ variables:
 
   # For CI scripts
   CLEAN_CONAN: 1
-
-  # Defaults, used in .conan-install
-  CONAN_FLAGS:
-    -o &:with_assessor=False
-    -o &:with_castor=$WITH_CASTOR
 
   # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_APPS: >-
@@ -240,7 +234,6 @@ variables:
 
 # Applies to whole pipeline
 workflow:
-  name: '$MR_PIPELINE_NAME'
   auto_cancel:
     on_job_failure: none
   rules:
@@ -255,23 +248,20 @@ workflow:
     # Ready MR: build everything, keep going after compile errors, and always run all jobs including linter and coverage (if C++ code changed)
     - if: *mr-ready
       variables:
-        BUILD_ALL_TARGETS: 'yes'
-        BUILD_KEEP_GOING_ALWAYS: 'yes'
-        MR_PIPELINE_NAME: 'READY: $CI_MERGE_REQUEST_TITLE'
+        BUILD_ALL_TARGETS: "yes"
+        BUILD_KEEP_GOING_ALWAYS: "yes"
     # Draft MR: build essentials, fail fast, cancel as soon as a job fails
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $AUTO_CANCEL_ON_JOB_FAILURE == "yes"
       auto_cancel:
         on_job_failure: all
-      variables:
-        MR_PIPELINE_NAME: 'DRAFT: $CI_MERGE_REQUEST_TITLE'
     # Main and linting pipelines: report all failures, so never auto-cancel and always keep going.
-    # A separate variable, as the Run pipeline form passes BUILD_KEEP_GOING (default 'no'), overriding workflow variables.
+    # A separate variable, as the Run pipeline form passes BUILD_KEEP_GOING (default "no"), overriding workflow variables.
     - if: *always-linted-branches
       variables:
-        BUILD_KEEP_GOING_ALWAYS: 'yes'
+        BUILD_KEEP_GOING_ALWAYS: "yes"
     - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       variables:
-        BUILD_KEEP_GOING_ALWAYS: 'yes'
+        BUILD_KEEP_GOING_ALWAYS: "yes"
     # Feature branches: cancel the pipeline as soon as a job fails, unless disabled
     - if: $AUTO_CANCEL_ON_JOB_FAILURE == "yes"
       auto_cancel:
@@ -302,13 +292,13 @@ include:
   rules:
     - if: *always-linted-branches
       variables:
-        ENABLE_LINTER: yes
+        ENABLE_LINTER: "yes"
     - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       variables:
-        ENABLE_LINTER: yes
+        ENABLE_LINTER: "yes"
     - if: "'$[[ inputs.autolinting ]]' != 'linted'"
       variables:
-        ENABLE_LINTER: no
+        ENABLE_LINTER: "no"
 
 # Checkout the right docker-build commit, if overridden, but keep potentially modified conan-ci.lock. Requires git
 #language=sh
@@ -475,6 +465,18 @@ cleanup:
   - fi
 
 #language=sh
+# Sets "conan_options" to the `conan install` options for our conanfile.py, from the job's WITH_* variables.
+# Jobs only set the options that differ from the conanfile.py defaults (all enabled); an unset or empty variable
+# is not passed, so the default applies (which also suits options the recipe removes, e.g. for Emscripten).
+.set-conan-options: &set-conan-options
+  - conan_options="-o &:custom_build_folder=True"
+  - if [ -n "$WITH_ASSESSOR" ];  then conan_options="$conan_options -o &:with_assessor=$WITH_ASSESSOR"; fi
+  - if [ -n "$WITH_SERVERS" ];   then conan_options="$conan_options -o &:with_servers=$WITH_SERVERS"; fi
+  - if [ -n "$WITH_CASTOR" ];    then conan_options="$conan_options -o &:with_castor=$WITH_CASTOR"; fi
+  - if [ -n "$WITH_TESTS" ];     then conan_options="$conan_options -o &:with_tests=$WITH_TESTS"; fi
+  - if [ -n "$WITH_BENCHMARK" ]; then conan_options="$conan_options -o &:with_benchmark=$WITH_BENCHMARK"; fi
+
+#language=sh
 # We don't want errors about [[deprecated]] library functions in stable/release branches
 .set-enable-deprecation-errors: &set-enable-deprecation-errors
   # Is stable or release build?
@@ -571,10 +573,12 @@ retrieve-lockfile:
     paths:
       - ./docker-build/builder/conan/conan-ci.lock
 
-# Installs Conan packages for $CMAKE_BUILD_TYPE, with the extra arguments in $CONAN_FLAGS.
+# Installs Conan packages for $BUILD_TYPE, with the options for our conanfile.py from the WITH_* variables
+# (see .set-conan-options) and the other `conan install` arguments (profiles, settings, --build) in $CONAN_FLAGS.
 # Docker jobs don't build dependencies: they should already be built in docker-build.
 #language=bash
 .conan-install: &conan-install
+  - *set-conan-options
   - concurrency_option_conan=""
   - |
     if [ -n "$concurrency_limit" ]; then
@@ -588,12 +592,10 @@ retrieve-lockfile:
   - >
     conan install ./
     --lockfile=./docker-build/builder/conan/conan-ci.lock
-    -s build_type=$CMAKE_BUILD_TYPE
+    -s build_type=$BUILD_TYPE
     $concurrency_option_conan
     $CONAN_FLAGS
-    -o "&:with_tests=$WITH_TESTS"
-    -o "&:with_benchmark=$WITH_BENCHMARK"
-    -o "&:custom_build_folder=True"
+    $conan_options
     --output-folder=./$BUILD_DIRECTORY/ && true
   - conan_error="$?"
   # Remove remote such that jobs on (non-Docker) runners that don't have the local-recipes folder don't fail
@@ -603,11 +605,13 @@ retrieve-lockfile:
       exit "$conan_error"
     fi
 
-# Configures CMake (in preset conan-$build_type_lower) after .conan-install
+# Configures CMake (in preset conan-$build_type_lower) after .conan-install,
+# and sets keep_going_option for the subsequent `cmake --build`
 #language=bash
 .cmake-configure: &cmake-configure
-  - build_type_lower=$(echo $CMAKE_BUILD_TYPE | tr '[:upper:]' '[:lower:]')
+  - build_type_lower=$(echo $BUILD_TYPE | tr '[:upper:]' '[:lower:]')
   - *set-enable-deprecation-errors
+  - *set-keep-going-option
   - >
     cmake --preset conan-$build_type_lower
     -DCMAKE_C_COMPILER_LAUNCHER=ccache
@@ -648,7 +652,6 @@ retrieve-lockfile:
     -   fi
     - fi
     - *configure-conan-and-cmake
-    - *set-keep-going-option
     - cmake --build --preset conan-$build_type_lower $keep_going_option
 
     # Check for lines only in second file (tests on disk)
@@ -675,24 +678,23 @@ retrieve-lockfile:
 .ubuntu-lts-settings:
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   variables:
-    BUILD_GO_SERVERS: "on"
-    WITH_TESTS: "True"
+    # Changes to the conanfile.py defaults (see .set-conan-options)
+    WITH_ASSESSOR: "False"
+    BUILD_GO_SERVERS: "ON"
 
 #################### Ubuntu LTS Debug ####################
 
 .ubuntu-lts-debug-settings:
   extends: .ubuntu-lts-settings
   variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    WITH_BENCHMARK: "True"
-    VERIFY_HEADERS_STANDALONE: "off"
+    BUILD_TYPE: "$DEBUG_MODE"
+    VERIFY_HEADERS_STANDALONE: "OFF"
 
 ubuntu-lts-debug:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-debug-settings
   variables:
-    WITH_CASTOR: "True"
     TESTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_SERVER
@@ -851,13 +853,14 @@ ubuntu-lts-debug-without-castor:
     - job: retrieve-lockfile
       optional: true
   variables:
-    HTTPSERVER_WITH_TLS: "OFF"
-    BUILD_GO_SERVERS: "off"
-    WITH_CASTOR: "True"
+    BUILD_TYPE: "$DEBUG_MODE"
+    # Changes to the conanfile.py defaults (see .set-conan-options)
+    WITH_ASSESSOR: "False"
     WITH_TESTS: "False"
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     WITH_BENCHMARK: "False"
-    VERIFY_HEADERS_STANDALONE: "off"
+    HTTPSERVER_WITH_TLS: "OFF"
+    BUILD_GO_SERVERS: "OFF"
+    VERIFY_HEADERS_STANDALONE: "OFF"
     ENABLE_LINTER: "no"
   cache:
     - key: "ccache"
@@ -887,7 +890,6 @@ ubuntu-lts-debug-without-castor:
     - *checkout-docker-build-script-sh-steps
     - *set_concurrency_limit
     - *configure-conan-and-cmake
-    - *set-keep-going-option
     - bear -- cmake --build --preset conan-$build_type_lower $keep_going_option
     - infer capture --reactive
                     --compilation-database-escaped ./compile_commands.json
@@ -946,8 +948,8 @@ ubuntu-lts-debug-manual-sast:
 .ubuntu-lts-release-settings:
   extends: .ubuntu-lts-settings
   variables:
-    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
-    VERIFY_HEADERS_STANDALONE: "on"
+    BUILD_TYPE: "$RELEASE_MODE"
+    VERIFY_HEADERS_STANDALONE: "ON"
   artifacts:
     expire_in: 8h
     paths:
@@ -964,8 +966,6 @@ ubuntu-lts-release:
     - .ubuntu-lts-release-base
     - .set-enable-linter-and-terminate-rules
   variables:
-    WITH_BENCHMARK: "True"
-    WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "valgrind"
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
@@ -991,9 +991,7 @@ ubuntu-lts-release-manual-lint:
       allow_failure: true
     - when: never
   variables:
-    ENABLE_LINTER: yes
-    WITH_BENCHMARK: "True"
-    WITH_CASTOR: "True"
+    ENABLE_LINTER: "yes"
 
 ubuntu-lts-release-without-castor:
   extends:
@@ -1004,9 +1002,9 @@ ubuntu-lts-release-without-castor:
     - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
     - if: *mr-ready
   variables:
-    BUILD_GO_SERVERS: "off"
     WITH_CASTOR: "False"
     WITH_BENCHMARK: "False"
+    BUILD_GO_SERVERS: "OFF"
     HTTPSERVER_WITH_TLS: "ON"
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
@@ -1023,10 +1021,10 @@ ubuntu-lts-release-without-castor:
 .ubuntu-rolling-settings:
   image: ${BUILDER_IMAGE_UBUNTU_ROLLING}
   variables:
-    BUILD_GO_SERVERS: "off"
-    WITH_CASTOR: "True"
-    WITH_TESTS: "True"
+    # Changes to the conanfile.py defaults (see .set-conan-options)
+    WITH_ASSESSOR: "False"
     WITH_BENCHMARK: "False"
+    BUILD_GO_SERVERS: "OFF"
     MEM_ANALYSIS_TOOL: "none"
 
 .ubuntu-rolling-debug-base:
@@ -1034,8 +1032,8 @@ ubuntu-lts-release-without-castor:
     - .ubuntu-build-base
     - .ubuntu-rolling-settings
   variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    VERIFY_HEADERS_STANDALONE: "off"
+    BUILD_TYPE: "$DEBUG_MODE"
+    VERIFY_HEADERS_STANDALONE: "OFF"
 
 # Builds (and optionally lints) binaries for ubuntu-rolling-debug
 ubuntu-rolling-debug:
@@ -1060,7 +1058,7 @@ ubuntu-rolling-debug-manual-lint:
       allow_failure: true
     - when: never
   variables:
-    ENABLE_LINTER: yes
+    ENABLE_LINTER: "yes"
 
 ubuntu-rolling-release:
   extends:
@@ -1070,8 +1068,8 @@ ubuntu-rolling-release:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
     - if: *mr-ready
   variables:
-    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
-    VERIFY_HEADERS_STANDALONE: "on"
+    BUILD_TYPE: "$RELEASE_MODE"
+    VERIFY_HEADERS_STANDALONE: "ON"
     TESTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_SERVER
@@ -1165,7 +1163,7 @@ windows-debug:
     - job: retrieve-lockfile
       optional: true
   variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    BUILD_TYPE: "$DEBUG_MODE"
   tags:
     - windows-parallel
   rules:
@@ -1177,7 +1175,7 @@ windows-debug:
   #language=powershell
   script: # Explicitly invoke cmd with call for proper error propagation when statements follow (conditional) exit /B inside if (see !1744)
     - *checkout-docker-build-script-powershell-steps
-    - cmd /c "call ./ci_cd/windows-ci-build.bat all-targets $CMAKE_BUILD_TYPE"
+    - cmd /c "call ./ci_cd/windows-ci-build.bat all-targets $BUILD_TYPE"
     - $EXECUTABLES = "$EXECUTABLES_APPS
                       $EXECUTABLES_PEP_SERVICES
                       $EXECUTABLES_CLIENT
@@ -1186,7 +1184,7 @@ windows-debug:
                       $UNIT_TESTS_ALL_NATIVE"
     - '& "C:\Program Files\Git\bin\bash.exe" ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY"
                                                                           --dest-prefix "$STAGING_DIRECTORY"
-                                                                          --build-mode "$CMAKE_BUILD_TYPE"
+                                                                          --build-mode "$BUILD_TYPE"
                                                                           --append-extension ".exe"
                                                                           "$EXECUTABLES"'
     # For some reason the go executables are not placed in a build mode subdirectory
@@ -1232,7 +1230,7 @@ test-windows-debug:
 .macos-conan-install: &macos-conan-install
   - export CMAKE_COLOR_DIAGNOSTICS=ON  # Let CMake pass -fcolor-diagnostics
   - export CLICOLOR_FORCE=1  # Colored output for e.g. Conan & Ninja (otherwise -fcolor-diagnostics still won't work)
-  - CONAN_FLAGS="--profile:all=./docker-build/builder/conan/conan_profile --build=missing -s:b build_type=$CMAKE_BUILD_TYPE $CONAN_FLAGS"
+  - CONAN_FLAGS="--profile:all=./docker-build/builder/conan/conan_profile --build=missing -s:b build_type=$BUILD_TYPE $CONAN_FLAGS"
   - *conan-install
   - |
     if [[ -n "$CLEAN_CONAN" ]]; then
@@ -1264,11 +1262,10 @@ macos-client:
   extends: .macos-build-base
   <<: *ccache-configuration
   variables:
-    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
-    CONAN_FLAGS: >-
-      -o &:with_assessor=True
-      -o &:with_servers=False
-      -o &:with_castor=False
+    BUILD_TYPE: "$RELEASE_MODE"
+    # Changes to the conanfile.py defaults (see .set-conan-options)
+    WITH_SERVERS: "False"
+    WITH_CASTOR: "False"
     WITH_TESTS: "False"
     WITH_BENCHMARK: "False"
     BUILD_GO_SERVERS: "OFF"
@@ -1280,7 +1277,6 @@ macos-client:
     - export CC=clang CXX=clang++
     - *macos-conan-install
     - *cmake-configure
-    - *set-keep-going-option
     - cmake --build --preset conan-$build_type_lower --target pepLogon pepAssessor pepcli $keep_going_option
     - ./ci_cd/macos-ci-build-app-bins.sh --build-dir "$BUILD_DIRECTORY"
   after_script:
@@ -1300,13 +1296,7 @@ macos-debug:
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
       allow_failure: true
   variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    CONAN_FLAGS: >-
-      -o &:with_assessor=True
-      -o &:with_servers=True
-      -o &:with_castor=True
-    WITH_TESTS: "True"
-    WITH_BENCHMARK: "True"
+    BUILD_TYPE: "$DEBUG_MODE"
     BUILD_GO_SERVERS: "ON"
     VERIFY_HEADERS_STANDALONE: "ON"
     MEM_ANALYSIS_TOOL: "leaks"
@@ -1319,7 +1309,6 @@ macos-debug:
     - *checkout-docker-build-script-sh-steps
     - *macos-conan-install
     - *cmake-configure
-    - *set-keep-going-option
     - cmake --build --preset conan-$build_type_lower $keep_going_option
     - *run-tests
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
@@ -1334,10 +1323,11 @@ macos-debug:
     - .ubuntu-build-base
   image: $BUILDER_IMAGE_WEBLIB
   variables:
-    WITH_BENCHMARK: "False"
-    WITH_TESTS: "True"
-    MEM_ANALYSIS_TOOL: "none"
     CONAN_FLAGS: --profile:host=./docker-build/builder/conan/conan_profile_wasm32
+    # Changes to the conanfile.py defaults (see .set-conan-options).
+    # Don't set with_assessor/with_servers/with_castor: the Emscripten build doesn't have these options
+    WITH_BENCHMARK: "False"
+    MEM_ANALYSIS_TOOL: "none"
     TESTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_WEBLIB
@@ -1357,13 +1347,13 @@ weblib-debug:
     - .weblib-base
     - .weblib-settings-debug
   variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    BUILD_TYPE: "$DEBUG_MODE"
 
 weblib-release:
   extends:
     - .weblib-base
   variables:
-    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
+    BUILD_TYPE: "$RELEASE_MODE"
   rules: *run-in-every-pipeline
 
 weblib-integration:
