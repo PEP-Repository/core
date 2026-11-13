@@ -38,11 +38,10 @@ REM Instead, we use MSBuild's Multi-ToolTask (MTT) scheduler, see https://devblo
 REM - UseMultiToolTask=true: MSBuild itself starts one cl.exe per source file, at most MultiProcMaxCount at a time.
 REM   The /MP compiler option is then dropped.
 REM - EnforceProcessCountAcrossBuilds=true: the MultiProcMaxCount limit is enforced across all projects and all MSBuild
-REM   instances (using a named semaphore), and therefore across concurrent CI jobs on the same machine.
+REM   instances, and therefore across concurrent CI jobs on the same machine.
 REM   Because of this, MultiProcMaxCount is based on the resources of the whole machine and should be the same for all builds on it.
 REM These are MSBuild properties that default to the environment variables of the same name.
-REM  For their definitions, see Microsoft.Cpp.Common.props and Microsoft.CppCommon.targets in the Visual Studio installation,
-REM  under MSBuild\Microsoft\VC\v180.
+REM  For their definitions, see Microsoft.Cpp.Common.props and Microsoft.CppCommon.targets in the Visual Studio installation.
 REM This also applies to dependencies that Conan builds using MSBuild.
 REM  For our own projects, cpp/config.cmake also enables MTT, see USE_MSBUILD_MULTI_TOOL_TASK there.
 REM Linking is not limited by MTT, but only by the number of projects that MSBuild builds concurrently,
