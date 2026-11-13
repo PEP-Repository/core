@@ -2,7 +2,7 @@
 #include <pep/utils/Log.hpp>
 
 #include <boost/asio/io_context.hpp>
-#include <boost/system/error_code.hpp>
+#include <boost/system/error_code.hpp> // IWYU pragma: keep (error_code is declared in an internal Boost header)
 
 #include <csignal>
 #include <functional>
