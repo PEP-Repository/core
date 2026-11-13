@@ -83,9 +83,13 @@ variables:
   EXECUTABLE_PULLCASTOR: >-
     cpp/pep/pullcastor/pepPullCastor
 
+  # Monolithic pepServers executable, which runs all PEP services in a single process
+  EXECUTABLE_PEPSERVERS: >-
+    cpp/pep/servers/pepServers
+
   # Monolithic pepServers executable with bundled configuration files
   PEPSERVERS_MONOLITH: >-
-    cpp/pep/servers/pepServers
+    $EXECUTABLE_PEPSERVERS
     cpp/pep/servers/accessmanager
     cpp/pep/servers/authserver
     cpp/pep/servers/keyserver
@@ -743,7 +747,8 @@ ubuntu-lts-debug:
 
     - |
        BINARIES=""
-       for BINARY in $UNIT_TESTS_ALL_NATIVE $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
+       # Integration tests run the servers as a single pepServers process
+       for BINARY in $UNIT_TESTS_ALL_NATIVE $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT $EXECUTABLE_PEPSERVERS; do
          BINARIES="$BINARIES -object $BUILD_DIRECTORY/$BINARY"
        done
 
