@@ -196,6 +196,12 @@ HTTPServer::HTTPServer(uint16_t port, std::shared_ptr<boost::asio::io_context> i
 }
 
 HTTPServer::~HTTPServer() noexcept {
+  if (ctx_ != nullptr && ioContext_->stopped()) {
+    // With the I/O context stopped, the deadlock described in asyncStop can't occur. Stopping synchronously keeps
+    // cleanup from running while the application exits, when e.g. logging is no longer available.
+    mg_stop(std::exchange(ctx_, nullptr));
+    return;
+  }
   asyncStop();
 }
 

@@ -63,6 +63,7 @@ finish() {
   kill "$TSPID" || true
   kill "$RSPID" || true
   kill "$ASPID" || true
+  wait # Until the servers have exited, so that their ports are free again
 }
 
 trap finish EXIT
@@ -105,6 +106,7 @@ cat "$data_dir/transcryptor/TranscryptorKeys.json"
 
 echo "Restarting Transcryptor"
 kill $TSPID
+wait $TSPID || true
 sleep 2 # Give OS time to release the port, preventing "Address already in use". See https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2471#note_39395
 cd "$data_dir/transcryptor"
 "$transcryptor_bin" "${bin_args[@]}" "$data_dir/transcryptor/Transcryptor.json" 2> >(sed -u "s/^/[Transcryptor2] /" >&2) > >(sed -u "s/^/[Transcryptor2] /") &

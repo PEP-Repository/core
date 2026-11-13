@@ -22,6 +22,7 @@ struct HttpRequestHandlerParams;
 class HTTPServer {
 public:
   HTTPServer(uint16_t port, std::shared_ptr<boost::asio::io_context> io_context, std::optional<std::filesystem::path> tlsCertificate=std::nullopt);
+  /// Stops synchronously if the I/O context has stopped, and asynchronously (see asyncStop) otherwise.
   ~HTTPServer() noexcept;
 
   using BasicHandler = std::function<HTTPResponse(const HTTPRequest&, std::string remoteIp)>;

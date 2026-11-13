@@ -12,7 +12,6 @@
 
 #include <boost/asio/io_context.hpp>
 
-#include <cassert>
 #include <cstdint>
 #include <exception>
 #include <memory>
@@ -81,8 +80,9 @@ void NetworkedServer::start() {
       [](std::exception_ptr error) {
         PEP_LOG(LogTag, Severity::Error) << "Server networking failed due to " << GetExceptionMessage(error);
       },
-      []() {
-        assert(false); // Should never occur because we don't invoke network_.shutdown()
+      [this]() {
+        // Happens when this NetworkedServer is destroyed
+        PEP_LOG(LogTag, Severity::Info) << server_->describe() << " no longer accepts network connections";
       });
 
   ioContext_->run();

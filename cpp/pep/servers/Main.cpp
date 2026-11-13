@@ -1,8 +1,10 @@
 #include <pep/application/Application.hpp>
-#include <pep/servers/Servers.hpp>
 #include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/servers/Servers.hpp>
+#include <pep/service-application/TerminationSignalHandler.hpp>
 #include <pep/utils/Log.hpp> // for Severity
 
+#include <cstdlib>
 #include <optional>
 #include <string>
 
@@ -26,13 +28,10 @@ protected:
   }
 
   int execute() override {
-    auto configPath = this->getConfigDirectory();
-
-    Servers servers;
-    servers.runAsync(configPath);
-    servers.wait();
-
-    return -1;
+    Servers servers(this->getConfigDirectory());
+    TerminationSignalHandler stopOnTermination([&servers] { servers.stop(); });
+    servers.run();
+    return EXIT_SUCCESS;
   }
 };
 }
