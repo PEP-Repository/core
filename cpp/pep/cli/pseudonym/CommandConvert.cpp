@@ -1,16 +1,21 @@
-#include <algorithm>
-#include <array>
-#include <cctype>
-#include <optional>
-#include <pep/async/FakeVoid.hpp>
 #include <pep/cli/pseudonym/CommandConvert.hpp>
+
+#include <pep/async/FakeVoid.hpp>
 #include <pep/cli/structuredoutput/FormatParameter.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
-#include <ranges>
+
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/rx-observable.hpp>
+
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <iterator>
+#include <map>
+#include <memory>
+#include <ranges>
 #include <stdexcept>
 #include <string_view>
 #include <vector>
@@ -73,27 +78,35 @@ std::string IdTypeToString(IdType type) {
 
 struct Configuration final {
   std::string from;
-  IdType to;
-  std::optional<structuredOutput::FormatConfig> formatConfig; ///< Not set: print just the pseudonym
+  std::vector<IdType> to; ///< Without duplicates, in the order specified by the user
+  structuredOutput::FormatConfig formatConfig;
+
+  [[nodiscard]] bool includes(IdType type) const { return std::ranges::contains(to, type); }
 
   static Configuration From(const pep::commandline::NamedValues &values) {
-    return {
+    Configuration result{
       .from = values.get<std::string>(param::from),
-      .to = ParseIdTypeFromString(values.get<std::string>(param::to)),
-      .formatConfig = values.has(structuredOutput::formatParameterName)
-          ? std::make_optional(structuredOutput::FormatConfigFrom(values))
-          : std::nullopt,
+      .formatConfig = structuredOutput::FormatConfigFrom(values),
     };
+    for (const auto& str : values.getOptionalMultiple<std::string>(param::to)) {
+      if (const auto type = ParseIdTypeFromString(str); !result.includes(type)) {
+        result.to.push_back(type);
+      }
+    }
+    if (result.to.empty()) { // No --to: convert to all types
+      std::ranges::transform(idTypeNames, std::back_inserter(result.to), &IdTypeNames::type);
+    }
+    return result;
   }
 };
 
-void ReportPseudonym(const Configuration& config, const std::string& pseudonym) {
-  if (config.formatConfig.has_value()) {
-    structuredOutput::WriteStructured(std::cout, structuredOutput::Tree::FromJson({{IdTypeToString(config.to), pseudonym}}), *config.formatConfig);
+/// Prints the requested pseudonyms, in the order the user specified them
+void ReportPseudonyms(const Configuration& config, const std::map<IdType, std::string>& pseudonyms) {
+  auto result = nlohmann::ordered_json::object();
+  for (auto type : config.to) {
+    result[IdTypeToString(type)] = pseudonyms.at(type);
   }
-  else {
-    std::cout << pseudonym << std::endl;
-  }
+  structuredOutput::WriteStructured(std::cout, structuredOutput::Tree::FromJson(std::move(result)), config.formatConfig);
 }
 
 } // namespace
@@ -106,12 +119,11 @@ CommandPseudonym::CommandConvert::getSupportedParameters() const {
              .value(Value<std::string>()
                 .positional()
                 .required()) +
-         Parameter(param::to, "Target pseudonym type")
+         Parameter(param::to, "Target pseudonym type (can be repeated). Omit to convert to all types.")
              .value(Value<std::string>()
-                .positional()
-                .allow(AllIdTypeNames())
-                .required()) +
-         structuredOutput::FormatParameter(structuredOutput::FormatFlags::Json | structuredOutput::FormatFlags::Yaml, std::nullopt);
+                .multiple()
+                .allow(AllIdTypeNames())) +
+         structuredOutput::FormatParameter(structuredOutput::FormatFlags::Json | structuredOutput::FormatFlags::Yaml, "json");
 }
 
 int CommandPseudonym::CommandConvert::execute() {
@@ -119,8 +131,10 @@ int CommandPseudonym::CommandConvert::execute() {
 
   return executeEventLoopFor([config](std::shared_ptr<pep::CoreClient> client) {
     return client->parsePPorIdentity(config.from).flat_map([client, config](PolymorphicPseudonym pp) {
-      if (config.to == IdType::PolymorphicPseudonym) {
-        ReportPseudonym(config, pp.text());
+      auto pseudonyms = std::make_shared<std::map<IdType, std::string>>();
+      (*pseudonyms)[IdType::PolymorphicPseudonym] = pp.text();
+      if (!config.includes(IdType::LocalPseudonym) && !config.includes(IdType::BriefLocalPseudonym)) {
+        ReportPseudonyms(config, *pseudonyms);
         return rxcpp::observable<>::just(FakeVoid()).as_dynamic();
       }
 
@@ -130,7 +144,7 @@ int CommandPseudonym::CommandConvert::execute() {
       tOpts.includeAccessGroupPseudonyms = true;
 
       return client->requestTicket2(tOpts)
-          .flat_map([client, config](pep::IndexedTicket2 ticket) {
+          .flat_map([client, config, pseudonyms](pep::IndexedTicket2 ticket) {
             const auto opened = ticket.openTicketWithoutCheckingSignature();
             const auto& subjects = opened->referenceSubjects;
             if (subjects.empty() || !subjects.front().accessGroup.has_value()) {
@@ -138,14 +152,16 @@ int CommandPseudonym::CommandConvert::execute() {
             }
 
             const auto lp = client->decryptLocalPseudonym(*subjects.front().accessGroup);
-            if (config.to == IdType::LocalPseudonym) {
-              ReportPseudonym(config, lp.text());
+            (*pseudonyms)[IdType::LocalPseudonym] = lp.text();
+            if (!config.includes(IdType::BriefLocalPseudonym)) {
+              ReportPseudonyms(config, *pseudonyms);
               return rxcpp::observable<>::just(FakeVoid()).as_dynamic();
             }
 
             return client->getGlobalConfiguration()
-                .map([config, lp](std::shared_ptr<GlobalConfiguration> gc) {
-                  ReportPseudonym(config, gc->getUserPseudonymFormat().makeUserPseudonym(lp));
+                .map([config, lp, pseudonyms](std::shared_ptr<GlobalConfiguration> gc) {
+                  (*pseudonyms)[IdType::BriefLocalPseudonym] = gc->getUserPseudonymFormat().makeUserPseudonym(lp);
+                  ReportPseudonyms(config, *pseudonyms);
                   return FakeVoid();
                 }).as_dynamic();
           }).as_dynamic();

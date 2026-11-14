@@ -10,7 +10,7 @@
 
 - `pepcli list --format` now also accepts `json-compact`, like `pepcli ama query` and `pepcli user query`.
 
-- core#2911: `pepcli pseudonym convert` now accepts `--format yaml|json|json-compact` to produce structured output, e.g. `local-pseudonym: "..."`. Without `--format` it still prints just the converted pseudonym.
+- core#2911: `pepcli pseudonym convert` now takes the target type as `--to <type>` instead of as second positional argument, and can convert to multiple types at once by repeating `--to`; without `--to` it converts to all types. It prints the results under the name of their type, as JSON by default (`--format yaml|json|json-compact`), e.g. `{"local-pseudonym": "..."}`. Scripts that use `pepcli pseudonym convert <from> <to>` must switch to `--to`, and read the value from the JSON (e.g. with `jq --raw-output '."local-pseudonym"'`).
 
 - core#3040: Fixed YAML output (e.g. of `pepcli ama query`, `user query` and `list --format yaml`) for strings containing line breaks, tabs or other control characters. These are now escaped (e.g. `\n`), so that YAML parsers no longer turn line breaks into spaces.
 

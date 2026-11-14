@@ -918,9 +918,14 @@ if should_run_test pseudonym-conversion; then
     jq -r ".[] | select(.data.\"pcData.id\"== \"$fromId\") | .$toType" "$PSEUDONYM_LIST_JSON"
   }
 
+  # Converts pseudonym $1 to type $2 (full type name) and prints just the result
+  convert_to() {
+    pepcli pseudonym convert "$1" --to "$2" | jq --exit-status --raw-output ".\"$2\""
+  }
+
   assert_equivalent_pp() {
     public_key() { echo "$1" | cut -d: -f3; }
-    stable_id() { pepcli pseudonym convert "$1" local-pseudonym; }
+    stable_id() { convert_to "$1" local-pseudonym; }
 
     assert_equal "$(public_key "$1")" "$(public_key "$2")"
     assert_equal "$(stable_id "$1")" "$(stable_id "$2")"
@@ -930,20 +935,22 @@ if should_run_test pseudonym-conversion; then
   LP=$(pcLookup ID_1 lp)
   UP=$(pcLookup ID_1 blp)
 
-  assert_equal "$(pepcli pseudonym convert "$PP" local-pseudonym)" "$LP"
-  assert_equal "$(pepcli pseudonym convert "$LP" local-pseudonym)" "$LP"
-  assert_equal "$(pepcli pseudonym convert "$UP" local-pseudonym)" "$LP"
+  assert_equal "$(convert_to "$PP" local-pseudonym)" "$LP"
+  assert_equal "$(convert_to "$LP" local-pseudonym)" "$LP"
+  assert_equal "$(convert_to "$UP" local-pseudonym)" "$LP"
 
-  assert_equal "$(pepcli pseudonym convert "$PP" brief-local-pseudonym)" "$UP"
-  assert_equal "$(pepcli pseudonym convert "$LP" brief-local-pseudonym)" "$UP"
-  assert_equal "$(pepcli pseudonym convert "$UP" brief-local-pseudonym)" "$UP"
+  assert_equal "$(convert_to "$PP" brief-local-pseudonym)" "$UP"
+  assert_equal "$(convert_to "$LP" brief-local-pseudonym)" "$UP"
+  assert_equal "$(convert_to "$UP" brief-local-pseudonym)" "$UP"
 
-  # Structured output
-  assert_equal "$(pepcli pseudonym convert "$UP" local-pseudonym --format json | jq --raw-output '."local-pseudonym"')" "$LP"
+  # Multiple --to (also by abbreviation)
+  assert_equal "$(pepcli pseudonym convert "$PP" --to lp --to blp | jq --raw-output '."local-pseudonym" + " " + ."brief-local-pseudonym"')" "$LP $UP"
+  # Without --to, all types are reported
+  assert_equal "$(pepcli pseudonym convert "$UP" | jq --raw-output '."local-pseudonym" + " " + ."brief-local-pseudonym"')" "$LP $UP"
 
-  assert_equal "$(pepcli pseudonym convert "$PP" polymorphic-pseudonym)" "$PP"
-  assert_equivalent_pp "$(pepcli pseudonym convert "$LP" polymorphic-pseudonym)" "$PP"
-  assert_equivalent_pp "$(pepcli pseudonym convert "$UP" polymorphic-pseudonym)" "$PP"
+  assert_equal "$(convert_to "$PP" polymorphic-pseudonym)" "$PP"
+  assert_equivalent_pp "$(convert_to "$LP" polymorphic-pseudonym)" "$PP"
+  assert_equivalent_pp "$(convert_to "$UP" polymorphic-pseudonym)" "$PP"
 
   test_cleanup "$PC_CONFIG"
 fi
