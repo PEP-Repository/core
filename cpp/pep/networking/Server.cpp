@@ -1,6 +1,14 @@
 #include <pep/networking/Connection.hpp>
 #include <pep/networking/Server.hpp>
-#include <pep/utils/Defer.hpp>
+#include <pep/networking/Node.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/networking/Transport.hpp> // for networking::Transport::setConnectivityStatus
+#include <pep/utils/Shared.hpp> // for WeakFrom
+
+#include <cassert>
+#include <exception>
+#include <memory>
+#include <stdexcept>
 
 namespace pep::networking {
 

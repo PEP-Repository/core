@@ -1,7 +1,7 @@
-#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <pep/structuredoutput/Csv.hpp>
+#include <pep/structuredoutput/Table.hpp>
 
 namespace {
 namespace csv = pep::structuredOutput::csv;

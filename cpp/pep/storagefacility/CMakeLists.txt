@@ -30,6 +30,7 @@ if(WITH_SERVERS)
       S3Credentials.PropertySerializer.cpp S3Credentials.PropertySerializer.hpp
       SFId.hpp
       SFIdSerializer.cpp SFIdSerializer.hpp
+      SfChecksumChain.cpp SfChecksumChain.hpp
       StorageFacility.cpp StorageFacility.hpp
   )
   target_link_libraries(${PROJECT_NAME}StorageFacilitylib

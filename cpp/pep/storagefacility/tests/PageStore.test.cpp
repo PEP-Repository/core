@@ -4,19 +4,28 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock-matchers.h>
 
-#include <pep/application/Application.hpp>
 #include <pep/async/tests/RxTestUtils.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/storagefacility/S3Credentials.PropertySerializer.hpp>
+#include <pep/storagefacility/S3Client.hpp>
+#include <pep/utils/CollectionUtils.hpp> // for RangeToOptional
 
 #include <boost/algorithm/hex.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <pep/utils/MiscUtil.hpp>
+#include <boost/asio/io_context.hpp>
 
 #include <ranges>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 using namespace pep;
 using namespace std::ranges;

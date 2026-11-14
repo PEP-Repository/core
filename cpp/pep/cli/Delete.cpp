@@ -1,6 +1,15 @@
 #include <pep/cli/Commands.hpp>
 #include <pep/cli/SingleCellCommand.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/cli/Command.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <iostream>
+#include <memory>
 
 using namespace pep::cli;
 

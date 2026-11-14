@@ -2,18 +2,46 @@
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/utils/BuildFlavor.hpp>
 #include <pep/storagefacility/Constants.hpp>
+#include <pep/storagefacility/SfChecksumChain.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MapUtils.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Raw.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/storagefacility/EntryContent.hpp>
+#include <pep/storagefacility/EntryName.hpp>
+#include <pep/storagefacility/PageStore.hpp>
+#include <pep/storagefacility/PersistedEntryProperties.hpp>
+#include <pep/utils/CheckedPath.hpp>
+#include <pep/utils/PropertyBasedContainer.hpp>
+#include <pep/utils/Timestamp.hpp>
+#include <pep/async/IoContext_fwd.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
 
 #include <boost/lexical_cast.hpp>
 
 #include <filesystem>
 #include <fstream>
-#include <random>
 #include <sstream>
+#include <cassert>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <ios>
+#include <iterator> // IWYU pragma: keep (used in assert)
+#include <map>
+#include <memory>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::chrono;
 using namespace std::literals;
@@ -117,7 +145,8 @@ FileStore::FileStore(
   std::shared_ptr<boost::asio::io_context> io_context,
   std::shared_ptr<prometheus::Registry> metrics_registry)
   : path_(CheckedPath::FromTrusted(metadatapath)),
-  pagestore_(PageStore::Create(io_context, metrics_registry, pageStoreConfig))
+  pagestore_(PageStore::Create(io_context, metrics_registry, pageStoreConfig)),
+  checksumChains_(SfChecksumChain::CreateAll(*this))
 {
   // throws when an error occurs while creating any of the given directories in the supplied path
   std::filesystem::create_directories(path_);

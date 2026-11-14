@@ -1,5 +1,9 @@
 #include <pep/utils/Event.hpp>
+
 #include <gtest/gtest.h>
+
+#include <cstddef>
+#include <memory>
 
 namespace {
 

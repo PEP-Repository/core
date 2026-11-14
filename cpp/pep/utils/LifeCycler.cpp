@@ -1,11 +1,12 @@
 #include <pep/utils/LifeCycler.hpp>
-#include <pep/utils/EnumUtils.hpp>
 
 #include <cassert>
 #include <map>
 #include <set>
 #include <stdexcept>
 #include <utility>
+#include <string>
+#include <string_view>
 
 namespace pep {
 

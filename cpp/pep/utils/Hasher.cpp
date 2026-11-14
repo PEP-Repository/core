@@ -2,6 +2,11 @@
 
 #include <array>
 #include <cassert>
+#include <cstddef>
+#include <ios>
+#include <istream>
+#include <stdexcept>
+#include <type_traits>
 
 namespace pep {
 

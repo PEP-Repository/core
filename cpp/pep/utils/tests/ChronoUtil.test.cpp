@@ -2,6 +2,8 @@
 
 #include <pep/utils/ChronoUtil.hpp>
 
+#include <chrono>
+
 using namespace pep::chrono;
 using namespace std::chrono_literals;
 

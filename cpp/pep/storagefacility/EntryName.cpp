@@ -1,5 +1,10 @@
 #include <pep/storagefacility/EntryName.hpp>
 
+#include <exception>
+#include <stdexcept>
+#include <string>
+#include <utility>
+
 namespace pep {
 
 EntryName::EntryName(std::string participant, bool validateParticipant, std::string column)

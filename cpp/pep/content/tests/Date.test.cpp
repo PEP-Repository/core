@@ -1,11 +1,11 @@
 #include <pep/content/Date.hpp>
 #include <pep/content/ParticipantPersonalia.hpp>
-#include <pep/utils/MiscUtil.hpp>
 
 #include <gtest/gtest.h>
 #include <exception>
+#include <chrono>
+#include <stdexcept>
 
-#include <boost/date_time/gregorian/greg_date.hpp>
 
 using namespace std::literals;
 using namespace std::chrono;

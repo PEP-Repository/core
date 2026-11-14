@@ -1,12 +1,10 @@
 #include <pep/utils/Exceptions.hpp>
-#include <pep/utils/Log.hpp>
 
-#include <boost/system/error_code.hpp>
 #include <boost/core/demangle.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/exception/exception.hpp>
 #include <boost/system/system_error.hpp>
-#include <boost/config.hpp>
+#include <boost/config.hpp> // IWYU pragma: keep (for BOOST_NO_RTTI)
 
 #ifndef _WIN32
 // Assume that cxxabi is available on *nix/Mac
@@ -16,6 +14,8 @@
 #include <exception>
 #include <typeinfo>
 #include <utility>
+#include <cassert>
+#include <string>
 
 namespace pep {
 

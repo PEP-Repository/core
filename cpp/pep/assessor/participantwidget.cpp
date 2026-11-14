@@ -3,22 +3,32 @@
 
 #include <pep/assessor/datetimeeditor.hpp>
 #include <pep/assessor/participanteditor.hpp>
-#include <pep/assessor/assessorwidget.hpp>
 
 #include <pep/assessor/QDate.hpp>
 #include <pep/client/Client.hpp>
-#include <pep/utils/Defer.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MiscUtil.hpp>
 #include <pep/utils/Shared.hpp>
-#include <pep/utils/Win32Api.hpp>
-#include <pep/assessor/InputValidationTooltip.hpp>
 #include <pep/gui/QTrxGui.hpp>
-
-#include <boost/asio/time_traits.hpp>
-#include <boost/format.hpp>
-#include <boost/algorithm/string/find.hpp>
+#include <pep/assessor/Branding.hpp>
+#include <pep/assessor/ButtonBar.hpp>
+#include <pep/assessor/ParticipantData.hpp>
+#include <pep/assessor/UserRole.hpp>
+#include <pep/assessor/VisitCaptions.hpp>
+#include <pep/assessor/devicehistorywidget.hpp>
+#include <pep/assessor/devicewidget.hpp>
+#include <pep/assessor/mainwindow.hpp>
+#include <pep/assessor/visitwidget.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/content/ParticipantDeviceHistory.hpp> // for ParticipantDeviceRecord
+#include <pep/core-client/CoreClient.hpp> // for EnumerateAndRetrieveResult, DataStorageResult2, StoreData2Entry
+#include <pep/morphing/Metadata.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
+#include <pep/structure/StudyContext.hpp>
+#include <pep/utils/Configuration.hpp>
+#include <pep/utils/Timestamp.hpp> // for TimeNow
 
 #include <QDateEdit>
 #include <QDebug>
@@ -37,8 +47,33 @@
 #include <QScrollBar>
 
 #include <ranges>
+#include <algorithm>
+#include <cassert>
+#include <cctype>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <functional>
+#include <iostream>
+#include <iterator>
+#include <map>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #ifdef _WIN32
+#include <pep/utils/Defer.hpp>
+#include <pep/utils/Win32Api.hpp>
+
+#include <boost/algorithm/string/find.hpp>
+#include <boost/format.hpp>
+
 #include <fstream>
 #include <Windows.h>
 #endif /*_WIN32*/

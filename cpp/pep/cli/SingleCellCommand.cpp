@@ -4,10 +4,29 @@
 #include <pep/async/RxBeforeTermination.hpp>
 #include <pep/async/RxInstead.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/cli/Command.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp> // for TicksSinceEpoch
 
 #include <boost/algorithm/hex.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <cassert>
+#include <chrono>
+#include <exception>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <string>
 
 using namespace pep::cli;
 
@@ -100,8 +119,8 @@ rxcpp::observable<pep::FakeVoid> SingleCellCommand::WriteJson(std::ostream& dest
     .op(pep::RxInstead(pep::FakeVoid()));
 }
 
-std::vector<std::string> SingleCellModificationCommand::ticketAccessModes() const {
-  return { "write" };
+pep::ColumnAccessModes SingleCellModificationCommand::ticketAccessModes() const {
+  return pep::ColumnAccessModes::Write;
 }
 
 rxcpp::observable<pep::FakeVoid> SingleCellModificationCommand::processCell(std::shared_ptr<pep::CoreClient> client, const pep::IndexedTicket2& ticket, const pep::PolymorphicPseudonym& pp, const std::string& column) {

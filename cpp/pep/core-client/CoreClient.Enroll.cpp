@@ -1,15 +1,24 @@
-#include <pep/auth/OAuthToken.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/utils/Log.hpp>
-
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/crypto/X509Certificate.hpp> // for X509Identity
+#include <pep/key-components/KeyComponentMessages.hpp> // for KeyComponentRequest, KeyComponentResponse
+#include <pep/morphing/EnrolledPartyKeys.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-observe_on.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <chrono>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
 
 namespace pep {
 

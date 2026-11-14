@@ -1,10 +1,9 @@
 #include <pep/versioning/GitlabVersion.hpp>
 
-#include <boost/algorithm/string/join.hpp>
-
 #include <sstream>
-#include <string_view>
-#include <vector>
+#include <optional>
+#include <string>
+#include <utility>
 
 namespace pep {
 

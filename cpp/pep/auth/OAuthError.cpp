@@ -1,5 +1,13 @@
 #include <pep/auth/OAuthError.hpp>
 
+#include <boost/url/url.hpp>
+
+#include <cassert>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
+
 namespace pep {
 
 OAuthError::OAuthError(std::string error, std::string description)

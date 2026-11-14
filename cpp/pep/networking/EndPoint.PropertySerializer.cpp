@@ -1,4 +1,9 @@
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
+#include <pep/networking/EndPoint.hpp>
+
+#include <cstdint>
+#include <optional>
+#include <string>
 
 namespace pep {
 

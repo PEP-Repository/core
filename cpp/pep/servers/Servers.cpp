@@ -7,6 +7,9 @@
 #include <pep/transcryptor/Transcryptor.hpp>
 #include <pep/authserver/Authserver.hpp>
 
+#include <filesystem>
+#include <mutex>
+
 namespace pep {
 
 void Servers::runAsync(const std::filesystem::path& configPath) {

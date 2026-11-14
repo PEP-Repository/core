@@ -10,6 +10,13 @@
 #include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/utils/Shared.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/async/FakeVoid.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/IndexList.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataEnumerationRequest2, DataEnumerationResponse2
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2, Ticket2
 
 #include <algorithm>
 #include <exception>
@@ -20,12 +27,20 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <sstream>
+#include <stdexcept>
+#include <unordered_set>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-observe_on.hpp>
 #include <rxcpp/operators/rx-reduce.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep;
 using namespace std::ranges;
@@ -95,7 +110,7 @@ CoreClient::enumerateAndRetrieveData2(const EnumerateAndRetrieveData2Opts& opts)
   ctx->dataSizeLimit = opts.dataSizeLimit;
 
   ctx->requestTicketOpts = std::make_shared<RequestTicket2Opts>();
-  ctx->requestTicketOpts->modes = {opts.includeData ? "read" : "read-meta"};
+  ctx->requestTicketOpts->modes = opts.includeData ? ColumnAccessModes::Read : ColumnAccessModes::ReadMeta;
   ctx->requestTicketOpts->participantGroups = opts.groups;
   ctx->requestTicketOpts->accessSubjects = opts.pps;
   ctx->requestTicketOpts->columnGroups = opts.columnGroups;

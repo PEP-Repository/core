@@ -1,14 +1,21 @@
 #include <benchmark/benchmark.h>
 
 #include <boost/algorithm/hex.hpp>
-
-#include <openssl/rand.h>
+#include <boost/core/noncopyable.hpp> // IWYU pragma: keep (used without NDEBUG)
 
 #include <algorithm>
 #include <random>
 #include <vector>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <iostream> // IWYU pragma: keep (used without NDEBUG)
+#include <memory>
+#include <ostream> // IWYU pragma: keep (used without NDEBUG)
+#include <ranges>
+#include <string>
+#include <utility>
 
-#include <pep/utils/OpensslUtils.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
 #include <pep/elgamal/CurveScalar.hpp>
 #include <pep/rsk/RskTranslator.hpp>
@@ -17,6 +24,17 @@
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/accessmanager/AccessManagerSerializers.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for EncryptionKeyRequest
+#include <pep/crypto/AsymmetricKey.hpp>
+#include <pep/crypto/X509Certificate.hpp> // for X509Identity
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPublicKey
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk/RskKeys.hpp> // for KeyFactorSecret
+#include <pep/rsk/RskRecipient.hpp> // for RekeyRecipient
+#include <pep/serialization/Serialization.hpp>
+#include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for Ticket2, LocalPseudonyms, SignedTicket2
 
 using namespace std::ranges;
 
@@ -299,7 +317,7 @@ BENCHMARK(BM_PageDeserialize);
 static pep::EncryptionKeyRequest CreateRandomEncryptionKeyRequest() {
   pep::EncryptionKeyRequest ret;
   pep::Ticket2 ticket;
-  ticket.modes = {"read", "write"};
+  ticket.modes = pep::ColumnAccessModes::Read | pep::ColumnAccessModes::Write;
   for (int i = 0; i < 200; i++)
     ticket.columns.push_back("Column" + std::to_string(i));
   ticket.userGroup = "some user group";

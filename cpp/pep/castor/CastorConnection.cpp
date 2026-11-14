@@ -2,8 +2,19 @@
 #include <pep/castor/CastorClient.hpp>
 #include <pep/castor/Ptree.hpp>
 #include <pep/castor/Study.hpp>
+#include <pep/castor/ApiKey.hpp>
+#include <pep/castor/CastorConnection.hpp>
+#include <pep/networking/HTTPMessage.hpp> // for HTTPRequest, HTTPResponse
+#include <pep/utils/Shared.hpp>
 
 #include <ranges>
+#include <cassert>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -11,8 +22,11 @@
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
 #include <rxcpp/operators/rx-take.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <boost/property_tree/ptree.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/property_tree/exceptions.hpp> // for boost::property_tree::ptree_error
 
 using namespace std::ranges;
 

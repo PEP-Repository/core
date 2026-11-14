@@ -2,9 +2,13 @@
 #include <pep/auth/UserGroup.hpp>
 
 #include <pep/serialization/Error.hpp>
-
 #include <boost/format.hpp>
+
 #include <boost/algorithm/string/join.hpp>
+
+#include <string>
+#include <string_view>
+#include <unordered_set>
 
 namespace pep {
 

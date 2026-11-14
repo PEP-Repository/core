@@ -1170,7 +1170,6 @@ macos-debug:
       --lockfile="docker-build/builder/conan/conan-ci.lock"
       --profile:all="docker-build/builder/conan/conan_profile"
       --build=missing
-      -s:a os.version=13.3
       -s:a build_type="$CMAKE_BUILD_TYPE"
       -o "&:with_assessor=True"
       -o "&:with_servers=True"

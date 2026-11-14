@@ -1,9 +1,14 @@
 #include <pep/crypto/Encrypted.hpp>
 #include <pep/crypto/Bytes.hpp>
 #include <pep/crypto/BytesSerializer.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/serialization/SerializeException.hpp>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock-matchers.h>
+
+#include <exception>
+#include <string>
 
 using namespace pep;
 using testing::Throws;

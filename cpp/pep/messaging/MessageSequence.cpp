@@ -1,6 +1,19 @@
 #include <pep/messaging/MessageSequence.hpp>
 
 #include <pep/async/RxSubsequently.hpp>
+#include <pep/async/CreateObservable.hpp>
+#include <pep/utils/BuildFlavor.hpp> // for PEP_BUILD_HAS_DEBUG_FLAVOR
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <cassert>
+#include <cstddef>
+#include <exception>
+#include <ios>
+#include <istream>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 namespace pep::messaging {
 

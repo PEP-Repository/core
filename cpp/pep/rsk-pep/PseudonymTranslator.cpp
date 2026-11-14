@@ -2,6 +2,14 @@
 
 #include <pep/rsk-pep/KeyDomain.hpp>
 #include <pep/utils/CollectionUtils.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPublicKey
+#include <pep/rsk-pep/PseudonymTranslationKeys.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/rsk/Proofs.hpp>
+#include <pep/rsk/RskRecipient.hpp> // for RekeyRecipient
+
+#include <utility>
 
 using namespace pep;
 

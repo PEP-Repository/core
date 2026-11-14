@@ -2,14 +2,20 @@
 
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-take.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxParallelConcat.hpp>
 #include <pep/async/OnAsio.hpp>
 #include <pep/async/CreateObservable.hpp>
-#include <pep/async/tests/RxTestUtils.hpp>
 
 #include <boost/asio/io_context.hpp>
+
+#include <chrono>
+#include <exception>
+#include <optional>
+#include <stdexcept>
+#include <vector>
 
 using namespace pep;
 

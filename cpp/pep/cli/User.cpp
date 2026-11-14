@@ -1,9 +1,15 @@
-#include <pep/application/Application.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/cli/user/CommandUserQuery.hpp>
 #include <pep/cli/user/CommandUserGroup.hpp>
 #include <pep/cli/user/UserSubCommands.hpp>
+#include <pep/accessmanager/AccessManagerProxy.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/cli/User.hpp>
+
+#include <memory>
+#include <vector>
 
 using namespace pep::cli;
 

@@ -4,12 +4,36 @@
 #include <pep/accessmanager/Storage.hpp>
 #include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
 #include <pep/structure/StructureSerializers.hpp>
-#include <pep/utils/File.hpp>
+#include <pep/accessmanager/AccessManager.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for StructureMetadataKey, StructureMetadataType
+#include <pep/accessmanager/Records.hpp> // for StructureMetadataFilter
+#include <pep/accessmanager/UserIdFlags.hpp>
+#include <pep/accessmanager/UserMessages.hpp> // for UserQueryResponse, QRUser
+#include <pep/auth/UserGroup.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPublicKey
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/utils/Timestamp.hpp>
 
-#include <chrono>
 #include <filesystem>
 #include <optional>
 #include <thread>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <initializer_list>
+#include <map>
+#include <memory>
+#include <ranges>
+#include <stdexcept>
+#include <string>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 using namespace pep;
 using namespace std::literals;
@@ -211,7 +235,7 @@ TEST_F(AccessManagerStorageTest, getStoragePath_happy) {
 }
 
 TEST_F(AccessManagerStorageTest, getChecksumChainNames_happy) {
-  auto actual = storage->getChecksumChainNames();
+  auto actual = storage->checksumChains().names() | to<std::vector>();
   auto expected = std::vector<std::string>{
     "column-group-accessrule",
     "column-group-columns",
@@ -229,18 +253,12 @@ TEST_F(AccessManagerStorageTest, getChecksumChainNames_happy) {
     "user-group-users",
     "structure-metadata",
   };
-  sort(actual);
   sort(expected);
   ASSERT_EQ(actual, expected);
 }
 
 TEST_F(AccessManagerStorageTest, computeChecksum_unknown_chain) {
-  std::string chain{"unknown_chain"};
-  std::optional<size_t> maxCheckpoint{};
-  uint64_t checksum{};
-  uint64_t checkpoint{};
-  EXPECT_THAT([&]() { storage->computeChecksum(chain, maxCheckpoint, checksum, checkpoint); },
-    ::testing::ThrowsMessage<Error>(::testing::StrEq("No such checksum chain")));
+  EXPECT_THROW(storage->checksumChains().chain("unknown_chain"), UnknownChecksumChainError);
 }
 
 TEST_F(AccessManagerStorageTest, hasColumn) {

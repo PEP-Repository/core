@@ -1,5 +1,6 @@
 #include <pep/accessmanager/AccessManager.hpp>
 #include <pep/service-application/ServiceApplication.hpp>
+#include <pep/application/Application.hpp> // for PEP_DEFINE_MAIN_FUNCTION
 
 
 /// \brief entry point for access manager

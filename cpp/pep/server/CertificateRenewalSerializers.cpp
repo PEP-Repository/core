@@ -1,5 +1,11 @@
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/server/CertificateRenewalSerializers.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/server/CertificateRenewalMessages.hpp> // for CsrResponse
+
+#include <Messages.pb.h> // for proto::CsrResponse
+
+#include <utility>
 
 namespace pep {
 

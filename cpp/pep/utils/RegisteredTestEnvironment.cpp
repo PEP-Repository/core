@@ -1,5 +1,9 @@
 #include <pep/utils/RegisteredTestEnvironment.hpp>
 
+#include <optional>
+#include <span>
+#include <stdexcept>
+
 namespace pep {
 
 std::optional<RegisteredTestEnvironment::Factory>& RegisteredTestEnvironment::RegisteredFactory() {

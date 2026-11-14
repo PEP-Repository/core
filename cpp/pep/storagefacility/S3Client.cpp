@@ -1,16 +1,31 @@
 #include <pep/storagefacility/S3Client.hpp>
 #include <pep/networking/HttpClient.hpp>
 #include <pep/utils/Log.hpp>
-
-#include <pep/utils/OpenSSLHasher.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/networking/HTTPMessage.hpp> // for HTTPRequest, HTTPResponse
+#include <pep/networking/HttpMethod.hpp>
+#include <pep/storagefacility/S3.hpp> // for s3::request::Sign
+#include <pep/storagefacility/S3Credentials.hpp> // for s3::Credentials
+#include <pep/utils/Compare.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <sstream>
+#include <algorithm>
+#include <cassert>
+#include <memory>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep;
 using namespace pep::s3;

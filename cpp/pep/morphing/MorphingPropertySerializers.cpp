@@ -3,7 +3,14 @@
 #include <pep/elgamal/ElgamalPropertySerializers.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
 #include <pep/serialization/Serialization.hpp>
-#include <pep/utils/MiscUtil.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey, ElgamalPublicKey
+#include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/morphing/SystemPublicKeys.hpp>
+
+#include <optional>
+#include <stdexcept>
+#include <string>
 
 namespace pep {
 

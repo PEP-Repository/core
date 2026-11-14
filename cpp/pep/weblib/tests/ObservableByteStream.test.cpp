@@ -2,14 +2,17 @@
 
 #include <pep/weblib/tests/PromiseHelpers.hpp>
 
+#include <cstddef>
+#include <string>
+#include <vector>
+
 #include <emscripten/em_js.h>
 #include <emscripten/val.h>
 #include <rxcpp/rx-lite.hpp>
 
 #include <gtest/gtest.h>
 
-#include <stdexcept>
-#include <string_view>
+
 
 using namespace emscripten;
 using namespace pep;

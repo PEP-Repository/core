@@ -5,6 +5,9 @@
 #include <pep/utils/OpensslUtils.hpp>
 
 #include <cassert>
+#include <cstddef>
+
+#include <openssl/evp.h>
 
 namespace pep {
 

@@ -1,6 +1,10 @@
 #include <pep/serialization/ErrorSerializer.hpp>
 #include <pep/serialization/Serialization.hpp>
+#include <pep/serialization/Error.hpp>
+
 #include <gtest/gtest.h>
+
+#include <string>
 
 namespace {
 

@@ -5,6 +5,7 @@
 #include <boost/algorithm/string/replace.hpp>
 
 #include <string_view>
+#include <string>
 
 using namespace boost::archive::iterators;
 

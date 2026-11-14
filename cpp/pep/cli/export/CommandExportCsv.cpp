@@ -2,7 +2,12 @@
 
 #include <pep/cli/Export.hpp>
 #include <pep/structuredoutput/Csv.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/Command.hpp>
+#include <pep/structuredoutput/Table.hpp>
 #include <string_view>
+#include <array>
+#include <ostream>
 
 using namespace pep::cli;
 

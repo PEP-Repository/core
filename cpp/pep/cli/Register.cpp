@@ -1,18 +1,43 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
-#include <pep/application/Application.hpp>
 #include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxGroupToVectors.hpp>
 #include <pep/async/RxInstead.hpp>
-#include <pep/async/RxIterate.hpp>
+#include <pep/async/RxIterate.hpp> // IWYU pragma: keep (called from generic lambda, not detected by include-cleaner)
 #include <pep/client/Client.hpp>
 #include <pep/content/Date.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/content/ParticipantPersonalia.hpp>
+#include <pep/core-client/CoreClient.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <iomanip>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <queue>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace pep::cli;
 

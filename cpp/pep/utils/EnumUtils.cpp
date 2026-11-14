@@ -1,4 +1,5 @@
 #include <pep/utils/EnumUtils.hpp>
+#include <pep/utils/TypeTraits.hpp> // for PEP_MARK_AS_FLAG_ENUM_TYPE
 
 namespace {
 

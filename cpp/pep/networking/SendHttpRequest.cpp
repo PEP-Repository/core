@@ -1,4 +1,13 @@
 #include <pep/networking/SendHttpRequest.hpp>
+#include <pep/networking/HTTPMessage.hpp>
+
+#include <filesystem>
+#include <memory>
+#include <optional>
+
+#include <boost/asio/io_context.hpp>
+
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep;
 
@@ -13,11 +22,14 @@ using namespace pep;
 #include <pep/utils/CollectionUtils.hpp>
 
 #include <cassert>
-#include <span>
+#include <cstddef>
+#include <exception>
 #include <stdexcept>
+#include <string>
 #include <vector>
 #include <utility>
 
+#include <emscripten/em_types.h> // for EMSCRIPTEN_RESULT_SUCCESS
 #include <emscripten/fetch.h>
 
 using namespace std::literals;
@@ -149,8 +161,6 @@ rxcpp::observable<HTTPResponse> pep::SendHttpRequest(
 #else // ! __EMSCRIPTEN__
 
 #include <pep/networking/HttpClient.hpp>
-
-#include <rxcpp/rx-lite.hpp>
 
 #include <rxcpp/operators/rx-finally.hpp>
 

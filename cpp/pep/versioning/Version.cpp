@@ -1,11 +1,20 @@
 #include <pep/utils/Configuration.hpp>
 #include <pep/versioning/Version.hpp>
+#include <pep/versioning/GitlabVersion.hpp>
+
 #include <Messages.pb.checksum.h>
 
 #include <boost/preprocessor/stringize.hpp>
-#include <boost/preprocessor/facilities/is_empty.hpp>
 
 #include <boost/algorithm/hex.hpp>
+
+#include <cstdint>
+#include <filesystem>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 using namespace pep;
 

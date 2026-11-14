@@ -8,13 +8,41 @@
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Timestamp.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/networking/Client.hpp>
+#include <pep/networking/Connection.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/networking/HttpMethod.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/networking/Transport.hpp> // for networking::SizedTransfer, networking::DelimitedTransfer
+#include <pep/utils/Shared.hpp>
 
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string/classification.hpp> // for boost::is_space
+#include <boost/algorithm/string/predicate.hpp> // IWYU pragma: keep (used in assert)
+#include <boost/asio/io_context.hpp>
+#include <boost/lexical_cast/try_lexical_convert.hpp>
+#include <boost/url/url.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <chrono>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <ios>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 using namespace std::ranges;
 

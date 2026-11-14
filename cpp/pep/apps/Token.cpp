@@ -3,12 +3,22 @@
 #include <pep/utils/Timestamp.hpp>
 #include <pep/application/CommandLineUtility.hpp>
 #include <pep/auth/OAuthToken.hpp>
+#include <pep/application/Application.hpp> // for PEP_DEFINE_MAIN_FUNCTION
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <iostream>
 #include <stdexcept>
+#include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <optional>
+#include <string>
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/exceptions.hpp> // for boost::property_tree::ptree_bad_path
+#include <boost/property_tree/json_parser/error.hpp>
 
 using namespace std::chrono;
 using namespace std::literals;

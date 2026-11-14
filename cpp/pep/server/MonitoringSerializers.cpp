@@ -1,6 +1,10 @@
 #include <pep/server/MonitoringSerializers.hpp>
+#include <pep/server/MonitoringMessages.hpp> // for MetricsResponse, ChecksumChainResponse
 
 #include <ranges>
+#include <utility>
+
+#include <Messages.pb.h> // for proto::MetricsResponse
 
 using namespace std::ranges;
 

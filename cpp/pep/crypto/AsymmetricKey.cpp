@@ -4,6 +4,9 @@
 #include <openssl/core_names.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
+#include <openssl/crypto.h> // for EVP_PKEY, BIO
+#include <openssl/evp.h>
+#include <openssl/x509.h> // for i2d_PUBKEY_bio
 
 #include <boost/numeric/conversion/cast.hpp>
 
@@ -11,13 +14,13 @@
 #include <pep/utils/Log.hpp>
 #include <pep/utils/OpensslUtils.hpp>
 #include <pep/utils/Defer.hpp>
-#include <pep/utils/EnumUtils.hpp>
 
 #include <string>
 #include <mutex>
 #include <string_view>
 #include <stdexcept>
 #include <utility>
+#include <cstddef>
 
 namespace pep {
 

@@ -5,8 +5,15 @@
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
 #include <pep/utils/MapUtils.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataEnumerationRequest2, DataEnumerationResponse2, DataStoreRequest2, ...
 
 #include <ranges>
+#include <stdexcept>
+#include <utility>
+
+#include <Messages.pb.h> // for proto::DataEnumerationRequest2
 
 using namespace std::ranges;
 

@@ -1,4 +1,11 @@
 #include <pep/storagefacility/SFIdSerializer.hpp>
+#include <pep/storagefacility/SFId.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <Messages.pb.h> // for proto::SFId
+
+#include <cstdint>
+#include <utility>
 
 namespace pep {
 

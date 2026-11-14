@@ -1,8 +1,17 @@
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/AmaSerializers.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
+#include <pep/accessmanager/AmaMessages.hpp> // for AmaQRColumnGroup, AmaMutationRequest, AmaQueryResponse, ...
+#include <pep/async/FakeVoid.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
 #include <ranges>
 #include <utility>
+#include <algorithm>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::ranges;
 

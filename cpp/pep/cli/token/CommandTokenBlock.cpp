@@ -4,6 +4,22 @@
 #include <pep/utils/Timestamp.hpp>
 #include <pep/structuredoutput/Csv.hpp>
 #include <pep/structuredoutput/Table.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/Command.hpp>
+#include <pep/cli/Token.hpp>
+#include <pep/keyserver/KeyServerMessages.hpp> // for TokenBlockingCreateResponse
+#include <pep/keyserver/tokenblocking/BlocklistEntry.hpp>
+
+#include <cstdint>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <string>
+#include <vector>
 
 using namespace pep::cli;
 

@@ -5,6 +5,17 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 #include <random>
+#include <algorithm>
+#include <cctype>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <iterator>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
 
 namespace {
 
