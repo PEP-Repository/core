@@ -1,11 +1,11 @@
 #pragma once
 
+#include <pep/utils/VariantUtils.hpp>
+
+#include <cstddef>
 #include <string>
 #include <string_view>
 #include <variant>
-#include <cstddef>
-
-#include <pep/utils/VariantUtils.hpp>
 
 namespace pep::structuredOutput {
 

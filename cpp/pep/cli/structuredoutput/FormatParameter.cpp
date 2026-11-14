@@ -1,10 +1,20 @@
 #include <pep/cli/structuredoutput/FormatParameter.hpp>
 
+#include <pep/application/CommandLineParameter.hpp>
+#include <pep/application/CommandLineValue.hpp>
+#include <pep/structuredoutput/Common.hpp>
+#include <pep/structuredoutput/FormatFlags.hpp>
 #include <pep/structuredoutput/Json.hpp>
+#include <pep/structuredoutput/Tree.hpp>
 #include <pep/structuredoutput/Yaml.hpp>
+#include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/VariantUtils.hpp>
 
+#include <optional>
+#include <ostream>
 #include <stdexcept>
+#include <string>
+#include <variant>
 
 namespace pep::structuredOutput {
 namespace {

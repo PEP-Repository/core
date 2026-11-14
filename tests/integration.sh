@@ -403,7 +403,7 @@ if [ "$USE_DOCKER" = true ]; then
   trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" pull
 
   trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" start pep-network
-  trace sleep 10
+  wait_for_s3proxy pep-network
 fi
 
 if [ "$LOCAL" = true ]; then

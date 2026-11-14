@@ -1,6 +1,9 @@
 #pragma once
 
-#include <boost/system/errc.hpp>
+#include <boost/system/errc.hpp> // IWYU pragma: keep (errc_t is declared in an internal Boost header)
+
+#include <stdexcept>
+#include <string>
 
 namespace pep::messaging {
 
@@ -16,6 +19,5 @@ public:
 
   static ConnectionFailureException ForVersionCheckFailure(const std::string& message) { return ConnectionFailureException(boost::system::errc::wrong_protocol_type, message); }
 };
-
 
 }

@@ -2,10 +2,11 @@
 
 #include <pep/utils/Configuration_fwd.hpp>
 
-#include <filesystem>
-
 #include <QLabel>
 #include <QPixmap>
+
+#include <filesystem>
+#include <string>
 
 struct BrandingConfiguration {
   std::string projectName;

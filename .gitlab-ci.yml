@@ -25,13 +25,12 @@ stages:
   - triggers
 
 variables:
-  GIT_SUBMODULE_STRATEGY: recursive
-  FF_SCRIPT_SECTIONS: 'true'  # Enable collapsible sections per script line, with timings
-  FF_TIMESTAMPS: true
+  FF_SCRIPT_SECTIONS: true  # Enable collapsible sections per script line, with timings
 
+  GIT_SUBMODULE_STRATEGY: recursive
   # The after_script: cannot fail. However, since gitlab runner 17.1 AFTER_SCRIPT_IGNORE_ERRORS can be set
   # to change this behaviour. See: https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/4758
-  AFTER_SCRIPT_IGNORE_ERRORS: 'false'
+  AFTER_SCRIPT_IGNORE_ERRORS: false
 
   BUILD_DIRECTORY: build
   STAGING_DIRECTORY: build/staging
@@ -43,11 +42,6 @@ variables:
 
   # For CI scripts
   CLEAN_CONAN: 1
-
-  # Defaults, used in .configure-conan-and-cmake
-  CONAN_FLAGS:
-    -o &:with_assessor=False
-    -o &:with_castor=$WITH_CASTOR
 
   # When adding executables here, also add them to /docker/services.Dockerfile
   EXECUTABLES_APPS: >-
@@ -185,6 +179,20 @@ variables:
     value: '20'
     description: Limit the number of concurrent compiler jobs when linting
 
+  # Main and linting pipelines never auto-cancel and always keep going, regardless of these two (see workflow:)
+  AUTO_CANCEL_ON_JOB_FAILURE:
+    value: 'yes'
+    options:
+      - 'yes'
+      - 'no'
+    description: Cancel the pipeline as soon as a job fails (not on main or linting pipelines)
+  BUILD_KEEP_GOING:
+    value: 'no'
+    options:
+      - 'no'
+      - 'yes'
+    description: Keep compiling after a compile error, to see all errors at once (always on for main and linting pipelines)
+
   IMAGE_TAG: $CI_COMMIT_SHA
   IMAGE_TAG_TEST: test-$CI_PIPELINE_ID-$CI_COMMIT_SHA
 
@@ -204,13 +212,61 @@ variables:
   # Use color for gtest output
   GTEST_COLOR: 1
 
+# Pipeline for a non-draft MR: runs same jobs as main, including linter and coverage.
+# Marking an MR ready doesn't start a pipeline: push or use "Run pipeline".
+# TODO: Trigger a pipeline when an MR is marked ready (can be done with a webhook to trigger a pipeline via the API)
+.mr-ready: &mr-ready '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_DRAFT != "true"'
+
+# For jobs without conditions. Every job needs `rules:`, as jobs without them are left out of MR pipelines
+# as they default to `only: [branches, tags]` (see https://docs.gitlab.com/ci/yaml/deprecated_keywords/#onlyrefs--exceptrefs).
+# The analyse-source job checks this with ci_cd/check-ci-yml.py.
+.run-in-every-pipeline: &run-in-every-pipeline
+  - when: on_success
+
+# Always linted, regardless of the autolinting input: main, stable, release-X.Y, hotfix branches, and ready (non-draft) MRs
+# (duplicates .mr-ready, keep in sync)
+.always-linted-branches: &always-linted-branches
+  $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH ||
+  $CI_COMMIT_REF_NAME == $PEP_FOSS_TESTING_BRANCH ||
+  $CI_COMMIT_REF_NAME =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN ||
+  $CI_COMMIT_REF_NAME =~ $PEP_FOSS_HOTFIX_BRANCH_PATTERN ||
+  ($CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_DRAFT != "true")
+
 # Applies to whole pipeline
 workflow:
+  auto_cancel:
+    on_job_failure: none
   rules:
-    # Do not create MR pipelines (see https://docs.gitlab.com/ee/ci/pipelines/merge_request_pipelines.html ).
-    # As soon as we use one `rules:` tag in a job, that job would run on any MR pipeline, unless specified otherwise.
-    # Prevent that by disabling the whole pipeline in this case
-    - if: $CI_PIPELINE_SOURCE != 'merge_request_event'
+    # MR from a protected branch (main, stable, release-X.Y): no MR pipeline, it keeps branch pipelines,
+    # as their publish/deploy jobs need protected variables, which MR pipelines don't get
+    - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_PROTECTED == "true"
+      when: never
+    # Push to an unprotected branch with an open MR: skip, the MR pipeline covers it.
+    # Manual, scheduled and triggered runs still get a branch pipeline.
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_OPEN_MERGE_REQUESTS && $CI_COMMIT_REF_PROTECTED != "true"
+      when: never
+    # Ready MR: build everything, keep going after compile errors, and always run all jobs including linter and coverage (if C++ code changed)
+    - if: *mr-ready
+      variables:
+        BUILD_ALL_TARGETS: "yes"
+        BUILD_KEEP_GOING_ALWAYS: "yes"
+    # Draft MR: build essentials, fail fast, cancel as soon as a job fails
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $AUTO_CANCEL_ON_JOB_FAILURE == "yes"
+      auto_cancel:
+        on_job_failure: all
+    # Main and linting pipelines: report all failures, so never auto-cancel and always keep going.
+    # A separate variable, as the Run pipeline form passes BUILD_KEEP_GOING (default "no"), overriding workflow variables.
+    - if: *always-linted-branches
+      variables:
+        BUILD_KEEP_GOING_ALWAYS: "yes"
+    - if: "'$[[ inputs.autolinting ]]' == 'linted'"
+      variables:
+        BUILD_KEEP_GOING_ALWAYS: "yes"
+    # Feature branches: cancel the pipeline as soon as a job fails, unless disabled
+    - if: $AUTO_CANCEL_ON_JOB_FAILURE == "yes"
+      auto_cancel:
+        on_job_failure: all
+    - when: always
 
 include:
   - local: /ci_cd/pep-foss-ci-settings.yml
@@ -231,22 +287,18 @@ include:
     - if: '$CI_COMMIT_REF_NAME =~ /^binaries_for_[0-9]+$/'
       when: never
 
-# Main, stable, release and hotfix branches are always linted, regardless of the autolinting input
-.always-linted-branches: &always-linted-branches
-  $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH || $CI_COMMIT_REF_NAME == $PEP_FOSS_TESTING_BRANCH || $CI_COMMIT_REF_NAME =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN || $CI_COMMIT_REF_NAME =~ $PEP_FOSS_HOTFIX_BRANCH_PATTERN
-
 # Must be last in rules, as it will not run more rules
 .set-enable-linter-and-terminate-rules:
   rules:
     - if: *always-linted-branches
       variables:
-        ENABLE_LINTER: yes
+        ENABLE_LINTER: "yes"
     - if: "'$[[ inputs.autolinting ]]' == 'linted'"
       variables:
-        ENABLE_LINTER: yes
+        ENABLE_LINTER: "yes"
     - if: "'$[[ inputs.autolinting ]]' != 'linted'"
       variables:
-        ENABLE_LINTER: no
+        ENABLE_LINTER: "no"
 
 # Checkout the right docker-build commit, if overridden, but keep potentially modified conan-ci.lock. Requires git
 #language=sh
@@ -347,9 +399,11 @@ analyse-source:
   variables:
     GIT_SUBMODULE_STRATEGY: none
     GIT_DEPTH: 1
+  rules: *run-in-every-pipeline
   before_script:
-    - apk add --no-cache bash git shellcheck check-jsonschema
+    - apk add --no-cache bash git shellcheck check-jsonschema py3-yaml
   script:
+    - ./ci_cd/check-ci-yml.py
     - ./scripts/analyse-scripts.sh
     - ./scripts/analyse-source.sh
     - ./scripts/validate-config.sh ./config/local/
@@ -400,6 +454,40 @@ cleanup:
   else
     >&2 echo "Concurrency limit is $concurrency_limit"
   fi
+
+# Jobs can invoke this anchor to make actual compilations (ccache misses) and clang-tidy runs wait for enough available
+# memory, and rerun them if they are OOM-killed anyway (see ci_cd/mem-gate.sh for settings, e.g. MEM_GATE_COMMAND_MIB).
+# Sets "mem_gate_launcher" to the wrapper to prefix such commands with.
+#language=sh
+.use-mem-gate: &use-mem-gate |
+  mem_gate_launcher="$CI_PROJECT_DIR/ci_cd/mem-gate.sh"
+  # Note: no quotes, ccache splits prefix_command on spaces and doesn't interpret quotes (so the path cannot contain spaces)
+  export CCACHE_PREFIX="$mem_gate_launcher"
+  # Give mem-gate.sh a copy of the job's stderr, which is inherited through CMake, Ninja and ccache. This way, its messages
+  # show up in the job log immediately, and are not captured (and cached!) by ccache as part of the compiler's output.
+  exec {mem_gate_log_fd}>&2
+  export MEM_GATE_LOG_FD="$mem_gate_log_fd"
+
+#language=sh
+# Sets "keep_going_option" to the `cmake --build` arguments that make Ninja continue after build errors (-k 0),
+# if wanted (see BUILD_KEEP_GOING). Linting jobs always keep going, to report all linter findings at once.
+.set-keep-going-option: &set-keep-going-option
+  - keep_going_option=""
+  - if [ "$BUILD_KEEP_GOING" = yes ] || [ "$BUILD_KEEP_GOING_ALWAYS" = yes ] || [ "$ENABLE_LINTER" = yes ]; then
+  -   keep_going_option="-- -k 0"
+  - fi
+
+#language=sh
+# Sets "conan_options" to the `conan install` options for our conanfile.py, from the job's WITH_* variables.
+# Jobs only set the options that differ from the conanfile.py defaults (all enabled); an unset or empty variable
+# is not passed, so the default applies (which also suits options the recipe removes, e.g. for Emscripten).
+.set-conan-options: &set-conan-options
+  - conan_options="-o &:custom_build_folder=True"
+  - if [ -n "$WITH_ASSESSOR" ];  then conan_options="$conan_options -o &:with_assessor=$WITH_ASSESSOR"; fi
+  - if [ -n "$WITH_SERVERS" ];   then conan_options="$conan_options -o &:with_servers=$WITH_SERVERS"; fi
+  - if [ -n "$WITH_CASTOR" ];    then conan_options="$conan_options -o &:with_castor=$WITH_CASTOR"; fi
+  - if [ -n "$WITH_TESTS" ];     then conan_options="$conan_options -o &:with_tests=$WITH_TESTS"; fi
+  - if [ -n "$WITH_BENCHMARK" ]; then conan_options="$conan_options -o &:with_benchmark=$WITH_BENCHMARK"; fi
 
 #language=sh
 # We don't want errors about [[deprecated]] library functions in stable/release branches
@@ -498,8 +586,12 @@ retrieve-lockfile:
     paths:
       - ./docker-build/builder/conan/conan-ci.lock
 
-.configure-conan-and-cmake: &configure-conan-and-cmake
-  # Do not build dependencies, should already be built in docker-build
+# Installs Conan packages for $BUILD_TYPE, with the options for our conanfile.py from the WITH_* variables
+# (see .set-conan-options) and the other `conan install` arguments (profiles, settings, --build) in $CONAN_FLAGS.
+# Docker jobs don't build dependencies: they should already be built in docker-build.
+#language=bash
+.conan-install: &conan-install
+  - *set-conan-options
   - concurrency_option_conan=""
   - |
     if [ -n "$concurrency_limit" ]; then
@@ -513,27 +605,43 @@ retrieve-lockfile:
   - >
     conan install ./
     --lockfile=./docker-build/builder/conan/conan-ci.lock
-    -s build_type=$CMAKE_BUILD_TYPE
+    -s build_type=$BUILD_TYPE
     $concurrency_option_conan
     $CONAN_FLAGS
-    -o "&:with_tests=$WITH_TESTS"
-    -o "&:with_benchmark=$WITH_BENCHMARK"
-    -o "&:custom_build_folder=True"
-    --output-folder=./$BUILD_DIRECTORY/
-  - build_type_lower=$(echo $CMAKE_BUILD_TYPE | tr '[:upper:]' '[:lower:]')
+    $conan_options
+    --output-folder=./$BUILD_DIRECTORY/ && true
+  - conan_error="$?"
+  # Remove remote such that jobs on (non-Docker) runners that don't have the local-recipes folder don't fail
+  - conan remote remove pep-local-recipes
+  - |
+    if [[ "$conan_error" != 0 ]]; then
+      exit "$conan_error"
+    fi
+
+# Configures CMake (in preset conan-$build_type_lower) after .conan-install,
+# and sets keep_going_option for the subsequent `cmake --build`
+#language=bash
+.cmake-configure: &cmake-configure
+  - build_type_lower=$(echo $BUILD_TYPE | tr '[:upper:]' '[:lower:]')
   - *set-enable-deprecation-errors
+  - *set-keep-going-option
   - >
     cmake --preset conan-$build_type_lower
     -DCMAKE_C_COMPILER_LAUNCHER=ccache
     -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
     -DENABLE_CLANG_TIDY="$ENABLE_LINTER"
+    -DCMAKE_CXX_CLANG_TIDY_EXPORT_FIXES_DIR="$CI_PROJECT_DIR/$BUILD_DIRECTORY/clang-tidy-fixes"
+    -DCLANG_TIDY_LAUNCHER="${mem_gate_launcher:-}"
     -DBUILD_GO_SERVERS=$BUILD_GO_SERVERS
     -DENABLE_OAUTH_TEST_USERS=OFF
     -DHTTPSERVER_WITH_TLS=$HTTPSERVER_WITH_TLS
     -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
     -DVERIFY_HEADERS_STANDALONE=$VERIFY_HEADERS_STANDALONE
-    -DPEP_WEBLIB_USE_WSS=${PEP_WEBLIB_USE_WSS:-OFF}
     -DENABLE_COVERAGE=${ENABLE_COVERAGE:-OFF}
+
+.configure-conan-and-cmake: &configure-conan-and-cmake
+  - *conan-install
+  - *cmake-configure
 
 .ubuntu-build-base:
   <<: *ccache-configuration
@@ -557,8 +665,9 @@ retrieve-lockfile:
     -     concurrency_limit="$LINTER_CONCURRENCY_LIMIT"
     -   fi
     - fi
+    - *use-mem-gate
     - *configure-conan-and-cmake
-    - cmake --build --preset conan-$build_type_lower
+    - cmake --build --preset conan-$build_type_lower $keep_going_option
 
     # Check for lines only in second file (tests on disk)
     - if [ -n "$(comm -13
@@ -571,33 +680,36 @@ retrieve-lockfile:
     - *run-tests
   after_script:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
+    # Linter findings, shown on the MR page. Also when the job failed: reports are uploaded regardless.
+    - python3 scripts/clang-tidy-codequality.py "$BUILD_DIRECTORY/clang-tidy-fixes" . > gl-code-quality-report.json
+      || echo "Could not create the Code Quality report, see above"
     - *stage-artifacts
     - *ccache-print
   artifacts:
     reports:
       junit: temp/*.xml
+      codequality: gl-code-quality-report.json
 
 .ubuntu-lts-settings:
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   variables:
-    BUILD_GO_SERVERS: "on"
-    WITH_TESTS: "True"
+    # Changes to the conanfile.py defaults (see .set-conan-options)
+    WITH_ASSESSOR: "False"
+    BUILD_GO_SERVERS: "ON"
 
 #################### Ubuntu LTS Debug ####################
 
 .ubuntu-lts-debug-settings:
   extends: .ubuntu-lts-settings
   variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    WITH_BENCHMARK: "True"
-    VERIFY_HEADERS_STANDALONE: "off"
+    BUILD_TYPE: "$DEBUG_MODE"
+    VERIFY_HEADERS_STANDALONE: "OFF"
 
 ubuntu-lts-debug:
   extends:
     - .ubuntu-build-base
     - .ubuntu-lts-debug-settings
   variables:
-    WITH_CASTOR: "True"
     TESTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_SERVER
@@ -608,6 +720,20 @@ ubuntu-lts-debug:
       variables:
         ENABLE_COVERAGE: "ON"
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+      variables:
+        ENABLE_COVERAGE: "ON"
+    # Ready MRs: only measure coverage when C++ code, its build or tests changed (compared with the target branch)
+    - if: *mr-ready
+      changes:
+        - cpp/**/*
+        - messages/**/*
+        - tests/**/*
+        - CMakeLists.txt
+        - cmake/**/*
+        - conanfile.py
+      variables:
+        ENABLE_COVERAGE: "ON"
+    - if: *mr-ready
   before_script:
     - !reference [.ubuntu-build-base, before_script]
     - |
@@ -676,6 +802,8 @@ ubuntu-lts-debug:
     - 'echo "Line Coverage: ${line_pct}%"'
   coverage: '/Line Coverage: (\d+\.?\d*)%/'
   artifacts:
+    # Links to the report from the MR page
+    expose_as: 'Coverage report'
     paths:
       - htmlcov/
     reports:
@@ -695,7 +823,7 @@ pages:
     - job: ubuntu-lts-debug
       artifacts: true
   rules:
-    - if: "'$[[ inputs.test_coverage ]]' == 'coverage' && $CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH"
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
   #language=sh
   script:
     - if [ ! -f htmlcov/unit/index.html ] || [ ! -f htmlcov/combined/index.html ]; then
@@ -722,6 +850,7 @@ ubuntu-lts-debug-without-castor:
     - .ubuntu-lts-debug-settings
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+    - if: *mr-ready
   variables:
     WITH_CASTOR: "False"
     TESTS: >-
@@ -739,13 +868,14 @@ ubuntu-lts-debug-without-castor:
     - job: retrieve-lockfile
       optional: true
   variables:
-    HTTPSERVER_WITH_TLS: "OFF"
-    BUILD_GO_SERVERS: "off"
-    WITH_CASTOR: "True"
+    BUILD_TYPE: "$DEBUG_MODE"
+    # Changes to the conanfile.py defaults (see .set-conan-options)
+    WITH_ASSESSOR: "False"
     WITH_TESTS: "False"
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
     WITH_BENCHMARK: "False"
-    VERIFY_HEADERS_STANDALONE: "off"
+    HTTPSERVER_WITH_TLS: "OFF"
+    BUILD_GO_SERVERS: "OFF"
+    VERIFY_HEADERS_STANDALONE: "OFF"
     ENABLE_LINTER: "no"
   cache:
     - key: "ccache"
@@ -774,8 +904,9 @@ ubuntu-lts-debug-without-castor:
     - git diff --name-only "${LAST_PROCESSED_SHA}" "${CURRENT_SHA}" --no-relative cpp/pep > index.txt
     - *checkout-docker-build-script-sh-steps
     - *set_concurrency_limit
+    - *use-mem-gate
     - *configure-conan-and-cmake
-    - bear -- cmake --build --preset conan-$build_type_lower
+    - bear -- cmake --build --preset conan-$build_type_lower $keep_going_option
     - infer capture --reactive
                     --compilation-database-escaped ./compile_commands.json
                     --keep-going
@@ -833,8 +964,8 @@ ubuntu-lts-debug-manual-sast:
 .ubuntu-lts-release-settings:
   extends: .ubuntu-lts-settings
   variables:
-    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
-    VERIFY_HEADERS_STANDALONE: "on"
+    BUILD_TYPE: "$RELEASE_MODE"
+    VERIFY_HEADERS_STANDALONE: "ON"
   artifacts:
     expire_in: 8h
     paths:
@@ -851,8 +982,6 @@ ubuntu-lts-release:
     - .ubuntu-lts-release-base
     - .set-enable-linter-and-terminate-rules
   variables:
-    WITH_BENCHMARK: "True"
-    WITH_CASTOR: "True"
     MEM_ANALYSIS_TOOL: "valgrind"
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
@@ -878,9 +1007,7 @@ ubuntu-lts-release-manual-lint:
       allow_failure: true
     - when: never
   variables:
-    ENABLE_LINTER: yes
-    WITH_BENCHMARK: "True"
-    WITH_CASTOR: "True"
+    ENABLE_LINTER: "yes"
 
 ubuntu-lts-release-without-castor:
   extends:
@@ -889,10 +1016,11 @@ ubuntu-lts-release-without-castor:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
     # Needed by build-tutorial-docker-image
     - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
+    - if: *mr-ready
   variables:
-    BUILD_GO_SERVERS: "off"
     WITH_CASTOR: "False"
     WITH_BENCHMARK: "False"
+    BUILD_GO_SERVERS: "OFF"
     HTTPSERVER_WITH_TLS: "ON"
     ARTIFACTS: >-
       $PATH_AUTOCOMPLETION
@@ -909,10 +1037,10 @@ ubuntu-lts-release-without-castor:
 .ubuntu-rolling-settings:
   image: ${BUILDER_IMAGE_UBUNTU_ROLLING}
   variables:
-    BUILD_GO_SERVERS: "off"
-    WITH_CASTOR: "True"
-    WITH_TESTS: "True"
+    # Changes to the conanfile.py defaults (see .set-conan-options)
+    WITH_ASSESSOR: "False"
     WITH_BENCHMARK: "False"
+    BUILD_GO_SERVERS: "OFF"
     MEM_ANALYSIS_TOOL: "none"
 
 .ubuntu-rolling-debug-base:
@@ -920,8 +1048,8 @@ ubuntu-lts-release-without-castor:
     - .ubuntu-build-base
     - .ubuntu-rolling-settings
   variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    VERIFY_HEADERS_STANDALONE: "off"
+    BUILD_TYPE: "$DEBUG_MODE"
+    VERIFY_HEADERS_STANDALONE: "OFF"
 
 # Builds (and optionally lints) binaries for ubuntu-rolling-debug
 ubuntu-rolling-debug:
@@ -946,7 +1074,7 @@ ubuntu-rolling-debug-manual-lint:
       allow_failure: true
     - when: never
   variables:
-    ENABLE_LINTER: yes
+    ENABLE_LINTER: "yes"
 
 ubuntu-rolling-release:
   extends:
@@ -954,9 +1082,10 @@ ubuntu-rolling-release:
     - .ubuntu-rolling-settings
   rules:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+    - if: *mr-ready
   variables:
-    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
-    VERIFY_HEADERS_STANDALONE: "on"
+    BUILD_TYPE: "$RELEASE_MODE"
+    VERIFY_HEADERS_STANDALONE: "ON"
     TESTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_SERVER
@@ -969,6 +1098,7 @@ pep-connector:
   image: ${BUILDER_IMAGE_UBUNTU_LTS}
   tags:
     - docker-small
+  rules: *run-in-every-pipeline
   script:
     # Get major and minor version from version.json
     - PEP_VERSION_MAJOR=$(./scripts/parse-version.sh get-major version.json ${CI_PIPELINE_ID} ${CI_JOB_ID})
@@ -998,6 +1128,7 @@ flatpak:
     - docker
     - fast
   image: ${BUILDER_IMAGE_FLATPAK}
+  rules: *run-in-every-pipeline
   script:
     - *set_concurrency_limit
     - |
@@ -1009,9 +1140,18 @@ flatpak:
     # Pass through environment variables used by ./cpp/pep/CMakeLists.txt
     - |
       rm -f ./flatpak.env
-      for env in CI_PROJECT_PATH CI_COMMIT_REF_NAME CI_COMMIT_SHA CI_PIPELINE_ID CI_JOB_ID CCACHE_EXPIRATION_TIME; do
+      for env in CI_PROJECT_PATH CI_COMMIT_REF_NAME CI_COMMIT_SHA CI_PIPELINE_ID CI_JOB_ID CCACHE_EXPIRATION_TIME \
+          MEM_GATE_COMMAND_MIB MEM_GATE_RESERVE_MIB MEM_GATE_RAMP_SECONDS MEM_GATE_MAX_WAIT_SECONDS MEM_GATE_MAX_ATTEMPTS; do
         echo "export $env=$(printf %q "${!env}")" >>./flatpak.env
       done
+    # Like .use-mem-gate, but evaluated in the build sandbox, where the sources are copied to $PWD and our file
+    # descriptors are not inherited. Its /bin/sh may not be Bash, hence the fixed file descriptor.
+    - |
+      cat >>./flatpak.env <<'EOF'
+      export CCACHE_PREFIX="$PWD/ci_cd/mem-gate.sh"
+      exec 9>&2
+      export MEM_GATE_LOG_FD=9
+      EOF
     - flatpak-builder $concurrency_option --ccache --repo ./flatpak-repo ./flatpak-build ./flatpak/nl.ru.cs.pep.client.yml
     - flatpak build-bundle ./flatpak-repo ./pep.flatpak nl.ru.cs.pep.client --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
   after_script:
@@ -1031,6 +1171,7 @@ windows-client:
   tags:
     - windows-parallel
   #language=powershell
+  rules: *run-in-every-pipeline
   script:
     - *checkout-docker-build-script-powershell-steps
     # Explicitly invoke cmd with call for proper error propagation when statements follow (conditional) exit /B inside if (see !1744)
@@ -1047,7 +1188,7 @@ windows-debug:
     - job: retrieve-lockfile
       optional: true
   variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    BUILD_TYPE: "$DEBUG_MODE"
   tags:
     - windows-parallel
   rules:
@@ -1059,7 +1200,7 @@ windows-debug:
   #language=powershell
   script: # Explicitly invoke cmd with call for proper error propagation when statements follow (conditional) exit /B inside if (see !1744)
     - *checkout-docker-build-script-powershell-steps
-    - cmd /c "call ./ci_cd/windows-ci-build.bat all-targets $CMAKE_BUILD_TYPE"
+    - cmd /c "call ./ci_cd/windows-ci-build.bat all-targets $BUILD_TYPE"
     - $EXECUTABLES = "$EXECUTABLES_APPS
                       $EXECUTABLES_PEP_SERVICES
                       $EXECUTABLES_CLIENT
@@ -1068,7 +1209,7 @@ windows-debug:
                       $UNIT_TESTS_ALL_NATIVE"
     - '& "C:\Program Files\Git\bin\bash.exe" ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY"
                                                                           --dest-prefix "$STAGING_DIRECTORY"
-                                                                          --build-mode "$CMAKE_BUILD_TYPE"
+                                                                          --build-mode "$BUILD_TYPE"
                                                                           --append-extension ".exe"
                                                                           "$EXECUTABLES"'
     # For some reason the go executables are not placed in a build mode subdirectory
@@ -1097,6 +1238,7 @@ test-windows-debug:
     # May still run in parallel with build jobs.
     - windows-sequential
   needs: [windows-debug]
+  rules: *run-in-every-pipeline
   script:
     - *run-tests-windows
     - '& "C:\Program Files\Git\bin\bash.exe" ./tests/integration.sh --local --no-docker --build-dir "$STAGING_DIRECTORY"'
@@ -1106,23 +1248,62 @@ test-windows-debug:
 
 #################### MacOS ####################
 
-macos-client:
-  <<: *ccache-configuration
+# Unlike in Docker, Conan dependencies are built on the runner itself (when not cached), using our profile.
+# We set build_type for build requirements as well (-s:b), because macdeployqt copies its own dylibs,
+# see https://github.com/conan-io/conan-center-index/issues/22693
+#language=bash
+.macos-conan-install: &macos-conan-install
+  - export CMAKE_COLOR_DIAGNOSTICS=ON  # Let CMake pass -fcolor-diagnostics
+  - export CLICOLOR_FORCE=1  # Colored output for e.g. Conan & Ninja (otherwise -fcolor-diagnostics still won't work)
+  - CONAN_FLAGS="--profile:all=./docker-build/builder/conan/conan_profile --build=missing -s:b build_type=$BUILD_TYPE $CONAN_FLAGS"
+  - *conan-install
+  - |
+    if [[ -n "$CLEAN_CONAN" ]]; then
+    echo 'Cleaning Conan cache.'
+    # Remove old recipes
+    conan remove '*' --lru 4w --confirm
+    # Remove old packages
+    conan remove '*:*' --lru 4w --confirm
+    # Remove some temporary build files (excludes binaries)
+    conan cache clean --build --temp
+    fi
+  # Put cmake, ninja, macdeployqt etc. in PATH
+  - . "./$BUILD_DIRECTORY/generators/conanbuild.sh"
+
+.macos-build-base:
   stage: build
+  needs:
+    - job: retrieve-lockfile
+      optional: true
   parallel:
     matrix:
       - ARCH: [x86_64, arm64]
   tags:
     - macos-${ARCH}
-  needs:
-    - job: retrieve-lockfile
-      optional: true
   variables:
-    BUILD_GO_SERVERS: "off"
+    HTTPSERVER_WITH_TLS: "ON"
+
+macos-client:
+  extends: .macos-build-base
+  <<: *ccache-configuration
+  variables:
+    BUILD_TYPE: "$RELEASE_MODE"
+    # Changes to the conanfile.py defaults (see .set-conan-options)
+    WITH_SERVERS: "False"
+    WITH_CASTOR: "False"
+    WITH_TESTS: "False"
+    WITH_BENCHMARK: "False"
+    BUILD_GO_SERVERS: "OFF"
+    VERIFY_HEADERS_STANDALONE: "OFF"
+  rules: *run-in-every-pipeline
+  #language=bash
   script:
     - *checkout-docker-build-script-sh-steps
-    - *set-enable-deprecation-errors
-    - ENABLE_DEPRECATION_ERRORS="$enable_deprecation_errors" ./ci_cd/macos-ci-build-app-bins.sh
+    - export CC=clang CXX=clang++
+    - *macos-conan-install
+    - *cmake-configure
+    - cmake --build --preset conan-$build_type_lower --target pepLogon pepAssessor pepcli $keep_going_option
+    - ./ci_cd/macos-ci-build-app-bins.sh --build-dir "$BUILD_DIRECTORY"
   after_script:
     - if [ "$CI_JOB_STATUS" == "canceled" ]; then exit 0; fi
     - *ccache-print
@@ -1132,24 +1313,17 @@ macos-client:
       - $BUILD_DIRECTORY/macOS_${ARCH}_bins.zip
 
 macos-debug:
-  stage: build
-  needs:
-    - job: retrieve-lockfile
-      optional: true
+  extends: .macos-build-base
   rules:
     - if: $BUILD_ALL_TARGETS != ''
       when: on_success
     - when: manual
       # Make pipeline still continue without manual action (default for when:manual outside of rules)
       allow_failure: true
-  parallel:
-    matrix:
-      - ARCH: [x86_64, arm64]
-  tags:
-    - macos-${ARCH}
   variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
-    WITH_CASTOR: "True"
+    BUILD_TYPE: "$DEBUG_MODE"
+    BUILD_GO_SERVERS: "ON"
+    VERIFY_HEADERS_STANDALONE: "ON"
     MEM_ANALYSIS_TOOL: "leaks"
     TESTS: >-
       $UNIT_TESTS_BASE
@@ -1158,55 +1332,9 @@ macos-debug:
   #language=bash
   script:
     - *checkout-docker-build-script-sh-steps
-    - export CMAKE_COLOR_DIAGNOSTICS=ON  # Let CMake pass -fcolor-diagnostics
-    - export CLICOLOR_FORCE=1  # Colored output for e.g. Conan & Ninja (otherwise -fcolor-diagnostics still won't work)
-    - >
-      conan remote add pep-local-recipes
-      "$CI_PROJECT_DIR/docker-build/builder/conan/local-recipes"
-      --type local-recipes-index
-      --force
-    - >
-      conan install .
-      --lockfile="docker-build/builder/conan/conan-ci.lock"
-      --profile:all="docker-build/builder/conan/conan_profile"
-      --build=missing
-      -s:a build_type="$CMAKE_BUILD_TYPE"
-      -o "&:with_assessor=True"
-      -o "&:with_servers=True"
-      -o "&:with_castor=$WITH_CASTOR"
-      -o "&:with_tests=True"
-      -o "&:with_benchmark=True"
-      -o "&:custom_build_folder=True"
-      --output-folder="./$BUILD_DIRECTORY/" && true
-    - conan_error="$?"
-    # Remove remote such that jobs on this runner that don't have the local-recipes folder don't fail
-    - conan remote remove pep-local-recipes
-    - |
-      if [[ "$conan_error" != 0 ]]; then
-        exit "$conan_error"
-      fi
-    - |
-      if [[ -n "$CLEAN_CONAN" ]]; then
-      echo 'Cleaning Conan cache.'
-      # Remove old recipes
-      conan remove '*' --lru 4w --confirm
-      # Remove old packages
-      conan remove '*:*' --lru 4w --confirm
-      # Remove some temporary build files (excludes binaries)
-      conan cache clean --build --temp
-      fi
-    # Put cmake & ninja in PATH
-    - . "./$BUILD_DIRECTORY/generators/conanbuild.sh"
-    - *set-enable-deprecation-errors
-    - >
-      cmake --preset conan-debug
-      -DCMAKE_C_COMPILER_LAUNCHER=ccache
-      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-      -DBUILD_GO_SERVERS=ON
-      -DENABLE_OAUTH_TEST_USERS=OFF
-      -DDEPRECATED_WARNINGS_AS_ERROR="$enable_deprecation_errors"
-      -DVERIFY_HEADERS_STANDALONE=ON
-    - cmake --build --preset conan-debug
+    - *macos-conan-install
+    - *cmake-configure
+    - cmake --build --preset conan-$build_type_lower $keep_going_option
     - *run-tests
     - ./tests/integration.sh --local --no-docker --build-dir "$BUILD_DIRECTORY"
   artifacts:
@@ -1220,10 +1348,11 @@ macos-debug:
     - .ubuntu-build-base
   image: $BUILDER_IMAGE_WEBLIB
   variables:
-    WITH_BENCHMARK: "False"
-    WITH_TESTS: "True"
-    MEM_ANALYSIS_TOOL: "none"
     CONAN_FLAGS: --profile:host=./docker-build/builder/conan/conan_profile_wasm32
+    # Changes to the conanfile.py defaults (see .set-conan-options).
+    # Don't set with_assessor/with_servers/with_castor: the Emscripten build doesn't have these options
+    WITH_BENCHMARK: "False"
+    MEM_ANALYSIS_TOOL: "none"
     TESTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_WEBLIB
@@ -1243,14 +1372,14 @@ weblib-debug:
     - .weblib-base
     - .weblib-settings-debug
   variables:
-    CMAKE_BUILD_TYPE: "$DEBUG_MODE"
+    BUILD_TYPE: "$DEBUG_MODE"
 
 weblib-release:
   extends:
     - .weblib-base
   variables:
-    CMAKE_BUILD_TYPE: "$RELEASE_MODE"
-    PEP_WEBLIB_USE_WSS: "ON"
+    BUILD_TYPE: "$RELEASE_MODE"
+  rules: *run-in-every-pipeline
 
 weblib-integration:
   extends:
@@ -1280,6 +1409,7 @@ docker-images:
     - ubuntu-lts-release
     - pep-connector
   #language=sh
+  rules: *run-in-every-pipeline
   script:
     - *docker_login
     - docker buildx build --pull
@@ -1329,6 +1459,7 @@ build-tutorial-docker-image:
     - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
     # Needed by publish-tutorial-image
     - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
+    - if: *mr-ready
   needs:
     - ubuntu-lts-release-without-castor
   #language=sh
@@ -1359,6 +1490,7 @@ test-pep-services-image:
     # Use tests in $STAGING_DIRECTORY from artifacts
     - ubuntu-lts-release
   #language=sh
+  rules: *run-in-every-pipeline
   script:
     # First make sure included apps like pepcli work
     - /app/pepcli --version
@@ -1379,6 +1511,7 @@ test-docker-integration:
   needs:
     - job: docker-images
       artifacts: false
+  rules: *run-in-every-pipeline
   script:
     - *docker_login
     # We only run the s3-roundtrip test on the second run, when we have already created the integration_data directory,
@@ -1398,6 +1531,7 @@ test-docker-integration-on-base-data:
   needs:
     - job: docker-images
       artifacts: false
+  rules: *run-in-every-pipeline
   script:
     - *docker_login
     - foss_dir="$PWD"
@@ -1416,7 +1550,6 @@ test-docker-integration-on-base-data:
     - docker-small
   variables:
     GIT_STRATEGY: none # As these jobs only work on artifacts, we do not need the git repository
-  interruptible: false # We do not want to interrupt jobs that upload things, to prevent partial uploads
 
 .upload-curl-base:
   extends: .upload-base
@@ -1428,6 +1561,7 @@ upload-wix-library:
   extends: .upload-curl-base
   needs: [windows-client]
   # fully single quoted, as ':' token is used
+  rules: *run-in-every-pipeline
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
@@ -1444,6 +1578,7 @@ upload-macos-client:
       parallel:
         matrix:
           - ARCH: ['$[[ matrix.ARCH ]]']
+  rules: *run-in-every-pipeline
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
@@ -1453,6 +1588,7 @@ upload-macos-client:
 upload-flatpak:
   extends: .upload-curl-base
   needs: [flatpak]
+  rules: *run-in-every-pipeline
   script:
     - 'curl --no-progress-meter --fail
             --header "JOB-TOKEN: $CI_JOB_TOKEN"
@@ -1466,8 +1602,8 @@ upload-weblib-npm:
     - docker-small
   needs:
     - weblib-release
-  interruptible: false
   #language=sh
+  rules: *run-in-every-pipeline
   script:
     # Add Node.js to PATH
     - . ~/.profile
@@ -1515,6 +1651,7 @@ retag-pep-docker-images:
     - job: test-docker-integration-on-base-data
       artifacts: false
   #language=sh
+  rules: *run-in-every-pipeline
   script:
     - *docker_login
     - docker buildx imagetools create --prefer-index=false "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" --tag "$IMAGE_PEP_SERVICES:$IMAGE_TAG"
@@ -1590,12 +1727,13 @@ update-foss-submodule-in-dtap:
   rules:
     - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_NUMBERED_RELEASE_BRANCH_PATTERN
       when: never
-    - if: $CI_COMMIT_BRANCH =~ $PEP_FOSS_HOTFIX_BRANCH_PATTERN
+    - if: $CI_COMMIT_REF_NAME =~ $PEP_FOSS_HOTFIX_BRANCH_PATTERN
       when: manual
       allow_failure: true
     - !reference [.skip-for-binaries-for-xyz, rules]
     # Not for tag pipelines
     - if: $CI_COMMIT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   tags:
     - docker-small
   image: alpine:latest
@@ -1624,17 +1762,20 @@ update-foss-submodule-in-dtap:
       --shallow-submodules
       "$CI_SERVER_URL/$DTAP_PROJ.git" dtap
 
+    # CI_COMMIT_BRANCH is empty in MR pipelines
+    - 'foss_branch="${CI_COMMIT_BRANCH:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}"'
+
     # Checkout the branch in dtap corresponding to current foss branch or create it
     - cd dtap
     - new_branch=''
     # Make sure we actually create a tracking branch in this shallow clone
-    - git remote set-branches origin "$CI_COMMIT_BRANCH"
+    - git remote set-branches origin "$foss_branch"
     # Does the remote branch exist?
-    - if git fetch origin "$CI_COMMIT_BRANCH"; then
-    -   git switch "$CI_COMMIT_BRANCH"
+    - if git fetch origin "$foss_branch"; then
+    -   git switch "$foss_branch"
     - else
     #   Create new branch from default branch
-    -   git checkout -b "$CI_COMMIT_BRANCH"
+    -   git checkout -b "$foss_branch"
     -   new_branch=yes
     - fi
 
@@ -1644,14 +1785,14 @@ update-foss-submodule-in-dtap:
     # Check if the foss submodule is already on the commit we want to update it to
     - if [ "$(git rev-parse HEAD)" != "$CI_COMMIT_SHA" ]; then
     #   Update the pep/dtap repo's pep/foss submodule to this commit
-    -   git remote set-branches origin "$CI_COMMIT_BRANCH"
-    -   git fetch origin "$CI_COMMIT_BRANCH"
-    -   git switch "$CI_COMMIT_BRANCH"
+    -   git remote set-branches origin "$foss_branch"
+    -   git fetch origin "$foss_branch"
+    -   git switch "$foss_branch"
     #   Is the commit SHA from this pipeline still the tip of our branch?
     -   |
         tip="$(git rev-parse HEAD)"
         if [ "$tip" != "$CI_COMMIT_SHA" ]; then
-          >&2 echo "This ($CI_COMMIT_SHA) is not the latest $CI_PROJECT_NAME commit for $CI_COMMIT_BRANCH, that is $tip"
+          >&2 echo "This ($CI_COMMIT_SHA) is not the latest $CI_PROJECT_NAME commit for $foss_branch, that is $tip"
           >&2 echo 'Skipping dtap update'
           exit 1 # Dont skip silently, so that follow-up dtap pipeline wont run with wrong commit
         fi
@@ -1661,13 +1802,13 @@ update-foss-submodule-in-dtap:
     -   |
         git commit -m "FOSS submodule update for pipeline ${CI_PIPELINE_ID}
         ${CI_JOB_URL}"
-    -   git push origin "$CI_COMMIT_BRANCH" -o ci.skip
+    -   git push origin "$foss_branch" -o ci.skip
     -   echo "Made commit at ${CI_SERVER_URL}/$DTAP_PROJ/-/commit/$(git rev-parse HEAD)"
 
     - elif [ -n "$new_branch" ]; then
     -   cd ..
     #   Push new branch using existing commit
-    -   git push --set-upstream origin "$CI_COMMIT_BRANCH" -o ci.skip
+    -   git push --set-upstream origin "$foss_branch" -o ci.skip
 
     - else
     #   The dtap repo's pep/foss submodule is already on this commit
@@ -1689,4 +1830,6 @@ trigger-dtap-pipeline:
       when: never
     - !reference [ .skip-for-binaries-for-xyz, rules ]
     - if: $CI_COMMIT_BRANCH
+      when: on_success
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: on_success

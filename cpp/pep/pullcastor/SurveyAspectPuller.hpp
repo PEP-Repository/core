@@ -1,9 +1,18 @@
 #pragma once
 
+#include <pep/async/RxCache.hpp>
 #include <pep/castor/SurveyPackageInstance.hpp>
-#include <pep/castor/SurveyStep.hpp>
+#include <pep/pullcastor/CastorParticipant.hpp>
+#include <pep/pullcastor/StorableContent.hpp> // for castor::StorableColumnContent
+#include <pep/pullcastor/StudyAspect.hpp>
 #include <pep/pullcastor/StudyAspectPuller.hpp>
-#include <pep/pullcastor/TimestampedSpi.hpp>
+#include <pep/pullcastor/StudyPuller.hpp>
+#include <pep/utils/Shared.hpp>
+
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace pep {
 namespace castor {

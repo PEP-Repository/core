@@ -503,7 +503,7 @@ RegistrationServer::RegistrationServer(std::shared_ptr<Parameters> parameters)
   : SigningServer(parameters),
   client_(parameters->getClient()),
   shadowPublicKey_(parameters->getShadowPublicKey()),
-  checksumChainHandler_(ChecksumChains(std::make_unique<ShadowShortPseudonymsChecksumChain>(*this))),
+  checksumChains_(std::make_unique<ShadowShortPseudonymsChecksumChain>(*this)),
   globalConfiguration_(CreateRxCache([client = client_]() {return RxEnsureProgress(*client->getIoContext(), "Global configuration retrieval", client->getGlobalConfiguration()); })),
   shortPseudonyms_(ShortPseudonymCache::Create(*this, parameters->getShadowStorageFile())) // cannot get a shared_ptr<RegistrationServer> during construction
 #ifdef WITH_CASTOR

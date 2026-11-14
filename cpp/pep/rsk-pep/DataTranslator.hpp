@@ -1,8 +1,10 @@
 #pragma once
 
+#include <pep/elgamal/CurveScalar.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/rsk-pep/DataTranslationKeys.hpp>
-#include <pep/rsk/EGCache.hpp>
+#include <pep/rsk/RskKeys.hpp> // for MasterPrivateKeyShare
+#include <pep/rsk/RskRecipient.hpp> // for RekeyRecipient
 #include <pep/rsk/RskTranslator.hpp>
 
 #include <string_view>

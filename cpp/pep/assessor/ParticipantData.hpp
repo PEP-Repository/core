@@ -4,6 +4,9 @@
 #include <pep/content/ParticipantPersonalia.hpp>
 
 #include <map>
+#include <optional>
+#include <string>
+#include <unordered_map>
 
 struct ParticipantData {
   std::optional<pep::ParticipantPersonalia> personalia;

@@ -1,9 +1,12 @@
 #pragma once
 
-#include <pep/rsk-pep/PseudonymTranslationKeys.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPublicKey
 #include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/rsk/EGCache.hpp>
+#include <pep/rsk-pep/PseudonymTranslationKeys.hpp>
 #include <pep/rsk/Proofs.hpp>
+#include <pep/rsk/RskKeys.hpp> // for MasterPrivateKeyShare
+#include <pep/rsk/RskRecipient.hpp>
 #include <pep/rsk/RskTranslator.hpp>
 
 #include <utility>

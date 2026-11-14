@@ -1,6 +1,9 @@
 #pragma once
 
 #include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/verify_context.hpp>
+
+#include <string>
 
 namespace pep {
 

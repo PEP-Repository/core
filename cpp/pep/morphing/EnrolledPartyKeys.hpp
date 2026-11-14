@@ -3,6 +3,8 @@
 #include <pep/crypto/X509Certificate.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp>
 
+#include <optional>
+
 namespace pep {
 
 enum class EnrollmentScheme {

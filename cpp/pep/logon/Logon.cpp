@@ -35,6 +35,9 @@
 #include <boost/asio/executor_work_guard.hpp> // for boost::asio::make_work_guard
 
 #include <rxcpp/rx-lite.hpp>
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-on_error_resume_next.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 namespace {
 

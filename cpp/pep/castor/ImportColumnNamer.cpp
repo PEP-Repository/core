@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <rxcpp/rx-lite.hpp>
+#include <rxcpp/operators/rx-concat.hpp>
 
 namespace pep {
 namespace castor {

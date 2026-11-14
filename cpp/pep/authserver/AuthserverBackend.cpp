@@ -141,8 +141,7 @@ AuthserverBackend::AuthserverBackend(const Parameters &params)
     : MessageSigner(params.getSigningIdentity()),
       accessManager_(std::make_shared<AccessManagerProxy>(params.getAccessManager(), *this, params.getAccessManagerEndPoint().expectedCommonName, params.getRootCertificates())),
       tokenExpiration_(params.getTokenExpiration()),
-      oauthTokenSecret_(params.getOAuthTokenSecret()),
-      checksumChainForwarder_(*accessManager_) {
+      oauthTokenSecret_(params.getOAuthTokenSecret()) {
   if (params.getStorageFile() && std::filesystem::exists(*params.getStorageFile())) {
     migrateDatabase(*params.getStorageFile());
   }

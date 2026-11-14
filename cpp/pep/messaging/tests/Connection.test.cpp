@@ -21,6 +21,7 @@
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
 #include <rxcpp/rx-lite.hpp>
+#include <rxcpp/operators/rx-merge.hpp>
 #include <gtest/gtest.h>
 
 #include <ranges>

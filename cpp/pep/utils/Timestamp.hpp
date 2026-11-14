@@ -6,6 +6,7 @@
 #include <chrono>
 #include <string>
 #include <string_view>
+#include <utility>
 
 // Forward declarations
 namespace boost::posix_time { class ptime; };

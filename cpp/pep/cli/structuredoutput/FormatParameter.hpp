@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/application/CommandLineParameter.hpp>
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
 #include <pep/structuredoutput/Common.hpp>
 #include <pep/structuredoutput/FormatFlags.hpp>
 #include <pep/structuredoutput/Tree.hpp>

@@ -2,6 +2,9 @@
 
 #include <pep/auth/SigningSerializers.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
+#include <pep/versioning/Version.hpp>
+
+#include <Messages.pb.h> // for proto::ConfigVersion
 
 namespace pep {
 

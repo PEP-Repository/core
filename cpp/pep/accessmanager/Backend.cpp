@@ -49,6 +49,11 @@
 #include <boost/algorithm/string/join.hpp>
 
 #include <rxcpp/rx-lite.hpp>
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-concat.hpp>
+#include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/operators/rx-map.hpp>
 
 using namespace std::ranges;
 

@@ -1,12 +1,19 @@
 #pragma once
 
 #include <pep/crypto/tests/TemporaryX509IdentityFiles.hpp>
-#include <pep/networking/Client.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/networking/Protocol.hpp>
 #include <pep/networking/Server.hpp>
 #include <pep/networking/Tcp.hpp>
+#include <pep/networking/TcpBasedProtocol.hpp>
 #include <pep/networking/Tls.hpp>
-#include <pep/utils/File.hpp>
-#include <pep/utils/Filesystem.hpp>
+
+#include <boost/asio/io_context.hpp>
+
+#include <cassert>
+#include <cstdint>
+#include <memory>
+#include <stdexcept>
 
 class TestServerFactory {
 protected:

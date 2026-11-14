@@ -1,17 +1,19 @@
 #pragma once
 
-#include <pep/client/Client_fwd.hpp>
-#include <pep/assessor/UserRole.hpp>
 #include <pep/assessor/Branding.hpp>
+#include <pep/assessor/enrollmentwidget.hpp>
 #include <pep/assessor/ExportableItem.hpp>
+#include <pep/assessor/exportwidget.hpp>
+#include <pep/assessor/participantselector.hpp>
+#include <pep/assessor/UserRole.hpp>
 #include <pep/assessor/VisitCaptions.hpp>
-#include <pep/crypto/AsymmetricKey.hpp>
+#include <pep/client/Client_fwd.hpp>
 #include <pep/messaging/ConnectionStatus.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/StudyContext.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Log.hpp>
-
-#include <memory>
-#include <string>
 
 #include <QLabel>
 #include <QLineEdit>
@@ -20,9 +22,14 @@
 #include <QPushButton>
 #include <QTranslator>
 #include <QtWidgets/QStackedWidget>
-#include <pep/assessor/enrollmentwidget.hpp>
-#include <pep/assessor/participantselector.hpp>
-#include <pep/assessor/exportwidget.hpp>
+
+#include <functional>
+#include <map>
+#include <memory>
+#include <optional>
+#include <queue>
+#include <string>
+#include <utility>
 
 namespace Ui {
 class MainWindow;

@@ -1,12 +1,16 @@
 #pragma once
 
 #include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
 #include <pep/structure/StudyContext.hpp>
 #include <pep/utils/Compare.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <optional>
+#include <string>
+#include <vector>
 
 namespace pep {
 

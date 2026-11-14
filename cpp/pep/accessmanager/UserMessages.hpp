@@ -1,7 +1,13 @@
 #pragma once
 
 #include <pep/auth/Signed.hpp>
-#include <pep/accessmanager/AccessManagerMessages.hpp>
+#include <pep/auth/UserGroup.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <optional>
+#include <ostream>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace pep {

@@ -1,9 +1,11 @@
 #pragma once
 
-#include <fstream>
-
 #include <pep/archiving/Archive.hpp>
-#include <pep/utils/Shared.hpp>
+#include <pep/utils/CheckedPath.hpp>
+
+#include <cstdint>
+#include <ios>
+#include <string_view>
 
 namespace pep {
 

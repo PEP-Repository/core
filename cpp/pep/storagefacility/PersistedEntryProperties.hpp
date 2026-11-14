@@ -2,6 +2,12 @@
 
 #include <pep/morphing/Metadata.hpp>
 #include <pep/serialization/Serialization.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <cstdint>
+#include <map>
+#include <optional>
+#include <string>
 
 namespace pep {
 

@@ -1,16 +1,24 @@
 #pragma once
 
-#include <pep/elgamal/ElgamalEncryption.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/utils/CheckedPath.hpp>
+#include <pep/utils/Progress.hpp>
 #include <pep/utils/Timestamp.hpp>
 #include <pep/utils/XxHasher.hpp>
-#include <pep/structure/GlobalConfiguration.hpp>
-#include <pep/morphing/Metadata.hpp>
-#include <pep/utils/Progress.hpp>
-#include <pep/utils/CheckedPath.hpp>
 
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
+#include <functional>
+#include <map>
+#include <memory>
 #include <optional>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace pep::cli {
 

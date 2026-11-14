@@ -2,6 +2,8 @@
 
 #include <pep/networking/HTTPMessage.hpp>
 
+#include <string>
+
 namespace pep::s3 
 {
 

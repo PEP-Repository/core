@@ -2,6 +2,8 @@
 
 #include <pep/utils/Event.hpp>
 
+#include <boost/core/noncopyable.hpp>
+
 #include <string>
 #include <string_view>
 

@@ -3,6 +3,8 @@
 #include <pep/versioning/GitlabVersion.hpp>
 
 #include <filesystem>
+#include <optional>
+#include <string>
 
 namespace pep {
 

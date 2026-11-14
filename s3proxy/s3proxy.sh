@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 set -o nounset
 
 # Specify a S3PROXY_IMAGE_TAG value (e.g. "sha-ce80406") to (pull and) use that specific tag
@@ -12,8 +11,11 @@ fi
 
 SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
 SCRIPTPATH="$SCRIPTDIR/$(basename "$0")"
+TEMPDIR="$SCRIPTDIR/temp"
+mkdir -p "$TEMPDIR"
 command=${1:-interactive}
 pep_network="${2:-}"  # Optional PEP Docker network name for start/interactive commands
+properties_file="${3:-}"
 
 docker_exe="docker"
 if [ "${OS:-}" = "Windows_NT" ]; then
@@ -99,48 +101,91 @@ pull() {
   "$docker" pull nginx
 }
 
+make_properties_file() {
+  local custom_properties_file="$1"
+  local access_key="$2"
+  local secret_key="$3"
+
+  local temp_properties_file
+  temp_properties_file="$(mktemp --tmpdir="$TEMPDIR")"
+  cp "$custom_properties_file" "$temp_properties_file"
+  # We don't support overriding these default values. For now that's good enough.
+  cat <<EOF >> "$temp_properties_file"
+s3proxy.authorization=aws-v2-or-v4
+s3proxy.endpoint=http://0.0.0.0:80
+jclouds.provider=filesystem
+jclouds.filesystem.basedir=/data
+s3proxy.identity=${access_key}
+s3proxy.credential=${secret_key}
+EOF
+
+  echo "$temp_properties_file"
+}
+
+start_s3proxy_container() {
+  local suffix="$1"
+  local port="$2"
+  local network="${3:-}"
+
+  local name="s3proxy$suffix"
+  # Different s3proxy instances delibarately have different credentials, so that a request that is sent
+  # to the wrong host is rejected instead of being silently served.
+  local access_key="MyAccessKey$suffix"
+  local secret_key="MySecret$suffix"
+  local data_dir
+  data_dir="$(rel_to_abs "data$suffix")"
+
+  declare -a network_switch
+  if [ -n "$network" ] ; then
+    network_switch=(--net "$network")
+  fi
+
+  # Local paths exposed as a bind mount are prefixed with a slash to prevent Git Bash on Windows
+  # from mangling those paths. See https://stackoverflow.com/a/50608818
+  if [ -n "$properties_file" ]; then
+    "$docker" run --rm --detach --name "$name" "${network_switch[@]}" -e S3PROXY_IDENTITY="$access_key" -e S3PROXY_CREDENTIAL="$secret_key" -e LOG_LEVEL=TRACE -p "$port":80 \
+      --mount "type=bind,src=/$data_dir,dst=/data" \
+      --mount "type=bind,src=/$(make_properties_file "$properties_file" "$access_key" "$secret_key"),dst=/s3proxy.properties" \
+      "${S3PROXY_IMAGE}" java -XX:MaxRAMPercentage=75 -XX:+UseCompactObjectHeaders -DLOG_LEVEL=TRACE -jar /opt/s3proxy/s3proxy --properties /s3proxy.properties
+  else
+    "$docker" run --rm --detach --name "$name" "${network_switch[@]}" -e S3PROXY_IDENTITY="$access_key" -e S3PROXY_CREDENTIAL="$secret_key" -e LOG_LEVEL=TRACE -p "$port":80 \
+      --mount "type=bind,src=/$data_dir,dst=/data" \
+      "${S3PROXY_IMAGE}"
+  fi
+  # Set ENABLE_S3PROXY_LOG envvar to enable logging
+  if [ -n "${ENABLE_S3PROXY_LOG-}" ]; then
+    "$docker" logs --follow "$name" 2> >(sed -u "s/^/[$name]: /" >&2) > >(sed -u "s/^/[$name]: /") &
+  fi
+}
+
 start_containers() {
   ensure_docker_available
 
-  export S3_ACCESS_KEY=MyAccessKey
-  export S3_SECRET_KEY=MySecret
-  # Deliberately different from the credentials of the first host, so that a request that is sent
-  # to the wrong host is rejected instead of being silently served.
-  export S3_ACCESS_KEY2=MyAccessKey2
-  export S3_SECRET_KEY2=MySecret2
-
-  DATADIR=$(rel_to_abs data)
-  DATADIR2=$(rel_to_abs data2)
+  local etc_nginx_dir
   etc_nginx_dir=$(rel_to_abs s3proxyproxy_etc_nginx)
 
   # Create "--net" clause for s3proxyproxy's docker command if the pep Docker network was passed,
   # binding that container to that network. This will allow (the integration.sh script
   # to have) other containers (that are bound to the same network) to access the
   # s3proxyproxy container by name.
-  network_switch=
+  declare -a network_switch
   if [ -n "$pep_network" ] ; then
-    network_switch="--net $pep_network"
+    network_switch=(--net "$pep_network")
   fi
 
-  # Local paths exposed as a -v volume are prefixed with a slash to prevent Git Bash on Windows
-  # from mangling those paths. See https://stackoverflow.com/a/50608818
   >&2 printf "Starting s3proxy container..."
-  "$docker" run --rm --detach --name s3proxy -e S3PROXY_IDENTITY=${S3_ACCESS_KEY} -e S3PROXY_CREDENTIAL=${S3_SECRET_KEY} -e LOG_LEVEL=TRACE -p 9001:80 -v /"${DATADIR}":/data "${S3PROXY_IMAGE}"
+  start_s3proxy_container "" 9001
   >&2 printf "Starting nginx (s3proxyproxy) container..."
-  # shellcheck disable=SC2086 # Don't quote possibly empty $network_switch variable so Docker won't interpret them as an empty image spec, causing "invalid reference format" errors
-  "$docker" run --rm --detach --name s3proxyproxy $network_switch --add-host=host.docker.internal:host-gateway -p 9000:9000 -v /"${etc_nginx_dir}":/etc/nginx -v /"${SCRIPTDIR}"/s3certs:/s3cert:ro nginx
+  "$docker" run --rm --detach --name s3proxyproxy "${network_switch[@]}" --add-host=host.docker.internal:host-gateway -p 9000:9000 -v /"${etc_nginx_dir}":/etc/nginx -v /"${SCRIPTDIR}"/s3certs:/s3cert:ro nginx
 
   # The second S3 host is accessed over plaintext HTTP, so (unlike the first one) it needs no
   # TLS terminator and is bound to the PEP network directly.
   >&2 printf "Starting s3proxy2 container..."
-  # shellcheck disable=SC2086 # See above
-  "$docker" run --rm --detach --name s3proxy2 $network_switch -e S3PROXY_IDENTITY=${S3_ACCESS_KEY2} -e S3PROXY_CREDENTIAL=${S3_SECRET_KEY2} -e LOG_LEVEL=TRACE -p 9003:80 -v /"${DATADIR2}":/data "${S3PROXY_IMAGE}"
+  start_s3proxy_container 2 9003 "$pep_network"
 
   # Set ENABLE_S3PROXY_LOG envvar to enable logging
   if [ -n "${ENABLE_S3PROXY_LOG-}" ]; then
-    "$docker" logs --follow s3proxy 2> >(sed -u "s/^/[s3proxy]: /" >&2) > >(sed -u "s/^/[s3proxy]: /") &
     "$docker" logs --follow s3proxyproxy 2> >(sed -u "s/^/[s3proxyproxy]: /" >&2) > >(sed -u "s/^/[s3proxyproxy]: /") &
-    "$docker" logs --follow s3proxy2 2> >(sed -u "s/^/[s3proxy2]: /" >&2) > >(sed -u "s/^/[s3proxy2]: /") &
   fi
 }
 
@@ -163,6 +208,7 @@ stop_containers() {
   stop_container s3proxyproxy
   stop_container s3proxy
   stop_container s3proxy2
+  [ -d "$TEMPDIR" ] && rm -rf "$TEMPDIR"
 }
 
 run_containers_interactively() {

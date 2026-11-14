@@ -1,7 +1,9 @@
 #pragma once
 
-#include <ostream>
 #include <pep/structuredoutput/Table.hpp>
+
+#include <ostream>
+#include <string>
 
 namespace pep::structuredOutput::csv {
 

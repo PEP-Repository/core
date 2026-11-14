@@ -1,12 +1,8 @@
-#include <boost/algorithm/string/join.hpp>
 #include <pep/cli/user/CommandUserQuery.hpp>
+
 #include <pep/cli/structuredoutput/FormatParameter.hpp>
 #include <pep/cli/structuredoutput/TreeFromUserQueryResponse.hpp>
-
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/utils/MiscUtil.hpp>
-#include <pep/structuredoutput/Json.hpp>
-#include <pep/structuredoutput/Yaml.hpp>
 #include <pep/accessmanager/UserMessages.hpp> // for UserQueryResponse, QRUser
 #include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
 #include <pep/cli/CliApplication.hpp> // for cli::LogTag
@@ -19,12 +15,14 @@
 
 #include <rxcpp/operators/rx-map.hpp>
 
+#include <boost/algorithm/string/join.hpp>
+
 #include <algorithm>
 #include <iostream>
 #include <memory>
-#include <ostream>
 #include <ranges>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace {

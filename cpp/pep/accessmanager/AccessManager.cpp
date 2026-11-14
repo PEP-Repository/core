@@ -41,7 +41,7 @@
 #include <pep/serialization/Error.hpp>
 #include <pep/serialization/IndexList.hpp>
 #include <pep/serialization/Serialization.hpp>
-#include <pep/server/ChecksumChainHandler.hpp>
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/structure/StudyContext.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
@@ -78,6 +78,9 @@
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/rx-lite.hpp>
+#include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-tap.hpp>
 
 #include <prometheus/gauge.h>
 #include <prometheus/summary.h>
@@ -188,12 +191,6 @@ auto MakeStreamWithDeferredCleanup(const std::filesystem::path& path) {
     std::filesystem::remove(path);
   });
   return std::make_pair(stream, deferredCleanup);
-}
-
-ChecksumChainHandler::Requesters AmChecksumChainRequesters() {
-  auto result = ChecksumChainHandler::DefaultRequesters;
-  result.insert_range(UserGroup::Authserver);
-  return result;
 }
 
 } // namespace
@@ -347,8 +344,7 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
   backend_(parameters->getBackend()),
   globalConf_(parameters->getGlobalConfiguration()),
   lpMetrics_(std::make_shared<AccessManager::Metrics>(registry_)),
-  workerPool_(WorkerPool::getShared()),
-  checksumChainHandler_(backend_->checksumChains(), AmChecksumChainRequesters()) {
+  workerPool_(WorkerPool::getShared()) {
   backend_->setAccessManager(this);
   RegisterRequestHandlers(*this,
                           &AccessManager::handleTicketRequest2,
@@ -371,6 +367,10 @@ AccessManager::AccessManager(std::shared_ptr<AccessManager::Parameters> paramete
 
 std::optional<std::filesystem::path> AccessManager::getStoragePath() {
   return EnsureDirectoryPath(backend_->getStoragePath().parent_path());
+}
+
+const ChecksumChains& AccessManager::checksumChains() const noexcept {
+  return backend_->checksumChains();
 }
 
 messaging::MessageBatches AccessManager::handleGlobalConfigurationRequest(std::shared_ptr<GlobalConfigurationRequest> request) {

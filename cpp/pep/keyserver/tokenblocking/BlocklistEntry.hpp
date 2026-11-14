@@ -1,6 +1,11 @@
 #pragma once
 
 #include <pep/keyserver/tokenblocking/TokenIdentifier.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <cstdint>
+#include <optional>
+#include <string>
 
 namespace pep::tokenBlocking {
 

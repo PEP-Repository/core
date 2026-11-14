@@ -1,8 +1,9 @@
 #include <gtest/gtest.h>
 
 #include <pep/ticketing/tests/LocalPseudonyms.test.hpp>
-#include <pep/transcryptor/Transcryptor.hpp>
 #include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms
+#include <pep/transcryptor/Transcryptor.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 
 #include <vector>
 

@@ -1,23 +1,36 @@
 #pragma once
 
-#include <pep/client/Client_fwd.hpp>
-#include <pep/structure/StudyContext.hpp>
-#include <pep/assessor/UserRole.hpp>
-#include <pep/assessor/mainwindow.hpp>
 #include <pep/assessor/Branding.hpp>
-#include <pep/assessor/ParticipantData.hpp>
+#include <pep/assessor/ButtonBar.hpp>
 #include <pep/assessor/devicehistorywidget.hpp>
 #include <pep/assessor/devicewidget.hpp>
-#include <pep/assessor/visitwidget.hpp>
+#include <pep/assessor/mainwindow.hpp>
+#include <pep/assessor/ParticipantData.hpp>
+#include <pep/assessor/UserRole.hpp>
 #include <pep/assessor/VisitCaptions.hpp>
-#include <pep/assessor/ButtonBar.hpp>
+#include <pep/assessor/visitwidget.hpp>
+#include <pep/client/Client_fwd.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
+#include <pep/structure/StudyContext.hpp>
+#include <pep/utils/Configuration.hpp>
+#include <pep/utils/Log.hpp> // for Severity
 
-#include <QWidget>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidgetItem>
 #include <QPushButton>
+#include <QWidget>
+
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace Ui {
 class ParticipantWidget;

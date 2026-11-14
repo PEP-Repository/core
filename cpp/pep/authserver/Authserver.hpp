@@ -1,9 +1,17 @@
 #pragma once
 
-#include <pep/server/SigningServer.hpp>
-#include <pep/authserver/OAuthProvider.hpp>
+#include <pep/auth/ServerTraits.hpp>
 #include <pep/authserver/AuthserverBackend.hpp>
+#include <pep/authserver/AuthserverMessages.hpp> // for SignedTokenRequest
+#include <pep/authserver/OAuthProvider.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/server/SigningServer.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
 
+#include <boost/asio/io_context.hpp>
+
+#include <memory>
 
 namespace pep {
 
@@ -30,13 +38,14 @@ public:
   explicit Authserver(std::shared_ptr<Parameters> parameters);
 
 protected:
-  const ChecksumChainHandler& checksumChainHandler() const noexcept override;
+  const ChecksumChains& checksumChains() const noexcept override { return checksumChains_; }
 
 private:
   messaging::MessageBatches handleTokenRequest(std::shared_ptr<SignedTokenRequest> signedRequest);
 
   std::shared_ptr<AuthserverBackend> backend_;
   std::shared_ptr<OAuthProvider> oAuth_;
+  ChecksumChains checksumChains_; // none
 };
 
 }

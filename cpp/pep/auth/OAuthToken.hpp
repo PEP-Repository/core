@@ -2,7 +2,9 @@
 
 #include <chrono>
 #include <filesystem>
+#include <istream>
 #include <optional>
+#include <ostream>
 #include <string>
 
 namespace pep {

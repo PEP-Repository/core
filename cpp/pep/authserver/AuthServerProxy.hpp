@@ -1,6 +1,9 @@
 #pragma once
 
 #include <pep/server/SigningServerProxy.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <string>
 
 namespace pep {
 

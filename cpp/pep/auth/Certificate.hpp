@@ -2,6 +2,9 @@
 
 #include <pep/crypto/X509Certificate.hpp>
 
+#include <optional>
+#include <string>
+
 namespace pep {
 
 bool IsServerTlsCertificate(const X509Certificate& certificate);

@@ -1,15 +1,16 @@
-#include <pep/storagefacility/PendingBytesLimiter.hpp>
 #include <pep/messaging/ReadThrottle.hpp>
+#include <pep/storagefacility/PendingBytesLimiter.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 
 #include <gtest/gtest.h>
 
-#include <optional>
-#include <ranges>
-#include <vector>
 #include <cstdint>
 #include <memory>
+#include <optional>
+#include <ranges>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 #include <prometheus/gauge.h>
 
@@ -115,8 +116,7 @@ TEST(PendingBytesLimiter, ReleasesOnlyOnceAndWhenDestroyed) {
 
 TEST(PendingBytesLimiter, LimitIsGlobalAcrossThrottles) {
   auto limiter = pep::PendingBytesLimiter::Create(High, Low);
-  auto throttle1 = std::make_shared<FakeThrottle>();
-  auto throttle2 = std::make_shared<FakeThrottle>();
+  const auto [throttle1, throttle2] = pep::Generate<2>([] { return std::make_shared<FakeThrottle>(); });
   auto attachment1 = limiter->attach(throttle1);
   auto attachment2 = limiter->attach(throttle2);
 

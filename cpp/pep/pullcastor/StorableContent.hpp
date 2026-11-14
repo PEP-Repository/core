@@ -1,8 +1,12 @@
 #pragma once
 
 #include <pep/pullcastor/CellContent.hpp>
-#include <pep/pullcastor/FieldValue.hpp>
 #include <pep/pullcastor/ColumnBoundParticipantId.hpp>
+#include <pep/pullcastor/FieldValue.hpp>
+#include <pep/utils/Shared.hpp>
+
+#include <memory>
+#include <string>
 
 namespace pep {
 namespace castor {

@@ -16,6 +16,8 @@
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/serialization/Serialization.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structuredoutput/Common.hpp>
+#include <pep/structuredoutput/FormatFlags.hpp>
 #include <pep/structuredoutput/Tree.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms

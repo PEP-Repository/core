@@ -1,13 +1,13 @@
 #pragma once
 
 #include <pep/elgamal/CurveScalar.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalTranslationKey, ElgamalPublicKey
 #include <pep/rsk/EGCache.hpp>
 #include <pep/rsk/Proofs.hpp>
 #include <pep/rsk/RskKeys.hpp>
 #include <pep/rsk/RskRecipient.hpp>
 
 #include <cstdint>
-#include <memory>
 #include <optional>
 #include <utility>
 

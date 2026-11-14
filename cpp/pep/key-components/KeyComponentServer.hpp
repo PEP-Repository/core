@@ -1,10 +1,15 @@
 #pragma once
 
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/key-components/KeyComponentMessages.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
 #include <pep/morphing/SystemPublicKeys.hpp>
 #include <pep/rsk-pep/DataTranslator.hpp>
 #include <pep/rsk-pep/PseudonymTranslator.hpp>
 #include <pep/server/SigningServer.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
+
+#include <memory>
 
 namespace pep {
 

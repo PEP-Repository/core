@@ -1,10 +1,16 @@
 #pragma once
 
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/networking/ConnectivityAttempt.hpp>
 #include <pep/networking/InstanceBound.hpp>
 #include <pep/networking/Transport.hpp>
 #include <pep/utils/Singleton.hpp>
-#include <pep/async/IoContext_fwd.hpp>
+
+#include <boost/core/noncopyable.hpp>
+
+#include <memory>
+#include <string>
+#include <type_traits>
 
 namespace pep::networking {
 class Connection;

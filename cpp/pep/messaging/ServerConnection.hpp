@@ -1,10 +1,23 @@
 #pragma once
 
+#include <pep/async/FakeVoid.hpp>
+#include <pep/messaging/Connection.hpp>
 #include <pep/messaging/ConnectionStatus.hpp>
+#include <pep/messaging/MessageSequence.hpp> // for messaging::MessageBatches
 #include <pep/messaging/Node.hpp>
 #include <pep/networking/EndPoint.hpp>
-#include <pep/async/FakeVoid.hpp>
-#include <utility>
+#include <pep/utils/Event.hpp>
+#include <pep/utils/LifeCycler.hpp>
+
+#include <boost/asio/io_context.hpp>
+#include <boost/system/errc.hpp> // for boost::system::errc::make_error_code
+
+#include <exception>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace pep::messaging {
 

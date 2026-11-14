@@ -64,13 +64,13 @@ rxcpp::observable<UserVerifiersResponse> AccessManagerProxy::requestUserVerifier
 
 rxcpp::observable<ColumnAccess> AccessManagerProxy::getAccessibleColumns(bool includeImplicitlyGranted, ColumnAccessModes requireModes) const {
   ColumnAccessRequest request{ includeImplicitlyGranted, requireModes };
-  return this->sendRequest<ColumnAccessResponse>(this->sign(std::move(request))) //NOLINT(performance-move-const-arg) may change
+  return this->sendRequest<ColumnAccessResponse>(this->sign(std::move(request)))
     .op(RxGetOne());
 }
 
 rxcpp::observable<ParticipantGroupAccess> AccessManagerProxy::getAccessibleParticipantGroups(bool includeImplicitlyGranted) const {
   ParticipantGroupAccessRequest request{ includeImplicitlyGranted };
-  return this->sendRequest<ParticipantGroupAccessResponse>(this->sign(std::move(request))) //NOLINT(performance-move-const-arg) may change
+  return this->sendRequest<ParticipantGroupAccessResponse>(this->sign(std::move(request)))
     .op(RxGetOne());
 }
 

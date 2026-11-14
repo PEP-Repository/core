@@ -1,7 +1,15 @@
 #pragma once
 
+#include <pep/async/RxCache.hpp>
+#include <pep/pullcastor/CastorParticipant.hpp>
 #include <pep/pullcastor/RepeatingDataPuller.hpp>
+#include <pep/pullcastor/StorableContent.hpp> // for castor::StorableColumnContent
+#include <pep/pullcastor/StudyAspect.hpp>
 #include <pep/pullcastor/StudyAspectPuller.hpp>
+#include <pep/utils/Shared.hpp>
+
+#include <memory>
+#include <vector>
 
 namespace pep {
 namespace castor {

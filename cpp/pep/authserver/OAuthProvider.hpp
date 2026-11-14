@@ -1,18 +1,25 @@
 #pragma once
 
-#include <pep/accessmanager/AccessManagerMessages.hpp>
+#include <pep/async/IoContext_fwd.hpp>
+#include <pep/auth/UserGroup.hpp>
+#include <pep/httpserver/HTTPServer.hpp>
+#include <pep/networking/HTTPMessage.hpp> // for HTTPResponse, HTTPRequest
+#include <pep/templating/TemplateEnvironment.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
 #include <pep/utils/Shared.hpp>
 
-#include <cstdint>
-#include <optional>
-#include <unordered_set>
-
-#include <pep/async/IoContext_fwd.hpp>
 #include <rxcpp/rx-lite.hpp>
 
-#include <pep/utils/Configuration_fwd.hpp>
-#include <pep/httpserver/HTTPServer.hpp>
-#include <pep/templating/TemplateEnvironment.hpp>
+#include <boost/url/url.hpp>
+
+#include <chrono>
+#include <cstdint>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace pep {
 class AuthserverBackend;

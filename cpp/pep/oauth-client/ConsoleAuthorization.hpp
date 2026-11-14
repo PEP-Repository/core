@@ -1,6 +1,9 @@
 #pragma once
 
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/oauth-client/OAuthClient.hpp>
+
+#include <memory>
 
 namespace pep {
 

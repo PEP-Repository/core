@@ -1,6 +1,12 @@
 #pragma once
 
+#include <pep/networking/Protocol.hpp>
 #include <pep/networking/TcpBasedProtocol.hpp>
+
+#include <boost/asio/io_context.hpp>
+
+#include <memory>
+#include <string>
 
 namespace pep::networking {
 

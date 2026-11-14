@@ -1,9 +1,11 @@
 #pragma once
 
-#include <ostream>
-#include <pep/accessmanager/UserMessages.hpp>
-#include <pep/structuredoutput/Tree.hpp>
 #include <pep/structuredoutput/Common.hpp>
+#include <pep/structuredoutput/Table.hpp>
+#include <pep/structuredoutput/Tree.hpp>
+
+#include <cassert>
+#include <ostream>
 
 namespace pep::structuredOutput::json {
 

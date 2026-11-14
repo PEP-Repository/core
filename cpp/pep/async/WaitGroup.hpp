@@ -1,16 +1,17 @@
 #pragma once
 
-#include <mutex>
-#include <vector>
-#include <string>
-#include <memory>
-#include <exception>
-#include <functional>
-#include <unordered_map>
+#include <pep/utils/Shared.hpp>
 
 #include <boost/core/noncopyable.hpp>
 
-#include <pep/utils/Shared.hpp>
+#include <cstddef>
+#include <exception>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace pep {
 

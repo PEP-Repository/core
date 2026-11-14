@@ -1,6 +1,10 @@
 #pragma once
 
-#include <inja/inja.hpp>
+#include <inja/environment.hpp>
+#include <inja/json.hpp>
+
+#include <filesystem>
+#include <string>
 
 namespace pep {
 

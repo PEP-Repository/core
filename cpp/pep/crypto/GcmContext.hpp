@@ -1,7 +1,8 @@
 #pragma once
 
-#include <memory>
 #include <openssl/evp.h>
+
+#include <memory>
 
 namespace pep {
 

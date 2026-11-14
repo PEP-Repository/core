@@ -1,8 +1,16 @@
 #pragma once
 
 #include <pep/castor/ImportColumnNamer.hpp>
+#include <pep/castor/SurveyStep.hpp>
 #include <pep/pullcastor/FieldValue.hpp>
-#include <pep/pullcastor/StudyAspectPuller.hpp>
+#include <pep/pullcastor/StorableContent.hpp> // for castor::StorableColumnContent
+#include <pep/utils/Shared.hpp>
+
+#include <boost/core/noncopyable.hpp>
+
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace pep {
 namespace castor {

@@ -27,15 +27,16 @@
 #include <pep/serialization/MessageMagic.hpp>
 #include <pep/serialization/Serialization.hpp>
 #include <pep/serialization/SerializeException.hpp>
+#include <pep/server/ChecksumChain.hpp>
 #include <pep/server/SigningServer.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
 #include <pep/storagefacility/EntryName.hpp>
 #include <pep/storagefacility/FileStore.hpp>
+#include <pep/storagefacility/PagePathResponseChunker.hpp>
 #include <pep/storagefacility/PendingBytesLimiter.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp> // for SignedDataEnumerationRequest2, DataEnumerationResponse2, DataStoreRequest2
 #include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/ticketing/TicketingMessages.hpp> // for Ticket2, LocalPseudonyms
-#include <pep/utils/CollectionUtils.hpp> // for FillToCapacity
 #include <pep/utils/Log.hpp> // for Severity
 #include <pep/utils/Shared.hpp>
 #include <pep/utils/Timestamp.hpp> // for TimeNow
@@ -55,6 +56,7 @@
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
 
+#include <pep/utils/Generator.hpp>
 #include <ranges>
 #include <unordered_map>
 #include <sstream>
@@ -75,6 +77,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include <format>
 
 #include <prometheus/gauge.h>
 #include <prometheus/summary.h>
@@ -155,6 +158,14 @@ bool ReadOptionalNonZeroConfigValue(T& destination, const Configuration& config,
   }
 
   return false;
+}
+
+/// \brief Produces (self-contained) PagePathResponse messages listing the paths of a FileStore's (current) pages.
+/// \remark Our coroutine frame keeps the store alive while we (lazily) iterate over its page paths.
+Generator<PagePathResponse> PagePathResponses(std::shared_ptr<FileStore> fileStore, size_t messageCapacity) {
+  for (auto&& response : ChunkPagePaths(fileStore->pagePaths(), messageCapacity)) {
+    co_yield std::move(response);
+  }
 }
 
 const std::string LogTag("StorageFacility");
@@ -715,7 +726,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 
       for (size_t j = 0; j < i; ++j) { // TODO: improve performance: we don't want an inner loop making this O(n^2)
         if (ctx->entries[j]->getName() == entryChange->getName()) {
-          PEP_LOG(LogTag, Severity::Error) << "Single request contained duplicate entry change for " + entryChange->getName().string();
+          PEP_LOG(LogTag, Severity::Error) << std::format("Single request contained duplicate entry change for {}", entryChange->getName());
           // Don't send our internal representation (local pseudonym contained in the entry's name) back to the client
           throw Error("Cannot store multiple values for column " + col + ". The duplicate entries are at indices " + std::to_string(i) + " and " + std::to_string(j));
         }
@@ -1090,25 +1101,8 @@ messaging::MessageBatches StorageFacility::handlePagePathRequest(std::shared_ptr
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({ UserGroup::SystemAdministrator }, accessGroup);
 
-  return CreateObservable<messaging::MessageSequence>([fileStore = fileStore_](rxcpp::subscriber<messaging::MessageSequence> subscriber) {
-    auto all = fileStore->pagePaths();
-    auto i = all.cbegin(), end = all.cend();
-
-    while (i != end) {
-      PagePathResponse chunk;
-      FillToCapacity(std::inserter(chunk.paths, chunk.paths.end()), messaging::NetMessageCapacity, subrange{ i, end });
-      if (chunk.paths.size() == 0U) {
-        throw std::runtime_error("Could not create network-portable set of page paths");
-      }
-
-      // Update the source iterator (the position in "all" page paths) so we skip processed items in the next iteration
-      // Unfortunately we can't "i += ..." because std::set does not provide random access iteration
-      std::advance(i, chunk.paths.size());
-
-      subscriber.on_next(rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(std::move(chunk)))));
-    }
-    subscriber.on_completed();
-    });
+  // Produce messages lazily (one at a time) so that we don't need to keep all page paths in memory
+  return messaging::RangeToMessageBatches(PagePathResponses(fileStore_, messaging::NetMessageCapacity));
 }
 
 std::string StorageFacility::encryptId(std::string path, Timestamp time) {
@@ -1164,6 +1158,10 @@ void StorageFacility::statsTimer(const boost::system::error_code& e) {
   timer_.async_wait(boost::bind(&pep::StorageFacility::statsTimer, this, boost::asio::placeholders::error));
 }
 
+const ChecksumChains& StorageFacility::checksumChains() const noexcept {
+  return fileStore_->checksumChains();
+}
+
 StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameters> parameters)
   : SigningServer(parameters),
   pseudonymKey_(parameters->getPseudonymKey()), encIdKey_(parameters->getEncIdKey()),
@@ -1180,8 +1178,7 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
     PendingBytesLimiter::Gauges{ .pendingBytes = &metrics_->pendingPageBytes, .paused = &metrics_->readingPaused })),
   timer_(*parameters->getIoContext()),
   parallelisationWidth_(parameters->getParallelisationWidth()),
-  dataSizeResolution_(parameters->getDataSizeResolution()),
-  checksumChainHandler_(fileStore_->checksumChains()) {
+  dataSizeResolution_(parameters->getDataSizeResolution()) {
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
                           &StorageFacility::handleDataReadRequest2,

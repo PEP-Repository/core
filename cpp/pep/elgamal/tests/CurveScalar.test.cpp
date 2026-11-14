@@ -53,8 +53,7 @@ TEST(CurveScalarTest, TestCompare) {
 }
 
 TEST(CurveScalarTest, TestRandom) {
-  pep::CurveScalar scalarA = pep::CurveScalar::Random();
-  pep::CurveScalar scalarB = pep::CurveScalar::Random();
+  const auto [scalarA, scalarB] = pep::Generate<2>(pep::CurveScalar::Random);
   EXPECT_NE(scalarA, scalarB) << "Random scalars are equal";
 }
 
@@ -84,8 +83,7 @@ TEST(CurveScalarTest, TestSum) {
 }
 
 TEST(CurveScalarTest, TestAddSub) {
-  pep::CurveScalar scalarA = pep::CurveScalar::Random();
-  pep::CurveScalar scalarB = pep::CurveScalar::Random();
+  const auto [scalarA, scalarB] = pep::Generate<2>(pep::CurveScalar::Random);
   pep::CurveScalar scalarC = scalarA + scalarB;
   pep::CurveScalar scalarD = scalarC - scalarB;
   EXPECT_EQ(scalarA, scalarD) << "A + B - B != A";
@@ -143,8 +141,7 @@ TEST(CurveScalarTest, TestSub) {
 
 TEST(CurveScalarTest, TestMultInvert) {
   for (int i = 0; i < 100; i++) {
-    pep::CurveScalar scalarA = pep::CurveScalar::Random();
-    pep::CurveScalar scalarB = pep::CurveScalar::Random();
+    const auto [scalarA, scalarB] = pep::Generate<2>(pep::CurveScalar::Random);
     pep::CurveScalar scalarC = scalarA * scalarB;
     pep::CurveScalar scalarD = scalarC * scalarB.invert();
     EXPECT_EQ(scalarA, scalarD) << "A * B * B^-1 != A";

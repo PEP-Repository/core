@@ -2,7 +2,14 @@
 
 #include <pep/networking/ExponentialBackoff.hpp>
 #include <pep/networking/Node.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/utils/Event.hpp>
 #include <pep/utils/Shared.hpp>
+
+#include <boost/asio/io_context.hpp>
+
+#include <memory>
+#include <optional>
 
 namespace pep::networking {
 

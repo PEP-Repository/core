@@ -7,6 +7,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <rxcpp/rx-lite.hpp>
+#include <rxcpp/operators/rx-reduce.hpp>
 
 #include <functional>
 #include <memory>

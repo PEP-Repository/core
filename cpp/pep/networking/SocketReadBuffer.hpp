@@ -3,6 +3,13 @@
 #include <pep/networking/StreamSocket.hpp>
 #include <pep/utils/Shared.hpp>
 
+#include <boost/asio/streambuf.hpp>
+
+#include <cstddef>
+#include <functional>
+#include <memory>
+#include <string>
+
 namespace pep::networking {
 
 /// \brief Frontend for StreamSocket instances that deals with excess data produced by StreamSocket::asyncReadUntil.
