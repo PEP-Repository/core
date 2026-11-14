@@ -96,6 +96,7 @@ struct Configuration final {
   static Configuration From(const pep::commandline::NamedValues &values) {
     Configuration result{
       .from = values.get<std::string>(param::from),
+      .to = {}, // Filled below
       .formatConfig = structuredOutput::FormatConfigFrom(values),
     };
     for (const auto& str : values.getOptionalMultiple<std::string>(param::to)) {
