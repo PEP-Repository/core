@@ -10,6 +10,9 @@
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structuredoutput/Common.hpp>
+#include <pep/structuredoutput/FormatFlags.hpp>
+#include <pep/structuredoutput/Tree.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
 
 #include <rxcpp/rx-lite.hpp>
@@ -24,11 +27,10 @@
 #include <iterator>
 #include <memory>
 #include <optional>
-#include <ostream>
-#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace pep::cli {
