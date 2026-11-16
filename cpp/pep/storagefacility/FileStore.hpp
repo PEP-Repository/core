@@ -70,7 +70,7 @@ public:
 
     bool isTombstone() const { return content_ == nullptr; }
     uint64_t payloadSize() const;
-    bool isOriginalPayloadOwner() const;
+    std::optional<Timestamp> originalPayloadEntryTimestamp() const;
   };
 
   /// \brief Represents a pending update to a cell. A new Entry will be created when an EntryChange is commit()ted.
@@ -142,7 +142,7 @@ public:
     uint64_t checksumSubstitute{};
     uint64_t payloadSize{};
     std::optional<Timestamp> purgedAt;
-    bool isOriginalPayloadOwner{};
+    std::optional<Timestamp> originalPayloadEntryTimestamp{};
     bool isTombstone{};
 
     static CellVersion FromEntry(const Entry& entry);

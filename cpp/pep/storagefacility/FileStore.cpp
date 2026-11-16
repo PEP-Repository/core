@@ -234,7 +234,7 @@ FileStore::CellVersion FileStore::CellVersion::FromEntry(const Entry& entry) {
     .checksumSubstitute = entry.getChecksumSubstitute(),
     .payloadSize = entry.payloadSize(),
     .purgedAt = entry.getPurgedAt(),
-    .isOriginalPayloadOwner = entry.isOriginalPayloadOwner(),
+    .originalPayloadEntryTimestamp = entry.originalPayloadEntryTimestamp(),
     .isTombstone = entry.isTombstone(),
   };
 }
@@ -447,11 +447,11 @@ uint64_t FileStore::EntryBase::payloadSize() const {
   return payload->size();
 }
 
-bool FileStore::EntryBase::isOriginalPayloadOwner() const {
+std::optional<Timestamp> FileStore::EntryBase::originalPayloadEntryTimestamp() const {
   if (content_ == nullptr) {
-    return false;
+    return std::nullopt;
   }
-  return !content_->getOriginalPayloadEntryTimestamp().has_value();
+  return content_->getOriginalPayloadEntryTimestamp();
 }
 
 std::set<std::string> FileStore::EntryBase::getPagePaths() const {
@@ -738,11 +738,15 @@ FileStore::Metrics FileStore::Cell::getMetrics() const {
     .rollingBytes = latest_ ? latest_->payloadSize() : 0U,
   };
 
-  for (const auto& version : versions_) {
-    if (version.isOriginalPayloadOwner) {
+  for (const CellVersion& version : versions_) {
+    if (version.originalPayloadEntryTimestamp == std::nullopt) { // This version is the original payload entry
       result.totalBytes += version.payloadSize;
       if (version.purgedAt) {
-        result.purgedBytes += version.payloadSize;
+        // Payload can only be discarded if no other version references it
+        auto referenced = !(versions_ | std::views::filter([original = version.validFrom](const CellVersion& other) { return other.originalPayloadEntryTimestamp == original && !other.purgedAt; })).empty();
+        if (!referenced) {
+          result.purgedBytes += version.payloadSize;
+        }
       }
     }
   }
