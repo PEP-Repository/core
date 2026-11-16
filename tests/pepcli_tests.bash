@@ -1480,7 +1480,8 @@ if should_run_test purging; then
   # (Try to) define/request a purge cycle
   pepcli --oauth-token-group "Research Assessor"  purge back-catalog && fail "Purge cycle request should be denied to Research Assessor"
   pepcli --oauth-token-group "Repository Manager" purge back-catalog && fail "Purge cycle request should be denied to Repository Manager"
-  cycle="$(pepcli --oauth-token-group "Data Administrator" purge back-catalog -r)"
+  cycle_json="$(pepcli --oauth-token-group "Data Administrator" purge back-catalog --output-format json)"
+  cycle="$(echo "$cycle_json" | jq -r '.data.[0].ID')"
   expect_purge_count "First definition" "$(($initial_purge_count + 1))"
   
   # (Try to) cancel the defined purge cycle
@@ -1490,7 +1491,8 @@ if should_run_test purging; then
   expect_purge_count "After cancellation" "$initial_purge_count" 
 
   # Define/request a purge cycle that we'll actually apply
-  cycle="$(pepcli --oauth-token-group "Data Administrator" purge back-catalog -r)"
+  cycle_json="$(pepcli --oauth-token-group "Data Administrator" purge back-catalog --output-format json)"
+  cycle="$(echo "$cycle_json" | jq -r '.data.[0].ID')"
   expect_purge_count "Second definition" "$(($initial_purge_count + 1))"
   
   # (Try to) confirm/apply the purge cycle
@@ -1524,7 +1526,8 @@ if should_run_test purging; then
 
   # Ensure that we can re-purge the back catalog after we create more history
   pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c PurgeTest -d Six
-  cycle="$(pepcli --oauth-token-group "Data Administrator" purge back-catalog -r)"
+  cycle_json="$(pepcli --oauth-token-group "Data Administrator" purge back-catalog --output-format json)"
+  cycle="$(echo "$cycle_json" | jq -r '.data.[0].ID')"
   pepcli --oauth-token-group "Repository Manager"  purge confirm "$cycle"
   
   hist="$(pepcli --oauth-token-group "Data Administrator" history -p "$TEST_PARTICIPANT" -c PurgeTest)"
