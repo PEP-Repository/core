@@ -111,7 +111,9 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
   return **participants_.emplace(std::make_unique<Participant>(*this, name)).first;
 }
 
-void FileStore::markPurged(const PurgeCycle& cycle) {
+void FileStore::markPurged(const PurgeCycle& cycle) noexcept {
+  // Method is "noexcept" so that it can't produce a state inconsistent with the "cycle", which has been "applied"
+  // (and presumably stored in SqliteStorage).
   assert(cycle.applied);
 
   std::unordered_map<std::string, Participant::VersionTimestampsByColumn> byParticipant;
@@ -346,7 +348,7 @@ std::set<std::string> FileStore::Cell::pagePaths() const {
   return latest_->pagePaths();
 }
 
-void FileStore::Cell::markPurged(Timestamp purgedAt, const VersionTimestamps& cellVersions) {
+void FileStore::Cell::markPurged(Timestamp purgedAt, const VersionTimestamps& cellVersions) noexcept {
   // A set<> only provides read-only access to its items, so we can't update (entries in) our versions_ in place.
   // So instead we create a new set<> with updated items and overwrite our entire versions_ member.
   // No need to synchronize because the purge persistence thread doesn't touch (data derived from) our versions_ field.
@@ -478,7 +480,7 @@ messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
   return payload->readPage(this->getFileStore().pagestore_, this->getCell().entryName(), index);
 }
 
-void FileStore::Entry::markPurged(Timestamp at) {
+void FileStore::Entry::markPurged(Timestamp at) noexcept {
   assert(!purgedAt_.has_value() && "Entry is already purged");
   purgedAt_ = at;
 }
@@ -819,7 +821,7 @@ std::set<std::string> FileStore::Participant::pagePaths() const {
   return result;
 }
 
-void FileStore::Participant::markPurged(Timestamp purgedAt, const VersionTimestampsByColumn& vsByColumn) {
+void FileStore::Participant::markPurged(Timestamp purgedAt, const VersionTimestampsByColumn& vsByColumn) noexcept {
   for (const auto& c : vsByColumn) {
     auto& [columnName, versions] = c;
     auto cell = this->getCell(columnName);

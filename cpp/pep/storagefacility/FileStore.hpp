@@ -125,7 +125,7 @@ public:
     Timestamp getValidFrom() const noexcept { return validFrom_; }
 
     std::optional<Timestamp> getPurgedAt() const { return purgedAt_; }
-    void markPurged(Timestamp at); // in memory
+    void markPurged(Timestamp at) noexcept; // in memory
     void throwErrorIfPurged(const std::string& logContext) const;
     std::set<std::string> pagePaths() const;
 
@@ -174,7 +174,7 @@ public:
     std::set<std::string> pagePaths() const; // for latest version
 
     using VersionTimestamps = std::set<Timestamp>;
-    void markPurged(Timestamp purgedAt, const VersionTimestamps& cellVersions); // in memory
+    void markPurged(Timestamp purgedAt, const VersionTimestamps& cellVersions) noexcept; // in memory
     void ensurePurgePersisted(Timestamp purgedAt, Timestamp cellVersion); // on disk
   };
 
@@ -205,7 +205,7 @@ public:
     std::set<std::string> pagePaths() const; // for latest version
 
     using VersionTimestampsByColumn = std::unordered_map<std::string, Cell::VersionTimestamps>;
-    void markPurged(Timestamp purgedAt, const VersionTimestampsByColumn& vsByColumn); // in memory
+    void markPurged(Timestamp purgedAt, const VersionTimestampsByColumn& vsByColumn) noexcept; // in memory
     void ensurePurgePersisted(Timestamp purgedAt, const std::string& column, Timestamp version); // on disk
   };
 
@@ -247,7 +247,7 @@ private:
   Participant* getParticipant(const std::string& name) const;
   Participant& provideParticipant(const std::string& name);
 
-  void markPurged(const PurgeCycle& cycle);
+  void markPurged(const PurgeCycle& cycle) noexcept;
   void persistPurgeCycleAsync(PurgeCycle cycle); // Entry point for the purgePersistence_ thread
 
 public:

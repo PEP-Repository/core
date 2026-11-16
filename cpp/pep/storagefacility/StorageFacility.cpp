@@ -1141,13 +1141,12 @@ messaging::MessageBatches StorageFacility::handlePurgeConfirmationRequest(std::s
         throw Error("Purge cycle has already been applied");
       }
 
-
       result.applied = this->getUniqueChangeTimestamp(true);
       sqlite_->updatePurgeCycle(result);
-      fileStore_->applyPurgeCycle(result);
-
       return result;
     });
+
+  fileStore_->applyPurgeCycle(result);
 
   return messaging::BatchSingleMessage(std::move(result));
 }
