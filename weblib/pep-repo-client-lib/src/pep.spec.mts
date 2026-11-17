@@ -4,7 +4,7 @@
 
 import {expect} from 'chai';
 import Pep, {CellEntry, ClientConfig, getColumnModes, getEffectiveAccessModes, InitConfig, ListColumnsQuery} from "./pep.mjs";
-import {binaryToString, concatStringsAsync, deleteObjects} from "./utils.mjs";
+import {binaryToString, byteStreamToString, deleteObjects} from "./utils.mjs";
 
 const isNode = !!globalThis.process;
 
@@ -267,7 +267,7 @@ describe('Pep', () => {
                 expectedContent = Array(120_000).fill('Larger test data!\n').join('');
                 break;
             }
-            const content = await concatStringsAsync(data.content.pipeThrough(new TextDecoderStream()));
+            const content = await byteStreamToString(data.content);
             expect(content).equals(expectedContent!, 'Wrong cell data');
           }
         });
@@ -281,27 +281,31 @@ describe('Pep', () => {
     // Without study context, so every registered subject gets one
     const referenceIdColumn = 'ShortPseudonym.Visit1.FMRI';
 
-    // The entries of both listings below
-    let entries: CellEntry[] = [];
-    after(() => deleteObjects(entries));
+    // Arrays from listings that should find a single entry
+    let referenceIdEntry: CellEntry[] = [];
+    after(() => deleteObjects(referenceIdEntry));
+    let identifierEntry: CellEntry[] = [];
+    after(() => deleteObjects(identifierEntry));
 
     it('should find the subject of one of its reference IDs', () => pep.runHandleWasmException(async () => {
       // The integration test setup generated the subject's reference IDs
-      entries = await Array.fromAsync(pep.list({subjects: ['WasmTestSubjectSmall'], columns: [referenceIdColumn]}));
-      expect(entries).to.have.length(1);
-      const [referenceIdEntry] = entries as [CellEntry];
+      referenceIdEntry = await Array.fromAsync(
+          pep.list({subjects: ['WasmTestSubjectSmall'], columns: [referenceIdColumn]}));
+      expect(referenceIdEntry).to.have.length(1);
       let referenceId = '';
-      for await (using data of pep.retrieve([referenceIdEntry])) {
-        referenceId = await concatStringsAsync(data.content.pipeThrough(new TextDecoderStream()));
+      for await (using data of pep.retrieve(referenceIdEntry)) {
+        referenceId = await byteStreamToString(data.content);
       }
 
       const found = await pep.findSubjectByReferenceId(referenceId);
-      const foundEntries = await Array.fromAsync(pep.list({subjects: [found], columns: [referenceIdColumn]}));
-      entries.push(...foundEntries);
-      // Polymorphic pseudonyms are randomized, and so are cell ids (encrypted anew for each listing). Check that the
-      // found subject is the same through its local pseudonym, which is fixed for a user group
-      expect(foundEntries.map(entry => entry.subjectLocalPseudonym))
-          .to.deep.equal([referenceIdEntry.subjectLocalPseudonym]);
+      // Check that it is WasmTestSubjectSmall, by the participant identifier the integration test setup stored for it
+      identifierEntry = await Array.fromAsync(pep.list({subjects: [found], columns: ['ParticipantIdentifier']}));
+      expect(identifierEntry).to.have.length(1);
+      let identifier = '';
+      for await (using data of pep.retrieve(identifierEntry)) {
+        identifier = await byteStreamToString(data.content);
+      }
+      expect(identifier).to.equal('WasmTestSubjectSmall');
     }));
   });
 
