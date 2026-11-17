@@ -473,7 +473,7 @@ cleanup:
 # if wanted (see BUILD_KEEP_GOING). Linting jobs always keep going, to report all linter findings at once.
 .set-keep-going-option: &set-keep-going-option
   - keep_going_option=""
-  - if [ "$BUILD_KEEP_GOING" = yes ] || [ "$BUILD_KEEP_GOING_ALWAYS" = yes ] || [ "$ENABLE_LINTER" = yes ]; then
+  - if [ "${BUILD_KEEP_GOING:-}" = yes ] || [ "${BUILD_KEEP_GOING_ALWAYS:-}" = yes ] || [ "${ENABLE_LINTER:-}" = yes ]; then
   -   keep_going_option="-- -k 0"
   - fi
 
@@ -483,11 +483,11 @@ cleanup:
 # is not passed, so the default applies (which also suits options the recipe removes, e.g. for Emscripten).
 .set-conan-options: &set-conan-options
   - conan_options="-o &:custom_build_folder=True"
-  - if [ -n "$WITH_ASSESSOR" ];  then conan_options="$conan_options -o &:with_assessor=$WITH_ASSESSOR"; fi
-  - if [ -n "$WITH_SERVERS" ];   then conan_options="$conan_options -o &:with_servers=$WITH_SERVERS"; fi
-  - if [ -n "$WITH_CASTOR" ];    then conan_options="$conan_options -o &:with_castor=$WITH_CASTOR"; fi
-  - if [ -n "$WITH_TESTS" ];     then conan_options="$conan_options -o &:with_tests=$WITH_TESTS"; fi
-  - if [ -n "$WITH_BENCHMARK" ]; then conan_options="$conan_options -o &:with_benchmark=$WITH_BENCHMARK"; fi
+  - if [ -n "${WITH_ASSESSOR:-}" ];  then conan_options="$conan_options -o &:with_assessor=$WITH_ASSESSOR"; fi
+  - if [ -n "${WITH_SERVERS:-}" ];   then conan_options="$conan_options -o &:with_servers=$WITH_SERVERS"; fi
+  - if [ -n "${WITH_CASTOR:-}" ];    then conan_options="$conan_options -o &:with_castor=$WITH_CASTOR"; fi
+  - if [ -n "${WITH_TESTS:-}" ];     then conan_options="$conan_options -o &:with_tests=$WITH_TESTS"; fi
+  - if [ -n "${WITH_BENCHMARK:-}" ]; then conan_options="$conan_options -o &:with_benchmark=$WITH_BENCHMARK"; fi
 
 #language=sh
 # We don't want errors about [[deprecated]] library functions in stable/release branches
@@ -607,7 +607,7 @@ retrieve-lockfile:
     --lockfile=./docker-build/builder/conan/conan-ci.lock
     -s build_type=$BUILD_TYPE
     $concurrency_option_conan
-    $CONAN_FLAGS
+    ${CONAN_FLAGS:-}
     $conan_options
     --output-folder=./$BUILD_DIRECTORY/ && true
   - conan_error="$?"
@@ -1255,7 +1255,7 @@ test-windows-debug:
 .macos-conan-install: &macos-conan-install
   - export CMAKE_COLOR_DIAGNOSTICS=ON  # Let CMake pass -fcolor-diagnostics
   - export CLICOLOR_FORCE=1  # Colored output for e.g. Conan & Ninja (otherwise -fcolor-diagnostics still won't work)
-  - CONAN_FLAGS="--profile:all=./docker-build/builder/conan/conan_profile --build=missing -s:b build_type=$BUILD_TYPE $CONAN_FLAGS"
+  - CONAN_FLAGS="--profile:all=./docker-build/builder/conan/conan_profile --build=missing -s:b build_type=$BUILD_TYPE ${CONAN_FLAGS:-}"
   - *conan-install
   - |
     if [[ -n "$CLEAN_CONAN" ]]; then
