@@ -17,7 +17,7 @@
   "// devDependencies.webpack": "Held below 5.109: from 5.109 on, the `importMeta: false` parser option in webpack.config.mjs also disables handling of `new URL(..., import.meta.url)`, so pepWeblib.wasm is no longer emitted. Enabling import.meta.url instead bakes the build machine's file path into the bundle.",
   "devDependencies": {
     "compression-webpack-plugin": "^12.0.0",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "webpack": "~5.108.4",
     "webpack-cli": "^7.3.1"
   }
