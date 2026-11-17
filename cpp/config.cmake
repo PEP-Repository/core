@@ -101,8 +101,7 @@ if(MSVC)
   # The limit is MSBuild property MultiProcMaxCount, which defaults to environment variable MultiProcMaxCount, or else to
   #  CL_MPCount, which Visual Studio sets from Tools > Options > Projects and Solutions > VC++ Project Settings >
   #  Maximum concurrent C++ compilations (0 for the number of logical CPUs).
-  # For their definitions, see Microsoft.Cpp.Common.props and Microsoft.CppCommon.targets in the Visual Studio
-  #  installation, under MSBuild\Microsoft\VC\v180.
+  # For their definitions, see Microsoft.Cpp.Common.props and Microsoft.CppCommon.targets in the Visual Studio installation.
   # Note that dependencies built by Conan are not affected by this setting: use the environment variables
   #  UseMultiToolTask=true and EnforceProcessCountAcrossBuilds=true for that, as ci_cd/windows-ci-build.bat does.
   # CMAKE_VS_GLOBALS sets properties in the Globals property group of each generated project, so this also applies to
