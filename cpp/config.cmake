@@ -118,6 +118,10 @@ if(MSVC)
   #  - With MTT, /MP is dropped anyway.
   option(COMPILE_SEQUENTIALLY "Compile one source at a time (per project)")
   if(COMPILE_SEQUENTIALLY)
+    if(USE_MSBUILD_MULTI_TOOL_TASK)
+      message(WARNING "USE_MSBUILD_MULTI_TOOL_TASK is ignored with COMPILE_SEQUENTIALLY")
+    endif()
+
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP1")
     if(CMAKE_GENERATOR MATCHES "^Visual Studio")
       # MTT drops /MP, so explicitly disable MTT for /MP1 to take effect,
