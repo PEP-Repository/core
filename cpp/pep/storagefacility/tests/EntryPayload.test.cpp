@@ -1,12 +1,14 @@
 #include <memory>
+#include <ranges>
 #include <type_traits>
 #include <cstdint>
 #include <vector>
 
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/storagefacility/PersistedEntryProperties.hpp>
-#include <pep/storagefacility/EntryName.hpp>
 
+#include <gmock/gmock-matchers.h>
+#include <gmock/gmock-more-matchers.h>
 #include <gtest/gtest.h>
 
 using namespace pep;
@@ -130,20 +132,17 @@ TEST(EntryPayload, paged_payloads_are_not_strictly_equal_if_their_contents_diffe
   EXPECT_FALSE(paged_AA->isStrictlyEqualTo(*paged_BB));
 }
 
-TEST(EntryPayload, payloads_report_correct_number_of_page_paths) {
-  const std::string Row = pep::LocalPseudonym::Random().text();
-  const std::string Column = "SomeColumn";
-  const EntryName entryName(Row, Column);
-
+TEST(EntryPayload, payloads_report_correct_page_paths) {
   const auto inlined = MakeEntryPayload<InlinedEntryPayload>("1 2", 3);
-  EXPECT_EQ(0, inlined->getPagePaths(entryName).size()) << "Inlined payload should not report page paths";
+  EXPECT_THAT(std::ranges::to<std::vector>(inlined->getPageNames()), testing::IsEmpty()) << "Inlined payload should not report page paths";
 
   auto props = AsPersistentEntryProperties({ .filesize = 11, .pagesize = 11 });
   const auto empty = MakeEntryPayload<PagedEntryPayload>(props, std::vector<PageId>{});
-  EXPECT_EQ(0, empty->getPagePaths(entryName).size()) << "Empty paged payload should not report page paths";
+  EXPECT_THAT(std::ranges::to<std::vector>(empty->getPageNames()), testing::IsEmpty()) << "Empty paged payload should not report page paths";
 
   props = AsPersistentEntryProperties({ .filesize = 11, .pagesize = 11 });
   const std::vector<PageId> pageIds{ 12, 13, 14 };
   const auto nonempty = MakeEntryPayload<PagedEntryPayload>(props, pageIds);
-  EXPECT_EQ(nonempty->getPagePaths(entryName).size(), pageIds.size()) << "Non-empty paged payload should report all its page paths";
+  EXPECT_EQ(std::ranges::to<std::vector>(nonempty->getPageNames()), (std::vector<std::string>{ "12.page", "13.page", "14.page" }))
+    << "Non-empty paged payload should report all its page paths (relative to its entry)";
 }
