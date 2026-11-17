@@ -984,14 +984,16 @@ if should_run_test pseudonym-conversion; then
   assert_equal "$(convert_to "$LP" brief-local-pseudonym)" "$UP"
   assert_equal "$(convert_to "$UP" brief-local-pseudonym)" "$UP"
 
-  # Multiple --to (also by abbreviation)
-  assert_equal "$(pepcli pseudonym convert "$PP" --to lp --to blp | jq --raw-output '."local-pseudonym" + " " + ."brief-local-pseudonym"')" "$LP $UP"
-  # Without --to, all types are reported
-  assert_equal "$(pepcli pseudonym convert "$UP" | jq --raw-output '."local-pseudonym" + " " + ."brief-local-pseudonym"')" "$LP $UP"
-
   assert_equal "$(convert_to "$PP" polymorphic-pseudonym)" "$PP"
   assert_equivalent_pp "$(convert_to "$LP" polymorphic-pseudonym)" "$PP"
   assert_equivalent_pp "$(convert_to "$UP" polymorphic-pseudonym)" "$PP"
+
+  # Multiple --to (also by abbreviation)
+  assert_equal "$(pepcli pseudonym convert "$PP" --to lp --to blp | jq --raw-output '."local-pseudonym" + " " + ."brief-local-pseudonym"')" "$LP $UP"
+
+  # Without --to, all types are reported
+  assert_equal "$(pepcli pseudonym convert "$UP" | jq --raw-output '."local-pseudonym" + " " + ."brief-local-pseudonym"')" "$LP $UP"
+  assert_equivalent_pp "$(pepcli pseudonym convert "$UP" | jq --raw-output '."polymorphic-pseudonym"')" "$PP"
 
   test_cleanup "$PC_CONFIG"
 fi

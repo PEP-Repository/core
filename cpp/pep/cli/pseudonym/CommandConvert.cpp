@@ -57,7 +57,7 @@ struct PseudonymTypeNames final {
   std::string_view abbreviation;
 };
 
-constexpr std::array<PseudonymTypeNames, 3> pseudonymTypeNames{{
+constexpr auto pseudonymTypeNames = std::array<PseudonymTypeNames, 3>{{
     {PseudonymType::PolymorphicPseudonym, "polymorphic-pseudonym", "pp"},
     {PseudonymType::LocalPseudonym, "local-pseudonym", "lp"},
     {PseudonymType::BriefLocalPseudonym, "brief-local-pseudonym", "blp"},
@@ -66,6 +66,7 @@ constexpr std::array<PseudonymTypeNames, 3> pseudonymTypeNames{{
 /// All names and abbreviations, sorted for the command line help
 std::vector<std::string> AllPseudonymTypeNames() {
   std::vector<std::string> result;
+  result.reserve(pseudonymTypeNames.size() * 2);
   for (const auto& names : pseudonymTypeNames) {
     result.emplace_back(names.name);
     result.emplace_back(names.abbreviation);
