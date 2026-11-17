@@ -14,7 +14,18 @@ namespace pep {
 
 namespace {
 
-const std::string LogTag = "Service application";
+const std::string LogTag = "Termination signals";
+
+std::string DescribeSignal(int signal) {
+  switch (signal) {
+  case SIGINT:
+    return "SIGINT";
+  case SIGTERM:
+    return "SIGTERM";
+  default:
+    return "signal " + std::to_string(signal);
+  }
+}
 
 }
 
@@ -25,7 +36,7 @@ TerminationSignalHandler::TerminationSignalHandler(std::function<void()> onTermi
       return;
     }
     signals_.clear(); // Restore default handling, so that a second signal kills the process
-    PEP_LOG(LogTag, Severity::Info) << "Received " << (signal == SIGINT ? "SIGINT" : "SIGTERM") << ": shutting down";
+    PEP_LOG(LogTag, Severity::Info) << "Received " << DescribeSignal(signal) << ": shutting down";
     onTermination();
     });
 
