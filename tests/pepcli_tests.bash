@@ -628,65 +628,106 @@ if should_run_test user-removal-and-expiration; then
 
   test_setup "$USER_REMOVAL_AND_EXPIRATION_CONFIG"
 
-  token="$(pepcli token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  # This test never waits for a group membership to expire, because the outcome would then depend on how long the
+  # commands in between take. Instead, it uses expirations that lie either far enough in the future that they cannot
+  # pass during the test, or in the past. The Access Manager implements expiration by creating block rules that take
+  # effect at the expiration, and we check for those rules directly where the test would otherwise have to wait.
+  #
+  # A token's issue time has whole-second precision, and block rules apply to tokens issued at or before their
+  # issueDateTime. When a token must be issued after a block rule was created, we therefore sleep for one second
+  # first. A slow machine can only make that delay longer, which doesn't affect the outcome.
+
+  # Asserts how many block rules there are for test-user in test-group that take effect at the specified (unix) time and
+  # block tokens issued up to then: the rules that the Access Manager schedules for a group membership expiration.
+  assert_expiration_block_count() {
+    local -r expiration="$1" expected="$2" message="$3"
+    local datetime blocklist count
+    datetime="$($DATE_CMD -u -d "@$expiration" +%FT%TZ)"
+    blocklist="$(pepcli --oauth-token-group "Access Administrator" token block list)"
+    # Columns: id, targetSubject, targetUserGroup, targetIssueDateTime, note, issuer, creationDateTime, blockStartDateTime
+    count="$(grep -cE "^\"[0-9]+\";\"test-user\";\"test-group\";\"$datetime\";.*;\"$datetime\"" <<<"$blocklist" || true)"
+    [ "$count" -eq "$expected" ] || fail "$message: expected $expected block rule(s) for expiration $datetime, but found $count in:
+$blocklist"
+  }
+
+  future_expiration="$($DATE_CMD -d "now+1 year" +%s)"
+  extended_future_expiration="$($DATE_CMD -d "now+2 years" +%s)"
+  readonly future_expiration extended_future_expiration
+
+  token="$(pepcli token request test-user test-group "unix:$future_expiration")"
   pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
   pepcli --oauth-token-group "Access Administrator" user removeFrom test-user test-group
   pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid when the user is removed from the group"
-  trace sleep 1s
+  trace sleep 1s # Ensure that the next token is issued after the removal's block rule: see above
 
-  # Raised from 5 to 15 seconds: on CI, addTo once took ~9 seconds, so the membership expired before the token was issued.
-  expiration="$($DATE_CMD -d "now+15 seconds" +%s)"
-  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
-  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
-  [ "$($DATE_CMD -d "now+1 second" +%s)" -lt "$expiration" ] || fail "Test setup took too long: group membership already expired before the token could be tested, rerun or consider increasing the expiration time in the test"
-  while [ "$($DATE_CMD -d "now+1 second" +%s)" -lt "$expiration" ]; do # We compare with now+1 second, so the following doesn't fail if in the meantime the current time increased to the next second
-    pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
-    trace sleep 1s
-  done
-  trace sleep 2s
+  # As long as a group membership's expiration lies in the future, tokens are valid...
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$future_expiration" test-user test-group
+  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$future_expiration")"
+  pepcli --oauth-token "$token" query enrollment || fail "Token should be valid before group membership expiration"
+  # ... but they are scheduled to be blocked at the expiration
+  assert_expiration_block_count "$future_expiration" 1 "Adding a user to a group with an expiration should schedule blocking of their tokens"
+
+  # Let the membership expire by setting its expiration to the current time. Since we round that down to whole seconds,
+  # it has passed by the time that the Access Manager processes it, and it isn't before the token's issue time.
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD +%s)" test-user test-group
   pepcli --oauth-token "$token" query enrollment && fail "Token should no longer be valid after group membership expiration"
-  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+10 years" +%s)" test-user test-group \
+
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$future_expiration" test-user test-group \
     && fail "Shouldn't be able to update expiration for a user group membership that already expired"
-  original_expiration_seconds="15"
-  expiration="$($DATE_CMD -d "now+$original_expiration_seconds seconds" +%s)"
-  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$expiration" test-user test-group
+  # Re-add user
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$future_expiration" test-user test-group
   pepcli --oauth-token "$token" query enrollment && fail "Token that was once blocked should not get unblocked by updating the expiration"
-  newToken="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  trace sleep 1s # Ensure that the next token is issued after the expiration's block rule: see above
+  newToken="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$future_expiration")"
   pepcli --oauth-token "$newToken" query enrollment || fail "New token, requested after the issueDateTime of the block entry, should be valid"
 
-  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+10 years" +%s)" test-user test-group
-  # A failing mutation should not change token blocking
-  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$($DATE_CMD -d "now+1 second" +%s)" test-user test-group \
-    && fail "Shouldn't be able to add a user to a group they are already in"
-  trace sleep "${original_expiration_seconds}s"
-  pepcli --oauth-token "$newToken" query enrollment || fail "Token should still be valid after original expiration has passed, but updated expiration has not yet passed"
+  # Extending the membership should cancel the blocking that was scheduled for the original expiration
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$extended_future_expiration" test-user test-group
+  # Make sure that the expiration time moved $future_expiration -> $extended_future_expiration
+  assert_expiration_block_count "$future_expiration" 0 "Tokens should no longer be blocked at the original expiration after updating the expiration"
+  assert_expiration_block_count "$extended_future_expiration" 1 "Tokens should be blocked at the updated expiration"
+  pepcli --oauth-token "$newToken" query enrollment || fail "Token should still be valid after updating the expiration"
 
-  blocked_token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
-  pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should be valid"
+  # A failing mutation should not change token blocking. If adding the user to the group (which they're already in)
+  # would update token blocking before failing, the token would be blocked right away, because the expiration lies in
+  # the past. And the blocking that is scheduled for the current expiration would be canceled.
+  pepcli --oauth-token-group "Access Administrator" user addTo --expiration "unix:$($DATE_CMD -d "now-1 hour" +%s)" test-user test-group \
+    && fail "Shouldn't be able to add a user to a group they are already in"
+  pepcli --oauth-token "$newToken" query enrollment || fail "Token should still be valid after a failing mutation"
+  assert_expiration_block_count "$extended_future_expiration" 1 "Scheduled token blocking should not change because of a failing mutation"
+
+
+  blocked_token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$future_expiration")"
+  pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should be valid" # Sanity check
   # Block rules are created without --issuedBefore, so they apply to all tokens issued up to now (including blocked_token).
   # Prints the id of the created block rule
   create_token_block() {
     pepcli --oauth-token-group "Access Administrator" token block create "$@" test-user test-group | sed -n '2s/^"\([0-9]*\)";.*$/\1/p'
   }
+
   # A rule with a block-start far in the future is not yet in effect, so the token should still be valid
-  future_block_id="$(create_token_block --block-start "unix:$($DATE_CMD -d "now+10 years" +%s)" --message "Blocked in the future")"
+  future_block_id="$(create_token_block --block-start "unix:$future_expiration" --message "Blocked in the future")"
   [ -n "$future_block_id" ] || fail "Could not determine id of created block rule"
   pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should still be valid, before block-start timestamp"
+
   # A rule without block-start is in effect immediately, so the token should be blocked
   immediate_block_id="$(create_token_block --message "Manually blocked")"
   [ -n "$immediate_block_id" ] || fail "Could not determine id of created block rule"
   pepcli --oauth-token "$blocked_token" query enrollment && fail "Token should be blocked by block rule without block-start timestamp"
+
   # Updating the expiration of the group membership should not lift the manual block
-  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now+20 years" +%s)" test-user test-group
+  pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$future_expiration" test-user test-group
   pepcli --oauth-token "$blocked_token" query enrollment && fail "Manually blocked token should not be unblocked by updating the expiration of the group membership"
+
   # Removing the rule that is in effect should unblock the token (which also shows that the future rule is still not in effect)
   pepcli --oauth-token-group "Access Administrator" token block remove "$immediate_block_id"
   pepcli --oauth-token "$blocked_token" query enrollment || fail "Token should be valid again after removing the block rule that is in effect"
+
   # Remove the remaining rule, so no block rules are left behind
   pepcli --oauth-token-group "Access Administrator" token block remove "$future_block_id"
 
   # An expiration in the past should (also) block tokens issued since then
-  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$($DATE_CMD -d "now+10 years" +%s)")"
+  token="$(pepcli --oauth-token-group "Access Administrator" token request test-user test-group "unix:$future_expiration")"
   pepcli --oauth-token "$token" query enrollment || fail "Token should be valid"
   pepcli --oauth-token-group "Access Administrator" user updateExpiration --expiration "unix:$($DATE_CMD -d "now-1 hour" +%s)" test-user test-group
   pepcli --oauth-token "$token" query enrollment && fail "Token issued after an expiration in the past should be blocked"
@@ -1041,13 +1082,13 @@ EOF
 
     trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" stop
     TMPDIR="$DATA_DIR" trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" start pep-network "$DATA_DIR/s3proxy_high_latency.properties"
-    trace sleep 10
+    wait_for_s3proxy pep-network
 
     pepcli --oauth-token-group "Research Assessor" store -p "stale-message-participant" -c StaleMessageColumn -i "$large_random_data_file"
 
     trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" stop
     trace "$S3PROXY_RUNTIME_DIR/s3proxy.sh" start pep-network
-    trace sleep 10
+    wait_for_s3proxy pep-network
 
     pepcli --oauth-token-group "Research Assessor" delete -p "stale-message-participant" -c StaleMessageColumn
 
@@ -1067,21 +1108,21 @@ if should_run_test page-paths; then
       "cgars": {  "Research Assessor": [ "read", "write" ] }
     }]
   }'
-  
+
   test_setup "$PAGE_PATHS_CONFIG"
-  
+
   pepcli --oauth-token-group "Research Assessor" query page-paths &&
       fail "Research Assessor should not be able to query page paths"
 
   # Count number of pages before storing
   before=$(pepcli --oauth-token-group "System Administrator" query page-paths)
   before=$(echo "$before" | wc -l)
-  
+
   # Store a large (i.e. stored in S3) file
   PAGED_RANDOM_DATA_FILE=$(make_large_random_data_file "paged-random-data.bin")
   readonly PAGED_RANDOM_DATA_FILE
   pepcli --oauth-token-group "Research Assessor" store -p "some-participant" -c PagedColumn -i "$PAGED_RANDOM_DATA_FILE"
-  
+
   # Count number of pages after storing
   after=$(pepcli --oauth-token-group "System Administrator" query page-paths)
   after=$(echo "$after" | wc -l)

@@ -19,6 +19,9 @@ public:
   rxcpp::observable<DataEnumerationResponse2> requestDataEnumeration(DataEnumerationRequest2 request) const;
   rxcpp::observable<DataHistoryResponse2> requestDataHistory(DataHistoryRequest2 request) const;
   rxcpp::observable<DataSizeResponse> requestDataSize(DataSizeRequest request) const;
+  /// \brief Retrieves the paths of the current data set's pages.
+  /// \return An observable emitting zero or more chunks of page paths. Every chunk is self-contained, i.e. it pushes the prefixes
+  ///         that apply to its paths and pops them again, so that it can be processed (e.g. using WritePrefixedStrings) on its own.
   rxcpp::observable<PagePathResponse> requestPagePaths() const;
 };
 

@@ -152,6 +152,8 @@
 ### Hotfixes for release 1.8
 
 - core#3028: Prevent HTTP client from misdelivering packets after cancellation.
+- core#3044: Sign S3 requests right before sending to avoid an expired signature.
+- core#3051: Optimize memory and network usage of `pepcli query page-paths` to prevent crashes on both server and client. Output order may change.
 
 
 ## Release 1.7

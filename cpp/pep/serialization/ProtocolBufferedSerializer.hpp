@@ -228,7 +228,9 @@ public:
       MessageMagician<T>::WriteMagicTo(magicStream);
       ret = std::move(magicStream).str();
     }
-    buffer.AppendToString(&ret);
+    if (!buffer.AppendToString(&ret)) {
+      throw SerializeException("Object could not be serialized to string");
+    }
     return ret;
   }
 

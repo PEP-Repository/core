@@ -1,6 +1,7 @@
 #include <pep/storagefacility/EntryName.hpp>
 
 #include <exception>
+#include <format>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -27,6 +28,10 @@ EntryName::EntryName(std::string participant, bool validateParticipant, std::str
   }
 }
 
+std::string EntryName::string() const {
+  return std::format("{}", *this);
+}
+
 EntryName EntryName::Parse(const std::string& sfId) {
   auto pos = sfId.find(Delimiter);
   if (pos == std::string::npos) {
@@ -35,4 +40,8 @@ EntryName EntryName::Parse(const std::string& sfId) {
   return EntryName(sfId.substr(0, pos), sfId.substr(pos + 1));
 }
 
+}
+
+auto std::formatter<pep::EntryName>::format(const pep::EntryName& name, format_context& ctx) const -> format_context::iterator {
+  return std::format_to(ctx.out(), "{}{}{}", name.participant(), pep::EntryName::Delimiter, name.column());
 }
