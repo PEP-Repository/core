@@ -16,8 +16,9 @@
   },
   "// devDependencies.webpack": "Held at 5.108.x. webpack.config.mjs sets `importMeta: false` so that webpack leaves pepWeblib.mjs's own uses of `import.meta.url` alone (otherwise it replaces them with the build machine's file path). From 5.109 on (https://github.com/webpack/webpack/pull/21327), that setting also stops webpack from copying pepWeblib.wasm into dist/: the build still succeeds, but the sample client cannot load. Before upgrading, build and check that dist/ contains a .wasm file.",
   "devDependencies": {
+    "@types/node": "^22.20.5",
     "compression-webpack-plugin": "^12.0.0",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "webpack": "~5.108.4",
     "webpack-cli": "^7.3.1"
   }
