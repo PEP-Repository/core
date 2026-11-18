@@ -117,7 +117,7 @@ void FileStore::markPurged(const PurgeCycle& cycle) noexcept {
   assert(cycle.applied);
 
   std::unordered_map<std::string, Participant::VersionTimestampsByColumn> byParticipant;
-  for (const auto& spec : sqlite_.getIncludedCellVersions(cycle.id)) {
+  for (const auto& spec : sqlite_->getIncludedCellVersions(cycle.id)) {
     [[maybe_unused]] auto emplaced = byParticipant[spec.cell.participant()][spec.cell.column()].emplace(spec.timestamp).second;
     assert(emplaced);
   }
@@ -134,13 +134,13 @@ void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
 
   assert(cycle.applied && !cycle.completed);
   try {
-    for (const auto& version : sqlite_.getIncludedCellVersions(cycle.id)) {
+    for (const auto& version : sqlite_->getIncludedCellVersions(cycle.id)) {
       this->getParticipant(version.cell.participant())->ensurePurgePersisted(*cycle.applied, version.cell.column(), version.timestamp);
     }
 
     auto updated = cycle;
     updated.completed = TimeNow();
-    sqlite_.updatePurgeCycle(updated);
+    sqlite_->updatePurgeCycle(updated);
     PEP_LOG(LogTag, Severity::Info) << "Completed persistence of purge cycle " << updated.id;
   }
   catch (...) {
@@ -170,7 +170,7 @@ const std::string& FileStore::getColumnString(const std::string& value) {
 }
 
 FileStore::FileStore(
-  storagefacility::SqliteStorage& sqlite,
+  std::shared_ptr<storagefacility::SqliteStorage> sqlite,
   const std::filesystem::path& metadatapath,
   const Configuration& pageStoreConfig,
   std::shared_ptr<boost::asio::io_context> io_context,
@@ -195,7 +195,7 @@ FileStore::FileStore(
   }
 
   // Mark versions purged that are included in purge cycles that have been applied (confirmed) but not (completely) persisted yet
-  for (auto cycle : sqlite_.getPurgeCycles() | std::views::filter([](const PurgeCycle& cycle) {return cycle.applied && !cycle.completed; })) {
+  for (auto cycle : sqlite_->getPurgeCycles() | std::views::filter([](const PurgeCycle& cycle) {return cycle.applied && !cycle.completed; })) {
     this->markPurged(cycle);
   }
 
@@ -284,7 +284,7 @@ std::set<std::string> FileStore::pagePaths() const {
 
 void FileStore::persistPendingPurges() {
   // If there is a purge cycle that has been confirmed/applied but not (fully) persisted yet...
-  auto pending = sqlite_.getPurgeCycles()
+  auto pending = sqlite_->getPurgeCycles()
     | std::views::filter([](const PurgeCycle& cycle) { return cycle.applied && !cycle.completed; })
     | std::ranges::to<std::vector>();
 

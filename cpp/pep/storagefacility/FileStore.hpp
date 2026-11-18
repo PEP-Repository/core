@@ -211,20 +211,20 @@ public:
 
 private:
   /// \brief Constructor
-  /// \param sqlite (A reference to) the SqliteStorage instance associated with this file store. Caller must ensure that the reference remains valid throughout this instance's lifetime.
+  /// \param sqlite (A shared_ptr to) the SqliteStorage instance associated with this file store. Caller must ensure that the reference remains valid throughout this instance's lifetime.
   /// \param metadatapath The path to the file store's "meta" directory, where it can store its (subdirectories and) files.
   /// \param pageStoreConfig The configuration for the backing page store.
   /// \param io_context The I/O context associated with asynchronous code for the calling thread.
   /// \param metrics_registry The (optional) metrics registry where this instance may register its metrics
   FileStore(
-    storagefacility::SqliteStorage& sqlite,
+    std::shared_ptr<storagefacility::SqliteStorage> sqlite,
     const std::filesystem::path& metadatapath,
     const Configuration& pageStoreConfig,
     std::shared_ptr<boost::asio::io_context> io_context,
     std::shared_ptr<prometheus::Registry> metrics_registry);
 
   std::shared_ptr<boost::asio::io_context> ioContext_;
-  storagefacility::SqliteStorage& sqlite_;
+  std::shared_ptr<storagefacility::SqliteStorage> sqlite_;
   std::thread purgePersistence_;
   std::mutex purgePersistenceMux_; // Synchronizes access to the purgePersistence_ instance
   std::recursive_mutex fileSystemMux_; // Synchronizes access to (the meta directory on) the file system

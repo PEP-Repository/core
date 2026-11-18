@@ -3,6 +3,7 @@
 #include <pep/storagefacility/EntryName.hpp>
 #include <pep/storagefacility/PurgeCycle.hpp>
 #include <pep/utils/Action.hpp>
+#include <pep/utils/Shared.hpp>
 #include <filesystem>
 #include <mutex>
 #include <set>
@@ -12,7 +13,9 @@ namespace pep::storagefacility {
 /// SQLite database (file) frontend for Storage Facility.
 /// \remark Public methods are thread safe. (Private methods require caller to synchronize.)
 ///         Callers can synchronize (over multiple method calls) by means of the "atomically" method.
-class SqliteStorage final {
+class SqliteStorage final : public SharedConstructor<SqliteStorage> {
+  friend class SharedConstructor<SqliteStorage>;
+
 private:
   struct Implementor;
   std::unique_ptr<Implementor> implementor_;
@@ -35,11 +38,12 @@ private:
   int64_t ensureRowId(const std::string& name);
   int64_t ensureColumnId(const std::string& name);
 
+  explicit SqliteStorage(std::filesystem::path file);
+
 public:
   struct CellVersionSpec;
   class ConstraintViolation;
 
-  explicit SqliteStorage(std::filesystem::path file);
   ~SqliteStorage() noexcept; // Can't be defined here because the destructor for Implementor is unknown
 
   std::vector<PurgeCycle> getPurgeCycles() const;

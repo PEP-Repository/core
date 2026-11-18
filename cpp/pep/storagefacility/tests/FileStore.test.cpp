@@ -26,7 +26,7 @@ struct Context {
   std::filesystem::path path = std::filesystem::temp_directory_path() / "pep-sf-tests";
   std::string bucket = "myBucket";
   std::shared_ptr<FileStore> store;
-  std::unique_ptr<SqliteStorage> sqlite;
+  std::shared_ptr<SqliteStorage> sqlite;
 
   std::filesystem::path sqlitepath() { return this->path / "sf.sqlite"; }
   std::filesystem::path metapath() { return this->path / "meta"; }
@@ -50,9 +50,9 @@ struct Context {
     boost::property_tree::ptree pageStoreConf;
     pageStoreConf.put_child("Local", localConf);
 
-    this->sqlite = std::make_unique<SqliteStorage>(this->sqlitepath());
+    this->sqlite = SqliteStorage::Create(this->sqlitepath());
     this->store = FileStore::Create(
-        *this->sqlite,
+        this->sqlite,
         this->metapath().string(), pep::Configuration::FromPtree(pageStoreConf), this->io_context,
         std::shared_ptr<prometheus::Registry>() // intentionally null
     );

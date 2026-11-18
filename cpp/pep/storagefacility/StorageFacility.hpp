@@ -148,7 +148,7 @@ private:
   ElgamalPrivateKey pseudonymKey_;
   std::string encIdKey_;
   std::shared_ptr<WorkerPool> workerPool_;
-  std::unique_ptr<storagefacility::SqliteStorage> sqlite_;
+  std::shared_ptr<storagefacility::SqliteStorage> sqlite_;
   std::shared_ptr<FileStore> fileStore_;
   std::shared_ptr<Metrics> metrics_;
   std::shared_ptr<PendingBytesLimiter> pendingPages_; // Global: limits the incoming pages that are waiting to be stored, across all requests

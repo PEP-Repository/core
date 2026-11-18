@@ -1308,9 +1308,9 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   : SigningServer(parameters),
   pseudonymKey_(parameters->getPseudonymKey()), encIdKey_(parameters->getEncIdKey()),
   workerPool_(WorkerPool::getShared()),
-  sqlite_(std::make_unique<storagefacility::SqliteStorage>(parameters->getStorageFile())),
+  sqlite_(storagefacility::SqliteStorage::Create(parameters->getStorageFile())),
   fileStore_(FileStore::Create(
-    *sqlite_,
+    sqlite_,
     parameters->getStoragePath().string(),
     *parameters->getPageStoreConfig(),
     parameters->getIoContext(),
