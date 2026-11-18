@@ -51,6 +51,7 @@ func Get() (
 
   for index, info := range fileInfos {
 	  if info.PurgedAt == nil {
+			// We don't check for tombstones because we assume that no one pepcli deletes the shared.Conf.CanaryFile.Tag column
 	    fr, err := shared.Pep.OpenFile(&info)
 	    if err != nil {
 		    return nil, nil, nil, fmt.Errorf("OpenFile: %v", err)
