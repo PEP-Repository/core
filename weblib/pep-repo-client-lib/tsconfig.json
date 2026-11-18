@@ -4,6 +4,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "rewriteRelativeImportExtensions": true,
+    "types": ["mocha", "node"],
     // Type checking
     "strict": true,
     "noImplicitOverride": true,
@@ -11,6 +12,7 @@
     "exactOptionalPropertyTypes": true,
     "noUncheckedIndexedAccess": true,
     // Output
+    "rootDir": "./src/",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
