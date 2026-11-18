@@ -320,15 +320,15 @@ std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr
     prepareTempDirectory(ctx);
 
     auto progress = ctx->progress;
-    auto checkPristine = !ctx->options.assumePristine && !ctx->force;
-    if (checkPristine) { // Announce a separate step for each of the multiple directory iterations that we'll perform
+    const auto checkPristineEarly = !ctx->options.assumePristine && !ctx->force;
+    if (checkPristineEarly) { // Announce a separate step for each of the multiple directory iterations that we'll perform
       progress = pep::Progress::Create(2U, ctx->progress->push());
       progress->advance("Reading participant data");
     }
 
     directory = DownloadDirectory::Create(ctx->tempDirectory, globalConfig, progress->push());
 
-    if (checkPristine) {
+    if (checkPristineEarly) {
       progress->advance("Checking directory for changes");
       auto nonpristine = directory->getNonPristineEntries(progress->push());
       if (!nonpristine.empty()) {
@@ -350,6 +350,7 @@ std::shared_ptr<DownloadDirectory> createDownloadDirectory(const std::shared_ptr
           }));
         throw std::runtime_error(boost::join(lines, "\n- "));
       }
+      ctx->options.assumePristine = true; // we can skip subsequent checks, because we just passed the early check
     }
     else if (ctx->force) {
       for (auto unknown : directory->getUnknownContents()) {
