@@ -10,9 +10,6 @@ Install Nginx and the [websockify](https://github.com/novnc/websockify) Python p
 
 ### Obtain the Emscripten SDK
 
-!!! bug "Emscripten version"
-    Currently, Emscripten ≥4.0.23 blocks too long while waiting for WebSocket traffic, see [this issue](https://github.com/emscripten-core/emscripten/issues/26192). Until this is resolved, use version 4.0.22 instead.
-
 !!! info "Node.js"
     When Node.js is already installed on the system (`node` is in PATH), EMSDK will not add its version to PATH, and we assume `npm` also available with your existing installation.
 

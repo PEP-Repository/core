@@ -18,6 +18,12 @@ type PepModule = MainModule & {
    * After obtaining message, frees the WASM exception object.
    */
   pepHandleWasmException(wasmEx: WasmException): Error,
+  // Emscripten 7 declares parameters with an `= undefined` default as type `undefined` (--emit-tsd), so add usable overloads
+  FS: {
+    createDataFile(parent: string, name: string, data: string, canRead: boolean, canWrite: boolean, canOwn: boolean): void,
+  },
+  FS_createPreloadedFile(parent: string, name: string, url: string, canRead: boolean, canWrite: boolean,
+      onload: () => void, onerror: (reason?: unknown) => void, dontCreateFile: boolean, canOwn: boolean, preFinish: undefined): void,
 };
 
 type ConfigServerName =

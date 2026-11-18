@@ -300,28 +300,6 @@ if(DEFINED EMSCRIPTEN)
   add_link_options("$<$<NOT:$<BOOL:$<TARGET_PROPERTY:PEP_SKIP_DEFAULT_EMSCRIPTEN_CLI_CONFIG>>>:${emscripten_cli_link_flags}>")
 endif()
 
-# Add shebang to JS file, if target is such a file
-#TODO(workaround) Remove for version 5.0.0+ (which has -sEXECUTABLE; implicit for targets without extension)
-function(make_js_file_executable target)
-  if(DEFINED EMSCRIPTEN AND NOT PEP_EMSCRIPTEN_BROWSER AND EMSCRIPTEN_VERSION VERSION_LESS "5.0.0")
-    get_target_property(skip ${target} PEP_SKIP_DEFAULT_EMSCRIPTEN_CLI_CONFIG)
-    if(NOT skip)
-      find_program(SED_PROGRAM sed)
-      if(SED_PROGRAM AND NOT CMAKE_HOST_APPLE) # We filter out macOS because it doesn't support this syntax
-        add_custom_command(
-            TARGET ${target} POST_BUILD
-            # Add node shebang
-            COMMAND ${SED_PROGRAM} -i -e "1 i #!/usr/bin/env node" "$<TARGET_FILE:${target}>"
-            # Make file executable
-            COMMAND chmod +x "$<TARGET_FILE:${target}>"
-            VERBATIM
-            COMMENT "Make JS file executable"
-        )
-      endif()
-    endif()
-  endif()
-endfunction()
-
 option(ENABLE_TEST_DISCOVERY "Make tests discoverable, to be able to run them from e.g. Visual Studio Test Explorer" OFF)
 if(ENABLE_TEST_DISCOVERY)
   include(CTest) #This allows discovery of our tests with e.g. Visual Studio

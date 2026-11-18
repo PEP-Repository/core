@@ -504,10 +504,6 @@ Future work:
 </div>
 
 ---
-Current issues:
-
-- <4.0.23: High CPU usage because waiting for data [does not block](https://github.com/emscripten-core/emscripten/issues/25759)
-- ≥4.0.23: [Does not unblock](https://github.com/emscripten-core/emscripten/issues/26192) when data is received
 
 # Tests
 

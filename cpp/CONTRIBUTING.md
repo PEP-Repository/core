@@ -394,6 +394,6 @@ These are the environments we build for and thus need to support (2026-08-17):
 | macOS 13.3             | arm64        | Apple Clang 21                   | Apple libc++     |
 | Linux Ubuntu 26.04     | x86-64       | Clang 21                         | GCC libstdc++ 15 |
 | Linux Flatpak KDE 6.11 | x86-64       | GCC 15                           | GCC libstdc++    |
-| Emscripten             | wasm32       | emcc 4.0.22 / Clang 22           | Clang libc++ 20  |
+| Emscripten             | wasm32       | emcc 7.0.0 / Clang 24            | Clang libc++ 23  |
 
 See [cppstat](https://cppstat.org/) for info on supported features.
