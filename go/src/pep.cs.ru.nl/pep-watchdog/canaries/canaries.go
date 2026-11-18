@@ -50,43 +50,42 @@ func Get() (
 	}
 
   for index, info := range fileInfos {
-	  if info.PurgedAt == nil {
+		if info.PurgedAt == nil {
 			// We don't check for tombstones because we assume that no one pepcli deletes the shared.Conf.CanaryFile.Tag column
-	    fr, err := shared.Pep.OpenFile(&info)
-	    if err != nil {
-		    return nil, nil, nil, fmt.Errorf("OpenFile: %v", err)
-	    }
-	
-	    buf, err := ioutil.ReadAll(fr)
-	    if err != nil {
-		    return nil, nil, nil, fmt.Errorf("ioutil.ReadAll: %v", err)
-	    }
-	
-      expectedValues[string(buf)] = index
-    }
-  }
+			fr, err := shared.Pep.OpenFile(&info)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("OpenFile: %v", err)
+			}
+			
+			buf, err := ioutil.ReadAll(fr)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("ioutil.ReadAll: %v", err)
+			}
+			expectedValues[string(buf)] = index
+		}
+	}
 
-  for _, r := range records {
+	for _, r := range records {
 		if _, ok := expectedValues[string(r.Value)]; !ok {
-      // Server did not produce a canary (version) for this record, or the version was purged
-		  missingCanaries = append(missingCanaries, r)
-    } else {
-      // Received this record's canary version payload from the server
+			// Server did not produce a canary (version) for this record, or the version was purged
+			missingCanaries = append(missingCanaries, r)
+		} else {
+			// Received this record's canary version payload from the server
 			expectedValues[string(r.Value)] = -1
-    }
-  }
+		}
+	}
 
-  for val, index := range expectedValues {
-    if index >= 0 { // We received a(n unpurged) cell version that we don't have a record for
-      fileInfo := fileInfos[index]
+	for val, index := range expectedValues {
+		if index >= 0 { // We received a(n unpurged) cell version that we don't have a record for
+			fileInfo := fileInfos[index]
 			unknownCanaries = append(unknownCanaries,
 				CanaryFileRecord{
 					Created:     fileInfo.Metadata.Timestamp,
 					Identifier2: fileInfo.Identifier,
 					Value:       []byte(val),
 				})
-    }
-  }
+		}
+	}
 
 	return
 }
