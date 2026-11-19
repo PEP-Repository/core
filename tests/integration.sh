@@ -525,7 +525,7 @@ execute . mkdir -p "$DEST_DIR"
 ####################
 
 if should_run_test watchdog; then
-  if should_run_test purging; then
+  if should_run_test purging > /dev/null ; then
     # Prevent Watchdog from reporting purged canary versions as missing.
     # We'd have liked to sync the canaries in the "purging" test, but can't
     # pepcli_tests.bash doesn't (seem to) have anything to do with Watchdog.
