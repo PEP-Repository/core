@@ -351,7 +351,7 @@ services:
     profiles: ["keyserver"]
 
   s3proxy:
-    image: andrewgaul/s3proxy
+    image: andrewgaul/s3proxy:4.1.1
     container_name: "s3proxy"
     restart: always
     networks:
