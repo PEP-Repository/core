@@ -15,17 +15,12 @@ x-logging-pipeline-pep-services: &logging-pipeline-pep-services
           - filename
           - container_name
       - regex:
-          expression: '^(?P<host_part>pep-build[0-9]+)-(?P<vm_part>pep-.+)$'
-          source: host
-      - regex:
           expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}): <(?P<level>\w+)> \[(?P<component>[^\]]+)\] (?P<message>.*)$'
       - timestamp:
           source: timestamp
           format: '2006-01-02 15:04:05'
           location: 'Europe/Amsterdam'
       - labels:
-          host: host_part
-          vm: vm_part
           level:
       - structured_metadata:
           component:
@@ -48,17 +43,11 @@ x-logging-pipeline-watchdog: &logging-pipeline-watchdog
           - filename
           - container_name
       - regex:
-          expression: '^(?P<host_part>pep-build[0-9]+)-(?P<vm_part>pep-.+)$'
-          source: host
-      - regex:
           expression: '^(?P<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) (?P<message>.*)$'
       - timestamp:
           source: timestamp
           format: '2006/01/02 15:04:05'
           location: 'Europe/Amsterdam'
-      - labels:
-          host: host_part
-          vm: vm_part
       - output:
           source: message
 
@@ -77,9 +66,6 @@ x-logging-pipeline-s3proxy: &logging-pipeline-s3proxy
       - labeldrop:
           - filename
           - container_name
-      - regex:
-          expression: '^(?P<host_part>pep-build[0-9]+)-(?P<vm_part>pep-.+)$'
-          source: host
       # s3proxy standard logs
       - match:
           selector: '{service_name=~".+"} |~ "^\\[s3proxy\\]"'
@@ -111,9 +97,6 @@ x-logging-pipeline-s3proxy: &logging-pipeline-s3proxy
                 level:
             - structured_metadata:
                 logger:
-      - labels:
-          host: host_part
-          vm: vm_part
       - output:
           source: message
 
@@ -132,9 +115,6 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
       - labeldrop:
           - filename
           - container_name
-      - regex:
-          expression: '^(?P<host_part>pep-build[0-9]+)-(?P<vm_part>pep-.+)$'
-          source: host
       # Shibboleth logs - Format: 2025-05-09 11:36:56 INFO Shibboleth.Application : adding AssertionConsumerService for Binding (urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST) at (/SAML2/POST)
       - match:
           selector: '{service_name=~".+"} |~ "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} [A-Z]+ [\\w\\.]+ :"'
@@ -178,9 +158,6 @@ x-logging-pipeline-authserver-apache: &logging-pipeline-authserver-apache
                 tid:
                 client:
                 noise_type:
-      - labels:
-          host: host_part
-          vm: vm_part
       - output:
           source: message
 
@@ -199,9 +176,6 @@ x-logging-pipeline-prometheus-node-exporter: &logging-pipeline-prometheus-node-e
       - labeldrop:
           - filename
           - container_name
-      - regex:
-          expression: '^(?P<host_part>pep-build[0-9]+)-(?P<vm_part>pep-.+)$'
-          source: host
       - logfmt:
           mapping:
             time:
@@ -214,8 +188,6 @@ x-logging-pipeline-prometheus-node-exporter: &logging-pipeline-prometheus-node-e
           template: '{{ ToLower .Value }}'
       - labels:
           level:
-          host: host_part
-          vm: vm_part
       - output:
           source: message
 
@@ -234,9 +206,6 @@ x-logging-pipeline-nginx: &logging-pipeline-nginx
       - labeldrop:
           - filename
           - container_name
-      - regex:
-          expression: '^(?P<host_part>pep-build[0-9]+)-(?P<vm_part>pep-.+)$'
-          source: host
       # Normal Nginx access logs
       - match:
           selector: '{service_name=~".+"} |~ "^\\S+ \\S+ \\S+ \\["'
@@ -282,9 +251,6 @@ x-logging-pipeline-nginx: &logging-pipeline-nginx
                 expression: '^nginx: \[(?P<level>\w+)\] (?P<message>.+)'
             - labels:
                 level:
-      - labels:
-          host: host_part
-          vm: vm_part
       - output:
           source: message
 
