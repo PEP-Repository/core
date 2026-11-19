@@ -1425,22 +1425,21 @@ if should_run_test purging; then
 
   test_setup "$PURGE_CONFIG"
   
-  # Counts purge cycles in "pepcli purge list" output
+  # Counts purge cycles in "pepcli purge list --output-format json"
   count_purges() {
     cli_output="$1"
-    # Filter empty lines to prevent off-by-one when CLI output only contains a (single) newline
-    echo "$cli_output" | sed '/^\s*$/d' | wc -l
+    echo "$cli_output" | jq '.data | length'
   }
 
   # Get (possibly non-empty) list of initial (previous) purge cycles
-  initial_purge_count="$(count_purges "$(pepcli --oauth-token-group "Data Administrator" purge list)")"
+  initial_purge_count="$(count_purges "$(pepcli --oauth-token-group "Data Administrator" purge list --output-format json)")"
   
   # Fails if "pepcli purge list" doesn't produce the expected number of cycles
   expect_purge_count() {
     when="$1"
     expected="$2"
     
-    cli_output="$(pepcli --oauth-token-group "Repository Manager" purge list)"
+    cli_output="$(pepcli --oauth-token-group "Repository Manager" purge list --output-format json)"
     count="$(count_purges "$cli_output")"
     if [ "$count" -ne "$expected" ]; then
       >&2 echo "$when: expected $expected purges but got $count. Initial count was $initial_purge_count; output was:\n$cli_output"
