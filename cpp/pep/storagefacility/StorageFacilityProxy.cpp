@@ -2,7 +2,7 @@
 #include <pep/async/RxToSet.hpp>
 #include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
 #include <pep/storagefacility/PageHash.hpp>
-#include <pep/storagefacility/PurgeSerializers.hpp>
+#include <pep/storagefacility/RedactionSerializers.hpp>
 #include <pep/storagefacility/StorageFacilityProxy.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/utils/XxHasher.hpp>
@@ -86,26 +86,26 @@ rxcpp::observable<PagePathResponse> StorageFacilityProxy::requestPagePaths() con
       });
 }
 
-rxcpp::observable<PurgeCycle> StorageFacilityProxy::listPurgeCycles() const {
-  return this->sendRequest<PurgeCycle>(this->sign(PurgeListRequest{}));
+rxcpp::observable<RedactionCycle> StorageFacilityProxy::listRedactionCycles() const {
+  return this->sendRequest<RedactionCycle>(this->sign(RedactionListRequest{}));
 }
 
-rxcpp::observable<PurgeCycle> StorageFacilityProxy::announcePurgeCycle(PurgeCycle::Definition definition) const {
-  return this->sendRequest<PurgeCycle>(this->sign(PurgeAnnounceRequest{
+rxcpp::observable<RedactionCycle> StorageFacilityProxy::announceRedactionCycle(RedactionCycle::Definition definition) const {
+  return this->sendRequest<RedactionCycle>(this->sign(RedactionAnnounceRequest{
       .definition = std::move(definition),
     }))
     .op(RxGetOne());
 }
 
-rxcpp::observable<PurgeCycle> StorageFacilityProxy::cancelPurgeCycle(PurgeCycle::Id id) const {
-  return this->sendRequest<PurgeCycle>(this->sign(PurgeCancelRequest{
+rxcpp::observable<RedactionCycle> StorageFacilityProxy::cancelRedactionCycle(RedactionCycle::Id id) const {
+  return this->sendRequest<RedactionCycle>(this->sign(RedactionCancelRequest{
       .id = id,
     }))
     .op(RxGetOne());
 }
 
-rxcpp::observable<PurgeCycle> StorageFacilityProxy::confirmPurgeCycle(PurgeCycle::Id id) const {
-  return this->sendRequest<PurgeCycle>(this->sign(PurgeConfirmationRequest{
+rxcpp::observable<RedactionCycle> StorageFacilityProxy::confirmRedactionCycle(RedactionCycle::Id id) const {
+  return this->sendRequest<RedactionCycle>(this->sign(RedactionConfirmationRequest{
       .id = id,
     }))
     .op(RxGetOne());

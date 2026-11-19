@@ -265,26 +265,26 @@ private:
                   // (Ab)use response fields to store byte counts. While this makes the "response" object's state inconsistent,
                   // it allows us to check for the original block size when outputting rounding information (below).
                   response.totalBlocks *= response.blockSize;
-                  response.purgedBlocks *= response.blockSize;
+                  response.redactedBlocks *= response.blockSize;
                   response.rollingBlocks *= response.blockSize;
                 }
 
                 // Left pad numbers (with spaces) so that we can...
                 auto entire = std::to_string(response.totalBlocks);
-                auto purged = std::to_string(response.purgedBlocks);
+                auto redacted = std::to_string(response.redactedBlocks);
                 auto latest = std::to_string(response.rollingBlocks);
-                auto width = std::max({ entire.size(), purged.size(), latest.size() });
+                auto width = std::max({ entire.size(), redacted.size(), latest.size() });
                 entire = std::string(width - entire.size(), ' ') + entire;
-                purged = std::string(width - purged.size(), ' ') + purged;
+                redacted = std::string(width - redacted.size(), ' ') + redacted;
                 latest = std::string(width - latest.size(), ' ') + latest;
 
                 // ...produce aligned output
                 std::cout
-                  << "Entire history contains " << entire << ' ' << *units << '\n';
-                if (response.purgedBlocks != 0U) std::cout // Nonconforming source formatting to align our output texts
-                  << "including purged data @ " << purged << ' ' << *units << '\n';
+                  << "Entire history contains " << entire   << ' ' << *units << '\n';
+                if (response.redactedBlocks != 0U) std::cout // Nonconforming source formatting to align our output texts
+                  << "including redacted    @ " << redacted << ' ' << *units << '\n';
                 std::cout
-                  << "Latest version contains " << latest << ' ' << *units << '\n';
+                  << "Latest version contains " << latest   << ' ' << *units << '\n';
 
                 if (response.blockSize != 1U) {
                   std::cout << "(rounded up to the nearest " << chunk << ')' << '\n';

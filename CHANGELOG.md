@@ -18,7 +18,7 @@
 
 - core!2595: Weblib `pep.listColumns()` and `pep.listSubjectGroups()` now return all (column/subject) groups the user has any access to, with their access `modes`, instead of only readable/accessible ones.
 
-- core#2313: Added `pepcli purge` suite of commands, which irrecoverably remove cell versions from the repository.
+- core#2313: Added `pepcli redact` suite of commands, which irrecoverably remove cell versions from the repository.
 
 **MANUAL CHANGES REQUIRED**:
 

@@ -784,8 +784,8 @@ message DataHistoryEntry2 {
   // (Encrypted) storage facility ID. If empty, this history entry represents a deletion
   bytes id = 4;
 
-  // If the entry is purged: the timestamp at which the cycle was applied
-  Timestamp purged_at = 5;
+  // If the entry is redacted: the timestamp at which the cycle was applied
+  Timestamp redacted_at = 5;
 }
 
 message DataHistoryResponse2 {
@@ -805,10 +805,10 @@ message DataSizeResponse {
   uint64 block_size = 1;
   uint64 total_blocks = 2;
   uint64 rolling_blocks = 3;
-  uint64 purged_blocks = 4;
+  uint64 redacted_blocks = 4;
 }
 
-message PurgeCycle {
+message RedactionCycle {
   uint32 id = 1;
   string name = 2;
   Timestamp announced = 3;
@@ -816,36 +816,36 @@ message PurgeCycle {
   Timestamp completed = 5;
 }
 
-message PurgeListRequest {}
+message RedactionListRequest {}
 
-message SignedPurgeListRequest {
+message SignedRedactionListRequest {
   Signature signature = 1;
   bytes data = 2;
 }
 
-message PurgeAnnounceRequest {
+message RedactionAnnounceRequest {
   string name = 1;
 }
 
-message SignedPurgeAnnounceRequest {
+message SignedRedactionAnnounceRequest {
   Signature signature = 1;
   bytes data = 2;
 }
 
-message PurgeCancelRequest {
+message RedactionCancelRequest {
   uint32 id = 1;
 }
 
-message SignedPurgeCancelRequest {
+message SignedRedactionCancelRequest {
   Signature signature = 1;
   bytes data = 2;
 }
 
-message PurgeConfirmationRequest {
+message RedactionConfirmationRequest {
   uint32 id = 1;
 }
 
-message SignedPurgeConfirmationRequest {
+message SignedRedactionConfirmationRequest {
   Signature signature = 1;
   bytes data = 2;
 }

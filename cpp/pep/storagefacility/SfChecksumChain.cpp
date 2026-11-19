@@ -16,7 +16,7 @@ ChecksumChain::Checkpoint TimestampToCheckpoint(Timestamp timestamp) {
  * 4. participant-a/column-y/timestamp-3
  * 5. participant-a/column-y/timestamp-5
  * 6. participant-b/column-x/timestamp-1
- * Purges of cell versions are processed after cell version contents.
+ * Redactions of cell versions are processed after cell version contents.
  */
 class FilesChecksumChain : public SfChecksumChain {
 protected:
@@ -29,19 +29,19 @@ protected:
     // Let base class implementation (invoke our method to) process cell version(content)s
     result = SfChecksumChain::addCell(result, max, cell);
 
-    // Process any purges that occurred before the max checkpoint
+    // Process any redactions that occurred before the max checkpoint
     for (const FileStore::CellVersion& version : cell.versions()) {
       auto versionCheckpoint = TimestampToCheckpoint(version.validFrom);
       if (versionCheckpoint > max) {
         break;
       }
 
-      if (version.purgedAt) {
-        auto purgeCheckpoint = TimestampToCheckpoint(*version.purgedAt);
-        if (purgeCheckpoint <= max) {
-          auto add = purgeCheckpoint ^ versionCheckpoint; // Just a unique value for the purging of this cell version
+      if (version.redactedAt) {
+        auto redactionCheckpoint = TimestampToCheckpoint(*version.redactedAt);
+        if (redactionCheckpoint <= max) {
+          auto add = redactionCheckpoint ^ versionCheckpoint; // Just a unique value for the redaction of this cell version
           result.checksum ^= add;
-          result.checkpoint = std::max(result.checkpoint, purgeCheckpoint);
+          result.checkpoint = std::max(result.checkpoint, redactionCheckpoint);
         }
       }
     }

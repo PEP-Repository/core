@@ -28,7 +28,7 @@ namespace pep {
 namespace {
 
 const std::string ChecksumSubstituteKey = "checksum-substitute";
-const std::string PurgedAtKey = "purged-at";
+const std::string RedactedAtKey = "redacted-at";
 
 uint64_t GenerateChecksumSubstitute() {
   return RandomInteger<uint64_t>();
@@ -58,7 +58,7 @@ const std::string FileStore::Entry::FileExtension = ".entry";
 FileStore::Metrics& FileStore::Metrics::operator+=(const Metrics& rhs) {
   entryCount += rhs.entryCount;
   totalBytes += rhs.totalBytes;
-  purgedBytes += rhs.purgedBytes;
+  redactedBytes += rhs.redactedBytes;
   rollingBytes += rhs.rollingBytes;
 
   return *this;
@@ -111,7 +111,7 @@ FileStore::Participant& FileStore::provideParticipant(const std::string& name) {
   return **participants_.emplace(std::make_unique<Participant>(*this, name)).first;
 }
 
-void FileStore::markPurged(const PurgeCycle& cycle) noexcept {
+void FileStore::markRedacted(const RedactionCycle& cycle) noexcept {
   // Method is "noexcept" so that it can't produce a state inconsistent with the "cycle", which has been "applied"
   // (and presumably stored in SqliteStorage).
   assert(cycle.applied);
@@ -125,40 +125,40 @@ void FileStore::markPurged(const PurgeCycle& cycle) noexcept {
     auto& [name, byColumn] = p;
     auto participant = this->getParticipant(name);
     assert(participant != nullptr);
-    participant->markPurged(*cycle.applied, byColumn);
+    participant->markRedacted(*cycle.applied, byColumn);
   }
 }
 
-void FileStore::persistPurgeCycleAsync(PurgeCycle cycle) {
-  // Entry point for the purgePersistence_ thread
+void FileStore::persistRedactionCycleAsync(RedactionCycle cycle) {
+  // Entry point for the redactionPersistence_ thread
 
   assert(cycle.applied && !cycle.completed);
   try {
     for (const auto& version : sqlite_->getIncludedCellVersions(cycle.id)) {
-      this->getParticipant(version.cell.participant())->ensurePurgePersisted(*cycle.applied, version.cell.column(), version.timestamp);
+      this->getParticipant(version.cell.participant())->ensureRedactionPersisted(*cycle.applied, version.cell.column(), version.timestamp);
     }
 
     auto updated = cycle;
     updated.completed = TimeNow();
-    sqlite_->updatePurgeCycle(updated);
-    PEP_LOG(LogTag, Severity::Info) << "Completed persistence of purge cycle " << updated.id;
+    sqlite_->updateRedactionCycle(updated);
+    PEP_LOG(LogTag, Severity::Info) << "Completed persistence of redaction cycle " << updated.id;
   }
   catch (...) {
     // Eat all exceptions to prevent the thread from taking down the entire process
-    PEP_LOG(LogTag, Severity::Error) << "Encountered exception persisting purge cycle " << cycle.id << ": " << GetExceptionMessage(std::current_exception());
-    // Since the cycle hasn't been marked "completed" in sqlite_, we'll (let the ASIO thread) retry with a new purgePersistence_ thread
+    PEP_LOG(LogTag, Severity::Error) << "Encountered exception persisting redaction cycle " << cycle.id << ": " << GetExceptionMessage(std::current_exception());
+    // Since the cycle hasn't been marked "completed" in sqlite_, we'll (let the ASIO thread) retry with a new redactionPersistence_ thread
   }
 
   post(*ioContext_, [self = SharedFrom(*this)]() { // Let the ASIO thread...
-      // ... join this (purgePersistence_) thread to clean up...
+      // ... join this (redactionPersistence_) thread to clean up...
       {
-        std::lock_guard lock(self->purgePersistenceMux_);
-        assert(self->purgePersistence_.joinable());
-        self->purgePersistence_.join();
-        assert(!self->purgePersistence_.joinable());
+        std::lock_guard lock(self->redactionPersistenceMux_);
+        assert(self->redactionPersistence_.joinable());
+        self->redactionPersistence_.join();
+        assert(!self->redactionPersistence_.joinable());
       }
       // ... then start a new persistence thread if any (more) cycles need to be persisted
-      self->persistPendingPurges();
+      self->persistPendingRedactions();
     });
 }
 
@@ -184,7 +184,7 @@ FileStore::FileStore(
   // throws when an error occurs while creating any of the given directories in the supplied path
   std::filesystem::create_directories(path_);
 
-  // Load cell versions from disk. File system access doesn't need to be synchronized because our purge persistence thread isn't running.
+  // Load cell versions from disk. File system access doesn't need to be synchronized because our redaction persistence thread isn't running.
   auto start_time = steady_clock::now();
   for (const auto& p : std::filesystem::directory_iterator(path_)) {
     auto name = p.path().filename().string();
@@ -194,9 +194,9 @@ FileStore::FileStore(
     }
   }
 
-  // Mark versions purged that are included in purge cycles that have been applied (confirmed) but not (completely) persisted yet
-  for (auto cycle : sqlite_->getPurgeCycles() | std::views::filter([](const PurgeCycle& cycle) {return cycle.applied && !cycle.completed; })) {
-    this->markPurged(cycle);
+  // Mark versions redacted that are included in redaction cycles that have been applied (confirmed) but not (completely) persisted yet
+  for (auto cycle : sqlite_->getRedactionCycles() | std::views::filter([](const RedactionCycle& cycle) {return cycle.applied && !cycle.completed; })) {
+    this->markRedacted(cycle);
   }
 
   auto entryCount = this->getMetrics().entryCount;
@@ -233,7 +233,7 @@ FileStore::CellVersion FileStore::CellVersion::FromEntry(const Entry& entry) {
     .validFrom = entry.getValidFrom(),
     .checksumSubstitute = entry.getChecksumSubstitute(),
     .payloadSize = entry.payloadSize(),
-    .purgedAt = entry.getPurgedAt(),
+    .redactedAt = entry.getRedactedAt(),
     .originalPayloadEntryTimestamp = entry.originalPayloadEntryTimestamp(),
     .isTombstone = entry.isTombstone(),
   };
@@ -282,27 +282,27 @@ std::set<std::string> FileStore::pagePaths() const {
   return result;
 }
 
-void FileStore::persistPendingPurges() {
-  // If there is a purge cycle that has been confirmed/applied but not (fully) persisted yet...
-  auto pending = sqlite_->getPurgeCycles()
-    | std::views::filter([](const PurgeCycle& cycle) { return cycle.applied && !cycle.completed; })
+void FileStore::persistPendingRedactions() {
+  // If there is a redaction cycle that has been confirmed/applied but not (fully) persisted yet...
+  auto pending = sqlite_->getRedactionCycles()
+    | std::views::filter([](const RedactionCycle& cycle) { return cycle.applied && !cycle.completed; })
     | std::ranges::to<std::vector>();
 
   if (!pending.empty()) {
-    std::scoped_lock lock(purgePersistenceMux_);
-    if (!purgePersistence_.joinable()) { // ... and the persistence thread isn't already running...
+    std::scoped_lock lock(redactionPersistenceMux_);
+    if (!redactionPersistence_.joinable()) { // ... and the persistence thread isn't already running...
       // ... find the oldest unpersisted cycle...
-      auto i = std::ranges::min_element(pending, {}, &PurgeCycle::applied);
+      auto i = std::ranges::min_element(pending, {}, &RedactionCycle::applied);
       assert(i != pending.end());
       // ... and start a (new) persistence thread now to process it.
-      purgePersistence_ = std::thread([self = SharedFrom(*this), cycle = *i]() { self->persistPurgeCycleAsync(cycle); });
+      redactionPersistence_ = std::thread([self = SharedFrom(*this), cycle = *i]() { self->persistRedactionCycleAsync(cycle); });
     }
   }
 }
 
-void FileStore::applyPurgeCycle(const PurgeCycle& cycle) {
-  this->markPurged(cycle);
-  this->persistPendingPurges();
+void FileStore::applyRedactionCycle(const RedactionCycle& cycle) {
+  this->markRedacted(cycle);
+  this->persistPendingRedactions();
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::lookup(const EntryName& name, Timestamp validAt) {
@@ -333,9 +333,9 @@ std::shared_ptr<FileStore::Entry> FileStore::Cell::lookup(Timestamp validAt) {
 
   std::lock_guard lock(this->participant().fileStore().fileSystemMux_);
   auto result = Entry::Load(*this, it->validFrom);
-  if (auto purgedAt = it->purgedAt) {
-    if (!result->getPurgedAt()) { // If the .entry file didn't contain a "purged-at" (yet) but it's included in a pending (i.e. applied/confirmed) purge cycle:
-      result->markPurged(*purgedAt);
+  if (auto redactedAt = it->redactedAt) {
+    if (!result->getRedactedAt()) { // If the .entry file didn't contain a "redacted-at" (yet) but it's included in a pending (i.e. applied/confirmed) redaction cycle:
+      result->markRedacted(*redactedAt);
     }
   }
   return result;
@@ -348,18 +348,19 @@ std::set<std::string> FileStore::Cell::pagePaths() const {
   return latest_->pagePaths();
 }
 
-void FileStore::Cell::markPurged(Timestamp purgedAt, const VersionTimestamps& cellVersions) noexcept {
+void FileStore::Cell::markRedacted(Timestamp redactedAt, const VersionTimestamps& cellVersions) noexcept {
   // A set<> only provides read-only access to its items, so we can't update (entries in) our versions_ in place.
   // So instead we create a new set<> with updated items and overwrite our entire versions_ member.
-  // No need to synchronize because the purge persistence thread doesn't touch (data derived from) our versions_ field.
+  // No need to synchronize because the redaction persistence thread doesn't touch (data derived from) our versions_
+  // field.
   CellVersions updated;
 
   for (auto version : versions_) {
-    if (!version.purgedAt.has_value()) {
+    if (!version.redactedAt.has_value()) {
       if (cellVersions.contains(version.validFrom)) {
-        version.purgedAt = purgedAt;
+        version.redactedAt = redactedAt;
         if (version.validFrom == latest_->getValidFrom()) {
-          latest_->markPurged(*version.purgedAt);
+          latest_->markRedacted(*version.redactedAt);
         }
       }
     }
@@ -370,38 +371,38 @@ void FileStore::Cell::markPurged(Timestamp purgedAt, const VersionTimestamps& ce
   versions_ = std::move(updated);
 }
 
-void FileStore::Cell::ensurePurgePersisted(Timestamp purgedAt, Timestamp cellVersion) {
-  // No need to synchronize (with Cell::applyPurgeCycle) because we don't touch our versions_ field
-  Entry::EnsurePurgePersisted(purgedAt, *this, cellVersion);
+void FileStore::Cell::ensureRedactionPersisted(Timestamp redactedAt, Timestamp cellVersion) {
+  // No need to synchronize (with Cell::applyRedactionCycle) because we don't touch our versions_ field
+  Entry::EnsureRedactionPersisted(redactedAt, *this, cellVersion);
 }
 
-std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool requireExisting, bool requireUnpurged) {
+std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool requireExisting, bool requireUnredacted) {
   if (auto entry = lookup(name)) {
     if (requireExisting && entry->isTombstone()) {
       throw Error("Cannot update cell that has been previously cleared/deleted");
     }
-    if (requireUnpurged) {
-      entry->throwErrorIfPurged("FileStore::modifyEntry");
+    if (requireUnredacted) {
+      entry->throwErrorIfRedacted("FileStore::modifyEntry");
     }
 
     // Create a normal EntryChange if we can
-    if (!entry->getPurgedAt()) {
+    if (!entry->getRedactedAt()) {
       return EntryChange::Create(*entry);
     }
-    // else entry is purged: let default handling (below) create a fresh EntryChange
+    // else entry is redacted: let default handling (below) create a fresh EntryChange
   }
   else if (requireExisting) {
     throw Error("Cannot find cell to update");
   }
 
-  // Entry didn't exist or was purged: create an EntryChange that's not based on a previous version
+  // Entry didn't exist or was redacted: create an EntryChange that's not based on a previous version
   return this->provideParticipant(name.participant()).createEntry(name.column());
 }
 
 FileStore::EntryChange::EntryChange(Cell& cell)
   : EntryBase(cell, GenerateChecksumSubstitute(), nullptr),
     lastEntryValidFrom_{/*zero*/} {
-  // We may be storing into a non-empty cell, e.g. if the latest version was purged
+  // We may be storing into a non-empty cell, e.g. if the latest version was redacted
   const CellVersions& versions = cell.versions();
   if (!versions.empty()) {
     lastEntryValidFrom_ = versions.rbegin()->validFrom;
@@ -410,7 +411,7 @@ FileStore::EntryChange::EntryChange(Cell& cell)
 
 FileStore::EntryChange::EntryChange(const Entry& overwrites)
   : EntryBase(overwrites.getCell(), GenerateChecksumSubstitute(), overwrites.cloneContent()), lastEntryValidFrom_(overwrites.getValidFrom()) {
-  assert(!overwrites.getPurgedAt());
+  assert(!overwrites.getRedactedAt());
 }
 
 CheckedPath FileStore::Entry::getFilePath(const std::string& extension) const {
@@ -464,7 +465,7 @@ std::set<std::string> FileStore::EntryBase::getPagePaths() const {
 }
 
 std::set<std::string> FileStore::Entry::pagePaths() const {
-  if (this->getPurgedAt()) {
+  if (this->getRedactedAt()) {
     return {};
   }
   return this->getPagePaths();
@@ -480,23 +481,23 @@ messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
   return payload->readPage(this->getFileStore().pagestore_, this->getCell().entryName(), index);
 }
 
-void FileStore::Entry::markPurged(Timestamp at) noexcept {
-  assert(!purgedAt_.has_value() && "Entry is already purged");
-  purgedAt_ = at;
+void FileStore::Entry::markRedacted(Timestamp at) noexcept {
+  assert(!redactedAt_.has_value() && "Entry is already redacted");
+  redactedAt_ = at;
 }
 
-void FileStore::Entry::throwErrorIfPurged(const std::string& logContext) const {
-  if (purgedAt_.has_value()) {
+void FileStore::Entry::throwErrorIfRedacted(const std::string& logContext) const {
+  if (redactedAt_.has_value()) {
     auto name = this->getName();
     PEP_LOG(LogTag, Severity::Warning)
       << logContext << " can't process "
-      << " entry purged at " << TicksSinceEpoch<std::chrono::milliseconds>(*purgedAt_)
-      << " (i.e. " << TimestampToXmlDateTime(*purgedAt_) << ')'
+      << " entry redacted at " << TicksSinceEpoch<std::chrono::milliseconds>(*redactedAt_)
+      << " (i.e. " << TimestampToXmlDateTime(*redactedAt_) << ')'
       << ": participant " << name.participant()
       << ", column " << name.column()
       << ", version " << TicksSinceEpoch<std::chrono::milliseconds>(validFrom_)
       << " (i.e. " << TimestampToXmlDateTime(validFrom_) << ')';
-    throw Error("Attempt to access purged entry");
+    throw Error("Attempt to access redacted entry");
   }
 }
 
@@ -510,8 +511,8 @@ void FileStore::Entry::save() const {
   std::vector<PageId> pages;
   PersistedEntryProperties properties;
   SetPersistedEntryProperty(properties, ChecksumSubstituteKey, this->getChecksumSubstitute());
-  if (auto purgedAt = this->getPurgedAt()) {
-    SetPersistedEntryProperty(properties, PurgedAtKey, *purgedAt);
+  if (auto redactedAt = this->getRedactedAt()) {
+    SetPersistedEntryProperty(properties, RedactedAtKey, *redactedAt);
   }
 
   EntryContent::Save(this->content(), properties, pages);
@@ -600,7 +601,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
   return result;
 }
 
-void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Timestamp version) {
+void FileStore::Entry::EnsureRedactionPersisted(Timestamp redactedAt, Cell& cell, Timestamp version) {
   auto timestampStr = std::to_string(TicksSinceEpoch<milliseconds>(version));
 
   std::lock_guard lock(cell.participant().fileStore().fileSystemMux_);
@@ -608,21 +609,21 @@ void FileStore::Entry::EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Time
   auto entry = TryLoad(cell, CheckedFileName(timestampStr + FileExtension));
   if (entry == nullptr) {
     std::ostringstream stream;
-    stream << "Purge persistence can't load entry file for cell " << cell.entryName().string() << " version " << timestampStr;
+    stream << "Redaction persistence can't load entry file for cell " << cell.entryName().string() << " version " << timestampStr;
     auto msg = std::move(stream).str();
     PEP_LOG(LogTag, Severity::Error) << msg;
     throw std::runtime_error(msg);
   }
 
-  if (entry->getPurgedAt().has_value()) {
-    PEP_LOG(LogTag, Severity::Debug) << "Purge has previously been persisted for cell " << cell.entryName().string() << " version " << timestampStr;
-    assert(entry->getPurgedAt() == purgedAt);
+  if (entry->getRedactedAt().has_value()) {
+    PEP_LOG(LogTag, Severity::Debug) << "Redaction has previously been persisted for cell " << cell.entryName().string() << " version " << timestampStr;
+    assert(entry->getRedactedAt() == redactedAt);
   }
   else {
-    PEP_LOG(LogTag, Severity::Debug) << "Persisting purge for cell " << cell.entryName().string() << " version " << timestampStr;
-    entry->markPurged(purgedAt);
+    PEP_LOG(LogTag, Severity::Debug) << "Persisting redaction for cell " << cell.entryName().string() << " version " << timestampStr;
+    entry->markRedacted(redactedAt);
     entry->save();
-    PEP_LOG(LogTag, Severity::Info) << "Persisted purge for cell " << cell.entryName().string() << " version " << timestampStr;
+    PEP_LOG(LogTag, Severity::Info) << "Persisted redaction for cell " << cell.entryName().string() << " version " << timestampStr;
   }
 }
 
@@ -665,7 +666,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
   auto properties = ReadBinary(infile, PersistedEntryProperties());
 
   auto checksumSubstitute = ExtractPersistedEntryProperty<uint64_t>(properties, ChecksumSubstituteKey);
-  auto purgedAt = TryExtractPersistedEntryProperty<Timestamp>(properties, PurgedAtKey);
+  auto redactedAt = TryExtractPersistedEntryProperty<Timestamp>(properties, RedactedAtKey);
   auto entryContent = EntryContent::Load(cell.participant().fileStore(), properties, pages);
 
   // Read content hash from (end of) file
@@ -689,7 +690,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const Ch
   if (calculatedHash != expectedHash)
     throw std::invalid_argument("hash did not match for file " + path.string());
 
-  return Entry::Create(cell, validFrom, purgedAt, checksumSubstitute, std::move(entryContent));
+  return Entry::Create(cell, validFrom, redactedAt, checksumSubstitute, std::move(entryContent));
 }
 
 FileStore::Entry::Entry(EntryChange&& source, Timestamp validFrom)
@@ -697,8 +698,8 @@ FileStore::Entry::Entry(EntryChange&& source, Timestamp validFrom)
   assert(this->content() == nullptr || this->content()->payload() != nullptr);
 }
 
-FileStore::Entry::Entry(Cell& cell, Timestamp validFrom, std::optional<Timestamp> purgedAt, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content)
-  : EntryBase(cell, checksumSubstitute, std::move(content)), validFrom_(validFrom), purgedAt_(purgedAt) {
+FileStore::Entry::Entry(Cell& cell, Timestamp validFrom, std::optional<Timestamp> redactedAt, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content)
+  : EntryBase(cell, checksumSubstitute, std::move(content)), validFrom_(validFrom), redactedAt_(redactedAt) {
 }
 
 rxcpp::observable<std::string> FileStore::EntryChange::appendPage(std::shared_ptr<std::string> rawPage, uint64_t payloadSize, uint64_t pagenr) {
@@ -734,18 +735,18 @@ FileStore::Metrics FileStore::Cell::getMetrics() const {
   Metrics result{
     .entryCount = versions_.size(),
     .totalBytes = 0U,
-    .purgedBytes = 0U,
+    .redactedBytes = 0U,
     .rollingBytes = latest_ ? latest_->payloadSize() : 0U,
   };
 
   for (const CellVersion& version : versions_) {
     if (version.originalPayloadEntryTimestamp == std::nullopt) { // This version is the original payload entry
       result.totalBytes += version.payloadSize;
-      if (version.purgedAt) {
+      if (version.redactedAt) {
         // Payload can only be discarded if no other version references it
-        auto referenced = !(versions_ | std::views::filter([original = version.validFrom](const CellVersion& other) { return other.originalPayloadEntryTimestamp == original && !other.purgedAt; })).empty();
+        auto referenced = !(versions_ | std::views::filter([original = version.validFrom](const CellVersion& other) { return other.originalPayloadEntryTimestamp == original && !other.redactedAt; })).empty();
         if (!referenced) {
-          result.purgedBytes += version.payloadSize;
+          result.redactedBytes += version.payloadSize;
         }
       }
     }
@@ -825,19 +826,19 @@ std::set<std::string> FileStore::Participant::pagePaths() const {
   return result;
 }
 
-void FileStore::Participant::markPurged(Timestamp purgedAt, const VersionTimestampsByColumn& vsByColumn) noexcept {
+void FileStore::Participant::markRedacted(Timestamp redactedAt, const VersionTimestampsByColumn& vsByColumn) noexcept {
   for (const auto& c : vsByColumn) {
     auto& [columnName, versions] = c;
     auto cell = this->getCell(columnName);
     assert(cell != nullptr);
-    cell->markPurged(purgedAt, versions);
+    cell->markRedacted(redactedAt, versions);
   }
 }
 
-void FileStore::Participant::ensurePurgePersisted(Timestamp purgedAt, const std::string& column, Timestamp version) {
+void FileStore::Participant::ensureRedactionPersisted(Timestamp redactedAt, const std::string& column, Timestamp version) {
   auto cell = this->getCell(column);
   assert(cell != nullptr);
-  cell->ensurePurgePersisted(purgedAt, version);
+  cell->ensureRedactionPersisted(redactedAt, version);
 }
 
 }

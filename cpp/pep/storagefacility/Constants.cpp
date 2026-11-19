@@ -2,10 +2,10 @@
 
 namespace pep {
 
-extern const std::string BackCatalogPurgeFilter = "Back Catalog";
+extern const std::string BackCatalogRedactionFilter = "Back Catalog";
 
-extern const std::set<std::string> PredefinedPurgeFilters{
-  BackCatalogPurgeFilter
+extern const std::set<std::string> PredefinedRedactionFilters{
+  BackCatalogRedactionFilter
 };
 
 }

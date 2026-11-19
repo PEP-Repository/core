@@ -222,12 +222,12 @@ DataHistoryEntry2 Serializer<DataHistoryEntry2>::fromProtocolBuffer(proto::DataH
     .pseudonymIndex = source.pseudonym_index(),
     .timestamp = Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp())),
     .id = std::move(*source.mutable_id()),
-    .purgedAt{},
+    .redactedAt{},
   };
-  if (source.has_purged_at()) {
-    auto purgedAt = Serialization::FromProtocolBuffer(std::move(*source.mutable_purged_at()));
-    if (purgedAt != Timestamp{/* zero */ }) {
-      result.purgedAt = purgedAt;
+  if (source.has_redacted_at()) {
+    auto redactedAt = Serialization::FromProtocolBuffer(std::move(*source.mutable_redacted_at()));
+    if (redactedAt != Timestamp{/* zero */ }) {
+      result.redactedAt = redactedAt;
     }
   }
   return result;
@@ -238,9 +238,9 @@ void Serializer<DataHistoryEntry2>::moveIntoProtocolBuffer(proto::DataHistoryEnt
   dest.set_pseudonym_index(value.pseudonymIndex);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.timestamp);
   *dest.mutable_id() = std::move(value.id);
-  if (value.purgedAt.has_value()) {
-    assert(*value.purgedAt != Timestamp{ /* zero */ });
-    Serialization::MoveIntoProtocolBuffer(*dest.mutable_purged_at(), *value.purgedAt);
+  if (value.redactedAt.has_value()) {
+    assert(*value.redactedAt != Timestamp{ /* zero */ });
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_redacted_at(), *value.redactedAt);
   }
 }
 
@@ -296,7 +296,7 @@ DataSizeResponse Serializer<DataSizeResponse>::fromProtocolBuffer(proto::DataSiz
   return DataSizeResponse{
     .blockSize = source.block_size(),
     .totalBlocks = source.total_blocks(),
-    .purgedBlocks = source.purged_blocks(),
+    .redactedBlocks = source.redacted_blocks(),
     .rollingBlocks = source.rolling_blocks(),
   };
 }
@@ -304,7 +304,7 @@ DataSizeResponse Serializer<DataSizeResponse>::fromProtocolBuffer(proto::DataSiz
 void Serializer<DataSizeResponse>::moveIntoProtocolBuffer(proto::DataSizeResponse& dest, DataSizeResponse value) const {
   dest.set_block_size(value.blockSize);
   dest.set_total_blocks(value.totalBlocks);
-  dest.set_purged_blocks(value.purgedBlocks);
+  dest.set_redacted_blocks(value.redactedBlocks);
   dest.set_rolling_blocks(value.rollingBlocks);
 }
 

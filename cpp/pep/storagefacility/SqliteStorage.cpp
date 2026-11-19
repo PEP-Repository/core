@@ -1,6 +1,6 @@
 #include <pep/database/Storage.hpp>
 #include <pep/database/UnixMillis.hpp>
-#include <pep/storagefacility/PurgeMessages.hpp>
+#include <pep/storagefacility/RedactionMessages.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
 #include <pep/utils/Defer.hpp>
 #include <boost/numeric/conversion/cast.hpp>
@@ -22,16 +22,16 @@ struct ColumnRecord {
   std::string name;
 };
 
-struct PurgeCycleRecord {
-  PurgeCycle::Id id{};
+struct RedactionCycleRecord {
+  RedactionCycle::Id id{};
   std::string name;
   database::UnixMillis announced;
   database::UnixMillis applied{};
   database::UnixMillis completed{};
 };
 
-struct PurgeEntryRecord {
-  PurgeCycle::Id cycle; // FK to PurgeCycleRecord::id
+struct RedactedEntryRecord {
+  RedactionCycle::Id cycle; // FK to RedactionCycleRecord::id
   int64_t row;          // FK to RowRecord::seqno
   int64_t column;       // FK to ColumnRecord::seqno
   database::UnixMillis timestamp;
@@ -52,26 +52,26 @@ auto MakeRawStorage(std::string path) {
       make_column("name", &ColumnRecord::name),
       unique(&ColumnRecord::name)),
 
-    make_table("PurgeCycle",
-      make_column("id", &PurgeCycleRecord::id,
+    make_table("RedactionCycle",
+      make_column("id", &RedactionCycleRecord::id,
         primary_key().autoincrement()),
-      make_column("name", &PurgeCycleRecord::name),
-      make_column("announced", &PurgeCycleRecord::announced),
-      make_column("applied", &PurgeCycleRecord::applied),
-      make_column("completed", &PurgeCycleRecord::completed)),
+      make_column("name", &RedactionCycleRecord::name),
+      make_column("announced", &RedactionCycleRecord::announced),
+      make_column("applied", &RedactionCycleRecord::applied),
+      make_column("completed", &RedactionCycleRecord::completed)),
 
-    make_table("PurgeEntry",
-      make_column("cycle", &PurgeEntryRecord::cycle),
-      make_column("row", &PurgeEntryRecord::row),
-      make_column("column", &PurgeEntryRecord::column),
-      make_column("timestamp", &PurgeEntryRecord::timestamp),
-      foreign_key(&PurgeEntryRecord::cycle).references(&PurgeCycleRecord::id),
-      foreign_key(&PurgeEntryRecord::row).references(&RowRecord::seqno),
-      foreign_key(&PurgeEntryRecord::column).references(&ColumnRecord::seqno),
+    make_table("RedactedEntry",
+      make_column("cycle", &RedactedEntryRecord::cycle),
+      make_column("row", &RedactedEntryRecord::row),
+      make_column("column", &RedactedEntryRecord::column),
+      make_column("timestamp", &RedactedEntryRecord::timestamp),
+      foreign_key(&RedactedEntryRecord::cycle).references(&RedactionCycleRecord::id),
+      foreign_key(&RedactedEntryRecord::row).references(&RowRecord::seqno),
+      foreign_key(&RedactedEntryRecord::column).references(&ColumnRecord::seqno),
       unique(
-        &PurgeEntryRecord::row,
-        &PurgeEntryRecord::column,
-        &PurgeEntryRecord::timestamp))
+        &RedactedEntryRecord::row,
+        &RedactedEntryRecord::column,
+        &RedactedEntryRecord::timestamp))
   );
 }
 
@@ -92,18 +92,18 @@ database::UnixMillis OptionalTimestampToUnixMillis(const std::optional<Timestamp
   return 0;
 }
 
-PurgeCycle RecordToPurgeCycle(PurgeCycleRecord record) {
-  return PurgeCycle{
+RedactionCycle RecordToRedactionCycle(RedactionCycleRecord record) {
+  return RedactionCycle{
     .id = record.id,
-    .definition = PurgeCycle::Definition(std::move(record.name)),
+    .definition = RedactionCycle::Definition(std::move(record.name)),
     .announced = database::TimestampFromUnixMillis(record.announced),
     .applied = OptionalTimestampFromUnixMillis(record.applied),
     .completed = OptionalTimestampFromUnixMillis(record.completed),
   };
 }
 
-PurgeCycleRecord PurgeCycleToRecord(const PurgeCycle& cycle) {
-  return PurgeCycleRecord{
+RedactionCycleRecord RedactionCycleToRecord(const RedactionCycle& cycle) {
+  return RedactionCycleRecord{
     .id = cycle.id,
     .name = cycle.definition.name(),
     .announced = database::TimestampToUnixMillis(cycle.announced),
@@ -182,52 +182,52 @@ SqliteStorage::SqliteStorage(std::filesystem::path file)
 
 SqliteStorage::~SqliteStorage() noexcept = default;
 
-std::vector<PurgeCycle> SqliteStorage::getPurgeCycles() const {
+std::vector<RedactionCycle> SqliteStorage::getRedactionCycles() const {
   return this->atomically([this]() {
       // We can't pipe the result of raw.iterate<> directly into std::views::transform because sqlite_orm's mapped_view is not movable
-      auto records = implementor_->raw.iterate<PurgeCycleRecord>(sqlite_orm::order_by(&PurgeCycleRecord::id).asc());
+      auto records = implementor_->raw.iterate<RedactionCycleRecord>(sqlite_orm::order_by(&RedactionCycleRecord::id).asc());
       return records
-        | std::views::transform(&RecordToPurgeCycle)
+        | std::views::transform(&RecordToRedactionCycle)
         | std::ranges::to<std::vector>();
     });
 }
 
-PurgeCycle SqliteStorage::getPurgeCycle(PurgeCycle::Id id) const {
+RedactionCycle SqliteStorage::getRedactionCycle(RedactionCycle::Id id) const {
   return this->atomically([this, id]() {
-      return RecordToPurgeCycle(implementor_->raw.get<PurgeCycleRecord>(id));
+      return RecordToRedactionCycle(implementor_->raw.get<RedactionCycleRecord>(id));
     });
 }
 
-void SqliteStorage::updatePurgeCycle(const PurgeCycle& cycle) {
+void SqliteStorage::updateRedactionCycle(const RedactionCycle& cycle) {
   return this->atomically([this, &cycle]() {
-      implementor_->raw.update(PurgeCycleToRecord(cycle));
+      implementor_->raw.update(RedactionCycleToRecord(cycle));
     });
 }
 
-PurgeCycle::Id SqliteStorage::createPurgeCycle(const PurgeCycle& cycle) {
+RedactionCycle::Id SqliteStorage::createRedactionCycle(const RedactionCycle& cycle) {
   return this->atomically([this, &cycle]() {
-      auto id = implementor_->raw.insert(PurgeCycleToRecord(cycle));
+      auto id = implementor_->raw.insert(RedactionCycleToRecord(cycle));
 
       try {
-        return boost::numeric_cast<PurgeCycle::Id>(id);
+        return boost::numeric_cast<RedactionCycle::Id>(id);
       } catch (const boost::bad_numeric_cast&) {
-        throw std::runtime_error("ID overflow in PurgeCycle table");
+        throw std::runtime_error("ID overflow in RedactionCycle table");
       }
     });
 }
 
-void SqliteStorage::deletePurgeCycle(PurgeCycle::Id id) {
+void SqliteStorage::deleteRedactionCycle(RedactionCycle::Id id) {
   return this->atomically([this, id]() {
       using namespace sqlite_orm;
-      implementor_->raw.remove_all<PurgeEntryRecord>(where(c(&PurgeEntryRecord::cycle) == id));
-      implementor_->raw.remove<PurgeCycleRecord>(id);
+      implementor_->raw.remove_all<RedactedEntryRecord>(where(c(&RedactedEntryRecord::cycle) == id));
+      implementor_->raw.remove<RedactionCycleRecord>(id);
     });
 }
 
-void SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const CellVersionSpec& cellVersion) {
+void SqliteStorage::addToRedactionCycle(RedactionCycle::Id id, const CellVersionSpec& cellVersion) {
   return this->atomically([this, id, &cellVersion]() {
       try {
-        implementor_->raw.insert(PurgeEntryRecord{
+        implementor_->raw.insert(RedactedEntryRecord{
             .cycle = id,
             .row = this->ensureRowId(cellVersion.cell.participant()),
             .column = this->ensureColumnId(cellVersion.cell.column()),
@@ -243,12 +243,12 @@ void SqliteStorage::addToPurgeCycle(PurgeCycle::Id id, const CellVersionSpec& ce
     });
 }
 
-std::set<SqliteStorage::CellVersionSpec> SqliteStorage::getIncludedCellVersions(PurgeCycle::Id id) const {
+std::set<SqliteStorage::CellVersionSpec> SqliteStorage::getIncludedCellVersions(RedactionCycle::Id id) const {
   return this->atomically([this, id]() {
       using namespace sqlite_orm;
-      return implementor_->raw.iterate(select(columns(&RowRecord::pseudonym, &ColumnRecord::name, &PurgeEntryRecord::timestamp),
-        inner_join<PurgeEntryRecord>(on(c(&PurgeEntryRecord::row) == c(&RowRecord::seqno) && c(&PurgeEntryRecord::column) == c(&ColumnRecord::seqno))),
-        where(c(&PurgeEntryRecord::cycle) == id)))
+      return implementor_->raw.iterate(select(columns(&RowRecord::pseudonym, &ColumnRecord::name, &RedactedEntryRecord::timestamp),
+        inner_join<RedactedEntryRecord>(on(c(&RedactedEntryRecord::row) == c(&RowRecord::seqno) && c(&RedactedEntryRecord::column) == c(&ColumnRecord::seqno))),
+        where(c(&RedactedEntryRecord::cycle) == id)))
         | std::views::transform([](auto tuple) {
             auto& [participant, column, dbMillis] = tuple;
             return CellVersionSpec{

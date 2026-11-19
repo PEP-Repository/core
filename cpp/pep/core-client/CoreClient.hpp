@@ -119,8 +119,8 @@ struct HistoryResult : public DataCellResult {
   Timestamp timestamp;
   std::optional<std::string> id{};
 
-  // If the file has been purged: the timestamp at which the purge cycle was applied
-  std::optional<Timestamp> purgedAt{};
+  // If the file has been redacted: the timestamp at which the redaction cycle was applied
+  std::optional<Timestamp> redactedAt{};
 };
 
 // Used as parameter to CoreClient::deleteData2

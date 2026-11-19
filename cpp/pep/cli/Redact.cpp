@@ -13,7 +13,7 @@ namespace pep::cli {
 
 namespace {
 
-constexpr const char* DestructiveWarning = "Purging makes it impossible to (re-)download (exact copies of) data sets that include purged cell versions.";
+constexpr const char* DestructiveWarning = "Redaction makes it impossible to (re-)download (exact copies of) data sets that include redacted cell versions.";
 
 std::string TimestampToString(const std::optional<Timestamp> timestamp) {
   return timestamp.has_value()
@@ -54,9 +54,9 @@ std::vector<OutputFormat> OutputFormat::All() {
   };
 }
 
-class CommandPurge : public ChildCommandOf<CliApplication> {
+class CommandRedact : public ChildCommandOf<CliApplication> {
 public:
-  explicit CommandPurge(CliApplication& parent);
+  explicit CommandRedact(CliApplication& parent);
 
 protected:
   std::vector<std::shared_ptr<commandline::Command>> createChildCommands() override;
@@ -70,47 +70,47 @@ private:
   class Confirm;
 };
 
-class CommandPurge::OutputtingChildCommand : public ChildCommandOf<CommandPurge> {
+class CommandRedact::OutputtingChildCommand : public ChildCommandOf<CommandRedact> {
 private:
   OutputFormat outputFormat() const;
 
 protected:
-  using ChildCommandOf<CommandPurge>::ChildCommandOf;
+  using ChildCommandOf<CommandRedact>::ChildCommandOf;
 
   commandline::Parameters getSupportedParameters() const override;
-  void output(const std::vector<PurgeCycle>& cycles) const;
-  void output(PurgeCycle cycle) const;
+  void output(const std::vector<RedactionCycle>& cycles) const;
+  void output(RedactionCycle cycle) const;
 };
 
-class CommandPurge::List : public OutputtingChildCommand {
+class CommandRedact::List : public OutputtingChildCommand {
 public:
-  explicit List(CommandPurge& parent);
+  explicit List(CommandRedact& parent);
 
 protected:
   int execute() override;
 };
 
-class CommandPurge::BackCatalog : public OutputtingChildCommand {
+class CommandRedact::BackCatalog : public OutputtingChildCommand {
 public:
-  explicit BackCatalog(CommandPurge& parent);
+  explicit BackCatalog(CommandRedact& parent);
   std::optional<std::string> getAdditionalDescription() const override;
 
 protected:
   int execute() override;
 };
 
-class CommandPurge::Cancel : public ChildCommandOf<CommandPurge> {
+class CommandRedact::Cancel : public ChildCommandOf<CommandRedact> {
 public:
-  explicit Cancel(CommandPurge& parent);
+  explicit Cancel(CommandRedact& parent);
   commandline::Parameters getSupportedParameters() const override;
 
 protected:
   int execute() override;
 };
 
-class CommandPurge::Confirm : public OutputtingChildCommand {
+class CommandRedact::Confirm : public OutputtingChildCommand {
 public:
-  explicit Confirm(CommandPurge& parent);
+  explicit Confirm(CommandRedact& parent);
   std::optional<std::string> getAdditionalDescription() const override;
   commandline::Parameters getSupportedParameters() const override;
 
@@ -118,11 +118,11 @@ protected:
   int execute() override;
 };
 
-CommandPurge::CommandPurge(CliApplication& parent)
-  : ChildCommandOf<CliApplication>("purge", "Remove entries from the repository history", parent) {
+CommandRedact::CommandRedact(CliApplication& parent)
+  : ChildCommandOf<CliApplication>("redact", "Make repository history entries inaccessible", parent) {
 }
 
-std::vector<std::shared_ptr<commandline::Command>> CommandPurge::createChildCommands() {
+std::vector<std::shared_ptr<commandline::Command>> CommandRedact::createChildCommands() {
   std::vector<std::shared_ptr<commandline::Command>> result;
   result.emplace_back(std::make_shared<List>(*this));
   result.emplace_back(std::make_shared<BackCatalog>(*this));
@@ -131,16 +131,16 @@ std::vector<std::shared_ptr<commandline::Command>> CommandPurge::createChildComm
   return result;
 }
 
-commandline::Parameters CommandPurge::OutputtingChildCommand::getSupportedParameters() const {
+commandline::Parameters CommandRedact::OutputtingChildCommand::getSupportedParameters() const {
   auto formatNames = OutputFormat::All() | std::views::transform(&OutputFormat::name) | std::ranges::to<std::vector>();
   constexpr auto defaultFormatName = "yaml";
   assert(std::ranges::contains(formatNames, defaultFormatName));
 
-  return ChildCommandOf<CommandPurge>::getSupportedParameters()
+  return ChildCommandOf<CommandRedact>::getSupportedParameters()
     + commandline::Parameter("output-format", "The format in which to produce output").value(commandline::Value<std::string>().allow(std::vector<std::string>(formatNames)).defaultsTo(defaultFormatName));
 }
 
-void CommandPurge::OutputtingChildCommand::output(const std::vector<PurgeCycle>& cycles) const {
+void CommandRedact::OutputtingChildCommand::output(const std::vector<RedactionCycle>& cycles) const {
   std::vector<std::string> data;
   for (const auto& cycle : cycles) {
     std::vector<std::string> single{
@@ -165,81 +165,81 @@ void CommandPurge::OutputtingChildCommand::output(const std::vector<PurgeCycle>&
   (*position)(std::cout, table);
 }
 
-void CommandPurge::OutputtingChildCommand::output(PurgeCycle cycle) const {
-  return this->output(std::vector<PurgeCycle>({ std::move(cycle) }));
+void CommandRedact::OutputtingChildCommand::output(RedactionCycle cycle) const {
+  return this->output(std::vector<RedactionCycle>({ std::move(cycle) }));
 }
 
 
-CommandPurge::List::List(CommandPurge& parent)
-  : OutputtingChildCommand("list", "List purge cycles", parent) {}
+CommandRedact::List::List(CommandRedact& parent)
+  : OutputtingChildCommand("list", "List redaction cycles", parent) {}
 
-int CommandPurge::List::execute() {
+int CommandRedact::List::execute() {
   return this->executeEventLoopForClient(true, [this](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
-    return client->getStorageFacilityProxy()->listPurgeCycles()
+    return client->getStorageFacilityProxy()->listRedactionCycles()
       .op(pep::RxToVector())
-      .map([this](std::shared_ptr<std::vector<PurgeCycle>> cycles) {
+      .map([this](std::shared_ptr<std::vector<RedactionCycle>> cycles) {
           this->output(*cycles);
           return FakeVoid();
         });
     });
 }
 
-std::optional<std::string> CommandPurge::getAdditionalDescription() const {
+std::optional<std::string> CommandRedact::getAdditionalDescription() const {
   return DestructiveWarning;
 }
 
-CommandPurge::BackCatalog::BackCatalog(CommandPurge& parent)
-  : OutputtingChildCommand("back-catalog", "Start a purge cycle that discards the repository's cell histories: only the current (rolling) data set will remain", parent) {
+CommandRedact::BackCatalog::BackCatalog(CommandRedact& parent)
+  : OutputtingChildCommand("back-catalog", "Start a redaction cycle that discards the repository's cell histories: only the current (rolling) data set will remain", parent) {
 }
 
-std::optional<std::string> CommandPurge::BackCatalog::getAdditionalDescription() const {
+std::optional<std::string> CommandRedact::BackCatalog::getAdditionalDescription() const {
   return DestructiveWarning;
 }
 
-int CommandPurge::BackCatalog::execute() {
+int CommandRedact::BackCatalog::execute() {
   return this->executeEventLoopForClient(true, [this](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
-    return client->getStorageFacilityProxy()->announcePurgeCycle(PurgeCycle::Definition(BackCatalogPurgeFilter))
-      .map([this](PurgeCycle cycle) {
+    return client->getStorageFacilityProxy()->announceRedactionCycle(RedactionCycle::Definition(BackCatalogRedactionFilter))
+      .map([this](RedactionCycle cycle) {
           this->output(std::move(cycle));
           return FakeVoid();
         });
     });
 }
 
-CommandPurge::Cancel::Cancel(CommandPurge& parent)
-  : ChildCommandOf<CommandPurge>("cancel", "Cancel a purge cycle", parent) {
+CommandRedact::Cancel::Cancel(CommandRedact& parent)
+  : ChildCommandOf<CommandRedact>("cancel", "Cancel a redaction cycle", parent) {
 }
 
-commandline::Parameters CommandPurge::Cancel::getSupportedParameters() const {
-  return ChildCommandOf<CommandPurge>::getSupportedParameters()
-    + commandline::Parameter("id", "Purge cycle identifier").value(commandline::Value<PurgeCycle::Id>().positional().required());
+commandline::Parameters CommandRedact::Cancel::getSupportedParameters() const {
+  return ChildCommandOf<CommandRedact>::getSupportedParameters()
+    + commandline::Parameter("id", "Redaction cycle identifier").value(commandline::Value<RedactionCycle::Id>().positional().required());
 }
 
-int CommandPurge::Cancel::execute() {
-  auto id = this->getParameterValues().get<PurgeCycle::Id>("id");
+int CommandRedact::Cancel::execute() {
+  auto id = this->getParameterValues().get<RedactionCycle::Id>("id");
   return this->executeEventLoopForClient(true, [id](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
-      return client->getStorageFacilityProxy()->cancelPurgeCycle(id)
-        .map([](PurgeCycle) {return FakeVoid(); });
+      return client->getStorageFacilityProxy()->cancelRedactionCycle(id)
+        .map([](RedactionCycle) {return FakeVoid(); });
     });
 }
 
-CommandPurge::Confirm::Confirm(CommandPurge& parent)
-  : OutputtingChildCommand("confirm", "Confirm and start a purge cycle", parent) {}
+CommandRedact::Confirm::Confirm(CommandRedact& parent)
+  : OutputtingChildCommand("confirm", "Confirm and start a redaction cycle", parent) {}
 
-std::optional<std::string> CommandPurge::Confirm::getAdditionalDescription() const {
+std::optional<std::string> CommandRedact::Confirm::getAdditionalDescription() const {
   return DestructiveWarning;
 }
 
-commandline::Parameters CommandPurge::Confirm::getSupportedParameters() const {
+commandline::Parameters CommandRedact::Confirm::getSupportedParameters() const {
   return OutputtingChildCommand::getSupportedParameters()
-    + commandline::Parameter("id", "Purge cycle identifier").value(commandline::Value<PurgeCycle::Id>().positional().required());
+    + commandline::Parameter("id", "Redaction cycle identifier").value(commandline::Value<RedactionCycle::Id>().positional().required());
 }
 
-int CommandPurge::Confirm::execute() {
-  auto id = this->getParameterValues().get<PurgeCycle::Id>("id");
+int CommandRedact::Confirm::execute() {
+  auto id = this->getParameterValues().get<RedactionCycle::Id>("id");
   return this->executeEventLoopForClient(true, [this, id](std::shared_ptr<Client> client) -> rxcpp::observable<FakeVoid> {
-    return client->getStorageFacilityProxy()->confirmPurgeCycle(id)
-      .map([this](PurgeCycle cycle) {
+    return client->getStorageFacilityProxy()->confirmRedactionCycle(id)
+      .map([this](RedactionCycle cycle) {
           assert(cycle.applied.has_value());
           this->output(std::move(cycle));
           return FakeVoid();
@@ -249,8 +249,8 @@ int CommandPurge::Confirm::execute() {
 
 } // End anonymous namespace
 
-std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandPurge(CliApplication& parent) {
-  return std::make_shared<CommandPurge>(parent);
+std::shared_ptr<ChildCommandOf<CliApplication>> CreateCommandRedact(CliApplication& parent) {
+  return std::make_shared<CommandRedact>(parent);
 }
 
 }

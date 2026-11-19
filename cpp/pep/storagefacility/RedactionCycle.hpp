@@ -6,8 +6,8 @@
 
 namespace pep {
 
-struct PurgeCycle {
-  using Id = uint32_t; // An unsigned integer that (fits Sqlite's int64_t integer API and) uniquely refers to a purge cycle
+struct RedactionCycle {
+  using Id = uint32_t; // An unsigned integer that (fits Sqlite's int64_t integer API and) uniquely refers to a redaction cycle
 
   class Definition {
   private:

@@ -3,9 +3,9 @@ add_library(${PROJECT_NAME}StorageFacilityApilib
   DataPayloadPage.cpp DataPayloadPage.hpp
   DataPayloadPageStreamOrder.cpp DataPayloadPageStreamOrder.hpp
   PageHash.cpp PageHash.hpp
-  PurgeMessages.hpp
-  PurgeSerializers.cpp PurgeSerializers.hpp
-  PurgeCycle.cpp PurgeCycle.hpp
+  RedactionMessages.hpp
+  RedactionSerializers.cpp RedactionSerializers.hpp
+  RedactionCycle.cpp RedactionCycle.hpp
   StorageFacilityMessages.hpp
   StorageFacilityProxy.cpp StorageFacilityProxy.hpp
   StorageFacilitySerializers.cpp StorageFacilitySerializers.hpp

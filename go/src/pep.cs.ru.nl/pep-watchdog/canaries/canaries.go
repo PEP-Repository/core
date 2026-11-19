@@ -50,7 +50,7 @@ func Get() (
 	}
 
   for index, info := range fileInfos {
-		if info.PurgedAt == nil {
+		if info.RedactedAt == nil {
 			// We don't check for tombstones because we assume that no one pepcli deletes the shared.Conf.CanaryFile.Tag column
 			fr, err := shared.Pep.OpenFile(&info)
 			if err != nil {
@@ -67,7 +67,7 @@ func Get() (
 
 	for _, r := range records {
 		if _, ok := expectedValues[string(r.Value)]; !ok {
-			// Server did not produce a canary (version) for this record, or the version was purged
+			// Server did not produce a canary (version) for this record, or the version was redacted
 			missingCanaries = append(missingCanaries, r)
 		} else {
 			// Received this record's canary version payload from the server
@@ -76,7 +76,7 @@ func Get() (
 	}
 
 	for val, index := range expectedValues {
-		if index >= 0 { // We received a(n unpurged) cell version that we don't have a record for
+		if index >= 0 { // We received a(n unredacted) cell version that we don't have a record for
 			fileInfo := fileInfos[index]
 			unknownCanaries = append(unknownCanaries,
 				CanaryFileRecord{

@@ -53,8 +53,8 @@ type FileInfo struct {
 	// Column to which this file belong
 	Column string
 	
-	// Timestamp at which the file was purged
-	PurgedAt *time.Time
+	// Timestamp at which the file was redacted
+	RedactedAt *time.Time
 }
 
 // streamWriter contains the state shared between the file writers

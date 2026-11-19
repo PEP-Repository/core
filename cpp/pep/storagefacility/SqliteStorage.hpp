@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/storagefacility/EntryName.hpp>
-#include <pep/storagefacility/PurgeCycle.hpp>
+#include <pep/storagefacility/RedactionCycle.hpp>
 #include <pep/utils/Action.hpp>
 #include <pep/utils/Shared.hpp>
 #include <filesystem>
@@ -21,7 +21,7 @@ private:
   std::unique_ptr<Implementor> implementor_;
 
   // This class needs to be thread safe because it's accessed from Storage Facility's (primary) thread as well as from
-  // FileStore's purge persistence thread. We'd have liked to use a reader/writer lock instead of a mutex, but it's
+  // FileStore's redaction persistence thread. We'd have liked to use a reader/writer lock instead of a mutex, but it's
   // unclear which of Implementor::raw's sqlite_orm operations would be safe for concurrent (reader) access. And
   // sqlite_orm's maintainer advises "using your own mutex before accessing a database": see
   // https://github.com/fnc12/sqlite_orm/issues/163#issuecomment-405028656
@@ -46,18 +46,18 @@ public:
 
   ~SqliteStorage() noexcept; // Can't be defined here because the destructor for Implementor is unknown
 
-  std::vector<PurgeCycle> getPurgeCycles() const;
-  PurgeCycle::Id createPurgeCycle(const PurgeCycle& cycle);
-  PurgeCycle getPurgeCycle(PurgeCycle::Id id) const;
-  void updatePurgeCycle(const PurgeCycle& cycle);
-  void deletePurgeCycle(PurgeCycle::Id id);
+  std::vector<RedactionCycle> getRedactionCycles() const;
+  RedactionCycle::Id createRedactionCycle(const RedactionCycle& cycle);
+  RedactionCycle getRedactionCycle(RedactionCycle::Id id) const;
+  void updateRedactionCycle(const RedactionCycle& cycle);
+  void deleteRedactionCycle(RedactionCycle::Id id);
 
-  void addToPurgeCycle(PurgeCycle::Id id, const CellVersionSpec& cellVersion);
+  void addToRedactionCycle(RedactionCycle::Id id, const CellVersionSpec& cellVersion);
 
-  /// \brief Returns cell version(specification)s that are included in the specified purge cycle.
-  /// \param id the purge cycle ID
-  /// \return cell version(specification)s that are included in the specified purge cycle.
-  std::set<CellVersionSpec> getIncludedCellVersions(PurgeCycle::Id id) const;
+  /// \brief Returns cell version(specification)s that are included in the specified redaction cycle.
+  /// \param id the redaction cycle ID
+  /// \return cell version(specification)s that are included in the specified redaction cycle.
+  std::set<CellVersionSpec> getIncludedCellVersions(RedactionCycle::Id id) const;
 
   /// \brief Executes a function while providing (exclusive, thread safe and transactional) access to this instance
   /// \tparam TFunction The type of function to execute

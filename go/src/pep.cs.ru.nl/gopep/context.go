@@ -473,13 +473,13 @@ func (ctx *Context) FileHistory(pp *Triple, column string) (
 		return nil, err
 	}
 	
-	// Replace degenerate FileInfo for un-purged entries to
+	// Replace degenerate FileInfo for unredacted entries to
 	// provide a.o. Metadata and EncryptedKey
 	var indices []int
 	var ids [][]byte
 	
 	for i, entry := range ret {
-		if entry.PurgedAt == nil && len(entry.Identifier) > 0 { // Un-purged and not a deletion
+		if entry.RedactedAt == nil && len(entry.Identifier) > 0 { // Unredacted and not a deletion
 			indices = append(indices, i)
 			ids = append(ids, []byte(entry.Identifier))
 		}

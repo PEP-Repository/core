@@ -13,7 +13,7 @@
 #include <pep/utils/ApplicationMetrics.hpp>
 #include <pep/auth/EnrolledParty.hpp>
 #include <pep/storagefacility/Constants.hpp>
-#include <pep/storagefacility/PurgeSerializers.hpp>
+#include <pep/storagefacility/RedactionSerializers.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/storagefacility/SFIdSerializer.hpp>
@@ -170,12 +170,12 @@ StorageFacility::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry
     .Add({})),
   totalPayloadBytes(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
     .Name("pep_total_payload_bytes")
-    .Help("Total bytes in payload(page)s of all entries including history and purged items, rounded to configured resolution")
+    .Help("Total bytes in payload(page)s of all entries including history and redacted items, rounded to configured resolution")
     .Register(*registry)
     .Add({})),
-  purgedPayloadBytes(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
-    .Name("pep_purged_payload_bytes")
-    .Help("Total bytes in payload(page)s of purged entries including history, rounded to configured resolution")
+  redactedPayloadBytes(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
+    .Name("pep_redacted_payload_bytes")
+    .Help("Total bytes in payload(page)s of redacted entries including history, rounded to configured resolution")
     .Register(*registry)
     .Add({})),
   rollingPayloadBytes(prometheus::BuildGauge()
@@ -348,7 +348,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       if (content == nullptr) {
         continue;
       }
-      entry->throwErrorIfPurged("StorageFacility::handleDataEnumerationRequest2");
+      entry->throwErrorIfRedacted("StorageFacility::handleDataEnumerationRequest2");
       assert(content->payload() != nullptr);
 
       auto& re = responseEntries.emplace_back();
@@ -456,7 +456,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       if (sfentry == nullptr) {
         throw Error("openExistingDataEntry failed");
       }
-      sfentry->throwErrorIfPurged("StorageFacility::handleMetadataReadRequest2");
+      sfentry->throwErrorIfRedacted("StorageFacility::handleMetadataReadRequest2");
       const auto& sfcontent = sfentry->content();
       if (sfcontent == nullptr) {
         throw Error("Cannot read data of a deleted entry");
@@ -520,7 +520,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
     if (entry == nullptr) {
       throw Error("openExistingDataEntry failed");
     }
-    entry->throwErrorIfPurged("StorageFacility::handleDataReadRequest2");
+    entry->throwErrorIfRedacted("StorageFacility::handleDataReadRequest2");
     if (entry->isTombstone()) {
       throw Error("Cannot read data of a deleted entry");
     }
@@ -682,7 +682,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 
       // Modify entry
       auto entryChange = fileStore_->modifyEntry(EntryName(*ctx->pseudonyms[i], col), requireContentOverwrite,
-        false // We're going to store a fresh payload (or a tombstone), so we don't care if previous version was purged
+        false // We're going to store a fresh payload (or a tombstone), so we don't care if previous version was redacted
       );
       assert(entryChange != nullptr);
 
@@ -1020,7 +1020,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
           .pseudonymIndex = static_cast<uint32_t>(pseud_index),
           .timestamp = version.validFrom,
           .id = !version.isTombstone ? encryptId(entryName, version.validFrom) : "",
-          .purgedAt = version.purgedAt,
+          .redactedAt = version.redactedAt,
           });
       }
     }
@@ -1051,7 +1051,7 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
   return messaging::BatchSingleMessage(DataSizeResponse{
     .blockSize = dataSizeResolution_,
     .totalBlocks = countBlocks(metrics.totalBytes),
-    .purgedBlocks = countBlocks(metrics.purgedBytes),
+    .redactedBlocks = countBlocks(metrics.redactedBytes),
     .rollingBlocks = countBlocks(metrics.rollingBytes),
     });
 }
@@ -1084,32 +1084,32 @@ messaging::MessageBatches StorageFacility::handlePagePathRequest(std::shared_ptr
     });
 }
 
-messaging::MessageBatches StorageFacility::handlePurgeListRequest(std::shared_ptr<SignedPurgeListRequest> signedRequest) {
+messaging::MessageBatches StorageFacility::handleRedactionListRequest(std::shared_ptr<SignedRedactionListRequest> signedRequest) {
   const auto& rootCAs = this->getRootCAs();
   auto certified = signedRequest->open(*rootCAs);
 
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({ UserGroup::DataAdministrator, UserGroup::RepositoryManager }, accessGroup);
 
-  auto cycles = sqlite_->getPurgeCycles();
+  auto cycles = sqlite_->getRedactionCycles();
   return rxcpp::observable<>::iterate(std::move(cycles))
-    .map([](PurgeCycle cycle) -> messaging::MessageSequence {
+    .map([](RedactionCycle cycle) -> messaging::MessageSequence {
         return rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(cycle)));
       });
 }
 
-messaging::MessageBatches StorageFacility::handlePurgeAnnounceRequest(std::shared_ptr<SignedPurgeAnnounceRequest> signedRequest) {
+messaging::MessageBatches StorageFacility::handleRedactionAnnounceRequest(std::shared_ptr<SignedRedactionAnnounceRequest> signedRequest) {
   const auto& rootCAs = this->getRootCAs();
   auto certified = signedRequest->open(*rootCAs);
 
   auto accessGroup = certified.signatory.organizationalUnit();
   UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
 
-  auto result = this->createPurgeCycle(std::move(certified.message.definition));
+  auto result = this->createRedactionCycle(std::move(certified.message.definition));
   return messaging::BatchSingleMessage(std::move(result));
 }
 
-messaging::MessageBatches StorageFacility::handlePurgeCancelRequest(std::shared_ptr<SignedPurgeCancelRequest> signedRequest) {
+messaging::MessageBatches StorageFacility::handleRedactionCancelRequest(std::shared_ptr<SignedRedactionCancelRequest> signedRequest) {
   const auto& rootCAs = this->getRootCAs();
   auto certified = signedRequest->open(*rootCAs);
 
@@ -1117,18 +1117,18 @@ messaging::MessageBatches StorageFacility::handlePurgeCancelRequest(std::shared_
   UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
 
   auto result = sqlite_->atomically([this, id = certified.message.id]() {
-      auto result = sqlite_->getPurgeCycle(id);
+      auto result = sqlite_->getRedactionCycle(id);
       if (result.applied) {
-        throw Error("Can't cancel purge cycle that has already been applied"); // That data is GONE!
+        throw Error("Can't cancel redaction cycle that has already been applied"); // That data is GONE!
       }
-      sqlite_->deletePurgeCycle(id);
+      sqlite_->deleteRedactionCycle(id);
       return result;
     });
 
   return messaging::BatchSingleMessage(std::move(result));
 }
 
-messaging::MessageBatches StorageFacility::handlePurgeConfirmationRequest(std::shared_ptr<SignedPurgeConfirmationRequest> signedRequest) {
+messaging::MessageBatches StorageFacility::handleRedactionConfirmationRequest(std::shared_ptr<SignedRedactionConfirmationRequest> signedRequest) {
   const auto& rootCAs = this->getRootCAs();
   auto certified = signedRequest->open(*rootCAs);
 
@@ -1136,17 +1136,17 @@ messaging::MessageBatches StorageFacility::handlePurgeConfirmationRequest(std::s
   UserGroup::EnsureAccess({ UserGroup::RepositoryManager }, accessGroup);
 
   auto result = sqlite_->atomically([this, id = certified.message.id]() {
-      auto result = sqlite_->getPurgeCycle(id);
+      auto result = sqlite_->getRedactionCycle(id);
       if (result.applied) {
-        throw Error("Purge cycle has already been applied");
+        throw Error("Redaction cycle has already been applied");
       }
 
       result.applied = this->getUniqueChangeTimestamp(true);
-      sqlite_->updatePurgeCycle(result);
+      sqlite_->updateRedactionCycle(result);
       return result;
     });
 
-  fileStore_->applyPurgeCycle(result);
+  fileStore_->applyRedactionCycle(result);
 
   return messaging::BatchSingleMessage(std::move(result));
 }
@@ -1187,13 +1187,13 @@ Metadata StorageFacility::compileMetadata(
   return result;
 }
 
-PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) {
-  if (definition.name() != BackCatalogPurgeFilter) {
-    throw Error("Unsupported purge cycle name \"" + definition.name() + '"');
+RedactionCycle StorageFacility::createRedactionCycle(RedactionCycle::Definition definition) {
+  if (definition.name() != BackCatalogRedactionFilter) {
+    throw Error("Unsupported redaction cycle name \"" + definition.name() + '"');
   }
 
   return sqlite_->atomically([this, definition]() {
-      auto id = sqlite_->createPurgeCycle(PurgeCycle{
+      auto id = sqlite_->createRedactionCycle(RedactionCycle{
         .id{}, // ignored during insertion
         .definition = std::move(definition),
         .announced = TimeNow(),
@@ -1207,20 +1207,20 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
         for (const FileStore::Cell* cell : participant->cells()) {
           const FileStore::CellVersions& versions = cell->versions();
           auto end = versions.end();
-          if (!versions.empty()) { // Don't purge the last/latest/current cell version
+          if (!versions.empty()) { // Don't redact the last/latest/current cell version
             --end;
           }
           for (auto i = versions.begin(); i != end; ++i) {
-            if (!i->purgedAt) { // If this cell version isn't purged yet...
+            if (!i->redactedAt) { // If this cell version isn't redacted yet...
               storagefacility::SqliteStorage::CellVersionSpec version{
                 .cell = EntryName(participant->name(), cell->columnName()),
                 .timestamp = i->validFrom,
               };
 
               try {
-                sqlite_->addToPurgeCycle(id, version);
+                sqlite_->addToRedactionCycle(id, version);
               } catch (const storagefacility::SqliteStorage::ConstraintViolation&) {
-                throw Error("Storage Facility entries may only be included in a single purge cycle");
+                throw Error("Storage Facility entries may only be included in a single redaction cycle");
               }
 
               empty = false;
@@ -1232,32 +1232,32 @@ PurgeCycle StorageFacility::createPurgeCycle(PurgeCycle::Definition definition) 
       if (empty) {
         throw Error("Back catalog contains no cell versions");
       }
-      return sqlite_->getPurgeCycle(id);
+      return sqlite_->getRedactionCycle(id);
     });
 }
 
-Timestamp StorageFacility::getUniqueChangeTimestamp(bool forPurgeCycle) {
+Timestamp StorageFacility::getUniqueChangeTimestamp(bool forRedactionCycle) {
   /* Each individual cell's history must be identical every time a checksum chain is calculated over it, to keep the checksum chain calculation consistent.
-   * Since the calculation includes both commits (additions) and purges (deletions), these changes must be ordered consistently every time we process them.
-   * While the calculation (currently) processes commits before purges, that is an implementation detail, and in principle each individual cell must have an
+   * Since the calculation includes both commits (additions) and redactions (deletions), these changes must be ordered consistently every time we process them.
+   * While the calculation (currently) processes commits before redactions, that is an implementation detail, and in principle each individual cell must have an
    * unambiguous sequence of events that defines its history. We do so by ensuring that within a single cell
    * - all versions have unique validFrom timestamps, which we enforce by not accepting requests that specify multiple updates to a single cell, and
-   * - no purge cycle (.applied) timestamp is equal to any version's validFrom timestamp.
-   * Since purge cycles (may) affect multiple cells, the cycle's (.applied) timestamp must be distinct from all commit timestamps for all affected cells.
+   * - no redaction cycle (.applied) timestamp is equal to any version's validFrom timestamp.
+   * Since redaction cycles (may) affect multiple cells, the cycle's (.applied) timestamp must be distinct from all commit timestamps for all affected cells.
    * We could check only affected cells, but it's easier to just keep the last commit timestamp of _all_ cells in our lastChangeTimestamp_ field. Then,
-   * when we want to commit (a) cell version(s) or apply a purge cycle, we ensure that
-   * - for commits, we don't produce a timestamp that collides with a purge cycle, and
-   * - for purge cycles, we don't produce a timestamp that collides with another purge cycle or with any commit.
+   * when we want to commit (a) cell version(s) or apply a redaction cycle, we ensure that
+   * - for commits, we don't produce a timestamp that collides with a redaction cycle, and
+   * - for redaction cycles, we don't produce a timestamp that collides with another redaction cycle or with any commit.
   */
-  return sqlite_->atomically([this, forPurgeCycle]() { // Prevent TOCTOU problems w.r.t. purge cycle existence
+  return sqlite_->atomically([this, forRedactionCycle]() { // Prevent TOCTOU problems w.r.t. redaction cycle existence
 
-      // Prevent collision with purge cycle 'applied' timestamps to ensure history consistency
-      auto existing = sqlite_->getPurgeCycles()
-        | views::filter([](const PurgeCycle& cycle) { return cycle.applied.has_value(); })
-        | views::transform([](const PurgeCycle& cycle) { return *cycle.applied; })
+      // Prevent collision with redaction cycle 'applied' timestamps to ensure history consistency
+      auto existing = sqlite_->getRedactionCycles()
+        | views::filter([](const RedactionCycle& cycle) { return cycle.applied.has_value(); })
+        | views::transform([](const RedactionCycle& cycle) { return *cycle.applied; })
         | to<std::set>();
-      if (forPurgeCycle) {
-        // Prevent collision with the last (non-purge-cycle) timestamp that we produced
+      if (forRedactionCycle) {
+        // Prevent collision with the last (non-redaction-cycle) timestamp that we produced
         existing.emplace(lastChangeTimestamp_);
       }
 
@@ -1271,15 +1271,15 @@ Timestamp StorageFacility::getUniqueChangeTimestamp(bool forPurgeCycle) {
         if (result < threshold) {
           std::ostringstream stream;
           stream << "Can't generate a unique timestamp from current time " << TicksSinceEpoch<std::chrono::milliseconds>(result)
-            << " because a newer commit or purge cycle already exists with timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(threshold);
+            << " because a newer commit or redaction cycle already exists with timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(threshold);
           auto message = std::move(stream).str();
           PEP_LOG(LogTag, Severity::Critical) << message;
           throw std::runtime_error(std::move(message)); // Not an "Error": we don't want to expose our snafu tothe (client or) end user
         }
       } while (result == threshold);
 
-      if (!forPurgeCycle) {
-        // Prevent next invocation from producing the same value for a purge cycle
+      if (!forRedactionCycle) {
+        // Prevent next invocation from producing the same value for a redaction cycle
         lastChangeTimestamp_ = result;
       }
 
@@ -1333,8 +1333,8 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
     }
   }
 
-  // Resume persisting purges that were not completed when the the process ran last time
-  fileStore_->persistPendingPurges();
+  // Resume persisting redactions that were not completed when the the process ran last time
+  fileStore_->persistPendingRedactions();
 
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
@@ -1346,10 +1346,10 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
                           &StorageFacility::handleDataHistoryRequest2,
                           &StorageFacility::handleDataSizeRequest,
                           &StorageFacility::handlePagePathRequest,
-                          &StorageFacility::handlePurgeListRequest,
-                          &StorageFacility::handlePurgeAnnounceRequest,
-                          &StorageFacility::handlePurgeCancelRequest,
-                          &StorageFacility::handlePurgeConfirmationRequest);
+                          &StorageFacility::handleRedactionListRequest,
+                          &StorageFacility::handleRedactionAnnounceRequest,
+                          &StorageFacility::handleRedactionCancelRequest,
+                          &StorageFacility::handleRedactionConfirmationRequest);
 
   this->updateFileStoreMetrics();
   statsTimer({});
@@ -1369,7 +1369,7 @@ FileStore::Metrics StorageFacility::getRoundedFileStoreMetrics(const std::set<st
   return FileStore::Metrics{
     .entryCount = precise.entryCount,
     .totalBytes = round(precise.totalBytes),
-    .purgedBytes = round(precise.purgedBytes),
+    .redactedBytes = round(precise.redactedBytes),
     .rollingBytes = round(precise.rollingBytes),
   };
 }
@@ -1379,7 +1379,7 @@ void StorageFacility::updateFileStoreMetrics() {
 
   metrics_->entriesIncludingHistory.Set(static_cast<double>(rounded.entryCount));
   metrics_->totalPayloadBytes.Set(static_cast<double>(rounded.totalBytes));
-  metrics_->purgedPayloadBytes.Set(static_cast<double>(rounded.purgedBytes));
+  metrics_->redactedPayloadBytes.Set(static_cast<double>(rounded.redactedBytes));
   metrics_->rollingPayloadBytes.Set(static_cast<double>(rounded.rollingBytes));
 }
 

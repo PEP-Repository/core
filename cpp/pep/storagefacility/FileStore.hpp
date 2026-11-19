@@ -28,8 +28,8 @@ public:
 
   struct Metrics {
     size_t entryCount{};
-    uint64_t totalBytes{}; // including purgedBytes
-    uint64_t purgedBytes{};
+    uint64_t totalBytes{}; // including redactedBytes
+    uint64_t redactedBytes{};
     uint64_t rollingBytes{};
 
     Metrics& operator+=(const Metrics& rhs);
@@ -109,13 +109,12 @@ public:
 
   private:
     static const std::string FileExtension;
-    static const std::string PurgedFileExtension; // used (only) during purge persistence
 
     Timestamp validFrom_;
-    std::optional<Timestamp> purgedAt_;
+    std::optional<Timestamp> redactedAt_;
 
     Entry(EntryChange&& source, Timestamp validFrom);
-    Entry(Cell& cell, Timestamp validFrom, std::optional<Timestamp> purgedAt, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
+    Entry(Cell& cell, Timestamp validFrom, std::optional<Timestamp> redactedAt, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
 
     CheckedPath getFilePath(const std::string& extension) const;
 
@@ -124,9 +123,9 @@ public:
 
     Timestamp getValidFrom() const noexcept { return validFrom_; }
 
-    std::optional<Timestamp> getPurgedAt() const { return purgedAt_; }
-    void markPurged(Timestamp at) noexcept; // in memory
-    void throwErrorIfPurged(const std::string& logContext) const;
+    std::optional<Timestamp> getRedactedAt() const { return redactedAt_; }
+    void markRedacted(Timestamp at) noexcept; // in memory
+    void throwErrorIfRedacted(const std::string& logContext) const;
     std::set<std::string> pagePaths() const;
 
     messaging::MessageSequence readPage(size_t index);
@@ -134,14 +133,14 @@ public:
     void save() const;
     static std::shared_ptr<Entry> TryLoad(Cell& cell, const CheckedFileName& filename);
     static std::shared_ptr<Entry> Load(Cell& cell, Timestamp timestamp);
-    static void EnsurePurgePersisted(Timestamp purgedAt, Cell& cell, Timestamp version); // on disk
+    static void EnsureRedactionPersisted(Timestamp redactedAt, Cell& cell, Timestamp version); // on disk
   };
 
   struct CellVersion {
     Timestamp validFrom;
     uint64_t checksumSubstitute{};
     uint64_t payloadSize{};
-    std::optional<Timestamp> purgedAt;
+    std::optional<Timestamp> redactedAt;
     std::optional<Timestamp> originalPayloadEntryTimestamp{};
     bool isTombstone{};
 
@@ -174,8 +173,8 @@ public:
     std::set<std::string> pagePaths() const; // for latest version
 
     using VersionTimestamps = std::set<Timestamp>;
-    void markPurged(Timestamp purgedAt, const VersionTimestamps& cellVersions) noexcept; // in memory
-    void ensurePurgePersisted(Timestamp purgedAt, Timestamp cellVersion); // on disk
+    void markRedacted(Timestamp redactedAt, const VersionTimestamps& cellVersions) noexcept; // in memory
+    void ensureRedactionPersisted(Timestamp redactedAt, Timestamp cellVersion); // on disk
   };
 
   class Participant {
@@ -205,8 +204,8 @@ public:
     std::set<std::string> pagePaths() const; // for latest version
 
     using VersionTimestampsByColumn = std::unordered_map<std::string, Cell::VersionTimestamps>;
-    void markPurged(Timestamp purgedAt, const VersionTimestampsByColumn& vsByColumn) noexcept; // in memory
-    void ensurePurgePersisted(Timestamp purgedAt, const std::string& column, Timestamp version); // on disk
+    void markRedacted(Timestamp redactedAt, const VersionTimestampsByColumn& vsByColumn) noexcept; // in memory
+    void ensureRedactionPersisted(Timestamp redactedAt, const std::string& column, Timestamp version); // on disk
   };
 
 private:
@@ -225,8 +224,8 @@ private:
 
   std::shared_ptr<boost::asio::io_context> ioContext_;
   std::shared_ptr<storagefacility::SqliteStorage> sqlite_;
-  std::thread purgePersistence_;
-  std::mutex purgePersistenceMux_; // Synchronizes access to the purgePersistence_ instance
+  std::thread redactionPersistence_;
+  std::mutex redactionPersistenceMux_; // Synchronizes access to the redactionPersistence_ instance
   std::recursive_mutex fileSystemMux_; // Synchronizes access to (the meta directory on) the file system
 
   // Keep collections of unique strings to save memory: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2322 .
@@ -247,8 +246,8 @@ private:
   Participant* getParticipant(const std::string& name) const;
   Participant& provideParticipant(const std::string& name);
 
-  void markPurged(const PurgeCycle& cycle) noexcept;
-  void persistPurgeCycleAsync(PurgeCycle cycle); // Entry point for the purgePersistence_ thread
+  void markRedacted(const RedactionCycle& cycle) noexcept;
+  void persistRedactionCycleAsync(RedactionCycle cycle); // Entry point for the redactionPersistence_ thread
 
 public:
   PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;
@@ -258,10 +257,10 @@ public:
   /// \brief Pends a new version in a cell
   /// \param name The (name of) the entry/cell where the new version should be created
   /// \param requireExisting Whether a previous version must exist (and not be a tombstone)
-  /// \param requireUnpurged Whether the previous version (if it exists) must be un-purged
+  /// \param requireUnredacted Whether the previous version (if it exists) must be un-redacted
   /// \return (A non-null shared_ptr to) an EntryChange for the specified cell
   /// \throws An Error if the current/latest cell state doesn't satisfy the specified requirements
-  std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool requireExisting = true, bool requireUnpurged = true);
+  std::shared_ptr<EntryChange> modifyEntry(const EntryName& name, bool requireExisting = true, bool requireUnredacted = true);
 
   EntryContent::Metadata makeMetadataMap(const std::map<std::string, MetadataXEntry>& xentries);
   std::map<std::string, MetadataXEntry> extractMetadataMap(const EntryContent::Metadata& metadata);
@@ -274,8 +273,8 @@ public:
 
   std::set<std::string> pagePaths() const; // for latest version
 
-  void applyPurgeCycle(const PurgeCycle& cycle); // synchronously in memory and asynchronously on disk
-  void persistPendingPurges(); // asynchronously on disk
+  void applyRedactionCycle(const RedactionCycle& cycle); // synchronously in memory and asynchronously on disk
+  void persistPendingRedactions(); // asynchronously on disk
 
   const ChecksumChains& checksumChains() const noexcept { return checksumChains_; }
 };

@@ -5,7 +5,7 @@
 #include <pep/utils/XxHasher.hpp>
 #include <pep/storagefacility/FileStore.hpp>
 #include <pep/storagefacility/PendingBytesLimiter.hpp>
-#include <pep/storagefacility/PurgeMessages.hpp>
+#include <pep/storagefacility/RedactionMessages.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>
 #include <pep/storagefacility/SFId.hpp>
@@ -32,8 +32,8 @@ private:
     prometheus::Gauge& entriesIncludingHistory;
     prometheus::Gauge& entriesInMetaDir;
 
-    prometheus::Gauge& totalPayloadBytes; // including history and purged
-    prometheus::Gauge& purgedPayloadBytes; // over total history
+    prometheus::Gauge& totalPayloadBytes; // including history and redacted
+    prometheus::Gauge& redactedPayloadBytes; // over total history
     prometheus::Gauge& rollingPayloadBytes; // "latest" snapshot
 
     prometheus::Gauge& pendingPageBytes; ///< received from the network, but not yet stored
@@ -113,23 +113,23 @@ private:
   messaging::MessageBatches handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> signedRequest);
   messaging::MessageBatches handlePagePathRequest(std::shared_ptr<SignedPagePathRequest> signedRequest);
 
-  messaging::MessageBatches handlePurgeListRequest(std::shared_ptr<SignedPurgeListRequest> signedRequest);
-  messaging::MessageBatches handlePurgeAnnounceRequest(std::shared_ptr<SignedPurgeAnnounceRequest> signedRequest);
-  messaging::MessageBatches handlePurgeCancelRequest(std::shared_ptr<SignedPurgeCancelRequest> signedRequest);
-  messaging::MessageBatches handlePurgeConfirmationRequest(std::shared_ptr<SignedPurgeConfirmationRequest> signedRequest);
+  messaging::MessageBatches handleRedactionListRequest(std::shared_ptr<SignedRedactionListRequest> signedRequest);
+  messaging::MessageBatches handleRedactionAnnounceRequest(std::shared_ptr<SignedRedactionAnnounceRequest> signedRequest);
+  messaging::MessageBatches handleRedactionCancelRequest(std::shared_ptr<SignedRedactionCancelRequest> signedRequest);
+  messaging::MessageBatches handleRedactionConfirmationRequest(std::shared_ptr<SignedRedactionConfirmationRequest> signedRequest);
 
   std::string encryptId(std::string path, Timestamp time);
   SFId decryptId(std::string_view encId);
   std::vector<std::optional<LocalPseudonym>> decryptLocalPseudonyms(const std::vector<LocalPseudonyms>& source, std::vector<uint32_t> const *indices) const;
 
   Metadata compileMetadata(std::string column, const FileStore::Entry& entry);
-  PurgeCycle createPurgeCycle(PurgeCycle::Definition definition);
+  RedactionCycle createRedactionCycle(RedactionCycle::Definition definition);
 
   /// \brief Returns a timestamp that does not collide with other timestamps in the history of cell versions
-  /// \param forPurgeCycle Whether the timestamp will be the moment that a purge cycle is applied (true) or when cell version(s) are committed (false)
+  /// \param forRedactionCycle Whether the timestamp will be the moment that a redaction cycle is applied (true) or when cell version(s) are committed (false)
   /// \return A timestamp that's sufficiently unique for the requested purpose
   /// \remark See this method's implementation for its rationale.
-  Timestamp getUniqueChangeTimestamp(bool forPurgeCycle);
+  Timestamp getUniqueChangeTimestamp(bool forRedactionCycle);
 
   template <typename TEntry>
   using GetEntryContent = std::function<std::unique_ptr<EntryContent>(const TEntry&)>;
