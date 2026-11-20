@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <!-- Settings to improve MSBuild concurrency. -->
+  <!-- Based on https://devblogs.microsoft.com/cppblog/cpp-build-throughput-investigation-and-tune-up/ -->
+
+  <PropertyGroup>
+    <!-- To enable project specific directory for temporary files. -->
+    <PEP_UseProjectTMPDirectory Condition="'$(PEP_UseProjectTMPDirectory)' == ''">true</PEP_UseProjectTMPDirectory>
+
+    <!-- To enable MSBuild Resource Manager -->
+    <UseMSBuildResourceManager Condition="'$(UseMSBuildResourceManager)' == ''">true</UseMSBuildResourceManager>
+
+    <!-- To enable MultiToolTask (MTT) mode. -->
+    <UseMultiToolTask Condition="'$(UseMultiToolTask)' == ''">true</UseMultiToolTask>
+    <EnforceProcessCountAcrossBuilds Condition="'$(EnforceProcessCountAcrossBuilds)' == ''">true</EnforceProcessCountAcrossBuilds>
+
+    <!-- To enable experimental MTT ClServer mode. -->
+    <EnableClServerMode Condition="'$(EnableClServerMode)' == ''">true</EnableClServerMode>
+
+    <!-- To allow executing more build operations in parallel when calling MSBuild with /t:BuildGenerateSources;BuildCompile;BuildLink -->
+    <BuildPassReferences Condition="'$(BuildPassReferences)' == ''">true</BuildPassReferences>
+  </PropertyGroup>
+
+  <!-- Define project specific directory for temporary cl.exe files -->
+  <Target Name="SetProjectTMPDirectory"
+        BeforeTargets="BeforeClCompile"
+        Condition="'$(DesignTimeBuild)' != 'true' and '$(PEP_UseProjectTMPDirectory)' == 'true'">
+    <PropertyGroup>
+      <OriginalTmp>$(TMP)</OriginalTmp>
+    </PropertyGroup>
+    <MakeDir Directories="$(IntDirFullPath)TMP"/>
+    <SetEnv Name="TMP"
+            Value="$(IntDirFullPath)TMP"
+            Prefix="false">
+    </SetEnv>
+  </Target>
+
+  <!-- Restore TMP directory for other tools to avoid incremental build problems -->
+  <Target Name="RestoreTMPDirectory"
+          BeforeTargets="AfterClCompile"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(PEP_UseProjectTMPDirectory)' == 'true'" >
+    <SetEnv Name="TMP"
+            Value="$(OriginalTmp)"
+            Prefix="false">
+    </SetEnv>
+  </Target>
+</Project>

@@ -90,48 +90,6 @@ if(MSVC)
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /ignore:4099")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /ignore:4099")
 
-  # Parallel compilation.
-  # By default, MSBuild builds multiple projects in parallel (-maxCpuCount, in Visual Studio:
-  #  Tools > Options > Projects and Solutions > Build and Run > Maximum number of parallel project builds),
-  #  and the compiler compiles multiple sources of each project in parallel (/MP), so the number of compiler processes multiplies.
-  #  See https://learn.microsoft.com/en-us/cpp/build/reference/mp-build-with-multiple-processes#the-msbuild-tool
-  # MSBuild's Multi-ToolTask (MTT) scheduler instead starts one cl.exe per source file itself, and with
-  #  EnforceProcessCountAcrossBuilds it limits the number of compiler processes across all projects and MSBuild instances
-  #  on the machine. See https://devblogs.microsoft.com/cppblog/improved-parallelism-in-msbuild/
-  # The limit is MSBuild property MultiProcMaxCount, which defaults to environment variable MultiProcMaxCount, or else to
-  #  CL_MPCount, which Visual Studio sets from Tools > Options > Projects and Solutions > VC++ Project Settings >
-  #  Maximum concurrent C++ compilations (0 for the number of logical CPUs).
-  # For their definitions, see Microsoft.Cpp.Common.props and Microsoft.CppCommon.targets in the Visual Studio installation.
-  # Note that dependencies built by Conan are not affected by this setting: use the environment variables
-  #  UseMultiToolTask=true and EnforceProcessCountAcrossBuilds=true for that, as ci_cd/windows-ci-build.bat does.
-  # CMAKE_VS_GLOBALS sets properties in the Globals property group of each generated project, so this also applies to
-  #  builds from the IDE. These definitions override environment variables of the same name,
-  #  see https://learn.microsoft.com/en-us/visualstudio/msbuild/how-to-use-environment-variables-in-a-build
-  #  They also take precedence over the defaults in Microsoft.Cpp.Common.props, which only apply to empty properties.
-  if(CMAKE_GENERATOR MATCHES "^Visual Studio")
-    option(USE_MSBUILD_MULTI_TOOL_TASK "Use MSBuild's Multi-ToolTask scheduler to limit the number of compiler processes machine-wide (ignored with COMPILE_SEQUENTIALLY)" ON)
-  endif()
-
-  # We don't add a plain /MP here in case NOT COMPILE_SEQUENTIALLY (which would mean "one process per logical CPU"), because:
-  #  - Conan's CMakeToolchain already adds /MP<tools.build:jobs> for Visual Studio generators,
-  #    and a plain /MP after it would override that setting.
-  #  - With MTT, /MP is dropped anyway.
-  option(COMPILE_SEQUENTIALLY "Compile one source at a time (per project)")
-  if(COMPILE_SEQUENTIALLY)
-    if(USE_MSBUILD_MULTI_TOOL_TASK)
-      message(WARNING "USE_MSBUILD_MULTI_TOOL_TASK is ignored with COMPILE_SEQUENTIALLY")
-    endif()
-
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP1")
-    if(CMAKE_GENERATOR MATCHES "^Visual Studio")
-      # MTT drops /MP, so explicitly disable MTT for /MP1 to take effect,
-      #  also when it is enabled via an environment variable (e.g. by ci_cd/windows-ci-build.bat).
-      list(APPEND CMAKE_VS_GLOBALS "UseMultiToolTask=false")
-    endif()
-  elseif(USE_MSBUILD_MULTI_TOOL_TASK)
-    list(APPEND CMAKE_VS_GLOBALS "UseMultiToolTask=true" "EnforceProcessCountAcrossBuilds=true")
-  endif()
-
   # Fix C1128: number of sections exceeded object file format limit: compile with /bigobj
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
   # Get rid of warnings about unsafe standard functions such as _open and _ftime64

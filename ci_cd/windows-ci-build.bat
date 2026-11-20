@@ -34,6 +34,7 @@ REM Limit build parallelism, based on the number of CPUs and the amount of RAM, 
 REM By default, MSBuild builds -maxCpuCount projects concurrently, and the compiler runs /MP processes for each project,
 REM  so the number of compiler processes multiplies, and concurrent CI jobs on the same machine multiply it further.
 REM  See https://learn.microsoft.com/en-us/cpp/build/reference/mp-build-with-multiple-processes#the-msbuild-tool
+REM  In Visual Studio, -maxCpuCount is "Tools > Options > Projects and Solutions > Build and Run > Maximum number of parallel project builds".
 REM Instead, we use MSBuild's Multi-ToolTask (MTT) scheduler, see https://devblogs.microsoft.com/cppblog/improved-parallelism-in-msbuild/
 REM - UseMultiToolTask=true: MSBuild itself starts one cl.exe per source file, at most MultiProcMaxCount at a time.
 REM   The /MP compiler option is then dropped.
@@ -42,8 +43,8 @@ REM   instances, and therefore across concurrent CI jobs on the same machine.
 REM   Because of this, MultiProcMaxCount is based on the resources of the whole machine and should be the same for all builds on it.
 REM These are MSBuild properties that default to the environment variables of the same name.
 REM  For their definitions, see Microsoft.Cpp.Common.props and Microsoft.CppCommon.targets in the Visual Studio installation.
+REM  In Visual Studio, MultiProcMaxCount defaults to CL_MPCount from "Tools > Options > Projects and Solutions > VC++ Project Settings > Maximum concurrent C++ compilations"
 REM This also applies to dependencies that Conan builds using MSBuild.
-REM  For our own projects, cpp/config.cmake also enables MTT, see USE_MSBUILD_MULTI_TOOL_TASK there.
 REM Linking is not limited by MTT, but only by the number of projects that MSBuild builds concurrently,
 REM  which we pass to Conan as tools.microsoft.msbuild:max_cpu_count below.
 set UseMultiToolTask=true
@@ -142,7 +143,7 @@ echo Configuring CMake project.
 cmake --preset conan-default %PEP_CMAKE_DEFINES% || exit /B 1
 
 echo Building.
-cmake --build --preset conan-%PEP_CONAN_PRESET_FLAVOR% %PEP_CMAKE_BUILD_TARGETS% || exit /B 1
+cmake --build --preset conan-%PEP_CONAN_PRESET_FLAVOR% %PEP_CMAKE_BUILD_TARGETS% -- /t:BuildGenerateSources;BuildCompile;BuildLink || exit /B 1
 
 if [%WhatToBuild%] NEQ [wixlib] (
   goto :Done
