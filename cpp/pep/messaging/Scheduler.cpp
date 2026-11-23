@@ -3,8 +3,25 @@
 #include <pep/messaging/Scheduler.hpp>
 #include <pep/serialization/ErrorSerializer.hpp>
 #include <pep/serialization/Serialization.hpp>
+#include <pep/messaging/MessageProperties.hpp> // for messaging::MessageId, messaging::StreamId
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/utils/BuildFlavor.hpp> // for PEP_BUILD_HAS_DEBUG_FLAVOR
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
+#include <pep/async/IoContext_fwd.hpp>
 
 #include <ranges>
+#include <algorithm>
+#include <cassert>
+#include <exception>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
+
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::ranges;
 

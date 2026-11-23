@@ -1,9 +1,14 @@
 #include <pep/utils/BuildFlavor.hpp>
 #include <pep/utils/Progress.hpp>
-#include <pep/utils/Shared.hpp>
+#include <pep/utils/Shared.hpp> // IWYU pragma: keep (used in assert)
 
 #include <cassert>
 #include <stdexcept>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <stack>
+#include <string>
 
 namespace pep {
 

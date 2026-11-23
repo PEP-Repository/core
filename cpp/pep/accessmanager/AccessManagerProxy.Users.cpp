@@ -1,6 +1,16 @@
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/accessmanager/UserSerializers.hpp>
 #include <pep/messaging/ResponseToVoid.hpp>
+#include <pep/accessmanager/UserMessages.hpp> // for UserMutationRequest, UserMutationResponse, UserQueryResponse
+#include <pep/async/FakeVoid.hpp>
+#include <pep/auth/UserGroup.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <optional>
+#include <string>
+#include <utility>
 
 namespace pep {
 

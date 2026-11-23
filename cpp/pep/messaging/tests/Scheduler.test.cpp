@@ -3,9 +3,27 @@
 #include <pep/async/RxIterate.hpp>
 #include <pep/messaging/Scheduler.hpp>
 #include <pep/serialization/Error.hpp>
+#include <pep/messaging/MessageProperties.hpp> // for messaging::MessageId, messaging::StreamId
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/utils/Event.hpp>
+#include <pep/utils/Shared.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/asio/error.hpp> // for boost::asio::error::operation_aborted
+#include <boost/asio/io_context.hpp>
+#include <boost/system/system_error.hpp>
 #include <cmath>
 #include <numeric>
+#include <algorithm>
+#include <cstddef>
+#include <exception>
+#include <map>
+#include <memory>
+#include <ranges>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::literals;
 using namespace std::ranges;

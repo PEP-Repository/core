@@ -4,19 +4,28 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock-matchers.h>
 
-#include <pep/application/Application.hpp>
 #include <pep/async/tests/RxTestUtils.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/utils/Defer.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/networking/EndPoint.PropertySerializer.hpp>
 #include <pep/storagefacility/S3Credentials.PropertySerializer.hpp>
+#include <pep/storagefacility/S3Client.hpp>
 
 #include <boost/algorithm/hex.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <pep/utils/MiscUtil.hpp>
+#include <boost/asio/io_context.hpp>
 
 #include <ranges>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 using namespace pep;
 using namespace std::ranges;
@@ -113,8 +122,7 @@ TEST(S3PageStore, basic) {
   PEP_DEFER(direct_conn->shutdown());
 
   std::string path = boost::algorithm::hex(RandomString(5));
-  std::string data = RandomString(10);
-  std::string data2 = RandomString(10);
+  const auto [data, data2] = pep::Generate<2>([] { return RandomString(10); });
 
   // store->get(path) should return nothng, since that object doesn't exist:
   EXPECT_TRUE(testutils::exhaust<std::shared_ptr<std::string>>(
@@ -251,8 +259,7 @@ TEST_F(S3PageStoreMultiHost, getsPageFromOtherHost) {
 // When multiple hosts have a page with the same path, the bucket that's listed first in
 // "ReadFromBuckets" wins.
 TEST_F(S3PageStoreMultiHost, prefersFirstReadBucket) {
-  std::string dataOnA = RandomString(10);
-  std::string dataOnB = RandomString(10);
+  const auto [dataOnA, dataOnB] = pep::Generate<2>([] { return RandomString(10); });
   putDirectly(*directToA, dataOnA);
   putDirectly(*directToB, dataOnB);
 

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <functional>
-#include <string>
 #include <iostream>
+#include <string>
 
 namespace pep {
 class Pseudonymiser {

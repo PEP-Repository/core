@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
 #include <pep/utils/PropertySerializer.hpp>
 
 namespace pep {

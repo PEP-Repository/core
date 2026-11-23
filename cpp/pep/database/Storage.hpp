@@ -7,6 +7,14 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
+#include <algorithm>
+#include <cassert>
+#include <ranges>
+#include <stdexcept>
+#include <string>
+#include <system_error>
+#include <utility>
+
 namespace pep::database {
 struct SchemaError : std::logic_error {
   enum class Reason {

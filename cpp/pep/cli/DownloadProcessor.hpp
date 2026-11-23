@@ -1,8 +1,19 @@
 #pragma once
 
 #include <pep/accessmanager/AccessManagerMessages.hpp>
+#include <pep/async/FakeVoid.hpp>
 #include <pep/cli/DownloadDirectory.hpp>
+#include <pep/cli/DownloadMetadata.hpp> // for cli::RecordDescriptor
+#include <pep/core-client/CoreClient_fwd.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/utils/Progress.hpp>
+#include <pep/utils/Shared.hpp>
 #include <pep/utils/VectorOfVectors.hpp>
+
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <unordered_map>
 
 namespace pep::cli {
 

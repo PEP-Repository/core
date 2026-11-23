@@ -16,6 +16,19 @@
 
 #include <iostream>
 #include <filesystem>
+#include <cassert>
+#include <cstddef>
+#include <exception>
+#include <fstream>
+#include <iomanip>
+#include <map>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #ifdef _WIN32
 #include <io.h>
@@ -25,11 +38,27 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <pep/messaging/MessageSequence.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/archiving/Archive.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/CliApplication.hpp>
+#include <pep/cli/Command.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-switch_if_empty.hpp>
 #include <rxcpp/operators/rx-take.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <Messages.pb.h> // for proto::NamedMetadataXEntry
+
+#include <google/protobuf/util/json_util.h> // for google::protobuf::util::JsonStringToMessage
 
 using namespace pep::cli;
 namespace pt = boost::property_tree;

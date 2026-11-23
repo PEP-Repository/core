@@ -1,5 +1,8 @@
-#include <gtest/gtest.h>
 #include <pep/utils/LocalSettings.hpp>
+
+#include <gtest/gtest.h>
+
+#include <string>
 
 namespace {
 

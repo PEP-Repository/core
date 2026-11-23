@@ -1,6 +1,11 @@
 #include <pep/rsk/Proofs.hpp>
 
 #include <pep/elgamal/CryptoAssert.hpp>
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp>
+
+#include <string>
 
 namespace pep {
 

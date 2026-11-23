@@ -1,10 +1,14 @@
 #include <pep/messaging/MessageProperties.hpp>
+#include <pep/utils/EnumUtils.hpp> // for HasFlags
 
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
+#include <bit>
+#include <cassert>
+#include <ostream>
 
 #include <boost/algorithm/string/join.hpp>
 

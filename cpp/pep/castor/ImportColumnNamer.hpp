@@ -1,12 +1,16 @@
 #pragma once
 
+#include <pep/castor/CastorConnection.hpp>
+#include <pep/castor/Form.hpp>
+#include <pep/castor/Participant.hpp>
+#include <pep/castor/SurveyStep.hpp>
 #include <pep/structure/ColumnName.hpp>
 #include <pep/structure/ShortPseudonyms.hpp>
-#include <pep/castor/Participant.hpp>
-#include <pep/castor/Form.hpp>
-#include <pep/castor/SurveyPackage.hpp>
-#include <pep/castor/SurveyPackageInstance.hpp>
-#include <pep/castor/SurveyStep.hpp>
+
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace pep {
 namespace castor {

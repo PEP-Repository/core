@@ -1137,12 +1137,21 @@ Use the `pepcli pseudonym` command to perform ad hoc operations on pseudonyms.
 The `convert` subcommand converts a pseudonym from one format into another.
 
 ```plaintext
-pepcli pseudonym convert <from> <to>
+pepcli pseudonym convert <from> [--to <type> ...] [--format json|yaml|json-compact]
 ```
 
-`<from>` is the pseudonym value to convert. `<to>` specifies the target type:
+`<from>` is the pseudonym value to convert. `--to` specifies a target type:
 `local-pseudonym` (or `lp`), `polymorphic-pseudonym` (or `pp`), or
-`brief-local-pseudonym` (or `blp`).
+`brief-local-pseudonym` (or `blp`). Repeat `--to` to convert to multiple types, or omit it to convert to all types.
+
+The command prints the converted pseudonyms under the name of their type, as JSON by default. E.g. `pepcli pseudonym convert <from> --to lp --to blp` produces:
+
+```json
+{
+  "local-pseudonym": "...",
+  "brief-local-pseudonym": "..."
+}
+```
 
 Conversion does not require any access rights to the subject associated with the pseudonym.
 

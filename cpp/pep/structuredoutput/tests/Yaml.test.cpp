@@ -1,12 +1,14 @@
 #include <pep/structuredoutput/Tree.hpp>
 #include <pep/structuredoutput/Yaml.hpp>
+#include <pep/structuredoutput/Common.hpp> // for structuredOutput::WhitespaceFormat
+#include <pep/structuredoutput/Table.hpp>
 
-#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <cstdint>
 #include <limits>
 #include <sstream>
+#include <utility>
 
 namespace {
 namespace yaml = pep::structuredOutput::yaml;
@@ -33,6 +35,13 @@ TEST(structuredOutputYaml, StringLiteralEscaping) {
       yaml::to_string(Tree::FromJson({{"0key", "quote keys that do not start with alpha"}, {"k|:", "special chars"}})),
       "\"0key\": \"quote keys that do not start with alpha\"\n"
       "\"k|:\": \"special chars\"\n");
+  EXPECT_EQ(
+      yaml::to_string(Tree::FromJson({{"multi\nline", "line 1\nline 2\r\n\tindented\x01"}})),
+      "\"multi\\nline\": \"line 1\\nline 2\\r\\n\\tindented\\x01\"\n");
+  // Non-ASCII (UTF-8) characters are kept as-is, in quotes: "Maß": "✓"
+  EXPECT_EQ(
+      yaml::to_string(Tree::FromJson({{"Ma\xC3\x9F", "\xE2\x9C\x93"}})),
+      "\"Ma\xC3\x9F\": \"\xE2\x9C\x93\"\n");
 }
 
 TEST(structuredOutputYaml, FlatArray) {

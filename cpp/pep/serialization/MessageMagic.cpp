@@ -5,6 +5,12 @@
 #include <pep/utils/Raw.hpp>
 
 #include <cassert>
+#include <cstdint>
+#include <optional>
+#include <ostream>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include <boost/bimap.hpp>
 #include <xxhash.h>
@@ -136,7 +142,12 @@ Magics PredefinedMagics() {
     MakeMagicEntry("ParticipantGroupAccessResponse"),
     MakeMagicEntry("PingRequest"),
     MakeMagicEntry("PingResponse"),
+    MakeMagicEntry("PopPrefix"),
+    MakeMagicEntry("PrefixedString"),
+    MakeMagicEntry("PrefixedStrings"),
+    MakeMagicEntry("PrefixedStringsEntry"),
     MakeMagicEntry("PseudonymFormat"),
+    MakeMagicEntry("PushPrefix"),
     MakeMagicEntry("RedactionAnnounceRequest"),
     MakeMagicEntry("RedactionCancelRequest"),
     MakeMagicEntry("RedactionConfirmationRequest"),

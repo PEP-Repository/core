@@ -190,8 +190,32 @@ message SignedPagePathRequest {
   bytes data = 2;
 }
 
+message PrefixedString {
+  string string = 1;
+}
+
+message PrefixedStrings {
+  repeated string strings = 1;
+}
+
+message PushPrefix {
+  string prefix = 1;
+}
+
+message PopPrefix {}
+
+message PrefixedStringsEntry {
+  oneof entry {
+    PrefixedStrings strings = 1;
+    PushPrefix push_prefix = 2;
+    PopPrefix pop_prefix = 3;
+    PrefixedString string = 4;
+  }
+}
+
 message PagePathResponse {
-  repeated string paths = 1;
+  reserved 1; // Was "repeated string paths", before paths were sent as a sequence of PrefixedStringsEntry
+  repeated PrefixedStringsEntry paths = 2;
 }
 
 message EncryptionKeyRequest {

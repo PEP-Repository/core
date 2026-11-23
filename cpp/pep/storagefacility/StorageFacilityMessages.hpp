@@ -4,7 +4,15 @@
 #include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/morphing/Metadata.hpp>
 #include <pep/serialization/IndexList.hpp>
+#include <pep/storagefacility/PrefixedStrings.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <cstdint>
+#include <optional>
+#include <set>
+#include <string>
+#include <vector>
 
 namespace pep {
 
@@ -112,7 +120,7 @@ struct DataSizeResponse {
 struct PagePathRequest {};
 
 struct PagePathResponse {
-  std::set<std::string> paths;
+  std::vector<PrefixedStringsEntry> paths;
 };
 
 using SignedDataEnumerationRequest2 = Signed<DataEnumerationRequest2>;

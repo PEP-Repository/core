@@ -1,4 +1,9 @@
 #include <pep/crypto/BytesSerializer.hpp>
+#include <pep/crypto/Bytes.hpp>
+
+#include <Messages.pb.h> // for proto::Bytes
+
+#include <utility>
 
 namespace pep {
 

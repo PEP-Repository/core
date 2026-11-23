@@ -2,6 +2,10 @@
 
 #include <pep/auth/SigningSerializers.hpp>
 #include <pep/keyserver/KeyServerMessages.hpp>
+#include <pep/keyserver/tokenblocking/BlocklistEntry.hpp>
+#include <pep/keyserver/tokenblocking/TokenIdentifier.hpp>
+
+#include <Messages.pb.h> // for proto::EnrollmentRequest
 
 namespace pep {
 

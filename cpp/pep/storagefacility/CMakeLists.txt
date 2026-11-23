@@ -3,6 +3,7 @@ add_library(${PROJECT_NAME}StorageFacilityApilib
   DataPayloadPage.cpp DataPayloadPage.hpp
   DataPayloadPageStreamOrder.cpp DataPayloadPageStreamOrder.hpp
   PageHash.cpp PageHash.hpp
+  PrefixedStrings.cpp PrefixedStrings.hpp
   RedactionMessages.hpp
   RedactionSerializers.cpp RedactionSerializers.hpp
   RedactionCycle.cpp RedactionCycle.hpp
@@ -24,6 +25,7 @@ if(WITH_SERVERS)
       EntryName.cpp EntryName.hpp
       EntryPayload.cpp EntryPayload.hpp
       FileStore.cpp FileStore.hpp
+      PagePathResponseChunker.cpp PagePathResponseChunker.hpp
       PageStore.cpp PageStore.hpp
       PendingBytesLimiter.cpp PendingBytesLimiter.hpp
       PersistedEntryProperties.cpp PersistedEntryProperties.hpp

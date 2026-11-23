@@ -4,7 +4,14 @@
 #include <pep/utils/Random.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
 #include <pep/utils/Bitpacking.hpp>
+#include <pep/utils/EnumUtils.hpp> // for HasFlags
+#include <pep/utils/Timestamp.hpp>
 #include <sstream>
+#include <chrono>
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <utility>
 
 using namespace std::chrono;
 

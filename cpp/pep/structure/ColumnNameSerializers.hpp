@@ -1,7 +1,8 @@
 #pragma once
 
-#include <pep/structure/ColumnName.hpp>
 #include <pep/serialization/ProtocolBufferedSerializer.hpp>
+#include <pep/structure/ColumnName.hpp>
+
 #include <Messages.pb.h>
 
 namespace pep {

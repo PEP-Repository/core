@@ -2,6 +2,10 @@
 
 #include <pep/rsk-pep/Pseudonyms.hpp>
 
+#include <format>
+#include <string>
+#include <tuple>
+
 namespace pep {
 
 class EntryName {
@@ -21,7 +25,7 @@ public:
   const std::string& column() const noexcept { return column_; }
 
   LocalPseudonym pseudonym() const { return LocalPseudonym::FromText(this->participant()); }
-  std::string string() const { return this->participant() + Delimiter + this->column(); }
+  [[nodiscard]] std::string string() const;
 
   auto operator<=>(const EntryName&) const = default;
 
@@ -29,3 +33,12 @@ public:
 };
 
 }
+
+template <>
+struct std::formatter<pep::EntryName> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return ctx.begin(); // We just have "{}", no format specifiers
+  }
+
+  format_context::iterator format(const pep::EntryName& name, format_context& ctx) const;
+};

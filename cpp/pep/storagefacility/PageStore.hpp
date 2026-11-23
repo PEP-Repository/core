@@ -1,9 +1,12 @@
 #pragma once
 
-#include <pep/utils/Configuration_fwd.hpp>
-#include <pep/messaging/MessageSequence.hpp>
-
 #include <pep/async/IoContext_fwd.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
+
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace prometheus {
   class Registry;

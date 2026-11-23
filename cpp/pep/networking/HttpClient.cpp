@@ -8,13 +8,41 @@
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/Timestamp.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/networking/Client.hpp>
+#include <pep/networking/Connection.hpp>
+#include <pep/networking/EndPoint.hpp>
+#include <pep/networking/HttpMethod.hpp>
+#include <pep/networking/Protocol.hpp>
+#include <pep/networking/Transport.hpp> // for networking::SizedTransfer, networking::DelimitedTransfer
+#include <pep/utils/Shared.hpp>
 
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string/classification.hpp> // for boost::is_space
+#include <boost/algorithm/string/predicate.hpp> // IWYU pragma: keep (used in assert)
+#include <boost/asio/io_context.hpp>
+#include <boost/lexical_cast/try_lexical_convert.hpp>
+#include <boost/url/url.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <chrono>
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <ios>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 using namespace std::ranges;
 
@@ -335,22 +363,37 @@ bool HttpClient::continueSending(std::exception_ptr error) {
 }
 
 void HttpClient::ensureSend() {
-  auto status = this->status();
-  assert(status == Status::Finalized || binaryClient_ != nullptr);
-  if (sending_ != nullptr || status >= Status::Finalizing || connection_ == nullptr || !connection_->isConnected()) {
-    return;
-  }
+  bool prepareFailed = false;
+  do {
+    auto status = this->status();
+    assert(status == Status::Finalized || binaryClient_ != nullptr);
+    if (sending_ != nullptr || status >= Status::Finalizing || connection_ == nullptr || !connection_->isConnected()) {
+      return;
+    }
 
-  // Don't send abandoned requests
-  while (!pendingRequests_.empty() && !pendingRequests_.front()->subscriber.is_subscribed()) {
-    pendingRequests_.pop();
-  }
-  if (pendingRequests_.empty()) {
-    return;
-  }
+    // Don't send abandoned requests
+    while (!pendingRequests_.empty() && !pendingRequests_.front()->subscriber.is_subscribed()) {
+      pendingRequests_.pop();
+    }
+    if (pendingRequests_.empty()) {
+      return;
+    }
 
-  sending_ = pendingRequests_.front();
-  response_ = HTTPResponse();
+    sending_ = pendingRequests_.front();
+    response_ = HTTPResponse();
+
+    if (const auto& prepare = parameters_.onPrepareRequest()) {
+      try {
+        prepare(*sending_->request);
+      }
+      catch (...) {
+        prepareFailed = true;
+        auto failed = std::move(sending_);
+        this->unpend(failed->request);
+        failed->subscriber.on_error(std::current_exception());
+      }
+    }
+  } while (prepareFailed);
 
   auto header = MakeSharedCopy(sending_->request->headerToString());
   connection_->asyncWrite(header->data(), header->size(), [self = SharedFrom(*this), header](const SizedTransfer::Result& result) {

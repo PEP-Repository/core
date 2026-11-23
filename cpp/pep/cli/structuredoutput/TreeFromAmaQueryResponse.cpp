@@ -1,11 +1,17 @@
 #include <pep/cli/structuredoutput/TreeFromAmaQueryResponse.hpp>
 #include <pep/structuredoutput/Common.hpp>
-
 #include <nlohmann/json.hpp>
-#include <pep/utils/ChronoUtil.hpp>
+
 #include <pep/utils/EnumUtils.hpp>
+#include <pep/accessmanager/AmaMessages.hpp> // for AmaQueryResponse, AmaQRColumn
+#include <pep/structuredoutput/Tree.hpp>
 
 #include <ranges>
+#include <map>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
 
 using namespace std::ranges;
 

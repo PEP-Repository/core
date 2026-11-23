@@ -1,9 +1,12 @@
+#include <pep/structuredoutput/Table.hpp>
+
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
-#include <pep/structuredoutput/Table.hpp>
 #include <stdexcept>
 #include <vector>
+#include <memory>
+#include <string>
 
 namespace {
 using pep::structuredOutput::Table;

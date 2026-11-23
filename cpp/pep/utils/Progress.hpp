@@ -1,8 +1,10 @@
 #pragma once
 
 #include <pep/utils/Event.hpp>
-#include <algorithm>
-#include <iterator>
+
+#include <functional>
+#include <memory>
+#include <optional>
 #include <stack>
 #include <stdint.h>
 #include <string>

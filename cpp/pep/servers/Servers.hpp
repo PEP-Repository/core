@@ -2,14 +2,18 @@
 
 #include <pep/server/NetworkedServer.hpp>
 #include <pep/utils/Configuration.hpp>
+#include <pep/utils/Log.hpp> // for Severity
 #include <pep/utils/ThreadUtil.hpp>
 
+#include <boost/core/demangle.hpp>
+
+#include <condition_variable>
+#include <exception>
 #include <filesystem>
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <vector>
-
-#include <boost/core/demangle.hpp>
 
 namespace pep {
 

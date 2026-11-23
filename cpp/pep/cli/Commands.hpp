@@ -1,6 +1,9 @@
 #pragma once
 
+#include <pep/cli/CliApplication.hpp>
 #include <pep/cli/Command.hpp>
+
+#include <memory>
 
 namespace pep::cli {
 

@@ -1,12 +1,13 @@
 #pragma once
 
+#ifdef _WIN32
+
 #include <pep/gui/PlaintextCredentials.hpp>
 #include <pep/versioning/SemanticVersion.hpp>
+
 #include <filesystem>
-
+#include <functional>
 #include <memory>
-
-#ifdef _WIN32
 
 class Installer {
 public:

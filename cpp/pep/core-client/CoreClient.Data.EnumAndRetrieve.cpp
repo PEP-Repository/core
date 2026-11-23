@@ -10,6 +10,13 @@
 #include <pep/async/RxSubsequently.hpp>
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/utils/Shared.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/async/FakeVoid.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/IndexList.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataEnumerationRequest2, DataEnumerationResponse2
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2, Ticket2
 
 #include <algorithm>
 #include <exception>
@@ -20,12 +27,20 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <sstream>
+#include <stdexcept>
+#include <unordered_set>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-observe_on.hpp>
 #include <rxcpp/operators/rx-reduce.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep;
 using namespace std::ranges;

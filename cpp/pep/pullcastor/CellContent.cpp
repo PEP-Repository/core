@@ -1,10 +1,18 @@
 #include <pep/pullcastor/CellContent.hpp>
 #include <pep/async/RxConcatenateStrings.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/async/RxCache.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <cassert>
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace pep {
 namespace castor {

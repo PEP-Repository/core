@@ -1,8 +1,8 @@
 #include <pep/cli/structuredoutput/TableFromDownloadDirectory.hpp>
 
 #include <algorithm>
-#include <boost/url.hpp>
 #include <boost/url/scheme.hpp>
+#include <boost/url/url.hpp> // IWYU pragma: keep (other headers only forward declare url)
 #include <cstddef>
 #include <filesystem>
 #include <optional>
@@ -10,7 +10,18 @@
 #include <pep/structuredoutput/IndexedStringPool.hpp>
 #include <pep/utils/File.hpp>
 #include <pep/utils/VariantUtils.hpp>
+#include <pep/cli/DownloadDirectory.hpp>
+#include <pep/cli/DownloadMetadata.hpp> // for cli::ParticipantIdentifier, cli::RecordDescriptor
+#include <pep/structuredoutput/Table.hpp>
 #include <vector>
+#include <cassert>
+#include <cctype>
+#include <functional>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
+#include <variant>
 
 using namespace pep::cli;
 using namespace std::ranges;

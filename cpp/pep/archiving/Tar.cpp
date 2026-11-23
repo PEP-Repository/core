@@ -2,6 +2,7 @@
 
 #include <pep/utils/File.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/utils/CheckedPath.hpp>
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -9,6 +10,19 @@
 #include <array>
 #include <fstream>
 #include <sstream>
+#include <cassert>
+#include <cerrno>
+#include <cstddef>
+#include <cstdint>
+#include <filesystem>
+#include <ios>
+#include <istream>
+#include <memory>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
 
 using namespace pep;
 

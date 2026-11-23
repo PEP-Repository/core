@@ -2,9 +2,14 @@
 
 #include <pep/async/FakeVoid.hpp>
 #include <pep/async/RxCache.hpp>
+#include <pep/castor/Field.hpp>
 #include <pep/castor/RepeatingData.hpp>
 #include <pep/castor/RepeatingDataInstance.hpp>
 #include <pep/pullcastor/FieldValue.hpp>
+#include <pep/utils/Shared.hpp>
+
+#include <memory>
+#include <vector>
 
 namespace pep {
 namespace castor {

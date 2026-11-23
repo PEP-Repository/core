@@ -1,8 +1,14 @@
 #include <pep/cli/structuredoutput/TreeFromUserQueryResponse.hpp>
-
 #include <nlohmann/json.hpp>
+
 #include <pep/utils/ChronoUtil.hpp>
 #include <pep/utils/EnumUtils.hpp>
+#include <pep/accessmanager/UserMessages.hpp> // for UserQueryResponse
+#include <pep/structuredoutput/Common.hpp> // for structuredOutput::queryKeys::GetKeyName, structuredOutput::QueryDisplayConfig, structuredOutput::queryKeys::userGroups
+#include <pep/structuredoutput/Tree.hpp>
+#include <pep/utils/Timestamp.hpp>
+
+#include <utility>
 
 namespace pep::structuredOutput {
 namespace {

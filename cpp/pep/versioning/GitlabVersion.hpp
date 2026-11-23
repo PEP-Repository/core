@@ -1,9 +1,9 @@
 #pragma once
 
+#include <pep/versioning/SemanticVersion.hpp>
+
 #include <optional>
 #include <string>
-
-#include <pep/versioning/SemanticVersion.hpp>
 
 namespace pep {
 

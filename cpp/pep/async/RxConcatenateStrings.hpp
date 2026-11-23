@@ -1,9 +1,12 @@
 #pragma once
 
-#include <memory>
-#include <sstream>
 #include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-reduce.hpp>
+
+#include <memory>
+#include <sstream>
+#include <string>
+#include <utility>
 
 namespace pep {
 

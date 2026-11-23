@@ -4,14 +4,23 @@
 #include <pep/elgamal/ElgamalSerializers.hpp>
 #include <pep/serialization/Serialization.hpp>
 #include <pep/utils/Bitpacking.hpp>
-#include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for StructureMetadataType
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/ColumnName.hpp>
 
-#include <sqlite_orm/sqlite_orm.h>
 #include <string_view>
-#include <type_traits>
 #include <utility>
+#include <cassert>
+#include <chrono>
+#include <cstdint>
+#include <ranges>
+#include <sstream>
+#include <string>
+#include <vector>
 
 using namespace std::chrono;
 using namespace std::ranges;

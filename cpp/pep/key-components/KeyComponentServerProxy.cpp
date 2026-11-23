@@ -1,6 +1,11 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/key-components/KeyComponentServerProxy.hpp>
+#include <pep/key-components/KeyComponentMessages.hpp> // for KeyComponentResponse, SignedKeyComponentRequest
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <utility>
 
 namespace pep {
 

@@ -4,9 +4,18 @@
 #include <pep/utils/TestTiming.hpp>
 #include <pep/async/RxFinallyExhaust.hpp>
 #include <pep/async/RxTimeout.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/async/OnAsio.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <optional>
+#include <chrono>
+#include <exception>
+#include <functional>
+#include <utility>
+
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::literals;
 

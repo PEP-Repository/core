@@ -1,7 +1,8 @@
 #pragma once
 
-#include <string>
 #include <boost/type_index.hpp>
+
+#include <string>
 
 namespace pep {
 

@@ -3,6 +3,7 @@
 #include <pep/assessor/ui_participanteditor.h>
 #include <pep/assessor/QDate.hpp>
 #include <pep/content/Date.hpp>
+#include <pep/content/ParticipantPersonalia.hpp>
 
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>

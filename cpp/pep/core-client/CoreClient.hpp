@@ -1,39 +1,54 @@
 #pragma once
 
-#include <pep/core-client/CoreClient_fwd.hpp>
-
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
 #include <pep/accessmanager/AccessManagerProxy.hpp>
-#include <pep/accessmanager/UserMessages.hpp>
 #include <pep/async/FakeVoid.hpp>
+#include <pep/async/IoContext_fwd.hpp>
 #include <pep/async/WorkerPool.hpp>
 #include <pep/auth/ServerTraits.hpp>
-#include <pep/utils/Timestamp.hpp>
+#include <pep/auth/Signed.hpp> // for MessageSigner
+#include <pep/core-client/CoreClient_fwd.hpp>
+#include <pep/crypto/X509Certificate.hpp> // for X509RootCertificates, X509Identity
 #include <pep/elgamal/CurvePoint.hpp>
-#include <pep/messaging/ConnectionStatus.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for EncryptedKey, ElgamalPrivateKey
+#include <pep/key-components/KeyComponentMessages.hpp> // for SignedKeyComponentRequest
 #include <pep/messaging/MessageSequence.hpp>
+#include <pep/messaging/ServerConnection.hpp>
 #include <pep/morphing/EnrolledPartyKeys.hpp>
+#include <pep/morphing/Metadata.hpp>
 #include <pep/morphing/SystemPublicKeys.hpp>
 #include <pep/networking/EndPoint.hpp>
-#include <pep/server/MonitoringMessages.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/server/ServerProxy.hpp>
+#include <pep/server/SigningServerProxy.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataEntriesRequest2
 #include <pep/storagefacility/StorageFacilityProxy.hpp>
-#include <pep/structure/ColumnName.hpp>
 #include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/structure/StudyContext.hpp>
-#include <pep/transcryptor/TranscryptorProxy.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms, SignedTicket2
+#include <pep/transcryptor/TranscryptorProxy.hpp>
 #include <pep/utils/Configuration_fwd.hpp>
+#include <pep/utils/Timestamp.hpp>
 
+#include <rxcpp/rx-lite.hpp>
+
+#include <boost/core/noncopyable.hpp>
+
+#include <concepts>
 #include <cstddef>
+#include <cstdint>
+#include <filesystem>
+#include <map>
+#include <memory>
+#include <optional>
+#include <span>
+#include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <filesystem>
-#include <optional>
-#include <type_traits>
-
-#include <pep/async/IoContext_fwd.hpp>
-#include <boost/core/noncopyable.hpp>
-#include <rxcpp/rx-lite.hpp>
 
 
 namespace pep {

@@ -1,12 +1,24 @@
 #include <pep/async/RxRequireCount.hpp>
-#include <pep/async/RxToSet.hpp>
 #include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
 #include <pep/storagefacility/PageHash.hpp>
 #include <pep/storagefacility/RedactionSerializers.hpp>
 #include <pep/storagefacility/StorageFacilityProxy.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/utils/XxHasher.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/messaging/Tail.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataEnumerationResponse2, DataStoreRequest2, DataEnumerationRequest2, ...
+#include <pep/utils/Shared.hpp>
+
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <format>
+#include <memory>
+#include <stdexcept>
+#include <utility>
 
 namespace pep {
 
@@ -78,12 +90,8 @@ rxcpp::observable<DataSizeResponse> StorageFacilityProxy::requestDataSize(DataSi
 }
 
 rxcpp::observable<PagePathResponse> StorageFacilityProxy::requestPagePaths() const {
-  return this->sendRequest<PagePathResponse>(this->sign(PagePathRequest{}))
-    .flat_map([](PagePathResponse chunk) {return rxcpp::observable<>::iterate(chunk.paths); })
-    .op(RxToSet())
-    .map([](std::shared_ptr<std::set<std::string>> paths) {
-        return PagePathResponse{ .paths = std::move(*paths) };
-      });
+  // Pass chunks on as they arrive instead of aggregating them, so that we don't need to keep all page paths in memory
+  return this->sendRequest<PagePathResponse>(this->sign(PagePathRequest{}));
 }
 
 rxcpp::observable<RedactionCycle> StorageFacilityProxy::listRedactionCycles() const {

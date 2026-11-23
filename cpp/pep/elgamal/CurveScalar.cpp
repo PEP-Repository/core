@@ -2,8 +2,15 @@
 
 #include <pep/crypto/ConstTime.hpp>
 #include <pep/utils/Random.hpp>
+#include <pep/utils/CollectionUtils.hpp> // for SpanToString
 
 #include <stdexcept>
+#include <cstddef>
+#include <functional>
+#include <string>
+#include <string_view>
+
+#include <panda/scalar.h>
 
 using namespace std::string_literals;
 

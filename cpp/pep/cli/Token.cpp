@@ -4,7 +4,17 @@
 
 #include <pep/client/Client.hpp>
 #include <pep/utils/Timestamp.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/CliApplication.hpp>
+#include <pep/cli/Command.hpp>
+
 #include <rxcpp/operators/rx-map.hpp>
+
+#include <iostream>
+#include <memory>
+#include <ostream>
+#include <vector>
 
 using namespace pep::cli;
 

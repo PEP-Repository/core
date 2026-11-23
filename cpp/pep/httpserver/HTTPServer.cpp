@@ -2,13 +2,28 @@
 
 #include <pep/async/OnAsio.hpp>
 #include <pep/async/SingleWorker.hpp>
-#include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
+#include <pep/networking/HTTPMessage.hpp>
+#include <pep/networking/HttpMethod.hpp>
 
 #include <civetweb.h>
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/executor_work_guard.hpp> // for boost::asio::make_work_guard
 #include <span>
 #include <sstream>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <rxcpp/rx-lite.hpp>
 
 namespace pep {
 

@@ -1,7 +1,12 @@
 #pragma once
 
+#include <pep/auth/Signature.hpp>
 #include <pep/auth/Signed.hpp>
+#include <pep/serialization/Serialization.hpp>
+
 #include <Messages.pb.h>
+
+#include <boost/preprocessor/cat.hpp>
 
 #define PEP_DEFINE_SIGNED_SERIALIZATION(t) \
   PEP_DEFINE_PROTOCOL_BUFFER_SERIALIZATION(Signed<t>, proto::BOOST_PP_CAT(Signed, t))

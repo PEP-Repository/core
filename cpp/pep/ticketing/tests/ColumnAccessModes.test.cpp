@@ -1,9 +1,11 @@
+#include <pep/serialization/Error.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
-#include <pep/serialization/Error.hpp>
-#include <pep/ticketing/ColumnAccessModes.hpp>
-#include <pep/ticketing/TicketingMessages.hpp>
+#include <vector>
+#include <string>
 
 namespace {
 using namespace pep;
@@ -81,6 +83,17 @@ TEST(ColumnAccessModes, EffectiveModesIncludesTheImplicitlyGrantedModes) {
   // edge-cases
   EXPECT_EQ(EffectiveModes(ColumnAccessModes::None), ColumnAccessModes::None);
   EXPECT_EQ(EffectiveModes(ColumnAccessModes::All), ColumnAccessModes::All);
+}
+
+TEST(ColumnAccessModes, ImplicitlyGrantedModesListsOnlyTheImplicitlyGrantedModes) {
+  EXPECT_EQ(ImplicitlyGrantedModes(ColumnAccessModes::Read), ColumnAccessModes::ReadMeta);
+  EXPECT_EQ(ImplicitlyGrantedModes(ColumnAccessModes::WriteMeta), ColumnAccessModes::Write);
+  EXPECT_EQ(ImplicitlyGrantedModes(ColumnAccessModes::Read | ColumnAccessModes::WriteMeta),
+      ColumnAccessModes::ReadMeta | ColumnAccessModes::Write);
+  EXPECT_EQ(ImplicitlyGrantedModes(ColumnAccessModes::ReadMeta | ColumnAccessModes::Write), ColumnAccessModes::None);
+  EXPECT_EQ(ImplicitlyGrantedModes(ColumnAccessModes::Read | ColumnAccessModes::ReadMeta), ColumnAccessModes::ReadMeta)
+      << "read implies read-meta, even though read-meta is also in the given modes";
+  EXPECT_EQ(ImplicitlyGrantedModes(ColumnAccessModes::None), ColumnAccessModes::None);
 }
 
 TEST(ColumnAccessModes, ImpliesModesTestsImplicitlyGrantedModes) {

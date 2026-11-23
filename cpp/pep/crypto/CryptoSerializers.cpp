@@ -1,4 +1,10 @@
 #include <pep/crypto/CryptoSerializers.hpp>
+#include <pep/crypto/X509Certificate.hpp>
+#include <pep/serialization/Serialization.hpp>
+
+#include <Messages.pb.h> // for proto::X509Certificate, proto::X509CertificateSigningRequest
+
+#include <utility>
 
 namespace pep {
 

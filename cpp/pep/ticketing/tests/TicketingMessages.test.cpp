@@ -2,9 +2,9 @@
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
-#include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/ticketing/TicketingMessages.hpp>
 #include <pep/ticketing/tests/LocalPseudonyms.test.hpp>
+#include <pep/utils/CollectionUtils.hpp>
 
 #include <string_view>
 

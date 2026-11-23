@@ -2,6 +2,9 @@
 
 #include <pep/cli/Export.hpp>
 #include <pep/structuredoutput/Yaml.hpp>
+#include <pep/structuredoutput/Table.hpp>
+
+#include <ostream>
 
 using namespace pep::cli;
 

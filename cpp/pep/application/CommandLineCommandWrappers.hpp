@@ -1,12 +1,17 @@
 #pragma once
 
 #include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::CommandPath, commandline::Parameters
+#include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
 
 #include <cstdlib>
 #include <functional>
 #include <iostream>
+#include <memory>
+#include <optional>
 #include <queue>
 #include <string>
+#include <utility>
 
 namespace pep::commandline {
 

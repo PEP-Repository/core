@@ -7,10 +7,25 @@
 #include <pep/utils/BuildFlavor.hpp>
 #include <pep/utils/Exceptions.hpp>
 #include <pep/utils/Log.hpp>
-#include <pep/utils/MapUtils.hpp>
 #include <pep/utils/Random.hpp>
 #include <pep/utils/Raw.hpp>
 #include <pep/morphing/MorphingSerializers.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/storagefacility/EntryContent.hpp>
+#include <pep/storagefacility/EntryName.hpp>
+#include <pep/storagefacility/PageStore.hpp>
+#include <pep/storagefacility/PersistedEntryProperties.hpp>
+#include <pep/utils/CheckedPath.hpp>
+#include <pep/utils/PropertyBasedContainer.hpp>
+#include <pep/utils/Timestamp.hpp>
+#include <pep/async/IoContext_fwd.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
+#include <pep/utils/Generator.hpp>
+#include <pep/storagefacility/PrefixedStrings.hpp>
+#include <pep/utils/TypeTraits.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
@@ -19,6 +34,22 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <cassert>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <ios>
+#include <iterator> // IWYU pragma: keep (used in assert)
+#include <map>
+#include <memory>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+#include <format>
+
+#include <rxcpp/rx-lite.hpp>
 
 using namespace std::chrono;
 using namespace std::literals;
@@ -277,12 +308,16 @@ PropertyBasedContainer<const FileStore::Participant*, &FileStore::Participant::n
   return result;
 }
 
-std::set<std::string> FileStore::pagePaths() const {
-  std::set<std::string> result;
+Generator<PrefixedStringsEntry> FileStore::pagePaths() const {
+  // Page paths are "<participant>/<column>/<page>": produce participant and column as (shared) prefixes
+  static_assert(DerivedFromSpecialization<decltype(participants_), std::set>, "Iterators need to remain valid when participants are added");
   for (const auto& participant : participants_) {
-    InsertNonDuplicates(result, participant->pagePaths());
+    co_yield PushPrefix{.prefix = std::format("{}{}", participant->name(), EntryName::Delimiter)};
+    for (auto&& entry : participant->pagePaths()) {
+      co_yield std::move(entry);
+    }
+    co_yield PopPrefix{};
   }
-  return result;
 }
 
 void FileStore::persistPendingRedactions() {
@@ -358,11 +393,17 @@ std::shared_ptr<FileStore::Entry> FileStore::Cell::lookup(Timestamp validAt) {
   return result;
 }
 
-std::set<std::string> FileStore::Cell::pagePaths() const {
-  if (latest_ == nullptr) { // E.g. if a store was cancelled
-    return {};
+Generator<PrefixedStringsEntry> FileStore::Cell::pagePaths() const {
+  // Keep the entry alive while we iterate over its pages, even if it's superseded (and discarded) in the meantime
+  auto latest = latest_;
+  if (latest == nullptr) { // E.g. if a store was canceled
+    co_return;
   }
-  return latest_->pagePaths();
+  // These are unique, because page names within a version are unique,
+  // and we're only including a single version.
+  for (auto&& path : latest->pageNames()) {
+    co_yield PrefixedString{.string = std::move(path)};
+  }
 }
 
 void FileStore::Cell::markRedacted(Timestamp redactedAt, const VersionTimestamps& cellVersions) noexcept {
@@ -472,20 +513,24 @@ std::optional<Timestamp> FileStore::EntryBase::originalPayloadEntryTimestamp() c
   return content_->getOriginalPayloadEntryTimestamp();
 }
 
-std::set<std::string> FileStore::EntryBase::getPagePaths() const {
+Generator<std::string> FileStore::EntryBase::getPageNames() const {
   if (content_ == nullptr) {
-    return {};
+    co_return;
   }
   auto payload = content_->payload();
   assert(payload != nullptr);
-  return payload->getPagePaths(cell_.entryName());
+  for (auto&& path : payload->getPageNames()) {
+    co_yield std::move(path);
+  }
 }
 
-std::set<std::string> FileStore::Entry::pagePaths() const {
+Generator<std::string> FileStore::Entry::pageNames() const {
   if (this->getRedactedAt()) {
-    return {};
+    co_return;
   }
-  return this->getPagePaths();
+  for (auto&& name : this->getPageNames()) {
+    co_yield name;
+  }
 }
 
 messaging::MessageSequence FileStore::Entry::readPage(size_t index) {
@@ -559,19 +604,19 @@ void FileStore::Entry::save() const {
 
 void FileStore::EntryChange::commit(Timestamp availableFrom) && {
   if (!valid_)
-    throw std::runtime_error("FileStore: change to entry already committed/cancelled: " + this->getName().string());
+    throw std::runtime_error(std::format("FileStore: change to entry already committed/cancelled: {}", this->getName()));
   if (availableFrom <= lastEntryValidFrom_)
-    throw std::invalid_argument("FileStore: newer item is already available, can not store " + this->getName().string());
+    throw std::invalid_argument(std::format("FileStore: newer item is already available, can not store {}", this->getName()));
   auto newestEntry = this->getFileStore().lookup(this->getName());
   if (newestEntry && newestEntry->getValidFrom() > lastEntryValidFrom_)
-    throw std::runtime_error("FileStore: concurrent modification to same entry detected: " + this->getName().string());
+    throw std::runtime_error(std::format("FileStore: concurrent modification to same entry detected: {}", this->getName()));
 #if PEP_BUILD_HAS_DEBUG_FLAVOR()
   // this should not happen due to combination of above conditions:
   // - check that the availableFrom > last item (on time of modify() method)
   // - check that last item on time of modify() is still the last item at time of commit()
   if (this->getCell().versions().contains(availableFrom)) {
-    auto msg = "Cannot store duplicate entry with name " + this->getName().string()
-        + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(availableFrom));
+    auto msg = std::format("Cannot store duplicate entry with name {} and timestamp {}",
+      this->getName(), TicksSinceEpoch<milliseconds>(availableFrom));
     PEP_LOG(LogTag, Severity::Error) << msg;
     throw std::runtime_error(msg);
   }
@@ -596,7 +641,7 @@ void FileStore::EntryChange::commit(Timestamp availableFrom) && {
 
 void FileStore::EntryChange::cancel() && {
   if (!valid_)
-    throw std::invalid_argument("FileStore: change to entry already committed/cancelled: " + this->getName().string());
+    throw std::invalid_argument(std::format("FileStore: change to entry already committed/cancelled: {}", this->getName()));
 
   // FIXME: remove new pages
 
@@ -612,8 +657,8 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
   auto timestampStr = std::to_string(TicksSinceEpoch<milliseconds>(timestamp));
   auto result = TryLoad(cell, CheckedFileName(timestampStr + FileExtension));
   if (result == nullptr) {
-    throw std::runtime_error("Could not load entry for cell " + cell.entryName().string()
-        + " at timestamp " + timestampStr);
+    throw std::runtime_error(std::format("Could not load entry for cell {} at timestamp {}",
+      cell.entryName().string(), timestampStr));
   }
   return result;
 }
@@ -775,8 +820,8 @@ FileStore::Metrics FileStore::Cell::getMetrics() const {
 void FileStore::Cell::addEntry(std::shared_ptr<Entry> entry) {
   auto emplaced = versions_.emplace(CellVersion::FromEntry(*entry)).second;
   if (!emplaced) {
-    auto msg = "Couldn't overwrite existing entry with name " + entry->getName().string()
-        + " and timestamp " + std::to_string(TicksSinceEpoch<milliseconds>(entry->getValidFrom()));
+    auto msg = std::format("Couldn't overwrite existing entry with name {} and timestamp {}",
+      entry->getName(), TicksSinceEpoch<milliseconds>(entry->getValidFrom()));
     PEP_LOG(LogTag, Severity::Error) << msg;
     throw std::runtime_error(msg);
   }
@@ -835,12 +880,15 @@ std::shared_ptr<FileStore::Entry> FileStore::Participant::lookup(const std::stri
   return cell->lookup(validAt);
 }
 
-std::set<std::string> FileStore::Participant::pagePaths() const {
-  std::set<std::string> result;
+Generator<PrefixedStringsEntry> FileStore::Participant::pagePaths() const {
+  static_assert(DerivedFromSpecialization<decltype(cells_), std::set>, "Iterators need to remain valid when cells are added");
   for (const auto& cell : cells_) {
-    InsertNonDuplicates(result, cell->pagePaths());
+    co_yield PushPrefix{.prefix = std::format("{}{}", cell->columnName(), EntryName::Delimiter)};
+    for (auto&& entry : cell->pagePaths()) {
+      co_yield std::move(entry);
+    }
+    co_yield PopPrefix{};
   }
-  return result;
 }
 
 void FileStore::Participant::markRedacted(Timestamp redactedAt, const VersionTimestampsByColumn& vsByColumn) noexcept {

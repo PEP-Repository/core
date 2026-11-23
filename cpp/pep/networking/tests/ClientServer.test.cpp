@@ -1,9 +1,21 @@
 #include <pep/networking/tests/TestServerFactory.test.hpp>
 #include <pep/utils/Exceptions.hpp>
+#include <pep/networking/Client.hpp>
+#include <pep/networking/Connection.hpp>
+#include <pep/networking/Server.hpp>
+#include <pep/networking/TcpBasedProtocol.hpp>
+#include <pep/networking/Transport.hpp> // for networking::SizedTransfer
+#include <pep/utils/Event.hpp>
+#include <pep/utils/Shared.hpp>
 
 #include <gtest/gtest.h>
 
 #include <numeric>
+#include <cstddef>
+#include <memory>
+#include <string>
+
+#include <boost/asio/io_context.hpp>
 
 namespace {
 

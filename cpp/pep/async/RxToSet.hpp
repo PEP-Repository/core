@@ -1,11 +1,12 @@
 #pragma once
 
-#include <memory>
-#include <set>
-#include <unordered_set>
-
 #include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-reduce.hpp>
+
+#include <memory>
+#include <set>
+#include <stdexcept>
+#include <unordered_set>
 
 namespace pep {
 namespace detail {

@@ -7,8 +7,9 @@
 
 #include <emscripten/em_js.h>
 #include <emscripten/val.h>
-
 #include <rxcpp/rx-lite.hpp>
+#include <emscripten/wire.h> // for emscripten::typed_memory_view
+
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 
@@ -23,6 +24,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <utility>
 
 using namespace emscripten;
 using namespace pep::weblib;

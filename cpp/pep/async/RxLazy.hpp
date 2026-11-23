@@ -3,8 +3,6 @@
 
 #include <rxcpp/rx-lite.hpp>
 
-#include <functional>
-
 namespace pep
 {
   // Given a function that creates an observable<T>, the 'creator',

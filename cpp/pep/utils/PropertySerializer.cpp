@@ -1,5 +1,8 @@
 #include <pep/utils/PropertySerializer.hpp>
 
+#include <filesystem>
+#include <string>
+
 using boost::property_tree::ptree;
 
 namespace pep {

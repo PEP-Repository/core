@@ -2,7 +2,10 @@
 
 #include <pep/crypto/Encrypted.hpp>
 #include <pep/crypto/X509Certificate.hpp>
+
 #include <Messages.pb.h>
+
+#include <boost/preprocessor/cat.hpp>
 
 #define PEP_DEFINE_ENCRYPTED_SERIALIZATION(t) \
   PEP_DEFINE_PROTOCOL_BUFFER_SERIALIZATION(Encrypted<t>, proto::BOOST_PP_CAT(Encrypted, t))

@@ -1,6 +1,12 @@
 #pragma once
 
+#include <pep/castor/CastorConnection.hpp>
 #include <pep/castor/CastorObject.hpp>
+#include <pep/utils/Shared.hpp>
+
+#include <memory>
+#include <optional>
+#include <string>
 
 namespace pep {
 namespace castor {

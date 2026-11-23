@@ -1,6 +1,14 @@
 #include <pep/structure/StudyContext.hpp>
 
 #include <pep/utils/Compare.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
+
+#include <cassert>
+#include <cstdint>
+#include <functional>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp>

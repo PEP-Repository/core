@@ -1,7 +1,11 @@
 #pragma once
 
+#include <cstddef>
 #include <filesystem>
 #include <set>
+#include <string>
+#include <string_view>
+#include <utility>
 
 namespace pep::filesystem {
 /// Combines std::filesystem with our own filesystem extensions.

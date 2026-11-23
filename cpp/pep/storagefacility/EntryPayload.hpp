@@ -1,12 +1,21 @@
 #pragma once
 
-#include <pep/storagefacility/EntryName.hpp>
-#include <pep/storagefacility/PersistedEntryProperties.hpp>
-#include <pep/storagefacility/PageStore.hpp>
 #include <pep/messaging/MessageSequence.hpp>
+#include <pep/storagefacility/EntryName.hpp>
+#include <pep/storagefacility/PageStore.hpp>
+#include <pep/storagefacility/PersistedEntryProperties.hpp>
+#include <pep/utils/Generator.hpp>
 
-#include <typeinfo>
 #include <xxhash.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <typeinfo> // IWYU pragma: keep (required for typeid)
+#include <utility>
+#include <vector>
 
 namespace pep {
 
@@ -47,7 +56,8 @@ public:
   virtual size_t pageCount() const noexcept = 0;
   virtual uint64_t size() const noexcept = 0;
   virtual std::optional<uint64_t> pageSize() const = 0;
-  virtual std::set<std::string> getPagePaths(const EntryName& name) const = 0;
+  /// \remark Callers must keep this instance alive while they iterate over the result.
+  virtual Generator<std::string> getPageNames() const = 0;
   virtual messaging::MessageSequence readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const = 0;
 
   static void Save(std::shared_ptr<EntryPayload> payload, PersistedEntryProperties& properties, std::vector<PageId>& pages);
@@ -74,7 +84,8 @@ public:
   size_t pageCount() const noexcept override { return 1U; }
   uint64_t size() const noexcept override { return payloadSize_; }
   std::optional<uint64_t> pageSize() const override { return this->size(); }
-  std::set<std::string> getPagePaths(const EntryName& /* unused */) const override { return {}; }
+  /// Empty: payload was stored inline.
+  Generator<std::string> getPageNames() const override { co_return; }
 
   messaging::MessageSequence readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const override;
   std::string getEtag() const;
@@ -103,7 +114,7 @@ public:
   size_t pageCount() const noexcept override { return pages_.size(); }
   uint64_t size() const noexcept override { return payloadSize_; }
   std::optional<uint64_t> pageSize() const override;
-  std::set<std::string> getPagePaths(const EntryName& name) const override;
+  Generator<std::string> getPageNames() const override;
 
   messaging::MessageSequence readPage(std::shared_ptr<PageStore> pageStore, const EntryName& name, size_t index) const override;
 

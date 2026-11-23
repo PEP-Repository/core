@@ -1,4 +1,5 @@
 #include <pep/assessor/Branding.PropertySerializer.hpp>
+#include <pep/assessor/Branding.hpp>
 
 namespace pep {
 

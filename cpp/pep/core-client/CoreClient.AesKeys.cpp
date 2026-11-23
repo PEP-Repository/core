@@ -5,8 +5,33 @@
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/WaitGroup.hpp>
 #include <pep/utils/OpenSSLHasher.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for EncryptionKeyRequest
+#include <pep/async/CreateObservable.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/async/OnAsio.hpp>
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for EncryptedKey
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataEntriesRequest2
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <exception>
+#include <memory>
+#include <optional>
+#include <span>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace pep {
 

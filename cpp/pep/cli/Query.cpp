@@ -4,15 +4,38 @@
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/core-client/CoreClient.hpp>
+#include <pep/storagefacility/PrefixedStrings.hpp>
 #include <pep/utils/Math.hpp>
 #include <pep/utils/MiscUtil.hpp>
 
-#include <ranges>
 #include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for ColumnAccess, ParticipantGroupAccess
+#include <pep/accessmanager/AmaMessages.hpp> // for AmaQuery, AmaQueryResponse, AmaQRColumnGroup
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/CliApplication.hpp>
+#include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataSizeRequest
+#include <pep/ticketing/SubjectAccessModes.hpp>
+#include <pep/utils/EnumUtils.hpp> // for HasFlags
+#include <pep/utils/Timestamp.hpp>
+
+#include <algorithm>
+#include <cstdint>
+#include <cstdlib>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 using namespace pep::cli;
 
@@ -316,11 +339,8 @@ private:
     int execute() override {
       return this->executeEventLoopFor(true, [](std::shared_ptr<pep::CoreClient> client) {
         return client->getStorageFacilityProxy()->requestPagePaths()
-          .map([](const pep::PagePathResponse& response) {
-              for (const auto& path : response.paths) {
-                std::cout << path << '\n';
-              }
-              std::cout.flush();
+          .map([](pep::PagePathResponse response) {
+              pep::WritePrefixedStrings(std::cout, std::move(response.paths));
               return pep::FakeVoid();
             });
         });

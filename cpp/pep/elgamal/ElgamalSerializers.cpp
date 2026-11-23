@@ -1,9 +1,15 @@
 #include <pep/elgamal/ElgamalSerializers.hpp>
 
 #include <pep/serialization/Serialization.hpp>
+#include <pep/elgamal/CurvePoint.hpp>
+#include <pep/elgamal/CurveScalar.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp>
+#include <pep/serialization/SerializeException.hpp>
 
 #include <stdexcept>
 #include <utility>
+
+#include <Messages.pb.h> // for proto::CurveScalar
 
 namespace pep {
 

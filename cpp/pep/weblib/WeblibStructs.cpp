@@ -1,11 +1,10 @@
 #include <pep/weblib/WeblibStructs.hpp>
+#include <pep/core-client/CoreClient.hpp> // IWYU pragma: keep (for member access on EnumerateResult)
 
-#include <pep/core-client/CoreClient.hpp>
 #include <pep/utils/CollectionUtils.hpp>
-#include <pep/utils/MiscUtil.hpp>
 #include <pep/weblib/EmscriptenMapBinding.hpp>
 #include <pep/weblib/EmscriptenVectorBinding.hpp>
-#include <pep/weblib/ObservableStream.hpp>
+#include <pep/utils/TypeTraits.hpp> // for FieldAsConst
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/preprocessor/stringize.hpp>
@@ -13,6 +12,17 @@
 #include <boost/preprocessor/variadic/to_seq.hpp>
 
 #include <emscripten/bind.h>
+#include <emscripten/val.h>
+#include <emscripten/wire.h> // for emscripten::nonnull
+
+#include <cassert>
+#include <cstdint>
+#include <optional>
+#include <ranges>
+#include <span>
+#include <string>
+#include <unordered_map>
+#include <utility>
 
 using namespace emscripten;
 using namespace pep;
@@ -45,6 +55,11 @@ EMSCRIPTEN_BINDINGS(optionals) {
   register_optional<decltype(UserGroupMembership::expiration)::value_type>();
   register_optional<decltype(UserGroupInfo::maxAuthValiditySeconds)::value_type>();
   register_optional<decltype(ListColumnsQuery::includeImplicitlyGranted)::value_type>();
+  register_optional<decltype(AccessManagerFilter::pointInTime)::value_type>();
+  register_optional<decltype(AccessManagerFilter::column)::value_type>();
+  register_optional<decltype(AccessManagerFilter::columnGroup)::value_type>();
+  register_optional<decltype(AccessManagerFilter::subjectGroup)::value_type>();
+  register_optional<decltype(AccessManagerFilter::userGroup)::value_type>();
 }
 
 PEP_BINDINGS(ListColumnsQuery,
@@ -67,7 +82,7 @@ PEP_BINDINGS(ColumnGroupAccessModes,
   writeMeta
 )
 
-PEP_BINDINGS(ColumnGroup,
+PEP_BINDINGS(AccessibleColumnGroup,
   name,
   modes,
   columns
@@ -126,6 +141,40 @@ PEP_BINDINGS(UserGroupInfo,
 PEP_BINDINGS(UserQueryResult,
   users,
   userGroups
+)
+
+PEP_BINDINGS(ColumnGroup,
+  name,
+  columns
+)
+
+PEP_BINDINGS(ColumnGroupAccessRuleInfo,
+  columnGroup,
+  userGroup,
+  modes,
+  impliedOnlyModes
+)
+
+PEP_BINDINGS(SubjectGroupAccessRuleInfo,
+  subjectGroup,
+  userGroup,
+  modes
+)
+
+PEP_BINDINGS(AccessManagerFilter,
+  pointInTime,
+  column,
+  columnGroup,
+  subjectGroup,
+  userGroup
+)
+
+PEP_BINDINGS(AccessManagerState,
+  columns,
+  columnGroups,
+  columnGroupAccessRules,
+  subjectGroups,
+  subjectGroupAccessRules
 )
 
 std::unordered_map<std::string, std::optional<val>> CellEntry::partialMetadataView() const {

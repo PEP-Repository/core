@@ -2,8 +2,10 @@
 
 #include <emscripten/bind.h>
 #include <emscripten/threading.h>
+#include <emscripten/val.h>
 
 #include <cassert>
+#include <utility>
 
 namespace {
 void PromiseConstructorAssertions(const emscripten::val& jsPromise) {

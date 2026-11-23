@@ -5,6 +5,7 @@
     "moduleResolution": "NodeNext",
     "allowJs": true,
     "checkJs": true,
+    "types": ["node"],
     // Type checking
     "strict": true,
     "strictNullChecks": false,

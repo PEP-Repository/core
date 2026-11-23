@@ -2,16 +2,30 @@
 
 #include <pep/async/ExponentialBackoff.hpp>
 #include <pep/async/IoContext_fwd.hpp>
-#include <pep/utils/CheckedPath.hpp>
-#include <pep/utils/Shared.hpp>
+#include <pep/messaging/MessageSequence.hpp>
+#include <pep/morphing/Metadata.hpp>
 #include <pep/server/ChecksumChain.hpp>
 #include <pep/storagefacility/EntryContent.hpp>
+#include <pep/storagefacility/EntryName.hpp>
+#include <pep/storagefacility/EntryPayload.hpp>
+#include <pep/storagefacility/PageStore.hpp>
+#include <pep/storagefacility/PrefixedStrings.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
-#include <pep/messaging/MessageSequence.hpp>
+#include <pep/utils/CheckedPath.hpp>
+#include <pep/utils/Configuration_fwd.hpp>
+#include <pep/utils/Generator.hpp>
+#include <pep/utils/PropertyBasedContainer.hpp>
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp>
 
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
-#include <string>
+#include <map>
 #include <memory>
+#include <set>
+#include <string>
+#include <utility>
 
 namespace pep {
 
@@ -50,7 +64,8 @@ public:
     EntryBase(Cell& cell, uint64_t checksumSubstitute, std::unique_ptr<EntryContent> content);
 
     void setContent(std::unique_ptr<EntryContent>&& content) { content_ = std::move(content); }
-    std::set<std::string> getPagePaths() const;
+    /// \remark Callers must keep this instance alive while they iterate over the result.
+    Generator<std::string> getPageNames() const;
 
     // Allow move-construction (when EntryChange::commit converts the EntryChange into an Entry)...
     EntryBase(EntryBase&&) = default;
@@ -127,8 +142,9 @@ public:
     std::optional<Timestamp> getRedactedAt() const { return redactedAt_; }
     void markRedacted(Timestamp at) noexcept; // in memory
     void throwErrorIfRedacted(const std::string& logContext) const;
-    std::set<std::string> pagePaths() const;
 
+    /// \remark Callers must keep this instance alive while they iterate over the result.
+    Generator<std::string> pageNames() const;
     messaging::MessageSequence readPage(size_t index);
 
     void save() const;
@@ -171,7 +187,8 @@ public:
     void addEntry(std::shared_ptr<Entry> entry);
     std::shared_ptr<Entry> lookup(Timestamp validAt = Timestamp::max()); // (Absent or) max value indicates "latest version"
 
-    std::set<std::string> pagePaths() const; // for latest version
+    /// Get page paths for latest version. Does not include participant or column prefixes.
+    Generator<PrefixedStringsEntry> pagePaths() const;
 
     using VersionTimestamps = std::set<Timestamp>;
     void markRedacted(Timestamp redactedAt, const VersionTimestamps& cellVersions) noexcept; // in memory
@@ -202,7 +219,8 @@ public:
     Metrics getMetrics(const std::set<std::string>& columns) const;
     std::shared_ptr<Entry> lookup(const std::string& column, Timestamp validAt = Timestamp::max());
 
-    std::set<std::string> pagePaths() const; // for latest version
+    /// Get page paths for latest cell versions. Does not include participant prefix.
+    Generator<PrefixedStringsEntry> pagePaths() const;
 
     using VersionTimestampsByColumn = std::unordered_map<std::string, Cell::VersionTimestamps>;
     void markRedacted(Timestamp redactedAt, const VersionTimestampsByColumn& vsByColumn) noexcept; // in memory
@@ -274,7 +292,12 @@ public:
     return path_;
   }
 
-  std::set<std::string> pagePaths() const; // for latest version
+  /// \brief Produces the paths of the (latest versions of the) store's pages, as (single) PrefixedString entries
+  ///        under participant and column prefixes.
+  /// \remark Callers must keep this instance alive while they iterate over the result. Iteration may be interleaved with
+  ///         (other) operations on the store, as long as they're performed on the same thread: participants and cells
+  ///         that are added in the meantime may or may not be included in the results.
+  Generator<PrefixedStringsEntry> pagePaths() const;
 
   void applyRedactionCycle(const RedactionCycle& cycle); // synchronously in memory and asynchronously on disk
   void persistPendingRedactions(); // asynchronously on disk

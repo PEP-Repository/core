@@ -4,12 +4,36 @@
 #include <pep/accessmanager/Storage.hpp>
 #include <pep/accessmanager/tests/TestSuiteGlobalConfiguration.hpp>
 #include <pep/structure/StructureSerializers.hpp>
-#include <pep/utils/File.hpp>
+#include <pep/accessmanager/AccessManager.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for StructureMetadataKey, StructureMetadataType
+#include <pep/accessmanager/Records.hpp> // for StructureMetadataFilter
+#include <pep/accessmanager/UserIdFlags.hpp>
+#include <pep/accessmanager/UserMessages.hpp> // for UserQueryResponse, QRUser
+#include <pep/auth/UserGroup.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPublicKey
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/server/ChecksumChain.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/utils/Timestamp.hpp>
 
-#include <chrono>
 #include <filesystem>
 #include <optional>
 #include <thread>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <initializer_list>
+#include <map>
+#include <memory>
+#include <ranges>
+#include <stdexcept>
+#include <string>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 using namespace pep;
 using namespace std::literals;

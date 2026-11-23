@@ -1,5 +1,11 @@
 #include <pep/key-components/KeyComponentSerializers.hpp>
 #include <pep/elgamal/ElgamalSerializers.hpp>
+#include <pep/key-components/KeyComponentMessages.hpp> // for KeyComponentResponse
+#include <pep/serialization/Serialization.hpp>
+
+#include <Messages.pb.h> // for proto::KeyComponentResponse
+
+#include <utility>
 
 namespace pep {
 

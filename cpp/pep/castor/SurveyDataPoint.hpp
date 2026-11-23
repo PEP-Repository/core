@@ -1,7 +1,15 @@
 #pragma once
 
+#include <pep/castor/CastorConnection.hpp> // for castor::JsonPtr
+#include <pep/castor/CastorObject.hpp>
 #include <pep/castor/DataPoint.hpp>
+#include <pep/castor/Participant.hpp>
+#include <pep/castor/Study.hpp>
 #include <pep/castor/SurveyPackageInstance.hpp>
+#include <pep/utils/Shared.hpp>
+
+#include <memory>
+#include <string>
 
 namespace pep {
 namespace castor {

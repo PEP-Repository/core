@@ -1,5 +1,8 @@
 #include <pep/utils/ApplicationMetrics.hpp>
+
 #include <gtest/gtest.h>
+
+#include <cstdint>
 
 namespace {
 

@@ -1,9 +1,13 @@
-#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <pep/structuredoutput/Json.hpp>
+#include <pep/structuredoutput/Common.hpp> // for structuredOutput::JsonConfig, structuredOutput::WhitespaceFormat
+#include <pep/structuredoutput/Table.hpp>
+#include <pep/structuredoutput/Tree.hpp>
 
 #include <sstream>
+#include <string>
+#include <utility>
 
 namespace {
 namespace json_out = pep::structuredOutput::json;

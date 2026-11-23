@@ -1,7 +1,9 @@
 #pragma once
 
 #include <pep/cli/DownloadMetadata.hpp>
+#include <pep/elgamal/ElgamalEncryption.hpp>
 #include <pep/utils/PropertySerializer.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 template <>
 class pep::PropertySerializer<pep::Timestamp> : public PropertySerializerByValue<pep::Timestamp> {

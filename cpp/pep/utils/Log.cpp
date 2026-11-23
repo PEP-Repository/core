@@ -1,4 +1,3 @@
-#include <pep/utils/EnumUtils.hpp>
 #include <pep/utils/LocalSettings.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/ThreadUtil.hpp>
@@ -8,21 +7,57 @@
 #include <cctype>
 #include <cstdint>
 #include <ranges>
-#include <unordered_map>
 #include <utility>
+#include <algorithm>
+#include <exception>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #include <boost/log/utility/setup/console.hpp>
 #include <boost/log/utility/setup/file.hpp>
-#include <boost/log/sinks/event_log_backend.hpp>
 #include <boost/log/sinks/syslog_backend.hpp>
-#include <boost/format.hpp>
-#include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_io.hpp>
-#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/random_generator.hpp> // IWYU pragma: keep (not detected by include-cleaner)
 #include <boost/log/sources/global_logger_storage.hpp>
-#include <boost/log/support/date_time.hpp>
-#include <boost/log/attributes.hpp>
-#include <boost/log/expressions.hpp>
+#include <boost/log/support/date_time.hpp> // IWYU pragma: keep (for formatting boost::posix_time::ptime)
+#include <boost/log/attributes.hpp> // IWYU pragma: keep (not detected by include-cleaner)
+#include <boost/log/expressions.hpp> // IWYU pragma: keep (operators for formatting expressions)
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/log/attributes/function.hpp>
+#include <boost/log/expressions/attr.hpp>
+#include <boost/log/expressions/formatters/date_time.hpp>
+#include <boost/log/expressions/formatters/format.hpp>
+#include <boost/log/expressions/formatters/stream.hpp>
+#include <boost/log/expressions/keyword.hpp>
+#include <boost/log/expressions/message.hpp>
+#include <boost/log/keywords/auto_flush.hpp>
+#include <boost/log/keywords/facility.hpp>
+#include <boost/log/keywords/format.hpp>
+#include <boost/log/keywords/open_mode.hpp>
+#include <boost/log/keywords/rotation_size.hpp>
+#include <boost/log/keywords/target.hpp>
+#include <boost/log/keywords/use_impl.hpp>
+#include <boost/log/sinks/sync_frontend.hpp> // for boost::log::sinks::synchronous_sink
+#include <boost/log/sinks/syslog_constants.hpp> // for boost::log::sinks::syslog::user
+#include <boost/smart_ptr/make_shared_object.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
+
+#if defined(_WIN32) && !defined(__MINGW32__)
+#include <boost/log/sinks/event_log_backend.hpp>
+#endif
+
+#ifdef __EMSCRIPTEN__
+#include <cassert>
+
+#include <boost/log/core/record_view.hpp>
+#include <boost/log/sinks/basic_sink_backend.hpp> // for boost::log::sinks::basic_formatted_sink_backend
+#include <boost/log/sinks/frontend_requirements.hpp> // for boost::log::sinks::concurrent_feeding
+#endif
 
 #if !defined(_WIN32) && !defined(BOOST_LOG_USE_NATIVE_SYSLOG)
 // we have this check to make sure that logging is properly configured and we don't lose logging in production

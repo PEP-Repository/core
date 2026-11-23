@@ -5,8 +5,24 @@
 #include <pep/async/RxSharedPtrCast.hpp>
 #include <pep/core-client/CoreClient.hpp>
 #include <pep/pullcastor/StoredData.hpp>
+#include <pep/async/FakeVoid.hpp>
+#include <pep/morphing/Metadata.hpp>
+#include <pep/pullcastor/ColumnBoundParticipantId.hpp>
+#include <pep/pullcastor/PepParticipant.hpp>
+#include <pep/pullcastor/PullCastorUtils.hpp> // for PEP_PULLCASTOR_LOG
+#include <pep/pullcastor/StorableContent.hpp> // for castor::StorableCellContent
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <exception>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace pep {
 namespace castor {

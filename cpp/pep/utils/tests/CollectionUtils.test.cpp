@@ -1,5 +1,13 @@
 #include <pep/utils/CollectionUtils.hpp>
+
 #include <gtest/gtest.h>
+
+#include <array>
+#include <cstddef>
+#include <iterator>
+#include <ranges>
+#include <string>
+#include <vector>
 
 namespace {
 
@@ -92,6 +100,17 @@ TEST(CollectionUtils_FillToCapacity, OffsetLimited) {
   std::vector<std::string> expected{"C", "D" };
   ASSERT_EQ(dest, expected);
   ASSERT_EQ(length, 2);
+}
+
+TEST(CollectionUtils_Generate, InvokesGeneratorForEveryElement) {
+  auto nextInt = [calls = 0]() mutable { return calls++; };
+  EXPECT_EQ(pep::Generate<4>(nextInt), (std::array{0, 1, 2, 3}));
+}
+
+TEST(CollectionUtils_Generate, ZeroGenerateDoesNotInvokeGenerator) {
+  auto nextInt = [calls = 0]() mutable { return calls++; };
+  EXPECT_EQ(pep::Generate<0>(nextInt), (std::array<int, 0>{}));
+  EXPECT_EQ(nextInt(), 0);
 }
 
 }

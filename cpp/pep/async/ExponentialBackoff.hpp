@@ -1,7 +1,11 @@
 #pragma once
 
 #include <pep/async/IoContext_fwd.hpp>
+
 #include <boost/asio/steady_timer.hpp>
+
+#include <functional>
+#include <optional>
 
 namespace pep {
 

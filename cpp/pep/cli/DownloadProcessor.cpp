@@ -5,13 +5,39 @@
 #include <pep/async/RxInstead.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/async/RxToVectorOfVectors.hpp>
+#include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
+#include <pep/async/FakeVoid.hpp>
+#include <pep/cli/DownloadDirectory.hpp>
+#include <pep/cli/DownloadMetadata.hpp> // for cli::RecordDescriptor, cli::ParticipantIdentifier
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for SignedTicket2
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Progress.hpp>
+#include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp>
+#include <pep/utils/VectorOfVectors.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <ranges>
+#include <algorithm>
+#include <cassert>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <format>
+#include <memory>
+#include <optional>
+#include <queue>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 using namespace pep;
 using namespace pep::cli;

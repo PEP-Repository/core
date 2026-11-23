@@ -217,11 +217,48 @@ restart_servers() {
   if [ "$LOCAL" = true ]; then
     trace cd "$DATA_DIR"
     trace kill "$PEP_SERVERS_PID"
+    # Wait for the old servers to exit, so that the new ones don't e.g. find their ports still in use. Since we killed
+    # them, they exit with a nonzero exit code.
+    trace wait "$PEP_SERVERS_PID" || true
     trace start_servers_locally
   else
     trace docker restart pepservertest
   fi
-  trace sleep 10
+  wait_for_servers
+}
+
+# Waits until all PEP servers respond. Instead of sleeping for a fixed time, which may be too short on a slow machine,
+# we ping each server: pepcli keeps trying to connect until the server is up (or until the pepcli timeout expires).
+wait_for_servers() {
+  local server
+  for server in accessmanager authserver keyserver registrationserver storagefacility transcryptor; do
+    pepcli ping --server "$server" >/dev/null
+  done
+}
+
+# Waits until the S3 hosts that s3proxy.sh starts on the specified Docker network respond to (unauthenticated) requests.
+# Instead of sleeping for a fixed time, which may be too short on a slow machine, we poll from a container on the same
+# network, so this also works when the Docker host is not the local machine.
+wait_for_s3proxy() {
+  local -r network="$1"
+  local -r timeout_seconds=120
+  # s3proxyproxy responds with a 5xx status code until the s3proxy instance behind it is up. Any other status code
+  # (e.g. 403 for our unauthenticated request) means that the S3 host is up.
+  # shellcheck disable=SC2016 # Expanded by the shell in the container
+  trace docker run --rm --net "$network" --entrypoint sh curlimages/curl -c '
+    timeout_seconds="$1"
+    shift
+    start="$(date +%s)"
+    for url in "$@"; do
+      until status="$(curl --silent --insecure --max-time 10 --output /dev/null --write-out "%{http_code}" "$url")" &&
+          [ "$status" -ge 100 ] && [ "$status" -lt 500 ]; do
+        if [ "$(( $(date +%s) - start ))" -ge "$timeout_seconds" ]; then
+          echo "$url did not become available within $timeout_seconds seconds" >&2
+          exit 1
+        fi
+        sleep 0.2
+      done
+    done' wait_for_s3proxy "$timeout_seconds" https://s3proxyproxy:9000/ http://s3proxy2/
 }
 
 PEPCLI_TIMEOUT=60s

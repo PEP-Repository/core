@@ -1,16 +1,36 @@
 #include <pep/async/RxIterate.hpp>
-#include <pep/application/Application.hpp>
 #include <pep/core-client/CoreClient.hpp>
-#include <pep/utils/Exceptions.hpp>
 #include <pep/content/ParticipantDeviceHistory.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
+#include <pep/cli/CliApplication.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
+#include <pep/utils/Log.hpp> // for Severity
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/operators/rx-reduce.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <cassert>
+#include <cstdint>
+#include <cstdlib>
+#include <exception>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <ranges>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 using namespace pep::cli;
 

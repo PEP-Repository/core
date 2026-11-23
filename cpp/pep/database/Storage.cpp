@@ -1,6 +1,10 @@
 #include <pep/database/Storage.hpp>
 
 #include <format>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
 
 namespace {
 std::string GenerateSchemaErrorMessage(std::string_view table, pep::database::SchemaError::Reason reason) {

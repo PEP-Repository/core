@@ -1,6 +1,9 @@
 #include <pep/utils/Mod97.hpp>
 
 #include <cctype>
+#include <cstddef>
+#include <stdexcept>
+#include <string>
 
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/erase.hpp>

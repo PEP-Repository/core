@@ -1,8 +1,13 @@
 #include <pep/registrationserver/RegistrationServerSerializers.hpp>
 
 #include <pep/elgamal/ElgamalSerializers.hpp>
+#include <pep/registrationserver/RegistrationServerMessages.hpp> // for PEPIdRegistrationResponse
+#include <pep/serialization/Serialization.hpp>
 
 #include <ranges>
+#include <utility>
+
+#include <Messages.pb.h> // for proto::PEPIdRegistrationResponse
 
 using namespace std::ranges;
 

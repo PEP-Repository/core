@@ -1,10 +1,12 @@
 #include <gtest/gtest.h>
 
 #include <pep/structure/StudyContext.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
 
 #include <algorithm>
 #include <stdexcept>
 #include <vector>
+#include <optional>
 
 namespace {
 

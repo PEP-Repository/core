@@ -2,10 +2,23 @@
 #include <pep/ticketing/TicketingSerializers.hpp>
 #include <pep/utils/MapUtils.hpp>
 #include <pep/utils/Math.hpp>
+#include <pep/auth/Signature.hpp>
+#include <pep/auth/Signed.hpp>
+#include <pep/crypto/X509Certificate.hpp> // for X509RootCertificates, X509Identity
+#include <pep/serialization/Error.hpp>
+#include <pep/serialization/Serialization.hpp>
+#include <pep/ticketing/ColumnAccessModes.hpp>
+#include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms, SignedTicket2, Ticket2, ...
 
 #include <algorithm>
 #include <iterator>
 #include <ranges>
+#include <cassert>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace std::literals;
 

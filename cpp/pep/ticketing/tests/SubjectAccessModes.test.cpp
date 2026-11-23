@@ -1,8 +1,12 @@
+#include <pep/ticketing/SubjectAccessModes.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/utils/EnumUtils.hpp> // for HasFlags
+
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
-#include <pep/ticketing/SubjectAccessModes.hpp>
-#include <pep/serialization/Error.hpp>
+#include <vector>
+#include <string>
 
 namespace {
 using namespace pep;

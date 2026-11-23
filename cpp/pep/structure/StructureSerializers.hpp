@@ -1,7 +1,10 @@
 #pragma once
 
-#include <pep/structure/GlobalConfiguration.hpp>
 #include <pep/serialization/ProtocolBufferedSerializer.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structure/ShortPseudonyms.hpp>
+#include <pep/structure/StudyContext.hpp>
+
 #include <Messages.pb.h>
 
 namespace pep {

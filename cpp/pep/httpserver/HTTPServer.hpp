@@ -2,12 +2,16 @@
 
 #include <pep/async/IoContext_fwd.hpp>
 #include <pep/networking/HTTPMessage.hpp>
-#include <unordered_map>
+
+#include <rxcpp/rx-lite.hpp>
+
+#include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <memory>
-
-#include <filesystem>
-#include <rxcpp/rx-lite.hpp>
+#include <optional>
+#include <string>
+#include <unordered_map>
 
 struct mg_context; // Forward declares a type provided by CivetWeb
 

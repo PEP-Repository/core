@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <memory>
+#include <optional>
 #include <pep/utils/OptionalUtils.hpp>
 
 namespace {

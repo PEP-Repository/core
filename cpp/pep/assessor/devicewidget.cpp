@@ -3,6 +3,7 @@
 #include <pep/assessor/ui_devicewidget.h>
 
 #include <pep/assessor/InputValidationTooltip.hpp>
+#include <pep/structure/GlobalConfiguration.hpp> // for DeviceRegistrationDefinition
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 

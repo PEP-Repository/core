@@ -6,9 +6,31 @@
 #include <pep/async/RxToVector.hpp>
 #include <pep/castor/StudyDataPoint.hpp>
 #include <pep/pullcastor/CrfAspectPuller.hpp>
+#include <pep/async/RxCache.hpp>
+#include <pep/castor/DataPoint.hpp>
+#include <pep/castor/Field.hpp>
+#include <pep/castor/Form.hpp>
+#include <pep/castor/ImportColumnNamer.hpp>
+#include <pep/castor/Participant.hpp>
+#include <pep/pullcastor/CastorParticipant.hpp>
+#include <pep/pullcastor/FieldValue.hpp>
+#include <pep/pullcastor/PullCastorUtils.hpp> // for PEP_PULLCASTOR_LOG, castor::ParseCastorDateTime
+#include <pep/pullcastor/RepeatingDataPuller.hpp>
+#include <pep/pullcastor/StorableContent.hpp> // for castor::StorableColumnContent
+#include <pep/pullcastor/StudyAspect.hpp>
+#include <pep/pullcastor/StudyAspectPuller.hpp>
+#include <pep/pullcastor/StudyPuller.hpp>
+#include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Shared.hpp>
 
 #include <rxcpp/operators/rx-concat_map.hpp>
 #include <rxcpp/operators/rx-filter.hpp>
+#include <rxcpp/rx-lite.hpp>
+
+#include <cassert>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace pep {
 namespace castor {
