@@ -3,6 +3,7 @@
 #include <pep/storagefacility/RedactionCycle.hpp>
 #include <pep/storagefacility/RedactionMessages.hpp>
 #include <pep/auth/SigningSerializers.hpp>
+#include <Messages.pb.h>
 
 namespace pep {
 

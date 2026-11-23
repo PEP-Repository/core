@@ -14,6 +14,7 @@
 #include <pep/storagefacility/EntryContent.hpp>
 #include <pep/storagefacility/FileStore.hpp>
 #include <pep/storagefacility/PendingBytesLimiter.hpp>
+#include <pep/storagefacility/RedactionCycle.hpp>
 #include <pep/storagefacility/RedactionMessages.hpp>
 #include <pep/storagefacility/SFId.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>

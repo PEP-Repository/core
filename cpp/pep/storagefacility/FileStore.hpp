@@ -10,6 +10,7 @@
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/storagefacility/PageStore.hpp>
 #include <pep/storagefacility/PrefixedStrings.hpp>
+#include <pep/storagefacility/RedactionCycle.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
 #include <pep/utils/CheckedPath.hpp>
 #include <pep/utils/Configuration_fwd.hpp>
@@ -23,9 +24,12 @@
 #include <filesystem>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <set>
 #include <string>
+#include <thread>
+#include <unordered_map>
 #include <utility>
 
 namespace pep {
