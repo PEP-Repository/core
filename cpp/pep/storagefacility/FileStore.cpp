@@ -327,7 +327,7 @@ void FileStore::persistPendingRedactions() {
     | std::ranges::to<std::vector>();
 
   if (!pending.empty()) {
-    std::scoped_lock lock(redactionPersistenceMux_);
+    std::lock_guard lock(redactionPersistenceMux_);
     if (!redactionPersistence_.joinable()) { // ... and the persistence thread isn't already running...
       // ... find the oldest unpersisted cycle...
       auto i = std::ranges::min_element(pending, {}, &RedactionCycle::applied);
