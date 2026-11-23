@@ -254,6 +254,7 @@ private:
   // we can store and use references to these strings as long as we don't discard them from the collection.
   std::set<std::string> columnNames_;
   std::map<std::string, std::set<std::string>> metadataValues_;
+  std::mutex metadataValuesMux_;
 
   PropertyBasedContainer<std::unique_ptr<Participant>, &Participant::name>::set participants_;
   CheckedPath path_;

@@ -96,6 +96,7 @@ FileStore::Metrics& FileStore::Metrics::operator+=(const Metrics& rhs) {
 }
 
 EntryContent::MetadataEntry FileStore::makeMetadataEntry(std::string key, std::string value) {
+  std::lock_guard lock(metadataValuesMux_);
   auto pos = metadataValues_.emplace(std::move(key), std::set<std::string>()).first;
   auto valuePos = pos->second.emplace(std::move(value)).first;
 
