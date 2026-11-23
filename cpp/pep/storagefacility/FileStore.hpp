@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/async/ExponentialBackoff.hpp>
 #include <pep/async/IoContext_fwd.hpp>
 #include <pep/utils/CheckedPath.hpp>
 #include <pep/utils/Shared.hpp>
@@ -226,6 +227,7 @@ private:
   std::shared_ptr<storagefacility::SqliteStorage> sqlite_;
   std::thread redactionPersistence_;
   std::mutex redactionPersistenceMux_; // Synchronizes access to the redactionPersistence_ instance
+  ExponentialBackoff redactionPersistenceBackoff_;
   std::recursive_mutex fileSystemMux_; // Synchronizes access to (the meta directory on) the file system
 
   // Keep collections of unique strings to save memory: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2322 .
@@ -248,6 +250,7 @@ private:
 
   void markRedacted(const RedactionCycle& cycle) noexcept;
   void persistRedactionCycleAsync(RedactionCycle cycle); // Entry point for the redactionPersistence_ thread
+  void persistRemainingPendingRedactions(bool previous_attempt_failed);
 
 public:
   PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;

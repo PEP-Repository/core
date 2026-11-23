@@ -133,6 +133,7 @@ void FileStore::persistRedactionCycleAsync(RedactionCycle cycle) {
   // Entry point for the redactionPersistence_ thread
 
   assert(cycle.applied && !cycle.completed);
+  auto failed = false;
   try {
     for (const auto& version : sqlite_->getIncludedCellVersions(cycle.id)) {
       this->getParticipant(version.cell.participant())->ensureRedactionPersisted(*cycle.applied, version.cell.column(), version.timestamp);
@@ -147,9 +148,10 @@ void FileStore::persistRedactionCycleAsync(RedactionCycle cycle) {
     // Eat all exceptions to prevent the thread from taking down the entire process
     PEP_LOG(LogTag, Severity::Error) << "Encountered exception persisting redaction cycle " << cycle.id << ": " << GetExceptionMessage(std::current_exception());
     // Since the cycle hasn't been marked "completed" in sqlite_, we'll (let the ASIO thread) retry with a new redactionPersistence_ thread
+    failed = true;
   }
 
-  post(*ioContext_, [self = SharedFrom(*this)]() { // Let the ASIO thread...
+  post(*ioContext_, [self = SharedFrom(*this), failed]() { // Let the ASIO thread...
       // ... join this (redactionPersistence_) thread to clean up...
       {
         std::lock_guard lock(self->redactionPersistenceMux_);
@@ -158,7 +160,7 @@ void FileStore::persistRedactionCycleAsync(RedactionCycle cycle) {
         assert(!self->redactionPersistence_.joinable());
       }
       // ... then start a new persistence thread if any (more) cycles need to be persisted
-      self->persistPendingRedactions();
+      self->persistRemainingPendingRedactions(failed);
     });
 }
 
@@ -177,6 +179,7 @@ FileStore::FileStore(
   std::shared_ptr<prometheus::Registry> metrics_registry)
   : ioContext_(io_context),
   sqlite_(sqlite),
+  redactionPersistenceBackoff_(*ioContext_),
   path_(CheckedPath::FromTrusted(metadatapath)),
   pagestore_(PageStore::Create(io_context, metrics_registry, pageStoreConfig)),
   checksumChains_(SfChecksumChain::CreateAll(*this))
@@ -297,6 +300,20 @@ void FileStore::persistPendingRedactions() {
       // ... and start a (new) persistence thread now to process it.
       redactionPersistence_ = std::thread([self = SharedFrom(*this), cycle = *i]() { self->persistRedactionCycleAsync(cycle); });
     }
+  }
+}
+
+void FileStore::persistRemainingPendingRedactions(bool previous_attempt_failed) {
+  if (previous_attempt_failed) {
+    redactionPersistenceBackoff_.retry([self = SharedFrom(*this)](const boost::system::error_code& error) {
+        if (!error) {
+          self->persistPendingRedactions();
+        }
+      });
+  }
+  else {
+    redactionPersistenceBackoff_.success();
+    this->persistPendingRedactions();
   }
 }
 
@@ -836,6 +853,9 @@ void FileStore::Participant::markRedacted(Timestamp redactedAt, const VersionTim
 }
 
 void FileStore::Participant::ensureRedactionPersisted(Timestamp redactedAt, const std::string& column, Timestamp version) {
+  if (false) {
+    throw std::runtime_error("Testing backoff");
+  }
   auto cell = this->getCell(column);
   assert(cell != nullptr);
   cell->ensureRedactionPersisted(redactedAt, version);
