@@ -95,7 +95,7 @@ struct Context {
 
   /// \brief Stores a (paged) entry consisting of the specified pages. The pages' data are not stored.
   void storePagedEntry(const pep::EntryName& name, std::vector<pep::PageId> pages, pep::Timestamp validFrom) const {
-    auto change = this->store->modifyEntry(name, true);
+    auto change = this->store->modifyEntry(name, false);
     ASSERT_NE(change, nullptr);
 
     pep::PersistedEntryProperties properties;
