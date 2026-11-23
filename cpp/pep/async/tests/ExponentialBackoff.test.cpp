@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <pep/networking/ExponentialBackoff.hpp>
+#include <pep/async/ExponentialBackoff.hpp>
 
 namespace {
 
