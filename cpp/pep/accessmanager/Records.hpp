@@ -1,7 +1,6 @@
 #pragma once
 
 #include <pep/accessmanager/AccessManagerMessages.hpp>
-#include <pep/database/Record.hpp>
 #include <pep/database/UnixMillis.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/structure/ColumnName.hpp>

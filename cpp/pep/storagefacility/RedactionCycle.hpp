@@ -2,7 +2,9 @@
 
 #include <pep/utils/Timestamp.hpp>
 #include <cstdint>
+#include <optional>
 #include <string>
+#include <utility>
 
 namespace pep {
 

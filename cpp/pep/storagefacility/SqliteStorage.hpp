@@ -4,9 +4,17 @@
 #include <pep/storagefacility/RedactionCycle.hpp>
 #include <pep/utils/Action.hpp>
 #include <pep/utils/Shared.hpp>
+#include <pep/utils/Timestamp.hpp>
+#include <cstdint>
 #include <filesystem>
+#include <functional>
+#include <memory>
 #include <mutex>
+#include <optional>
 #include <set>
+#include <string>
+#include <stdexcept>
+#include <vector>
 
 namespace pep::storagefacility {
 
