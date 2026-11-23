@@ -901,9 +901,6 @@ void FileStore::Participant::markRedacted(Timestamp redactedAt, const VersionTim
 }
 
 void FileStore::Participant::ensureRedactionPersisted(Timestamp redactedAt, const std::string& column, Timestamp version) {
-  if (false) {
-    throw std::runtime_error("Testing backoff");
-  }
   auto cell = this->getCell(column);
   assert(cell != nullptr);
   cell->ensureRedactionPersisted(redactedAt, version);
