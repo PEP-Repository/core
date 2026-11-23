@@ -33,7 +33,7 @@
 namespace pep {
 namespace {
 
-constexpr auto validityTimeOfGeneratedCertificates = std::chrono::hours{12};
+constexpr auto validityTimeOfGeneratedCertificates = std::chrono::hours{48};
 const std::string LogTag("KeyServer");
 
 tokenBlocking::TokenIdentifier Identifiers(const OAuthToken& token) {

@@ -571,6 +571,23 @@ if should_run_test weblib; then
   pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectSmall
   pepcli --oauth-token-group "Data Administrator" ama group addTo WasmTestSubjectGroup WasmTestSubjectLarge
 
+  # Reference IDs (short pseudonyms) for WasmTestSubjectSmall, to find it by. Like in the registration test, store
+  # placeholders for the Castor ones first: this environment has no Castor connection to create those
+  mapfile -t castor_columns < <(jq --raw-output '.short_pseudonyms[] | select(.castor) | .column' \
+    "$DATA_DIR/accessmanager/GlobalConfiguration.json")
+  pepcli --oauth-token-group "Access Administrator" ama cgar create ShortPseudonyms "Research Assessor" write
+  for column in "${castor_columns[@]}"; do
+    pepcli --oauth-token-group "Research Assessor" store -p WasmTestSubjectSmall -c "$column" \
+      -d CastorPlaceholder --file-extension .txt
+  done
+  pepcli --oauth-token-group "Access Administrator" ama cgar remove ShortPseudonyms "Research Assessor" write
+  # For a subject with short pseudonyms but no ParticipantIdentifier cell, like WasmTestSubjectSmall (never registered,
+  # only stored to), ensure-complete would store that identifier, which Research Assessor may not write. Store it here,
+  # so ensure-complete only generates the missing short pseudonyms
+  write_registration_server_cell ParticipantIdentifier store -p WasmTestSubjectSmall -d WasmTestSubjectSmall \
+    --file-extension .txt
+  pepcli --oauth-token-group "Research Assessor" register ensure-complete WasmTestSubjectSmall
+
   trace mkdir -p ./dist-test/
   trace cp "$DATA_DIR"/{client/{ClientConfig.json,ShadowAdministration.pub},keyserver/OAuthTokenSecret.json} "$PKI_DIR_ON_HOST/rootCA.cert" ./dist-test/
 

@@ -1,25 +1,37 @@
-#include <boost/container/flat_map.hpp>
-#include <optional>
-#include <pep/async/FakeVoid.hpp>
 #include <pep/cli/pseudonym/CommandConvert.hpp>
-#include <pep/core-client/CoreClient.hpp>
-#include <pep/rsk-pep/Pseudonyms.hpp>
-#include <pep/structure/GlobalConfiguration.hpp>
+
 #include <pep/accessmanager/AccessManagerMessages.hpp> // for IndexedTicket2
 #include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
 #include <pep/application/CommandLineValue.hpp> // for commandline::NamedValues
+#include <pep/async/FakeVoid.hpp>
 #include <pep/cli/Command.hpp>
 #include <pep/cli/Pseudonym.hpp>
+#include <pep/cli/structuredoutput/FormatParameter.hpp>
+#include <pep/core-client/CoreClient.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
+#include <pep/structure/GlobalConfiguration.hpp>
+#include <pep/structuredoutput/Common.hpp>
+#include <pep/structuredoutput/FormatFlags.hpp>
+#include <pep/structuredoutput/Tree.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
-#include <ranges>
+
+#include <rxcpp/rx-lite.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
+#include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/rx-observable.hpp>
-#include <stdexcept>
-#include <cctype>
+
+#include <algorithm>
+#include <array>
+#include <cassert>
 #include <iostream>
+#include <iterator>
 #include <memory>
-#include <ostream>
+#include <optional>
+#include <stdexcept>
 #include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 namespace pep::cli {
 
@@ -32,45 +44,138 @@ constexpr auto to = "to";
 
 } // namespace param
 
-enum class IdType {
+enum class PseudonymType {
   PolymorphicPseudonym,
   LocalPseudonym,
   BriefLocalPseudonym,
 };
 
-const auto stringToIdType = boost::container::flat_map<std::string, IdType> {
-    {"pp", IdType::PolymorphicPseudonym},
-    {"polymorphic-pseudonym", IdType::PolymorphicPseudonym},
-    {"lp", IdType::LocalPseudonym},
-    {"local-pseudonym", IdType::LocalPseudonym},
-    {"blp", IdType::BriefLocalPseudonym},
-    {"brief-local-pseudonym", IdType::BriefLocalPseudonym}
+/// The names by which a pseudonym type can be specified on the command line
+struct PseudonymTypeNames final {
+  PseudonymType type;
+  std::string_view name; ///< Also used as key in structured output
+  std::string_view abbreviation;
 };
 
-std::optional<IdType> TryParseIdTypeFromString(std::string str){
-  for (char& c: str) { c = static_cast<char>(std::tolower(c)); }
-  const auto found = stringToIdType.find(str);
-  if (found == stringToIdType.end()) { return std::nullopt; }
-  return found->second;
+constexpr auto pseudonymTypeNames = std::array<PseudonymTypeNames, 3>{{
+    {PseudonymType::PolymorphicPseudonym, "polymorphic-pseudonym", "pp"},
+    {PseudonymType::LocalPseudonym, "local-pseudonym", "lp"},
+    {PseudonymType::BriefLocalPseudonym, "brief-local-pseudonym", "blp"},
+}};
+
+/// All names and abbreviations, sorted for the command line help
+std::vector<std::string> AllPseudonymTypeNames() {
+  std::vector<std::string> result;
+  result.reserve(pseudonymTypeNames.size() * 2);
+  for (const auto& names : pseudonymTypeNames) {
+    result.emplace_back(names.name);
+    result.emplace_back(names.abbreviation);
+  }
+  std::ranges::sort(result);
+  return result;
 }
 
-IdType ParseIdTypeFromString(const std::string& str){
-  const auto parsed = TryParseIdTypeFromString(str);
-  if (!parsed.has_value()) throw std::runtime_error{"Cannot parse IdType from " + str};
-  return *parsed;
+/// \param str A name or abbreviation: the command line parser only accepts values from AllPseudonymTypeNames
+PseudonymType ParsePseudonymType(std::string_view str) {
+  const auto found = std::ranges::find_if(pseudonymTypeNames, [str](const PseudonymTypeNames& names) {
+    return names.name == str || names.abbreviation == str;
+  });
+  assert(found != pseudonymTypeNames.end());
+  return found->type;
+}
+
+std::string_view NameOf(PseudonymType type) {
+  const auto found = std::ranges::find(pseudonymTypeNames, type, &PseudonymTypeNames::type);
+  assert(found != pseudonymTypeNames.end());
+  return found->name;
+}
+
+/// The types specified with --to, without duplicates and in the specified order, or all types if --to was omitted
+std::vector<PseudonymType> ParseTargetTypes(const commandline::NamedValues& values) {
+  std::vector<PseudonymType> result;
+  for (const auto& str : values.getOptionalMultiple<std::string>(param::to)) {
+    if (const auto type = ParsePseudonymType(str); !std::ranges::contains(result, type)) {
+      result.push_back(type);
+    }
+  }
+  if (result.empty()) {
+    std::ranges::transform(pseudonymTypeNames, std::back_inserter(result), &PseudonymTypeNames::type);
+  }
+  return result;
 }
 
 struct Configuration final {
   std::string from;
-  IdType to;
+  std::vector<PseudonymType> to;
+  structuredOutput::FormatConfig formatConfig;
 
-  static Configuration From(const pep::commandline::NamedValues &values) {
+  [[nodiscard]] bool includes(PseudonymType type) const { return std::ranges::contains(to, type); }
+
+  static Configuration From(const commandline::NamedValues& values) {
     return {
       .from = values.get<std::string>(param::from),
-      .to = ParseIdTypeFromString(values.get<std::string>(param::to)),
+      .to = ParseTargetTypes(values),
+      .formatConfig = structuredOutput::FormatConfigFrom(values),
     };
   }
 };
+
+/// Retrieves the local pseudonym if a requested type needs it, or std::nullopt otherwise
+rxcpp::observable<std::optional<LocalPseudonym>> RetrieveLocalPseudonymIfNeeded(
+    std::shared_ptr<CoreClient> client, const Configuration& config, const PolymorphicPseudonym& pp) {
+  if (!config.includes(PseudonymType::LocalPseudonym) && !config.includes(PseudonymType::BriefLocalPseudonym)) {
+    return rxcpp::observable<>::just(std::optional<LocalPseudonym>()).as_dynamic();
+  }
+
+  RequestTicket2Opts tOpts;
+  tOpts.referenceSubjects = {pp};
+  tOpts.modes = ColumnAccessModes::Read;
+  tOpts.includeAccessGroupPseudonyms = true;
+
+  return client->requestTicket2(tOpts)
+      .map([client](IndexedTicket2 ticket) -> std::optional<LocalPseudonym> {
+        const auto opened = ticket.openTicketWithoutCheckingSignature();
+        const auto& subjects = opened->referenceSubjects;
+        if (subjects.empty() || !subjects.front().accessGroup.has_value()) {
+          throw std::runtime_error{"No localized pseudonym available for the supplied polymorphic pseudonym"};
+        }
+        return client->decryptLocalPseudonym(*subjects.front().accessGroup);
+      })
+      .as_dynamic();
+}
+
+/// Retrieves the global configuration if a requested type needs it, or nullptr otherwise
+rxcpp::observable<std::shared_ptr<GlobalConfiguration>> RetrieveGlobalConfigurationIfNeeded(
+    std::shared_ptr<CoreClient> client, const Configuration& config) {
+  if (!config.includes(PseudonymType::BriefLocalPseudonym)) {
+    return rxcpp::observable<>::just(std::shared_ptr<GlobalConfiguration>()).as_dynamic();
+  }
+  return client->getGlobalConfiguration().as_dynamic();
+}
+
+/// Converts \p pp to \p type, using the local pseudonym and global configuration retrieved for the requested types
+std::string Convert(PseudonymType type, const PolymorphicPseudonym& pp, const std::optional<LocalPseudonym>& lp,
+                    const std::shared_ptr<GlobalConfiguration>& gc) {
+  switch (type) {
+  case PseudonymType::PolymorphicPseudonym:
+    return pp.text();
+  case PseudonymType::LocalPseudonym:
+    return lp.value().text();
+  case PseudonymType::BriefLocalPseudonym:
+    return gc->getUserPseudonymFormat().makeUserPseudonym(lp.value());
+  }
+  throw std::logic_error{"Unsupported pseudonym type"};
+}
+
+/// Prints \p pp converted to the requested types, in the order the user specified them
+void ReportPseudonyms(const Configuration& config, const PolymorphicPseudonym& pp,
+                      const std::optional<LocalPseudonym>& lp, const std::shared_ptr<GlobalConfiguration>& gc) {
+  auto result = nlohmann::ordered_json::object();
+  for (auto type : config.to) {
+    result[std::string(NameOf(type))] = Convert(type, pp, lp, gc);
+  }
+  structuredOutput::WriteStructured(std::cout, structuredOutput::Tree::FromJson(std::move(result)), config.formatConfig);
+}
 
 } // namespace
 
@@ -82,48 +187,26 @@ CommandPseudonym::CommandConvert::getSupportedParameters() const {
              .value(Value<std::string>()
                 .positional()
                 .required()) +
-         Parameter(param::to, "Target pseudonym type")
+         Parameter(param::to, "Target pseudonym type (can be repeated). Omit to convert to all types.")
              .value(Value<std::string>()
-                .positional()
-                .allow(stringToIdType | std::views::keys)
-                .required());
+                .multiple()
+                .allow(AllPseudonymTypeNames())) +
+         structuredOutput::FormatParameter(structuredOutput::FormatFlags::Json | structuredOutput::FormatFlags::Yaml, "json");
 }
 
 int CommandPseudonym::CommandConvert::execute() {
   const auto config = Configuration::From(this->getParameterValues());
 
-  return executeEventLoopFor([config](std::shared_ptr<pep::CoreClient> client) {
+  return executeEventLoopFor([config](std::shared_ptr<CoreClient> client) {
     return client->parsePPorIdentity(config.from).flat_map([client, config](PolymorphicPseudonym pp) {
-      if (config.to == IdType::PolymorphicPseudonym) {
-        std::cout << pp.text() << std::endl;
-        return rxcpp::observable<>::just(FakeVoid()).as_dynamic();
-      }
-
-      pep::RequestTicket2Opts tOpts;
-      tOpts.referenceSubjects = {pp};
-      tOpts.modes = ColumnAccessModes::Read;
-      tOpts.includeAccessGroupPseudonyms = true;
-
-      return client->requestTicket2(tOpts)
-          .flat_map([client, config](pep::IndexedTicket2 ticket) {
-            const auto opened = ticket.openTicketWithoutCheckingSignature();
-            const auto& subjects = opened->referenceSubjects;
-            if (subjects.empty() || !subjects.front().accessGroup.has_value()) {
-              throw std::runtime_error{"No localized pseudonym available for the supplied polymorphic pseudonym"};
-            }
-
-            const auto lp = client->decryptLocalPseudonym(*subjects.front().accessGroup);
-            if (config.to == IdType::LocalPseudonym) {
-              std::cout << lp.text() << std::endl;
-              return rxcpp::observable<>::just(FakeVoid()).as_dynamic();
-            }
-
-            return client->getGlobalConfiguration()
-                .map([config, lp](std::shared_ptr<GlobalConfiguration> gc) {
-                  std::cout << gc->getUserPseudonymFormat().makeUserPseudonym(lp) << std::endl;
+      return RetrieveLocalPseudonymIfNeeded(client, config, pp)
+          .flat_map([client, config, pp](std::optional<LocalPseudonym> lp) {
+            return RetrieveGlobalConfigurationIfNeeded(client, config)
+                .map([config, pp, lp](std::shared_ptr<GlobalConfiguration> gc) {
+                  ReportPseudonyms(config, pp, lp, gc);
                   return FakeVoid();
-                }).as_dynamic();
-          }).as_dynamic();
+                });
+          });
     });
   });
 }

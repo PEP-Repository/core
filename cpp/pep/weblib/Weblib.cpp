@@ -635,6 +635,19 @@ public:
         });
   }
 
+  /// Find the subject with the supplied reference ID.
+  /// Requires read access to the reference ID's column, and access + enumerate on a subject group containing the subject.
+  /// \returns \c Promise<string>: the subject's polymorphic pseudonym, as text
+  WeblibApiPromise findSubjectByReferenceId(std::string referenceId) {
+    co_return co_await onIoThread()
+        .flat_map([referenceId = std::move(referenceId)](const std::shared_ptr<Weblib>& self) {
+          return self->client_->findPPforShortPseudonym(referenceId);
+        })
+        .map([](const PolymorphicPseudonym& pp) {
+          return pp.text();
+        });
+  }
+
   /// \returns \c Promise<StoreResult>
   WeblibApiPromise store(StoreQuery query) {
     // We're still on the main thread here: decide how the data will be produced
@@ -916,6 +929,7 @@ EMSCRIPTEN_BINDINGS(weblib) {
       .function("listColumns", &Weblib::listColumns)
       .function("listSubjectGroups", &Weblib::listSubjectGroups)
       .function("registerParticipant", &Weblib::registerParticipant)
+      .function("findSubjectByReferenceId", &Weblib::findSubjectByReferenceId)
       .function("store", &Weblib::store)
       .function("list", &Weblib::list)
       .function("retrieve", &Weblib::retrieve)

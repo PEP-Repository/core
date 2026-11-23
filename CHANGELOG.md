@@ -10,9 +10,13 @@
 
 - core#2705: Support for Intel (x86) Macs will be discontinued on March 1, 2027. On Intel Macs, pepAssessor, pepLogon and pepcli now print a warning about this to the console when started. pepAssessor also shows it on its login window, and the PEP Download Tool and PEP Upload Tool show it in a pop-up.
 
+- docker-build#40: After March 1, 2027, the minimum supported macOS version will be 15.0 (Sequoia) instead of 13.3 (Ventura). Older versions than Sequoia are not supported by Apple anymore. In exceptional cases, one can still use the PEP Docker image.
+
 - core#2962: `pepcli pseudonym convert` no longer requires access to the subject associated with the pseudonym.
 
 - `pepcli list --format` now also accepts `json-compact`, like `pepcli ama query` and `pepcli user query`.
+
+- core#2911: `pepcli pseudonym convert` now takes the target type as `--to <type>` instead of as second positional argument, and can convert to multiple types at once by repeating `--to`; without `--to` it converts to all types. It prints the results under the name of their type, as JSON by default (`--format yaml|json|json-compact`), e.g. `{"local-pseudonym": "..."}`. Scripts that use `pepcli pseudonym convert <from> <to>` must switch to `--to`, and read the value from the JSON (e.g. with `jq --raw-output '."local-pseudonym"'`).
 
 - core#3040: Fixed YAML output (e.g. of `pepcli ama query`, `user query` and `list --format yaml`) for strings containing line breaks, tabs or other control characters. These are now escaped (e.g. `\n`), so that YAML parsers no longer turn line breaks into spaces.
 
@@ -20,11 +24,13 @@
   This makes it easier to maintain and extend. The documentation was updated to reflect the new structure of the process.
   - Changed: `docs/public/crypto/ticket_request.md` has been updated
 
-- core!2527: For projects using nginx (e.g. for s3proxy), modify `etc/params/proxy` to change `proxy_set_header Host $host;` to `proxy_set_header Host $http_host;` (or just replace by the version in pep/core>).
-
 - core#3000: Disposing a `Pep` weblib instance (e.g. `pep.delete()`) is now asynchronous.
 
 - core!2595: Weblib `pep.listColumns()` and `pep.listSubjectGroups()` now return all (column/subject) groups the user has any access to, with their access `modes`, instead of only readable/accessible ones.
+
+**MANUAL CHANGES REQUIRED**:
+
+- core!2527: For projects using nginx (e.g. for s3proxy), modify `etc/params/proxy` to change `proxy_set_header Host $host;` to `proxy_set_header Host $http_host;` (or just replace by the version in pep/core>).
 
 ---------------
 *Past changes, do not edit (except by person doing release):*
