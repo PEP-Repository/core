@@ -30,12 +30,6 @@ PEP requires multiple 3rd-party libraries and tools that are not included in the
 - Optional: the [Sourcetree](https://www.sourcetreeapp.com/) GUI frontend for git. Configure it to use the standalone git you just installed.
 - [CMake](https://cmake.org/), used to generate the build system (i.e. Visual Studio projects on Windows). Depending on your Visual Studio version and the installed packages and/or workloads, a CMake version may be supplied by your Visual Studio installation. Run `where cmake` from a Visual Studio Developer Command Prompt to find out. Note that some of Visual Studio's CMake versions (e.g. the one included with VS2017 Community Edition) are incompatible with all versions of Boost. (Technically: Visual Studio's FindBoost.cmake supports Boost versions up to and including 1.65.1; Boost 1.65.1 with default settings supports compiler versions up to and including 19.11.25506; Visual Studio 2017 provides compiler version 19.13.26131.1.) If you install a standalone CMake version, make sure to let the installer add the binary directory to your path.
 - [Go](https://golang.org), used to compile server monitoring utilities.
-
-Some CI scripts will use Bash, where they first try Git Bash and otherwise Bash in path, see `/scripts/invoke-sh.ps1`. Note that by default the `bash` in path may be a wrapper around WSL.
-
-If you also want to build MSI installer packages on your dev box, you'll also need
-
-- [Windows Installer XML (WiX) toolset](http://wixtoolset.org/) which, at the time of writing, requires the .NET Framework 3.5, which can be installed as an optional feature in Windows 10.
 - [jq](https://jqlang.github.io/jq/download/)
   - Use the winget, scoop, or choco commands to install jq
 OR:
@@ -44,6 +38,12 @@ OR:
   - Create a folder for your app. e.g. C:\program files\jq
   - Copy jq.exe to your new folder
   - Open up your Windows system properties/environment variables and add your new folder to the PATH environment variable
+
+Some CI scripts will use Bash, where they first try Git Bash and otherwise Bash in path, see `/scripts/invoke-sh.ps1`. Note that by default the `bash` in path may be a wrapper around WSL.
+
+If you also want to build MSI installer packages on your dev box, you'll also need
+
+- [Windows Installer XML (WiX) toolset](http://wixtoolset.org/) which, at the time of writing, requires the .NET Framework 3.5, which can be installed as an optional feature in Windows 10.
 
 ## Configure
 
