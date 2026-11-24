@@ -75,7 +75,8 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/oauthTokens/PullCastor.json")
   # TODO else remove file that may have remained from previous invocation
 endif()
 
-if("${CMAKE_GENERATOR}" MATCHES "Visual Studio.*")
+get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(is_multi_config AND CMAKE_HOST_WIN32)
   # The "COPY" command can't deal with forward slashes :-(
   string(REPLACE "/" "\\" CMAKE_WINDOWS_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
   # Ensure that the OAuthToken.json file is (also) present in the executable directories (where PullCastor.json is located).
@@ -84,9 +85,8 @@ if("${CMAKE_GENERATOR}" MATCHES "Visual Studio.*")
             COMMENT "Copy PullCastor token"
             COMMAND IF EXIST "${CMAKE_WINDOWS_BINARY_DIR}\\OAuthToken.json" COPY /Y "${CMAKE_WINDOWS_BINARY_DIR}\\OAuthToken.json" "${CMAKE_WINDOWS_BINARY_DIR}\\${config}\\")
   endforeach()
-
-  configure_debug_command_line_parameter(${PROJECT_NAME}PullCastor --dry ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/PullCastor.json)
 endif()
+configure_debug_command_line_parameter(${PROJECT_NAME}PullCastor --dry ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/PullCastor.json)
 
 if(NOT EXISTS "${PEP_INFRA_DIR}/rootCA.cert")
   include(${PROJECT_SOURCE_DIR}/pki/pki.cmake)

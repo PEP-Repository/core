@@ -74,8 +74,9 @@ endif()
 ##
 
 function(get_build_output_directories variable subdir)
-  if("${CMAKE_GENERATOR}" MATCHES "Visual Studio.*")
-    # The Visual Studio (VS) build system allows the configuration to be switched at build time.
+  get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+  if(is_multi_config)
+    # Multi-config build systems (Visual Studio (VS), Ninja Multi-Config) allow the configuration to be switched at build time.
     # Each supported build configuration uses a separate output directory (where the .exe will be put).
     # Make associated (companion) files available in each of these output directories to allow the .exe
     # to find those files.
@@ -86,10 +87,10 @@ function(get_build_output_directories variable subdir)
     list(APPEND result "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
   endif()
 
-  # For non-VS build systems, the configuration-to-build is determined at CMake time.
+  # For single-config build systems, the configuration-to-build is determined at CMake time.
   # The generated build system then has a single output directory where the executable will be placed,
   # and hence where associated (companion) files must be available.
-  # For VS build systems, we'll also place companion files there to support e.g. custom Go
+  # For multi-config build systems, we'll also place companion files there to support e.g. custom Go
   # targets that produce their binaries directly into the binary dir (i.e. without using
   # subdirectories named after configurations).
   list(APPEND result "${CMAKE_CURRENT_BINARY_DIR}/${subdir}")
@@ -331,7 +332,8 @@ if(ENABLE_TEST_DISCOVERY)
       --no-docker
       --build-dir ${CMAKE_BINARY_DIR}
   )
-  if("${CMAKE_GENERATOR}" MATCHES "Visual Studio.*")
+  get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+  if(is_multi_config)
     list(APPEND integration_test_flags --build-mode ${CMAKE_BUILD_TYPE})
   endif()
   add_test(

@@ -31,6 +31,8 @@ if not "%CI_JOB_ID%" == "" (
 )
 
 REM Limit build parallelism, based on the number of CPUs and the amount of RAM, see windows-build-parallelism.ps1.
+REM The remarks below on MSBuild apply to dependencies that Conan builds using MSBuild, and to our own project when it is
+REM  built with the Visual Studio generator ("msbuild" argument). By default we build our own project with Ninja, see below.
 REM By default, MSBuild builds -maxCpuCount projects concurrently, and the compiler runs /MP processes for each project,
 REM  so the number of compiler processes multiplies, and concurrent CI jobs on the same machine multiply it further.
 REM  See https://learn.microsoft.com/en-us/cpp/build/reference/mp-build-with-multiple-processes#the-msbuild-tool
@@ -63,6 +65,7 @@ echo Using at most %MultiProcMaxCount% compiler processes and %PEP_MSBUILD_MAX_C
 
 SET WhatToBuild=%1
 SET BuildType=%2
+SET PEP_GENERATOR=%3
 
 if [%WhatToBuild%] == [wixlib] (
   echo Building limited targets and WIX library
@@ -88,6 +91,25 @@ if [%BuildType%] == [Debug] (
   echo Unsupported build type: %BuildType%
   goto :Invocation
 )
+
+REM CMake generator for our own project. By default Ninja Multi-Config: on pep-build9, it built all targets about twice as fast
+REM  as the best MSBuild settings (Ninja only orders individual compile and link steps, whereas MSBuild only starts compiling
+REM  a project when all projects it references are completely built). Like Visual Studio, it puts outputs in per-configuration
+REM  subdirectories (e.g. cpp\pep\assessor\Release), which the steps below and other CI scripts rely on.
+REM  Pass "msbuild" to use the Visual Studio generator (MSBuild) instead.
+REM  The generator is set only for our own project (&:); dependencies use the generator from the Conan profile.
+if [%PEP_GENERATOR%] == [] (
+  set PEP_GENERATOR=ninja
+)
+if [%PEP_GENERATOR%] == [ninja] (
+  set PEP_CONAN_GENERATOR_CONF=-c "&:tools.cmake.cmaketoolchain:generator=Ninja Multi-Config"
+) else if [%PEP_GENERATOR%] == [msbuild] (
+  set PEP_CONAN_GENERATOR_CONF=
+) else (
+  echo Unsupported generator: %PEP_GENERATOR%
+  goto :Invocation
+)
+echo Building our own project with generator: %PEP_GENERATOR%
 
 if "%CI_COMMIT_REF_NAME%" == "" (
   echo No CI_COMMIT_REF_NAME specified: performing 'local' build.
@@ -118,7 +140,9 @@ REM tools.microsoft.msbuild:max_cpu_count sets MSBuild's -maxCpuCount for depend
 REM  and for our own build via the generated CMake build preset (since Conan 2.34, see https://github.com/conan-io/conan/pull/20360).
 REM  Without it, MSBuild builds only one project at a time.
 REM tools.build:jobs is used for dependencies that Conan builds using other build systems (e.g. Ninja),
-REM  which are not limited by MultiProcMaxCount. For Visual Studio generators, Conan also uses it for /MP, but MTT drops that.
+REM  and for our own project with Ninja (via the -j of the generated CMake build preset).
+REM  Unlike MultiProcMaxCount with MSBuild, these are not limited across concurrent CI jobs on the same machine.
+REM  For Visual Studio generators, Conan also uses it for /MP, but MTT drops that.
 REM See https://docs.conan.io/2/reference/config_files/global_conf.html
 pwsh -ExecutionPolicy Bypass -File ".\docker-build\scripts\windows-ci-conan.ps1" ^
   install .\docker-build\builder\conan\conanfile.py ^
@@ -128,6 +152,7 @@ pwsh -ExecutionPolicy Bypass -File ".\docker-build\scripts\windows-ci-conan.ps1"
   -s__a build_type="%BuildType%" ^
   -c__a "tools.microsoft.msbuild:max_cpu_count=%PEP_MSBUILD_MAX_CPU_COUNT%" ^
   -c__a "tools.build:jobs=%MultiProcMaxCount%" ^
+  %PEP_CONAN_GENERATOR_CONF% ^
   -o "&:with_assessor=True" ^
   -o "&:with_servers=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:with_castor=%PEP_CONAN_BUILD_ADDITIONALS%" ^
@@ -144,7 +169,7 @@ echo Configuring CMake project.
 cmake --preset conan-default %PEP_CMAKE_DEFINES% || exit /B 1
 
 echo Building.
-REM Note: we deliberately build the default target (Build), not the separate build passes
+REM Note: with MSBuild, we deliberately build the default target (Build), not the separate build passes
 REM  /t:BuildGenerateSources;BuildCompile;BuildLink (with BuildPassReferences) from
 REM  https://devblogs.microsoft.com/cppblog/cpp-build-throughput-investigation-and-tune-up/
 REM  `cmake --build` builds ALL_BUILD.vcxproj, a Utility project that cannot take part in those passes, so it builds its
@@ -179,7 +204,8 @@ echo Finished CI job script for Windows build.
 exit 0
 
 :Invocation
-echo Usage: %0 wixlib      [Build-Type]
-echo    or: %0 all-targets [Build-Type]
+echo Usage: %0 wixlib      [Build-Type] [Generator]
+echo    or: %0 all-targets [Build-Type] [Generator]
 echo where [Build-Type] must be either "Debug" or "Release". Defaults to "Release" if unspecified.
+echo   and [Generator] must be either "ninja" (Ninja Multi-Config) or "msbuild" (Visual Studio). Defaults to "ninja" if unspecified.
 exit /B 1
