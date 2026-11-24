@@ -194,7 +194,7 @@ void FileStore::persistRedactionBatchAsync(std::vector<EntryRedactionPersister> 
   }
 
   post(*ioContext_, [self = SharedFrom(*this), failed]() { // Let the ASIO thread know that we finished processing
-      self->handleRedactionBatchPersisted(failed);
+      self->handleRedactionBatchPersistenceFinished(failed);
     });
 }
 
@@ -332,8 +332,6 @@ Generator<PrefixedStringsEntry> FileStore::pagePaths() const {
 }
 
 void FileStore::persistPendingRedactions() {
-  std::lock_guard lock(redactionPersistenceMux_);
-
   // Let the persistence thread continue processing if it's already running
   if (redactionPersistence_.joinable()) {
     return;
@@ -365,14 +363,11 @@ void FileStore::persistPendingRedactions() {
   redactionPersistence_ = std::thread([self = SharedFrom(*this), persisters]() { self->persistRedactionBatchAsync(persisters); });
 }
 
-void FileStore::handleRedactionBatchPersisted(bool failed) {
+void FileStore::handleRedactionBatchPersistenceFinished(bool failed) {
   // Join the redactionPersistence_ thread to clean up
-  {
-    std::lock_guard lock(redactionPersistenceMux_);
-    assert(redactionPersistence_.joinable());
-    redactionPersistence_.join();
-    assert(!redactionPersistence_.joinable());
-  }
+  assert(redactionPersistence_.joinable());
+  redactionPersistence_.join();
+  assert(!redactionPersistence_.joinable());
 
   if (failed) {
     assert(persistingRedactionCycle_.has_value());
