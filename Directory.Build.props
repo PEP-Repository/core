@@ -10,6 +10,15 @@
        see https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/2757. -->
 
   <PropertyGroup>
+    <!-- Set PEP_BuildSequentially to true for a completely sequential build: one project and one compiler process at a time,
+         e.g. to get readable build output, or on a machine with little memory. Set it for example as environment variable
+         (before starting Visual Studio or the build), or with -p:PEP_BuildSequentially=true on the MSBuild command line.
+         Visual Studio itself schedules the projects of a solution, so there also set "Tools > Options > Projects and Solutions >
+         Build and Run > Maximum number of parallel project builds" to 1. See also Directory.Build.targets. -->
+    <PEP_BuildSequentially Condition="'$(PEP_BuildSequentially)' == ''">false</PEP_BuildSequentially>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <!-- To enable project specific directory for temporary files.
          Recommended by the article above. Showed no measurable effect on pep-build9, but it is harmless. -->
     <PEP_UseProjectTMPDirectory Condition="'$(PEP_UseProjectTMPDirectory)' == ''">true</PEP_UseProjectTMPDirectory>
@@ -34,6 +43,16 @@
     <!-- Note: BuildPassReferences (with /t:BuildGenerateSources;BuildCompile;BuildLink) is deliberately not enabled.
          When building ALL_BUILD.vcxproj (a Utility project), as CMake's build mode does, executables link before the libraries
          they need exist (LNK1181), and on the solution it was at most ~7% faster in Release and slower in Debug. -->
+  </PropertyGroup>
+
+  <!-- For PEP_BuildSequentially: this overrides the settings above, also when they come from environment variables (as in CI). -->
+  <PropertyGroup Condition="'$(PEP_BuildSequentially)' == 'true'">
+    <!-- Build referenced projects one after the other, instead of in parallel on multiple MSBuild nodes. -->
+    <BuildInParallel>false</BuildInParallel>
+    <!-- Use the regular CL task (one cl.exe per project, without /MP, see Directory.Build.targets) instead of MTT. -->
+    <UseMultiToolTask>false</UseMultiToolTask>
+    <EnableClServerMode>false</EnableClServerMode>
+    <MultiProcMaxCount>1</MultiProcMaxCount>
   </PropertyGroup>
 
   <!-- Define project specific directory for temporary cl.exe files -->
