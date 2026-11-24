@@ -193,16 +193,8 @@ void FileStore::persistRedactionBatchAsync(std::vector<EntryRedactionPersister> 
     failed = true;
   }
 
-  post(*ioContext_, [self = SharedFrom(*this), failed]() { // Let the ASIO thread...
-      // ... join this (redactionPersistence_) thread to clean up...
-      {
-        std::lock_guard lock(self->redactionPersistenceMux_);
-        assert(self->redactionPersistence_.joinable());
-        self->redactionPersistence_.join();
-        assert(!self->redactionPersistence_.joinable());
-      }
-      // ... then start a new persistence thread if any (more) cycles need to be persisted
-      self->persistRemainingPendingRedactions(failed);
+  post(*ioContext_, [self = SharedFrom(*this), failed]() { // Let the ASIO thread know that we finished processing
+      self->handleRedactionBatchPersisted(failed);
     });
 }
 
@@ -373,8 +365,16 @@ void FileStore::persistPendingRedactions() {
   redactionPersistence_ = std::thread([self = SharedFrom(*this), persisters]() { self->persistRedactionBatchAsync(persisters); });
 }
 
-void FileStore::persistRemainingPendingRedactions(bool previousAttemptFailed) {
-  if (previousAttemptFailed) {
+void FileStore::handleRedactionBatchPersisted(bool failed) {
+  // Join the redactionPersistence_ thread to clean up
+  {
+    std::lock_guard lock(redactionPersistenceMux_);
+    assert(redactionPersistence_.joinable());
+    redactionPersistence_.join();
+    assert(!redactionPersistence_.joinable());
+  }
+
+  if (failed) {
     assert(persistingRedactionCycle_.has_value());
     redactionPersistenceBackoff_.retry([self = SharedFrom(*this)](const boost::system::error_code& error) {
         if (!error) {
