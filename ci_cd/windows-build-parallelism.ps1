@@ -19,17 +19,17 @@
 
 $ErrorActionPreference = 'Stop'
 
-# Rough estimate of the peak memory use of a single cl.exe process for our code base:
-#  heavy use of Boost, Qt, and /bigobj, especially in Debug builds.
-$MemoryPerCompileGiB = if ($env:PEP_MEMORY_PER_COMPILE_GIB) { [double]$env:PEP_MEMORY_PER_COMPILE_GIB } else { 2 }
+# Estimate of the peak memory use per concurrent compiler process for our code base, including a share
+#  of the linkers and MSBuild nodes running at the same time. Measured (Nov 2026, all-targets): the whole build
+#  peaked at 0.5-0.6 GiB per concurrent compiler process, in both Release and Debug. 1 GiB leaves some headroom.
+$MemoryPerCompileGiB = if ($env:PEP_MEMORY_PER_COMPILE_GIB) { [double]$env:PEP_MEMORY_PER_COMPILE_GIB } else { 1 }
 
-# Upper bound for the number of projects that MSBuild builds concurrently.
-# Compilation is already limited separately (machine-wide) by MultiProcMaxCount, and a single project can use all of
-#  those compiler processes by itself. So we only need enough concurrent projects to keep the compiler processes busy
-#  around project boundaries (e.g. while a project is linking), and to link multiple projects concurrently.
-# Linking is not limited by MultiProcMaxCount and can use a lot of memory, and every concurrent project also needs its
-#  own MSBuild node process. So we don't scale this with the (possibly very large) number of CPUs.
-$MaxConcurrentProjects = 8
+# Upper bound for the number of projects that MSBuild builds concurrently (-maxCpuCount).
+# Compilation is already limited separately (machine-wide) by MultiProcMaxCount. But with the Visual Studio generator, a project
+#  only starts compiling once all projects it references have been built completely, so few concurrent projects leave most
+#  compiler slots unused. Measured on pep-build9 (all-targets Release, MultiProcMaxCount=64..96).
+#  Linking is not limited by MultiProcMaxCount, and every concurrent project needs its own MSBuild node.
+$MaxConcurrentProjects = 32
 
 $cpuCount = [Environment]::ProcessorCount
 $ramGiB = (Get-CimInstance -ClassName Win32_ComputerSystem).TotalPhysicalMemory / 1GB

@@ -41,6 +41,7 @@ REM   The /MP compiler option is then dropped.
 REM - EnforceProcessCountAcrossBuilds=true: the MultiProcMaxCount limit is enforced across all projects and all MSBuild
 REM   instances, and therefore across concurrent CI jobs on the same machine.
 REM   Because of this, MultiProcMaxCount is based on the resources of the whole machine and should be the same for all builds on it.
+REM   This only works with UseMSBuildResourceManager=false, see Directory.Build.props.
 REM These are MSBuild properties that default to the environment variables of the same name.
 REM  For their definitions, see Microsoft.Cpp.Common.props and Microsoft.CppCommon.targets in the Visual Studio installation.
 REM  In Visual Studio, MultiProcMaxCount defaults to CL_MPCount from "Tools > Options > Projects and Solutions > VC++ Project Settings > Maximum concurrent C++ compilations"
@@ -143,7 +144,13 @@ echo Configuring CMake project.
 cmake --preset conan-default %PEP_CMAKE_DEFINES% || exit /B 1
 
 echo Building.
-cmake --build --preset conan-%PEP_CONAN_PRESET_FLAVOR% %PEP_CMAKE_BUILD_TARGETS% -- /t:BuildGenerateSources;BuildCompile;BuildLink || exit /B 1
+REM Note: we deliberately build the default target (Build), not the separate build passes
+REM  /t:BuildGenerateSources;BuildCompile;BuildLink (with BuildPassReferences) from
+REM  https://devblogs.microsoft.com/cppblog/cpp-build-throughput-investigation-and-tune-up/
+REM  `cmake --build` builds ALL_BUILD.vcxproj, a Utility project that cannot take part in those passes, so it builds its
+REM  references with their default target and executables then link before the static libraries they need exist (LNK1181).
+REM  Building the passes on the solution (pep.slnx) does work, but measured at most ~7% faster in Release and slower in Debug.
+cmake --build --preset conan-%PEP_CONAN_PRESET_FLAVOR% %PEP_CMAKE_BUILD_TARGETS% || exit /B 1
 
 if [%WhatToBuild%] NEQ [wixlib] (
   goto :Done
