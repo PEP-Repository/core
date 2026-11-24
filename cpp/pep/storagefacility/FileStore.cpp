@@ -364,8 +364,8 @@ void FileStore::persistPendingRedactions() {
   }
 }
 
-void FileStore::persistRemainingPendingRedactions(bool previous_attempt_failed) {
-  if (previous_attempt_failed) {
+void FileStore::persistRemainingPendingRedactions(bool previousAttemptFailed) {
+  if (previousAttemptFailed) {
     redactionPersistenceBackoff_.retry([self = SharedFrom(*this)](const boost::system::error_code& error) {
         if (!error) {
           self->persistPendingRedactions();

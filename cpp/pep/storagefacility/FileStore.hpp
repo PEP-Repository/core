@@ -285,7 +285,7 @@ private:
 
   void markRedacted(const RedactionCycle& cycle) noexcept;
   void persistRedactionCycleAsync(RedactionCycle cycle, std::vector<RedactionPersister> persisters); // Entry point for the redactionPersistence_ thread
-  void persistRemainingPendingRedactions(bool previous_attempt_failed);
+  void persistRemainingPendingRedactions(bool previousAttemptFailed);
 
 public:
   PropertyBasedContainer<const Participant*, &Participant::name>::set participants() const;
