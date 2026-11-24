@@ -155,7 +155,7 @@ public:
     void save() const;
     static std::shared_ptr<Entry> TryLoad(Cell& cell, const CheckedFileName& filename);
     static std::shared_ptr<Entry> Load(Cell& cell, Timestamp timestamp);
-    static void EnsureRedactionPersisted(Timestamp redactedAt, Cell& cell, Timestamp version); // on disk
+    static bool EnsureRedactionPersisted(Timestamp redactedAt, Cell& cell, Timestamp version); // on disk
   };
 
   struct CellVersion {
@@ -197,9 +197,20 @@ public:
 
     using VersionTimestamps = std::set<Timestamp>;
     void markRedacted(Timestamp redactedAt, const VersionTimestamps& cellVersions) noexcept; // in memory
-    void ensureRedactionPersisted(Timestamp redactedAt, Timestamp cellVersion); // on disk
   };
 
+private:
+  class RedactionPersister {
+  private:
+    Cell& cell_;
+    Timestamp version_;
+
+  public:
+    RedactionPersister(Cell& cell, Timestamp version);
+    bool operator()(Timestamp redactAt) const;
+  };
+
+public:
   class Participant {
   private:
     FileStore& store_;
@@ -229,7 +240,7 @@ public:
 
     using VersionTimestampsByColumn = std::unordered_map<std::string, Cell::VersionTimestamps>;
     void markRedacted(Timestamp redactedAt, const VersionTimestampsByColumn& vsByColumn) noexcept; // in memory
-    void ensureRedactionPersisted(Timestamp redactedAt, const std::string& column, Timestamp version); // on disk
+    RedactionPersister makeRedactionPersister(const std::string& column, Timestamp version) const;
   };
 
 private:

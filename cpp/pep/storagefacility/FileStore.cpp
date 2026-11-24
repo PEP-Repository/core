@@ -176,8 +176,16 @@ void FileStore::persistRedactionCycleAsync(RedactionCycle cycle) {
   assert(cycle.applied && !cycle.completed);
   auto failed = false;
   try {
-    for (const auto& version : sqlite_->getIncludedCellVersions(cycle.id)) {
-      this->getParticipant(version.cell.participant())->ensureRedactionPersisted(*cycle.applied, version.cell.column(), version.timestamp);
+    std::vector<RedactionPersister> persisters;
+    {
+      auto versions = sqlite_->getIncludedCellVersions(cycle.id);
+      std::transform(versions.begin(), versions.end(), std::back_inserter(persisters), [this](const storagefacility::SqliteStorage::CellVersionSpec& spec) {
+          return this->getParticipant(spec.cell.participant())->makeRedactionPersister(spec.cell.column(), spec.timestamp);
+        });
+    }
+
+    for (const auto& persister : persisters) {
+      persister(*cycle.applied);
     }
 
     auto updated = cycle;
@@ -210,6 +218,14 @@ const std::string& FileStore::getColumnString(const std::string& value) {
     throw std::runtime_error("Cell name may not contain an entry name delimiter");
   }
   return *columnNames_.insert(value).first;
+}
+
+FileStore::RedactionPersister::RedactionPersister(Cell& cell, Timestamp version)
+  : cell_(cell), version_(version) {
+}
+
+bool FileStore::RedactionPersister::operator()(Timestamp redactAt) const {
+  return Entry::EnsureRedactionPersisted(redactAt, cell_, version_);
 }
 
 FileStore::FileStore(
@@ -437,11 +453,6 @@ void FileStore::Cell::markRedacted(Timestamp redactedAt, const VersionTimestamps
   }
 
   versions_ = std::move(updated);
-}
-
-void FileStore::Cell::ensureRedactionPersisted(Timestamp redactedAt, Timestamp cellVersion) {
-  // No need to synchronize (with Cell::applyRedactionCycle) because we don't touch our versions_ field
-  Entry::EnsureRedactionPersisted(redactedAt, *this, cellVersion);
 }
 
 std::shared_ptr<FileStore::EntryChange> FileStore::modifyEntry(const EntryName& name, bool requireExisting, bool requireUnredacted) {
@@ -673,7 +684,7 @@ std::shared_ptr<FileStore::Entry> FileStore::Entry::Load(Cell& cell, Timestamp t
   return result;
 }
 
-void FileStore::Entry::EnsureRedactionPersisted(Timestamp redactedAt, Cell& cell, Timestamp version) {
+bool FileStore::Entry::EnsureRedactionPersisted(Timestamp redactedAt, Cell& cell, Timestamp version) {
   auto timestampStr = std::to_string(TicksSinceEpoch<milliseconds>(version));
 
   std::lock_guard lock(cell.participant().fileStore().fileSystemMux_);
@@ -690,13 +701,14 @@ void FileStore::Entry::EnsureRedactionPersisted(Timestamp redactedAt, Cell& cell
   if (entry->getRedactedAt().has_value()) {
     PEP_LOG(LogTag, Severity::Debug) << "Redaction has previously been persisted for cell " << cell.entryName().string() << " version " << timestampStr;
     assert(entry->getRedactedAt() == redactedAt);
+    return false;
   }
-  else {
-    PEP_LOG(LogTag, Severity::Debug) << "Persisting redaction for cell " << cell.entryName().string() << " version " << timestampStr;
-    entry->markRedacted(redactedAt);
-    entry->save();
-    PEP_LOG(LogTag, Severity::Info) << "Persisted redaction for cell " << cell.entryName().string() << " version " << timestampStr;
-  }
+
+  PEP_LOG(LogTag, Severity::Debug) << "Persisting redaction for cell " << cell.entryName().string() << " version " << timestampStr;
+  entry->markRedacted(redactedAt);
+  entry->save();
+  PEP_LOG(LogTag, Severity::Info) << "Persisted redaction for cell " << cell.entryName().string() << " version " << timestampStr;
+  return true;
 }
 
 std::shared_ptr<FileStore::Entry> FileStore::Entry::TryLoad(Cell& cell, const CheckedFileName& filename) {
@@ -910,10 +922,10 @@ void FileStore::Participant::markRedacted(Timestamp redactedAt, const VersionTim
   }
 }
 
-void FileStore::Participant::ensureRedactionPersisted(Timestamp redactedAt, const std::string& column, Timestamp version) {
+FileStore::RedactionPersister FileStore::Participant::makeRedactionPersister(const std::string& column, Timestamp version) const {
   auto cell = this->getCell(column);
   assert(cell != nullptr);
-  cell->ensureRedactionPersisted(redactedAt, version);
+  return RedactionPersister(*cell, version);
 }
 
 }
