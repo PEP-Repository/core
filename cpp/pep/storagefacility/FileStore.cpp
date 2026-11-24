@@ -363,11 +363,11 @@ void FileStore::persistPendingRedactions() {
   auto redactAt = *persistingRedactionCycle_->applied;
 
   // ... and batch (some of) its entries to...
-  std::vector<RedactionPersister> persisters;
-  auto versions = sqlite_->getIncludedCellVersions(i->id);
-  std::transform(versions.begin(), versions.end(), std::back_inserter(persisters), [this, redactAt](const storagefacility::SqliteStorage::CellVersionSpec& spec) {
-    return this->getParticipant(spec.cell.participant())->makeRedactionPersister(redactAt, spec.cell.column(), spec.timestamp);
-    });
+  auto persisters = sqlite_->getIncludedCellVersions(i->id)
+    | std::views::transform([this, redactAt](const storagefacility::SqliteStorage::CellVersionSpec& spec) {
+        return this->getParticipant(spec.cell.participant())->makeRedactionPersister(redactAt, spec.cell.column(), spec.timestamp);
+      })
+    | std::ranges::to<std::vector>();
 
   // ... start a (new) persistence thread now to process them
   redactionPersistence_ = std::thread([self = SharedFrom(*this), persisters]() { self->persistRedactionCycleAsync(persisters); });
