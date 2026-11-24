@@ -4,6 +4,16 @@
   <!-- Based on https://devblogs.microsoft.com/cppblog/cpp-build-throughput-investigation-and-tune-up/ -->
   <!-- Properties can be overridden via environment variables. -->
 
+  <!--
+    By default, MSBuild builds -maxCpuCount projects concurrently, and the compiler runs /MP processes for each project,
+      so the number of compiler processes multiplies, and concurrent CI jobs on the same machine multiply it further.
+      See https://learn.microsoft.com/en-us/cpp/build/reference/mp-build-with-multiple-processes#the-msbuild-tool
+      In Visual Studio, -maxCpuCount is "Tools > Options > Projects and Solutions > Build and Run > Maximum number of parallel project builds".
+    Instead, we use MSBuild's Multi-ToolTask (MTT) scheduler, see https://devblogs.microsoft.com/cppblog/improved-parallelism-in-msbuild/
+      and the UseMultiToolTask property below.
+    For property definitions, see e.g. Microsoft.Cpp.Common.props and Microsoft.CppCommon.targets in the Visual Studio installation.
+  -->
+
   <!-- MSBuild imports this file for all projects in subdirectories, so for CMake build directories inside the repository
        (such as ./build), but not for build directories elsewhere, nor for dependencies that Conan builds. -->
   <!-- Measured on pep-build9 (96 vCPUs, 78 GiB RAM) in November 2026 with clean all-targets builds,
@@ -26,10 +36,11 @@
     <!-- To enable MultiToolTask (MTT) mode: MSBuild starts one cl.exe per source file, at most MultiProcMaxCount at a time.
          MultiProcMaxCount defaults to CL_MPCount (set by Visual Studio from "Tools > Options > Projects and Solutions >
          VC++ Project Settings > Maximum concurrent C++ compilations"), or else to the NUMBER_OF_PROCESSORS environment variable.
-         Note that because Conan directly passes /MP, tools.build:jobs does not impact CL_MPCount. -->
+         Note that because Conan directly passes /MP, tools.build:jobs does not impact CL_MPCount.
+         The /MP compiler option is ignored with MTT. -->
     <UseMultiToolTask Condition="'$(UseMultiToolTask)' == ''">true</UseMultiToolTask>
-    <!-- Enforce MultiProcMaxCount across all projects and all MSBuild instances (in the same Windows session),
-         using a named semaphore. -->
+    <!-- Enforce MultiProcMaxCount across all projects and all MSBuild instances (in the same Windows session).
+         Because of this, MultiProcMaxCount is based on the resources of the whole machine and should be the same for all builds on it. -->
     <EnforceProcessCountAcrossBuilds Condition="'$(EnforceProcessCountAcrossBuilds)' == ''">true</EnforceProcessCountAcrossBuilds>
 
     <!-- Do not use the MSBuild Resource Manager: with it, MTT schedules compiler processes via MSBuild

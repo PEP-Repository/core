@@ -2,7 +2,7 @@
 
 <#
 .SYNOPSIS
-  Determine the parallelism of (MSBuild-based) Windows builds from the number of logical CPUs and the amount of RAM.
+  Determine the parallelism of Windows builds from the number of logical CPUs and the amount of RAM.
 
 .DESCRIPTION
   Writes NAME=VALUE lines to stdout, which windows-ci-build.bat sets as environment variables:
@@ -10,6 +10,7 @@
   - MultiProcMaxCount: the maximum number of concurrent compiler (cl.exe) processes.
     With UseMultiToolTask=true and EnforceProcessCountAcrossBuilds=true (see windows-ci-build.bat),
     this limit is shared by all projects and all MSBuild instances (and therefore all concurrent CI jobs) on the machine.
+    This limit may also be used for Ninja-based builds.
   - PEP_MSBUILD_MAX_CPU_COUNT: the maximum number of projects that MSBuild builds concurrently (-maxCpuCount).
 
   A variable that is already set in the environment (e.g. via the GitLab runner configuration) is kept as is.
