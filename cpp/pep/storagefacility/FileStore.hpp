@@ -202,12 +202,13 @@ public:
 private:
   class RedactionPersister {
   private:
+    Timestamp redactAt_;
     Cell& cell_;
     Timestamp version_;
 
   public:
-    RedactionPersister(Cell& cell, Timestamp version);
-    bool operator()(Timestamp redactAt) const;
+    RedactionPersister(Timestamp redactAt, Cell& cell, Timestamp version);
+    bool operator()() const;
   };
 
 public:
@@ -240,7 +241,7 @@ public:
 
     using VersionTimestampsByColumn = std::unordered_map<std::string, Cell::VersionTimestamps>;
     void markRedacted(Timestamp redactedAt, const VersionTimestampsByColumn& vsByColumn) noexcept; // in memory
-    RedactionPersister makeRedactionPersister(const std::string& column, Timestamp version) const;
+    RedactionPersister makeRedactionPersister(Timestamp redactAt, const std::string& column, Timestamp version) const;
   };
 
 private:
@@ -260,6 +261,7 @@ private:
   std::shared_ptr<boost::asio::io_context> ioContext_;
   std::shared_ptr<storagefacility::SqliteStorage> sqlite_;
   std::thread redactionPersistence_;
+  std::optional<RedactionCycle> persistingRedactionCycle_;
   std::mutex redactionPersistenceMux_; // Synchronizes access to the redactionPersistence_ instance
   ExponentialBackoff redactionPersistenceBackoff_;
   std::recursive_mutex fileSystemMux_; // Synchronizes access to (the meta directory on) the file system
@@ -284,7 +286,7 @@ private:
   Participant& provideParticipant(const std::string& name);
 
   void markRedacted(const RedactionCycle& cycle) noexcept;
-  void persistRedactionCycleAsync(RedactionCycle cycle, std::vector<RedactionPersister> persisters); // Entry point for the redactionPersistence_ thread
+  void persistRedactionCycleAsync(std::vector<RedactionPersister> persisters); // Entry point for the redactionPersistence_ thread
   void persistRemainingPendingRedactions(bool previousAttemptFailed);
 
 public:

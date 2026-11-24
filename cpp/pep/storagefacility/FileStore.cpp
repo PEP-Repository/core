@@ -170,24 +170,25 @@ void FileStore::markRedacted(const RedactionCycle& cycle) noexcept {
   }
 }
 
-void FileStore::persistRedactionCycleAsync(RedactionCycle cycle, std::vector<RedactionPersister> persisters) {
+void FileStore::persistRedactionCycleAsync(std::vector<RedactionPersister> persisters) {
   // Entry point for the redactionPersistence_ thread
 
-  assert(cycle.applied && !cycle.completed);
   auto failed = false;
   try {
     for (const auto& persister : persisters) {
-      persister(*cycle.applied);
+      persister();
     }
 
-    auto updated = cycle;
-    updated.completed = TimeNow();
-    sqlite_->updateRedactionCycle(updated);
-    PEP_LOG(LogTag, Severity::Info) << "Completed persistence of redaction cycle " << updated.id;
+    assert(persistingRedactionCycle_.has_value());
+    assert(!persistingRedactionCycle_->completed.has_value());
+    persistingRedactionCycle_->completed = TimeNow();
+    sqlite_->updateRedactionCycle(*persistingRedactionCycle_);
+    PEP_LOG(LogTag, Severity::Info) << "Completed persistence of redaction cycle " << persistingRedactionCycle_->id;
+    persistingRedactionCycle_.reset();
   }
   catch (...) {
     // Eat all exceptions to prevent the thread from taking down the entire process
-    PEP_LOG(LogTag, Severity::Error) << "Encountered exception persisting redaction cycle " << cycle.id << ": " << GetExceptionMessage(std::current_exception());
+    PEP_LOG(LogTag, Severity::Error) << "Encountered exception persisting redactions: " << GetExceptionMessage(std::current_exception());
     // Since the cycle hasn't been marked "completed" in sqlite_, we'll (let the ASIO thread) retry with a new redactionPersistence_ thread
     failed = true;
   }
@@ -212,12 +213,12 @@ const std::string& FileStore::getColumnString(const std::string& value) {
   return *columnNames_.insert(value).first;
 }
 
-FileStore::RedactionPersister::RedactionPersister(Cell& cell, Timestamp version)
-  : cell_(cell), version_(version) {
+FileStore::RedactionPersister::RedactionPersister(Timestamp redactAt, Cell& cell, Timestamp version)
+  : redactAt_(redactAt), cell_(cell), version_(version) {
 }
 
-bool FileStore::RedactionPersister::operator()(Timestamp redactAt) const {
-  return Entry::EnsureRedactionPersisted(redactAt, cell_, version_);
+bool FileStore::RedactionPersister::operator()() const {
+  return Entry::EnsureRedactionPersisted(redactAt_, cell_, version_);
 }
 
 FileStore::FileStore(
@@ -358,20 +359,23 @@ void FileStore::persistPendingRedactions() {
   // Find the oldest unpersisted cycle...
   auto i = std::ranges::min_element(pending, {}, &RedactionCycle::applied);
   assert(i != pending.end());
+  persistingRedactionCycle_ = *i;
+  auto redactAt = *persistingRedactionCycle_->applied;
 
   // ... and batch (some of) its entries to...
   std::vector<RedactionPersister> persisters;
   auto versions = sqlite_->getIncludedCellVersions(i->id);
-  std::transform(versions.begin(), versions.end(), std::back_inserter(persisters), [this](const storagefacility::SqliteStorage::CellVersionSpec& spec) {
-    return this->getParticipant(spec.cell.participant())->makeRedactionPersister(spec.cell.column(), spec.timestamp);
+  std::transform(versions.begin(), versions.end(), std::back_inserter(persisters), [this, redactAt](const storagefacility::SqliteStorage::CellVersionSpec& spec) {
+    return this->getParticipant(spec.cell.participant())->makeRedactionPersister(redactAt, spec.cell.column(), spec.timestamp);
     });
 
   // ... start a (new) persistence thread now to process them
-  redactionPersistence_ = std::thread([self = SharedFrom(*this), cycle = *i, persisters]() { self->persistRedactionCycleAsync(cycle, persisters); });
+  redactionPersistence_ = std::thread([self = SharedFrom(*this), persisters]() { self->persistRedactionCycleAsync(persisters); });
 }
 
 void FileStore::persistRemainingPendingRedactions(bool previousAttemptFailed) {
   if (previousAttemptFailed) {
+    assert(persistingRedactionCycle_.has_value());
     redactionPersistenceBackoff_.retry([self = SharedFrom(*this)](const boost::system::error_code& error) {
         if (!error) {
           self->persistPendingRedactions();
@@ -379,6 +383,7 @@ void FileStore::persistRemainingPendingRedactions(bool previousAttemptFailed) {
       });
   }
   else {
+    assert(!persistingRedactionCycle_.has_value());
     redactionPersistenceBackoff_.success();
     this->persistPendingRedactions();
   }
@@ -928,10 +933,10 @@ void FileStore::Participant::markRedacted(Timestamp redactedAt, const VersionTim
   }
 }
 
-FileStore::RedactionPersister FileStore::Participant::makeRedactionPersister(const std::string& column, Timestamp version) const {
+FileStore::RedactionPersister FileStore::Participant::makeRedactionPersister(Timestamp redactAt, const std::string& column, Timestamp version) const {
   auto cell = this->getCell(column);
   assert(cell != nullptr);
-  return RedactionPersister(*cell, version);
+  return RedactionPersister(redactAt, *cell, version);
 }
 
 }
