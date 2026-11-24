@@ -170,7 +170,7 @@ void FileStore::markRedacted(const RedactionCycle& cycle) noexcept {
   }
 }
 
-void FileStore::persistRedactionCycleAsync(std::vector<RedactionPersister> persisters) {
+void FileStore::persistRedactionBatchAsync(std::vector<EntryRedactionPersister> persisters) {
   // Entry point for the redactionPersistence_ thread
 
   auto failed = false;
@@ -213,11 +213,11 @@ const std::string& FileStore::getColumnString(const std::string& value) {
   return *columnNames_.insert(value).first;
 }
 
-FileStore::RedactionPersister::RedactionPersister(Timestamp redactAt, Cell& cell, Timestamp version)
+FileStore::EntryRedactionPersister::EntryRedactionPersister(Timestamp redactAt, Cell& cell, Timestamp version)
   : redactAt_(redactAt), cell_(cell), version_(version) {
 }
 
-bool FileStore::RedactionPersister::operator()() const {
+bool FileStore::EntryRedactionPersister::operator()() const {
   return Entry::EnsureRedactionPersisted(redactAt_, cell_, version_);
 }
 
@@ -370,7 +370,7 @@ void FileStore::persistPendingRedactions() {
     | std::ranges::to<std::vector>();
 
   // ... start a (new) persistence thread now to process them
-  redactionPersistence_ = std::thread([self = SharedFrom(*this), persisters]() { self->persistRedactionCycleAsync(persisters); });
+  redactionPersistence_ = std::thread([self = SharedFrom(*this), persisters]() { self->persistRedactionBatchAsync(persisters); });
 }
 
 void FileStore::persistRemainingPendingRedactions(bool previousAttemptFailed) {
@@ -933,10 +933,10 @@ void FileStore::Participant::markRedacted(Timestamp redactedAt, const VersionTim
   }
 }
 
-FileStore::RedactionPersister FileStore::Participant::makeRedactionPersister(Timestamp redactAt, const std::string& column, Timestamp version) const {
+FileStore::EntryRedactionPersister FileStore::Participant::makeRedactionPersister(Timestamp redactAt, const std::string& column, Timestamp version) const {
   auto cell = this->getCell(column);
   assert(cell != nullptr);
-  return RedactionPersister(redactAt, *cell, version);
+  return EntryRedactionPersister(redactAt, *cell, version);
 }
 
 }

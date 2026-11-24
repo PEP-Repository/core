@@ -200,14 +200,14 @@ public:
   };
 
 private:
-  class RedactionPersister {
+  class EntryRedactionPersister {
   private:
     Timestamp redactAt_;
     Cell& cell_;
     Timestamp version_;
 
   public:
-    RedactionPersister(Timestamp redactAt, Cell& cell, Timestamp version);
+    EntryRedactionPersister(Timestamp redactAt, Cell& cell, Timestamp version);
     bool operator()() const;
   };
 
@@ -241,7 +241,7 @@ public:
 
     using VersionTimestampsByColumn = std::unordered_map<std::string, Cell::VersionTimestamps>;
     void markRedacted(Timestamp redactedAt, const VersionTimestampsByColumn& vsByColumn) noexcept; // in memory
-    RedactionPersister makeRedactionPersister(Timestamp redactAt, const std::string& column, Timestamp version) const;
+    EntryRedactionPersister makeRedactionPersister(Timestamp redactAt, const std::string& column, Timestamp version) const;
   };
 
 private:
@@ -286,7 +286,7 @@ private:
   Participant& provideParticipant(const std::string& name);
 
   void markRedacted(const RedactionCycle& cycle) noexcept;
-  void persistRedactionCycleAsync(std::vector<RedactionPersister> persisters); // Entry point for the redactionPersistence_ thread
+  void persistRedactionBatchAsync(std::vector<EntryRedactionPersister> persisters); // Entry point for the redactionPersistence_ thread
   void persistRemainingPendingRedactions(bool previousAttemptFailed);
 
 public:
