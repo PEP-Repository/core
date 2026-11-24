@@ -170,6 +170,39 @@ void FileStore::markRedacted(const RedactionCycle& cycle) noexcept {
   }
 }
 
+std::vector<FileStore::EntryRedactionPersister> FileStore::getRedactionPersistenceBatch() {
+  std::vector<FileStore::EntryRedactionPersister> result;
+
+  // If we're not still processing a cycle...
+  if (!persistingRedactionCycle_.has_value()) {
+    // ... get (all) cycles that need persisting...
+    auto pending = sqlite_->getRedactionCycles()
+      | std::views::filter([](const RedactionCycle& cycle) { return cycle.applied && !cycle.completed; })
+      | std::ranges::to<std::vector>();
+
+    // ... and select the oldest one for processing (if it exists)
+    if (!pending.empty()) {
+      auto i = std::ranges::min_element(pending, {}, &RedactionCycle::applied);
+      assert(i != pending.end());
+      persistingRedactionCycle_ = *i;
+    }
+  }
+
+  // If there's a cycle marked for persistence...
+  if (persistingRedactionCycle_.has_value()) {
+    auto redactAt = *persistingRedactionCycle_->applied;
+
+    // ...get a batch of that cycle's entries
+    result = sqlite_->getIncludedCellVersions(persistingRedactionCycle_->id)
+      | std::views::transform([this, redactAt](const storagefacility::SqliteStorage::CellVersionSpec& spec) {
+      return this->getParticipant(spec.cell.participant())->makeRedactionPersister(redactAt, spec.cell.column(), spec.timestamp);
+        })
+      | std::ranges::to<std::vector>();
+  }
+
+  return result;
+}
+
 void FileStore::persistRedactionBatchAsync(std::vector<EntryRedactionPersister> persisters) {
   // Entry point for the redactionPersistence_ thread
 
@@ -330,30 +363,14 @@ void FileStore::persistPendingRedactions() {
     return;
   }
 
-  auto pending = sqlite_->getRedactionCycles()
-    | std::views::filter([](const RedactionCycle& cycle) { return cycle.applied && !cycle.completed; })
-    | std::ranges::to<std::vector>();
-
-  // Do nothing if there are no redaction cycles that need persisting
-  if (pending.empty()) {
+  // Get a batch of redaction persistence jobs
+  auto batch = this->getRedactionPersistenceBatch();
+  if (batch.empty()) {
     return;
   }
 
-  // Find the oldest unpersisted cycle...
-  auto i = std::ranges::min_element(pending, {}, &RedactionCycle::applied);
-  assert(i != pending.end());
-  persistingRedactionCycle_ = *i;
-  auto redactAt = *persistingRedactionCycle_->applied;
-
-  // ... and batch (some of) its entries to...
-  auto persisters = sqlite_->getIncludedCellVersions(i->id)
-    | std::views::transform([this, redactAt](const storagefacility::SqliteStorage::CellVersionSpec& spec) {
-        return this->getParticipant(spec.cell.participant())->makeRedactionPersister(redactAt, spec.cell.column(), spec.timestamp);
-      })
-    | std::ranges::to<std::vector>();
-
-  // ... start a (new) persistence thread now to process them
-  redactionPersistence_ = std::thread([self = SharedFrom(*this), persisters]() { self->persistRedactionBatchAsync(persisters); });
+  // Start a (new) persistence thread now to process the batch
+  redactionPersistence_ = std::thread([self = SharedFrom(*this), batch]() { self->persistRedactionBatchAsync(batch); });
 }
 
 void FileStore::handleRedactionBatchPersistenceFinished(bool failed) {
