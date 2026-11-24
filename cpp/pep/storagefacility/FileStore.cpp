@@ -339,29 +339,35 @@ Generator<PrefixedStringsEntry> FileStore::pagePaths() const {
 }
 
 void FileStore::persistPendingRedactions() {
-  // If there is a redaction cycle that has been confirmed/applied but not (fully) persisted yet...
+  std::lock_guard lock(redactionPersistenceMux_);
+
+  // Let the persistence thread continue processing if it's already running
+  if (redactionPersistence_.joinable()) {
+    return;
+  }
+
   auto pending = sqlite_->getRedactionCycles()
     | std::views::filter([](const RedactionCycle& cycle) { return cycle.applied && !cycle.completed; })
     | std::ranges::to<std::vector>();
 
-  if (!pending.empty()) {
-    std::lock_guard lock(redactionPersistenceMux_);
-    if (!redactionPersistence_.joinable()) { // ... and the persistence thread isn't already running...
-      // ... find the oldest unpersisted cycle...
-      auto i = std::ranges::min_element(pending, {}, &RedactionCycle::applied);
-      assert(i != pending.end());
-
-      // ... and batch (some of) its entries to...
-      std::vector<RedactionPersister> persisters;
-      auto versions = sqlite_->getIncludedCellVersions(i->id);
-      std::transform(versions.begin(), versions.end(), std::back_inserter(persisters), [this](const storagefacility::SqliteStorage::CellVersionSpec& spec) {
-        return this->getParticipant(spec.cell.participant())->makeRedactionPersister(spec.cell.column(), spec.timestamp);
-        });
-
-      // ... start a (new) persistence thread now to process them.
-      redactionPersistence_ = std::thread([self = SharedFrom(*this), cycle = *i, persisters]() { self->persistRedactionCycleAsync(cycle, persisters); });
-    }
+  // Do nothing if there are no redaction cycles that need persisting
+  if (pending.empty()) {
+    return;
   }
+
+  // Find the oldest unpersisted cycle...
+  auto i = std::ranges::min_element(pending, {}, &RedactionCycle::applied);
+  assert(i != pending.end());
+
+  // ... and batch (some of) its entries to...
+  std::vector<RedactionPersister> persisters;
+  auto versions = sqlite_->getIncludedCellVersions(i->id);
+  std::transform(versions.begin(), versions.end(), std::back_inserter(persisters), [this](const storagefacility::SqliteStorage::CellVersionSpec& spec) {
+    return this->getParticipant(spec.cell.participant())->makeRedactionPersister(spec.cell.column(), spec.timestamp);
+    });
+
+  // ... start a (new) persistence thread now to process them
+  redactionPersistence_ = std::thread([self = SharedFrom(*this), cycle = *i, persisters]() { self->persistRedactionCycleAsync(cycle, persisters); });
 }
 
 void FileStore::persistRemainingPendingRedactions(bool previousAttemptFailed) {
