@@ -178,13 +178,6 @@ void FileStore::persistRedactionBatchAsync(std::vector<EntryRedactionPersister> 
     for (const auto& persister : persisters) {
       persister();
     }
-
-    assert(persistingRedactionCycle_.has_value());
-    assert(!persistingRedactionCycle_->completed.has_value());
-    persistingRedactionCycle_->completed = TimeNow();
-    sqlite_->updateRedactionCycle(*persistingRedactionCycle_);
-    PEP_LOG(LogTag, Severity::Info) << "Completed persistence of redaction cycle " << persistingRedactionCycle_->id;
-    persistingRedactionCycle_.reset();
   }
   catch (...) {
     // Eat all exceptions to prevent the thread from taking down the entire process
@@ -378,7 +371,13 @@ void FileStore::handleRedactionBatchPersistenceFinished(bool failed) {
       });
   }
   else {
-    assert(!persistingRedactionCycle_.has_value());
+    assert(persistingRedactionCycle_.has_value());
+    assert(!persistingRedactionCycle_->completed.has_value());
+    persistingRedactionCycle_->completed = TimeNow();
+    sqlite_->updateRedactionCycle(*persistingRedactionCycle_);
+    PEP_LOG(LogTag, Severity::Info) << "Completed persistence of redaction cycle " << persistingRedactionCycle_->id;
+    persistingRedactionCycle_.reset();
+
     redactionPersistenceBackoff_.success();
     this->persistPendingRedactions();
   }
