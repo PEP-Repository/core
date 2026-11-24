@@ -170,20 +170,12 @@ void FileStore::markRedacted(const RedactionCycle& cycle) noexcept {
   }
 }
 
-void FileStore::persistRedactionCycleAsync(RedactionCycle cycle) {
+void FileStore::persistRedactionCycleAsync(RedactionCycle cycle, std::vector<RedactionPersister> persisters) {
   // Entry point for the redactionPersistence_ thread
 
   assert(cycle.applied && !cycle.completed);
   auto failed = false;
   try {
-    std::vector<RedactionPersister> persisters;
-    {
-      auto versions = sqlite_->getIncludedCellVersions(cycle.id);
-      std::transform(versions.begin(), versions.end(), std::back_inserter(persisters), [this](const storagefacility::SqliteStorage::CellVersionSpec& spec) {
-          return this->getParticipant(spec.cell.participant())->makeRedactionPersister(spec.cell.column(), spec.timestamp);
-        });
-    }
-
     for (const auto& persister : persisters) {
       persister(*cycle.applied);
     }
@@ -358,8 +350,15 @@ void FileStore::persistPendingRedactions() {
       // ... find the oldest unpersisted cycle...
       auto i = std::ranges::min_element(pending, {}, &RedactionCycle::applied);
       assert(i != pending.end());
+
+      std::vector<RedactionPersister> persisters;
+      auto versions = sqlite_->getIncludedCellVersions(i->id);
+      std::transform(versions.begin(), versions.end(), std::back_inserter(persisters), [this](const storagefacility::SqliteStorage::CellVersionSpec& spec) {
+        return this->getParticipant(spec.cell.participant())->makeRedactionPersister(spec.cell.column(), spec.timestamp);
+        });
+
       // ... and start a (new) persistence thread now to process it.
-      redactionPersistence_ = std::thread([self = SharedFrom(*this), cycle = *i]() { self->persistRedactionCycleAsync(cycle); });
+      redactionPersistence_ = std::thread([self = SharedFrom(*this), cycle = *i, persisters]() { self->persistRedactionCycleAsync(cycle, persisters); });
     }
   }
 }
