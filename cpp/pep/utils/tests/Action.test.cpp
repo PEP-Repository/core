@@ -1,6 +1,7 @@
 #include <pep/utils/Action.hpp>
 #include <pep/utils/TestError.hpp>
 #include <gtest/gtest.h>
+#include <memory>
 
 namespace {
 

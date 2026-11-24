@@ -1,26 +1,20 @@
-#include <pep/storagefacility/StorageFacility.hpp>
-#include <pep/auth/UserGroup.hpp>
-#include <pep/crypto/ConstTime.hpp>
-#include <pep/utils/Configuration.hpp>
 #include <pep/async/CreateObservable.hpp>
+#include <pep/async/OnAsio.hpp>
 #include <pep/async/RxBeforeTermination.hpp>
-#include <pep/utils/Random.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxParallelConcat.hpp>
-#include <pep/storagefacility/StorageFacilitySerializers.hpp>
-#include <pep/storagefacility/SFIdSerializer.hpp>
-#include <pep/messaging/MessageHeader.hpp>
-#include <pep/utils/Defer.hpp>
-#include <pep/morphing/MorphingPropertySerializers.hpp>
-#include <pep/async/OnAsio.hpp>
 #include <pep/async/WorkerPool.hpp>
 #include <pep/auth/Signed.hpp>
+#include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey
+#include <pep/messaging/MessageHeader.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/messaging/ReadThrottle.hpp>
 #include <pep/metrics/RegisteredMetrics.hpp>
 #include <pep/morphing/EnrolledPartyKeys.hpp>
 #include <pep/morphing/Metadata.hpp> // for EncryptionScheme
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/serialization/Error.hpp>
 #include <pep/serialization/IndexList.hpp>
@@ -35,23 +29,32 @@
 #include <pep/storagefacility/FileStore.hpp>
 #include <pep/storagefacility/PagePathResponseChunker.hpp>
 #include <pep/storagefacility/PendingBytesLimiter.hpp>
+#include <pep/storagefacility/RedactionCycle.hpp>
+#include <pep/storagefacility/RedactionMessages.hpp>
 #include <pep/storagefacility/RedactionSerializers.hpp>
+#include <pep/storagefacility/SFIdSerializer.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
+#include <pep/storagefacility/StorageFacility.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp> // for SignedDataEnumerationRequest2, DataEnumerationResponse2, DataStoreRequest2
+#include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/ticketing/TicketingMessages.hpp> // for Ticket2, LocalPseudonyms
+#include <pep/utils/Configuration.hpp>
+#include <pep/utils/Defer.hpp>
+#include <pep/utils/Generator.hpp>
 #include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Random.hpp>
 #include <pep/utils/Shared.hpp>
 #include <pep/utils/Timestamp.hpp> // for TimeNow
 #include <pep/utils/XxHasher.hpp>
 
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string/join.hpp>
-#include <boost/asio/placeholders.hpp>
-#include <rxcpp/rx-lite.hpp>
 #include <boost/asio/error.hpp> // for boost::asio::error::operation_aborted
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/placeholders.hpp>
 #include <boost/bind/bind.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -59,32 +62,32 @@
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
 
-#include <pep/utils/Generator.hpp>
-#include <ranges>
-#include <unordered_map>
-#include <sstream>
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iterator>
 #include <limits>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <format>
 
+#include <prometheus/counter.h>
 #include <prometheus/gauge.h>
 #include <prometheus/summary.h>
-#include <prometheus/counter.h>
 
 using namespace std::chrono_literals;
 using namespace std::ranges;
@@ -1228,7 +1231,7 @@ RedactionCycle StorageFacility::createRedactionCycle(RedactionCycle::Definition 
     throw Error("Unsupported redaction cycle name \"" + definition.name() + '"');
   }
 
-  return sqlite_->atomically([this, definition]() {
+  return sqlite_->atomically([this, &definition]() {
       auto id = sqlite_->createRedactionCycle(RedactionCycle{
         .id{}, // ignored during insertion
         .definition = std::move(definition),
@@ -1310,7 +1313,7 @@ Timestamp StorageFacility::getUniqueChangeTimestamp(bool forRedactionCycle) {
             << " because a newer commit or redaction cycle already exists with timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(threshold);
           auto message = std::move(stream).str();
           PEP_LOG(LogTag, Severity::Critical) << message;
-          throw std::runtime_error(std::move(message)); // Not an "Error": we don't want to expose our snafu tothe (client or) end user
+          throw std::runtime_error(message); // Not an "Error": we don't want to expose our snafu to the (client or) end user
         }
       } while (result == threshold);
 

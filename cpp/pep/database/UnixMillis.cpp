@@ -1,5 +1,8 @@
 #include <pep/database/UnixMillis.hpp>
+#include <pep/utils/Timestamp.hpp>
+
 #include <boost/numeric/conversion/cast.hpp>
+#include <chrono>
 
 namespace pep::database {
 

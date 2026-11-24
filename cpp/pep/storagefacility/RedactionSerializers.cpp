@@ -1,5 +1,12 @@
+#include <pep/serialization/Serialization.hpp>
 #include <pep/serialization/TimestampSerializer.hpp>
+#include <pep/storagefacility/RedactionCycle.hpp>
+#include <pep/storagefacility/RedactionMessages.hpp>
 #include <pep/storagefacility/RedactionSerializers.hpp>
+#include <pep/utils/Timestamp.hpp>
+#include <Messages.pb.h>
+#include <optional>
+#include <utility>
 
 namespace pep {
 

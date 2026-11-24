@@ -9,6 +9,8 @@
 #include <pep/messaging/Tail.hpp>
 #include <pep/serialization/Serialization.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/RedactionCycle.hpp>
+#include <pep/storagefacility/RedactionMessages.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataEnumerationResponse2, DataStoreRequest2, DataEnumerationRequest2, ...
 #include <pep/utils/Shared.hpp>
 

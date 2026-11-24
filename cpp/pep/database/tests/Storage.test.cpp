@@ -4,7 +4,9 @@
 #include <pep/utils/Filesystem.hpp>
 
 #include <filesystem>
+#include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace {
 using namespace sqlite_orm;

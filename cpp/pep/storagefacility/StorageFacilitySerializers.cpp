@@ -10,6 +10,7 @@
 #include <pep/storagefacility/PrefixedStrings.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataEnumerationRequest2, DataEnumerationResponse2, DataStoreRequest2, ...
 
+#include <cassert>
 #include <ranges>
 #include <stdexcept>
 #include <utility>

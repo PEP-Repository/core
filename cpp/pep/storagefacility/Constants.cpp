@@ -1,4 +1,6 @@
 #include <pep/storagefacility/Constants.hpp>
+#include <set>
+#include <string>
 
 namespace pep {
 

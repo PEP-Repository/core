@@ -1,13 +1,32 @@
+#include <pep/application/CommandLineCommand.hpp>
+#include <pep/application/CommandLineParameter.hpp>
+#include <pep/async/FakeVoid.hpp>
 #include <pep/async/RxToVector.hpp>
 #include <pep/cli/CliApplication.hpp>
+#include <pep/cli/Command.hpp>
 #include <pep/cli/Commands.hpp>
 #include <pep/client/Client.hpp>
 #include <pep/storagefacility/Constants.hpp>
+#include <pep/storagefacility/RedactionCycle.hpp>
 #include <pep/structuredoutput/FormatFlags.hpp>
 #include <pep/structuredoutput/Json.hpp>
+#include <pep/structuredoutput/Table.hpp>
 #include <pep/structuredoutput/Yaml.hpp>
+#include <pep/utils/Timestamp.hpp>
 
 #include <rxcpp/operators/rx-tap.hpp>
+
+#include <algorithm>
+#include <cassert>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <ranges>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace pep::cli {
 

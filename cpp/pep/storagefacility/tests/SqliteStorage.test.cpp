@@ -1,7 +1,11 @@
 #include <pep/database/Storage.hpp>
+#include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/storagefacility/Constants.hpp>
+#include <pep/storagefacility/RedactionCycle.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <gtest/gtest.h>
+#include <chrono>
 
 namespace {
 

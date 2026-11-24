@@ -1,6 +1,8 @@
 #include <pep/storagefacility/Constants.hpp>
 #include <pep/storagefacility/RedactionCycle.hpp>
 #include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace pep {
 

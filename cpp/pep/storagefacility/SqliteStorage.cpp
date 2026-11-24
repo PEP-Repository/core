@@ -1,11 +1,32 @@
 #include <pep/database/Storage.hpp>
 #include <pep/database/UnixMillis.hpp>
-#include <pep/storagefacility/RedactionMessages.hpp>
+#include <pep/serialization/Error.hpp>
+#include <pep/storagefacility/RedactionCycle.hpp>
 #include <pep/storagefacility/SqliteStorage.hpp>
+#include <pep/utils/Action.hpp>
 #include <pep/utils/CollectionUtils.hpp>
 #include <pep/utils/Defer.hpp>
+#include <pep/utils/Timestamp.hpp>
 #include <boost/numeric/conversion/cast.hpp>
+
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite3.h>
+
+#include <cassert>
+#include <chrono>
+#include <cstdint>
+#include <filesystem>
+#include <limits>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <ranges>
+#include <set>
+#include <stdexcept>
+#include <system_error>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace pep::storagefacility {
 
@@ -26,7 +47,7 @@ struct ColumnRecord {
 struct RedactionCycleRecord {
   RedactionCycle::Id id{};
   std::string name;
-  database::UnixMillis announced;
+  database::UnixMillis announced; //NOLINT(cppcoreguidelines-pro-type-member-init) We want callers to (explicitly) initialize this field
   database::UnixMillis applied{};
   database::UnixMillis completed{};
 };

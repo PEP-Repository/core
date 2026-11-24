@@ -22,7 +22,7 @@ struct RedactionCycle {
     std::string&& name() && noexcept { return std::move(name_); }
   };
 
-  Id id;
+  Id id; //NOLINT(cppcoreguidelines-pro-type-member-init) We want callers to (explicitly) initialize this field
   Definition definition;
   Timestamp announced;
   std::optional<Timestamp> applied;
