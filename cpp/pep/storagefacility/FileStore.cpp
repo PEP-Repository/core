@@ -70,6 +70,8 @@ namespace {
 const std::string ChecksumSubstituteKey = "checksum-substitute";
 const std::string RedactedAtKey = "redacted-at";
 
+constexpr size_t RedactionPersistenceBatchSize = 10000U;
+
 uint64_t GenerateChecksumSubstitute() {
   return RandomInteger<uint64_t>();
 }
@@ -185,6 +187,7 @@ std::vector<FileStore::EntryRedactionPersister> FileStore::getRedactionPersisten
       auto i = std::ranges::min_element(pending, {}, &RedactionCycle::applied);
       assert(i != pending.end());
       persistingRedactionCycle_ = *i;
+      redactionPersistenceBatchOffset_ = 0U;
     }
   }
 
@@ -194,10 +197,22 @@ std::vector<FileStore::EntryRedactionPersister> FileStore::getRedactionPersisten
 
     // ...get a batch of that cycle's entries
     result = sqlite_->getIncludedCellVersions(persistingRedactionCycle_->id)
+      | std::views::drop(redactionPersistenceBatchOffset_)
+      | std::views::take(RedactionPersistenceBatchSize)
       | std::views::transform([this, redactAt](const storagefacility::SqliteStorage::CellVersionSpec& spec) {
       return this->getParticipant(spec.cell.participant())->makeRedactionPersister(redactAt, spec.cell.column(), spec.timestamp);
         })
       | std::ranges::to<std::vector>();
+
+    if (result.empty()) { // No entries left to process: cycle has been completed
+      assert(!persistingRedactionCycle_->completed.has_value());
+      persistingRedactionCycle_->completed = TimeNow();
+      sqlite_->updateRedactionCycle(*persistingRedactionCycle_);
+      PEP_LOG(LogTag, Severity::Info) << "Completed persistence of redaction cycle " << persistingRedactionCycle_->id;
+      persistingRedactionCycle_.reset();
+      // Recur to get a batch from the next cycle-to-process (if any)
+      result = this->getRedactionPersistenceBatch();
+    }
   }
 
   return result;
@@ -388,14 +403,8 @@ void FileStore::handleRedactionBatchPersistenceFinished(bool failed) {
       });
   }
   else {
-    assert(persistingRedactionCycle_.has_value());
-    assert(!persistingRedactionCycle_->completed.has_value());
-    persistingRedactionCycle_->completed = TimeNow();
-    sqlite_->updateRedactionCycle(*persistingRedactionCycle_);
-    PEP_LOG(LogTag, Severity::Info) << "Completed persistence of redaction cycle " << persistingRedactionCycle_->id;
-    persistingRedactionCycle_.reset();
-
     redactionPersistenceBackoff_.success();
+    redactionPersistenceBatchOffset_ += RedactionPersistenceBatchSize;
     this->persistPendingRedactions();
   }
 }

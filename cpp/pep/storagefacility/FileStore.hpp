@@ -262,6 +262,7 @@ private:
   std::shared_ptr<storagefacility::SqliteStorage> sqlite_;
   std::thread redactionPersistence_;
   std::optional<RedactionCycle> persistingRedactionCycle_;
+  size_t redactionPersistenceBatchOffset_{};
   ExponentialBackoff redactionPersistenceBackoff_;
   std::recursive_mutex fileSystemMux_; // Synchronizes access to (the meta directory on) the file system
 
