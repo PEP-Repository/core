@@ -217,9 +217,14 @@ restart_servers() {
   if [ "$LOCAL" = true ]; then
     trace cd "$DATA_DIR"
     trace kill "$PEP_SERVERS_PID"
-    # Wait for the old servers to exit, so that the new ones don't e.g. find their ports still in use. Since we killed
-    # them, they exit with a nonzero exit code.
-    trace wait "$PEP_SERVERS_PID" || true
+    # Wait for the old servers to exit, so that the new ones don't e.g. find their ports still in use.
+    local exit_code=0
+    trace wait "$PEP_SERVERS_PID" || exit_code=$?
+    # A clean exit is needed to e.g. write code coverage data. On Windows, kill doesn't send a signal that allows one.
+    case "$(uname -s)" in
+      MINGW*|MSYS*|CYGWIN*) ;;
+      *) [ "$exit_code" -eq 0 ] || fail "pepServers did not shut down cleanly: it exited with code $exit_code" ;;
+    esac
     trace start_servers_locally
   else
     trace docker restart pepservertest

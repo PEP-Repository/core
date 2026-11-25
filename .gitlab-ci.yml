@@ -78,8 +78,10 @@ variables:
     cpp/pep/pullcastor/pepPullCastor
 
   # Monolithic pepServers executable with bundled configuration files
-  PEPSERVERS_MONOLITH: >-
+  EXECUTABLE_PEPSERVERS_MONOLITH: >-
     cpp/pep/servers/pepServers
+
+  CONFIG_PEPSERVERS_MONOLITH: >-
     cpp/pep/servers/accessmanager
     cpp/pep/servers/authserver
     cpp/pep/servers/keyserver
@@ -770,7 +772,7 @@ ubuntu-lts-debug:
 
     - |
        BINARIES=""
-       for BINARY in $UNIT_TESTS_ALL_NATIVE $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT; do
+       for BINARY in $UNIT_TESTS_ALL_NATIVE $EXECUTABLES_PEP_SERVICES $EXECUTABLES_CLIENT $EXECUTABLE_PEPSERVERS_MONOLITH; do
          BINARIES="$BINARIES -object $BUILD_DIRECTORY/$BINARY"
        done
 
@@ -1034,7 +1036,8 @@ ubuntu-lts-release-without-castor:
       $PATH_AUTOCOMPLETION
       $EXECUTABLES_CLIENT
       $LOCAL_CONFIG_CLIENT
-      $PEPSERVERS_MONOLITH
+      $EXECUTABLE_PEPSERVERS_MONOLITH
+      $CONFIG_PEPSERVERS_MONOLITH
     TESTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_SERVER
@@ -1213,7 +1216,8 @@ windows-debug:
                       $EXECUTABLES_PEP_SERVICES
                       $EXECUTABLES_CLIENT
                       $EXECUTABLES_BENCHMARK
-                      $PEPSERVERS_MONOLITH
+                      $EXECUTABLE_PEPSERVERS_MONOLITH
+                      $CONFIG_PEPSERVERS_MONOLITH
                       $UNIT_TESTS_ALL_NATIVE"
     - '& "C:\Program Files\Git\bin\bash.exe" ./ci_cd/stage-built-files.sh --source-prefix "$BUILD_DIRECTORY"
                                                                           --dest-prefix "$STAGING_DIRECTORY"

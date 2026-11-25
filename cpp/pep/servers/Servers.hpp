@@ -1,55 +1,28 @@
 #pragma once
 
 #include <pep/server/NetworkedServer.hpp>
-#include <pep/utils/Configuration.hpp>
-#include <pep/utils/Log.hpp> // for Severity
-#include <pep/utils/ThreadUtil.hpp>
 
-#include <boost/core/demangle.hpp>
-
-#include <condition_variable>
-#include <exception>
 #include <filesystem>
-#include <memory>
-#include <mutex>
-#include <thread>
 #include <vector>
 
 namespace pep {
 
+/// All PEP servers, hosted together in a single process.
 class Servers {
 private:
-  std::vector<std::shared_ptr<NetworkedServer>> instances_;
-  std::vector<std::shared_ptr<std::thread>> threads_;
-  std::condition_variable isRunningCv_;
-  std::mutex isRunningMutex_; 
-  bool isRunning_ = false;
-
-  static void RunServer(std::shared_ptr<NetworkedServer> server) {
-    ThreadName::Set(server->describe());
-    server->start();
-  }
-
-  template <typename TServer>
-  void startServer(std::filesystem::path rootConfig, const char* configurationFile) {
-    try {
-      auto path = std::filesystem::absolute(rootConfig / configurationFile);
-      PEP_LOG("Servers", Severity::Info) << "Starting " << boost::core::demangle(typeid(TServer).name()) << " from " << path;
-      auto config = Configuration::FromFile(path);
-      auto server = instances_.emplace_back(MakeSharedCopy(NetworkedServer::Make<TServer>(config)));
-      auto thread = std::make_shared<std::thread>(&RunServer, server);
-      threads_.push_back(thread);
-    }
-    catch (const std::exception& e) {
-      PEP_LOG("Servers", Severity::Critical) << "Failed to start server from " << configurationFile << ": " << e.what();
-      throw;
-    }
-  }
+  std::vector<NetworkedServer> instances_;
 
 public:
-  
-  void runAsync(const std::filesystem::path& configPath);
-  void wait();
+  /// \brief Constructor: creates all servers.
+  /// \param configDir Directory containing a subdirectory with configuration for each server.
+  explicit Servers(const std::filesystem::path& configDir);
+
+  /// \brief Runs all servers, each on its own thread.
+  /// \remark Blocks until the "stop" method is called.
+  void run();
+
+  /// \brief Stops all servers, causing the "run" method to return.
+  /// \remark May be called from any thread.
   void stop();
 };
 

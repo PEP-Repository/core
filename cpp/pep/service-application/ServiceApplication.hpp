@@ -3,9 +3,11 @@
 #include <pep/application/Application.hpp>
 #include <pep/application/CommandLineParameter.hpp> // for commandline::Parameters
 #include <pep/server/NetworkedServer.hpp>
+#include <pep/service-application/TerminationSignalHandler.hpp>
 #include <pep/utils/Configuration.hpp> // IWYU pragma: keep (needs the complete type)
 #include <pep/utils/Log.hpp> // for Severity
 
+#include <cstdlib>
 #include <optional>
 #include <string>
 
@@ -30,8 +32,9 @@ protected:
 
   int execute() override {
     auto server = NetworkedServer::Make<TService>(this->loadMainConfigFile());
+    TerminationSignalHandler stopOnTermination([&server] { server.stop(); });
     server.start();
-    return 0;
+    return EXIT_SUCCESS;
   }
 };
 
