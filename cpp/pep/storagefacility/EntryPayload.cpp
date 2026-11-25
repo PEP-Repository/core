@@ -11,6 +11,7 @@
 
 #include <rxcpp/operators/rx-map.hpp>
 #include <rxcpp/rx-lite.hpp>
+#include <xxhash.h>
 
 #include <algorithm>
 #include <cassert>
