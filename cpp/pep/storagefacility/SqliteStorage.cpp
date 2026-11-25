@@ -53,6 +53,7 @@ struct RedactionCycleRecord {
 };
 
 struct RedactedEntryRecord {
+  int64_t seqno{};
   RedactionCycle::Id cycle; // FK to RedactionCycleRecord::id
   int64_t row;          // FK to RowRecord::seqno
   int64_t column;       // FK to ColumnRecord::seqno
@@ -83,6 +84,8 @@ auto MakeRawStorage(std::string path) {
       make_column("completed", &RedactionCycleRecord::completed)),
 
     make_table("RedactedEntry",
+      make_column("seqno", &RedactedEntryRecord::seqno,
+        primary_key().autoincrement()),
       make_column("cycle", &RedactedEntryRecord::cycle),
       make_column("row", &RedactedEntryRecord::row),
       make_column("column", &RedactedEntryRecord::column),
@@ -265,12 +268,14 @@ void SqliteStorage::addToRedactionCycle(RedactionCycle::Id id, const CellVersion
     });
 }
 
-std::set<SqliteStorage::CellVersionSpec> SqliteStorage::getIncludedCellVersions(RedactionCycle::Id id) const {
-  return this->atomically([this, id]() {
+std::set<SqliteStorage::CellVersionSpec> SqliteStorage::getIncludedCellVersions(RedactionCycle::Id id, size_t skip, size_t max) const {
+  return this->atomically([this, id, max, skip]() {
       using namespace sqlite_orm;
       return implementor_->raw.iterate(select(columns(&RowRecord::pseudonym, &ColumnRecord::name, &RedactedEntryRecord::timestamp),
         inner_join<RedactedEntryRecord>(on(c(&RedactedEntryRecord::row) == c(&RowRecord::seqno) && c(&RedactedEntryRecord::column) == c(&ColumnRecord::seqno))),
-        where(c(&RedactedEntryRecord::cycle) == id)))
+        where(c(&RedactedEntryRecord::cycle) == id),
+        order_by(&RedactedEntryRecord::seqno), // Ensure deterministic order so that...
+        limit(max, offset(skip)))) // ... limit and offset produce consistent results
         | std::views::transform([](auto tuple) {
             auto& [participant, column, dbMillis] = tuple;
             return CellVersionSpec{

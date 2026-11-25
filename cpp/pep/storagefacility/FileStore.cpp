@@ -196,9 +196,7 @@ std::vector<FileStore::EntryRedactionPersister> FileStore::getRedactionPersisten
     auto redactAt = *persistingRedactionCycle_->applied;
 
     // ...get a batch of that cycle's entries
-    result = sqlite_->getIncludedCellVersions(persistingRedactionCycle_->id)
-      | std::views::drop(redactionPersistenceBatchOffset_)
-      | std::views::take(RedactionPersistenceBatchSize)
+    result = sqlite_->getIncludedCellVersions(persistingRedactionCycle_->id, redactionPersistenceBatchOffset_, RedactionPersistenceBatchSize)
       | std::views::transform([this, redactAt](const storagefacility::SqliteStorage::CellVersionSpec& spec) {
       return this->getParticipant(spec.cell.participant())->makeRedactionPersister(redactAt, spec.cell.column(), spec.timestamp);
         })

@@ -65,7 +65,7 @@ public:
   /// \brief Returns cell version(specification)s that are included in the specified redaction cycle.
   /// \param id the redaction cycle ID
   /// \return cell version(specification)s that are included in the specified redaction cycle.
-  std::set<CellVersionSpec> getIncludedCellVersions(RedactionCycle::Id id) const;
+  std::set<CellVersionSpec> getIncludedCellVersions(RedactionCycle::Id id, size_t skip = 0U, size_t max = std::numeric_limits<size_t>::max()) const;
 
   /// \brief Executes a function while providing (exclusive, thread safe and transactional) access to this instance
   /// \tparam TFunction The type of function to execute
