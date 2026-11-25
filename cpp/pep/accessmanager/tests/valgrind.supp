@@ -1,4 +1,4 @@
-## Last updated for protobuf 6.32 ##
+## Last updated for protobuf 7.36.2 ##
 {
    ProtobufJsonParseUninitialized
    Memcheck:Cond
@@ -23,5 +23,10 @@
    Memcheck:Cond
    fun:_ZN6google8protobuf13json_internal21ParseProto2Descriptor7Set*
    obj:*
+}
+{
+   ProtobufJsonParseProtoLeak
+   Memcheck:Cond
+   fun:_ZN6google8protobuf13json_internal21ParseProto2Descriptor7SetBoolEPKNS0_15FieldDescriptorERNS2_3MsgEb
 }
 ####
