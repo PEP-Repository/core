@@ -18,7 +18,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <format>
-#include <limits>
+#include <limits> // IWYU pragma: keep (falsely reported unused, since we use numeric_limits)
 #include <memory>
 #include <mutex>
 #include <optional>
