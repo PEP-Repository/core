@@ -49,7 +49,7 @@ func Get() (
 		return nil, nil, nil, fmt.Errorf("FileHistory: %v", err)
 	}
 
-  for index, info := range fileInfos {
+	for index, info := range fileInfos {
 		if info.RedactedAt == nil {
 			// We don't check for tombstones because we assume that no one pepcli deletes the shared.Conf.CanaryFile.Tag column
 			fr, err := shared.Pep.OpenFile(&info)
