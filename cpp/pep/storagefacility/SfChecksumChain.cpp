@@ -29,11 +29,6 @@ ChecksumChain::Checkpoint TimestampToCheckpoint(Timestamp timestamp) {
 class FilesChecksumChain : public SfChecksumChain {
 protected:
   Result addCell(Result result, Checkpoint max, const FileStore::Cell& cell) const override {
-    /*
-    * Persistent issues:
-    * now:  StorageFacility: checksum for chain files@000001a1ac85aebf changed: 59421e21e74d01be != 59421e21e7fd3db9
-    */
-
     // Let base class implementation (invoke our method to) process cell version(content)s
     result = SfChecksumChain::addCell(result, max, cell);
 
