@@ -1491,8 +1491,7 @@ weblib-debug:
     - 'echo "Weblib line coverage: ${line_pct}%"'
   artifacts:
     expire_in: 8h
-    # Links to the report from the MR page
-    expose_as: 'Weblib coverage report'
+    # No `expose_as` for the coverage report: GitLab rejects it on a job whose paths contain a `*`
     paths:
       - weblib/pep-repo-client-wasm/package.json
       - weblib/pep-repo-client-wasm/package-lock.json
