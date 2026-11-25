@@ -1,4 +1,4 @@
-## Last updated for protobuf 6.32 ##
+## Last updated for protobuf 7.36.2 ##
 {
    ProtobufJsonParseUninitialized
    Memcheck:Cond
@@ -19,16 +19,19 @@
    fun:_ZN12_GLOBAL__N_124AccessManagerBackendTest14SetUpTestSuiteEv
 }
 {
-   ProtobufAddDescriptorsLeak
-   Memcheck:Leak
-   match-leak-kinds: possible
-   ...
-   fun:_ZN6google8protobuf8internal14AddDescriptorsEPKNS1_15DescriptorTableE
-}
-{
    ProtobufParseProto2DescriptorSetBoolOrEnumUninitialized
    Memcheck:Cond
    fun:_ZN6google8protobuf13json_internal21ParseProto2Descriptor7Set*
    obj:*
+}
+{
+   ProtobufJsonParseProtoSetBoolLeak
+   Memcheck:Cond
+   fun:_ZN6google8protobuf13json_internal21ParseProto2Descriptor7SetBoolEPKNS0_15FieldDescriptorERNS2_3MsgEb
+}
+{
+   ProtobufJsonParseProtoSetEnumLeak
+   Memcheck:Cond
+   fun:_ZN6google8protobuf13json_internal21ParseProto2Descriptor7SetEnumEPKNS0_15FieldDescriptorERNS2_3MsgEi
 }
 ####

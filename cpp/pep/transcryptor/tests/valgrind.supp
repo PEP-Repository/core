@@ -11,11 +11,3 @@
    fun:call_init
 }
 
-# Copied from accessmanager
-{
-   ProtobufAddDescriptorsLeak
-   Memcheck:Leak
-   match-leak-kinds: possible
-   ...
-   fun:_ZN6google8protobuf8internal14AddDescriptorsEPKNS1_15DescriptorTableE
-}
