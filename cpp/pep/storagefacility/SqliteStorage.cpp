@@ -220,7 +220,16 @@ std::vector<RedactionCycle> SqliteStorage::getRedactionCycles() const {
 
 RedactionCycle SqliteStorage::getRedactionCycle(RedactionCycle::Id id) const {
   return this->atomically([this, id]() {
-      return RecordToRedactionCycle(implementor_->raw.get<RedactionCycleRecord>(id));
+      try {
+        return RecordToRedactionCycle(implementor_->raw.get<RedactionCycleRecord>(id));
+      }
+      catch (const std::system_error& error) {
+        auto condition = error.code().default_error_condition();
+        if (condition.category() == sqlite_orm::get_orm_error_category() && condition.value() == std::to_underlying(sqlite_orm::orm_error_code::not_found)) {
+          throw Error(std::format("Redaction cycle with id {} not found", id));
+        }
+        throw;
+      }
     });
 }
 
