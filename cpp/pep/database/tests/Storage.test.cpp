@@ -200,7 +200,7 @@ TEST_F(StorageTest, transactionality_throws_for_reentrancy) {
 
     EXPECT_ANY_THROW(storage.transactionally([&storage]() {
       storage.raw.insert(MyTableRecord::MakeKeyOnly("First"));
-      storage.transactionally([&storage]() { // Throws (which causes a file handle (and associated memory) leak in sqlite_orm: see https://github.com/fnc12/sqlite_orm/issues/1539)
+      storage.transactionally([&storage]() { // We're expecting an exception from this attempt at starting a nested transaction
         storage.raw.insert(MyTableRecord::MakeKeyOnly("Second"));
         });
       }));

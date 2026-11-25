@@ -2,6 +2,7 @@
 
 #include <pep/database/Record.hpp>
 #include <pep/utils/Action.hpp>
+#include <pep/utils/Defer.hpp>
 #include <pep/utils/Log.hpp>
 #include <pep/utils/MiscUtil.hpp>
 
@@ -77,7 +78,19 @@ struct Storage : public BasicStorage {
   Raw raw;
 
 private:
+  bool transactionInProgress_ = false;
+
+  /// \brief Invokes the "action" callback within a (new) transaction.
+  /// \param action The callback to invoke
+  /// \remark The transaction is committed if the action returns successfully, or rolled back on exceptions.
   void transactionallyPerform(Action action) {
+    // Throw an exception to prevent sqlite_orm from doing so, leaking a file handle in the process: see https://github.com/fnc12/sqlite_orm/issues/1539
+    if (transactionInProgress_) {
+      throw std::runtime_error("Nested transactions are not supported");
+    }
+    transactionInProgress_ = true;
+    PEP_DEFER(transactionInProgress_ = false);
+
     auto guard = raw.transaction_guard();
     action();
     guard.commit();
