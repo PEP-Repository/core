@@ -878,7 +878,7 @@ pages:
     -   echo "No coverage report was produced by the ubuntu-lts-debug job."
     -   exit 1
     - fi
-    - if [ ! -f htmlcov/weblib/index.html ]; then
+    - if [ ! -f htmlcov/weblib-unit/index.html ]; then
     -   echo "No coverage report was produced by the weblib-debug job."
     -   exit 1
     - fi
@@ -892,7 +892,7 @@ pages:
       <ul>
       <li><a href="unit/index.html">Native code, unit tests only</a></li>
       <li><a href="combined/index.html">Native code, combined (unit + integration tests)</a></li>
-      <li><a href="weblib/index.html">Weblib (WebAssembly unit tests)</a></li>
+      <li><a href="weblib-unit/index.html">Weblib, unit tests only</a></li>
       </ul>
       EOF
   artifacts:
@@ -1451,44 +1451,46 @@ weblib-debug:
       # Only the Emscripten toolchain's LLVM reads the coverage mapping of a .wasm file
     - PATH="$(em-config LLVM_ROOT):$PATH"
 
-    - llvm-profdata merge -sparse profiles/weblib/*.profraw -o weblib-coverage.profdata
+    - llvm-profdata merge -sparse profiles/weblib/*.profraw -o weblib-unit-coverage.profdata
 
       # Report on the weblib sources only: the other libraries in this build are reported by ubuntu-lts-debug,
       # and counting them twice would skew the combined percentage. llvm-cov only accepts the sources to limit
       # the report to (as trailing arguments) when the binary is its first argument, so not with -object.
-    - WEBLIB_TESTS="$BUILD_DIRECTORY/cpp/pep/weblib/pepWebCommonUnitTests.wasm"
+    - WEBLIB_UNIT_TESTS="$BUILD_DIRECTORY/cpp/pep/weblib/pepWebCommonUnitTests.wasm"
     - WEBLIB_SOURCES="$CI_PROJECT_DIR/cpp/pep/weblib"
 
-    - llvm-cov show "$WEBLIB_TESTS"
-        -instr-profile=weblib-coverage.profdata
+      # "unit" in the names: Weblib.cpp and WeblibStructs.cpp are not in these tests, but in the pepWeblib module
+      # that only weblib-integration runs, which we do not measure (yet), so they are missing from the report
+    - llvm-cov show "$WEBLIB_UNIT_TESTS"
+        -instr-profile=weblib-unit-coverage.profdata
         -ignore-filename-regex="$COVERAGE_IGNORE_REGEX"
-        -project-title="Weblib Coverage (WebAssembly unit tests)"
+        -project-title="Weblib Unit Test Coverage"
         -show-directory-coverage
         -coverage-watermark=90,60
         -format=html
-        -output-dir=htmlcov/weblib
+        -output-dir=htmlcov/weblib-unit
         "$WEBLIB_SOURCES"
 
-    - llvm-cov export "$WEBLIB_TESTS"
-        -instr-profile=weblib-coverage.profdata
+    - llvm-cov export "$WEBLIB_UNIT_TESTS"
+        -instr-profile=weblib-unit-coverage.profdata
         -ignore-filename-regex="$COVERAGE_IGNORE_REGEX"
         -format=lcov
-        "$WEBLIB_SOURCES" > coverage-weblib.lcov
+        "$WEBLIB_SOURCES" > coverage-weblib-unit.lcov
 
-    - lcov_cobertura coverage-weblib.lcov --output coverage-weblib.xml
+    - lcov_cobertura coverage-weblib-unit.lcov --output coverage-weblib-unit.xml
         --base-dir "$CI_PROJECT_DIR"
         --demangle
 
       # Fail instead of reporting 0%, e.g. when the test executable or the sources were renamed or moved
     - |
-       if ! grep -q 'lines-valid="[1-9]' coverage-weblib.xml; then
-         echo "No coverage data for the sources in $WEBLIB_SOURCES, from $WEBLIB_TESTS."
+       if ! grep -q 'lines-valid="[1-9]' coverage-weblib-unit.xml; then
+         echo "No coverage data for the sources in $WEBLIB_SOURCES, from $WEBLIB_UNIT_TESTS."
          exit 1
        fi
 
       # The percentage GitLab reports comes from coverage-summary, which adds the native coverage to this one
-    - line_pct=$(awk -F'line-rate="' 'NF>1 { split($2,a,"\""); cvg=a[1]; printf "%.2f\n", cvg * 100; exit }' coverage-weblib.xml)
-    - 'echo "Weblib line coverage: ${line_pct}%"'
+    - line_pct=$(awk -F'line-rate="' 'NF>1 { split($2,a,"\""); cvg=a[1]; printf "%.2f\n", cvg * 100; exit }' coverage-weblib-unit.xml)
+    - 'echo "Weblib unit line coverage: ${line_pct}%"'
   artifacts:
     expire_in: 8h
     # No `expose_as` for the coverage report: GitLab rejects it on a job whose paths contain a `*`
@@ -1498,7 +1500,7 @@ weblib-debug:
       - weblib/pep-repo-client-wasm/pepWeblib*
       - htmlcov/
       # Also as a plain artifact: coverage-summary cannot read the report below
-      - coverage-weblib.xml
+      - coverage-weblib-unit.xml
     exclude:
       # Debug info (some 450 MB)
       - weblib/pep-repo-client-wasm/*.debug.wasm
@@ -1506,7 +1508,7 @@ weblib-debug:
       junit: temp/*.xml
       coverage_report:
         coverage_format: cobertura
-        path: coverage-weblib.xml
+        path: coverage-weblib-unit.xml
 
 weblib-release:
   extends:
