@@ -83,6 +83,7 @@ auto MakeRawStorage(std::string path) {
       make_column("applied", &RedactionCycleRecord::applied),
       make_column("completed", &RedactionCycleRecord::completed)),
 
+    make_index("idx_RedactedEntry_cycle", &RedactedEntryRecord::cycle),
     make_table("RedactedEntry",
       make_column("seqno", &RedactedEntryRecord::seqno,
         primary_key().autoincrement()),
