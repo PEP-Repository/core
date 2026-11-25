@@ -55,8 +55,8 @@ struct RedactionCycleRecord { //NOLINT(cppcoreguidelines-pro-type-member-init) W
 struct RedactedEntryRecord { //NOLINT(cppcoreguidelines-pro-type-member-init) We want callers to (explicitly) initialize the uninitialized fields (cycle, row, column, timestamp)
   int64_t seqno{};
   RedactionCycle::Id cycle; // FK to RedactionCycleRecord::id
-  int64_t row;          // FK to RowRecord::seqno
-  int64_t column;       // FK to ColumnRecord::seqno
+  int64_t row;              // FK to RowRecord::seqno
+  int64_t column;           // FK to ColumnRecord::seqno
   database::UnixMillis timestamp;
 };
 
