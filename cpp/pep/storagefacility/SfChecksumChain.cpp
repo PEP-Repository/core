@@ -42,8 +42,8 @@ protected:
       if (version.redactedAt) {
         auto redactionCheckpoint = TimestampToCheckpoint(*version.redactedAt);
         if (redactionCheckpoint <= max) {
-          auto add = redactionCheckpoint ^ versionCheckpoint; // Just a unique value for the redaction of this cell version
-          result.checksum ^= add;
+          // Unique per (version, redaction): can't cancel against the version's own substitute or other redactions
+          result.checksum ^= XXH64(&version.checksumSubstitute, sizeof(version.checksumSubstitute), redactionCheckpoint);
           result.checkpoint = std::max(result.checkpoint, redactionCheckpoint);
         }
       }
