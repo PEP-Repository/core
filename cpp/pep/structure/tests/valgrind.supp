@@ -1,9 +1,0 @@
-## Last updated for protobuf 6.32 ##
-{
-   ProtobufAddDescriptorsLeak
-   Memcheck:Leak
-   match-leak-kinds: possible
-   ...
-   fun:_ZN6google8protobuf8internal14AddDescriptorsEPKNS1_15DescriptorTableE
-}
-####
