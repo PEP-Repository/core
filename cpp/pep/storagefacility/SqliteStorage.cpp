@@ -44,15 +44,15 @@ struct ColumnRecord {
   std::string name;
 };
 
-struct RedactionCycleRecord {
+struct RedactionCycleRecord { //NOLINT(cppcoreguidelines-pro-type-member-init) We want callers to (explicitly) initialize the "announced" field
   RedactionCycle::Id id{};
   std::string name;
-  database::UnixMillis announced; //NOLINT(cppcoreguidelines-pro-type-member-init) We want callers to (explicitly) initialize this field
+  database::UnixMillis announced;
   database::UnixMillis applied{};
   database::UnixMillis completed{};
 };
 
-struct RedactedEntryRecord {
+struct RedactedEntryRecord { //NOLINT(cppcoreguidelines-pro-type-member-init) We want callers to (explicitly) initialize the uninitialized fields (cycle, row, column, timestamp)
   int64_t seqno{};
   RedactionCycle::Id cycle; // FK to RedactionCycleRecord::id
   int64_t row;          // FK to RowRecord::seqno

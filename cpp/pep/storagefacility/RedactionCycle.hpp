@@ -8,7 +8,7 @@
 
 namespace pep {
 
-struct RedactionCycle {
+struct RedactionCycle { //NOLINT(cppcoreguidelines-pro-type-member-init) We want callers to (explicitly) initialize the "id" field
   using Id = uint32_t; // An unsigned integer that (fits Sqlite's int64_t integer API and) uniquely refers to a redaction cycle
 
   class Definition {
@@ -22,7 +22,7 @@ struct RedactionCycle {
     std::string&& name() && noexcept { return std::move(name_); }
   };
 
-  Id id; //NOLINT(cppcoreguidelines-pro-type-member-init) We want callers to (explicitly) initialize this field
+  Id id;
   Definition definition;
   Timestamp announced;
   std::optional<Timestamp> applied;
