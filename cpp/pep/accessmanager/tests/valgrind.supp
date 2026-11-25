@@ -25,8 +25,13 @@
    obj:*
 }
 {
-   ProtobufJsonParseProtoLeak
+   ProtobufJsonParseProtoSetBoolLeak
    Memcheck:Cond
    fun:_ZN6google8protobuf13json_internal21ParseProto2Descriptor7SetBoolEPKNS0_15FieldDescriptorERNS2_3MsgEb
+}
+{
+   ProtobufJsonParseProtoSetEnumLeak
+   Memcheck:Cond
+   fun:_ZN6google8protobuf13json_internal21ParseProto2Descriptor7SetEnumEPKNS0_15FieldDescriptorERNS2_3MsgEi
 }
 ####
