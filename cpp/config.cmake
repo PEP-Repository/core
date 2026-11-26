@@ -89,14 +89,6 @@ if(MSVC)
   set(CMAKE_EXE_MODULE_FLAGS "${CMAKE_EXE_MODULE_FLAGS} /ignore:4099")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /ignore:4099")
 
-  # Allow multi-processor compilation: see https://blogs.msdn.microsoft.com/visualstudio/2010/03/07/tuning-c-build-parallelism-in-vs2010/
-  option(COMPILE_SEQUENTIALLY "Compile one source at a time")
-  if(COMPILE_SEQUENTIALLY)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP1")
-  else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
-  endif()
-
   # Fix C1128: number of sections exceeded object file format limit: compile with /bigobj
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
   # Get rid of warnings about unsafe standard functions such as _open and _ftime64

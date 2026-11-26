@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <!-- Settings to improve MSBuild concurrency, for builds with CMake's Visual Studio generator. -->
+  <!-- Based on https://devblogs.microsoft.com/cppblog/cpp-build-throughput-investigation-and-tune-up/ -->
+  <!-- Properties can be overridden via environment variables. -->
+
+  <!--
+    By default, MSBuild builds -maxCpuCount projects concurrently, and the compiler runs /MP processes for each project,
+      so the number of compiler processes multiplies, and concurrent CI jobs on the same machine multiply it further.
+      See https://learn.microsoft.com/en-us/cpp/build/reference/mp-build-with-multiple-processes#the-msbuild-tool
+      In Visual Studio, -maxCpuCount is "Tools > Options > Projects and Solutions > Build and Run > Maximum number of parallel project builds".
+    Instead, we use MSBuild's Multi-ToolTask (MTT) scheduler, see https://devblogs.microsoft.com/cppblog/improved-parallelism-in-msbuild/
+      and the UseMultiToolTask property below.
+    For property definitions, see e.g. Microsoft.Cpp.Common.props and Microsoft.CppCommon.targets in the Visual Studio installation.
+  -->
+
+  <!-- MSBuild imports this file for all projects in subdirectories, so for CMake build directories inside the repository
+       (such as ./build), but not for build directories elsewhere, nor for dependencies that Conan builds. -->
+  <!-- Measured on pep-build9 (96 vCPUs, 78 GiB RAM) in November 2026 with clean all-targets builds,
+       see https://gitlab.pep.cs.ru.nl/pep/core/-/merge_requests/2674#note_71409. -->
+
+  <PropertyGroup>
+    <!-- Set PEP_BuildSequentially to true for a completely sequential build: one project and one compiler process at a time,
+         e.g. to get readable build output. Set it for example as environment variable
+         (before starting Visual Studio or the build), or with -p:PEP_BuildSequentially=true on the MSBuild command line.
+         Visual Studio itself schedules the projects of a solution, so there also set "Tools > Options > Projects and Solutions >
+         Build and Run > Maximum number of parallel project builds" to 1. See also Directory.Build.targets. -->
+    <PEP_BuildSequentially Condition="'$(PEP_BuildSequentially)' == ''">false</PEP_BuildSequentially>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- To enable project specific directory for temporary files.
+         Recommended by the "C++ build throughput investigation and tune up" article above.
+         Showed no measurable effect on pep-build9, but it is harmless. -->
+    <PEP_UseProjectTMPDirectory Condition="'$(PEP_UseProjectTMPDirectory)' == ''">true</PEP_UseProjectTMPDirectory>
+
+    <!-- To enable MultiToolTask (MTT) mode: MSBuild starts one cl.exe per source file, at most MultiProcMaxCount at a time.
+         MultiProcMaxCount defaults to CL_MPCount (set by Visual Studio from "Tools > Options > Projects and Solutions >
+         VC++ Project Settings > Maximum concurrent C++ compilations"), or else to the NUMBER_OF_PROCESSORS environment variable.
+         Note that because Conan directly passes /MP, tools.build:jobs does not impact CL_MPCount.
+         The /MP compiler option is ignored with MTT. -->
+    <UseMultiToolTask Condition="'$(UseMultiToolTask)' == ''">true</UseMultiToolTask>
+    <!-- Enforce MultiProcMaxCount across all projects and all MSBuild instances (in the same Windows session).
+         Because of this, MultiProcMaxCount is based on the resources of the whole machine and should be the same for all builds on it. -->
+    <EnforceProcessCountAcrossBuilds Condition="'$(EnforceProcessCountAcrossBuilds)' == ''">true</EnforceProcessCountAcrossBuilds>
+
+    <!-- Do not use the MSBuild Resource Manager: with it, MTT schedules compiler processes via MSBuild
+         (MultiProcSchedulerName=MsbuildProcessCounter, see Microsoft.Cpp.Common.props) instead of via the named semaphore,
+         and then MultiProcMaxCount is no longer shared by concurrent MSBuild instances (i.e. concurrent CI jobs). -->
+    <UseMSBuildResourceManager Condition="'$(UseMSBuildResourceManager)' == ''">false</UseMSBuildResourceManager>
+
+    <!-- To enable experimental MTT ClServer mode (cl.exe processes are served by the MSBuild process). -->
+    <EnableClServerMode Condition="'$(EnableClServerMode)' == ''">true</EnableClServerMode>
+
+    <!-- Note: BuildPassReferences (with /t:BuildGenerateSources;BuildCompile;BuildLink) is deliberately not enabled.
+         When building ALL_BUILD.vcxproj (a Utility project), as CMake's build mode does, executables link before the libraries
+         they need exist (LNK1181), and on the solution it was at most ~7% faster in Release and slower in Debug. -->
+  </PropertyGroup>
+
+  <!-- For PEP_BuildSequentially: this overrides the settings above, also when they come from environment variables (as in CI). -->
+  <PropertyGroup Condition="'$(PEP_BuildSequentially)' == 'true'">
+    <!-- Build referenced projects one after the other, instead of in parallel on multiple MSBuild nodes. -->
+    <BuildInParallel>false</BuildInParallel>
+    <!-- Use the regular CL task (one cl.exe per project, without /MP, see Directory.Build.targets) instead of MTT. -->
+    <UseMultiToolTask>false</UseMultiToolTask>
+    <EnableClServerMode>false</EnableClServerMode>
+    <MultiProcMaxCount>1</MultiProcMaxCount>
+  </PropertyGroup>
+
+  <!-- Define project specific directory for temporary cl.exe files -->
+  <Target Name="SetProjectTMPDirectory"
+        BeforeTargets="BeforeClCompile"
+        Condition="'$(DesignTimeBuild)' != 'true' and '$(PEP_UseProjectTMPDirectory)' == 'true'">
+    <PropertyGroup>
+      <OriginalTmp>$(TMP)</OriginalTmp>
+    </PropertyGroup>
+    <MakeDir Directories="$(IntDirFullPath)TMP"/>
+    <SetEnv Name="TMP"
+            Value="$(IntDirFullPath)TMP"
+            Prefix="false">
+    </SetEnv>
+  </Target>
+
+  <!-- Restore TMP directory for other tools to avoid incremental build problems -->
+  <Target Name="RestoreTMPDirectory"
+          BeforeTargets="AfterClCompile"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(PEP_UseProjectTMPDirectory)' == 'true'" >
+    <SetEnv Name="TMP"
+            Value="$(OriginalTmp)"
+            Prefix="false">
+    </SetEnv>
+  </Target>
+</Project>

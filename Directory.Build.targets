@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <!-- For PEP_BuildSequentially, see Directory.Build.props.
+       MSBuild imports this file after the project file itself, and these targets run just before the respective tasks, so they
+       override the item metadata that the CMake-generated projects set. -->
+
+  <!-- Do not compile multiple sources in parallel within a project (/MP), which Conan's CMake toolchain enables
+       (/MP<tools.build:jobs>). -->
+  <Target Name="PEP_CompileSequentially"
+          BeforeTargets="ClCompile"
+          Condition="'$(PEP_BuildSequentially)' == 'true'">
+    <ItemGroup>
+      <ClCompile>
+        <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      </ClCompile>
+    </ItemGroup>
+  </Target>
+
+  <!-- Do not run custom build steps (CMake custom commands) in parallel. -->
+  <Target Name="PEP_CustomBuildSequentially"
+          BeforeTargets="CustomBuild"
+          Condition="'$(PEP_BuildSequentially)' == 'true'">
+    <ItemGroup>
+      <CustomBuild>
+        <BuildInParallel>false</BuildInParallel>
+      </CustomBuild>
+    </ItemGroup>
+  </Target>
+</Project>

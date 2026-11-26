@@ -30,8 +30,31 @@ if not "%CI_JOB_ID%" == "" (
   set _MSPDBSRV_ENDPOINT_=pep-ci-job-%CI_JOB_ID%
 )
 
+REM Enable MTT with a global limit for MSBuild, see Directory.Build.props.
+REM This also applies to dependencies that Conan builds.
+REM Linking is not limited by MTT, but only by the number of projects that MSBuild builds concurrently,
+REM   which we pass to Conan as tools.microsoft.msbuild:max_cpu_count below.
+set UseMultiToolTask=true
+set EnforceProcessCountAcrossBuilds=true
+
+REM Get max overall build concurrency (MultiProcMaxCount) and MSBuild concurrent projects (if we're using MSBuild)
+for /f "usebackq tokens=1,* delims==" %%A in (`pwsh -NoProfile -ExecutionPolicy Bypass -File "%~dp0windows-build-parallelism.ps1"`) do set "%%A=%%B"
+if "%MultiProcMaxCount%" == "" (
+  echo Could not determine build parallelism: MultiProcMaxCount not set.
+  exit /B 1
+)
+if "%PEP_MSBUILD_MAX_CPU_COUNT%" == "" (
+  echo Could not determine build parallelism: PEP_MSBUILD_MAX_CPU_COUNT not set.
+  exit /B 1
+)
+echo Using at most %MultiProcMaxCount% compiler processes.
+if [%PEP_GENERATOR%] == [msbuild] (
+  echo Using at most %PEP_MSBUILD_MAX_CPU_COUNT% concurrent MSBuild projects.
+)
+
 SET WhatToBuild=%1
 SET BuildType=%2
+SET PEP_GENERATOR=%3
 
 if [%WhatToBuild%] == [wixlib] (
   echo Building limited targets and WIX library
@@ -58,6 +81,25 @@ if [%BuildType%] == [Debug] (
   goto :Invocation
 )
 
+REM CMake generator for our own project. By default Ninja Multi-Config: on our large GitLab runner, it built all targets about twice as fast
+REM  as the best MSBuild settings (Ninja only orders individual compile and link steps, whereas MSBuild only starts compiling
+REM  a project when all projects it references are completely built). Like Visual Studio, it puts outputs in per-configuration
+REM  subdirectories (e.g. cpp\pep\assessor\Release), which the steps below and other CI scripts rely on.
+REM  Pass "msbuild" to use the Visual Studio generator (MSBuild) instead.
+REM  The generator is set only for our own project (&:); dependencies use the generator from the Conan profile.
+if [%PEP_GENERATOR%] == [] (
+  set PEP_GENERATOR=ninja
+)
+if [%PEP_GENERATOR%] == [ninja] (
+  set PEP_CONAN_GENERATOR_CONF=-c "&:tools.cmake.cmaketoolchain:generator=Ninja Multi-Config"
+) else if [%PEP_GENERATOR%] == [msbuild] (
+  set PEP_CONAN_GENERATOR_CONF=
+) else (
+  echo Unsupported generator: %PEP_GENERATOR%
+  goto :Invocation
+)
+echo Building our own project with generator: %PEP_GENERATOR%
+
 if "%CI_COMMIT_REF_NAME%" == "" (
   echo No CI_COMMIT_REF_NAME specified: performing 'local' build.
   set CI_COMMIT_REF_NAME=local
@@ -83,12 +125,23 @@ if exist "%BUILD_DIR%" (
 echo Installing Conan packages.
 
 REM `__` will be replaced by `:` in script. Workaround for https://github.com/PowerShell/PowerShell/issues/16432.
+REM tools.microsoft.msbuild:max_cpu_count sets MSBuild's -maxCpuCount for dependencies that Conan builds,
+REM  and for our own build via the generated CMake build preset (since Conan 2.34, see https://github.com/conan-io/conan/pull/20360).
+REM  Without it, MSBuild builds only one project at a time.
+REM tools.build:jobs is used for dependencies that Conan builds using other build systems (e.g. Ninja),
+REM  and for our own project with Ninja (via the -j of the generated CMake build preset).
+REM  Unlike MultiProcMaxCount with MSBuild, these are not limited across concurrent CI jobs on the same machine.
+REM  For Visual Studio generators, Conan also uses it for /MP, but MTT drops that.
+REM See https://docs.conan.io/2/reference/config_files/global_conf.html
 pwsh -ExecutionPolicy Bypass -File ".\docker-build\scripts\windows-ci-conan.ps1" ^
   install .\docker-build\builder\conan\conanfile.py ^
   --lockfile=.\docker-build\builder\conan\conan-ci.lock ^
   --profile__all=.\docker-build\builder\conan\conan_profile ^
   --build=missing ^
   -s__a build_type="%BuildType%" ^
+  -c__a "tools.microsoft.msbuild:max_cpu_count=%PEP_MSBUILD_MAX_CPU_COUNT%" ^
+  -c__a "tools.build:jobs=%MultiProcMaxCount%" ^
+  %PEP_CONAN_GENERATOR_CONF% ^
   -o "&:with_assessor=True" ^
   -o "&:with_servers=%PEP_CONAN_BUILD_ADDITIONALS%" ^
   -o "&:with_castor=%PEP_CONAN_BUILD_ADDITIONALS%" ^
@@ -134,7 +187,8 @@ echo Finished CI job script for Windows build.
 exit 0
 
 :Invocation
-echo Usage: %0 wixlib      [Build-Type]
-echo    or: %0 all-targets [Build-Type]
+echo Usage: %0 wixlib      [Build-Type] [Generator]
+echo    or: %0 all-targets [Build-Type] [Generator]
 echo where [Build-Type] must be either "Debug" or "Release". Defaults to "Release" if unspecified.
+echo   and [Generator] must be either "ninja" (Ninja Multi-Config) or "msbuild" (Visual Studio). Defaults to "ninja" if unspecified.
 exit /B 1
