@@ -40,11 +40,11 @@ set EnforceProcessCountAcrossBuilds=true
 REM Get max overall build concurrency (MultiProcMaxCount) and MSBuild concurrent projects (if we're using MSBuild)
 for /f "usebackq tokens=1,* delims==" %%A in (`pwsh -NoProfile -ExecutionPolicy Bypass -File "%~dp0windows-build-parallelism.ps1"`) do set "%%A=%%B"
 if "%MultiProcMaxCount%" == "" (
-  echo Could not determine build parallelism.
+  echo Could not determine build parallelism: MultiProcMaxCount not set.
   exit /B 1
 )
 if "%PEP_MSBUILD_MAX_CPU_COUNT%" == "" (
-  echo Could not determine build parallelism.
+  echo Could not determine build parallelism: PEP_MSBUILD_MAX_CPU_COUNT not set.
   exit /B 1
 )
 echo Using at most %MultiProcMaxCount% compiler processes and %PEP_MSBUILD_MAX_CPU_COUNT% concurrent MSBuild projects.
