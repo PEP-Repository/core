@@ -3,6 +3,8 @@
 #include <pep/storagefacility/FileStore.hpp>
 #include <pep/utils/Timestamp.hpp>
 
+#include <xxhash.h>
+
 #include <algorithm>
 #include <chrono>
 #include <memory>
