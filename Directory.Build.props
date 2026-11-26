@@ -17,11 +17,11 @@
   <!-- MSBuild imports this file for all projects in subdirectories, so for CMake build directories inside the repository
        (such as ./build), but not for build directories elsewhere, nor for dependencies that Conan builds. -->
   <!-- Measured on pep-build9 (96 vCPUs, 78 GiB RAM) in November 2026 with clean all-targets builds,
-       see https://gitlab.pep.cs.ru.nl/pep/core/-/work_items/2757. -->
+       see https://gitlab.pep.cs.ru.nl/pep/core/-/merge_requests/2674#note_71409. -->
 
   <PropertyGroup>
     <!-- Set PEP_BuildSequentially to true for a completely sequential build: one project and one compiler process at a time,
-         e.g. to get readable build output, or on a machine with little memory. Set it for example as environment variable
+         e.g. to get readable build output. Set it for example as environment variable
          (before starting Visual Studio or the build), or with -p:PEP_BuildSequentially=true on the MSBuild command line.
          Visual Studio itself schedules the projects of a solution, so there also set "Tools > Options > Projects and Solutions >
          Build and Run > Maximum number of parallel project builds" to 1. See also Directory.Build.targets. -->
@@ -30,7 +30,8 @@
 
   <PropertyGroup>
     <!-- To enable project specific directory for temporary files.
-         Recommended by the article above. Showed no measurable effect on pep-build9, but it is harmless. -->
+         Recommended by the "C++ build throughput investigation and tune up" article above.
+         Showed no measurable effect on pep-build9, but it is harmless. -->
     <PEP_UseProjectTMPDirectory Condition="'$(PEP_UseProjectTMPDirectory)' == ''">true</PEP_UseProjectTMPDirectory>
 
     <!-- To enable MultiToolTask (MTT) mode: MSBuild starts one cl.exe per source file, at most MultiProcMaxCount at a time.

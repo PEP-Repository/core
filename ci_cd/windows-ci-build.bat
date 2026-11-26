@@ -47,7 +47,7 @@ if "%PEP_MSBUILD_MAX_CPU_COUNT%" == "" (
   echo Could not determine build parallelism: PEP_MSBUILD_MAX_CPU_COUNT not set.
   exit /B 1
 )
-echo Using at most %MultiProcMaxCount% compiler processes and %PEP_MSBUILD_MAX_CPU_COUNT% concurrent MSBuild projects.
+echo Using at most %MultiProcMaxCount% compiler processes.
 if [%PEP_GENERATOR%] == [msbuild] (
   echo Using at most %PEP_MSBUILD_MAX_CPU_COUNT% concurrent MSBuild projects.
 )

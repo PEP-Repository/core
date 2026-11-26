@@ -96,7 +96,8 @@ move "%cmake_installdir%\bin\*" "%artifactsdir%"
 echo Copying QT dependencies for pepAssessor
 REM We've already invoked windeployqt during the build, but those dependencies were left behind in the %builddir%
 REM Explicitly don't deploy the compiler runtime and the system D3D/DXC shader compilers: otherwise windeployqt deploys them
-REM  depending on the environment, e.g. when the Visual Studio developer environment is active (as with the Ninja generator).
+REM  depending on the environment, e.g. when the Visual Studio developer environment is active.
+REM  For example, with MSBuild it wouldn't, but with Ninja it would.
 %windeployqt% --no-compiler-runtime --no-system-d3d-compiler --no-system-dxc-compiler --dir "%artifactsdir%" "%assessorbuilddir%\pepAssessor.exe" || exit /B 1
 
 echo Harvesting dependencies into WiX source
