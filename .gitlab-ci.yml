@@ -1453,15 +1453,11 @@ weblib-debug:
 
     - llvm-profdata merge -sparse profiles/weblib/*.profraw -o weblib-unit-coverage.profdata
 
-      # Report on the weblib sources only: the other libraries in this build are reported by ubuntu-lts-debug,
-      # and counting them twice would skew the combined percentage. llvm-cov only accepts the sources to limit
-      # the report to (as trailing arguments) when the binary is its first argument, so not with -object.
-    - WEBLIB_UNIT_TESTS="$BUILD_DIRECTORY/cpp/pep/weblib/pepWebCommonUnitTests.wasm"
+    - WEBLIB_TESTS_WASM="$BUILD_DIRECTORY/$UNIT_TESTS_WEBLIB.wasm"
     - WEBLIB_SOURCES="$CI_PROJECT_DIR/cpp/pep/weblib"
 
-      # "unit" in the names: Weblib.cpp and WeblibStructs.cpp are not in these tests, but in the pepWeblib module
-      # that only weblib-integration runs, which we do not measure (yet), so they are missing from the report
-    - llvm-cov show "$WEBLIB_UNIT_TESTS"
+      # TODO Weblib.cpp and WeblibStructs.cpp are missing as of yet
+    - llvm-cov show "$WEBLIB_TESTS_WASM"
         -instr-profile=weblib-unit-coverage.profdata
         -ignore-filename-regex="$COVERAGE_IGNORE_REGEX"
         -project-title="Weblib Unit Test Coverage"
@@ -1471,7 +1467,7 @@ weblib-debug:
         -output-dir=htmlcov/weblib-unit
         "$WEBLIB_SOURCES"
 
-    - llvm-cov export "$WEBLIB_UNIT_TESTS"
+    - llvm-cov export "$WEBLIB_TESTS_WASM"
         -instr-profile=weblib-unit-coverage.profdata
         -ignore-filename-regex="$COVERAGE_IGNORE_REGEX"
         -format=lcov
@@ -1484,7 +1480,7 @@ weblib-debug:
       # Fail instead of reporting 0%, e.g. when the test executable or the sources were renamed or moved
     - |
        if ! grep -q 'lines-valid="[1-9]' coverage-weblib-unit.xml; then
-         echo "No coverage data for the sources in $WEBLIB_SOURCES, from $WEBLIB_UNIT_TESTS."
+         echo "No coverage data for the sources in $WEBLIB_SOURCES, from $WEBLIB_TESTS_WASM."
          exit 1
        fi
 

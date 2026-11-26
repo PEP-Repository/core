@@ -19,6 +19,14 @@ target_link_libraries(${PROJECT_NAME}WebCommonlib
 )
 verify_headers_standalone(${PROJECT_NAME}WebCommonlib)
 
+if(ENABLE_COVERAGE)
+  message(STATUS "ENABLE_COVERAGE=${ENABLE_COVERAGE}, instrumenting ${PROJECT_NAME}WebCommonlib for code coverage")
+  target_compile_options(${PROJECT_NAME}WebCommonlib PRIVATE -fprofile-instr-generate -fcoverage-mapping)
+  # PUBLIC: both ${PROJECT_NAME}Weblib and ${PROJECT_NAME}WebCommonUnitTests link these objects,
+  # so they need the profiling runtime
+  target_link_options(${PROJECT_NAME}WebCommonlib PUBLIC -fprofile-instr-generate -fcoverage-mapping)
+endif()
+
 # Executable
 add_executable(${PROJECT_NAME}Weblib
     WeblibStructs.cpp WeblibStructs.hpp
