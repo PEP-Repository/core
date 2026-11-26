@@ -812,7 +812,6 @@ ubuntu-lts-debug:
         --base-dir "$CI_PROJECT_DIR"
         --demangle
 
-      # The percentage GitLab reports comes from coverage-summary, which adds the weblib coverage to this one
     - line_pct=$(awk -F'line-rate="' 'NF>1 { split($2,a,"\""); cvg=a[1]; printf "%.2f\n", cvg * 100; exit }' coverage.xml)
     - 'echo "Native line coverage: ${line_pct}%"'
   artifacts:
@@ -1344,17 +1343,11 @@ macos-debug:
       $UNIT_TESTS_BASE
       $UNIT_TESTS_WEBLIB
 
-.weblib-settings-debug:
-  rules:
-    - !reference [ .skip-for-binaries-for-xyz, rules ]
-    - when: on_success
-
 weblib-debug:
   extends:
     - .weblib-base
   variables:
     BUILD_TYPE: "$DEBUG_MODE"
-  # As .weblib-settings-debug, plus coverage instrumentation
   rules:
     - !reference [ .skip-for-binaries-for-xyz, rules ]
     - !reference [ .coverage-rules, rules ]
@@ -1447,8 +1440,10 @@ weblib-release:
 weblib-integration:
   extends:
     - .dind
-    - .weblib-settings-debug
   image: $BUILDER_IMAGE_WEBLIB
+  rules:
+    - !reference [ .skip-for-binaries-for-xyz, rules ]
+    - when: on_success
   needs:
     # Use Debug pepWeblib binaries to run integration tests
     - weblib-debug
