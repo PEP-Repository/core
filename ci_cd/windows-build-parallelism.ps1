@@ -20,9 +20,9 @@
 
 $ErrorActionPreference = 'Stop'
 
-# Estimate of the peak memory use per concurrent compiler process for our code base, including a share
+# Estimate of the average peak memory use per concurrent compiler process for our code base, including a share
 #  of the linkers and MSBuild nodes running at the same time. Measured (Nov 2026, all-targets): the whole build
-#  peaked at 0.5-0.6 GiB per concurrent compiler process, in both Release and Debug. 1 GiB leaves some headroom.
+#  peaked at 0.5-0.6 GiB per concurrent compiler process on average, in both Release and Debug. 1 GiB leaves some headroom.
 $MemoryPerCompileGiB = if ($env:PEP_MEMORY_PER_COMPILE_GIB) { [double]$env:PEP_MEMORY_PER_COMPILE_GIB } else { 1 }
 
 # Upper bound for the number of projects that MSBuild builds concurrently (-maxCpuCount).
