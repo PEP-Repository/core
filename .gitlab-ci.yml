@@ -147,6 +147,8 @@ variables:
     $UNIT_TESTS_ALL_NATIVE
     $UNIT_TESTS_WEBLIB
 
+  COVERAGE_IGNORE_REGEX: ".*(proto/generated/|/tests/|/apps/).*"
+
   FORCE_BUILD_STABLE_RELEASE:
     value: ''
     options:
@@ -296,6 +298,27 @@ include:
   rules:
     - if: '$CI_COMMIT_REF_NAME =~ /^binaries_for_[0-9]+$/'
       when: never
+
+# When to build with coverage instrumentation. Reference before any rule that runs the job without coverage.
+.coverage-rules:
+  rules:
+    - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
+      variables:
+        ENABLE_COVERAGE: "ON"
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+      variables:
+        ENABLE_COVERAGE: "ON"
+    # Ready MRs: only measure coverage when C++ code, its build or tests changed (compared with the target branch)
+    - if: *mr-ready
+      changes:
+        - cpp/**/*
+        - messages/**/*
+        - tests/**/*
+        - CMakeLists.txt
+        - cmake/**/*
+        - conanfile.py
+      variables:
+        ENABLE_COVERAGE: "ON"
 
 # Must be last in rules, as it will not run more rules
 .set-enable-linter-and-terminate-rules:
@@ -726,23 +749,7 @@ ubuntu-lts-debug:
       $UNIT_TESTS_CASTOR
     MEM_ANALYSIS_TOOL: "none"
   rules:
-    - if: "'$[[ inputs.test_coverage ]]' == 'coverage'"
-      variables:
-        ENABLE_COVERAGE: "ON"
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
-      variables:
-        ENABLE_COVERAGE: "ON"
-    # Ready MRs: only measure coverage when C++ code, its build or tests changed (compared with the target branch)
-    - if: *mr-ready
-      changes:
-        - cpp/**/*
-        - messages/**/*
-        - tests/**/*
-        - CMakeLists.txt
-        - cmake/**/*
-        - conanfile.py
-      variables:
-        ENABLE_COVERAGE: "ON"
+    - !reference [ .coverage-rules, rules ]
     - if: *mr-ready
   before_script:
     - !reference [.ubuntu-build-base, before_script]
@@ -776,12 +783,10 @@ ubuntu-lts-debug:
          BINARIES="$BINARIES -object $BUILD_DIRECTORY/$BINARY"
        done
 
-    - IGNORE_REGEX=".*(proto/generated/|/tests/|/apps/).*"
-
       # Generate HTML reports
     - llvm-cov show $BINARIES
         -instr-profile=unit-coverage.profdata
-        -ignore-filename-regex="$IGNORE_REGEX"
+        -ignore-filename-regex="$COVERAGE_IGNORE_REGEX"
         -project-title="Unit Test Coverage"
         -show-directory-coverage
         -coverage-watermark=90,60
@@ -789,7 +794,7 @@ ubuntu-lts-debug:
         -output-dir=htmlcov/unit
     - llvm-cov show $BINARIES
         -instr-profile=combined-coverage.profdata
-        -ignore-filename-regex="$IGNORE_REGEX"
+        -ignore-filename-regex="$COVERAGE_IGNORE_REGEX"
         -project-title="Combined Coverage (Unit + Integration)"
         -show-directory-coverage
         -coverage-watermark=90,60
@@ -799,7 +804,7 @@ ubuntu-lts-debug:
       # Export to lcov format using llvm-cov
     - llvm-cov export $BINARIES
         -instr-profile=combined-coverage.profdata
-        -ignore-filename-regex="$IGNORE_REGEX"
+        -ignore-filename-regex="$COVERAGE_IGNORE_REGEX"
         -format=lcov > coverage.lcov
 
       # Convert lcov to Cobertura XML using lcov_cobertura
@@ -807,51 +812,20 @@ ubuntu-lts-debug:
         --base-dir "$CI_PROJECT_DIR"
         --demangle
 
-      # Show summary with coverage percentage
     - line_pct=$(awk -F'line-rate="' 'NF>1 { split($2,a,"\""); cvg=a[1]; printf "%.2f\n", cvg * 100; exit }' coverage.xml)
-    - 'echo "Line Coverage: ${line_pct}%"'
-  coverage: '/Line Coverage: (\d+\.?\d*)%/'
+    - 'echo "Native line coverage: ${line_pct}%"'
   artifacts:
     # Links to the report from the MR page
     expose_as: 'Coverage report'
     paths:
       - htmlcov/
+      # Also as a plain artifact: coverage-summary cannot read the report below
+      - coverage.xml
     reports:
       junit: temp/*.xml
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
-
-# Publish the HTML coverage report to core pages
-pages:
-  stage: publish
-  tags: [docker-small]
-  image: alpine:latest
-  variables:
-    GIT_STRATEGY: none
-  needs:
-    - job: ubuntu-lts-debug
-      artifacts: true
-  rules:
-    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
-  #language=sh
-  script:
-    - if [ ! -f htmlcov/unit/index.html ] || [ ! -f htmlcov/combined/index.html ]; then
-    -   echo "No coverage report was produced by the ubuntu-lts-debug job."
-    -   exit 1
-    - fi
-    - rm -rf public
-    - mv htmlcov public
-    - echo '<!doctype html><title>Code Coverage</title>
-        <h1>Code Coverage</h1>
-        <ul>
-        <li><a href="unit/index.html">Unit tests only</a></li>
-        <li><a href="combined/index.html">Combined (unit + integration tests)</a></li>
-        </ul>' > public/index.html
-  artifacts:
-    paths:
-      - public/
-    expire_in: 7d
 
 # To test the effect of removing Castor integration
 ubuntu-lts-debug-without-castor:
@@ -1368,23 +1342,87 @@ macos-debug:
     TESTS: >-
       $UNIT_TESTS_BASE
       $UNIT_TESTS_WEBLIB
+
+weblib-debug:
+  extends:
+    - .weblib-base
+  variables:
+    BUILD_TYPE: "$DEBUG_MODE"
+  rules:
+    - !reference [ .skip-for-binaries-for-xyz, rules ]
+    - !reference [ .coverage-rules, rules ]
+    - when: on_success
+  before_script:
+    - !reference [.ubuntu-build-base, before_script]
+    - |
+      if [ "${ENABLE_COVERAGE:-OFF}" = "ON" ]; then
+        rm -rf "$CI_PROJECT_DIR/profiles"
+        mkdir -p "$CI_PROJECT_DIR/profiles/weblib"
+        export LLVM_PROFILE_FILE="$CI_PROJECT_DIR/profiles/weblib/%p-%m.profraw"
+      fi
+  #language=bash
+  script:
+    - !reference [.ubuntu-build-base, script]
+    - |
+       if [ "${ENABLE_COVERAGE:-OFF}" != "ON" ]; then
+         echo "Skipping code coverage processing steps"
+         exit 0
+       fi
+
+      # Only the Emscripten toolchain's LLVM reads the coverage mapping of a .wasm file
+    - PATH="$(em-config LLVM_ROOT):$PATH"
+
+    - llvm-profdata merge -sparse profiles/weblib/*.profraw -o weblib-unit-coverage.profdata
+
+    - WEBLIB_TESTS_WASM="$BUILD_DIRECTORY/$UNIT_TESTS_WEBLIB.wasm"
+    - WEBLIB_SOURCES="$CI_PROJECT_DIR/cpp/pep/weblib"
+
+      # TODO Weblib.cpp and WeblibStructs.cpp are missing as of yet
+    - llvm-cov show "$WEBLIB_TESTS_WASM"
+        -instr-profile=weblib-unit-coverage.profdata
+        -ignore-filename-regex="$COVERAGE_IGNORE_REGEX"
+        -project-title="Weblib Unit Test Coverage"
+        -show-directory-coverage
+        -coverage-watermark=90,60
+        -format=html
+        -output-dir=htmlcov/weblib-unit
+        "$WEBLIB_SOURCES"
+
+    - llvm-cov export "$WEBLIB_TESTS_WASM"
+        -instr-profile=weblib-unit-coverage.profdata
+        -ignore-filename-regex="$COVERAGE_IGNORE_REGEX"
+        -format=lcov
+        "$WEBLIB_SOURCES" > coverage-weblib-unit.lcov
+
+    - lcov_cobertura coverage-weblib-unit.lcov --output coverage-weblib-unit.xml
+        --base-dir "$CI_PROJECT_DIR"
+        --demangle
+
+      # Fail instead of reporting 0%, e.g. when the test executable or the sources were renamed or moved
+    - |
+       if ! grep -q 'lines-valid="[1-9]' coverage-weblib-unit.xml; then
+         echo "No coverage data for the sources in $WEBLIB_SOURCES, from $WEBLIB_TESTS_WASM."
+         exit 1
+       fi
+
+      # The percentage GitLab reports comes from coverage-summary, which adds the native coverage to this one
+    - line_pct=$(awk -F'line-rate="' 'NF>1 { split($2,a,"\""); cvg=a[1]; printf "%.2f\n", cvg * 100; exit }' coverage-weblib-unit.xml)
+    - 'echo "Weblib unit line coverage: ${line_pct}%"'
   artifacts:
     expire_in: 8h
+    # No `expose_as` for the coverage report: GitLab rejects it on a job whose paths contain a `*`
     paths:
       - weblib/pep-repo-client-wasm/package.json
       - weblib/pep-repo-client-wasm/package-lock.json
       - weblib/pep-repo-client-wasm/pepWeblib*
-
-.weblib-settings-debug:
-  rules:
-    - !reference [ .skip-for-binaries-for-xyz, rules ]
-    - when: on_success
-weblib-debug:
-  extends:
-    - .weblib-base
-    - .weblib-settings-debug
-  variables:
-    BUILD_TYPE: "$DEBUG_MODE"
+      - htmlcov/
+      # Also as a plain artifact: coverage-summary cannot read the report below
+      - coverage-weblib-unit.xml
+    reports:
+      junit: temp/*.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage-weblib-unit.xml
 
 weblib-release:
   extends:
@@ -1392,12 +1430,20 @@ weblib-release:
   variables:
     BUILD_TYPE: "$RELEASE_MODE"
   rules: *run-in-every-pipeline
+  artifacts:
+    expire_in: 8h
+    paths:
+      - weblib/pep-repo-client-wasm/package.json
+      - weblib/pep-repo-client-wasm/package-lock.json
+      - weblib/pep-repo-client-wasm/pepWeblib*
 
 weblib-integration:
   extends:
     - .dind
-    - .weblib-settings-debug
   image: $BUILDER_IMAGE_WEBLIB
+  rules:
+    - !reference [ .skip-for-binaries-for-xyz, rules ]
+    - when: on_success
   needs:
     # Use Debug pepWeblib binaries to run integration tests
     - weblib-debug
@@ -1410,6 +1456,12 @@ weblib-integration:
     # Add Node.js to PATH
     - . ~/.profile
     - ./tests/integration.sh --image "$IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST" --tests-to-run weblib
+  artifacts:
+    # Republished from weblib-debug, whose artifacts we download anyway: this way coverage-summary and pages
+    # do not have to download the pepWeblib binaries along with them
+    paths:
+      - htmlcov/
+      - coverage-weblib-unit.xml
 
 #################### Docker ####################
 
@@ -1551,6 +1603,97 @@ test-docker-integration-on-base-data:
     # Generate fresh (non-expired) (non-root) certificates: see https://gitlab.pep.cs.ru.nl/pep/core/-/issues/2813#note_56966
     - (cd "$base_integration_data_dir/pki/"; "$foss_dir/pki/pki.sh" no-root)
     - ./tests/integration.sh --image $IMAGE_PEP_SERVICES:$IMAGE_TAG_TEST --reuse-secrets-and-data --generated-data-dir "$base_integration_data_dir"
+
+# GitLab merges coverage reports, but cannot combine their percentages, so this is the only job with a `coverage` keyword
+coverage-summary:
+  stage: publish
+  tags: [docker-small]
+  image: python:3-alpine
+  variables:
+    GIT_STRATEGY: none
+  needs:
+    - job: ubuntu-lts-debug
+      artifacts: true
+      optional: true
+    # Not weblib-debug: that one's artifacts also hold the (large) pepWeblib binaries
+    - job: weblib-integration
+      artifacts: true
+      optional: true
+  rules:
+    - !reference [ .coverage-rules, rules ]
+  #language=sh
+  script:
+      # Add up the line counts on the reports' root elements, so that the total is weighted by the amount of
+      # code each job reports on: <coverage ... lines-covered="1234" lines-valid="5678" ...>
+    - |
+      python3 - <<'END_OF_SCRIPT'
+      from pathlib import Path
+      from xml.etree import ElementTree
+
+      covered = valid = 0
+      for report in sorted(Path().glob("coverage*.xml")):
+          counts = ElementTree.parse(report).getroot().attrib
+          print(f"{report}: {counts['lines-covered']} of {counts['lines-valid']} lines covered")
+          covered += int(counts["lines-covered"])
+          valid += int(counts["lines-valid"])
+
+      if not valid:
+          raise SystemExit("No coverage reports found")
+
+      total = f"{100 * covered / valid:.2f}"
+      Path("coverage-total.txt").write_text(total)
+      print(f"Line Coverage: {total}%")
+      END_OF_SCRIPT
+  coverage: '/Line Coverage: (\d+\.?\d*)%/'
+  artifacts:
+    paths:
+      # The combined percentage, for the pages job's index page
+      - coverage-total.txt
+
+# Publish the HTML coverage reports to core pages
+pages:
+  stage: publish
+  tags: [docker-small]
+  image: alpine:latest
+  variables:
+    GIT_STRATEGY: none
+  needs:
+    - job: ubuntu-lts-debug
+      artifacts: true
+    # Not weblib-debug: that one's artifacts also hold the (large) pepWeblib binaries
+    - job: weblib-integration
+      artifacts: true
+    - job: coverage-summary
+      artifacts: true
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $PEP_FOSS_DEVELOPMENT_BRANCH'
+  #language=sh
+  script:
+    - if [ ! -f htmlcov/unit/index.html ] || [ ! -f htmlcov/combined/index.html ]; then
+    -   echo "No coverage report was produced by the ubuntu-lts-debug job."
+    -   exit 1
+    - fi
+    - if [ ! -f htmlcov/weblib-unit/index.html ]; then
+    -   echo "No coverage report was produced by the weblib-debug job."
+    -   exit 1
+    - fi
+    - rm -rf public
+    - mv htmlcov public
+    - |
+      cat > public/index.html <<EOF
+      <!doctype html><title>Code Coverage</title>
+      <h1>Code Coverage</h1>
+      <p>Combined line coverage: $(cat coverage-total.txt)%</p>
+      <ul>
+      <li><a href="unit/index.html">Native code, unit tests only</a></li>
+      <li><a href="combined/index.html">Native code, combined (unit + integration tests)</a></li>
+      <li><a href="weblib-unit/index.html">Weblib, unit tests only</a></li>
+      </ul>
+      EOF
+  artifacts:
+    paths:
+      - public/
+    expire_in: 7d
 
 ##########################################
 #   Configuration for the upload stage   #
