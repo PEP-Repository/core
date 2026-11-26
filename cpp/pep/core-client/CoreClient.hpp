@@ -133,6 +133,9 @@ struct EnumerateAndRetrieveResult : public EnumerateResult {
 struct HistoryResult : public DataCellResult {
   Timestamp timestamp;
   std::optional<std::string> id{};
+
+  // If the file has been redacted: the timestamp at which the redaction cycle was applied
+  std::optional<Timestamp> redactedAt{};
 };
 
 // Used as parameter to CoreClient::deleteData2

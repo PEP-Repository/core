@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pep/async/ExponentialBackoff.hpp>
 #include <pep/messaging/HousekeepingMessages.hpp>
 #include <pep/messaging/MessageHeader.hpp>
 #include <pep/messaging/MessageProperties.hpp> // for messaging::MessageId, messaging::StreamId
@@ -10,7 +11,6 @@
 #include <pep/messaging/Scheduler.hpp>
 #include <pep/networking/Connection.hpp>
 #include <pep/networking/ConnectivityAttempt.hpp>
-#include <pep/networking/ExponentialBackoff.hpp>
 #include <pep/networking/Transport.hpp> // for networking::SizedTransfer
 #include <pep/serialization/MessageMagic.hpp>
 #include <pep/utils/Event.hpp>

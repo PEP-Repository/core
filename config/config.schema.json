@@ -228,6 +228,7 @@
         "ServerEndPoints": { "$ref": "#/$defs/ServerEndPoints" },
 
         "StoragePath": { "type": "string" },
+        "StorageFile": { "type": "string" },
         "EncIdKeyFile": { "type": "string" },
         "PageStore": { "$ref": "#/$defs/PageStore" },
         "DataSizeResolution": { "type": "integer" },
@@ -239,6 +240,7 @@
       },
       "required": [
         "StoragePath",
+        "StorageFile",
         "EncIdKeyFile",
         "PageStore"
       ]

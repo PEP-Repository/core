@@ -3,6 +3,8 @@
 #include <pep/storagefacility/FileStore.hpp>
 #include <pep/utils/Timestamp.hpp>
 
+#include <xxhash.h>
+
 #include <algorithm>
 #include <chrono>
 #include <memory>
@@ -24,12 +26,39 @@ ChecksumChain::Checkpoint TimestampToCheckpoint(Timestamp timestamp) {
  * 4. participant-a/column-y/timestamp-3
  * 5. participant-a/column-y/timestamp-5
  * 6. participant-b/column-x/timestamp-1
+ * Redactions of cell versions are processed after cell version contents.
  */
 class FilesChecksumChain : public SfChecksumChain {
 protected:
+  Result addCell(Result result, Checkpoint max, const FileStore::Cell& cell) const override {
+    // Let base class implementation (invoke our method to) process cell version(content)s
+    result = SfChecksumChain::addCell(result, max, cell);
+
+    // Process any redactions that occurred before the max checkpoint
+    for (const FileStore::CellVersion& version : cell.versions()) {
+      auto versionCheckpoint = TimestampToCheckpoint(version.validFrom);
+      if (versionCheckpoint > max) {
+        break;
+      }
+
+      if (version.redactedAt) {
+        auto redactionCheckpoint = TimestampToCheckpoint(*version.redactedAt);
+        if (redactionCheckpoint <= max) {
+          // Unique per (version, redaction): can't cancel against the version's own substitute or other redactions
+          result.checksum ^= XXH64(&version.checksumSubstitute, sizeof(version.checksumSubstitute), redactionCheckpoint);
+          result.checkpoint = std::max(result.checkpoint, redactionCheckpoint);
+        }
+      }
+    }
+
+    return result;
+  }
+
   Result addCellVersion(Result result, const FileStore::CellVersion& version) const override {
+    // Process this cell version itself
     result.checksum ^= version.checksumSubstitute;
     // result.checkpoint is updated by this->addCell (who is calling us)
+
     return result;
   }
 
@@ -57,7 +86,20 @@ SfChecksumChain::SfChecksumChain(const FileStore& fileStore, std::string name) n
   : ChecksumChain(std::move(name)), fileStore_(fileStore) {
 }
 
-SfChecksumChain::Result SfChecksumChain::get(const std::optional<Checkpoint>& maxCheckpoint) const {
+ChecksumChain::Result SfChecksumChain::addCell(Result result, Checkpoint max, const FileStore::Cell& cell) const {
+  for (const auto& version : cell.versions()) {
+    auto versionCheckpoint = TimestampToCheckpoint(version.validFrom);
+    if (versionCheckpoint > max) {
+      break;
+    }
+
+    result = this->addCellVersion(result, version);
+    result.checkpoint = std::max(result.checkpoint, versionCheckpoint); // Saves duplicate code in (overrides of) this->addCellVersion
+  }
+  return result;
+}
+
+ChecksumChain::Result SfChecksumChain::get(const std::optional<Checkpoint>& maxCheckpoint) const {
   Result result;
 
   // The Storage Facility uses a timestamp as checkpoint
@@ -65,15 +107,7 @@ SfChecksumChain::Result SfChecksumChain::get(const std::optional<Checkpoint>& ma
 
   for (const auto& participant : fileStore_.participants()) {
     for (const auto& cell : participant->cells()) {
-      for (const auto& version : cell->versions()) {
-        auto versionCheckpoint = TimestampToCheckpoint(version.validFrom);
-        if (versionCheckpoint > max) {
-          break;
-        }
-
-        result = this->addCellVersion(result, version);
-        result.checkpoint = std::max(result.checkpoint, versionCheckpoint); // Saves duplicate code in (overrides of) this->addCellVersion
-      }
+      result = this->addCell(result, max, *cell);
     }
   }
 

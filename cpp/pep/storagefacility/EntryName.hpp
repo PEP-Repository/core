@@ -4,7 +4,7 @@
 
 #include <format>
 #include <string>
-#include <tuple>
+#include <utility>
 
 namespace pep {
 
@@ -14,12 +14,11 @@ private:
   std::string column_;
 
   EntryName(std::string participant, bool validateParticipant, std::string column);
-  std::tuple<const std::string&, const std::string&> memberValues() const { return std::tie(this->participant(), this->column()); }
 
 public:
   static constexpr char Delimiter = '/'; // Don't change: we need this to (also) serve as a path delimiter on the file system and S3 page store
 
-  EntryName(const std::string& participant, const std::string& column) : EntryName(participant, true, column) {}
+  EntryName(std::string participant, std::string column) : EntryName(std::move(participant), true, std::move(column)) {}
   EntryName(const LocalPseudonym& pseudonym, const std::string& column) : EntryName(pseudonym.text(), false, column) {}
 
   const std::string& participant() const noexcept { return participant_; }
@@ -28,8 +27,7 @@ public:
   LocalPseudonym pseudonym() const { return LocalPseudonym::FromText(this->participant()); }
   [[nodiscard]] std::string string() const;
 
-  bool operator==(const EntryName& rhs) const { return this->memberValues() == rhs.memberValues(); }
-  bool operator<(const EntryName& rhs) const { return this->memberValues() < rhs.memberValues(); }
+  auto operator<=>(const EntryName&) const = default;
 
   static EntryName Parse(const std::string& sfId);
 };

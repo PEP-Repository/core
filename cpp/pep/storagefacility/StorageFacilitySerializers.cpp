@@ -10,6 +10,7 @@
 #include <pep/storagefacility/PrefixedStrings.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataEnumerationRequest2, DataEnumerationResponse2, DataStoreRequest2, ...
 
+#include <cassert>
 #include <ranges>
 #include <stdexcept>
 #include <utility>
@@ -226,12 +227,20 @@ void Serializer<DataHistoryRequest2>::moveIntoProtocolBuffer(proto::DataHistoryR
 }
 
 DataHistoryEntry2 Serializer<DataHistoryEntry2>::fromProtocolBuffer(proto::DataHistoryEntry2&& source) const {
-  return {
+  DataHistoryEntry2 result{
     .columnIndex = source.column_index(),
     .pseudonymIndex = source.pseudonym_index(),
     .timestamp = Serialization::FromProtocolBuffer(std::move(*source.mutable_timestamp())),
     .id = std::move(*source.mutable_id()),
+    .redactedAt{},
   };
+  if (source.has_redacted_at()) {
+    auto redactedAt = Serialization::FromProtocolBuffer(std::move(*source.mutable_redacted_at()));
+    if (redactedAt != Timestamp{/* zero */ }) {
+      result.redactedAt = redactedAt;
+    }
+  }
+  return result;
 }
 
 void Serializer<DataHistoryEntry2>::moveIntoProtocolBuffer(proto::DataHistoryEntry2& dest, DataHistoryEntry2 value) const {
@@ -239,6 +248,10 @@ void Serializer<DataHistoryEntry2>::moveIntoProtocolBuffer(proto::DataHistoryEnt
   dest.set_pseudonym_index(value.pseudonymIndex);
   Serialization::MoveIntoProtocolBuffer(*dest.mutable_timestamp(), value.timestamp);
   *dest.mutable_id() = std::move(value.id);
+  if (value.redactedAt.has_value()) {
+    assert(*value.redactedAt != Timestamp{ /* zero */ });
+    Serialization::MoveIntoProtocolBuffer(*dest.mutable_redacted_at(), *value.redactedAt);
+  }
 }
 
 DataHistoryResponse2 Serializer<DataHistoryResponse2>::fromProtocolBuffer(proto::DataHistoryResponse2&& source) const {
@@ -293,6 +306,7 @@ DataSizeResponse Serializer<DataSizeResponse>::fromProtocolBuffer(proto::DataSiz
   return DataSizeResponse{
     .blockSize = source.block_size(),
     .totalBlocks = source.total_blocks(),
+    .redactedBlocks = source.redacted_blocks(),
     .rollingBlocks = source.rolling_blocks(),
   };
 }
@@ -300,6 +314,7 @@ DataSizeResponse Serializer<DataSizeResponse>::fromProtocolBuffer(proto::DataSiz
 void Serializer<DataSizeResponse>::moveIntoProtocolBuffer(proto::DataSizeResponse& dest, DataSizeResponse value) const {
   dest.set_block_size(value.blockSize);
   dest.set_total_blocks(value.totalBlocks);
+  dest.set_redacted_blocks(value.redactedBlocks);
   dest.set_rolling_blocks(value.rollingBlocks);
 }
 

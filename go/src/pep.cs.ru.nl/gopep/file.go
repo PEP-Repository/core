@@ -16,6 +16,7 @@ import (
 	"io"
 	"reflect"
 	"sync/atomic"
+	"time"
 )
 
 // Information about a file returned by an enumeration request.
@@ -51,6 +52,9 @@ type FileInfo struct {
 
 	// Column to which this file belong
 	Column string
+	
+	// Timestamp at which the file was redacted
+	RedactedAt *time.Time
 }
 
 // streamWriter contains the state shared between the file writers

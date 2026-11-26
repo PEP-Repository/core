@@ -4,6 +4,7 @@
 #include <pep/storagefacility/EntryPayload.hpp>
 #include <pep/storagefacility/PersistedEntryProperties.hpp>
 #include <pep/storagefacility/PrefixedStrings.hpp>
+#include <pep/storagefacility/SqliteStorage.hpp>
 #include <pep/utils/Configuration.hpp>
 #include <pep/async/tests/RxTestUtils.hpp>
 #include <pep/elgamal/CurvePoint.hpp>
@@ -39,6 +40,7 @@
 
 using pep::EntryContent;
 using pep::FileStore;
+using pep::storagefacility::SqliteStorage;
 using namespace std::ranges;
 
 namespace {
@@ -54,7 +56,9 @@ struct Context {
   std::filesystem::path path = std::filesystem::temp_directory_path() / "pep-sf-tests";
   std::string bucket = "myBucket";
   std::shared_ptr<FileStore> store;
+  std::shared_ptr<SqliteStorage> sqlite;
 
+  std::filesystem::path sqlitepath() { return this->path / "sf.sqlite"; }
   std::filesystem::path metapath() { return this->path / "meta"; }
   std::filesystem::path datapath() { return this->path / "data"; }
   std::filesystem::path bucketpath() {
@@ -76,7 +80,9 @@ struct Context {
     boost::property_tree::ptree pageStoreConf;
     pageStoreConf.put_child("Local", localConf);
 
+    this->sqlite = SqliteStorage::Create(this->sqlitepath());
     this->store = FileStore::Create(
+        this->sqlite,
         this->metapath().string(), pep::Configuration::FromPtree(pageStoreConf), this->io_context,
         std::shared_ptr<prometheus::Registry>() // intentionally null
     );
@@ -89,7 +95,7 @@ struct Context {
 
   /// \brief Stores a (paged) entry consisting of the specified pages. The pages' data are not stored.
   void storePagedEntry(const pep::EntryName& name, std::vector<pep::PageId> pages, pep::Timestamp validFrom) const {
-    auto change = this->store->modifyEntry(name, true);
+    auto change = this->store->modifyEntry(name, false);
     ASSERT_NE(change, nullptr);
 
     pep::PersistedEntryProperties properties;
@@ -105,7 +111,7 @@ struct Context {
 };
 
 /// Returns the lines that WritePrefixedStrings writes for the specified entries
-std::vector<std::string> RenderLines(std::ranges::input_range auto&& entries) {
+std::vector<std::string> RenderLines(input_range auto&& entries) {
   std::ostringstream rendered;
   pep::WritePrefixedStrings(rendered, std::forward<decltype(entries)>(entries));
   std::vector<std::string> result;
@@ -158,7 +164,7 @@ TEST(FileStore, Basic) {
   for (size_t i = 0; page.size() < pep::InlinePageThreshold; i++)
     page += " " + std::to_string(i);
 
-  auto change = store->modifyEntry(name, true);
+  auto change = store->modifyEntry(name, false);
   ASSERT_NE(nullchange, change);
   change->setContent(std::make_unique<EntryContent>(
     EntryContent::Metadata(),
@@ -168,11 +174,11 @@ TEST(FileStore, Basic) {
   context.exhaust<std::string>(change->appendPage(std::make_shared<std::string>(page), page.size(), 0));
   std::move(*change).commit(1_unixMs);
 
-  change = store->modifyEntry(name, false);
+  change = store->modifyEntry(name, true);
   ASSERT_NE(nullchange, change);
   EXPECT_EQ(1, change->content()->payload()->pageCount());
 
-  auto duplicateChange = store->modifyEntry(name, false);
+  auto duplicateChange = store->modifyEntry(name, true);
   std::move(*change).commit(3_unixMs);
   EXPECT_ANY_THROW(std::move(*duplicateChange).commit(3_unixMs));
 
@@ -223,7 +229,7 @@ TEST(FileStore, PagePathsWithEmptyCell) {
   auto store = context.store;
 
   // Create a cell without committing an entry to it, e.g. like when a store is cancelled
-  auto change = store->modifyEntry(pep::EntryName(pep::LocalPseudonym::Random(), "test"), true);
+  auto change = store->modifyEntry(pep::EntryName(pep::LocalPseudonym::Random(), "test"), false);
   ASSERT_NE(nullptr, change);
   change.reset();
 
@@ -306,13 +312,13 @@ TEST(FileStore, PathTraversal) {
 
   auto dummyLp = pep::LocalPseudonym::Random();
 
-  ASSERT_NO_THROW(store->modifyEntry({dummyLp, "test"}, true));
+  ASSERT_NO_THROW(store->modifyEntry({dummyLp, "test"}, false));
 
-  EXPECT_THROW(store->modifyEntry({dummyLp, ".."}, true),
+  EXPECT_THROW(store->modifyEntry({dummyLp, ".."}, false),
     std::invalid_argument);
-  EXPECT_THROW(store->modifyEntry({dummyLp, "/test"}, true),
+  EXPECT_THROW(store->modifyEntry({dummyLp, "/test"}, false),
     std::runtime_error);
-  EXPECT_THROW(store->modifyEntry({dummyLp, ""}, true),
+  EXPECT_THROW(store->modifyEntry({dummyLp, ""}, false),
     std::runtime_error);
 }
 

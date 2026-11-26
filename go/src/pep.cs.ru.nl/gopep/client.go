@@ -508,6 +508,13 @@ func (c *StorageFacilityConn) History2(
 		}
 		fs[i].Column = cols[colIdx]
 		fs[i].Pseudonyms = &pps[ppIdx]
+		if entries[i].RedactedAt != nil {
+			millis := entries[i].RedactedAt.EpochMillis
+			if millis != 0 {
+				redacted := time.Unix(millis/1000, (millis%1000)*1000000)
+				fs[i].RedactedAt = &redacted
+			}
+		}
 	}
 	
 	return fs, nil

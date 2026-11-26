@@ -12,7 +12,6 @@ add_library(${PROJECT_NAME}Networkinglib
     ConnectivityAttempt.hpp
     EndPoint.hpp
     EndPoint.PropertySerializer.cpp EndPoint.PropertySerializer.hpp
-    ExponentialBackoff.cpp ExponentialBackoff.hpp
     HttpClient.cpp HttpClient.hpp
     HTTPMessage.cpp HTTPMessage.hpp
     HttpMethod.cpp HttpMethod.hpp

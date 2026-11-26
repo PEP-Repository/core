@@ -1,7 +1,6 @@
 #pragma once
 
 #include <concepts>
-#include <cstdint>
 #include <tuple>
 
 namespace pep::database {
@@ -29,8 +28,5 @@ concept Record = requires(T rec) {
   { auto(rec.tombstone) } -> std::same_as<bool>;
   { auto(T::RecordIdentifier) } -> detail::RecordIdentifier<T>;
 };
-
-/// Timestamp as milliseconds since Unix epoch, used for in database
-using UnixMillis = std::int64_t;
 
 }

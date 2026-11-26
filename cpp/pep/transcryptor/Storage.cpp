@@ -13,7 +13,7 @@
 #include <pep/crypto/CryptoSerializers.hpp>
 #include <pep/database/Storage.hpp>
 #include <pep/crypto/X509Certificate.hpp>
-#include <pep/database/Record.hpp> // for database::UnixMillis
+#include <pep/database/UnixMillis.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPublicKey
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/rsk/Proofs.hpp> // for ReshuffleRekeyVerifiers

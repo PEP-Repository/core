@@ -1510,3 +1510,133 @@ if should_run_test certificate-renewal; then
 fi
 
 ####################
+
+if should_run_test redaction; then
+  REDACTION_CONFIG='{
+    "columnGroups": [{
+      "name": "RedactionTestGroup",
+      "columns": [ "RedactionTest" ],
+      "cgars": { "Research Assessor": [ "read", "write" ] }
+    }]
+  }'
+
+  test_setup "$REDACTION_CONFIG"
+  
+  # Counts redaction cycles in "pepcli redact list --output-format json"
+  count_redactions() {
+    cli_output="$1"
+    echo "$cli_output" | jq '.data | length'
+  }
+
+  # Get (possibly non-empty) list of initial (previous) redaction cycles
+  initial_redaction_count="$(count_redactions "$(pepcli --oauth-token-group "Data Administrator" redact list --output-format json)")"
+  
+  # Fails if "pepcli redact list" doesn't produce the expected number of cycles
+  expect_redaction_count() {
+    when="$1"
+    expected="$2"
+    
+    cli_output="$(pepcli --oauth-token-group "Repository Manager" redact list --output-format json)"
+    count="$(count_redactions "$cli_output")"
+    if [ "$count" -ne "$expected" ]; then
+      >&2 echo "$when: expected $expected redactions but got $count. Initial count was $initial_redaction_count; output was:\n$cli_output"
+      return 1
+    fi
+  }
+  
+  # Validate access control
+  pepcli --oauth-token-group "Research Assessor" redact list && fail "Redaction cycles should not be listable by Research Assessor"
+  pepcli --oauth-token-group "Access Administrator" redact list && fail "Redaction cycles should not be listable by Access Administrator"
+  
+  # Create some history
+  pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c RedactionTest -d One
+  pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c RedactionTest -d Two
+  pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c RedactionTest -d Three
+  pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c RedactionTest
+  pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c RedactionTest -d Five
+
+  hist="$(pepcli --oauth-token-group "Data Administrator" history -p "$TEST_PARTICIPANT" -c RedactionTest)"
+  if [ "$(echo "$hist" | jq -r '.[].timestamp' | wc -l)" -ne 5 ]; then
+    fail "Didn't get expected five history entries in:\n$hist"
+  fi
+  if [ "$(echo "$hist" | jq -r '.[].redactedAt | select( . != null )' | wc -l)" -ne 0 ]; then
+    fail "Found redacted items in:\n$hist"
+  fi
+  
+  # Keep track of some version(ID)s
+  id_of_version_1="$(echo "$hist"        | jq -r '.[].id'        | head -n 1)"
+  id_of_version_5="$(echo "$hist"        | jq -r '.[].id'        | tail -n 1)"
+  timestamp_of_version_5="$(echo "$hist" | jq -r '.[].timestamp' | tail -n 1)"
+  
+  # Ensure that we can "pepcli get" the first version now (before it's redacted)
+  pepcli --oauth-token-group "Research Assessor" list -p "$TEST_PARTICIPANT" -c RedactionTest --ticket-out "$DEST_DIR/redaction-test.ticket.bin"
+  pepcli --oauth-token-group "Research Assessor" get --ticket "$DEST_DIR/redaction-test.ticket.bin" --id "$id_of_version_1" --output-file -
+  pepcli --oauth-token-group "Research Assessor" get --ticket "$DEST_DIR/redaction-test.ticket.bin" --id "$id_of_version_1" --metadata    -
+  
+  # (Try to) define/request a redaction cycle
+  pepcli --oauth-token-group "Research Assessor"  redact back-catalog && fail "Redaction cycle request should be denied to Research Assessor"
+  pepcli --oauth-token-group "Repository Manager" redact back-catalog && fail "Redaction cycle request should be denied to Repository Manager"
+  cycle_json="$(pepcli --oauth-token-group "Data Administrator" redact back-catalog --output-format json)"
+  cycle="$(echo "$cycle_json" | jq -r '.data.[0].ID')"
+  expect_redaction_count "First definition" "$(($initial_redaction_count + 1))"
+  
+  # (Try to) cancel the defined redaction cycle
+  pepcli --oauth-token-group "Research Assessor"  redact cancel "$cycle" && fail "Redaction cycle should not be cancellable by Research Assessor"
+  pepcli --oauth-token-group "Repository Manager" redact cancel "$cycle" && fail "Redaction cycle should not be cancellable by Repository Manager"
+  pepcli --oauth-token-group "Data Administrator" redact cancel "$cycle"
+  expect_redaction_count "After cancellation" "$initial_redaction_count" 
+
+  # Define/request a redaction cycle that we'll actually apply
+  cycle_json="$(pepcli --oauth-token-group "Data Administrator" redact back-catalog --output-format json)"
+  cycle="$(echo "$cycle_json" | jq -r '.data.[0].ID')"
+  expect_redaction_count "Second definition" "$(($initial_redaction_count + 1))"
+  
+  # (Try to) confirm/apply the redaction cycle
+  pepcli --oauth-token-group "Research Assessor"   redact confirm "$cycle" && fail "Redaction cycle confirmation should be denied to Research Assessor"
+  pepcli --oauth-token-group "Data Administrator"  redact confirm "$cycle" && fail "Redaction cycle confirmation should be denied to Data Administrator"
+  pepcli --oauth-token-group "Repository Manager"  redact confirm "$cycle"
+  
+  # (Immediately) try to get a redacted version
+  pepcli --oauth-token-group "Research Assessor" get --id "$id_of_version_1" --ticket "$DEST_DIR/redaction-test.ticket.bin" --output-file - && fail "Redacted cell version's data was accessible"
+  pepcli --oauth-token-group "Research Assessor" get --id "$id_of_version_1" --ticket "$DEST_DIR/redaction-test.ticket.bin" --metadata    - && fail "Redacted cell version's metadata was accessible"
+  
+  # Ensure that we can't do bogus things after cycle confirmation/application
+  pepcli --oauth-token-group "Repository Manager"  redact confirm "$cycle" && fail "Redaction cycle reconfirmation should fail"
+  pepcli --oauth-token-group "Data Administrator"  redact cancel  "$cycle" && fail "Redaction cycle cancellation after confirmation should fail"
+  pepcli --oauth-token-group "Data Administrator"  redact back-catalog     && fail "Redacted back catalog shouldn't be (re)redactable"
+  
+  # Ensure that (only) the latest cell version remained
+  hist="$(pepcli --oauth-token-group "Data Administrator" history -p "$TEST_PARTICIPANT" -c RedactionTest)"
+  unredacted="$(echo "$hist"  | jq -r '.[] | select( .redactedAt == null ) | .timestamp')"
+  if [ "$(echo "$unredacted" | wc -l)" -ne 1 ]; then
+    fail "Expected a single item to survive the redaction, but found history:\n$hist"
+  fi
+  if [ "$unredacted" != "$timestamp_of_version_5" ]; then
+    fail "Expected latest version to survive the redaction instead of $unredacted. History was:\n$hist"
+  fi
+  
+  content="$(pepcli --oauth-token-group "Research Assessor" get --ticket "$DEST_DIR/redaction-test.ticket.bin" --id "$id_of_version_5" --output-file -)"
+  if [ "$content" != "Five" ]; then
+    fail "Expected latest version (5) to have original content but got:\n$content"
+  fi
+
+  # Ensure that we can re-redact the back catalog after we create more history
+  pepcli --oauth-token-group "Research Assessor" store -p  "$TEST_PARTICIPANT" -c RedactionTest -d Six
+  cycle_json="$(pepcli --oauth-token-group "Data Administrator" redact back-catalog --output-format json)"
+  cycle="$(echo "$cycle_json" | jq -r '.data.[0].ID')"
+  pepcli --oauth-token-group "Repository Manager"  redact confirm "$cycle"
+  
+  hist="$(pepcli --oauth-token-group "Data Administrator" history -p "$TEST_PARTICIPANT" -c RedactionTest)"
+  unredacted="$(echo "$hist"  | jq -r '.[] | select( .redactedAt == null ) | .id')"
+  if [ "$(echo "$unredacted" | wc -l)" -ne 1 ]; then
+    fail "Redaction was survived by something other than a single version. History was:\n$hist"
+  fi
+  if [ "$unredacted" = "$id_of_version_5" ]; then
+    fail "Redaction was survived by outdated item $id_of_version_5. History was:\n$hist"
+  fi
+  
+  # Clean up
+  pepcli --oauth-token-group "Research Assessor" delete -p "$TEST_PARTICIPANT" -c RedactionTest
+  execute . rm "$DEST_DIR/redaction-test.ticket.bin"
+  test_cleanup "$REDACTION_CONFIG"
+fi

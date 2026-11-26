@@ -14,7 +14,10 @@
 #include <pep/storagefacility/EntryContent.hpp>
 #include <pep/storagefacility/FileStore.hpp>
 #include <pep/storagefacility/PendingBytesLimiter.hpp>
+#include <pep/storagefacility/RedactionCycle.hpp>
+#include <pep/storagefacility/RedactionMessages.hpp>
 #include <pep/storagefacility/SFId.hpp>
+#include <pep/storagefacility/SqliteStorage.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>
 #include <pep/ticketing/TicketingMessages.hpp> // for LocalPseudonyms
 #include <pep/utils/Configuration_fwd.hpp>
@@ -54,7 +57,8 @@ private:
     prometheus::Gauge& entriesIncludingHistory;
     prometheus::Gauge& entriesInMetaDir;
 
-    prometheus::Gauge& totalPayloadBytes; // including history
+    prometheus::Gauge& totalPayloadBytes; // including history and redacted
+    prometheus::Gauge& redactedPayloadBytes; // over total history
     prometheus::Gauge& rollingPayloadBytes; // "latest" snapshot
 
     prometheus::Gauge& pendingPageBytes; ///< received from the network, but not yet stored
@@ -85,8 +89,11 @@ public:
     uint8_t getParallelisationWidth() const {
       return parallelisationWidth_;
     }
-    std::filesystem::path getStoragePath() const {
+    std::filesystem::path getStoragePath() const { // location of the "meta" directory
       return storagePath_;
+    }
+    std::filesystem::path getStorageFile() const { // path to Sqlite DB file
+      return storageFile_;
     }
     std::shared_ptr<Configuration> getPageStoreConfig() const {
       return pageStoreConfig_;
@@ -108,6 +115,7 @@ public:
 
     // passed to FileStore::Create
     std::filesystem::path storagePath_;
+    std::filesystem::path storageFile_;
     std::shared_ptr<Configuration> pageStoreConfig_;
   };
 
@@ -130,11 +138,23 @@ private:
   messaging::MessageBatches handleDataSizeRequest(std::shared_ptr<SignedDataSizeRequest> signedRequest);
   messaging::MessageBatches handlePagePathRequest(std::shared_ptr<SignedPagePathRequest> signedRequest);
 
+  messaging::MessageBatches handleRedactionListRequest(std::shared_ptr<SignedRedactionListRequest> signedRequest);
+  messaging::MessageBatches handleRedactionAnnounceRequest(std::shared_ptr<SignedRedactionAnnounceRequest> signedRequest);
+  messaging::MessageBatches handleRedactionCancelRequest(std::shared_ptr<SignedRedactionCancelRequest> signedRequest);
+  messaging::MessageBatches handleRedactionConfirmationRequest(std::shared_ptr<SignedRedactionConfirmationRequest> signedRequest);
+
   std::string encryptId(std::string path, Timestamp time);
   SFId decryptId(std::string_view encId);
   std::vector<std::optional<LocalPseudonym>> decryptLocalPseudonyms(const std::vector<LocalPseudonyms>& source, std::vector<uint32_t> const *indices) const;
 
   Metadata compileMetadata(std::string column, const FileStore::Entry& entry);
+  RedactionCycle createRedactionCycle(RedactionCycle::Definition definition);
+
+  /// \brief Returns a timestamp that does not collide with other timestamps in the history of cell versions
+  /// \param forRedactionCycle Whether the timestamp will be the moment that a redaction cycle is applied (true) or when cell version(s) are committed (false)
+  /// \return A timestamp that's sufficiently unique for the requested purpose
+  /// \remark See this method's implementation for its rationale.
+  Timestamp getUniqueChangeTimestamp(bool forRedactionCycle);
 
   template <typename TEntry>
   using GetEntryContent = std::function<std::unique_ptr<EntryContent>(const TEntry&)>;
@@ -153,12 +173,14 @@ private:
   ElgamalPrivateKey pseudonymKey_;
   std::string encIdKey_;
   std::shared_ptr<WorkerPool> workerPool_;
+  std::shared_ptr<storagefacility::SqliteStorage> sqlite_;
   std::shared_ptr<FileStore> fileStore_;
   std::shared_ptr<Metrics> metrics_;
   std::shared_ptr<PendingBytesLimiter> pendingPages_; // Global: limits the incoming pages that are waiting to be stored, across all requests
   boost::asio::steady_timer timer_;
   const uint8_t parallelisationWidth_ = 0; // passed to RxParallelConcat
   const uint64_t dataSizeResolution_;
+  Timestamp lastChangeTimestamp_{}; // the timestamp of the last committed entry (or entries) in the file store
 };
 
 }

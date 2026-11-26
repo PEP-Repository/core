@@ -1,5 +1,5 @@
+#include <pep/async/ExponentialBackoff.hpp>
 #include <pep/networking/Client.hpp>
-#include <pep/networking/ExponentialBackoff.hpp>
 #include <pep/networking/Server.hpp>
 #include <pep/networking/Tcp.hpp>
 #include <pep/utils/OnFatalTestFailure.hpp>

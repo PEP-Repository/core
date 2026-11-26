@@ -1,6 +1,7 @@
 #include <pep/async/RxRequireCount.hpp>
 #include <pep/storagefacility/DataPayloadPageStreamOrder.hpp>
 #include <pep/storagefacility/PageHash.hpp>
+#include <pep/storagefacility/RedactionSerializers.hpp>
 #include <pep/storagefacility/StorageFacilityProxy.hpp>
 #include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/utils/XxHasher.hpp>
@@ -8,6 +9,8 @@
 #include <pep/messaging/Tail.hpp>
 #include <pep/serialization/Serialization.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/RedactionCycle.hpp>
+#include <pep/storagefacility/RedactionMessages.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp> // for DataEnumerationResponse2, DataStoreRequest2, DataEnumerationRequest2, ...
 #include <pep/utils/Shared.hpp>
 
@@ -91,6 +94,31 @@ rxcpp::observable<DataSizeResponse> StorageFacilityProxy::requestDataSize(DataSi
 rxcpp::observable<PagePathResponse> StorageFacilityProxy::requestPagePaths() const {
   // Pass chunks on as they arrive instead of aggregating them, so that we don't need to keep all page paths in memory
   return this->sendRequest<PagePathResponse>(this->sign(PagePathRequest{}));
+}
+
+rxcpp::observable<RedactionCycle> StorageFacilityProxy::listRedactionCycles() const {
+  return this->sendRequest<RedactionCycle>(this->sign(RedactionListRequest{}));
+}
+
+rxcpp::observable<RedactionCycle> StorageFacilityProxy::announceRedactionCycle(RedactionCycle::Definition definition) const {
+  return this->sendRequest<RedactionCycle>(this->sign(RedactionAnnounceRequest{
+      .definition = std::move(definition),
+    }))
+    .op(RxGetOne());
+}
+
+rxcpp::observable<RedactionCycle> StorageFacilityProxy::cancelRedactionCycle(RedactionCycle::Id id) const {
+  return this->sendRequest<RedactionCycle>(this->sign(RedactionCancelRequest{
+      .id = id,
+    }))
+    .op(RxGetOne());
+}
+
+rxcpp::observable<RedactionCycle> StorageFacilityProxy::confirmRedactionCycle(RedactionCycle::Id id) const {
+  return this->sendRequest<RedactionCycle>(this->sign(RedactionConfirmationRequest{
+      .id = id,
+    }))
+    .op(RxGetOne());
 }
 
 }

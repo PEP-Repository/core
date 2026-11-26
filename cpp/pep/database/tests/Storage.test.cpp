@@ -4,7 +4,9 @@
 #include <pep/utils/Filesystem.hpp>
 
 #include <filesystem>
+#include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace {
 using namespace sqlite_orm;
@@ -13,6 +15,14 @@ struct MyTableRecord {
   int id;
   std::string key;
   std::string value;
+
+  static MyTableRecord MakeKeyOnly(std::string key) {
+    return MyTableRecord{
+      .id{},
+      .key = std::move(key),
+      .value{},
+    };
+  }
 };
 
 struct ExtraTableRecord {
@@ -145,6 +155,57 @@ TEST_F(StorageTest, syncSchema_with_new_table_succeeds) {
   {
     pep::database::Storage<MakeStorageWithExtraTable> storage(dbPath.string());
     EXPECT_TRUE(storage.syncSchema());
+  }
+}
+
+TEST_F(StorageTest, transactionality_works) {
+  std::filesystem::path dbPath = getDbPath();
+  {
+    pep::database::Storage<MakeStorageBase> storage(dbPath.string());
+    ASSERT_TRUE(storage.syncSchema());
+
+    auto count = storage.raw.count<MyTableRecord>();
+    EXPECT_EQ(count, 0);
+
+    storage.raw.insert(MyTableRecord::MakeKeyOnly("First"));
+    ASSERT_EQ(++count, storage.raw.count<MyTableRecord>()) << "Unexpected count after nontransactional insertion";
+
+    storage.transactionally([&storage]() {
+      storage.raw.insert(MyTableRecord::MakeKeyOnly("Second"));
+      });
+    ASSERT_EQ(++count, storage.raw.count<MyTableRecord>()) << "Unexpected count after transactional insertion";
+
+    EXPECT_THROW(storage.transactionally([&storage]() {
+      storage.raw.insert(MyTableRecord::MakeKeyOnly("Third"));
+      throw std::runtime_error("Should cause rollback");
+      }), std::runtime_error);
+    EXPECT_EQ(count, storage.raw.count<MyTableRecord>()) << "Unexpected count after exception during transaction";
+
+    EXPECT_THROW(storage.transactionally([&storage]() {
+      storage.raw.insert(MyTableRecord::MakeKeyOnly("Fourth"));
+      storage.raw.insert(MyTableRecord::MakeKeyOnly("Fifth"));
+      throw std::runtime_error("Should cause rollback");
+      }), std::runtime_error);
+    EXPECT_EQ(count, storage.raw.count<MyTableRecord>()) << "Unexpected count after exception during multi-command transaction";
+  }
+}
+
+TEST_F(StorageTest, transactionality_throws_for_reentrancy) {
+  std::filesystem::path dbPath = getDbPath();
+  {
+    pep::database::Storage<MakeStorageBase> storage(dbPath.string());
+    ASSERT_TRUE(storage.syncSchema());
+
+    EXPECT_EQ(0, storage.raw.count<MyTableRecord>());
+
+    EXPECT_ANY_THROW(storage.transactionally([&storage]() {
+      storage.raw.insert(MyTableRecord::MakeKeyOnly("First"));
+      storage.transactionally([&storage]() { // We're expecting an exception from this attempt at starting a nested transaction
+        storage.raw.insert(MyTableRecord::MakeKeyOnly("Second"));
+        });
+      }));
+
+    EXPECT_EQ(0, storage.raw.count<MyTableRecord>()) << "Nesting attempt should have rolled back and/or prevented transactions";
   }
 }
 

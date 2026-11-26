@@ -525,6 +525,13 @@ execute . mkdir -p "$DEST_DIR"
 ####################
 
 if should_run_test watchdog; then
+  if should_run_test redaction > /dev/null ; then
+    # Prevent Watchdog from reporting redacted canary versions as missing.
+    # We'd have liked to sync the canaries in the "redaction" test, but can't because
+    # pepcli_tests.bash doesn't (seem to) have anything to do with Watchdog.
+    execute watchdog "$BUILD_DIR/go/src/pep.cs.ru.nl/pep-watchdog/pep-watchdog" -sync-canaries
+  fi
+  
   execute watchdog "$BUILD_DIR/go/src/pep.cs.ru.nl/pep-watchdog/pep-watchdog" -oneshot -instant-stressor
 fi
 

@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <pep/keyserver/tokenblocking/SqliteBlocklist.hpp>
 #include <pep/database/Storage.hpp>
-#include <pep/database/Record.hpp> // for database::UnixMillis
+#include <pep/database/UnixMillis.hpp>
 #include <pep/keyserver/tokenblocking/Blocklist.hpp>
 #include <pep/keyserver/tokenblocking/TokenIdentifier.hpp>
 #include <pep/utils/MiscUtil.hpp> // for PEP_WRAP_FN

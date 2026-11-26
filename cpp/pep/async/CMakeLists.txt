@@ -5,6 +5,7 @@ add_library(${PROJECT_NAME}Asynclib
     ActivityMonitor.cpp ActivityMonitor.hpp
     CallbackCoroutine.hpp
     CreateObservable.hpp
+    ExponentialBackoff.cpp ExponentialBackoff.hpp
     FakeVoid.hpp
     IoContext_fwd.hpp
     IoContextThread.cpp IoContextThread.hpp

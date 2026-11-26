@@ -28,6 +28,7 @@
   },
   "EnrolledPartyKeysFile": "StorageFacilityKeys.json",
   "StoragePath": "meta",
+  "StorageFile": "StorageFacility.sqlite",
   "EncIdKeyFile": "StorageFacilityEncIdKey.json",
   "PageStore": {
     "Local": {

@@ -1,11 +1,11 @@
+#include <pep/async/ExponentialBackoff.hpp>
 #include <pep/networking/Client.hpp>
-#include <pep/utils/Exceptions.hpp>
-#include <pep/utils/Log.hpp>
 #include <pep/networking/Connection.hpp>
-#include <pep/networking/ExponentialBackoff.hpp>
 #include <pep/networking/Node.hpp>
 #include <pep/networking/Protocol.hpp>
 #include <pep/utils/Event.hpp>
+#include <pep/utils/Exceptions.hpp>
+#include <pep/utils/Log.hpp>
 #include <pep/utils/Shared.hpp> // for WeakFrom
 
 #include <sstream>

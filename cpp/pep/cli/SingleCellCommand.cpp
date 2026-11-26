@@ -107,6 +107,10 @@ rxcpp::observable<pep::FakeVoid> SingleCellCommand::WriteJson(std::ostream& dest
     else {
       destination << "null";
     }
+    if (entry.redactedAt.has_value()) {
+      destination << ",\n"
+        << "\t\t\"redactedAt\": " << TicksSinceEpoch<std::chrono::milliseconds>(*entry.redactedAt);
+    }
     destination << '\n'
       << "\t}";
     })

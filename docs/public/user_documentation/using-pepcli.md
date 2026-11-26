@@ -156,6 +156,7 @@ Data storage and retrieval:
 - [`list`](#list) lists data available in PEP.
 - [`pull`](#pull) stores a data set in files on your local machine.
 - [`store`](#store) stores data in a specific cell.
+- [`delete`](#delete) removes data from a specific cell. (Note that the data can still be accessed by users with appropriate privileges.)
 
 Administrative tasks:
 
@@ -167,6 +168,11 @@ Administrative tasks:
   - [`ama columnGroup`](#ama-columngroup) can be used to create and remove column groups.
   - [`ama group`](#ama-group) can be used to create and remove participant groups, and add participants to them
     - [`ama group auto-assign`](#ama-group-auto-assign) can be used to automatically fill participant groups based on study contexts.
+- [`history`](#history) provides an overview of all data versions that have been stored in a cell.
+- [`redact`](#redact) provides subcommands to irrecoverably remove cell versions from the repository's history.
+  - [`redact back-catalog`](#redact-back-catalog) defines a redaction cycle that will remove all non-current data from the repository.
+  - [`redact list`](#redact-list) lists redaction cycles that have been defined.
+  - [`redact cancel`](#redact-cancel) cancels a previously defined redaction cycle.
 
 **For users enrolled as an `Access Administrator`:**
 
@@ -191,6 +197,12 @@ Administrative tasks:
 - [`token`](#token) provides subcommands for requesting and blocking tokens. Only for users enrolled as an `Access Administrator`:
   - [`token request`](#token-request) Generate a new authentication token for a user
   - [`token block create/remove/list`](#token-block-create-remove-list) Blocking and unblocking tokens by managing a blocklist on the server.
+
+**For users enrolled as a `Repository Manager`:**
+
+- [`redact`](#redact) provides subcommands to irrecoverably remove cell versions from the repository's history.
+  - [`redact list`](#redact-list) lists redaction cycles that have been defined.
+  - [`redact confirm`](#redact-confirm) confirms and applies a redaction cycle.
 
 ## `ama`
 
@@ -814,6 +826,87 @@ When invoked without further parameters, this command lists the names of all sho
 
 The command accepts an optional `--imported-only` switch. If specified, the command outputs only those columns that are processed when importing data from Castor into PEP. These are the column names that can be passed to the `--sp-column` switch of the [`castor list-import-columns`](#castor-list-import-columns) and [`castor create-import-columns`](#castor-create-import-columns) subcommands.
 
+## history
+
+PEP retains a full history of all data that has ever been stored in the repository. When a non-empty cell is overwritten (using [`pepcli store`](#store)) or [`pepcli delete`](#delete)d, the repository doesn't discard the previous (version of the) data. Instead the repository retains the old data, but will present an updated version of the cell to users that access the current (latest or "rolling") data set. Users with `Data Administrator` privileges can list all changes that have ever been applied to a (specific) cell:
+
+```plaintext
+pepcli history --column <column> --participant <spec>
+```
+
+Instead of a `--participant <spec>`, the caller may also specify a `--short-pseudonym <value>`. The command's output is a list of information (in JSON format) on the various data versions that have existed in the cell:
+
+- the `timestamp` field indicates when the change to the cell was made.
+- the `pp` field identifies the subject ("row") to which the cell belongs.
+- the `column` is the name of the column.
+- the `id` is an identifier for the data that was stored in the cell. If the value is `null`, the cell version does not have associated data because the cell was [deleted](#delete).
+- if the cell version has been [redacted](#redact), the `redactedAt` timestamp will specify the time at which that cell version became inaccessible to users.
+
+Non-`null` values of the `id` field can be passed to the [`pepcli get`](#get) command's `-i` switch to retrieve the data that was stored in the cell for that version. Note that this will yield an error for redacted cell versions.
+
+## redact
+
+The `redact` command's various sub-commands allow data to be irrevocably removed from the repository's history. Whereas PEP normally retains copies of all (over)[written](#store) or [deleted](#delete) data, the `redact` commands discard data versions from the repository in such a way that they cannot be recovered. **Redaction is therefore a destructive action** and users should exercise caution wielding these commands. To prevent accidental data loss and to increase security, redaction requires approval from users with two different administrative roles:
+
+1. a `Data Administrator` must define (i.e. request) a redaction cycle, after which
+2. a `Repository Manager` must [confirm](#redact-confirm) (i.e. apply) that redaction cycle.
+
+Items remain accessible until the redaction cycle has been confirmed, after which they immediately become inaccessible to users ("redacted"). The cycle will be marked "completed" later, after repository servers have performed some additional background tasks.
+
+After redaction, the only thing left in PEP will be a marker that a data version once existed. These markers are used to produce an error for any attempts to access affected cell versions, e.g. using [`pepcli get`](#get). Redacted cell versions will only show up in cell [histories](#history) anymore, where they will be listed as having been redacted at the moment that the cycle was confirmed (i.e. applied).
+
+After cell versions have been redacted, the associated (encrypted) payload data in the underlying bulk storage (e.g. S3 bucket) may be deleted if they are not referenced from other cell versions. Note that PEP does not delete those data itself.
+
+PEP's "Watchdog" monitoring software may be configured to periodically store data and check whether those data are still present. If (versions of) such "canary" data are redacted, Watchdog will detect those versions as "missing". In that case, Watchdog's canary file status must be synchronized to make it accept the new situation.
+
+### redact back-catalog
+
+A user with `Data Administrator` privileges can request that all items be discarded from the repository that do not belong to the current (latest or "rolling") data set:
+
+```plaintext
+pepcli redact back-catalog
+```
+
+The command returns (an identifier for) a "redaction cycle" that will not be actually executed until it is [confirmed](#redact-confirm) by a `Repository Manager`. Once confirmed, the repository will discard all cell versions that do not belong to the current ("rolling") data set. The repository will effectively retain only its current (latest) state and make any previous cell versions inaccessible to (all) users.
+
+### redact cancel
+
+Redaction cycles can be cancelled by a `Data Administrator` if they change their mind after having defined/requested them:
+
+```plaintext
+pepcli redact cancel <id>
+```
+
+The `<id>` must be the identifier of a redaction cycle that exists but has not been [confirm](#redact-confirm)ed. After cancellation, the cycle can no longer be confirmed, and will not be [list](#redact-list)ed anymore.
+
+### redact list
+
+Users with `Data Administrator` or `Repository Manager` privileges can list all redaction cycles that have been [defined](#redact-back-catalog) and not [cancelled](#redact-cancel):
+
+```plaintext
+pepcli redact list
+```
+
+For each redaction cycle, the output includes
+
+- the cycle's `ID`, which can be used to [cancel](#redact-cancel) or [confirm](#redact-confirm) it.
+- the cycle's `name`, which offers a description of the cell versions associated with the cycle.
+- the time at which the cycle was `announced` (i.e. defined or requested).
+- if the cycle has been [confirmed](#redact-confirm): the time at which the cycle was `applied`. This is the moment at which associated cell versions became inaccessible.
+- if all required actions have been performed by repository servers: the time at which the cycle was `completed`.
+
+If (a cycle has been confirmed but) the time of completion is absent, servers are still performing background tasks associated with the cycle. This does not affect the state that users get to see: items will have become inaccessible at the time of confirmation.
+
+### redact confirm
+
+Users with `Repository Manager` privileges can apply redaction cycles that have previously been [defined](#redact-back-catalog) by a `Data Administrator`. Since **this command irrevocably discards cell versions**, users must make very sure that the data should indeed be destroyed:
+
+```plaintext
+pepcli redact confirm <id>
+```
+
+Confirmation of a redaction cycle immediately makes associated cell versions inaccessible to all users. PEP repository servers will then perform some associated technical tasks in the background, during which time the cycle will be [listed](#redact-list) as "confirmed" but not "completed".
+
 ## get
 
 When the [`pepcli list`](#list) command has produced IDs referring to data, the associated data can be retrieved using the `pepcli get` command:
@@ -825,7 +918,7 @@ pepcli get -t <ticket file> -i <identifier> -o <output file>
 The flags are:
 
 - `-t` The ticket you stored with the `-T` flag of the [`list` command](#list)
-- `-i` The identifier you got from [`pepcli list`](#list)
+- `-i` The identifier you got from [`pepcli list`](#list) or [`pepcli history`](#history)
 - `-o` The file to write the output to. `-` indicates [stdout](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)). This is the default.
 
 Note that the `pepcli get` command is not capable of data re-pseudonymisation. Data from columns requiring such processing should be retrieved using [`pepcli pull`](#pull) instead.
@@ -1064,7 +1157,7 @@ Conversion does not require any access rights to the subject associated with the
 
 ## store
 
-You can store data with this command:-
+You can store data with this command:
 
 ```plaintext
 pepcli store -c <column name> -p <participant> -i /PATH/TO/DATA/FILE
@@ -1079,6 +1172,16 @@ The flags are:
 - `-i` Path to the file to store. `-` means stdin, and is the default.
 - `-d` Data to store. Use either this or `-i`
 - `-T` By default, pepcli will request a write-only ticket. You can use `-T` and give a path to store the ticket in. If you use this flag, pepcli will also request read access to the entry that is stored. You can then use the ID in the output, together with this ticket for `pepcli get`. This way you can check whether the data was stored correctly. Note that pepcli also performs its own checks to see whether the data was stored correctly.
+
+## delete
+
+A cell can be cleared using the following command:
+
+```plaintext
+pepcli delete -c <column name> -p <participant>
+```
+
+Since PEP retains a full history of all data versions, this command does not cause the cell's data to become forever lost. Instead the cell will just be absent from the repository's current ("rolling") data set, which is what most users will get to see. The previous ("deleted") data version is still accessible (to users with appropriate privileges) by means of the [`pepcli history`](#history) and [`pepcli get`](#get) commands.
 
 ## Specific usage scenarios
 

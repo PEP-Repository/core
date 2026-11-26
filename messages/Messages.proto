@@ -807,6 +807,9 @@ message DataHistoryEntry2 {
 
   // (Encrypted) storage facility ID. If empty, this history entry represents a deletion
   bytes id = 4;
+
+  // If the entry is redacted: the timestamp at which the cycle was applied
+  Timestamp redacted_at = 5;
 }
 
 message DataHistoryResponse2 {
@@ -826,6 +829,49 @@ message DataSizeResponse {
   uint64 block_size = 1;
   uint64 total_blocks = 2;
   uint64 rolling_blocks = 3;
+  uint64 redacted_blocks = 4;
+}
+
+message RedactionCycle {
+  uint32 id = 1;
+  string name = 2;
+  Timestamp announced = 3;
+  Timestamp applied = 4;
+  Timestamp completed = 5;
+}
+
+message RedactionListRequest {}
+
+message SignedRedactionListRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message RedactionAnnounceRequest {
+  string name = 1;
+}
+
+message SignedRedactionAnnounceRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message RedactionCancelRequest {
+  uint32 id = 1;
+}
+
+message SignedRedactionCancelRequest {
+  Signature signature = 1;
+  bytes data = 2;
+}
+
+message RedactionConfirmationRequest {
+  uint32 id = 1;
+}
+
+message SignedRedactionConfirmationRequest {
+  Signature signature = 1;
+  bytes data = 2;
 }
 
 // Protocol buffer definition behind the opaque identifiers used by the

@@ -1,9 +1,9 @@
 #pragma once
 
+#include <pep/async/ExponentialBackoff.hpp>
 #include <pep/networking/Client.hpp>
 #include <pep/networking/Connection.hpp>
 #include <pep/networking/EndPoint.hpp>
-#include <pep/networking/ExponentialBackoff.hpp>
 #include <pep/networking/HTTPMessage.hpp>
 #include <pep/networking/HttpMethod.hpp>
 #include <pep/networking/Transport.hpp> // for networking::SizedTransfer

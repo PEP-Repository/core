@@ -2,9 +2,9 @@
 
 #ifndef __EMSCRIPTEN__
 
+#include <pep/async/ExponentialBackoff.hpp>
 #include <pep/async/IoContextThread.hpp>
 #include <pep/httpserver/HTTPServer.hpp>
-#include <pep/networking/ExponentialBackoff.hpp>
 #include <pep/networking/HTTPMessage.hpp> // for HTTPResponse, HTTPRequest
 #include <pep/networking/HttpClient.hpp>
 #include <pep/networking/HttpMethod.hpp>

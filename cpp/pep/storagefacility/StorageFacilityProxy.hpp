@@ -3,6 +3,7 @@
 #include <pep/messaging/Tail.hpp>
 #include <pep/server/SigningServerProxy.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
+#include <pep/storagefacility/RedactionCycle.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp>
 
 namespace pep {
@@ -23,6 +24,11 @@ public:
   /// \return An observable emitting zero or more chunks of page paths. Every chunk is self-contained, i.e. it pushes the prefixes
   ///         that apply to its paths and pops them again, so that it can be processed (e.g. using WritePrefixedStrings) on its own.
   rxcpp::observable<PagePathResponse> requestPagePaths() const;
+
+  rxcpp::observable<RedactionCycle> listRedactionCycles() const;
+  rxcpp::observable<RedactionCycle> announceRedactionCycle(RedactionCycle::Definition definition) const;
+  rxcpp::observable<RedactionCycle> cancelRedactionCycle(RedactionCycle::Id id) const;
+  rxcpp::observable<RedactionCycle> confirmRedactionCycle(RedactionCycle::Id id) const;
 };
 
 }

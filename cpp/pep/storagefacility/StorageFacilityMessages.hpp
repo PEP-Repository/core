@@ -99,6 +99,7 @@ struct DataHistoryEntry2 {
   uint32_t pseudonymIndex{}; // In the DataHistoryRequest2::ticket_
   Timestamp timestamp;
   std::string id; // Storage facility ID. If empty, this history entry represents a deletion
+  std::optional<Timestamp> redactedAt; // If the entry is redacted: the timestamp at which the cycle was applied
 };
 
 struct DataHistoryResponse2 {
@@ -112,6 +113,7 @@ struct DataSizeRequest {
 struct DataSizeResponse {
   uint64_t blockSize;
   uint64_t totalBlocks;
+  uint64_t redactedBlocks;
   uint64_t rollingBlocks;
 };
 

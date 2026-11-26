@@ -1,26 +1,20 @@
-#include <pep/storagefacility/StorageFacility.hpp>
-#include <pep/auth/UserGroup.hpp>
-#include <pep/crypto/ConstTime.hpp>
-#include <pep/utils/Configuration.hpp>
 #include <pep/async/CreateObservable.hpp>
+#include <pep/async/OnAsio.hpp>
 #include <pep/async/RxBeforeTermination.hpp>
-#include <pep/utils/Random.hpp>
 #include <pep/async/RxIterate.hpp>
 #include <pep/async/RxParallelConcat.hpp>
-#include <pep/storagefacility/StorageFacilitySerializers.hpp>
-#include <pep/storagefacility/SFIdSerializer.hpp>
-#include <pep/messaging/MessageHeader.hpp>
-#include <pep/utils/Defer.hpp>
-#include <pep/morphing/MorphingPropertySerializers.hpp>
-#include <pep/async/OnAsio.hpp>
 #include <pep/async/WorkerPool.hpp>
 #include <pep/auth/Signed.hpp>
+#include <pep/auth/UserGroup.hpp>
+#include <pep/crypto/ConstTime.hpp>
 #include <pep/elgamal/ElgamalEncryption.hpp> // for ElgamalPrivateKey
+#include <pep/messaging/MessageHeader.hpp>
 #include <pep/messaging/MessageSequence.hpp>
 #include <pep/messaging/ReadThrottle.hpp>
 #include <pep/metrics/RegisteredMetrics.hpp>
 #include <pep/morphing/EnrolledPartyKeys.hpp>
 #include <pep/morphing/Metadata.hpp> // for EncryptionScheme
+#include <pep/morphing/MorphingPropertySerializers.hpp>
 #include <pep/rsk-pep/Pseudonyms.hpp>
 #include <pep/serialization/Error.hpp>
 #include <pep/serialization/IndexList.hpp>
@@ -29,26 +23,38 @@
 #include <pep/serialization/SerializeException.hpp>
 #include <pep/server/ChecksumChain.hpp>
 #include <pep/server/SigningServer.hpp>
+#include <pep/storagefacility/Constants.hpp>
 #include <pep/storagefacility/DataPayloadPage.hpp>
 #include <pep/storagefacility/EntryName.hpp>
 #include <pep/storagefacility/FileStore.hpp>
 #include <pep/storagefacility/PagePathResponseChunker.hpp>
 #include <pep/storagefacility/PendingBytesLimiter.hpp>
+#include <pep/storagefacility/RedactionCycle.hpp>
+#include <pep/storagefacility/RedactionMessages.hpp>
+#include <pep/storagefacility/RedactionSerializers.hpp>
+#include <pep/storagefacility/SFIdSerializer.hpp>
+#include <pep/storagefacility/SqliteStorage.hpp>
+#include <pep/storagefacility/StorageFacility.hpp>
 #include <pep/storagefacility/StorageFacilityMessages.hpp> // for SignedDataEnumerationRequest2, DataEnumerationResponse2, DataStoreRequest2
+#include <pep/storagefacility/StorageFacilitySerializers.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/ticketing/TicketingMessages.hpp> // for Ticket2, LocalPseudonyms
+#include <pep/utils/Configuration.hpp>
+#include <pep/utils/Defer.hpp>
+#include <pep/utils/Generator.hpp>
 #include <pep/utils/Log.hpp> // for Severity
+#include <pep/utils/Random.hpp>
 #include <pep/utils/Shared.hpp>
 #include <pep/utils/Timestamp.hpp> // for TimeNow
 #include <pep/utils/XxHasher.hpp>
 
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string/join.hpp>
-#include <boost/asio/placeholders.hpp>
-#include <rxcpp/rx-lite.hpp>
 #include <boost/asio/error.hpp> // for boost::asio::error::operation_aborted
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/placeholders.hpp>
 #include <boost/bind/bind.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <rxcpp/rx-lite.hpp>
 
 #include <rxcpp/operators/rx-concat.hpp>
 #include <rxcpp/operators/rx-flat_map.hpp>
@@ -56,32 +62,32 @@
 #include <rxcpp/operators/rx-reduce.hpp>
 #include <rxcpp/operators/rx-tap.hpp>
 
-#include <pep/utils/Generator.hpp>
-#include <ranges>
-#include <unordered_map>
-#include <sstream>
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iterator>
 #include <limits>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <format>
 
+#include <prometheus/counter.h>
 #include <prometheus/gauge.h>
 #include <prometheus/summary.h>
-#include <prometheus/counter.h>
 
 using namespace std::chrono_literals;
 using namespace std::ranges;
@@ -220,7 +226,12 @@ StorageFacility::Metrics::Metrics(std::shared_ptr<prometheus::Registry> registry
     .Add({})),
   totalPayloadBytes(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
     .Name("pep_total_payload_bytes")
-    .Help("Total bytes in payload(page)s of all entries including history, rounded to configured resolution")
+    .Help("Total bytes in payload(page)s of all entries including history and redacted items, rounded to configured resolution")
+    .Register(*registry)
+    .Add({})),
+  redactedPayloadBytes(prometheus::BuildGauge() // Defined as a gauge instead of a Counter (despite only increasing) so that we can .Set it
+    .Name("pep_redacted_payload_bytes")
+    .Help("Total bytes in payload(page)s of redacted entries including history, rounded to configured resolution")
     .Register(*registry)
     .Add({})),
   rollingPayloadBytes(prometheus::BuildGauge()
@@ -258,6 +269,7 @@ StorageFacility::Parameters::Parameters(std::shared_ptr<boost::asio::io_context>
 
     encIdKeyFile = config.get<std::filesystem::path>("EncIdKeyFile");
     storagePath_ = config.get<std::filesystem::path>("StoragePath");
+    storageFile_ = config.get<std::filesystem::path>("StorageFile");
     pageStoreConfig_ = std::make_shared<Configuration>(config.get_child("PageStore"));
   }
   catch (std::exception& e) {
@@ -327,6 +339,12 @@ void StorageFacility::Parameters::check() const {
   if (dataSizeResolution_ == 0U) {
     throw std::runtime_error("dataSizeResolution cannot be zero");
   }
+  if (storagePath_.empty()) {
+    throw std::runtime_error("storagePath must be set");
+  }
+  if (storageFile_.empty()) {
+    throw std::runtime_error("storageFile must be set");
+  }
   // FIXME: check if errors happend during startup of file store
 }
 
@@ -386,6 +404,7 @@ StorageFacility::handleDataEnumerationRequest2(std::shared_ptr<SignedDataEnumera
       if (content == nullptr) {
         continue;
       }
+      entry->throwErrorIfRedacted("StorageFacility::handleDataEnumerationRequest2");
       assert(content->payload() != nullptr);
 
       auto& re = responseEntries.emplace_back();
@@ -493,6 +512,7 @@ StorageFacility::handleMetadataReadRequest2(std::shared_ptr<SignedMetadataReadRe
       if (sfentry == nullptr) {
         throw Error("openExistingDataEntry failed");
       }
+      sfentry->throwErrorIfRedacted("StorageFacility::handleMetadataReadRequest2");
       const auto& sfcontent = sfentry->content();
       if (sfcontent == nullptr) {
         throw Error("Cannot read data of a deleted entry");
@@ -556,6 +576,7 @@ StorageFacility::handleDataReadRequest2(std::shared_ptr<SignedDataReadRequest2> 
     if (entry == nullptr) {
       throw Error("openExistingDataEntry failed");
     }
+    entry->throwErrorIfRedacted("StorageFacility::handleDataReadRequest2");
     if (entry->isTombstone()) {
       throw Error("Cannot read data of a deleted entry");
     }
@@ -715,14 +736,11 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
 
       auto& col = ticket.columns.at(entry.columnIndex);
 
-      // Modify entry, only creating a new one if we don't require an overwrite
-      auto entryChange = fileStore_->modifyEntry(EntryName(*ctx->pseudonyms[i], col), !requireContentOverwrite);
-      if (entryChange == nullptr) {
-        throw Error("Cannot find cell to update");
-      }
-      if (requireContentOverwrite && entryChange->isTombstone()) {
-        throw Error("Cannot update cell that has been previously cleared/deleted");
-      }
+      // Modify entry
+      auto entryChange = fileStore_->modifyEntry(EntryName(*ctx->pseudonyms[i], col), requireContentOverwrite,
+        false // We're going to store a fresh payload (or a tombstone), so we don't care if previous version was redacted
+      );
+      assert(entryChange != nullptr);
 
       for (size_t j = 0; j < i; ++j) { // TODO: improve performance: we don't want an inner loop making this O(n^2)
         if (ctx->entries[j]->getName() == entryChange->getName()) {
@@ -806,7 +824,7 @@ messaging::MessageBatches StorageFacility::handleDataAlterationRequest(
             },
             [this, server, subscriber, ctx, hasher, getResponse]() { // file close
               ctx->throttleAttachment.reset();
-              auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
+              auto time = this->getUniqueChangeTimestamp(false); // Make all entries available/valid at the same moment: see #1631
               for (auto [entry, entryId, i] : views::zip(ctx->entries, ctx->ids, views::iota(0uz))) {
                 try {
                   auto id = encryptId(entry->getName().string(), time);
@@ -891,13 +909,11 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
     assert(localPseudonyms[entry.pseudonymIndex].has_value());
     EntryName key(*localPseudonyms[entry.pseudonymIndex], column);
 
-    auto entryChange = fileStore_->modifyEntry(key, false);
-    if (entryChange == nullptr) {
-      throw Error("Cannot find cell to update metadata for");
-    }
-    if (entryChange->isTombstone()) {
-      throw Error("Cannot update metadata for a deleted cell");
-    }
+    auto entryChange = fileStore_->modifyEntry(key,
+      true, // We need the previous (non-tombstone) version to provide a payload for us
+      true // We need the payload to actually exist
+    );
+    assert(entryChange != nullptr);
     if (DataPayloadPage::EncryptionIncludesMetadata(EncryptionScheme(entryChange->content()->getEncryptionScheme()))) {
       throw Error("Metadata for this cell cannot be updated without re-uploading the payload data");
     }
@@ -930,7 +946,7 @@ StorageFacility::handleMetadataStoreRequest2(std::shared_ptr<SignedMetadataUpdat
     changes.push_back(entryChange);
   }
 
-  auto time = TimeNow(); // Make all entries available/valid at the same moment: see #1631
+  auto time = this->getUniqueChangeTimestamp(false); // Make all entries available/valid at the same moment: see #1631
   MetadataUpdateResponse2 response;
   for (const auto& change : changes) {
     auto id = this->encryptId(change->getName().string(), time);
@@ -1060,6 +1076,7 @@ StorageFacility::handleDataHistoryRequest2(std::shared_ptr<SignedDataHistoryRequ
           .pseudonymIndex = static_cast<uint32_t>(pseud_index),
           .timestamp = version.validFrom,
           .id = !version.isTombstone ? encryptId(entryName, version.validFrom) : "",
+          .redactedAt = version.redactedAt,
           });
       }
     }
@@ -1083,13 +1100,14 @@ messaging::MessageBatches StorageFacility::handleDataSizeRequest(std::shared_ptr
   auto metrics = this->getRoundedFileStoreMetrics(request.columns);
 
   auto countBlocks = [blockSize = dataSizeResolution_](uint64_t bytes) {
-      assert(bytes % blockSize == 0U); // Values produced by this->getFileStoreMetrics are rounded to dataSizeResolution_
+      assert(bytes % blockSize == 0U); // Values produced by this->getRoundedFileStoreMetrics are rounded to dataSizeResolution_
       return bytes / blockSize;
     };
 
   return messaging::BatchSingleMessage(DataSizeResponse{
     .blockSize = dataSizeResolution_,
     .totalBlocks = countBlocks(metrics.totalBytes),
+    .redactedBlocks = countBlocks(metrics.redactedBytes),
     .rollingBlocks = countBlocks(metrics.rollingBytes),
     });
 }
@@ -1103,6 +1121,73 @@ messaging::MessageBatches StorageFacility::handlePagePathRequest(std::shared_ptr
 
   // Produce messages lazily (one at a time) so that we don't need to keep all page paths in memory
   return messaging::RangeToMessageBatches(PagePathResponses(fileStore_, messaging::NetMessageCapacity));
+}
+
+messaging::MessageBatches StorageFacility::handleRedactionListRequest(std::shared_ptr<SignedRedactionListRequest> signedRequest) {
+  const auto& rootCAs = this->getRootCAs();
+  auto certified = signedRequest->open(*rootCAs);
+
+  auto accessGroup = certified.signatory.organizationalUnit();
+  UserGroup::EnsureAccess({ UserGroup::DataAdministrator, UserGroup::RepositoryManager }, accessGroup);
+
+  auto cycles = sqlite_->getRedactionCycles();
+  return rxcpp::observable<>::iterate(std::move(cycles))
+    .map([](RedactionCycle cycle) -> messaging::MessageSequence {
+        return rxcpp::observable<>::just(MakeSharedCopy(Serialization::ToString(cycle)));
+      });
+}
+
+messaging::MessageBatches StorageFacility::handleRedactionAnnounceRequest(std::shared_ptr<SignedRedactionAnnounceRequest> signedRequest) {
+  const auto& rootCAs = this->getRootCAs();
+  auto certified = signedRequest->open(*rootCAs);
+
+  auto accessGroup = certified.signatory.organizationalUnit();
+  UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
+
+  auto result = this->createRedactionCycle(std::move(certified.message.definition));
+  return messaging::BatchSingleMessage(std::move(result));
+}
+
+messaging::MessageBatches StorageFacility::handleRedactionCancelRequest(std::shared_ptr<SignedRedactionCancelRequest> signedRequest) {
+  const auto& rootCAs = this->getRootCAs();
+  auto certified = signedRequest->open(*rootCAs);
+
+  auto accessGroup = certified.signatory.organizationalUnit();
+  UserGroup::EnsureAccess({ UserGroup::DataAdministrator }, accessGroup);
+
+  auto result = sqlite_->atomically([this, id = certified.message.id]() {
+      auto result = sqlite_->getRedactionCycle(id);
+      if (result.applied) {
+        throw Error("Can't cancel redaction cycle that has already been applied"); // That data is GONE!
+      }
+      sqlite_->deleteRedactionCycle(id);
+      return result;
+    });
+
+  return messaging::BatchSingleMessage(std::move(result));
+}
+
+messaging::MessageBatches StorageFacility::handleRedactionConfirmationRequest(std::shared_ptr<SignedRedactionConfirmationRequest> signedRequest) {
+  const auto& rootCAs = this->getRootCAs();
+  auto certified = signedRequest->open(*rootCAs);
+
+  auto accessGroup = certified.signatory.organizationalUnit();
+  UserGroup::EnsureAccess({ UserGroup::RepositoryManager }, accessGroup);
+
+  auto result = sqlite_->atomically([this, id = certified.message.id]() {
+      auto result = sqlite_->getRedactionCycle(id);
+      if (result.applied) {
+        throw Error("Redaction cycle has already been applied");
+      }
+
+      result.applied = this->getUniqueChangeTimestamp(true);
+      sqlite_->updateRedactionCycle(result);
+      return result;
+    });
+
+  fileStore_->applyRedactionCycle(result);
+
+  return messaging::BatchSingleMessage(std::move(result));
 }
 
 std::string StorageFacility::encryptId(std::string path, Timestamp time) {
@@ -1141,6 +1226,106 @@ Metadata StorageFacility::compileMetadata(
   return result;
 }
 
+RedactionCycle StorageFacility::createRedactionCycle(RedactionCycle::Definition definition) {
+  if (definition.name() != BackCatalogRedactionFilter) {
+    throw Error("Unsupported redaction cycle name \"" + definition.name() + '"');
+  }
+
+  return sqlite_->atomically([this, &definition]() {
+      auto id = sqlite_->createRedactionCycle(RedactionCycle{
+        .id{}, // ignored during insertion
+        .definition = std::move(definition),
+        .announced = TimeNow(),
+        .applied{},
+        .completed{}
+        });
+
+      bool empty = true;
+
+      for (const FileStore::Participant* participant : fileStore_->participants()) {
+        for (const FileStore::Cell* cell : participant->cells()) {
+          const FileStore::CellVersions& versions = cell->versions();
+          auto end = versions.end();
+          if (!versions.empty()) { // Don't redact the last/latest/current cell version
+            --end;
+          }
+          for (auto i = versions.begin(); i != end; ++i) {
+            if (!i->redactedAt) { // If this cell version isn't redacted yet...
+              storagefacility::SqliteStorage::CellVersionSpec version{
+                .cell = EntryName(participant->name(), cell->columnName()),
+                .timestamp = i->validFrom,
+              };
+
+              try {
+                sqlite_->addToRedactionCycle(id, version);
+              } catch (const storagefacility::SqliteStorage::ConstraintViolation&) {
+                throw Error("Storage Facility entries may only be included in a single redaction cycle");
+              }
+
+              empty = false;
+            }
+          }
+        }
+      }
+
+      if (empty) {
+        throw Error("Back catalog contains no cell versions");
+      }
+      return sqlite_->getRedactionCycle(id);
+    });
+}
+
+Timestamp StorageFacility::getUniqueChangeTimestamp(bool forRedactionCycle) {
+  /* Each individual cell's history must be identical every time a checksum chain is calculated over it, to keep the checksum chain calculation consistent.
+   * Since the calculation includes both commits (additions) and redactions (deletions), these changes must be ordered consistently every time we process them.
+   * While the calculation (currently) processes commits before redactions, that is an implementation detail, and in principle each individual cell must have an
+   * unambiguous sequence of events that defines its history. We do so by ensuring that within a single cell
+   * - all versions have unique validFrom timestamps, which we enforce by not accepting requests that specify multiple updates to a single cell, and
+   * - no redaction cycle (.applied) timestamp is equal to any version's validFrom timestamp.
+   * Since redaction cycles (may) affect multiple cells, the cycle's (.applied) timestamp must be distinct from all commit timestamps for all affected cells.
+   * We could check only affected cells, but it's easier to just keep the last commit timestamp of _all_ cells in our lastChangeTimestamp_ field. Then,
+   * when we want to commit (a) cell version(s) or apply a redaction cycle, we ensure that
+   * - for commits, we don't produce a timestamp that collides with a redaction cycle, and
+   * - for redaction cycles, we don't produce a timestamp that collides with another redaction cycle or with any commit.
+  */
+  return sqlite_->atomically([this, forRedactionCycle]() { // Prevent TOCTOU problems w.r.t. redaction cycle existence
+
+      // Prevent collision with redaction cycle 'applied' timestamps to ensure history consistency
+      auto existing = sqlite_->getRedactionCycles()
+        | views::filter([](const RedactionCycle& cycle) { return cycle.applied.has_value(); })
+        | views::transform([](const RedactionCycle& cycle) { return *cycle.applied; })
+        | to<std::set>();
+      if (forRedactionCycle) {
+        // Prevent collision with the last (non-redaction-cycle) timestamp that we produced
+        existing.emplace(lastChangeTimestamp_);
+      }
+
+      auto threshold = existing.empty() ? Timestamp{ /* zero */} : *existing.rbegin();
+
+      // Get current timestamp until it's newer than existing timestamps (that we shouldn't collide with)
+      Timestamp result;
+      do {
+        result = TimeNow();
+
+        if (result < threshold) {
+          std::ostringstream stream;
+          stream << "Can't generate a unique timestamp from current time " << TicksSinceEpoch<std::chrono::milliseconds>(result)
+            << " because a newer commit or redaction cycle already exists with timestamp " << TicksSinceEpoch<std::chrono::milliseconds>(threshold);
+          auto message = std::move(stream).str();
+          PEP_LOG(LogTag, Severity::Critical) << message;
+          throw std::runtime_error(message); // Not an "Error": we don't want to expose our snafu to the (client or) end user
+        }
+      } while (result == threshold);
+
+      if (!forRedactionCycle) {
+        // Prevent next invocation from producing the same value for a redaction cycle
+        lastChangeTimestamp_ = result;
+      }
+
+      return result;
+    });
+}
+
 std::optional<std::filesystem::path> StorageFacility::getStoragePath() {
   return EnsureDirectoryPath(fileStore_->metaDir());
 }
@@ -1166,7 +1351,9 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   : SigningServer(parameters),
   pseudonymKey_(parameters->getPseudonymKey()), encIdKey_(parameters->getEncIdKey()),
   workerPool_(WorkerPool::getShared()),
+  sqlite_(storagefacility::SqliteStorage::Create(parameters->getStorageFile())),
   fileStore_(FileStore::Create(
+    sqlite_,
     parameters->getStoragePath().string(),
     *parameters->getPageStoreConfig(),
     parameters->getIoContext(),
@@ -1179,6 +1366,18 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
   timer_(*parameters->getIoContext()),
   parallelisationWidth_(parameters->getParallelisationWidth()),
   dataSizeResolution_(parameters->getDataSizeResolution()) {
+
+  for (const auto& participant : fileStore_->participants()) {
+    for (const auto& cell : participant->cells()) {
+      for (const auto& version : cell->versions()) {
+        lastChangeTimestamp_ = std::max(lastChangeTimestamp_, version.validFrom);
+      }
+    }
+  }
+
+  // Resume persisting redactions that were not completed when the the process ran last time
+  fileStore_->persistPendingRedactions();
+
   RegisterRequestHandlers(*this,
                           &StorageFacility::handleMetadataReadRequest2,
                           &StorageFacility::handleDataReadRequest2,
@@ -1188,7 +1387,11 @@ StorageFacility::StorageFacility(std::shared_ptr<pep::StorageFacility::Parameter
                           &StorageFacility::handleDataEnumerationRequest2,
                           &StorageFacility::handleDataHistoryRequest2,
                           &StorageFacility::handleDataSizeRequest,
-                          &StorageFacility::handlePagePathRequest);
+                          &StorageFacility::handlePagePathRequest,
+                          &StorageFacility::handleRedactionListRequest,
+                          &StorageFacility::handleRedactionAnnounceRequest,
+                          &StorageFacility::handleRedactionCancelRequest,
+                          &StorageFacility::handleRedactionConfirmationRequest);
 
   this->updateFileStoreMetrics();
   statsTimer({});
@@ -1208,6 +1411,7 @@ FileStore::Metrics StorageFacility::getRoundedFileStoreMetrics(const std::set<st
   return FileStore::Metrics{
     .entryCount = precise.entryCount,
     .totalBytes = round(precise.totalBytes),
+    .redactedBytes = round(precise.redactedBytes),
     .rollingBytes = round(precise.rollingBytes),
   };
 }
@@ -1217,6 +1421,7 @@ void StorageFacility::updateFileStoreMetrics() {
 
   metrics_->entriesIncludingHistory.Set(static_cast<double>(rounded.entryCount));
   metrics_->totalPayloadBytes.Set(static_cast<double>(rounded.totalBytes));
+  metrics_->redactedPayloadBytes.Set(static_cast<double>(rounded.redactedBytes));
   metrics_->rollingPayloadBytes.Set(static_cast<double>(rounded.rollingBytes));
 }
 

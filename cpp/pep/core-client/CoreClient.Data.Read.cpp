@@ -330,6 +330,7 @@ CoreClient::getHistory2(SignedTicket2 ticket,
           },
           entry.timestamp,
           !entry.id.empty() ? std::optional{entry.id} : std::nullopt,
+          entry.redactedAt,
         };
         })
         | to<std::vector>();

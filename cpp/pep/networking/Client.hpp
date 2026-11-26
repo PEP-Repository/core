@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pep/networking/ExponentialBackoff.hpp>
+#include <pep/async/ExponentialBackoff.hpp>
 #include <pep/networking/Node.hpp>
 #include <pep/networking/Protocol.hpp>
 #include <pep/utils/Event.hpp>

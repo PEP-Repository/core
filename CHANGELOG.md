@@ -30,9 +30,13 @@
 
 - core!2595: Weblib `pep.listColumns()` and `pep.listSubjectGroups()` now return all (column/subject) groups the user has any access to, with their access `modes`, instead of only readable/accessible ones.
 
+- core#2313: Added `pepcli redact` suite of commands, which irrecoverably remove cell versions from the repository.
+
 **MANUAL CHANGES REQUIRED**:
 
 - core!2527: For projects using nginx (e.g. for s3proxy), modify `etc/params/proxy` to change `proxy_set_header Host $host;` to `proxy_set_header Host $http_host;` (or just replace by the version in pep/core>).
+- core#2313: Add a `"StorageFile": "StorageFacility.sqlite"` configuration setting to `StorageFacility.json`.
+- core#2313: Ensure that `StorageFacility.sqlite` is included in backups.
 
 ---------------
 *Past changes, do not edit (except by person doing release):*

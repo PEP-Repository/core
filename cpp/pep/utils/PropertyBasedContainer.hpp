@@ -1,5 +1,7 @@
 #pragma once
 
+// Provides (aliases for) container types for the storage of items that are unique w.r.t. some immutable property.
+
 #include <cassert>
 #include <map>
 #include <memory>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pep/accessmanager/UserIdFlags.hpp>
-#include <pep/database/Record.hpp>
+#include <pep/database/UnixMillis.hpp>
 #include <pep/utils/Timestamp.hpp>
 
 #include <cstdint>

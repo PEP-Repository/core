@@ -1,9 +1,12 @@
 add_library(${PROJECT_NAME}StorageFacilityApilib
-  Constants.hpp
+  Constants.cpp Constants.hpp
   DataPayloadPage.cpp DataPayloadPage.hpp
   DataPayloadPageStreamOrder.cpp DataPayloadPageStreamOrder.hpp
   PageHash.cpp PageHash.hpp
   PrefixedStrings.cpp PrefixedStrings.hpp
+  RedactionMessages.hpp
+  RedactionSerializers.cpp RedactionSerializers.hpp
+  RedactionCycle.cpp RedactionCycle.hpp
   StorageFacilityMessages.hpp
   StorageFacilityProxy.cpp StorageFacilityProxy.hpp
   StorageFacilitySerializers.cpp StorageFacilitySerializers.hpp
@@ -33,11 +36,13 @@ if(WITH_SERVERS)
       SFId.hpp
       SFIdSerializer.cpp SFIdSerializer.hpp
       SfChecksumChain.cpp SfChecksumChain.hpp
+      SqliteStorage.cpp SqliteStorage.hpp # Named this way to contrast with other "Store/Storage" code in this project
       StorageFacility.cpp StorageFacility.hpp
   )
   target_link_libraries(${PROJECT_NAME}StorageFacilitylib
     ${PROJECT_NAME}StorageFacilityApilib
     ${PROJECT_NAME}Serverlib
+    ${PROJECT_NAME}Databaselib
   )
   verify_headers_standalone(${PROJECT_NAME}StorageFacilitylib)
 

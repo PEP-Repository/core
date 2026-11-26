@@ -4,6 +4,7 @@
 add_library(${PROJECT_NAME}Databaselib
   Record.hpp
   Storage.cpp Storage.hpp
+  UnixMillis.cpp UnixMillis.hpp
 )
 find_package(SqliteOrm REQUIRED)
 target_link_libraries(${PROJECT_NAME}Databaselib

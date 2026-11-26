@@ -1,8 +1,8 @@
 #pragma once
 
 #include <pep/accessmanager/UserStorageRecords.hpp>
-#include <pep/database/Record.hpp> // for database::UnixMillis
 #include <pep/database/Storage.hpp>
+#include <pep/database/UnixMillis.hpp>
 
 #include <sqlite_orm/sqlite_orm.h> // for sqlite_orm::make_storage
 

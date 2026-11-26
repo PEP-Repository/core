@@ -1,4 +1,4 @@
-#include <pep/networking/ExponentialBackoff.hpp>
+#include <pep/async/ExponentialBackoff.hpp>
 
 #include <algorithm>
 #include <cassert>
