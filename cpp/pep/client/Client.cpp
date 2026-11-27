@@ -183,6 +183,10 @@ rxcpp::observable<EnrolledPartyKeys> Client::enrollUser(const std::string& oauth
   PEP_LOG(LogTag, Severity::Debug) << "Generating key pair";
   AsymmetricKeyPair keyPair = AsymmetricKeyPair::GenerateKeyPair();
   PEP_LOG(LogTag, Severity::Debug) << "Key pair generated";
+  return enrollUser(oauthToken, std::move(keyPair));
+}
+
+rxcpp::observable<EnrolledPartyKeys> Client::enrollUser(const std::string& oauthToken, AsymmetricKeyPair keyPair) {
   PEP_LOG(LogTag, Severity::Debug) << "Generating CSR";
 
   // Parse OAuth token

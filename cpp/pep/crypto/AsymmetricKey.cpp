@@ -459,6 +459,22 @@ AsymmetricKeyPair AsymmetricKeyPair::GenerateKeyPair() {
   return keyPair;
 }
 
+AsymmetricKeyPair AsymmetricKeyPair::FromPrivateKey(const AsymmetricKey& privateKey) {
+  std::lock_guard<std::mutex> lock(privateKey.m_);
+  if (privateKey.keyType != AsymmetricKeyType::Private || !privateKey.key_
+      || !EVP_PKEY_is_a(privateKey.key_, "RSA") || EVP_PKEY_get_bits(privateKey.key_) < 2048) {
+    throw std::invalid_argument("AsymmetricKeyPair::FromPrivateKey requires a private RSA key of at least 2048 bits");
+  }
+
+  AsymmetricKeyPair keyPair;
+  keyPair.keyPair_ = EVP_PKEY_dup(privateKey.key_);
+  if (!keyPair.keyPair_) {
+    throw pep::OpenSSLError("Failed to duplicate private key in AsymmetricKeyPair::FromPrivateKey.");
+  }
+
+  return keyPair;
+}
+
 AsymmetricKey AsymmetricKeyPair::getPublicKey() const {
   std::lock_guard<std::mutex> lock(m_);
   return AsymmetricKey(AsymmetricKeyType::Public, keyPair_);
