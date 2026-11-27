@@ -63,6 +63,9 @@ class AsymmetricKeyPair {
 
   static AsymmetricKeyPair GenerateKeyPair();
 
+  /// \brief The key pair of a private key generated elsewhere: an RSA key of at least 2048 bits, like GenerateKeyPair
+  static AsymmetricKeyPair FromPrivateKey(const AsymmetricKey& privateKey);
+
   AsymmetricKey getPublicKey() const;
   AsymmetricKey getPrivateKey() const;
 

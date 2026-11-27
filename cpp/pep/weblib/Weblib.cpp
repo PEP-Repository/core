@@ -5,6 +5,7 @@
 #include <pep/auth/OAuthToken.hpp>
 #include <pep/accessmanager/AccessManagerProxy.hpp>
 #include <pep/client/Client.hpp>
+#include <pep/crypto/AsymmetricKey.hpp>
 #include <pep/ticketing/ColumnAccessModes.hpp>
 #include <pep/ticketing/SubjectAccessModes.hpp>
 #include <pep/messaging/MessageSequence.hpp>
@@ -446,10 +447,12 @@ public:
     return OAuthClient(shared_from_this(), std::move(redirectUri), std::move(state), std::move(openAuthPage));
   }
 
-  WeblibApiVoidPromise authenticateWithToken(std::string token) {
+  /// Enroll with an OAuth token and a private key (PKCS#8 PEM, see pep.mts)
+  WeblibApiVoidPromise authenticateWithToken(std::string token, std::string privateKeyPem) {
     co_await onIoThread()
-      .flat_map([token = std::move(token)](const std::shared_ptr<Weblib>& self) {
-        return self->client_->enrollUser(token).op(RxInstead(FakeVoid{}));
+      .flat_map([token = std::move(token), privateKeyPem = std::move(privateKeyPem)](const std::shared_ptr<Weblib>& self) {
+        return self->client_->enrollUser(token, AsymmetricKeyPair::FromPrivateKey(AsymmetricKey(privateKeyPem)))
+            .op(RxInstead(FakeVoid{}));
       });
   }
 

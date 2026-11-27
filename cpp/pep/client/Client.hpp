@@ -103,6 +103,9 @@ public:
   /// \return rxcpp::observable< EnrolledPartyKeys >
   rxcpp::observable<EnrolledPartyKeys> enrollUser(const std::string& oauthToken);
 
+  /// \brief Enroll a user with the given key pair
+  rxcpp::observable<EnrolledPartyKeys> enrollUser(const std::string& oauthToken, AsymmetricKeyPair keyPair);
+
   std::shared_ptr<const KeyServerProxy> getKeyServerProxy(bool require = true) const;
   std::shared_ptr<const AuthServerProxy> getAuthServerProxy(bool require = true) const;
   std::shared_ptr<const RegistrationServerProxy> getRegistrationServerProxy(bool require = true) const;

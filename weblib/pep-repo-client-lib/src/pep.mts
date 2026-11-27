@@ -343,6 +343,26 @@ function runHandleWasmExceptionForModule<Ret>(mod: PepModule, fun: () => Ret): R
   }
 }
 
+/**
+ * Generates the private key
+ */
+async function generatePrivateKeyPem(): Promise<string> {
+  const keyPair = await crypto.subtle.generateKey({
+      name: 'RSASSA-PKCS1-v1_5',
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: 'SHA-256'
+    },
+    true,
+    ['sign', 'verify']
+  );
+
+  const pkcs8 = new Uint8Array(await crypto.subtle.exportKey('pkcs8', keyPair.privateKey));
+  const base64 = btoa(String.fromCharCode(...pkcs8));
+
+  return `-----BEGIN PRIVATE KEY-----\n${base64.match(/.{1,64}/g)!.join('\n')}\n-----END PRIVATE KEY-----\n`;
+}
+
 export default class Pep {
   readonly #config: InitConfig;
   #mod: PepModule;
@@ -544,8 +564,9 @@ export default class Pep {
   }
 
   /** Enroll user with OAuth token */
-  authenticateWithToken(token: string) {
-    return this.#wrapExec(() => this.#client.authenticateWithToken(token));
+  async authenticateWithToken(token: string): Promise<void> {
+    const privateKeyPem = await generatePrivateKeyPem();
+    return this.#wrapExec(() => this.#client.authenticateWithToken(token, privateKeyPem));
   }
 
   /**
